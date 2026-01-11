@@ -55,6 +55,9 @@ const ROUTE_LABELS: Record<string, string> = {
     '/lieferanten': 'Lieferanten',
     '/document-groups': 'Dokumentengruppen',
 
+    // Ablage dynamic routes (partial matches handled in getDynamicLabel)
+    // vorgaenge is handled via getDynamicLabel
+
     // Finanzen
     '/finanzen': 'Finanzen',
     '/kasse': 'Kasse',
@@ -85,11 +88,29 @@ function getDynamicLabel(segment: string, fullPath: string): string {
         return segment
     }
 
-    // Category labels
+    // Category labels (includes Ablage categories)
     const categories: Record<string, string> = {
         'einnahmen': 'Einnahmen',
         'ausgaben': 'Ausgaben',
         'belege': 'Belege',
+        'vorgaenge': 'Vorgänge',
+        'folie': 'Folie',
+        'messer': 'Spargelmesser',
+        'anfragen': 'Anfragen',
+        'angebote': 'Angebote',
+        'auftragsbestätigung': 'Auftragsbestätigung',
+        'lieferscheine': 'Lieferscheine',
+        'rechnungen': 'Rechnungen',
+        'bestellungen': 'Bestellungen',
+        'storno': 'Storno',
+        'mahnungen': 'Mahnungen',
+        'offene_rechnungen': 'Offene Rechnungen',
+        'offene_angebote': 'Offene Angebote',
+        'offene_anfragen': 'Offene Anfragen',
+        'reklamation': 'Reklamation',
+        'kommunikation': 'Kommunikation',
+        'archiv': 'Archiv',
+        'druckdaten': 'Druckdaten',
     }
     if (categories[segment]) {
         return categories[segment]
@@ -160,6 +181,13 @@ export function Breadcrumbs({
 
     // Don't show breadcrumbs on home page
     if (items.length <= 1) {
+        return null
+    }
+
+    // Ablage-Routen: Verstecke globale Breadcrumb da CategoryHeader eigene hat
+    // (Kunden/Lieferanten-Detail-Seiten mit Ordner/Kategorie)
+    const isAblageDetailRoute = /^\/(kunden|lieferanten)\/[^/]+\/[^/]+/.test(location.pathname)
+    if (isAblageDetailRoute) {
         return null
     }
 

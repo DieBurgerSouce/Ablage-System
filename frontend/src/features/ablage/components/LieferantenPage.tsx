@@ -239,6 +239,7 @@ export function LieferantenPage() {
             return (
               <Card
                 key={supplier.id}
+                data-testid="supplier-card"
                 className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:border-l-4 hover:border-l-blue-500 hover:scale-[1.01] group"
                 onClick={() => handleCardClick(supplier.id)}
               >

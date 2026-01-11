@@ -24,10 +24,11 @@ from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
 import structlog
-from sqlalchemy import select, func, and_, or_, cast, String
+from sqlalchemy import select, func, and_, or_, cast, String, literal_column, Numeric
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.dialects.postgresql import JSONB
+import re
 
 from app.db.models import Document, Tag, ProcessingStatus
 from app.db.schemas import (
@@ -46,6 +47,78 @@ from app.services.document_services.base import DocumentServiceBase
 from app.services.storage_service import get_storage_service
 
 logger = structlog.get_logger(__name__)
+
+
+# Security: Whitelist of allowed JSONB column and key names
+_ALLOWED_JSONB_COLUMNS = frozenset({"extracted_data", "document_metadata"})
+_ALLOWED_JSONB_KEYS = frozenset({
+    # document_metadata keys
+    "business_entity_id", "folder_id", "entity_type",
+    # extracted_data keys
+    "payment_status", "total_amount", "paid_amount", "due_date",
+    "document_date", "document_number", "invoice_number",
+})
+_SAFE_IDENTIFIER_PATTERN = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+
+
+def jsonb_text(column_name: str, key: str) -> literal_column:
+    """Helper: Extrahiert Text aus JSONB mit PostgreSQL ->> Operator.
+
+    Umgeht das Problem mit CrossDBJSON TypeDecorator und .astext.
+    Uses the ->> operator which returns text directly.
+
+    Security: Validates column_name and key against whitelist.
+    """
+    if column_name not in _ALLOWED_JSONB_COLUMNS:
+        if not _SAFE_IDENTIFIER_PATTERN.match(column_name):
+            raise ValueError(f"Invalid JSONB column name: {column_name}")
+
+    if key not in _ALLOWED_JSONB_KEYS:
+        if not _SAFE_IDENTIFIER_PATTERN.match(key):
+            raise ValueError(f"Invalid JSONB key: {key}")
+
+    return literal_column(f"{column_name}->>'{key}'")
+
+
+def jsonb_numeric(column_name: str, key: str) -> cast:
+    """Helper: Extrahiert numerischen Wert aus JSONB und castet zu NUMERIC.
+
+    Verwendet ->> Operator (Text) und castet dann zu NUMERIC.
+    Gibt NULL zurueck wenn der Wert nicht numerisch ist.
+
+    Security: Validates column_name and key against whitelist.
+    """
+    if column_name not in _ALLOWED_JSONB_COLUMNS:
+        if not _SAFE_IDENTIFIER_PATTERN.match(column_name):
+            raise ValueError(f"Invalid JSONB column name: {column_name}")
+
+    if key not in _ALLOWED_JSONB_KEYS:
+        if not _SAFE_IDENTIFIER_PATTERN.match(key):
+            raise ValueError(f"Invalid JSONB key: {key}")
+
+    # ->> gibt Text zurueck, dann casten zu NUMERIC
+    # NULLIF verhindert Fehler bei leeren Strings
+    return cast(
+        func.nullif(literal_column(f"{column_name}->>'{key}'"), ''),
+        Numeric
+    )
+
+
+def jsonb_exists(column_name: str, key: str) -> literal_column:
+    """Helper: Prueft ob ein Key in JSONB existiert und nicht null ist.
+
+    Verwendet PostgreSQL ? Operator fuer Existenz-Pruefung.
+    """
+    if column_name not in _ALLOWED_JSONB_COLUMNS:
+        if not _SAFE_IDENTIFIER_PATTERN.match(column_name):
+            raise ValueError(f"Invalid JSONB column name: {column_name}")
+
+    if key not in _ALLOWED_JSONB_KEYS:
+        if not _SAFE_IDENTIFIER_PATTERN.match(key):
+            raise ValueError(f"Invalid JSONB key: {key}")
+
+    # Prueft ob Key existiert UND nicht null ist
+    return literal_column(f"({column_name}->'{key}') IS NOT NULL")
 
 
 # Mapping von Kategorie-Slugs zu DocumentType-Enums
@@ -187,10 +260,10 @@ class AblageService(DocumentServiceBase):
 
         # Business-Entity und Folder aus metadata filtern
         base_conditions.append(
-            Document.document_metadata["business_entity_id"].astext == str(business_entity_id)
+            jsonb_text("document_metadata", "business_entity_id") == str(business_entity_id)
         )
         base_conditions.append(
-            Document.document_metadata["folder_id"].astext == folder_id
+            jsonb_text("document_metadata", "folder_id") == folder_id
         )
 
         # Gesamtanzahl
@@ -208,49 +281,42 @@ class AblageService(DocumentServiceBase):
         documents_by_status = {row[0]: row[1] for row in status_result.all()}
 
         # Zahlungsstatus-Verteilung (aus extracted_data)
+        payment_status_col = jsonb_text("extracted_data", "payment_status")
         payment_status_query = (
             select(
-                Document.extracted_data["payment_status"].astext,
+                payment_status_col,
                 func.count(Document.id)
             )
             .where(and_(*base_conditions))
-            .where(Document.extracted_data["payment_status"].isnot(None))
-            .group_by(Document.extracted_data["payment_status"].astext)
+            .where(jsonb_exists("extracted_data", "payment_status"))
+            .group_by(payment_status_col)
         )
         payment_result = await db.execute(payment_status_query)
         documents_by_payment_status = {row[0]: row[1] for row in payment_result.all()}
 
-        # Betrags-Aggregationen
+        # Betrags-Aggregationen (verwende jsonb_numeric fuer korrekte Typisierung)
+        total_amount_numeric = jsonb_numeric("extracted_data", "total_amount")
+        paid_amount_numeric = jsonb_numeric("extracted_data", "paid_amount")
         amounts_query = (
             select(
-                func.coalesce(
-                    func.sum(cast(Document.extracted_data["total_amount"].astext, JSONB)),
-                    0
-                ).label("total"),
-                func.coalesce(
-                    func.sum(
-                        cast(Document.extracted_data["paid_amount"].astext, JSONB)
-                    ),
-                    0
-                ).label("paid"),
+                func.coalesce(func.sum(total_amount_numeric), 0).label("total"),
+                func.coalesce(func.sum(paid_amount_numeric), 0).label("paid"),
             )
             .where(and_(*base_conditions))
         )
 
         # Separate Query fuer ueberfaellige Betraege
         today = datetime.now(timezone.utc).date().isoformat()
+        due_date_col = jsonb_text("extracted_data", "due_date")
         overdue_conditions = base_conditions + [
-            Document.extracted_data["payment_status"].astext == "offen",
-            Document.extracted_data["due_date"].astext < today,
+            payment_status_col == "offen",
+            due_date_col < today,
         ]
 
         overdue_query = (
             select(
                 func.count(Document.id),
-                func.coalesce(
-                    func.sum(cast(Document.extracted_data["total_amount"].astext, JSONB)),
-                    0
-                )
+                func.coalesce(func.sum(total_amount_numeric), 0)
             )
             .where(and_(*overdue_conditions))
         )
@@ -853,47 +919,51 @@ class AblageService(DocumentServiceBase):
 
         # Business-Entity und Folder aus metadata
         conditions.append(
-            Document.document_metadata["business_entity_id"].astext
+            jsonb_text("document_metadata", "business_entity_id")
             == str(filter_params.business_entity_id)
         )
         conditions.append(
-            Document.document_metadata["folder_id"].astext == filter_params.folder_id
+            jsonb_text("document_metadata", "folder_id") == filter_params.folder_id
         )
 
         # Entity-Type
         conditions.append(
-            Document.document_metadata["entity_type"].astext == filter_params.entity_type.value
+            jsonb_text("document_metadata", "entity_type") == filter_params.entity_type.value
         )
 
-        # Textsuche
+        # Textsuche - use literal_column with ILIKE for JSONB text search
         if filter_params.search:
             search_term = f"%{filter_params.search}%"
+            # For JSONB text search, we need to use raw SQL ILIKE
+            doc_number_search = literal_column(f"extracted_data->>'document_number' ILIKE '{search_term}'")
             conditions.append(
                 or_(
                     Document.filename.ilike(search_term),
                     Document.original_filename.ilike(search_term),
-                    Document.extracted_data["document_number"].astext.ilike(search_term),
+                    doc_number_search,
                 )
             )
 
         # Datumsfilter auf extracted_data.document_date
+        document_date_col = jsonb_text("extracted_data", "document_date")
         if filter_params.date_from:
             conditions.append(
-                Document.extracted_data["document_date"].astext >= filter_params.date_from.isoformat()
+                document_date_col >= filter_params.date_from.isoformat()
             )
         if filter_params.date_to:
             conditions.append(
-                Document.extracted_data["document_date"].astext <= filter_params.date_to.isoformat()
+                document_date_col <= filter_params.date_to.isoformat()
             )
 
-        # Betragsfilter
+        # Betragsfilter (verwende jsonb_numeric fuer korrekte numerische Vergleiche)
+        total_amount_numeric = jsonb_numeric("extracted_data", "total_amount")
         if filter_params.amount_min is not None:
             conditions.append(
-                cast(Document.extracted_data["total_amount"].astext, JSONB) >= filter_params.amount_min
+                total_amount_numeric >= filter_params.amount_min
             )
         if filter_params.amount_max is not None:
             conditions.append(
-                cast(Document.extracted_data["total_amount"].astext, JSONB) <= filter_params.amount_max
+                total_amount_numeric <= filter_params.amount_max
             )
 
         # Verarbeitungsstatus
@@ -904,8 +974,9 @@ class AblageService(DocumentServiceBase):
         # Zahlungsstatus
         if filter_params.payment_status:
             status_values = [s.value for s in filter_params.payment_status]
+            payment_status_col = jsonb_text("extracted_data", "payment_status")
             conditions.append(
-                Document.extracted_data["payment_status"].astext.in_(status_values)
+                payment_status_col.in_(status_values)
             )
 
         # Tags
@@ -920,12 +991,12 @@ class AblageService(DocumentServiceBase):
     def _get_sort_column_for_category(self, sort_by: str):
         """Spalte fuer Sortierung ermitteln."""
         sort_map = {
-            "document_date": Document.extracted_data["document_date"].astext,
+            "document_date": jsonb_text("extracted_data", "document_date"),
             "created_at": Document.created_at,
             "filename": Document.filename,
-            "total_amount": Document.extracted_data["total_amount"].astext,
-            "due_date": Document.extracted_data["due_date"].astext,
-            "payment_status": Document.extracted_data["payment_status"].astext,
+            "total_amount": jsonb_text("extracted_data", "total_amount"),
+            "due_date": jsonb_text("extracted_data", "due_date"),
+            "payment_status": jsonb_text("extracted_data", "payment_status"),
         }
         return sort_map.get(sort_by, Document.created_at)
 

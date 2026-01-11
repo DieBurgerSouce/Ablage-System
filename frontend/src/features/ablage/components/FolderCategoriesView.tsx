@@ -207,7 +207,7 @@ export function FolderCategoriesView({ entityType }: FolderCategoriesViewProps) 
 
           return (
             <Link key={category.id} to={categoryPath} params={categoryParams}>
-              <Card className={`${colorHoverClass} hover:shadow-md transition-all cursor-pointer h-full group`}>
+              <Card data-testid="category-card" className={`${colorHoverClass} hover:shadow-md transition-all cursor-pointer h-full group`}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2">
                     <div className={`p-1.5 rounded ${bgColorClass} group-hover:scale-110 transition-transform`}>

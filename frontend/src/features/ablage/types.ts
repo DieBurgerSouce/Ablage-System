@@ -286,3 +286,124 @@ export const CATEGORY_TO_DOCUMENT_TYPE: Record<string, string> = {
   archiv: 'archive',
   druckdaten: 'print_data',  // NUR für Spargelmesser-Kunden!
 };
+
+// ==================== VORGANGS-TYPEN ====================
+
+/**
+ * Status eines Vorgangs
+ */
+export type TransactionStatus =
+  | 'draft'       // Entwurf
+  | 'pending'     // In Bearbeitung
+  | 'completed'   // Abgeschlossen (alle Schritte erledigt)
+  | 'cancelled';  // Abgebrochen
+
+/**
+ * Status eines einzelnen Schritts im Vorgang
+ */
+export type TransactionStepStatus =
+  | 'pending'     // Noch nicht begonnen
+  | 'active'      // Aktuell in Bearbeitung
+  | 'completed'   // Abgeschlossen
+  | 'skipped';    // Übersprungen
+
+/**
+ * Typ eines Vorgang-Schritts (entspricht Dokumentkategorien)
+ */
+export type TransactionStepType =
+  | 'anfrage'
+  | 'angebot'
+  | 'auftrag'
+  | 'lieferschein'
+  | 'rechnung'
+  | 'zahlung';
+
+/**
+ * Konfiguration für Vorgang-Schritte
+ */
+export interface TransactionStepConfig {
+  type: TransactionStepType;
+  label: string;
+  shortCode: string;
+  icon: string;
+  categoryId: string;  // Mapping zu Dokumentkategorie
+}
+
+/**
+ * Standard-Vorgang-Schritte (Angebot → Auftrag → Lieferschein → Rechnung → Zahlung)
+ */
+export const TRANSACTION_STEPS: TransactionStepConfig[] = [
+  { type: 'anfrage', label: 'Anfrage', shortCode: 'AF', icon: 'HelpCircle', categoryId: 'anfragen' },
+  { type: 'angebot', label: 'Angebot', shortCode: 'AG', icon: 'FileText', categoryId: 'angebote' },
+  { type: 'auftrag', label: 'Auftrag', shortCode: 'AB', icon: 'FileCheck', categoryId: 'auftragsbestätigung' },
+  { type: 'lieferschein', label: 'Lieferschein', shortCode: 'LS', icon: 'Truck', categoryId: 'lieferscheine' },
+  { type: 'rechnung', label: 'Rechnung', shortCode: 'RG', icon: 'Receipt', categoryId: 'rechnungen' },
+  { type: 'zahlung', label: 'Zahlung', shortCode: 'ZA', icon: 'Banknote', categoryId: '' },  // Kein Dokument, nur Status
+];
+
+/**
+ * Einzelner Schritt in einem Vorgang
+ */
+export interface TransactionStep {
+  id: string;
+  type: TransactionStepType;
+  status: TransactionStepStatus;
+  documentId: string | null;
+  documentNumber: string | null;
+  completedAt: string | null;
+  amount: number | null;
+  currency: string;
+}
+
+/**
+ * Ein Vorgang (z.B. eine Bestellung von Anfrage bis Zahlung)
+ */
+export interface Transaction {
+  id: string;
+  transactionNumber: string;  // z.B. "VG-2024-001"
+  name: string;               // Beschreibung, z.B. "Bestellung Druckplatten"
+  status: TransactionStatus;
+  entityId: string;
+  entityName: string;
+  folderId: string;
+  steps: TransactionStep[];
+  totalAmount: number | null;
+  currency: string;
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+  lastActivityAt: string;
+}
+
+/**
+ * API Response für Vorgänge-Liste
+ */
+export interface TransactionListResponse {
+  items: Transaction[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+/**
+ * Filter für Vorgänge-Liste
+ */
+export interface TransactionFilter {
+  entityId?: string;
+  folderId?: string;
+  status?: TransactionStatus[];
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * Default-Filter für Vorgänge
+ */
+export const DEFAULT_TRANSACTION_FILTER: Omit<TransactionFilter, 'entityId' | 'folderId'> = {
+  page: 0,
+  pageSize: 20,
+};

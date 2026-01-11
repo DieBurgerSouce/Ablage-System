@@ -254,6 +254,7 @@ export function KundenPage() {
             return (
               <Card
                 key={customer.id}
+                data-testid="customer-card"
                 className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:border-l-4 hover:border-l-amber-500 hover:scale-[1.01] group"
                 onClick={() => handleCardClick(customer.id)}
               >

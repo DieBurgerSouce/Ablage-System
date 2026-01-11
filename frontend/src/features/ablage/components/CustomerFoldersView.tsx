@@ -158,6 +158,7 @@ export function CustomerFoldersView() {
             return (
               <Card
                 key={folder.id}
+                data-testid="folder-card"
                 className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:border-l-4 hover:border-l-amber-500 hover:scale-[1.01] group"
                 onClick={() => handleFolderClick(folder.id)}
               >

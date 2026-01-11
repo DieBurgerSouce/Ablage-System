@@ -413,16 +413,18 @@ export function DocumentsTable({
   }
 
   return (
-    <DataGrid
-      columns={columns}
-      data={documents}
-      sorting={sorting}
-      onSortingChange={onSortingChange}
-      rowSelection={rowSelection}
-      onRowSelectionChange={onRowSelectionChange}
-      searchColumn="filename"
-      searchPlaceholder="Dokumente durchsuchen..."
-    />
+    <div data-testid="documents-table">
+      <DataGrid
+        columns={columns}
+        data={documents}
+        sorting={sorting}
+        onSortingChange={onSortingChange}
+        rowSelection={rowSelection}
+        onRowSelectionChange={onRowSelectionChange}
+        searchColumn="filename"
+        searchPlaceholder="Dokumente durchsuchen..."
+      />
+    </div>
   );
 }
 

@@ -644,6 +644,187 @@ async def search_documents(
     return result
 
 
+# ==================== Ablage (Category) Endpoints ====================
+# WICHTIG: Diese statischen Routen MUESSEN VOR /{document_id} definiert werden,
+# damit FastAPI sie korrekt matcht (sonst wird "/category" als document_id interpretiert)
+
+@router.get("/category", response_model=None)
+async def get_category_documents(
+    business_entity_id: UUID = Query(..., description="Kunden- oder Lieferanten-ID"),
+    folder_id: str = Query(..., description="Ordner-ID (z.B. '2024')"),
+    category: str = Query(..., description="Kategorie (rechnungen, angebote, etc.)"),
+    entity_type: str = Query("customer", pattern="^(customer|supplier)$", description="Kunde oder Lieferant"),
+    search: Optional[str] = Query(None, max_length=200, description="Textsuche"),
+    date_from: Optional[str] = Query(None, description="Datum ab (ISO)"),
+    date_to: Optional[str] = Query(None, description="Datum bis (ISO)"),
+    amount_min: Optional[float] = Query(None, ge=0, description="Mindestbetrag"),
+    amount_max: Optional[float] = Query(None, ge=0, description="Höchstbetrag"),
+    processing_status: Optional[List[str]] = Query(None, description="Verarbeitungsstatus"),
+    payment_status: Optional[List[str]] = Query(None, description="Zahlungsstatus"),
+    tags: Optional[List[str]] = Query(None, description="Tags"),
+    page: int = Query(0, ge=0, description="Seitennummer (0-basiert)"),
+    page_size: int = Query(25, ge=1, le=100, description="Eintraege pro Seite"),
+    sort_by: str = Query("document_date", description="Sortierfeld"),
+    sort_order: str = Query("desc", pattern="^(asc|desc)$", description="Sortierrichtung"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Dokumente fuer eine Kategorie-Ansicht abrufen.
+
+    Ermoeglicht gefilterte, paginierte Dokumentenliste fuer die Ablage-Ansicht.
+    Unterstuetzt Filterung nach Datum, Betrag, Status, Tags und Volltextsuche.
+
+    **Beispiel:**
+    ```
+    GET /api/v1/documents/category?business_entity_id=<uuid>&folder_id=2024&category=rechnungen
+    ```
+    """
+    from app.services.document_services.ablage_service import get_ablage_service
+    from app.db.schemas import (
+        CategoryDocumentFilter,
+        CategoryDocumentListResponse,
+        EntityType,
+        ProcessingStatus as SchemaProcessingStatus,
+        DocumentPaymentStatus,
+    )
+
+    ablage_service = get_ablage_service()
+
+    # Filter aufbauen
+    try:
+        # Datumsfelder parsen
+        parsed_date_from = None
+        parsed_date_to = None
+        if date_from:
+            parsed_date_from = datetime.fromisoformat(date_from.replace("Z", "+00:00"))
+        if date_to:
+            parsed_date_to = datetime.fromisoformat(date_to.replace("Z", "+00:00"))
+
+        # Status-Enums parsen
+        parsed_processing_status = None
+        if processing_status:
+            parsed_processing_status = [
+                SchemaProcessingStatus(s) for s in processing_status
+            ]
+
+        parsed_payment_status = None
+        if payment_status:
+            parsed_payment_status = [
+                DocumentPaymentStatus(s) for s in payment_status
+            ]
+
+        filter_params = CategoryDocumentFilter(
+            business_entity_id=business_entity_id,
+            folder_id=folder_id,
+            category=category,
+            entity_type=EntityType(entity_type),
+            search=search,
+            date_from=parsed_date_from,
+            date_to=parsed_date_to,
+            amount_min=amount_min,
+            amount_max=amount_max,
+            processing_status=parsed_processing_status,
+            payment_status=parsed_payment_status,
+            tags=tags,
+            page=page,
+            page_size=page_size,
+            sort_by=sort_by,
+            sort_order=sort_order,
+        )
+    except ValueError as e:
+        # SECURITY FIX 28-27: Generische Fehlermeldung
+        raise HTTPException(
+            status_code=400,
+            detail="Ungueltiger Filterwert. Bitte Eingaben pruefen."
+        )
+
+    try:
+        result = await ablage_service.get_category_documents(
+            db=db,
+            user_id=current_user.id,
+            filter_params=filter_params,
+        )
+
+        logger.debug(
+            "category_documents_retrieved",
+            user_id=str(current_user.id),
+            category=category,
+            total=result.total
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "category_documents_error",
+            user_id=str(current_user.id),
+            category=category,
+            error=str(e),
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Fehler beim Abrufen der Dokumente"
+        )
+
+
+@router.get("/category/aggregations", response_model=None)
+async def get_category_aggregations(
+    business_entity_id: UUID = Query(..., description="Kunden- oder Lieferanten-ID"),
+    folder_id: str = Query(..., description="Ordner-ID"),
+    category: str = Query(..., description="Kategorie"),
+    entity_type: str = Query("customer", pattern="^(customer|supplier)$"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Aggregierte Statistiken fuer eine Kategorie abrufen.
+
+    Liefert Summen, Anzahlen und Status-Verteilungen fuer Dashboard-Karten.
+
+    **Beispiel:**
+    ```
+    GET /api/v1/documents/category/aggregations?business_entity_id=<uuid>&folder_id=2024&category=rechnungen
+    ```
+    """
+    from app.services.document_services.ablage_service import get_ablage_service
+    from app.db.schemas import EntityType
+
+    ablage_service = get_ablage_service()
+
+    try:
+        result = await ablage_service.get_category_aggregations(
+            db=db,
+            user_id=current_user.id,
+            business_entity_id=business_entity_id,
+            folder_id=folder_id,
+            category=category,
+            entity_type=EntityType(entity_type),
+        )
+
+        logger.debug(
+            "category_aggregations_retrieved",
+            user_id=str(current_user.id),
+            category=category,
+            total_documents=result.total_documents
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "category_aggregations_error",
+            user_id=str(current_user.id),
+            error=str(e),
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Fehler beim Berechnen der Aggregationen"
+        )
+
+
+# ==================== Document Detail Endpoints ====================
+
 @router.get("/{document_id}", response_model=DocumentDetailResponse)
 async def get_document(
     document_id: UUID,
@@ -2928,183 +3109,6 @@ async def get_document_access_log(
         raise HTTPException(
             status_code=500,
             detail="Fehler beim Abrufen des Zugriffs-Logs"
-        )
-
-
-# ==================== Ablage (Category) Endpoints ====================
-
-@router.get("/category", response_model=None)
-async def get_category_documents(
-    business_entity_id: UUID = Query(..., description="Kunden- oder Lieferanten-ID"),
-    folder_id: str = Query(..., description="Ordner-ID (z.B. '2024')"),
-    category: str = Query(..., description="Kategorie (rechnungen, angebote, etc.)"),
-    entity_type: str = Query("customer", pattern="^(customer|supplier)$", description="Kunde oder Lieferant"),
-    search: Optional[str] = Query(None, max_length=200, description="Textsuche"),
-    date_from: Optional[str] = Query(None, description="Datum ab (ISO)"),
-    date_to: Optional[str] = Query(None, description="Datum bis (ISO)"),
-    amount_min: Optional[float] = Query(None, ge=0, description="Mindestbetrag"),
-    amount_max: Optional[float] = Query(None, ge=0, description="Höchstbetrag"),
-    processing_status: Optional[List[str]] = Query(None, description="Verarbeitungsstatus"),
-    payment_status: Optional[List[str]] = Query(None, description="Zahlungsstatus"),
-    tags: Optional[List[str]] = Query(None, description="Tags"),
-    page: int = Query(0, ge=0, description="Seitennummer (0-basiert)"),
-    page_size: int = Query(25, ge=1, le=100, description="Eintraege pro Seite"),
-    sort_by: str = Query("document_date", description="Sortierfeld"),
-    sort_order: str = Query("desc", pattern="^(asc|desc)$", description="Sortierrichtung"),
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """Dokumente fuer eine Kategorie-Ansicht abrufen.
-
-    Ermoeglicht gefilterte, paginierte Dokumentenliste fuer die Ablage-Ansicht.
-    Unterstuetzt Filterung nach Datum, Betrag, Status, Tags und Volltextsuche.
-
-    **Beispiel:**
-    ```
-    GET /api/v1/documents/category?business_entity_id=<uuid>&folder_id=2024&category=rechnungen
-    ```
-    """
-    from app.services.document_services.ablage_service import get_ablage_service
-    from app.db.schemas import (
-        CategoryDocumentFilter,
-        CategoryDocumentListResponse,
-        EntityType,
-        ProcessingStatus as SchemaProcessingStatus,
-        DocumentPaymentStatus,
-    )
-
-    ablage_service = get_ablage_service()
-
-    # Filter aufbauen
-    try:
-        # Datumsfelder parsen
-        parsed_date_from = None
-        parsed_date_to = None
-        if date_from:
-            parsed_date_from = datetime.fromisoformat(date_from.replace("Z", "+00:00"))
-        if date_to:
-            parsed_date_to = datetime.fromisoformat(date_to.replace("Z", "+00:00"))
-
-        # Status-Enums parsen
-        parsed_processing_status = None
-        if processing_status:
-            parsed_processing_status = [
-                SchemaProcessingStatus(s) for s in processing_status
-            ]
-
-        parsed_payment_status = None
-        if payment_status:
-            parsed_payment_status = [
-                DocumentPaymentStatus(s) for s in payment_status
-            ]
-
-        filter_params = CategoryDocumentFilter(
-            business_entity_id=business_entity_id,
-            folder_id=folder_id,
-            category=category,
-            entity_type=EntityType(entity_type),
-            search=search,
-            date_from=parsed_date_from,
-            date_to=parsed_date_to,
-            amount_min=amount_min,
-            amount_max=amount_max,
-            processing_status=parsed_processing_status,
-            payment_status=parsed_payment_status,
-            tags=tags,
-            page=page,
-            page_size=page_size,
-            sort_by=sort_by,
-            sort_order=sort_order,
-        )
-    except ValueError as e:
-        # SECURITY FIX 28-27: Generische Fehlermeldung
-        raise HTTPException(
-            status_code=400,
-            detail="Ungueltiger Filterwert. Bitte Eingaben pruefen."
-        )
-
-    try:
-        result = await ablage_service.get_category_documents(
-            db=db,
-            user_id=current_user.id,
-            filter_params=filter_params,
-        )
-
-        logger.debug(
-            "category_documents_retrieved",
-            user_id=str(current_user.id),
-            category=category,
-            total=result.total
-        )
-
-        return result
-
-    except Exception as e:
-        logger.error(
-            "category_documents_error",
-            user_id=str(current_user.id),
-            category=category,
-            error=str(e),
-            exc_info=True
-        )
-        raise HTTPException(
-            status_code=500,
-            detail="Fehler beim Abrufen der Dokumente"
-        )
-
-
-@router.get("/category/aggregations", response_model=None)
-async def get_category_aggregations(
-    business_entity_id: UUID = Query(..., description="Kunden- oder Lieferanten-ID"),
-    folder_id: str = Query(..., description="Ordner-ID"),
-    category: str = Query(..., description="Kategorie"),
-    entity_type: str = Query("customer", pattern="^(customer|supplier)$"),
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """Aggregierte Statistiken fuer eine Kategorie abrufen.
-
-    Liefert Summen, Anzahlen und Status-Verteilungen fuer Dashboard-Karten.
-
-    **Beispiel:**
-    ```
-    GET /api/v1/documents/category/aggregations?business_entity_id=<uuid>&folder_id=2024&category=rechnungen
-    ```
-    """
-    from app.services.document_services.ablage_service import get_ablage_service
-    from app.db.schemas import EntityType
-
-    ablage_service = get_ablage_service()
-
-    try:
-        result = await ablage_service.get_category_aggregations(
-            db=db,
-            user_id=current_user.id,
-            business_entity_id=business_entity_id,
-            folder_id=folder_id,
-            category=category,
-            entity_type=EntityType(entity_type),
-        )
-
-        logger.debug(
-            "category_aggregations_retrieved",
-            user_id=str(current_user.id),
-            category=category,
-            total_documents=result.total_documents
-        )
-
-        return result
-
-    except Exception as e:
-        logger.error(
-            "category_aggregations_error",
-            user_id=str(current_user.id),
-            error=str(e),
-            exc_info=True
-        )
-        raise HTTPException(
-            status_code=500,
-            detail="Fehler beim Berechnen der Aggregationen"
         )
 
 

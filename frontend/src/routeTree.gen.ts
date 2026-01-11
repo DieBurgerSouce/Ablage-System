@@ -119,7 +119,9 @@ import { Route as AdminBankingImportRouteImport } from './app/routes/admin.banki
 import { Route as AdminBankingAccountsRouteImport } from './app/routes/admin.banking.accounts'
 import { Route as PrivatFinanzenKrediteLoanIdRouteImport } from './app/routes/privat.finanzen.kredite.$loanId'
 import { Route as PrivatFinanzenAnlagenInvestmentIdRouteImport } from './app/routes/privat.finanzen.anlagen.$investmentId'
+import { Route as LieferantenSupplierIdFolderIdVorgaengeRouteImport } from './app/routes/lieferanten.$supplierId.$folderId.vorgaenge'
 import { Route as LieferantenSupplierIdFolderIdCategoryRouteImport } from './app/routes/lieferanten.$supplierId.$folderId.$category'
+import { Route as KundenCustomerIdFolderIdVorgaengeRouteImport } from './app/routes/kunden.$customerId.$folderId.vorgaenge'
 import { Route as KundenCustomerIdFolderIdCategoryRouteImport } from './app/routes/kunden.$customerId.$folderId.$category'
 import { Route as AdminOcrTrainingBatchIdRouteImport } from './app/routes/admin.ocr-training.batch.$id'
 
@@ -692,11 +694,23 @@ const PrivatFinanzenAnlagenInvestmentIdRoute =
     path: '/anlagen/$investmentId',
     getParentRoute: () => PrivatFinanzenRoute,
   } as any)
+const LieferantenSupplierIdFolderIdVorgaengeRoute =
+  LieferantenSupplierIdFolderIdVorgaengeRouteImport.update({
+    id: '/vorgaenge',
+    path: '/vorgaenge',
+    getParentRoute: () => LieferantenSupplierIdFolderIdRoute,
+  } as any)
 const LieferantenSupplierIdFolderIdCategoryRoute =
   LieferantenSupplierIdFolderIdCategoryRouteImport.update({
     id: '/$category',
     path: '/$category',
     getParentRoute: () => LieferantenSupplierIdFolderIdRoute,
+  } as any)
+const KundenCustomerIdFolderIdVorgaengeRoute =
+  KundenCustomerIdFolderIdVorgaengeRouteImport.update({
+    id: '/vorgaenge',
+    path: '/vorgaenge',
+    getParentRoute: () => KundenCustomerIdFolderIdRoute,
   } as any)
 const KundenCustomerIdFolderIdCategoryRoute =
   KundenCustomerIdFolderIdCategoryRouteImport.update({
@@ -821,7 +835,9 @@ export interface FileRoutesByFullPath {
   '/personal/$employeeId/': typeof PersonalEmployeeIdIndexRoute
   '/admin/ocr-training/batch/$id': typeof AdminOcrTrainingBatchIdRoute
   '/kunden/$customerId/$folderId/$category': typeof KundenCustomerIdFolderIdCategoryRoute
+  '/kunden/$customerId/$folderId/vorgaenge': typeof KundenCustomerIdFolderIdVorgaengeRoute
   '/lieferanten/$supplierId/$folderId/$category': typeof LieferantenSupplierIdFolderIdCategoryRoute
+  '/lieferanten/$supplierId/$folderId/vorgaenge': typeof LieferantenSupplierIdFolderIdVorgaengeRoute
   '/privat/finanzen/anlagen/$investmentId': typeof PrivatFinanzenAnlagenInvestmentIdRoute
   '/privat/finanzen/kredite/$loanId': typeof PrivatFinanzenKrediteLoanIdRoute
 }
@@ -918,7 +934,9 @@ export interface FileRoutesByTo {
   '/personal/$employeeId': typeof PersonalEmployeeIdIndexRoute
   '/admin/ocr-training/batch/$id': typeof AdminOcrTrainingBatchIdRoute
   '/kunden/$customerId/$folderId/$category': typeof KundenCustomerIdFolderIdCategoryRoute
+  '/kunden/$customerId/$folderId/vorgaenge': typeof KundenCustomerIdFolderIdVorgaengeRoute
   '/lieferanten/$supplierId/$folderId/$category': typeof LieferantenSupplierIdFolderIdCategoryRoute
+  '/lieferanten/$supplierId/$folderId/vorgaenge': typeof LieferantenSupplierIdFolderIdVorgaengeRoute
   '/privat/finanzen/anlagen/$investmentId': typeof PrivatFinanzenAnlagenInvestmentIdRoute
   '/privat/finanzen/kredite/$loanId': typeof PrivatFinanzenKrediteLoanIdRoute
 }
@@ -1034,7 +1052,9 @@ export interface FileRoutesById {
   '/personal/$employeeId/': typeof PersonalEmployeeIdIndexRoute
   '/admin/ocr-training/batch/$id': typeof AdminOcrTrainingBatchIdRoute
   '/kunden/$customerId/$folderId/$category': typeof KundenCustomerIdFolderIdCategoryRoute
+  '/kunden/$customerId/$folderId/vorgaenge': typeof KundenCustomerIdFolderIdVorgaengeRoute
   '/lieferanten/$supplierId/$folderId/$category': typeof LieferantenSupplierIdFolderIdCategoryRoute
+  '/lieferanten/$supplierId/$folderId/vorgaenge': typeof LieferantenSupplierIdFolderIdVorgaengeRoute
   '/privat/finanzen/anlagen/$investmentId': typeof PrivatFinanzenAnlagenInvestmentIdRoute
   '/privat/finanzen/kredite/$loanId': typeof PrivatFinanzenKrediteLoanIdRoute
 }
@@ -1151,7 +1171,9 @@ export interface FileRouteTypes {
     | '/personal/$employeeId/'
     | '/admin/ocr-training/batch/$id'
     | '/kunden/$customerId/$folderId/$category'
+    | '/kunden/$customerId/$folderId/vorgaenge'
     | '/lieferanten/$supplierId/$folderId/$category'
+    | '/lieferanten/$supplierId/$folderId/vorgaenge'
     | '/privat/finanzen/anlagen/$investmentId'
     | '/privat/finanzen/kredite/$loanId'
   fileRoutesByTo: FileRoutesByTo
@@ -1248,7 +1270,9 @@ export interface FileRouteTypes {
     | '/personal/$employeeId'
     | '/admin/ocr-training/batch/$id'
     | '/kunden/$customerId/$folderId/$category'
+    | '/kunden/$customerId/$folderId/vorgaenge'
     | '/lieferanten/$supplierId/$folderId/$category'
+    | '/lieferanten/$supplierId/$folderId/vorgaenge'
     | '/privat/finanzen/anlagen/$investmentId'
     | '/privat/finanzen/kredite/$loanId'
   id:
@@ -1363,7 +1387,9 @@ export interface FileRouteTypes {
     | '/personal/$employeeId/'
     | '/admin/ocr-training/batch/$id'
     | '/kunden/$customerId/$folderId/$category'
+    | '/kunden/$customerId/$folderId/vorgaenge'
     | '/lieferanten/$supplierId/$folderId/$category'
+    | '/lieferanten/$supplierId/$folderId/vorgaenge'
     | '/privat/finanzen/anlagen/$investmentId'
     | '/privat/finanzen/kredite/$loanId'
   fileRoutesById: FileRoutesById
@@ -2169,12 +2195,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrivatFinanzenAnlagenInvestmentIdRouteImport
       parentRoute: typeof PrivatFinanzenRoute
     }
+    '/lieferanten/$supplierId/$folderId/vorgaenge': {
+      id: '/lieferanten/$supplierId/$folderId/vorgaenge'
+      path: '/vorgaenge'
+      fullPath: '/lieferanten/$supplierId/$folderId/vorgaenge'
+      preLoaderRoute: typeof LieferantenSupplierIdFolderIdVorgaengeRouteImport
+      parentRoute: typeof LieferantenSupplierIdFolderIdRoute
+    }
     '/lieferanten/$supplierId/$folderId/$category': {
       id: '/lieferanten/$supplierId/$folderId/$category'
       path: '/$category'
       fullPath: '/lieferanten/$supplierId/$folderId/$category'
       preLoaderRoute: typeof LieferantenSupplierIdFolderIdCategoryRouteImport
       parentRoute: typeof LieferantenSupplierIdFolderIdRoute
+    }
+    '/kunden/$customerId/$folderId/vorgaenge': {
+      id: '/kunden/$customerId/$folderId/vorgaenge'
+      path: '/vorgaenge'
+      fullPath: '/kunden/$customerId/$folderId/vorgaenge'
+      preLoaderRoute: typeof KundenCustomerIdFolderIdVorgaengeRouteImport
+      parentRoute: typeof KundenCustomerIdFolderIdRoute
     }
     '/kunden/$customerId/$folderId/$category': {
       id: '/kunden/$customerId/$folderId/$category'
@@ -2389,12 +2429,15 @@ const KasseRouteWithChildren = KasseRoute._addFileChildren(KasseRouteChildren)
 
 interface KundenCustomerIdFolderIdRouteChildren {
   KundenCustomerIdFolderIdCategoryRoute: typeof KundenCustomerIdFolderIdCategoryRoute
+  KundenCustomerIdFolderIdVorgaengeRoute: typeof KundenCustomerIdFolderIdVorgaengeRoute
 }
 
 const KundenCustomerIdFolderIdRouteChildren: KundenCustomerIdFolderIdRouteChildren =
   {
     KundenCustomerIdFolderIdCategoryRoute:
       KundenCustomerIdFolderIdCategoryRoute,
+    KundenCustomerIdFolderIdVorgaengeRoute:
+      KundenCustomerIdFolderIdVorgaengeRoute,
   }
 
 const KundenCustomerIdFolderIdRouteWithChildren =
@@ -2430,12 +2473,15 @@ const KundenRouteWithChildren =
 
 interface LieferantenSupplierIdFolderIdRouteChildren {
   LieferantenSupplierIdFolderIdCategoryRoute: typeof LieferantenSupplierIdFolderIdCategoryRoute
+  LieferantenSupplierIdFolderIdVorgaengeRoute: typeof LieferantenSupplierIdFolderIdVorgaengeRoute
 }
 
 const LieferantenSupplierIdFolderIdRouteChildren: LieferantenSupplierIdFolderIdRouteChildren =
   {
     LieferantenSupplierIdFolderIdCategoryRoute:
       LieferantenSupplierIdFolderIdCategoryRoute,
+    LieferantenSupplierIdFolderIdVorgaengeRoute:
+      LieferantenSupplierIdFolderIdVorgaengeRoute,
   }
 
 const LieferantenSupplierIdFolderIdRouteWithChildren =

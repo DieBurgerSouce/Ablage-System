@@ -15,14 +15,24 @@ It uses the modular memory structure specific to this project.
 ```
 CLAUDE.md                    # Quick Reference (< 250 lines) - POINTER ONLY
 .claude/
-  CLAUDE.md                  # Core Reference (< 600 lines)
-  memory/                    # AUTO-MANAGED dynamic content
+  CLAUDE.md                  # Core Reference (< 400 lines) - SUMMARIES ONLY
+  memory/                    # AUTO-MANAGED dynamic content (< 100 lines each)
     PROJECT_STATUS.md        # Service health, deployments
     KNOWN_ISSUES.md          # Bug tracking
-    RECENT_CHANGES.md        # Changelog
+    RECENT_CHANGES.md        # Changelog (< 3KB!)
     DEPENDENCIES.md          # Tech stack versions
-  Docs/                      # Detailed documentation (verbose content)
+  Docs/                      # Detailed documentation (verbose content HERE)
+    Frontend/
+      Patterns.md            # Frontend patterns, hooks, infinite scroll (WRITE DETAILS HERE)
+      Components.md          # UI component docs (WRITE DETAILS HERE)
+    Integrations/
+      Lexware.md             # Lexware import, entity linking (WRITE DETAILS HERE)
+    Archive/
+      CHANGELOG-YYYY-MM.md   # Archived changes
 ```
+
+**CRITICAL**: `.claude/CLAUDE.md` contains SUMMARIES ONLY (< 400 lines, < 15KB).
+All verbose content MUST go to `Docs/` subdirectories.
 
 ## Workflow
 
@@ -34,20 +44,31 @@ CLAUDE.md                    # Quick Reference (< 250 lines) - POINTER ONLY
 3. Extract file paths and commit context, deduplicate
 4. If empty or missing: return "No changes to process"
 
-### Phase 2: Route Changes to Memory Files
+### Phase 2: Route Changes to Target Files
 
-| File Pattern | Target Memory File | Section |
-|--------------|-------------------|---------|
-| `requirements*.txt`, `pyproject.toml` | `DEPENDENCIES.md` | python |
-| `package.json`, `package-lock.json` | `DEPENDENCIES.md` | frontend |
-| `docker-compose*.yml` | `DEPENDENCIES.md` | infrastructure |
-| `alembic/versions/*.py` | `PROJECT_STATUS.md` | migrations |
-| `infrastructure/*`, `*.tf` | `PROJECT_STATUS.md` | infrastructure |
-| Bug fix commits | `KNOWN_ISSUES.md` | resolved |
-| `app/services/*.py` (new) | `RECENT_CHANGES.md` | backend |
-| `frontend/src/**` (new) | `RECENT_CHANGES.md` | frontend |
-| Critical rule changes | `.claude/CLAUDE.md` | critical-rules |
-| New enterprise features | `.claude/CLAUDE.md` | enterprise-features |
+**ROUTING PRIORITY** (check in order, stop at first match):
+
+| File Pattern | Target File | Content Type |
+|--------------|-------------|--------------|
+| `frontend/src/**/components/**` | `Docs/Frontend/Components.md` | Component docs (verbose OK) |
+| `frontend/src/**/hooks/**` | `Docs/Frontend/Patterns.md` | Hook patterns (verbose OK) |
+| `frontend/src/**/*api*.ts` | `Docs/Frontend/Patterns.md` | API patterns (verbose OK) |
+| `app/services/*lexware*` | `Docs/Integrations/Lexware.md` | Lexware details (verbose OK) |
+| `app/services/*entity*` | `Docs/Integrations/Lexware.md` | Entity linking (verbose OK) |
+| `app/api/v1/entities*` | `Docs/Integrations/Lexware.md` | Entity API (verbose OK) |
+| `requirements*.txt`, `pyproject.toml` | `memory/DEPENDENCIES.md` | Version updates |
+| `package.json` | `memory/DEPENDENCIES.md` | Frontend deps |
+| `docker-compose*.yml` | `memory/DEPENDENCIES.md` | Infra deps |
+| `alembic/versions/*.py` | `memory/PROJECT_STATUS.md` | Migration notes |
+| Bug fix commits | `memory/KNOWN_ISSUES.md` | Resolved issues |
+| `app/services/*.py` | `memory/RECENT_CHANGES.md` | 1-line summary ONLY |
+| `frontend/src/**` | `memory/RECENT_CHANGES.md` | 1-line summary ONLY |
+
+**NEVER write to `.claude/CLAUDE.md`** unless:
+- New CRITICAL RULE added (security, GPU, etc.)
+- Major new enterprise feature (e.g., new integration like "Datev")
+
+For existing features (Lexware, Frontend patterns), update the Docs/ files instead.
 
 ### Phase 3: Update Memory Files
 
@@ -110,35 +131,78 @@ CLAUDE.md                    # Quick Reference (< 250 lines) - POINTER ONLY
 | 2026-01-10 | Memory leak in OCR | Fixed in `ocr_task.py` |
 ```
 
-### Phase 4: Update CLAUDE.md (ONLY IF NEEDED)
+### Phase 3b: Update Docs/ Files (Verbose Content)
 
-**IMPORTANT**: Root `CLAUDE.md` is a POINTER only. Never add content.
+**For Frontend changes** → Write to appropriate Docs/Frontend/ file:
 
-Only update `.claude/CLAUDE.md` AUTO-MANAGED sections if:
-- New enterprise feature added → Update `enterprise-features` summary
-- Critical rule changed → Update `critical-rules` table
-- Project status changed → Update `project-status` table
+```markdown
+# In Docs/Frontend/Components.md - Add component documentation
+## CategoryDocumentList Component
 
-**Format for updates:**
+**Path**: `features/ablage/components/CategoryDocumentList.tsx`
+
+**Architecture**: 8-component orchestration...
+[Full verbose documentation here]
+```
+
+```markdown
+# In Docs/Frontend/Patterns.md - Add pattern documentation
+## Infinite Scroll Pattern
+
+**Applied to**: KundenPage, LieferantenPage
+[Full code examples here]
+```
+
+**For Lexware/Entity changes** → Write to `Docs/Integrations/Lexware.md`:
+```markdown
+## Entity API Updates
+
+**New Endpoint**: `/api/v1/entities/folders`
+[Full documentation here]
+```
+
+### Phase 4: Update CLAUDE.md (ALMOST NEVER)
+
+**CRITICAL**: `.claude/CLAUDE.md` must stay under 400 lines / 15KB.
+
+**DO NOT UPDATE `.claude/CLAUDE.md` for:**
+- ❌ Frontend component changes → Use `Docs/Frontend/Components.md`
+- ❌ Frontend pattern changes → Use `Docs/Frontend/Patterns.md`
+- ❌ Lexware/Entity changes → Use `Docs/Integrations/Lexware.md`
+- ❌ Bug fixes → Use `memory/KNOWN_ISSUES.md`
+- ❌ Regular feature updates → Use `memory/RECENT_CHANGES.md`
+
+**ONLY update `.claude/CLAUDE.md` if:**
+- ✅ NEW critical security rule (add 1 line to critical-rules table)
+- ✅ BRAND NEW integration (not Lexware updates, but e.g. "Datev" added)
+- ✅ Architecture fundamentally changed
+
+**When updating, use SUMMARY format only:**
 ```markdown
 <!-- AUTO-MANAGED: section-name -->
-Content here (summaries only, link to memory/ or Docs/)
+**One-liner summary**. Details: See `Docs/path/to/file.md`
 <!-- /AUTO-MANAGED: section-name -->
 ```
 
 ### Phase 5: Size Validation & Auto-Pruning
 
-Before saving, verify limits:
-- Root `CLAUDE.md`: < 300 lines
-- `.claude/CLAUDE.md`: < 600 lines
-- Memory files: < 100 lines each (trigger pruning at 100)
-- Total chars: < 40k
+**STRICT SIZE LIMITS** (trigger pruning/error if exceeded):
+
+| File | Max Lines | Max Size | Action if Exceeded |
+|------|-----------|----------|-------------------|
+| Root `CLAUDE.md` | 250 | 8KB | ERROR - never grow |
+| `.claude/CLAUDE.md` | 400 | 15KB | ERROR - extract to Docs/ |
+| `memory/RECENT_CHANGES.md` | 50 | 3KB | AUTO-PRUNE to Archive |
+| `memory/KNOWN_ISSUES.md` | 80 | 5KB | Archive old resolved |
+| `memory/PROJECT_STATUS.md` | 60 | 4KB | Truncate old entries |
+| `memory/DEPENDENCIES.md` | 80 | 5KB | Remove outdated |
+| `Docs/**/*.md` | 500 | 30KB | OK - verbose allowed |
 
 **Auto-Pruning Trigger:**
-If RECENT_CHANGES.md exceeds 100 lines OR has entries older than 30 days:
+If RECENT_CHANGES.md exceeds 50 lines OR has entries older than 14 days:
 
 1. **Identify old entries**: Parse `## YYYY-MM-DD` headers
-2. **Calculate cutoff**: TODAY - 30 days
+2. **Calculate cutoff**: TODAY - 14 days
 3. **Archive old entries**:
    - Read `.claude/Docs/Archive/CHANGELOG-YYYY-MM.md`
    - Append old entries (sorted by date)

@@ -1,0 +1,596 @@
+/**
+ * TransactionsView - Vorgaenge-Uebersicht
+ *
+ * Zeigt alle Vorgaenge eines Kunden/Lieferanten als Liste.
+ * Jeder Vorgang wird mit horizontaler Timeline dargestellt.
+ *
+ * Features:
+ * - Suche nach Vorgangsnummer oder Name
+ * - Filter nach Status
+ * - Sortierung nach Datum, Betrag, Status
+ * - Pagination
+ */
+
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useParams, useNavigate } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
+import {
+  Search,
+  Filter,
+  SortAsc,
+  SortDesc,
+  Plus,
+  Loader2,
+  AlertCircle,
+  FileStack,
+  ArrowLeft,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Breadcrumbs } from '@/components/ui/breadcrumb';
+import { cn } from '@/lib/utils';
+import { TransactionListItem } from './TransactionTimeline';
+import type {
+  Transaction,
+  TransactionStatus,
+  TransactionFilter,
+  TransactionStep,
+} from '../types';
+import { DEFAULT_TRANSACTION_FILTER } from '../types';
+
+// ==================== Types ====================
+
+interface TransactionsViewProps {
+  entityType: 'customer' | 'supplier';
+}
+
+type SortField = 'createdAt' | 'lastActivityAt' | 'totalAmount' | 'transactionNumber';
+type SortOrder = 'asc' | 'desc';
+
+// ==================== Mock Data (TODO: Replace with API) ====================
+
+const MOCK_TRANSACTIONS: Transaction[] = [
+  {
+    id: '1',
+    transactionNumber: 'VG-2024-001',
+    name: 'Bestellung Druckplatten',
+    status: 'pending',
+    entityId: 'entity-1',
+    entityName: 'Mueller GmbH',
+    folderId: 'folie',
+    steps: [
+      { id: 's1', type: 'anfrage', status: 'completed', documentId: 'd1', documentNumber: 'AF-001', completedAt: '2024-03-01', amount: null, currency: 'EUR' },
+      { id: 's2', type: 'angebot', status: 'completed', documentId: 'd2', documentNumber: 'AG-123', completedAt: '2024-03-03', amount: 1234.56, currency: 'EUR' },
+      { id: 's3', type: 'auftrag', status: 'completed', documentId: 'd3', documentNumber: 'AB-456', completedAt: '2024-03-05', amount: 1234.56, currency: 'EUR' },
+      { id: 's4', type: 'lieferschein', status: 'completed', documentId: 'd4', documentNumber: 'LS-789', completedAt: '2024-03-10', amount: null, currency: 'EUR' },
+      { id: 's5', type: 'rechnung', status: 'active', documentId: 'd5', documentNumber: 'RG-012', completedAt: null, amount: 1234.56, currency: 'EUR' },
+      { id: 's6', type: 'zahlung', status: 'pending', documentId: null, documentNumber: null, completedAt: null, amount: null, currency: 'EUR' },
+    ],
+    totalAmount: 1234.56,
+    currency: 'EUR',
+    createdAt: '2024-03-01T10:00:00Z',
+    updatedAt: '2024-03-15T14:30:00Z',
+    completedAt: null,
+    lastActivityAt: '2024-03-15T14:30:00Z',
+  },
+  {
+    id: '2',
+    transactionNumber: 'VG-2024-002',
+    name: 'Folienlieferung Q1',
+    status: 'completed',
+    entityId: 'entity-1',
+    entityName: 'Mueller GmbH',
+    folderId: 'folie',
+    steps: [
+      { id: 's1', type: 'anfrage', status: 'skipped', documentId: null, documentNumber: null, completedAt: null, amount: null, currency: 'EUR' },
+      { id: 's2', type: 'angebot', status: 'completed', documentId: 'd6', documentNumber: 'AG-124', completedAt: '2024-01-15', amount: 5678.90, currency: 'EUR' },
+      { id: 's3', type: 'auftrag', status: 'completed', documentId: 'd7', documentNumber: 'AB-457', completedAt: '2024-01-18', amount: 5678.90, currency: 'EUR' },
+      { id: 's4', type: 'lieferschein', status: 'completed', documentId: 'd8', documentNumber: 'LS-790', completedAt: '2024-01-25', amount: null, currency: 'EUR' },
+      { id: 's5', type: 'rechnung', status: 'completed', documentId: 'd9', documentNumber: 'RG-013', completedAt: '2024-01-28', amount: 5678.90, currency: 'EUR' },
+      { id: 's6', type: 'zahlung', status: 'completed', documentId: null, documentNumber: 'ZA-001', completedAt: '2024-02-10', amount: 5678.90, currency: 'EUR' },
+    ],
+    totalAmount: 5678.90,
+    currency: 'EUR',
+    createdAt: '2024-01-15T09:00:00Z',
+    updatedAt: '2024-02-10T11:00:00Z',
+    completedAt: '2024-02-10T11:00:00Z',
+    lastActivityAt: '2024-02-10T11:00:00Z',
+  },
+  {
+    id: '3',
+    transactionNumber: 'VG-2024-003',
+    name: 'Sonderanfertigung',
+    status: 'draft',
+    entityId: 'entity-1',
+    entityName: 'Mueller GmbH',
+    folderId: 'messer',
+    steps: [
+      { id: 's1', type: 'anfrage', status: 'completed', documentId: 'd10', documentNumber: 'AF-002', completedAt: '2024-03-20', amount: null, currency: 'EUR' },
+      { id: 's2', type: 'angebot', status: 'active', documentId: null, documentNumber: null, completedAt: null, amount: null, currency: 'EUR' },
+      { id: 's3', type: 'auftrag', status: 'pending', documentId: null, documentNumber: null, completedAt: null, amount: null, currency: 'EUR' },
+      { id: 's4', type: 'lieferschein', status: 'pending', documentId: null, documentNumber: null, completedAt: null, amount: null, currency: 'EUR' },
+      { id: 's5', type: 'rechnung', status: 'pending', documentId: null, documentNumber: null, completedAt: null, amount: null, currency: 'EUR' },
+      { id: 's6', type: 'zahlung', status: 'pending', documentId: null, documentNumber: null, completedAt: null, amount: null, currency: 'EUR' },
+    ],
+    totalAmount: null,
+    currency: 'EUR',
+    createdAt: '2024-03-20T08:00:00Z',
+    updatedAt: '2024-03-20T08:00:00Z',
+    completedAt: null,
+    lastActivityAt: '2024-03-20T08:00:00Z',
+  },
+];
+
+// TODO: Replace with actual API call
+async function fetchTransactions(
+  _filter: TransactionFilter
+): Promise<{ items: Transaction[]; total: number; page: number; pageSize: number; totalPages: number }> {
+  // Simulate API delay
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
+  return {
+    items: MOCK_TRANSACTIONS,
+    total: MOCK_TRANSACTIONS.length,
+    page: 1,
+    pageSize: 20,
+    totalPages: 1,
+  };
+}
+
+// ==================== Helper Functions ====================
+
+const STATUS_LABELS: Record<TransactionStatus, string> = {
+  draft: 'Entwurf',
+  pending: 'In Bearbeitung',
+  completed: 'Abgeschlossen',
+  cancelled: 'Abgebrochen',
+};
+
+// ==================== Sub-Components ====================
+
+function TransactionsHeader({
+  totalCount,
+}: {
+  totalCount: number;
+}) {
+  return (
+    <div className="space-y-4">
+      {/* Breadcrumb - uses automatic route-based breadcrumbs */}
+      <Breadcrumbs />
+
+      {/* Title */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <FileStack className="w-8 h-8 text-blue-600" />
+          <div>
+            <h1 className="text-2xl font-bold">Vorgaenge</h1>
+            <p className="text-sm text-muted-foreground">
+              {totalCount} Vorgang{totalCount !== 1 ? 'e' : ''} gefunden
+            </p>
+          </div>
+        </div>
+
+        <Button className="gap-2">
+          <Plus className="w-4 h-4" />
+          Neuer Vorgang
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function TransactionsFilterBar({
+  search,
+  onSearchChange,
+  statusFilter,
+  onStatusChange,
+  sortField,
+  onSortFieldChange,
+  sortOrder,
+  onSortOrderChange,
+}: {
+  search: string;
+  onSearchChange: (value: string) => void;
+  statusFilter: TransactionStatus | 'all';
+  onStatusChange: (value: TransactionStatus | 'all') => void;
+  sortField: SortField;
+  onSortFieldChange: (value: SortField) => void;
+  sortOrder: SortOrder;
+  onSortOrderChange: (value: SortOrder) => void;
+}) {
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Suche nach Vorgangsnummer oder Name..."
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+
+          {/* Status Filter */}
+          <Select value={statusFilter} onValueChange={(v) => onStatusChange(v as TransactionStatus | 'all')}>
+            <SelectTrigger className="w-[180px]">
+              <Filter className="w-4 h-4 mr-2" />
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle Status</SelectItem>
+              <SelectItem value="draft">Entwurf</SelectItem>
+              <SelectItem value="pending">In Bearbeitung</SelectItem>
+              <SelectItem value="completed">Abgeschlossen</SelectItem>
+              <SelectItem value="cancelled">Abgebrochen</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Sort Field */}
+          <Select value={sortField} onValueChange={(v) => onSortFieldChange(v as SortField)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Sortieren nach" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="lastActivityAt">Letzte Aktivitaet</SelectItem>
+              <SelectItem value="createdAt">Erstellt am</SelectItem>
+              <SelectItem value="totalAmount">Betrag</SelectItem>
+              <SelectItem value="transactionNumber">Vorgangsnummer</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Sort Order Toggle */}
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => onSortOrderChange(sortOrder === 'asc' ? 'desc' : 'asc')}
+          >
+            {sortOrder === 'asc' ? (
+              <SortAsc className="w-4 h-4" />
+            ) : (
+              <SortDesc className="w-4 h-4" />
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function TransactionsSummary({
+  transactions,
+}: {
+  transactions: Transaction[];
+}) {
+  const stats = useMemo(() => {
+    const byStatus = transactions.reduce(
+      (acc, t) => {
+        acc[t.status] = (acc[t.status] || 0) + 1;
+        return acc;
+      },
+      {} as Record<TransactionStatus, number>
+    );
+
+    const totalAmount = transactions.reduce(
+      (sum, t) => sum + (t.totalAmount || 0),
+      0
+    );
+
+    const completedAmount = transactions
+      .filter((t) => t.status === 'completed')
+      .reduce((sum, t) => sum + (t.totalAmount || 0), 0);
+
+    const pendingAmount = transactions
+      .filter((t) => t.status === 'pending')
+      .reduce((sum, t) => sum + (t.totalAmount || 0), 0);
+
+    return {
+      byStatus,
+      totalAmount,
+      completedAmount,
+      pendingAmount,
+    };
+  }, [transactions]);
+
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('de-DE', {
+      style: 'currency',
+      currency: 'EUR',
+    }).format(amount);
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <Card>
+        <CardContent className="p-4">
+          <p className="text-sm text-muted-foreground">Gesamt</p>
+          <p className="text-2xl font-bold">{transactions.length}</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4">
+          <p className="text-sm text-muted-foreground">In Bearbeitung</p>
+          <p className="text-2xl font-bold text-blue-600">
+            {stats.byStatus.pending || 0}
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4">
+          <p className="text-sm text-muted-foreground">Abgeschlossen</p>
+          <p className="text-2xl font-bold text-green-600">
+            {stats.byStatus.completed || 0}
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4">
+          <p className="text-sm text-muted-foreground">Offener Betrag</p>
+          <p className="text-2xl font-bold">
+            {formatCurrency(stats.pendingAmount)}
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function TransactionsEmptyState({
+  hasFilters,
+}: {
+  hasFilters: boolean;
+}) {
+  return (
+    <Card>
+      <CardContent className="py-12">
+        <div className="text-center">
+          <FileStack className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">
+            {hasFilters ? 'Keine Vorgaenge gefunden' : 'Noch keine Vorgaenge'}
+          </h3>
+          <p className="text-muted-foreground mb-4">
+            {hasFilters
+              ? 'Versuchen Sie andere Filterkriterien.'
+              : 'Erstellen Sie Ihren ersten Vorgang, um Dokumente zu verknuepfen.'}
+          </p>
+          {!hasFilters && (
+            <Button className="gap-2">
+              <Plus className="w-4 h-4" />
+              Ersten Vorgang erstellen
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ==================== Main Component ====================
+
+export function TransactionsView({ entityType }: TransactionsViewProps) {
+  const params = useParams({ strict: false });
+  const navigate = useNavigate();
+  const isCustomer = entityType === 'customer';
+
+  // Extract route params
+  const entityId = isCustomer ? params.customerId : params.supplierId;
+  const folderId = params.folderId;
+
+  // Filter state
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<TransactionStatus | 'all'>('all');
+  const [sortField, setSortField] = useState<SortField>('lastActivityAt');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [page, setPage] = useState(1);
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Build filter
+  const filter: TransactionFilter = useMemo(
+    () => ({
+      ...DEFAULT_TRANSACTION_FILTER,
+      entityId,
+      folderId,
+      status: statusFilter !== 'all' ? [statusFilter] : undefined,
+      search: debouncedSearch || undefined,
+      page,
+      pageSize: 20,
+    }),
+    [entityId, folderId, statusFilter, debouncedSearch, page]
+  );
+
+  // Fetch transactions
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ['transactions', filter],
+    queryFn: () => fetchTransactions(filter),
+    enabled: !!entityId && !!folderId,
+  });
+
+  const transactions = data?.items || [];
+  const totalCount = data?.total || 0;
+
+  // Filter and sort locally (TODO: Move to API)
+  const filteredTransactions = useMemo(() => {
+    let result = [...transactions];
+
+    // Client-side filtering (backup, should be done by API)
+    if (debouncedSearch) {
+      const searchLower = debouncedSearch.toLowerCase();
+      result = result.filter(
+        (t) =>
+          t.transactionNumber.toLowerCase().includes(searchLower) ||
+          t.name.toLowerCase().includes(searchLower)
+      );
+    }
+
+    if (statusFilter !== 'all') {
+      result = result.filter((t) => t.status === statusFilter);
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case 'createdAt':
+          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          break;
+        case 'lastActivityAt':
+          comparison = new Date(a.lastActivityAt).getTime() - new Date(b.lastActivityAt).getTime();
+          break;
+        case 'totalAmount':
+          comparison = (a.totalAmount || 0) - (b.totalAmount || 0);
+          break;
+        case 'transactionNumber':
+          comparison = a.transactionNumber.localeCompare(b.transactionNumber);
+          break;
+      }
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+
+    return result;
+  }, [transactions, debouncedSearch, statusFilter, sortField, sortOrder]);
+
+  const hasFilters = !!debouncedSearch || statusFilter !== 'all';
+
+  // Handlers
+  const handleTransactionClick = useCallback(
+    (transaction: Transaction) => {
+      // TODO: Navigate to transaction detail page
+      console.log('Navigate to transaction:', transaction.id);
+    },
+    []
+  );
+
+  const handleStepClick = useCallback(
+    (step: TransactionStep) => {
+      if (step.documentId) {
+        // TODO: Navigate to document viewer
+        console.log('Navigate to document:', step.documentId);
+      }
+    },
+    []
+  );
+
+  const handleBack = useCallback(() => {
+    const basePath = isCustomer ? '/kunden' : '/lieferanten';
+    navigate({ to: `${basePath}/${entityId}/${folderId}` as string });
+  }, [isCustomer, entityId, folderId, navigate]);
+
+  // Missing params
+  if (!entityId || !folderId) {
+    return (
+      <div className="p-8">
+        <Card>
+          <CardContent className="py-8">
+            <p className="text-center text-muted-foreground">
+              Ungueltige Parameter. Bitte waehlen Sie einen Ordner aus.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-8 space-y-6">
+      {/* Back Button */}
+      <Button variant="ghost" className="gap-2 mb-4" onClick={handleBack}>
+        <ArrowLeft className="w-4 h-4" />
+        Zurueck zu Kategorien
+      </Button>
+
+      {/* Header */}
+      <TransactionsHeader
+        totalCount={filteredTransactions.length}
+      />
+
+      {/* Summary Cards */}
+      {!isLoading && transactions.length > 0 && (
+        <TransactionsSummary transactions={transactions} />
+      )}
+
+      {/* Filter Bar */}
+      <TransactionsFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        statusFilter={statusFilter}
+        onStatusChange={setStatusFilter}
+        sortField={sortField}
+        onSortFieldChange={setSortField}
+        sortOrder={sortOrder}
+        onSortOrderChange={setSortOrder}
+      />
+
+      {/* Loading State */}
+      {isLoading && (
+        <Card>
+          <CardContent className="py-12">
+            <div className="flex flex-col items-center">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-4" />
+              <p className="text-muted-foreground">Lade Vorgaenge...</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Error State */}
+      {isError && (
+        <Card>
+          <CardContent className="py-8">
+            <div className="flex flex-col items-center text-destructive">
+              <AlertCircle className="w-8 h-8 mb-2" />
+              <p>
+                Fehler beim Laden der Vorgaenge:{' '}
+                {error instanceof Error ? error.message : 'Unbekannter Fehler'}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Empty State */}
+      {!isLoading && !isError && filteredTransactions.length === 0 && (
+        <TransactionsEmptyState hasFilters={hasFilters} />
+      )}
+
+      {/* Transaction List */}
+      {!isLoading && !isError && filteredTransactions.length > 0 && (
+        <div className="space-y-4">
+          {filteredTransactions.map((transaction) => (
+            <TransactionListItem
+              key={transaction.id}
+              transaction={transaction}
+              onClick={() => handleTransactionClick(transaction)}
+              onStepClick={handleStepClick}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default TransactionsView;

@@ -1,210 +1,44 @@
 # Recent Changes
 
+## 2026-01-11
+
+### Backend
+- **fix**: JSONB query helpers in `ablage_service.py`
+  - `jsonb_text()`, `jsonb_numeric()`, `jsonb_exists()` für sichere JSONB-Zugriffe
+  - Behebt 500-Fehler auf `/aggregations` Endpoint
+- **security**: SQL Injection Prevention für JSONB-Queries (CWE-89)
+  - Whitelist für JSONB column/key names (`_ALLOWED_JSONB_COLUMNS`, `_ALLOWED_JSONB_KEYS`)
+  - Regex pattern validation (`_SAFE_IDENTIFIER_PATTERN`)
+  - Validierung in `jsonb_text()`, `jsonb_numeric()` helpers
+- **security**: HTTP Response Splitting Prevention (CWE-113)
+
+### Frontend
+- **feat**: CategoryDocumentList Komponenten-Architektur
+  - ProactiveInsightsBanner (KI-Insights ganz oben)
+  - CategoryBreadcrumb (Navigation-Pfad)
+  - CategoryTitle (Seitentitel mit Back-Button)
+  - QuickActionsBar (Primäre + Kontext-Aktionen)
+  - InvoiceTrackingBanner (Zahlungsstatus bei Rechnungen)
+  - CategoryAggregations (Summen-Karten)
+  - DocumentFilterBar + DocumentsTable
+  - BulkActionsToolbar (fixiert unten)
+- **feat**: Breadcrumb-Komponenten getrennt
+  - `CategoryBreadcrumb` für Navigation-Pfad
+  - `CategoryTitle` für Titel + Actions
+  - Konsistentes Styling über alle Ablage-Routen
+- **feat**: TransactionTimeline (Vorgänge-Ansicht)
+- **refactor**: Nested Routes für Vorgänge (`$folderId/vorgaenge`)
+
 ## 2026-01-10
 
 ### Backend
-- **feat**: Ordner-spezifische Kategorien für Kunden (commit latest)
-  - `app/api/v1/entities.py` - Keine Backend-Änderung nötig
-  - Kategorien werden im Frontend basierend auf folderId (messer/folie) gefiltert
-  - Messer-Kunden haben zusätzliche "Druckdaten"-Kategorie zwischen Rechnungen und Storno
-- **fix**: Use entity.display_name for fullName in customer API (commit 2de0389a)
-  - `app/api/v1/entities.py` - Changed fullName construction to use `entity.display_name`
-  - Before: `fullName = entity.name` (showed "10006_Peter" - wrong placeholder)
-  - After: `fullName = entity.display_name` (shows "Georg Peter Landwirtschaft und Spargelhof")
-  - DisplayName still constructed from `primary_customer_number + "_" + matchcode` (correct)
-  - Ensures frontend receives real company names for display filtering
-- **feat**: Supplier sorting support in API (commit 1c1c4b7f)
-  - `app/api/v1/entities.py` - Added sort_by/sort_order to `/suppliers` endpoint
-  - Sortierfelder: name, last_activity (asc/desc)
-  - Same pattern as customers endpoint for consistency
-- **fix**: Entity displayName construction standardization (previous commit)
-  - `app/api/v1/entities.py` - ALWAYS construct displayName from `primary_customer_number + "_" + matchcode`
-  - Never trust `entity.display_name` field directly - ensures consistent format "12345_Mueller"
-  - Prevents edge cases where entity.display_name could be stale or incorrect
-- **feat**: Auto-navigation for single-folder entities (commit 1c1c4b7f)
-  - Smart UX pattern: Auto-skip folder selection when only one company folder exists
-  - Backend support: Entity API returns folder count for client-side logic
-  - Applied to both customer and supplier flows for consistency
-- **perf**: Optimized supplier pagination endpoint (`entities.py`, latest)
-  - Added pagination support to `/api/v1/entities/suppliers` endpoint
-  - Sorting by name, created_at, document_count with configurable order
-  - Display format: Use `entity.display_name` as canonical source (prevents regeneration)
-  - Stats optimization: Empty placeholders returned (load on-demand via `/{entity_id}/folders`)
-  - Response format: `PaginatedResponse` with `items`, `total`, `page`, `page_size`, `total_pages`
-  - Filters: Search by name/matchcode, active status filtering
-- **feat**: Complete Lexware customer/supplier import integration (commit d0467908)
-  - `app/api/v1/entities.py` - Added `/customers`, `/suppliers`, `/{id}/folders` endpoints
-  - `app/api/v1/lexware.py` - Import endpoints for customers/suppliers, entity linking
-  - `app/services/lexware_import_service.py` - Excel import with conflict detection
-- **fix**: FastAPI route ordering - static routes moved before dynamic `/{entity_id}` (commit 665ca1cc)
-- **perf**: Eliminated N+1 queries in entity list endpoints (`entities.py`)
-  - `folderStats` and `lastActivityDate` now loaded on-demand via `/{entity_id}/folders`
-  - Customer/supplier lists now return empty stats placeholders for faster initial load
-- **refactor**: Entity API pagination and filtering (latest commit)
-  - Added pagination support: `page`, `page_size`, `skip`, `limit` query params
-  - Added search parameter for filtering by name/matchcode/customer number
-  - Response format: `PaginatedResponse` with `items`, `total`, `page`, `page_size`, `total_pages`
-  - Applied to `/customers` and `/suppliers` endpoints for infinite scroll support
-- **feat**: Entity API endpoints now production-ready (commit 25542547)
-  - Full CRUD operations with filters (type, active status, postal code, city)
-  - Pagination and sorting (by name, created_at, document_count)
-  - Entity extraction from OCR text (customer numbers, IBANs, VAT-IDs)
-  - Duplicate detection and merge capabilities
+- **feat**: Druckdaten-Kategorie für Spargelmesser-Kunden
+- **fix**: Entity displayName Konstruktion (Kundennr_Matchcode)
+- **feat**: Supplier Sorting + Pagination API
+- **fix**: FastAPI Route Ordering (static before dynamic)
 
 ### Frontend
-- **feat**: Ordner-spezifische Dokument-Kategorien (commit latest)
-  - `types.ts` - Erweiterte Kategorie-Typen mit folder-spezifischer Logik
-    - `getCustomerCategoriesForFolder()` liefert unterschiedliche Kategorien je Ordner
-    - `CUSTOMER_CATEGORIES_MESSER`: Spargelmesser-Kunden mit "Druckdaten" (nach Archiv)
-    - `CUSTOMER_CATEGORIES_BASE`: Folie-Kunden ohne Druckdaten (Standard)
-    - `CATEGORY_TO_DOCUMENT_TYPE`: Mapping für Backend-Kompatibilität (druckdaten → print_data)
-    - Category metadata: shortCode (AG, AB, LS, RG, ST, B, DD), icon, color, isOpenStatus
-  - `FolderCategoriesView.tsx` - Nutzt ordner-spezifische Kategorien via `getCustomerCategoriesForFolder(folderId)`
-  - `CategoryDocumentList.tsx` - Prüft folderId für korrekte Kategorie-Auswahl
-  - `MoveFolderDialog.tsx` - Bulk-Move berücksichtigt ordner-spezifische Kategorien
-  - Lieferanten: Unverändert (haben "Bestellungen", keine ordner-spezifischen Unterschiede)
-  - Type-safety: DocumentCategoryInfo mit icon/color/isOpenStatus für UI-Konsistenz
-- **fix**: Use entity.display_name for real company names in KundenPage (commit 2de0389a)
-  - `KundenPage.tsx` - Fixed fullName source to use actual company name from backend
-  - Backend change: `fullName` now correctly populated from `entity.display_name` (real company name)
-  - Before: `fullName` showed constructed displayName ("12345_Mueller")
-  - After: `fullName` shows real company name ("Georg Peter Landwirtschaft und Spargelhof")
-  - Frontend `isRealCompanyName()` now properly detects real vs placeholder names
-- **feat**: Enhanced customer list with sorting and matchcode comparison (commit 1c1c4b7f)
-  - `KundenPage.tsx` - Improved `isRealCompanyName()` helper with matchcode comparison
-  - Logic: Extracts matchcode from displayName ("12345_Mueller" → "Mueller")
-  - Compares `fullName.toLowerCase()` vs `matchcode.toLowerCase()` (case-insensitive)
-  - Shows company name only when different from matchcode (e.g., "Hofgemeinschaft GbR" ≠ "Mueller")
-  - Hides redundant names (e.g., "Mueller" === "Mueller" → don't show)
-  - Added sorting controls: name, customer_number, last_activity with visual arrow indicators
-  - PAGE_SIZE increased 50→100 for better performance
-- **refactor**: KundenPage UI cleanup (previous commit)
-  - Removed "X Ablage-Ordner" line from customer cards (redundant info)
-  - Keeps cards cleaner: displayName + echtem Firmennamen (nur wenn sinnvoll)
-- **feat**: Complete auto-navigation flow for single-folder entities (commit 1c1c4b7f)
-  - **SupplierFoldersView**: Auto-navigate when folders.length === 1
-    - Smart loading state: "Öffne Firma..." vs "Lade Ordner..."
-    - Uses `replace: true` to preserve correct back button behavior
-  - **FolderCategoriesView**: Dynamic back button based on folder count
-    - Single folder: Back → entity list (skip folder selection)
-    - Multiple folders: Back → folder selection screen
-    - Prevents navigation loop from auto-navigation
-  - **German text updates**: "Ablage-Ordner"→"Firma/Firmen" for supplier context
-- **feat**: Supplier list sorting and pagination (commit 1c1c4b7f)
-  - `LieferantenPage.tsx` - Added sorting UI with Select + visual arrows
-  - Sorting options: name, last_activity (asc/desc)
-  - PAGE_SIZE increased 50→100 for both Kunden/LieferantenPage
-  - Memoized SearchInput prevents re-render focus loss
-  - Debounced search (300ms) reduces API calls
-  - Visual sort indicators: ArrowUpNarrowWide/ArrowDownWideNarrow icons
-- **feat**: FolderCategoriesView with unified entity support (previous)
-  - Unified category view for both customers and suppliers with `entityType` prop
-  - Auto-skip folder selection when only one folder exists (smoother UX)
-  - Dynamic back button behavior: Returns to entity list when auto-skipped
-  - TanStack Query integration with `fetchEntityFolders()` and `fetchEntityName()` APIs
-  - Breadcrumb navigation with smart parent path resolution
-  - Category grid with document counts, open invoices badges, and last activity
-  - German loading/error states with proper color themes (amber-500 for customers, blue-500 for suppliers)
-  - Empty state handling ("Ordner nicht gefunden") with back button
-  - Quick upload card with dashed border for each folder
-  - Performance: Parallel data fetching for entity info and folders
-- **perf**: KundenPage + LieferantenPage pagination optimization (previous)
-  - Memoized SearchInput component prevents re-render focus loss
-  - Debounced search (300ms) reduces API calls during typing
-  - Both pages use identical infinite scroll pattern with TanStack Query
-  - Visual consistency: Same card layout, hover effects, stats display
-  - Performance: Fewer API calls with larger page size
-- **perf**: LieferantenPage with infinite scroll (2026-01-10)
-  - TanStack Query `useInfiniteQuery` with 100 suppliers per page
-  - Debounced search (300ms) to reduce API calls during typing
-  - Memoized SearchInput component prevents re-render focus loss
-  - Sorting support: name, last_activity (asc/desc) with visual sort indicator
-  - Display format: Name only (no numbers - supplier numbers are chaotic)
-  - Real-time stats: Total docs, open invoices, company presence badges
-  - Loading states: Initial load vs pagination vs search
-  - "Mehr laden" button shows remaining count (e.g., "42 weitere Lieferanten")
-  - Pattern: Exact mirror of KundenPage for consistency
-- **refactor**: Supplier API client improvements (`ablage-api.ts`, latest)
-  - Added `fetchSuppliersForFrontend()` with pagination, sorting, search
-  - Type-safe parameters: `SupplierSortField`, `page`, `pageSize`, `sortOrder`
-  - Proper error handling with German messages ("Fehler beim Laden der Lieferanten")
-  - Consistent with customer API pattern for maintainability
-- **perf**: Enhanced KundenPage with pagination and optimizations (previous)
-  - Implemented infinite scroll with TanStack Query `useInfiniteQuery`
-  - Page size: 50 customers per page with "Mehr laden" button
-  - Debounced search (300ms) to reduce API calls during typing
-  - Memoized SearchInput component prevents re-render focus loss
-  - Display format: "12345_Mueller" (customer number_matchcode)
-  - Company presence badges (Folie/Messer) with responsive visibility
-  - Real-time stats: Total docs, open invoices per customer
-  - Loading states: Initial load vs pagination vs search
-  - "Load More" button shows remaining count (e.g., "157 weitere Kunden")
-- **refactor**: Ablage API client improvements (`ablage-api.ts`)
-  - Added `fetchCustomersForFrontend()` with pagination params
-  - Added `fetchSuppliersForFrontend()` with pagination support
-  - Proper TypeScript types: `PaginatedEntityResponse<T>`, `CustomerForFrontend`, `SupplierForFrontend`
-  - Cookie-based authentication with `credentials: "include"` on all fetch calls
-  - German error messages in catch blocks
-- **feat**: Customer folder selection view (`CustomerFoldersView.tsx`)
-  - Displays entity folders (Folie/Messer) with document counts
-  - Real-time stats: Total documents, open invoices per folder
-  - TanStack Query integration with `fetchEntityFolders()` API
-  - German loading/error states with proper icons
-  - Card-based UI with hover effects and navigation
-  - Breadcrumb navigation and responsive layout
-- **fix**: SessionStorage quota exceeded in MultiStepForm (enterprise fix)
-  - Added size-limit checks (500KB max per form) before storage operations
-  - Automatic cleanup of old wizard entries to prevent QuotaExceededError
-  - Race condition fix: Synchronous persistKey tracking prevents wrong-key saves
-  - Impacts: All multi-step wizards (employee onboarding, workflow creation, etc.)
-- **feat**: Document category moving dialog (`MoveFolderDialog.tsx`)
-  - Bulk move documents between categories with RadioGroup selection
-  - WCAG 2.1 AA compliant with proper ARIA labels
-  - Filters out current category and "open" status categories
-- **feat**: Banking reconciliation match suggestion card (`MatchSuggestionCard.tsx`)
-  - Visual match suggestions between transactions and invoices
-  - Confidence scoring (>90% green, 70-90% yellow, <70% orange)
-  - Match types: exact_amount, reference_match, fuzzy_amount, date_proximity
-- **test**: Added 404 page test (`$.test.tsx`)
-  - Verifies German error messages ("Seite nicht gefunden")
-  - Tests navigation buttons ("Zur Startseite", "Zurück")
-- **fix**: Authentication for entity API (commit 25542547)
-  - `ablage-api.ts` - Added `credentials: "include"` to all fetch calls
-- **perf**: Optimized KundenPage with infinite scroll and memoization (commit 6d33815f)
-  - TanStack Query `useInfiniteQuery` with pagination (50 items/page)
-  - Debounced search (300ms) to reduce API calls
-  - Memoized SearchInput component prevents re-render focus loss
-  - Flattened pages array with `useMemo` for performance
-  - Stable callbacks with `useCallback` for search handling
-  - Loading states: Initial load vs pagination vs search
-  - "Load More" button shows remaining count (e.g., "157 weitere")
-  - Real-time stats: totalDocs, openInvoices per customer
-  - Company presence badges (Folie/Messer) with responsive visibility
-- **refactor**: API client consolidation (`ablage-api.ts`)
-  - Added typed functions: `fetchCustomersForFrontend()`, `fetchSuppliersForFrontend()`
-  - Pagination support with `PaginatedEntityResponse<T>` type
-  - Proper error handling with German error messages
-  - Cookie-based authentication with `credentials: "include"`
-- **fix**: German umlaut corrections (139 files, commit 6d33815f)
-  - Fixed ASCII replacements: "ae"→"ä", "oe"→"ö", "ue"→"ü", "ss"→"ß"
-  - Backend (3 files): `entities.py`, `schemas.py`, `lexware_import_service.py`
-  - Frontend (136 files): All routes, components, features, hooks
-  - Examples: "Ausfuehren"→"Ausführen", "Loeschen"→"Löschen", "Groesse"→"Größe"
-  - Impact: 100% proper German umlauts in all user-facing text (Critical Rule #2)
-- **refactor**: Component consistency polish (47+ files total)
-  - **Batch 1**: Forms, Banking, Cash, ERP, Finance, Extracted Data, Collaboration, Dashboard
-  - **Batch 2**: Type safety and strict TypeScript compliance (18 files)
-    - `schemas.py` - Backend Pydantic schema updates
-    - `FormRegistryContext.tsx` - Context type safety
-    - `CancelEntryDialog.tsx`, `CashEntryList.tsx` - Cash feature types
-    - `format.ts` - Utility function type safety
-    - `ExpenseWorkflow.tsx` - Expense workflow types
-    - `InvoiceDataSection.tsx`, `extracted-types.ts` - Extracted data types
-    - `finanzen/types.ts` - Finance module types
-    - `RetentionSettings.tsx`, `use-gobd.ts` - GoBD type safety
-    - `LoanScenarioSimulator.tsx`, `DocumentUploadSection.tsx` - Privat feature types
-    - `use-push-notifications.ts` - PWA notification types
-    - `ParallelNode.tsx` - Workflow node types
-    - `useKeyboardShortcuts.ts` - Keyboard shortcut types
-    - `privat-intelligence.ts` - API service types
-    - `theme/types.ts` - Theme type definitions
+- **feat**: Ordner-spezifische Kategorien (Messer vs Folie)
+- **feat**: Auto-Navigation bei Single-Folder Entities
+- **perf**: Infinite Scroll für Kunden/Lieferanten (100 Items/Page)
+- **fix**: German Umlauts (139 Dateien korrigiert)

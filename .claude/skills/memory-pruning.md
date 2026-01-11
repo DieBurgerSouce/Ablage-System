@@ -21,22 +21,32 @@ This skill should be invoked:
 ```python
 THRESHOLDS = {
     "RECENT_CHANGES.md": {
-        "max_lines": 100,
-        "keep_days": 30,
+        "max_lines": 50,      # Reduced from 100
+        "max_size_kb": 3,     # Hard limit 3KB
+        "keep_days": 14,      # Reduced from 30
         "archive_to": "Archive/CHANGELOG-{year}-{month}.md"
     },
     "KNOWN_ISSUES.md": {
         "max_lines": 80,
-        "keep_resolved": 20,  # Keep last 20 resolved issues
+        "max_size_kb": 5,
+        "keep_resolved": 15,  # Reduced from 20
         "archive_to": "Archive/ISSUES-{year}.md"
     },
     "PROJECT_STATUS.md": {
-        "max_lines": 100,
+        "max_lines": 60,
+        "max_size_kb": 4,
         "no_archive": True  # Always current, no history
     },
     "DEPENDENCIES.md": {
-        "max_lines": 120,
+        "max_lines": 80,
+        "max_size_kb": 5,
         "no_archive": True  # Current state only
+    },
+    # CLAUDE.md limits (DO NOT EXCEED)
+    ".claude/CLAUDE.md": {
+        "max_lines": 400,
+        "max_size_kb": 15,
+        "action": "ERROR - extract verbose content to Docs/"
     }
 }
 ```
@@ -59,18 +69,17 @@ Extract date from `## YYYY-MM-DD` headers.
 ### 3. Determine What to Archive
 
 ```
-TODAY = 2026-01-10
+TODAY = 2026-01-11
 
-Keep in RECENT_CHANGES.md:
-- 2026-01-10 (today) ✓
-- 2026-01-09 (1 day ago) ✓
+Keep in RECENT_CHANGES.md (last 14 days only):
+- 2026-01-11 (today) ✓
+- 2026-01-10 (1 day ago) ✓
 - ...
-- 2025-12-11 (30 days ago) ✓
-- 2025-12-10 (31 days ago) → ARCHIVE
+- 2025-12-28 (14 days ago) ✓
+- 2025-12-27 (15 days ago) → ARCHIVE
 
 Archive to:
 - Archive/CHANGELOG-2025-12.md
-- Archive/CHANGELOG-2025-11.md
 ```
 
 ### 4. Transfer to Archive

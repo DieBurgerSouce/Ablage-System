@@ -16,3 +16,16 @@ export { FolderCategoriesView } from './components/FolderCategoriesView'
 export { CategoryDocumentList } from './components/CategoryDocumentList'
 export { DocumentFilterBar } from './components/DocumentFilterBar'
 export { BulkActionsToolbar } from './components/BulkActionsToolbar'
+
+// Smart Features (Sprint 3)
+export { InvoiceTrackingBanner } from './components/InvoiceTrackingBanner'
+export { ProactiveInsightsBanner } from './components/ProactiveInsightsBanner'
+export { QuickActionsBar } from './components/QuickActionsBar'
+
+// Vorgänge (Sprint 5)
+export { TransactionTimeline, TransactionTimelineCompact, TransactionListItem } from './components/TransactionTimeline'
+export { TransactionsView } from './components/TransactionsView'
+
+// Dialogs
+export { MoveFolderDialog } from './components/MoveFolderDialog'
+export { TagsEditDialog } from './components/TagsEditDialog'

@@ -2,11 +2,14 @@
  * CategoryDocumentList - Hauptkomponente für Kategorie-Dokumente
  *
  * Orchestriert die Unterkomponenten:
+ * - ProactiveInsightsBanner (KI-Insights, ganz oben)
  * - CategoryHeader (Breadcrumb, Titel)
+ * - QuickActionsBar (Primaere + Kontext-Aktionen)
+ * - InvoiceTrackingBanner (Zahlungsstatus, nur bei Rechnungen)
  * - CategoryAggregations (Summen-Karten)
  * - DocumentFilterBar (Filter)
  * - DocumentsTable (Tabelle)
- * - BulkActionsToolbar (Bulk-Aktionen)
+ * - BulkActionsToolbar (Bulk-Aktionen, fixiert unten)
  */
 
 import { useState, useMemo, useCallback } from 'react';
@@ -20,8 +23,13 @@ import {
   DEFAULT_CATEGORY_FILTER,
   type CategoryDocumentFilter,
 } from '../types';
-import { useCategoryPage } from '../hooks/use-ablage-queries';
-import { CategoryHeader } from './CategoryHeader';
+import {
+  useCategoryPage,
+  useBulkMarkAsPaid,
+  useBulkDelete,
+} from '../hooks/use-ablage-queries';
+import { useEntityName } from '../hooks/useAblage';
+import { CategoryBreadcrumb, CategoryTitle } from './CategoryHeader';
 import { CategoryAggregations } from './CategoryAggregations';
 import { DocumentFilterBar } from './DocumentFilterBar';
 import {
@@ -30,6 +38,11 @@ import {
   DocumentsPagination,
 } from './DocumentsTable';
 import { BulkActionsToolbar } from './BulkActionsToolbar';
+import { InvoiceTrackingBanner } from './InvoiceTrackingBanner';
+import { ProactiveInsightsBanner } from './ProactiveInsightsBanner';
+import { QuickActionsBar } from './QuickActionsBar';
+import { MoveFolderDialog } from './MoveFolderDialog';
+import { TagsEditDialog } from './TagsEditDialog';
 
 // ==================== Types ====================
 
@@ -55,6 +68,16 @@ export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) 
   const categoryInfo = categories.find((c) => c.id === category);
   const showPaymentStatus = CATEGORIES_WITH_PAYMENT_STATUS.includes(category || '');
 
+  // Entity-Name via API laden (statt UUID anzeigen)
+  const { data: entityInfo } = useEntityName(entityId);
+
+  // Folder-Namen mappen (folie → Folie, messer → Spargelmesser)
+  const FOLDER_NAMES: Record<string, string> = {
+    folie: 'Folie',
+    messer: 'Spargelmesser',
+  };
+  const folderDisplayName = FOLDER_NAMES[folderId || ''] || folderId || '';
+
   // ==================== State ====================
 
   const [filter, setFilter] = useState<Partial<CategoryDocumentFilter>>(() => ({
@@ -70,6 +93,15 @@ export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) 
   ]);
 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+
+  // Dialog states
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
+  const [showTagsDialog, setShowTagsDialog] = useState(false);
+
+  // ==================== Mutations ====================
+
+  const markAsPaidMutation = useBulkMarkAsPaid();
+  const deleteMutation = useBulkDelete();
 
   // ==================== Data Query ====================
 
@@ -147,6 +179,43 @@ export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) 
     console.log('Upload clicked');
   }, []);
 
+  // Bulk action handlers
+  const handleMarkAsPaid = useCallback(async () => {
+    if (selectedIds.length === 0) return;
+    await markAsPaidMutation.mutateAsync({ documentIds: selectedIds });
+    setRowSelection({});
+  }, [selectedIds, markAsPaidMutation]);
+
+  const handleMoveCategory = useCallback(() => {
+    if (selectedIds.length === 0) return;
+    setShowMoveDialog(true);
+  }, [selectedIds]);
+
+  const handleSetTags = useCallback(() => {
+    if (selectedIds.length === 0) return;
+    setShowTagsDialog(true);
+  }, [selectedIds]);
+
+  const handleDelete = useCallback(async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`Moechten Sie ${selectedIds.length} Dokument(e) wirklich loeschen?`)) return;
+    await deleteMutation.mutateAsync({ documentIds: selectedIds });
+    setRowSelection({});
+  }, [selectedIds, deleteMutation]);
+
+  // Filter handlers for banners
+  const handleFilterOverdue = useCallback(() => {
+    handleFilterChange({ paymentStatus: ['ueberfaellig'] });
+  }, [handleFilterChange]);
+
+  const handleFilterDueSoon = useCallback(() => {
+    handleFilterChange({ paymentStatus: ['offen'] });
+  }, [handleFilterChange]);
+
+  const handleFilterOpen = useCallback(() => {
+    handleFilterChange({ paymentStatus: ['offen'] });
+  }, [handleFilterChange]);
+
   // ==================== Render ====================
 
   // Missing required params
@@ -166,16 +235,62 @@ export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) 
 
   return (
     <div className="p-8 space-y-6 pb-24">
-      {/* Header with Breadcrumb */}
-      <CategoryHeader
+      {/* Breadcrumb - Ganz oben wie bei allen anderen Seiten */}
+      <CategoryBreadcrumb
         entityType={entityType}
         entityId={entityId}
-        entityName={entityId} // TODO: Load entity name from API
+        entityName={entityInfo?.name || entityId}
         folderId={folderId}
-        folderName={folderId} // TODO: Load folder name from API
+        folderName={folderDisplayName}
+        categoryInfo={categoryInfo}
+      />
+
+      {/* KI-Insights Banner */}
+      {showPaymentStatus && (
+        <ProactiveInsightsBanner
+          aggregations={aggregations}
+          documents={documentList}
+          category={category}
+          isLoading={isLoadingAggregations}
+          onMarkAsPaid={handleMarkAsPaid}
+          onFilterDocuments={(f) => handleFilterChange({ paymentStatus: f.paymentStatus as string[] | undefined })}
+        />
+      )}
+
+      {/* Seitentitel mit Back-Button und Upload */}
+      <CategoryTitle
+        entityType={entityType}
+        entityId={entityId}
+        folderId={folderId}
         categoryInfo={categoryInfo}
         onUploadClick={handleUploadClick}
       />
+
+      {/* Quick Actions Bar - Unter Header */}
+      <QuickActionsBar
+        category={category}
+        entityType={entityType}
+        selectedIds={selectedIds}
+        totalCount={totalCount}
+        onUploadClick={handleUploadClick}
+        onMoveCategory={handleMoveCategory}
+        onSetTags={handleSetTags}
+        onMarkAsPaid={showPaymentStatus ? handleMarkAsPaid : undefined}
+        onDelete={handleDelete}
+        onClearSelection={handleClearSelection}
+      />
+
+      {/* Invoice Tracking Banner - Nur bei Rechnungen */}
+      {showPaymentStatus && (
+        <InvoiceTrackingBanner
+          aggregations={aggregations}
+          documents={documentList}
+          isLoading={isLoadingAggregations}
+          onFilterOverdue={handleFilterOverdue}
+          onFilterDueSoon={handleFilterDueSoon}
+          onFilterOpen={handleFilterOpen}
+        />
+      )}
 
       {/* Aggregations */}
       <CategoryAggregations
@@ -239,12 +354,30 @@ export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) 
         </>
       )}
 
-      {/* Bulk Actions Toolbar */}
+      {/* Bulk Actions Toolbar - Fixiert unten */}
       <BulkActionsToolbar
         selectedIds={selectedIds}
         category={category}
         entityType={entityType}
         onClearSelection={handleClearSelection}
+      />
+
+      {/* Dialogs */}
+      <MoveFolderDialog
+        open={showMoveDialog}
+        onOpenChange={setShowMoveDialog}
+        entityType={entityType}
+        folderId={folderId}
+        currentCategory={category}
+        selectedIds={selectedIds}
+        onSuccess={() => setRowSelection({})}
+      />
+
+      <TagsEditDialog
+        open={showTagsDialog}
+        onOpenChange={setShowTagsDialog}
+        selectedIds={selectedIds}
+        onSuccess={() => setRowSelection({})}
       />
     </div>
   );
