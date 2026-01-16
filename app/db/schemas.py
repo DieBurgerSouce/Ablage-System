@@ -4098,6 +4098,12 @@ class CategoryDocumentResponse(BaseModel):
     thumbnail_url: Optional[str] = None
     preview_url: Optional[str] = None
 
+    # Skonto-Daten (aus extracted_data.invoice)
+    skonto_percent: Optional[float] = Field(None, ge=0, le=100, description="Skonto-Prozentsatz")
+    skonto_days: Optional[int] = Field(None, ge=0, description="Skonto-Frist in Tagen")
+    skonto_deadline: Optional[datetime] = Field(None, description="Skonto-Faelligkeitsdatum")
+    skonto_amount: Optional[float] = Field(None, ge=0, description="Berechneter Skonto-Betrag")
+
     model_config = ConfigDict(from_attributes=True)
 
 

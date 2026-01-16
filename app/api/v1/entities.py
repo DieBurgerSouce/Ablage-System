@@ -253,6 +253,8 @@ async def list_customers_for_frontend(
             "fullName": entity.display_name or "",
             "isActive": entity.is_active,
             "companyPresence": company_presence,
+            # Risk Score fuer Frontend-Anzeige (0-100, hoeher = riskanter)
+            "riskScore": entity.risk_score,
             # folderStats und lastActivityDate werden on-demand geladen
             "folderStats": {},
             "lastActivityDate": None,
@@ -359,6 +361,8 @@ async def list_suppliers_for_frontend(
             "fullName": entity.name,
             "isActive": entity.is_active,
             "companyPresence": company_presence,
+            # Risk Score fuer Frontend-Anzeige (0-100, hoeher = riskanter)
+            "riskScore": entity.risk_score,
             # folderStats und lastActivityDate werden on-demand geladen
             "folderStats": {},
             "lastActivityDate": None,

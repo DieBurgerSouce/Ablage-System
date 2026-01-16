@@ -73,25 +73,64 @@ function daysUntilDue(dueDate: string | null): number | null {
 
 /**
  * Findet Skonto-Moeglichkeiten in den Dokumenten
- * TODO: Skonto-Daten muessen vom Backend kommen
+ * Verwendet echte Skonto-Daten aus der OCR-Extraktion
  */
 function findSkontoOpportunities(documents: CategoryDocumentResponse[]): SkontoOpportunity[] {
-  // Placeholder - in Realitaet kommen Skonto-Infos vom Backend
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   return documents
     .filter((doc) => {
-      const days = daysUntilDue(doc.dueDate);
-      // Simuliere Skonto: Wenn noch > 5 Tage bis Faelligkeit
-      return days !== null && days > 5 && days <= 14 && doc.paymentStatus === 'offen';
+      // Nur offene Rechnungen mit Skonto-Daten beruecksichtigen
+      if (doc.paymentStatus !== 'offen') return false;
+      if (!doc.skontoPercent || doc.skontoPercent <= 0) return false;
+
+      // Skonto-Deadline pruefen (falls vorhanden)
+      if (doc.skontoDeadline) {
+        const deadline = new Date(doc.skontoDeadline);
+        deadline.setHours(0, 0, 0, 0);
+        // Nur wenn Deadline noch nicht abgelaufen
+        if (deadline < today) return false;
+      } else if (doc.skontoDays && doc.dueDate) {
+        // Fallback: Berechne Skonto-Deadline aus skontoDays
+        const dueDate = new Date(doc.dueDate);
+        const invoiceDate = doc.documentDate ? new Date(doc.documentDate) : new Date(doc.createdAt);
+        const skontoDeadline = new Date(invoiceDate);
+        skontoDeadline.setDate(skontoDeadline.getDate() + doc.skontoDays);
+        if (skontoDeadline < today) return false;
+      }
+
+      return true;
     })
     .slice(0, 3) // Max 3 Skonto-Hinweise
-    .map((doc) => ({
-      documentId: doc.id,
-      documentNumber: doc.documentNumber || doc.filename,
-      amount: doc.totalAmount || 0,
-      skontoPercent: 2, // Standard 2% Skonto
-      skontoSaving: (doc.totalAmount || 0) * 0.02,
-      daysRemaining: daysUntilDue(doc.dueDate) || 0,
-    }));
+    .map((doc) => {
+      // Berechne verbleibende Tage bis Skonto-Deadline
+      let daysRemaining = 0;
+      if (doc.skontoDeadline) {
+        const deadline = new Date(doc.skontoDeadline);
+        daysRemaining = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      } else if (doc.skontoDays && doc.documentDate) {
+        const invoiceDate = new Date(doc.documentDate);
+        const skontoDeadline = new Date(invoiceDate);
+        skontoDeadline.setDate(skontoDeadline.getDate() + doc.skontoDays);
+        daysRemaining = Math.ceil((skontoDeadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      }
+
+      // Berechne Skonto-Ersparnis
+      const skontoSaving = doc.skontoAmount
+        || (doc.totalAmount && doc.skontoPercent
+            ? (doc.totalAmount * doc.skontoPercent) / 100
+            : 0);
+
+      return {
+        documentId: doc.id,
+        documentNumber: doc.documentNumber || doc.filename,
+        amount: doc.totalAmount || 0,
+        skontoPercent: doc.skontoPercent || 0,
+        skontoSaving,
+        daysRemaining: Math.max(0, daysRemaining),
+      };
+    });
 }
 
 // ==================== Sub-Components ====================

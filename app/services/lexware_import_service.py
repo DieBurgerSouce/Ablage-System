@@ -159,6 +159,7 @@ class LexwareImportService:
         messer_file: Path,
         skip_conflicts: bool = True,
         conflict_analysis_file: Optional[Path] = None,
+        dry_run: bool = False,
     ) -> ImportResult:
         """
         Importiert Kunden aus beiden Firmen.
@@ -168,6 +169,7 @@ class LexwareImportService:
             messer_file: Pfad zur Messer-Kundenliste (Excel)
             skip_conflicts: Kritische Konflikte überspringen
             conflict_analysis_file: Optional vorberechnete Konfliktanalyse
+            dry_run: Nur simulieren, keine Daten aendern
 
         Returns:
             ImportResult mit Statistiken
@@ -213,16 +215,25 @@ class LexwareImportService:
                         "customer_import_error", kd_nr=kd_nr, error=str(e)
                     )
 
-            # Batch-add und commit
+            # Batch-add und commit (oder rollback bei dry_run)
             if entities_to_add:
                 self.db.add_all(entities_to_add)
-                await self.db.commit()
+                if dry_run:
+                    await self.db.rollback()
+                    logger.info(
+                        "customer_import_dry_run",
+                        would_import=result.imported_count,
+                        skipped=result.skipped_count,
+                    )
+                else:
+                    await self.db.commit()
 
             logger.info(
                 "customer_import_completed",
                 imported=result.imported_count,
                 skipped=result.skipped_count,
                 errors=result.error_count,
+                dry_run=dry_run,
             )
 
         except Exception as e:
@@ -428,6 +439,7 @@ class LexwareImportService:
         messer_file: Path,
         skip_conflicts: bool = True,
         conflict_analysis_file: Optional[Path] = None,
+        dry_run: bool = False,
     ) -> ImportResult:
         """
         Importiert Lieferanten aus beiden Firmen.
@@ -440,6 +452,7 @@ class LexwareImportService:
             messer_file: Pfad zur Messer-Lieferantenliste (Excel)
             skip_conflicts: Kritische Konflikte überspringen
             conflict_analysis_file: Optional vorberechnete Konfliktanalyse
+            dry_run: Nur simulieren, keine Daten aendern
 
         Returns:
             ImportResult mit Statistiken
@@ -485,10 +498,19 @@ class LexwareImportService:
                         "supplier_import_error", name=name, error=str(e)
                     )
 
-            # Batch-add und commit
+            # Batch-add und commit (oder rollback bei dry_run)
             if entities_to_add:
                 self.db.add_all(entities_to_add)
-                await self.db.commit()
+                if dry_run:
+                    await self.db.rollback()
+                    logger.info(
+                        "supplier_import_dry_run",
+                        would_import=result.imported_count,
+                        merged=result.merged_count,
+                        skipped=result.skipped_count,
+                    )
+                else:
+                    await self.db.commit()
 
             logger.info(
                 "supplier_import_completed",
@@ -496,6 +518,7 @@ class LexwareImportService:
                 merged=result.merged_count,
                 skipped=result.skipped_count,
                 errors=result.error_count,
+                dry_run=dry_run,
             )
 
         except Exception as e:

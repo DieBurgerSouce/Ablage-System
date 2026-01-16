@@ -277,6 +277,7 @@ export interface CustomerForFrontend {
     isActive: boolean;
     companyPresence: string[];  // ["folie", "messer"]
     folderStats: Record<string, FolderStats>;
+    riskScore: number | null;   // Risiko-Score (0-100, hoeher = riskanter)
 }
 
 /**
@@ -290,6 +291,7 @@ export interface SupplierForFrontend {
     isActive: boolean;
     companyPresence: string[];  // ["folie", "messer"]
     folderStats: Record<string, FolderStats>;
+    riskScore: number | null;   // Risiko-Score (0-100, hoeher = riskanter)
 }
 
 /**

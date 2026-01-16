@@ -1025,6 +1025,18 @@ class AblageService(DocumentServiceBase):
             except (ValueError, TypeError):
                 pass
 
+        # Skonto-Daten aus invoice-Daten extrahieren
+        invoice_data = extracted.get("invoice", {}) or {}
+        skonto_percent = invoice_data.get("discount_percent")
+        skonto_days = invoice_data.get("discount_days")
+        skonto_amount = invoice_data.get("discount_amount")
+        skonto_deadline = None
+        if invoice_data.get("discount_due_date"):
+            try:
+                skonto_deadline = datetime.fromisoformat(invoice_data["discount_due_date"])
+            except (ValueError, TypeError):
+                pass
+
         return CategoryDocumentResponse(
             id=doc.id,
             filename=doc.filename,
@@ -1046,6 +1058,11 @@ class AblageService(DocumentServiceBase):
             paid_amount=extracted.get("paid_amount"),
             partner_name=extracted.get("partner_name"),
             tags=[t.name for t in doc.tags] if doc.tags else [],
+            # Skonto-Daten
+            skonto_percent=float(skonto_percent) if skonto_percent is not None else None,
+            skonto_days=int(skonto_days) if skonto_days is not None else None,
+            skonto_deadline=skonto_deadline,
+            skonto_amount=float(skonto_amount) if skonto_amount is not None else None,
         )
 
     def _get_csv_value(

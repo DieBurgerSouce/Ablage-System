@@ -301,17 +301,17 @@ async def import_customers(
             folie_file=folie_path,
             messer_file=messer_path,
             skip_conflicts=skip_conflicts,
+            dry_run=dry_run,
         )
 
-        # Trigger entity linking in background (dry_run wird ignoriert)
-        if result.imported_count > 0:
+        # Trigger entity linking in background (nur bei echtem Import)
+        task_id = None
+        if result.imported_count > 0 and not dry_run:
             from app.workers.tasks.entity_linking_tasks import (
                 post_lexware_import_linking_task
             )
             task = post_lexware_import_linking_task.delay()
             task_id = task.id
-        else:
-            task_id = None
 
         logger.info(
             "lexware_customer_import_completed",
@@ -319,6 +319,7 @@ async def import_customers(
             merged=result.merged_count,
             skipped=result.skipped_count,
             errors=result.error_count,
+            dry_run=dry_run,
             user_id=user_id_str,
         )
 
@@ -443,17 +444,17 @@ async def import_suppliers(
             folie_file=folie_path,
             messer_file=messer_path,
             skip_conflicts=skip_conflicts,
+            dry_run=dry_run,
         )
 
-        # Trigger entity linking in background
-        if result.imported_count > 0:
+        # Trigger entity linking in background (nur bei echtem Import)
+        task_id = None
+        if result.imported_count > 0 and not dry_run:
             from app.workers.tasks.entity_linking_tasks import (
                 post_lexware_import_linking_task
             )
             task = post_lexware_import_linking_task.delay()
             task_id = task.id
-        else:
-            task_id = None
 
         logger.info(
             "lexware_supplier_import_completed",
@@ -461,6 +462,7 @@ async def import_suppliers(
             merged=result.merged_count,
             skipped=result.skipped_count,
             errors=result.error_count,
+            dry_run=dry_run,
             user_id=user_id_str,
         )
 

@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback, memo } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { Users, FolderOpen, ChevronRight, FileText, AlertCircle, Loader2, Search, ChevronDown, ArrowUpNarrowWide, ArrowDownWideNarrow } from 'lucide-react'
+import { RiskScoreBadge } from './RiskScoreBadge'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -294,6 +295,9 @@ export function KundenPage() {
                           Keine offenen
                         </Badge>
                       )}
+
+                      {/* Risk Score */}
+                      <RiskScoreBadge score={customer.riskScore} compact />
 
                       {/* Company Presence */}
                       <div className="hidden md:flex gap-1">

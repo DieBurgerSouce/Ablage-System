@@ -193,6 +193,11 @@ export interface CategoryDocumentResponse {
   tags: string[];
   thumbnailUrl: string | null;
   previewUrl: string | null;
+  // Skonto-Daten (aus OCR-Extraktion)
+  skontoPercent: number | null;
+  skontoDays: number | null;
+  skontoDeadline: string | null;
+  skontoAmount: number | null;
 }
 
 /**
@@ -490,6 +495,11 @@ export interface UploadCompleteRequest {
   currency?: string;
   dueDate?: string;
 
+  // NEU: Rechnungsrichtung und Auto-erkannte Felder
+  direction?: InvoiceDirection;
+  ibanFound?: string | null;
+  vatIdFound?: string | null;
+
   // Entity-Linking
   businessEntityId?: string;
   folderId: string;
@@ -638,3 +648,87 @@ export {
   getStatusColor,
   getStatusLabel,
 } from './types/ablage-types';
+
+// ==================== MULTI-FILE UPLOAD TYPES ====================
+
+/**
+ * Status einer einzelnen Datei im Multi-Upload Workflow
+ */
+export type AblageUploadFileStatus =
+  | 'pending'      // Wartet auf Upload
+  | 'uploading'    // Wird hochgeladen
+  | 'processing'   // OCR laeuft
+  | 'review'       // Bereit zur Pruefung (Quick Classification fertig)
+  | 'completed'    // Gespeichert
+  | 'error';       // Fehler
+
+/**
+ * Einzelne Datei im Multi-Upload Workflow
+ * Basiert auf dem Upload Wizard Pattern
+ */
+export interface AblageUploadingFile {
+  // Identifikation
+  id: string;
+  file: File | null;                  // Kann null sein nach Page-Reload
+  originalFilename: string;           // Fuer Persistenz
+
+  // Status
+  status: AblageUploadFileStatus;
+  progress: number;                   // Upload-Progress (0-100)
+  ocrProgress?: number;               // OCR-Progress (0-100)
+  error?: string;
+
+  // IDs nach Upload
+  documentId?: string;                // Backend Document ID
+  tempFileId?: string;                // Temp Storage ID
+  taskId?: string;                    // Celery Task ID
+
+  // Preview URL (Blob URL fuer lokale Vorschau)
+  fileUrl?: string;
+
+  // Quick Classification Ergebnis
+  quickClassification?: QuickClassificationResult;
+
+  // Rename-Vorschlag
+  renameSuggestion?: RenameSuggestion;
+
+  // User-Bestaetigung
+  confirmedDirection?: InvoiceDirection;
+  renameConfirmed?: boolean;
+  renamedFilename?: string;
+
+  // OCR-Ergebnis
+  ocrResult?: {
+    text: string;
+    confidence: number;
+    pageCount: number;
+  };
+}
+
+/**
+ * State fuer den Multi-File Upload Hook
+ */
+export interface AblageMultiUploadState {
+  files: AblageUploadingFile[];
+  isUploading: boolean;
+  hasErrors: boolean;
+  pendingReviewCount: number;
+  completedCount: number;
+}
+
+/**
+ * Optionen fuer den Multi-File Upload Hook
+ */
+export interface UseAblageMultiUploadOptions {
+  entityId: string;
+  entityName: string;
+  entityType: 'customer' | 'supplier';
+  folderId: string;
+  folderName: string;
+  category: string;
+  categoryName?: string;
+  ocrBackend?: string;
+  onAllComplete?: () => void;
+  onFileComplete?: (fileId: string, documentId: string) => void;
+  onFileError?: (fileId: string, error: Error) => void;
+}
