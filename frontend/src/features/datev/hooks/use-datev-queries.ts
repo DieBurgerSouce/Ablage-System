@@ -6,6 +6,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { logger } from '@/lib/logger';
 import {
     datevService,
     downloadBlob,
@@ -106,7 +107,7 @@ export function useCreateConfig() {
         },
         onError: (error) => {
             if (import.meta.env.DEV) {
-                console.error('[DATEV] Config erstellen fehlgeschlagen:', error);
+                logger.error('DATEV: Konfiguration erstellen fehlgeschlagen', error);
             }
         },
     });
@@ -129,7 +130,7 @@ export function useUpdateConfig() {
         },
         onError: (error, variables) => {
             if (import.meta.env.DEV) {
-                console.error('[DATEV] Config aktualisieren fehlgeschlagen:', variables.id, error);
+                logger.error('DATEV: Konfiguration aktualisieren fehlgeschlagen', error);
             }
         },
     });
@@ -148,7 +149,7 @@ export function useDeleteConfig() {
         },
         onError: (error, id) => {
             if (import.meta.env.DEV) {
-                console.error('[DATEV] Config löschen fehlgeschlagen:', id, error);
+                logger.error('DATEV: Konfiguration löschen fehlgeschlagen', error);
             }
         },
     });
@@ -193,7 +194,7 @@ export function useCreateVendorMapping() {
         },
         onError: (error, variables) => {
             if (import.meta.env.DEV) {
-                console.error('[DATEV] Vendor-Mapping erstellen fehlgeschlagen:', variables.configId, error);
+                logger.error('DATEV: Vendor-Mapping erstellen fehlgeschlagen', error);
             }
         },
     });
@@ -224,7 +225,7 @@ export function useUpdateVendorMapping() {
         },
         onError: (error, variables) => {
             if (import.meta.env.DEV) {
-                console.error('[DATEV] Vendor-Mapping aktualisieren fehlgeschlagen:', variables.mappingId, error);
+                logger.error('DATEV: Vendor-Mapping aktualisieren fehlgeschlagen', error);
             }
         },
     });
@@ -248,7 +249,7 @@ export function useDeleteVendorMapping() {
         },
         onError: (error, variables) => {
             if (import.meta.env.DEV) {
-                console.error('[DATEV] Vendor-Mapping löschen fehlgeschlagen:', variables.mappingId, error);
+                logger.error('DATEV: Vendor-Mapping löschen fehlgeschlagen', error);
             }
         },
     });
@@ -266,7 +267,7 @@ export function useExportPreview() {
         mutationFn: (data: DATEVExportRequest) => datevService.previewExport(data),
         onError: (error) => {
             if (import.meta.env.DEV) {
-                console.error('[DATEV] Export-Vorschau fehlgeschlagen:', error);
+                logger.error('DATEV: Export-Vorschau fehlgeschlagen', error);
             }
         },
     });
@@ -289,7 +290,7 @@ export function useExecuteExport() {
         },
         onError: (error) => {
             if (import.meta.env.DEV) {
-                console.error('[DATEV] Export ausführen fehlgeschlagen:', error);
+                logger.error('DATEV: Export ausführen fehlgeschlagen', error);
             }
         },
     });

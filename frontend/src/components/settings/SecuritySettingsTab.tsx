@@ -11,6 +11,7 @@
 
 import { useState, useEffect } from 'react';
 import { Loader2, ShieldCheck, ShieldOff, KeyRound, AlertTriangle, QrCode, Copy, Check, RefreshCw } from 'lucide-react';
+import { logger } from '@/lib/logger';
 import { ActiveSessionsTab } from './ActiveSessionsTab';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -70,7 +71,7 @@ export function SecuritySettingsTab() {
             const data = await authService.get2FAStatus();
             setStatus(data);
         } catch (error) {
-            console.error('Failed to load 2FA status:', error);
+            logger.error('2FA-Status konnte nicht geladen werden', error);
             toast({
                 title: 'Fehler',
                 description: '2FA-Status konnte nicht geladen werden.',
@@ -87,7 +88,7 @@ export function SecuritySettingsTab() {
             const data = await authService.setup2FA();
             setSetupData(data);
         } catch (error) {
-            console.error('Failed to start 2FA setup:', error);
+            logger.error('2FA-Setup konnte nicht gestartet werden', error);
             toast({
                 title: 'Fehler',
                 description: '2FA-Setup konnte nicht gestartet werden.',
@@ -112,7 +113,7 @@ export function SecuritySettingsTab() {
             setVerifyCode('');
             await load2FAStatus();
         } catch (error) {
-            console.error('Failed to verify 2FA setup:', error);
+            logger.error('2FA-Verifikation fehlgeschlagen', error);
             toast({
                 title: 'Fehler',
                 description: 'Ungültiger Code. Bitte versuchen Sie es erneut.',
@@ -136,7 +137,7 @@ export function SecuritySettingsTab() {
             setDisableCode('');
             await load2FAStatus();
         } catch (error) {
-            console.error('Failed to disable 2FA:', error);
+            logger.error('2FA-Deaktivierung fehlgeschlagen', error);
             toast({
                 title: 'Fehler',
                 description: 'Ungültiger Code. 2FA konnte nicht deaktiviert werden.',
@@ -161,7 +162,7 @@ export function SecuritySettingsTab() {
             });
             await load2FAStatus();
         } catch (error) {
-            console.error('Failed to regenerate backup codes:', error);
+            logger.error('Backup-Codes konnten nicht generiert werden', error);
             toast({
                 title: 'Fehler',
                 description: 'Ungültiger Code. Backup-Codes konnten nicht generiert werden.',

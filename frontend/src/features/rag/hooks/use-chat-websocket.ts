@@ -8,6 +8,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import type {
     ChatMessage,
     ContextDocument,
@@ -190,7 +191,7 @@ export function useChatWebSocket(
                         break;
                 }
             } catch (e) {
-                console.error('Failed to parse WebSocket message:', e);
+                logger.error('WebSocket-Nachricht konnte nicht verarbeitet werden', e);
             }
         },
         [onConnected, onMessage, onError]

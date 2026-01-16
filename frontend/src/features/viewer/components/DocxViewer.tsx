@@ -11,6 +11,7 @@ import mammoth from 'mammoth';
 import DOMPurify from 'dompurify';
 import { Loader2, AlertTriangle, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { logger } from '@/lib/logger';
 import { cn } from '@/lib/utils';
 
 // ==================== Types ====================
@@ -98,8 +99,8 @@ export function DocxViewer({ fileData, className }: DocxViewerProps) {
                         'application/msword',
                     ];
                     if (contentType && !validTypes.some((t) => contentType.includes(t))) {
-                        console.warn(
-                            `[DocxViewer] Unerwarteter Content-Type: ${contentType}. ` +
+                        logger.warn(
+                            `Unerwarteter Content-Type: ${contentType}. ` +
                             `Erwartet: DOCX oder application/octet-stream`
                         );
                     }
@@ -144,7 +145,7 @@ export function DocxViewer({ fileData, className }: DocxViewerProps) {
                     ? err.message
                     : 'Dokument konnte nicht konvertiert werden';
                 setError(message);
-                console.error('[DocxViewer] Conversion error:', err);
+                logger.error('Fehler beim Konvertieren des Dokuments', err);
             } finally {
                 if (!cancelled) {
                     setIsLoading(false);

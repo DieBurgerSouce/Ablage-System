@@ -13,6 +13,7 @@
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { motion } from 'framer-motion';
+import { logger } from '@/lib/logger';
 import {
     Upload,
     Cpu,
@@ -116,7 +117,7 @@ export function DocumentUploadDialog({
             // Individual file completed
         },
         onFileError: (fileId, error) => {
-            console.error('Upload failed for file:', fileId, error);
+            logger.error('Upload fehlgeschlagen für Datei:', { fileId, error });
         },
     });
 
@@ -159,7 +160,7 @@ export function DocumentUploadDialog({
             await saveFile(reviewingFile.id, data);
             closeReviewModal();
         } catch (error) {
-            console.error('Save failed:', error);
+            logger.error('Speichern fehlgeschlagen:', error);
         } finally {
             setIsSavingFile(false);
         }
@@ -316,7 +317,7 @@ export function DocumentUploadDialog({
                                     {gpuAvailable ? (
                                         <>
                                             <Zap className="h-3 w-3" />
-                                            GPU verfuegbar
+                                            GPU verfügbar
                                         </>
                                     ) : (
                                         'Nur CPU'

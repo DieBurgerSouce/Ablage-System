@@ -42,6 +42,7 @@ import {
     TabsList,
     TabsTrigger,
 } from "@/components/ui/tabs";
+import { logger } from "@/lib/logger";
 import {
     useGenerateZugferd,
     useGenerateXrechnung,
@@ -100,7 +101,7 @@ export function EInvoiceGeneratorDialog({
             onSuccess?.();
             onOpenChange(false);
         } catch (error) {
-            console.error('E-Invoice generation failed:', error);
+            logger.error('E-Rechnungsgenerierung fehlgeschlagen', error);
         }
     };
 

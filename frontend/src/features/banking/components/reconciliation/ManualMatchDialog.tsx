@@ -35,6 +35,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
+import { logger } from '@/lib/logger';
 import { formatCurrency, formatDate } from '@/features/banking/utils/format';
 import { useMatchSuggestions } from '@/features/banking/hooks/use-banking-queries';
 import type { BankTransaction, MatchCandidate } from '@/lib/api/services/banking';
@@ -244,7 +245,7 @@ export function ManualMatchDialog({
         } catch (error) {
             // Error Handling nur wenn nicht aborted
             if (!controller.signal.aborted) {
-                console.error('[ManualMatchDialog] Match failed:', error);
+                logger.error('Verknüpfung fehlgeschlagen', error);
                 toast({
                     title: 'Verknüpfung fehlgeschlagen',
                     description: 'Die Zuordnung konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.',

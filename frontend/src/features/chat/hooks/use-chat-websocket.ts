@@ -9,6 +9,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { logger } from '@/lib/logger';
 import type {
     WSMessage,
     WSPresenceUser,
@@ -212,7 +213,7 @@ export function useChatWebSocket(
                     break;
 
                 default:
-                    console.debug('Unknown WebSocket message type:', data.type);
+                    logger.debug('Unbekannter WebSocket-Nachrichtentyp', { type: data.type });
             }
         },
         []
@@ -319,7 +320,7 @@ export function useChatWebSocket(
                         const data = JSON.parse(event.data) as WSMessage;
                         handleMessage(data, sessionId);
                     } catch (e) {
-                        console.error('WebSocket message parse error:', e);
+                        logger.error('WebSocket-Nachricht konnte nicht geparst werden', e);
                     }
                 };
 
@@ -342,10 +343,10 @@ export function useChatWebSocket(
                 ws.onerror = () => {
                     if (!isMounted) return;
                     // Fehler nur loggen, nicht an User zeigen (onclose kommt danach)
-                    console.debug('WebSocket error event');
+                    logger.debug('WebSocket Fehler-Event');
                 };
             } catch (e) {
-                console.error('WebSocket connection error:', e);
+                logger.error('WebSocket-Verbindungsfehler', e);
                 if (isMounted) {
                     scheduleReconnect();
                 }

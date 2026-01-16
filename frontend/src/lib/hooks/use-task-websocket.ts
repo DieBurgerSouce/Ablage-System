@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { logger } from '@/lib/logger'
 
 export interface TaskStatus {
   task_id: string
@@ -139,7 +140,7 @@ export function useTaskWebSocket(
       setIsConnected(true)
       setIsConnecting(false)
       retryCountRef.current = 0
-      console.debug(`[WebSocket] Connected to task ${taskId}`)
+      logger.debug(`WebSocket mit Task verbunden: ${taskId}`)
     }
 
     ws.onmessage = (event) => {
@@ -156,12 +157,12 @@ export function useTaskWebSocket(
           }
         }
       } catch (e) {
-        console.error('[WebSocket] Parse error:', e)
+        logger.error('WebSocket Nachricht konnte nicht geparst werden', e)
       }
     }
 
     ws.onerror = (event) => {
-      console.error('[WebSocket] Error:', event)
+      logger.error('WebSocket-Fehler aufgetreten', event)
       setError('WebSocket-Verbindungsfehler')
     }
 
@@ -177,11 +178,11 @@ export function useTaskWebSocket(
       // Reconnect-Logik
       if (retryCountRef.current < stableOpts.maxRetries) {
         retryCountRef.current++
-        console.debug(`[WebSocket] Reconnecting (${retryCountRef.current}/${stableOpts.maxRetries})...`)
+        logger.debug(`WebSocket wird neu verbunden (${retryCountRef.current}/${stableOpts.maxRetries})`)
         retryTimeoutRef.current = setTimeout(connect, stableOpts.retryDelay)
       } else {
         setError('Verbindung konnte nicht wiederhergestellt werden')
-        onErrorRef.current?.('Max reconnect attempts reached')
+        onErrorRef.current?.('Maximale Reconnect-Versuche erreicht')
       }
     }
   }, [taskId, stableOpts]) // Nur taskId und stabile Optionen als Dependencies

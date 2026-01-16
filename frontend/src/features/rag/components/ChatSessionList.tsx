@@ -27,6 +27,7 @@ import {
     AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import {
     useChatSessions,
     useCreateSession,
@@ -55,7 +56,7 @@ export function ChatSessionList({
             const session = await createSession.mutateAsync();
             onSessionSelect(session.id);
         } catch (error) {
-            console.error('Failed to create session:', error);
+            logger.error('Session konnte nicht erstellt werden', error);
         }
     }, [createSession, onSessionSelect]);
 
@@ -75,7 +76,7 @@ export function ChatSessionList({
                     }
                 }
             } catch (error) {
-                console.error('Failed to delete session:', error);
+                logger.error('Session konnte nicht gelöscht werden', error);
             }
         },
         [

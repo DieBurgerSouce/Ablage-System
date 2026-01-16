@@ -16,6 +16,7 @@ import { apiClient } from '@/lib/api/client';
 import { AnnotationLayer } from './AnnotationLayer';
 import { ViewerErrorBoundary } from '@/components/errors';
 import { useViewerShortcuts } from '../hooks/useViewerShortcuts';
+import { logger } from '@/lib/logger';
 
 // Lazy load Office/Email viewers
 const DocxViewer = lazy(() => import('./DocxViewer'));
@@ -56,7 +57,7 @@ function useAuthenticatedPreview(documentId: string) {
                 if (cancelled) return;
                 const message = err instanceof Error ? err.message : 'Vorschau konnte nicht geladen werden';
                 setError(message);
-                console.error('[Preview] Load error:', err);
+                logger.error('[Vorschau] Fehler beim Laden:', err);
             } finally {
                 if (!cancelled) {
                     setIsLoading(false);
@@ -172,6 +173,7 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
     return (
         <div className="h-full flex flex-col">
             <ViewerToolbar
+                documentId={documentId}
                 currentPage={currentPage}
                 numPages={effectiveNumPages}
                 scale={scale}
@@ -234,7 +236,7 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
                                         <Document
                                             file={blobUrl}
                                             onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-                                            onLoadError={(err) => console.error('[PDF] Load error:', err)}
+                                            onLoadError={(err) => logger.error('[PDF] Fehler beim Laden:', err)}
                                             className="shadow-lg"
                                         >
                                             <div className="relative">

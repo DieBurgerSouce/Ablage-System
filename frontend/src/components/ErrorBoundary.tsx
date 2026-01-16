@@ -1,5 +1,6 @@
 import { Component, type ReactNode, type ErrorInfo, useState } from 'react'
 import { AlertTriangle, RefreshCw, Home, Bug, Send, CheckCircle } from 'lucide-react'
+import { logger } from '@/lib/logger'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { cn } from '@/lib/utils'
@@ -265,10 +266,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         // Update state with error info
         this.setState({ errorInfo })
 
-        // Log error to console in development
-        if (import.meta.env.DEV) {
-            console.error('ErrorBoundary caught an error:', error, errorInfo)
-        }
+        // Log error with Loki integration
+        logger.error('ErrorBoundary hat einen Fehler abgefangen', error, { errorInfo })
 
         // Call onError callback if provided
         if (this.props.onError) {

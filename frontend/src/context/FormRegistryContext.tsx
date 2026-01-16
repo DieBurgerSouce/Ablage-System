@@ -35,6 +35,7 @@ import {
     type ReactNode,
 } from 'react';
 import { useBlocker } from '@tanstack/react-router';
+import { logger } from '@/lib/logger';
 
 // ==================== Types ====================
 
@@ -184,9 +185,9 @@ export function FormRegistryProvider({
 
             // Enforce Limit: Warnung ausgeben wenn Limit erreicht
             if (next.size >= MAX_FORMS) {
-                console.warn(
-                    `[FormRegistry] Max Limit von ${MAX_FORMS} Formularen erreicht. ` +
-                    `Aelteste nicht-dirty Eintraege werden entfernt.`
+                logger.warn(
+                    `Maximales Formularlimit von ${MAX_FORMS} Formularen erreicht. ` +
+                    `Älteste nicht-gespeicherte Einträge werden entfernt.`
                 );
                 // Entferne aelteste nicht-dirty Eintraege bis Platz ist
                 const sortedEntries = Array.from(next.entries())
@@ -201,8 +202,8 @@ export function FormRegistryProvider({
 
                 // Wenn immer noch voll (alle sind dirty), Warnung
                 if (next.size >= MAX_FORMS) {
-                    console.error(
-                        '[FormRegistry] Kann neues Formular nicht registrieren - ' +
+                    logger.error(
+                        'Neues Formular kann nicht registriert werden - ' +
                         'alle bestehenden Formulare haben ungespeicherte Änderungen.'
                     );
                     return prev;

@@ -19,5 +19,16 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // Verbiete direkte console.* Aufrufe - nutze stattdessen @/lib/logger
+      'no-console': ['error', { allow: [] }],
+    },
+  },
+  // Ausnahme fuer logger.ts - darf console.* verwenden
+  {
+    files: ['**/lib/logger.ts'],
+    rules: {
+      'no-console': 'off',
+    },
   },
 ])

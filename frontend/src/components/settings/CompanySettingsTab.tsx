@@ -22,6 +22,7 @@ import {
     type CompanySettingsUpdate,
 } from '@/lib/api/services/settings';
 import { useToast } from '@/components/ui/use-toast';
+import { logger } from '@/lib/logger';
 
 interface FormData {
     company_name: string;
@@ -94,7 +95,7 @@ export function CompanySettingsTab() {
                     setIsConfigured(true);
                 }
             } catch (error) {
-                console.error('Fehler beim Laden der Firmendaten:', error);
+                logger.error('Fehler beim Laden der Firmendaten:', error);
             } finally {
                 setIsLoading(false);
             }
@@ -198,7 +199,7 @@ export function CompanySettingsTab() {
                 description: 'Firmendaten wurden aktualisiert.',
             });
         } catch (error: unknown) {
-            console.error('Fehler beim Speichern:', error);
+            logger.error('Fehler beim Speichern:', error);
             const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
             toast({
                 title: 'Fehler',

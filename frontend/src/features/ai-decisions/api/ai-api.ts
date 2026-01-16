@@ -5,6 +5,7 @@
  * SHAP Erklaerungen und A/B Testing.
  */
 
+import { logger } from '@/lib/logger';
 import type {
   DriftStatus,
   DriftReport,
@@ -241,7 +242,7 @@ export async function reviewAIDecision(
   correction?: string
 ): Promise<{ success: boolean }> {
   // TODO: Implement real API endpoint
-  console.log('Review AI Decision:', { decisionId, outcome, correction });
+  logger.debug('KI-Entscheidung überprüft:', { decisionId, outcome, correction });
   return { success: true };
 }
 
@@ -283,7 +284,7 @@ export async function updateConfidenceThresholds(
   thresholds: Partial<ConfidenceThresholds>
 ): Promise<ConfidenceThresholds> {
   // TODO: Implement real API endpoint
-  console.log('Update thresholds:', thresholds);
+  logger.debug('Konfidenz-Schwellenwerte aktualisiert:', thresholds);
   return {
     excellent: 0.95,
     high: 0.85,

@@ -48,6 +48,7 @@ import {
   X,
   ArrowRight,
 } from 'lucide-react';
+import { logger } from '@/lib/logger';
 import { useDebounce } from '@/hooks/useDebounce';
 
 export type EntityType =
@@ -181,7 +182,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({
       setResults(searchResults.slice(0, maxResults));
       setSearchTime(performance.now() - startTime);
     } catch (error) {
-      console.error('Suchfehler:', error);
+      logger.error('Suchfehler bei Abfrage', error);
       setResults([]);
     } finally {
       setIsLoading(false);
@@ -199,7 +200,7 @@ export const SmartSearch: React.FC<SmartSearchProps> = ({
       const suggestionsData = await onSuggestions(query);
       setSuggestions(suggestionsData);
     } catch (error) {
-      console.error('Fehler beim Laden der Vorschläge:', error);
+      logger.error('Fehler beim Laden der Suchvorschläge', error);
       setSuggestions([]);
     }
   }, [query, onSuggestions]);

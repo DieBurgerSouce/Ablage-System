@@ -162,10 +162,10 @@ function SkontoAlert({
         </div>
         <div>
           <p className="text-sm font-medium text-green-800 dark:text-green-200">
-            Skonto moeglich: {opportunities.length} Rechnung{opportunities.length > 1 ? 'en' : ''}
+            Skonto möglich: {opportunities.length} Rechnung{opportunities.length > 1 ? 'en' : ''}
           </p>
           <p className="text-xs text-green-600 dark:text-green-400">
-            Moegliche Ersparnis: {formatCurrency(totalSaving)}
+            Mögliche Ersparnis: {formatCurrency(totalSaving)}
           </p>
         </div>
       </div>
@@ -260,7 +260,7 @@ export function InvoiceTrackingBanner({
           <h3 className="font-semibold text-foreground">Zahlungsstatus</h3>
           {stats.overdueCount > 0 && (
             <Badge variant="destructive" className="ml-2">
-              {stats.overdueCount} ueberfaellig
+              {stats.overdueCount} überfällig
             </Badge>
           )}
         </div>

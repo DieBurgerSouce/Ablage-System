@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { useState, useCallback } from 'react'
+import { logger } from '@/lib/logger'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -43,7 +44,7 @@ function LoginPage() {
                 navigate({ to: redirectPath || '/' })
             }
         } catch (err) {
-            console.error('Anmeldung fehlgeschlagen', err)
+            logger.error('Anmeldung fehlgeschlagen', err)
             setError('Anmeldung fehlgeschlagen. Bitte überprüfen Sie Ihre Eingaben.')
         } finally {
             setIsLoading(false)
@@ -63,7 +64,7 @@ function LoginPage() {
             sessionStorage.removeItem('redirect_after_login')
             navigate({ to: redirectPath || '/' })
         } catch (err) {
-            console.error('2FA-Verifizierung fehlgeschlagen', err)
+            logger.error('2FA-Verifizierung fehlgeschlagen', err)
             setTwoFAError('Ungültiger Code. Bitte versuchen Sie es erneut.')
         } finally {
             setIsLoading(false)

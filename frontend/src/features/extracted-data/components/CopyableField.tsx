@@ -8,6 +8,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 import { Button } from "@/components/ui/button";
 import {
     Tooltip,
@@ -63,10 +64,8 @@ export function CopyableField({
             }
             timerRef.current = setTimeout(() => setCopied(false), 2000);
         } catch (err) {
-            // Only log in development to prevent information disclosure
-            if (import.meta.env.DEV) {
-                console.error("Kopieren fehlgeschlagen:", err);
-            }
+            // Logger sendet an Loki (nicht an User sichtbar)
+            logger.error("Kopieren fehlgeschlagen", err);
         }
     };
 

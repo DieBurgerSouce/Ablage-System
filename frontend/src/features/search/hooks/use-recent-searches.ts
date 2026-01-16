@@ -15,6 +15,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { logger } from '@/lib/logger';
 
 // ==================== Types ====================
 
@@ -46,7 +47,7 @@ function loadFromStorage(): RecentSearch[] {
         typeof item.timestamp === 'number'
     );
   } catch (error) {
-    console.error('[useRecentSearches] Fehler beim Laden:', error);
+    logger.error('Fehler beim Laden der letzten Suchanfragen', error);
     return [];
   }
 }
@@ -55,7 +56,7 @@ function saveToStorage(searches: RecentSearch[]): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(searches));
   } catch (error) {
-    console.error('[useRecentSearches] Fehler beim Speichern:', error);
+    logger.error('Fehler beim Speichern der letzten Suchanfragen', error);
   }
 }
 

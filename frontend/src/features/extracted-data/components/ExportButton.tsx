@@ -14,6 +14,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { logger } from "@/lib/logger";
 import { extractedDataApi } from "../api/extracted-data-api";
 import type { ExtractedDocumentType } from "../types/extracted-data.types";
 
@@ -39,7 +40,7 @@ export function ExportButton({ documentType = "invoice", className }: ExportButt
             const filename = `${DOCUMENT_TYPE_FILENAMES[documentType] || "export"}_${new Date().toISOString().slice(0, 10)}.csv`;
             await extractedDataApi.downloadExport(url, filename);
         } catch (error) {
-            console.error("CSV Export fehlgeschlagen:", error);
+            logger.error("CSV-Export fehlgeschlagen", error);
         } finally {
             setIsExporting(false);
         }
@@ -52,7 +53,7 @@ export function ExportButton({ documentType = "invoice", className }: ExportButt
             const filename = `${DOCUMENT_TYPE_FILENAMES[documentType] || "export"}_${new Date().toISOString().slice(0, 10)}.xlsx`;
             await extractedDataApi.downloadExport(url, filename);
         } catch (error) {
-            console.error("Excel Export fehlgeschlagen:", error);
+            logger.error("Excel-Export fehlgeschlagen", error);
         } finally {
             setIsExporting(false);
         }
@@ -65,7 +66,7 @@ export function ExportButton({ documentType = "invoice", className }: ExportButt
             const filename = `alle_dokumente_${new Date().toISOString().slice(0, 10)}.xlsx`;
             await extractedDataApi.downloadExport(url, filename);
         } catch (error) {
-            console.error("Gesamt-Export fehlgeschlagen:", error);
+            logger.error("Gesamt-Export fehlgeschlagen", error);
         } finally {
             setIsExporting(false);
         }

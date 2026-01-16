@@ -1,4 +1,5 @@
 import { apiClient } from '../client';
+import { logger } from '@/lib/logger';
 
 export interface User {
     id: string;
@@ -247,7 +248,7 @@ export const adminService = {
             };
         } catch (error) {
             // Error-Logging für Debugging und Monitoring
-            console.error('[admin.ts] getSkontoWarnings failed:', error);
+            logger.error('Skonto-Warnungen konnten nicht abgerufen werden', error);
 
             // Bei Fehler leere Response zurückgeben (graceful degradation)
             return {

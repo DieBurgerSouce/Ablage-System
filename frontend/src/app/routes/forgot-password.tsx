@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useState } from 'react';
+import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -33,7 +34,7 @@ function ForgotPasswordPage() {
             await authService.requestPasswordReset(email);
             setIsSubmitted(true);
         } catch (err) {
-            console.error('Password reset request failed', err);
+            logger.error('Passwort-Zurücksetzen anfordert fehlgeschlagen', err);
             // Still show success message to prevent email enumeration
             setIsSubmitted(true);
         } finally {

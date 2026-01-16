@@ -20,6 +20,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 import {
   type SavedSearch,
   type CreateSavedSearchInput,
@@ -37,7 +38,7 @@ function loadFromStorage(): SavedSearch[] {
     const parsed = JSON.parse(stored);
     return validateSavedSearches(parsed);
   } catch (error) {
-    console.error('[useSavedSearches] Fehler beim Laden:', error);
+    logger.error('Fehler beim Laden der gespeicherten Suchen', error);
     return [];
   }
 }
@@ -54,7 +55,7 @@ function saveToStorage(searches: SavedSearch[]): boolean {
         error.message.includes('quota') ||
         error.message.includes('storage'));
 
-    console.error('[useSavedSearches] Fehler beim Speichern:', error);
+    logger.error('Fehler beim Speichern der gespeicherten Suchen', error);
 
     if (isQuotaError) {
       toast.error('Speicherlimit erreicht', {

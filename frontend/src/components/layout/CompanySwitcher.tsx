@@ -23,6 +23,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useCompany } from '@/context/CompanyContext';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 
 interface CompanySwitcherProps {
     /** Zusaetzliche CSS-Klassen */
@@ -84,7 +85,7 @@ export function CompanySwitcher({ className, compact = false }: CompanySwitcherP
             await switchCompany(companyId);
         } catch (error) {
             // Fehler wird im Context behandelt
-            console.error('Firma wechseln fehlgeschlagen:', error);
+            logger.error('Firma wechseln fehlgeschlagen', error);
         }
     };
 

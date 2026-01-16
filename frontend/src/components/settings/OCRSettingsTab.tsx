@@ -23,6 +23,7 @@ import {
 import { settingsService, type OCRSettings } from '@/lib/api/services/settings';
 import { apiClient } from '@/lib/api/client';
 import { useToast } from '@/components/ui/use-toast';
+import { logger } from '@/lib/logger';
 
 interface BackendInfo {
     name: string;
@@ -75,7 +76,7 @@ export function OCRSettingsTab() {
                 setSettings(settingsData);
                 setBackends(backendsResponse.data.backends);
             } catch (error) {
-                console.error('Fehler beim Laden der OCR-Einstellungen:', error);
+                logger.error('Fehler beim Laden der OCR-Einstellungen:', error);
             } finally {
                 setIsLoading(false);
             }
@@ -93,7 +94,7 @@ export function OCRSettingsTab() {
                 description: 'OCR-Einstellungen wurden aktualisiert.',
             });
         } catch (error) {
-            console.error('Fehler beim Speichern:', error);
+            logger.error('Fehler beim Speichern:', error);
             toast({
                 title: 'Fehler',
                 description: 'Einstellungen konnten nicht gespeichert werden.',
@@ -115,7 +116,7 @@ export function OCRSettingsTab() {
                 description: 'OCR-Einstellungen wurden auf Standardwerte zurückgesetzt.',
             });
         } catch (error) {
-            console.error('Fehler beim Zurücksetzen:', error);
+            logger.error('Fehler beim Zurücksetzen:', error);
             toast({
                 title: 'Fehler',
                 description: 'Einstellungen konnten nicht zurückgesetzt werden.',

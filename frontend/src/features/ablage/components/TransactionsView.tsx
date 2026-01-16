@@ -14,6 +14,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
+import { logger } from '@/lib/logger';
 import {
   Search,
   Filter,
@@ -479,7 +480,7 @@ export function TransactionsView({ entityType }: TransactionsViewProps) {
   const handleTransactionClick = useCallback(
     (transaction: Transaction) => {
       // TODO: Navigate to transaction detail page
-      console.log('Navigate to transaction:', transaction.id);
+      logger.debug('Navigiere zu Vorgang:', { transactionId: transaction.id });
     },
     []
   );
@@ -488,7 +489,7 @@ export function TransactionsView({ entityType }: TransactionsViewProps) {
     (step: TransactionStep) => {
       if (step.documentId) {
         // TODO: Navigate to document viewer
-        console.log('Navigate to document:', step.documentId);
+        logger.debug('Navigiere zu Dokument:', { documentId: step.documentId });
       }
     },
     []
@@ -519,7 +520,7 @@ export function TransactionsView({ entityType }: TransactionsViewProps) {
       {/* Back Button */}
       <Button variant="ghost" className="gap-2 mb-4" onClick={handleBack}>
         <ArrowLeft className="w-4 h-4" />
-        Zurueck zu Kategorien
+        Zurück zu Kategorien
       </Button>
 
       {/* Header */}

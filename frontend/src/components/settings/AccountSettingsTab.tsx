@@ -10,6 +10,7 @@
 
 import { useState } from 'react';
 import { Loader2, LogOut, Trash2, AlertTriangle, User, Mail, Shield, Key } from 'lucide-react';
+import { logger } from '@/lib/logger';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -129,7 +130,7 @@ export function AccountSettingsTab({ onClose }: AccountSettingsTabProps) {
             setDeleteConfirmText('');
             onClose();
         } catch (error) {
-            console.error('Fehler beim Löschen:', error);
+            logger.error('Kontoloeschung fehlgeschlagen', error);
             toast({
                 title: 'Fehler',
                 description: 'Löschantrag konnte nicht gesendet werden.',

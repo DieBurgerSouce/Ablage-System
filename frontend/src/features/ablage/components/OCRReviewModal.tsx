@@ -3,7 +3,7 @@
  *
  * Layout:
  * ┌────────────────────────────────────────────────────────────────────┐
- * │  OCR-Ergebnis pruefen                                         [X] │
+ * │  OCR-Ergebnis prüfen                                         [X] │
  * ├─────────────────────────────┬──────────────────────────────────────┤
  * │                             │  Ziel: Kunden > Folie > Rechnungen  │
  * │   PDF/Bild Preview          │  ────────────────────────────────── │
@@ -213,7 +213,7 @@ function DocumentPreview({
       <div className="flex items-center justify-center h-full bg-muted/50 rounded-lg">
         <div className="text-center text-muted-foreground">
           <FileWarning className="w-12 h-12 mx-auto mb-2 opacity-50" />
-          <p>Keine Vorschau verfuegbar</p>
+          <p>Keine Vorschau verfügbar</p>
         </div>
       </div>
     )
@@ -227,10 +227,10 @@ function DocumentPreview({
           <ZoomOut className="w-4 h-4" />
         </Button>
         <span className="text-xs text-muted-foreground px-2">{Math.round(zoom * 100)}%</span>
-        <Button variant="ghost" size="icon" onClick={handleZoomIn} title="Vergroessern">
+        <Button variant="ghost" size="icon" onClick={handleZoomIn} title="Vergrößern">
           <ZoomIn className="w-4 h-4" />
         </Button>
-        <Button variant="ghost" size="icon" onClick={handleResetZoom} title="Zuruecksetzen">
+        <Button variant="ghost" size="icon" onClick={handleResetZoom} title="Zurücksetzen">
           <RotateCcw className="w-4 h-4" />
         </Button>
       </div>
@@ -259,11 +259,11 @@ function DocumentPreview({
             <div className="flex items-center justify-center h-[400px] bg-amber-50 border border-amber-200 rounded-lg">
               <div className="text-center text-amber-800">
                 <FileWarning className="w-12 h-12 mx-auto mb-2 text-amber-500" />
-                <p className="font-medium">TIFF/BMP-Vorschau nicht moeglich</p>
+                <p className="font-medium">TIFF/BMP-Vorschau nicht möglich</p>
                 <p className="text-sm mt-1 text-amber-600">
-                  Browser unterstuetzen dieses Format nicht direkt.
+                  Browser unterstützen dieses Format nicht direkt.
                   <br />
-                  Die OCR-Verarbeitung wurde trotzdem durchgefuehrt.
+                  Die OCR-Verarbeitung wurde trotzdem durchgeführt.
                 </p>
               </div>
             </div>
@@ -271,7 +271,7 @@ function DocumentPreview({
             <div className="flex items-center justify-center h-[400px] bg-muted rounded-lg">
               <div className="text-center text-muted-foreground">
                 <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p>Vorschau fuer diesen Dateityp nicht verfuegbar</p>
+                <p>Vorschau für diesen Dateityp nicht verfügbar</p>
               </div>
             </div>
           )}
@@ -420,7 +420,7 @@ export function OCRReviewModal({
         <DialogHeader className="px-6 py-4 border-b">
           <DialogTitle className="flex items-center gap-2">
             <FileText className="w-5 h-5" />
-            OCR-Ergebnis pruefen
+            OCR-Ergebnis prüfen
           </DialogTitle>
         </DialogHeader>
 
@@ -528,7 +528,7 @@ export function OCRReviewModal({
                 </Label>
                 <Select value={documentType} onValueChange={setDocumentType}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Dokumenttyp waehlen..." />
+                    <SelectValue placeholder="Dokumenttyp wählen..." />
                   </SelectTrigger>
                   <SelectContent>
                     {documentTypes.map((type) => (
@@ -569,7 +569,7 @@ export function OCRReviewModal({
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
-                    Faelligkeitsdatum
+                    Fälligkeitsdatum
                   </Label>
                   <Input
                     type="date"
@@ -595,7 +595,7 @@ export function OCRReviewModal({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Waehrung</Label>
+                  <Label>Währung</Label>
                   <Select value={currency} onValueChange={setCurrency}>
                     <SelectTrigger>
                       <SelectValue />
@@ -695,7 +695,7 @@ export function OCRReviewModal({
                     }}
                   />
                   <Button variant="outline" onClick={handleAddTag}>
-                    Hinzufuegen
+                    Hinzufügen
                   </Button>
                 </div>
               </div>

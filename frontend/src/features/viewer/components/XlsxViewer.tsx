@@ -11,6 +11,7 @@ import { Loader2, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { logger } from '@/lib/logger';
 import { cn } from '@/lib/utils';
 
 // ==================== Types ====================
@@ -161,7 +162,7 @@ export function XlsxViewer({ fileData, className }: XlsxViewerProps) {
                     ? err.message
                     : 'Tabelle konnte nicht geladen werden';
                 setError(message);
-                console.error('[XlsxViewer] Parse error:', err);
+                logger.error('Fehler beim Parsen der Tabelle', err);
             } finally {
                 if (!cancelled) {
                     setIsLoading(false);

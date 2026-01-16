@@ -5,6 +5,8 @@
  * Unterstuetzt Environment-Variablen für flexible Deployment-Szenarien.
  */
 
+import { logger } from '@/lib/logger';
+
 /**
  * Backend API Port Konfiguration
  *
@@ -50,20 +52,20 @@ export const WS_DEBUG_ENABLED = import.meta.env.DEV;
 export const wsLogger = {
   debug: (...args: unknown[]) => {
     if (WS_DEBUG_ENABLED) {
-      console.debug('[JobWebSocket]', ...args);
+      logger.debug('[JobWebSocket]', ...args);
     }
   },
   info: (...args: unknown[]) => {
     if (WS_DEBUG_ENABLED) {
-      console.info('[JobWebSocket]', ...args);
+      logger.info('[JobWebSocket]', ...args);
     }
   },
   warn: (...args: unknown[]) => {
     // Warnings sind immer aktiv
-    console.warn('[JobWebSocket]', ...args);
+    logger.warn('[JobWebSocket]', ...args);
   },
   error: (...args: unknown[]) => {
     // Errors sind immer aktiv
-    console.error('[JobWebSocket]', ...args);
+    logger.error('[JobWebSocket]', ...args);
   },
 };

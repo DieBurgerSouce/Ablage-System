@@ -50,6 +50,7 @@ import {
   StopCircle,
   XCircle,
 } from 'lucide-react';
+import { logger } from '@/lib/logger';
 import { useExportJobList } from '../hooks/useExportJob';
 import {
   type ExportJobStatus,
@@ -127,7 +128,7 @@ export function ExportJobList({
       await exportsService.cancelJob(jobId);
       refresh();
     } catch (err) {
-      console.error('Failed to cancel job:', err);
+      logger.error('Export-Job konnte nicht abgebrochen werden', err);
     }
   }, [refresh]);
 

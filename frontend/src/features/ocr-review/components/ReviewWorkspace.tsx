@@ -7,6 +7,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { apiClient } from '@/lib/api/client'
+import { logger } from '@/lib/logger'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -218,7 +219,7 @@ export function ReviewWorkspace({
                 setPreviewImageUrl(currentBlobUrl)
             } catch (err) {
                 if (!cancelled) {
-                    console.error('Preview laden fehlgeschlagen:', err)
+                    logger.error('Vorschau-Bild konnte nicht geladen werden', err)
                     setPreviewError(true)
                 }
             } finally {

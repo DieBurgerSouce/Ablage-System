@@ -34,9 +34,9 @@ function AppLayoutInner({ children, id }: { children: React.ReactNode; id?: stri
             </div>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-auto relative w-full">
+            <main className="flex-1 flex flex-col overflow-hidden relative w-full">
                 {/* Mobile Header with Hamburger + Breadcrumbs */}
-                <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-white/5 px-4 md:px-6 py-3">
+                <div className="flex-none sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-white/5 px-4 md:px-6 py-3">
                     <div className="flex items-center gap-3">
                         {/* Hamburger Menu - only visible on mobile */}
                         <button
@@ -51,7 +51,7 @@ function AppLayoutInner({ children, id }: { children: React.ReactNode; id?: stri
                     </div>
                 </div>
                 {/* Page Content */}
-                <div className="relative">
+                <div className="flex-1 overflow-auto relative">
                     {children}
                 </div>
             </main>

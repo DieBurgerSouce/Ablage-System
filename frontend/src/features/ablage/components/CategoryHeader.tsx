@@ -106,7 +106,7 @@ export function CategoryTitle({
   return (
     <div className="flex items-center gap-4">
       <Link to={folderPath} params={folderParams}>
-        <Button variant="ghost" size="icon" aria-label="Zurueck zur Ordner-Uebersicht">
+        <Button variant="ghost" size="icon" aria-label="Zurück zur Ordner-Übersicht">
           <ArrowLeft className="w-5 h-5" />
         </Button>
       </Link>

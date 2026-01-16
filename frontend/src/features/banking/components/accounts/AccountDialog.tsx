@@ -250,7 +250,7 @@ export function AccountDialog({ open, onOpenChange, account }: AccountDialogProp
                         </Select>
                     </div>
 
-                    {/* Waehrung (nur bei Erstellen) */}
+                    {/* Währung (nur bei Erstellen) */}
                     {!isEditing && (
                         <div className="space-y-2">
                             <Label htmlFor="currency">Währung</Label>

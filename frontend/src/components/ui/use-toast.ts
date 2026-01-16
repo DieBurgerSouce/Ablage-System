@@ -10,6 +10,7 @@
  */
 
 import { toast as sonnerToast, type ExternalToast } from 'sonner'
+import { logger } from '@/lib/logger';
 
 // ==================== Types (fuer Rueckwaertskompatibilitaet) ====================
 
@@ -49,9 +50,9 @@ function toast(props: Toast) {
   if (action) {
     // Sonner expects { label: string, onClick: () => void }
     // We can't perfectly convert React elements, so we log a warning
-    console.warn(
-      '[useToast] Action elements are not fully supported. ' +
-        'Consider using sonner directly with action: { label, onClick }'
+    logger.warn(
+      '[useToast] Aktions-Elemente werden nicht vollstaendig unterstuetzt. ' +
+        'Verwenden Sie sonner direkt mit action: { label, onClick }'
     )
   }
 

@@ -14,7 +14,7 @@ import type {
     InvoiceListParams,
 } from "../types/extracted-data.types";
 
-const BASE_URL = "/extracted-data";
+const BASE_URL = "/extracted_data";
 
 export const extractedDataApi = {
     /**
@@ -22,7 +22,7 @@ export const extractedDataApi = {
      */
     async getByDocumentId(documentId: string): Promise<ExtractedDocumentData> {
         const response = await apiClient.get<ExtractedDocumentData>(
-            `${BASE_URL}/${documentId}`
+            `${BASE_URL}/detail/${documentId}`
         );
         return response.data;
     },

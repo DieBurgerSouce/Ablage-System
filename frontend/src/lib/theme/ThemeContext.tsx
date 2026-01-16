@@ -27,6 +27,7 @@ import {
     applyCSSVariables,
     removeCSSVariables,
 } from './theme-utils';
+import { logger } from '@/lib/logger';
 
 // ==================== Context Type ====================
 
@@ -85,7 +86,7 @@ function getStoredConfig(): ThemeConfig {
 
         return defaultThemeConfig;
     } catch (e) {
-        console.error('Failed to load theme config:', e);
+        logger.error('Theme-Konfiguration konnte nicht geladen werden', e);
         return defaultThemeConfig;
     }
 }
@@ -96,7 +97,7 @@ function saveConfig(config: ThemeConfig): void {
         // Also save display mode separately for backwards compatibility
         localStorage.setItem(THEME_STORAGE_KEY, config.displayMode);
     } catch (e) {
-        console.error('Failed to save theme config:', e);
+        logger.error('Theme-Konfiguration konnte nicht gespeichert werden', e);
     }
 }
 

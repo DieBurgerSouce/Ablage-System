@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { ChatInterface } from './ChatInterface';
 import { DocumentPreviewModal } from './DocumentPreviewModal';
 import { ShareChatDialog } from './ShareChatDialog';
@@ -106,8 +107,8 @@ export function ChatLayout() {
 
     // Load Sessions (eigene + geteilte)
     useEffect(() => {
-        chatApi.getSessions().then(setSessions).catch(console.error);
-        chatApi.getSharedSessions().then(setSharedSessions).catch(console.error);
+        chatApi.getSessions().then(setSessions).catch((err) => logger.error('Sessions konnte nicht geladen werden', err));
+        chatApi.getSharedSessions().then(setSharedSessions).catch((err) => logger.error('Geteilte Sessions konnten nicht geladen werden', err));
     }, []);
 
     // Load Messages when session changes
@@ -124,7 +125,7 @@ export function ChatLayout() {
                 .then((session) => {
                     setMessages(session.messages || []);
                 })
-                .catch(console.error);
+                .catch((err) => logger.error('Nachrichten konnte nicht geladen werden', err));
         }
     }, [activeSessionId]);
 
@@ -207,7 +208,7 @@ export function ChatLayout() {
                             // Skip das automatische Neuladen der Messages (würde Sources verlieren)
                             skipNextSessionLoad.current = true;
                             setActiveSessionId(sessionId);
-                            chatApi.getSessions().then(setSessions).catch(console.error);
+                            chatApi.getSessions().then(setSessions).catch((err) => logger.error('Sessions konnte nach Nachricht nicht aktualisiert werden', err));
                         }
                     },
                     onAbort: () => {
@@ -235,14 +236,14 @@ export function ChatLayout() {
                         abortControllerRef.current = null;
                     },
                     onError: (error) => {
-                        console.error('Streaming error:', error);
+                        logger.error('Streaming-Fehler bei Nachrichtenversand', error);
                         abortControllerRef.current = null;
                         // Fallback to non-streaming
                         handleSendMessageFallback(content, tempUserMsg.id);
                     },
                 });
             } catch (error) {
-                console.error('Chat error:', error);
+                logger.error('Chat-Fehler beim Nachrichtenversand', error);
                 abortControllerRef.current = null;
                 // Fallback to non-streaming on connection error
                 handleSendMessageFallback(content, tempUserMsg.id);
@@ -262,12 +263,12 @@ export function ChatLayout() {
 
             if (!activeSessionId || session_id !== activeSessionId) {
                 setActiveSessionId(session_id);
-                chatApi.getSessions().then(setSessions).catch(console.error);
+                chatApi.getSessions().then(setSessions).catch((err) => logger.error('Sessions konnte nicht aktualisiert werden', err));
             }
 
             setMessages((prev) => [...prev, response]);
         } catch (fallbackError) {
-            console.error('Fallback error:', fallbackError);
+            logger.error('Fallback-Fehler bei Nachricht ohne Streaming', fallbackError);
             // Remove optimistic update on error
             setMessages((prev) => prev.filter((m) => m.id !== tempMsgId));
         } finally {

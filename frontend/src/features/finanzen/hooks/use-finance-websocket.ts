@@ -16,6 +16,7 @@
 
 import { useEffect, useCallback, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { logger } from '@/lib/logger'
 import { finanzenQueryKeys } from './use-finanzen-queries'
 
 // ==================== TYPES ====================
@@ -257,7 +258,7 @@ export function useFinanceWebSocket(
         // Call connect handler
         onConnectRef.current?.()
 
-        console.debug('[FinanceWS] Connected')
+        logger.debug('FinanceWS: Verbunden')
       }
 
       ws.onmessage = (messageEvent) => {
@@ -274,7 +275,7 @@ export function useFinanceWebSocket(
             handleEvent(data as FinanceWebSocketEvent)
           }
         } catch {
-          console.warn('[FinanceWS] Failed to parse message:', messageEvent.data)
+          logger.warn('FinanceWS: Nachricht konnte nicht geparst werden', messageEvent.data)
         }
       }
 
@@ -291,7 +292,7 @@ export function useFinanceWebSocket(
         clearTimers()
         onDisconnectRef.current?.()
 
-        console.debug('[FinanceWS] Disconnected', closeEvent.code)
+        logger.debug(`FinanceWS: Getrennt (Code: ${closeEvent.code})`)
 
         // Auto-reconnect if enabled and not manually closed
         if (autoReconnect && closeEvent.code !== 1000 && !reconnectingRef.current) {
@@ -300,7 +301,7 @@ export function useFinanceWebSocket(
             const delay = getRetryDelay()
             retryCountRef.current++
 
-            console.debug(`[FinanceWS] Reconnecting in ${delay}ms (${retryCountRef.current}/${maxRetries})`)
+            logger.debug(`FinanceWS: Verbinde erneut in ${delay}ms (${retryCountRef.current}/${maxRetries})`)
 
             retryTimeoutRef.current = setTimeout(() => {
               reconnectingRef.current = false

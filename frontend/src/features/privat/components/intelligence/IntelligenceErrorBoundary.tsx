@@ -6,6 +6,7 @@
  */
 
 import * as React from 'react';
+import { logger } from '@/lib/logger';
 import {
   Card,
   CardContent,
@@ -44,7 +45,7 @@ export class IntelligenceErrorBoundary extends React.Component<
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
     // Log error für Monitoring
-    console.error(
+    logger.error(
       `[IntelligenceErrorBoundary] Fehler in ${this.props.componentName}:`,
       error,
       errorInfo

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { BoundingBoxOverlay, type BoundingBox } from './BoundingBoxOverlay';
 import { apiClient } from '@/lib/api/client';
+import { logger } from '@/lib/logger';
 
 interface ImageViewerProps {
     fileUrl: string;
@@ -25,6 +26,7 @@ export function ImageViewer({
     const [error, setError] = useState<string | null>(null);
     const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
     const [blobUrl, setBlobUrl] = useState<string | null>(null);
+    const [isOwnBlobUrl, setIsOwnBlobUrl] = useState(false); // Track if we created the blob URL
     const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
     const imgRef = useRef<HTMLImageElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -51,9 +53,10 @@ export function ImageViewer({
         return () => resizeObserver.disconnect();
     }, []);
 
-    // Fetch image with authentication
+    // Fetch image with authentication (unless already a blob URL)
     useEffect(() => {
         let cancelled = false;
+        let createdBlobUrl: string | null = null;
         setIsLoading(true);
         setError(null);
         setBlobUrl(null);
@@ -61,17 +64,27 @@ export function ImageViewer({
 
         const fetchImage = async () => {
             try {
+                // If already a blob URL, use it directly (no need to fetch)
+                if (fileUrl.startsWith('blob:')) {
+                    if (cancelled) return;
+                    setBlobUrl(fileUrl);
+                    setIsOwnBlobUrl(false); // External blob URL - don't revoke on cleanup
+                    return;
+                }
+
+                // Fetch from API with authentication
                 const response = await apiClient.get(fileUrl, {
                     responseType: 'blob'
                 });
 
                 if (cancelled) return;
 
-                const url = URL.createObjectURL(response.data);
-                setBlobUrl(url);
+                createdBlobUrl = URL.createObjectURL(response.data);
+                setBlobUrl(createdBlobUrl);
+                setIsOwnBlobUrl(true); // We created this - revoke on cleanup
             } catch (err) {
                 if (cancelled) return;
-                console.error('Failed to load image:', err);
+                logger.error('Fehler beim Laden des Bildes:', err);
                 setError('Bild konnte nicht geladen werden');
                 setIsLoading(false);
                 onLoadError?.(err instanceof Error ? err : new Error('Failed to load image'));
@@ -82,17 +95,21 @@ export function ImageViewer({
 
         return () => {
             cancelled = true;
+            // Only revoke if we created the blob URL ourselves
+            if (createdBlobUrl) {
+                URL.revokeObjectURL(createdBlobUrl);
+            }
         };
     }, [fileUrl]);
 
-    // Cleanup blob URL on unmount or URL change
+    // Cleanup blob URL on unmount or URL change (only if we created it)
     useEffect(() => {
         return () => {
-            if (blobUrl) {
+            if (blobUrl && isOwnBlobUrl) {
                 URL.revokeObjectURL(blobUrl);
             }
         };
-    }, [blobUrl]);
+    }, [blobUrl, isOwnBlobUrl]);
 
     const handleLoad = useCallback(() => {
         setIsLoading(false);

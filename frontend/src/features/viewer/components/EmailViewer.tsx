@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
+import { logger } from '@/lib/logger';
 import { cn } from '@/lib/utils';
 
 // ==================== Types ====================
@@ -378,7 +379,7 @@ export function EmailViewer({ fileData, className }: EmailViewerProps) {
                     ? err.message
                     : 'E-Mail konnte nicht geladen werden';
                 setError(message);
-                console.error('[EmailViewer] Parse error:', err);
+                logger.error('Fehler beim Parsen der E-Mail', err);
             } finally {
                 if (!cancelled) {
                     setIsLoading(false);
@@ -623,8 +624,6 @@ export function __resetDOMPurifyHooks(): void {
         domPurifyHooksRegistered = false;
         DOMPurify.removeAllHooks();
     } else {
-        console.warn(
-            '[EmailViewer] __resetDOMPurifyHooks sollte nur in Tests verwendet werden'
-        );
+        logger.warn('__resetDOMPurifyHooks sollte nur in Tests verwendet werden');
     }
 }

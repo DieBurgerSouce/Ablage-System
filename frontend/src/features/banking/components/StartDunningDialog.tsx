@@ -38,6 +38,7 @@ import {
     Loader2,
     CheckCircle2,
 } from 'lucide-react'
+import { logger } from '@/lib/logger'
 import { bankingService } from '@/lib/api/services/banking'
 
 // ==================== Types ====================
@@ -149,7 +150,7 @@ export function StartDunningDialog({
         },
         onError: (error: Error) => {
             // Security: Zeige generische Nachricht statt error.message (XSS-Prevention)
-            console.error('[StartDunningDialog] createDunning failed:', error)
+            logger.error('Mahnvorgang konnte nicht erstellt werden', error)
             toast({
                 title: 'Mahnvorgang konnte nicht gestartet werden',
                 description: 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.',

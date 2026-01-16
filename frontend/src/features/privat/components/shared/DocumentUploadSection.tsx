@@ -6,6 +6,7 @@
  */
 
 import * as React from 'react';
+import { logger } from '@/lib/logger';
 import { Upload, FileText, X, Loader2, Download, Trash2, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -105,7 +106,7 @@ export function DocumentUploadSection({
         // Filter by related entity (this should be done server-side ideally)
         setDocuments(response.items);
       } catch (err) {
-        console.error('Fehler beim Laden der Dokumente:', err);
+        logger.error('Fehler beim Laden der Dokumente:', err);
       } finally {
         setIsLoading(false);
       }

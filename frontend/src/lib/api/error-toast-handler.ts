@@ -91,6 +91,7 @@ const SILENT_ENDPOINTS = [
     '/auth/login',
     '/auth/verify-2fa',
     '/auth/refresh',
+    '/extracted-data/', // 404 is expected for new documents without extracted data
 ];
 
 /**

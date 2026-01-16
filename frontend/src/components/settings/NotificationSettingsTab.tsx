@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select';
 import { settingsService, type NotificationSettings } from '@/lib/api/services/settings';
 import { useToast } from '@/components/ui/use-toast';
+import { logger } from '@/lib/logger';
 
 export function NotificationSettingsTab() {
     const { toast } = useToast();
@@ -49,7 +50,7 @@ export function NotificationSettingsTab() {
                 const data = await settingsService.getNotificationSettings();
                 setSettings(data);
             } catch (error) {
-                console.error('Fehler beim Laden der Benachrichtigungseinstellungen:', error);
+                logger.error('Fehler beim Laden der Benachrichtigungseinstellungen:', error);
             } finally {
                 setIsLoading(false);
             }
@@ -67,7 +68,7 @@ export function NotificationSettingsTab() {
                 description: 'Benachrichtigungseinstellungen wurden aktualisiert.',
             });
         } catch (error) {
-            console.error('Fehler beim Speichern:', error);
+            logger.error('Fehler beim Speichern:', error);
             toast({
                 title: 'Fehler',
                 description: 'Einstellungen konnten nicht gespeichert werden.',
@@ -89,7 +90,7 @@ export function NotificationSettingsTab() {
                 description: 'Benachrichtigungseinstellungen wurden auf Standardwerte zurückgesetzt.',
             });
         } catch (error) {
-            console.error('Fehler beim Zurücksetzen:', error);
+            logger.error('Fehler beim Zurücksetzen:', error);
             toast({
                 title: 'Fehler',
                 description: 'Einstellungen konnten nicht zurückgesetzt werden.',

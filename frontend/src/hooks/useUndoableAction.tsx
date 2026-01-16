@@ -8,7 +8,7 @@
  * ```tsx
  * const { executeAction, undo, canUndo, undoStack } = useUndoableAction({
  *   maxStackSize: 10,
- *   onUndo: (action) => console.log('Rückgängig:', action.description),
+ *   onUndo: (action) => logger.debug('Rueckgaengig:', action.description),
  * });
  *
  * // Eine Aktion ausfuehren
@@ -27,6 +27,7 @@
 
 import { useState, useCallback, useRef, createContext, useContext, type ReactNode } from 'react';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 
 // ==================== Types ====================
 
@@ -169,7 +170,7 @@ export function useUndoableAction(
                     return;
                   }
                   // Warnung ausgeben aber trotzdem versuchen wenn Action noch existiert
-                  console.warn('[useUndoableAction] Stack was modified since toast was created');
+                  logger.warn('[useUndoableAction] Stack wurde seit Toast-Erstellung geändert');
                 }
 
                 // KRITISCH: Finde Action BEVOR wir versuchen sie rueckgaengig zu machen

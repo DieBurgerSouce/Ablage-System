@@ -18,16 +18,13 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import { motion } from 'framer-motion';
 import { Loader2, AlertTriangle, FileText, ImageIcon } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
+import { logger } from '@/lib/logger';
 import type { ValidationFieldReview } from '../types/validation-queue.types';
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
-
-// PDF.js Worker konfigurieren
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url
-).toString();
+// Use CDN for PDF.js worker to avoid Vite bundling issues
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 /**
  * BoundingBox Interface fuer Overlay
@@ -77,7 +74,7 @@ function useAuthenticatedPreview(documentId: string) {
         if (cancelled) return;
         const message = err instanceof Error ? err.message : 'Vorschau konnte nicht geladen werden';
         setError(message);
-        console.error('[ValidationPDFViewer] Load error:', err);
+        logger.error('Fehler beim Laden der Dokumentvorschau', err);
       } finally {
         if (!cancelled) {
           setIsLoading(false);
@@ -358,7 +355,7 @@ export function ValidationPDFViewer({
         <Document
           file={blobUrl}
           onLoadSuccess={handleDocumentLoadSuccess}
-          onLoadError={(err) => console.error('[ValidationPDFViewer] PDF Load error:', err)}
+          onLoadError={(err) => logger.error('Fehler beim Laden des PDF', err)}
           className="shadow-lg"
           loading={
             <div className="flex items-center gap-2 text-muted-foreground p-8">

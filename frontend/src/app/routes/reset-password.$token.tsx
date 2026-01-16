@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -87,7 +88,7 @@ function ResetPasswordPage() {
             await authService.resetPassword(token, password);
             setIsSuccess(true);
         } catch (err) {
-            console.error('Password reset failed', err);
+            logger.error('Passwort-Zurücksetzen fehlgeschlagen', err);
             setError('Passwort konnte nicht zurückgesetzt werden. Der Link ist möglicherweise abgelaufen.');
         } finally {
             setIsLoading(false);

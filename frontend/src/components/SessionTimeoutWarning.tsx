@@ -23,6 +23,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { logger } from '@/lib/logger';
 
 // ==================== Helper ====================
 
@@ -64,7 +65,7 @@ export function SessionTimeoutWarning() {
       await refreshSession();
       setIsOpen(false);
     } catch (error) {
-      console.error('Session refresh failed:', error);
+      logger.error('Sitzung verlängern fehlgeschlagen', error);
     } finally {
       setIsRefreshing(false);
     }

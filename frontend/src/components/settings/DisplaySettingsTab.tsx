@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/select';
 import { settingsService, type DisplaySettings } from '@/lib/api/services/settings';
 import { useToast } from '@/components/ui/use-toast';
+import { logger } from '@/lib/logger';
 
 const displayModes: { mode: DisplayMode; icon: React.ElementType; label: string; description: string }[] = [
     {
@@ -86,7 +87,7 @@ export function DisplaySettingsTab() {
                     setDisplayMode(data.display_mode as DisplayMode);
                 }
             } catch (error) {
-                console.error('Fehler beim Laden der Anzeigeeinstellungen:', error);
+                logger.error('Fehler beim Laden der Anzeigeeinstellungen:', error);
             } finally {
                 setIsLoading(false);
             }
@@ -111,7 +112,7 @@ export function DisplaySettingsTab() {
                 description: 'Anzeigeeinstellungen wurden aktualisiert.',
             });
         } catch (error) {
-            console.error('Fehler beim Speichern:', error);
+            logger.error('Fehler beim Speichern:', error);
             toast({
                 title: 'Fehler',
                 description: 'Einstellungen konnten nicht gespeichert werden.',
@@ -134,7 +135,7 @@ export function DisplaySettingsTab() {
                 description: 'Anzeigeeinstellungen wurden auf Standardwerte zurückgesetzt.',
             });
         } catch (error) {
-            console.error('Fehler beim Zurücksetzen:', error);
+            logger.error('Fehler beim Zurücksetzen:', error);
             toast({
                 title: 'Fehler',
                 description: 'Einstellungen konnten nicht zurückgesetzt werden.',

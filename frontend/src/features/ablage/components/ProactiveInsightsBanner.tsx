@@ -122,8 +122,8 @@ function generateInsights(
       id: 'overdue-invoices',
       type: 'warning',
       priority: 'critical',
-      title: `${overdueCount} Rechnung${overdueCount > 1 ? 'en' : ''} ueberfaellig`,
-      description: `Gesamt: ${formatCurrency(overdueAmount)}${oldestOverdue.age > 0 ? ` - Aelteste: ${oldestOverdue.age} Tage` : ''}`,
+      title: `${overdueCount} Rechnung${overdueCount > 1 ? 'en' : ''} überfällig`,
+      description: `Gesamt: ${formatCurrency(overdueAmount)}${oldestOverdue.age > 0 ? ` - Älteste: ${oldestOverdue.age} Tage` : ''}`,
       action: actions.onCreateReminders
         ? {
             label: 'Mahnungen erstellen',

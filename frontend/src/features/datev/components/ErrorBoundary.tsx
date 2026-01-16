@@ -6,6 +6,7 @@
  */
 
 import React from 'react';
+import { logger } from '@/lib/logger';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
@@ -31,10 +32,11 @@ export class DATEVErrorBoundary extends React.Component<Props, State> {
     }
 
     componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-        // Nur in Development loggen
-        if (import.meta.env.DEV) {
-            console.error('[DATEV] Error Boundary gefangen:', error, errorInfo);
-        }
+        // IMMER loggen - auch in Production (via Loki)
+        // Fehler in ErrorBoundaries sind kritisch und muessen gemeldet werden
+        logger.error('DATEV: Error Boundary abgefangen', error, {
+            componentStack: errorInfo.componentStack,
+        });
     }
 
     handleRetry = (): void => {

@@ -13,6 +13,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import { logger } from '@/lib/logger';
 import {
   CheckCircle,
   Clock,
@@ -176,6 +177,7 @@ function ValidationQueueDashboardInner() {
     status: statusFilter === 'all' ? undefined : (statusFilter as ValidationStatus),
     document_type: documentTypeFilter === 'all' ? undefined : documentTypeFilter,
     sample_source: sourceFilter === 'all' ? undefined : (sourceFilter as SampleSource),
+    search: searchQuery.trim() || undefined, // Multi-Feld-Suche (document_name, document_type, notes)
     sort_by: sortBy,
     sort_order: sortOrder,
   };
@@ -1191,7 +1193,7 @@ export function ValidationQueueDashboard() {
       errorTitle="Fehler in der Validierungs-Warteschlange"
       errorDescription="Das Dashboard konnte nicht geladen werden. Bitte versuchen Sie es erneut."
       onError={(details) => {
-        console.error('ValidationQueueDashboard Error:', details);
+        logger.error('ValidationQueueDashboard Fehler', details.error, { component: 'ValidationQueueDashboard', timestamp: details.timestamp });
       }}
     >
       <ValidationQueueDashboardInner />

@@ -5,6 +5,8 @@
  * Enterprise-Grade: Mit localStorage/sessionStorage Fallback für Privacy Mode.
  */
 
+import { logger } from '@/lib/logger'
+
 export const STORAGE_KEY = 'ablage_company_setup_complete'
 export const STORAGE_KEY_SKIPPED = 'ablage_company_setup_skipped'
 
@@ -40,7 +42,7 @@ function safeSetItem(key: string, value: string): void {
         } catch {
             // Auch sessionStorage nicht verfügbar - Memory Fallback
             memoryStorage[key] = value
-            console.warn('[company-setup-utils] Storage nicht verfügbar, nutze Memory Fallback')
+            logger.warn('Speicher nicht verfügbar, nutze Memory Fallback')
         }
     }
 }

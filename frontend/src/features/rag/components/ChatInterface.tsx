@@ -33,6 +33,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { useChatWebSocket } from '../hooks/use-chat-websocket';
 import { useChatStatus } from '../hooks/use-chat';
 import { ChatMessage } from './ChatMessage';
@@ -77,7 +78,7 @@ export function ChatInterface({
             onSessionChange?.(sid);
         },
         onError: (err) => {
-            console.error('Chat error:', err);
+            logger.error('Chat-Fehler', err);
         },
     });
 

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { authService, type User, type LoginResult, type AuthResponse, type TwoFactorRequiredResponse } from '@/lib/api/services/auth';
+import { logger } from '@/lib/logger';
 
 // Type guard to check if result requires 2FA
 export function is2FARequired(result: LoginResult): result is TwoFactorRequiredResponse {
@@ -87,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await authService.refreshToken();
             updateSessionExpiry();
         } catch (error) {
-            console.error('Session refresh failed:', error);
+            logger.error('Session refresh fehlgeschlagen', error);
             authService.logout();
             setUser(null);
         }
@@ -121,9 +122,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (currentUser) {
                     setUser(currentUser);
                     updateSessionExpiry();
+                    // Setze User-Kontext fuer Loki-Logging bei bestehendem Session
+                    // SECURITY: Keine PII (E-Mail) in Logs!
+                    logger.setUser({ id: currentUser.id });
                 }
             } catch (error) {
-                console.error('Auth initialization failed', error);
+                logger.error('Auth-Initialisierung fehlgeschlagen', error);
                 authService.logout();
             } finally {
                 setIsLoading(false);
@@ -139,6 +143,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!is2FARequired(response)) {
             setUser(response.user);
             updateSessionExpiry();
+            // Setze User-Kontext fuer Loki-Logging
+            // SECURITY: Keine PII (E-Mail) in Logs!
+            logger.setUser({ id: response.user.id });
         }
         return response;
     };
@@ -147,6 +154,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const response = await authService.verify2FA(tempToken, code);
         setUser(response.user);
         updateSessionExpiry();
+        // Setze User-Kontext fuer Loki-Logging
+        // SECURITY: Keine PII (E-Mail) in Logs!
+        logger.setUser({ id: response.user.id });
         return response;
     };
 
@@ -156,6 +166,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         setSessionExpiresAt(null);
         setSessionTimeRemaining(null);
+        // Entferne User-Kontext aus Loki-Logging und flushe gepufferte Logs
+        logger.setUser(null);
+        logger.flush();
     };
 
     return (

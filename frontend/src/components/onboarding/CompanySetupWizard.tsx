@@ -34,6 +34,7 @@ import {
     AlertCircle,
     X,
 } from 'lucide-react'
+import { logger } from '@/lib/logger'
 
 import { companyService } from '@/lib/api/services/companies'
 import type { CompanyCreate, AccountChart } from '@/types/models/company'
@@ -177,7 +178,7 @@ export function CompanySetupWizard({
         },
         onError: (error: Error) => {
             // Security: Zeige generische Nachricht statt error.message (XSS-Prevention)
-            console.error('[CompanySetupWizard] createCompany failed:', error)
+            logger.error('Firma konnte nicht erstellt werden', error)
             setStepErrors({
                 submit: 'Firma konnte nicht erstellt werden. Bitte versuchen Sie es erneut.',
             })

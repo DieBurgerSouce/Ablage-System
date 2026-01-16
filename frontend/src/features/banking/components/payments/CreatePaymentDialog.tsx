@@ -239,7 +239,7 @@ export function CreatePaymentDialog({
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="currency">Waehrung</Label>
+                            <Label htmlFor="currency">Währung</Label>
                             <Select
                                 value={formData.currency}
                                 onValueChange={(v) => updateField('currency', v)}

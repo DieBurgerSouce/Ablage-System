@@ -27,6 +27,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
+import { logger } from '@/lib/logger';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -126,7 +127,7 @@ export function StatusChangeDropdown({
       } else {
         // For other statuses, we would need a bulk status update hook
         // This is a placeholder - implement when backend supports it
-        console.warn('Bulk status update to', status, 'not yet implemented');
+        logger.warn('Massen-Statusupdate zu', status, 'noch nicht implementiert');
       }
       onSuccess?.();
     } catch {

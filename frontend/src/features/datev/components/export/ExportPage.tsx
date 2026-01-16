@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react';
+import { logger } from '@/lib/logger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,10 +64,8 @@ export function ExportPage() {
             });
             setPreview(result);
         } catch (error) {
-            // Error wird von TanStack Query behandelt und via isError angezeigt
-            if (import.meta.env.DEV) {
-                console.error('[DATEV] Preview-Fehler:', error);
-            }
+            // IMMER loggen (auch Production) - Fehler sind kritisch fuer Monitoring
+            logger.error('DATEV: Preview-Fehler', error);
         }
     };
 
@@ -82,10 +81,8 @@ export function ExportPage() {
             // Preview zurücksetzen nach erfolgreichem Export
             setPreview(null);
         } catch (error) {
-            // Error wird von TanStack Query behandelt und via isError angezeigt
-            if (import.meta.env.DEV) {
-                console.error('[DATEV] Export-Fehler:', error);
-            }
+            // IMMER loggen (auch Production) - Fehler sind kritisch fuer Monitoring
+            logger.error('DATEV: Export-Fehler', error);
         }
     };
 

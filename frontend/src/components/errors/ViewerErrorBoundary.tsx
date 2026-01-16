@@ -17,6 +17,7 @@ import { AlertTriangle, RefreshCw, FileWarning, Bug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 
 // ==================== Types ====================
 
@@ -96,7 +97,7 @@ export class ViewerErrorBoundary extends Component<
         this.setState({ errorInfo });
 
         // Log error for debugging (structured, no PII)
-        console.error('[ViewerErrorBoundary] Viewer-Fehler aufgetreten:', {
+        logger.error('Viewer-Fehler aufgetreten', {
             errorName: error.name,
             errorMessage: error.message,
             fileType: this.props.fileType,

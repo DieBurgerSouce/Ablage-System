@@ -13,6 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { apiClient } from '../client';
+import { logger } from '@/lib/logger';
 
 // ==================== Types ====================
 
@@ -342,7 +343,7 @@ export const exportsService = {
             completedAt: data.completed_at,
           });
         } catch {
-          console.error('Failed to parse WebSocket message');
+          logger.error('WebSocket-Nachricht konnte nicht geparst werden');
         }
       };
 
@@ -356,7 +357,7 @@ export const exportsService = {
 
       return ws;
     } catch {
-      console.error('Failed to create WebSocket connection');
+      logger.error('WebSocket-Verbindung konnte nicht hergestellt werden');
       return null;
     }
   },

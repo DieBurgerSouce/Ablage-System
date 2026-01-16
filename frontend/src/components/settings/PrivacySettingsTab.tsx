@@ -15,6 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { settingsService, type PrivacySettings } from '@/lib/api/services/settings';
 import { useToast } from '@/components/ui/use-toast';
+import { logger } from '@/lib/logger';
 
 export function PrivacySettingsTab() {
     const { toast } = useToast();
@@ -40,7 +41,7 @@ export function PrivacySettingsTab() {
                 const data = await settingsService.getPrivacySettings();
                 setSettings(data);
             } catch (error) {
-                console.error('Fehler beim Laden der Datenschutzeinstellungen:', error);
+                logger.error('Fehler beim Laden der Datenschutzeinstellungen:', error);
             } finally {
                 setIsLoading(false);
             }
@@ -58,7 +59,7 @@ export function PrivacySettingsTab() {
                 description: 'Datenschutzeinstellungen wurden aktualisiert.',
             });
         } catch (error) {
-            console.error('Fehler beim Speichern:', error);
+            logger.error('Fehler beim Speichern:', error);
             toast({
                 title: 'Fehler',
                 description: 'Einstellungen konnten nicht gespeichert werden.',
@@ -80,7 +81,7 @@ export function PrivacySettingsTab() {
                 description: 'Datenschutzeinstellungen wurden auf Standardwerte zurückgesetzt.',
             });
         } catch (error) {
-            console.error('Fehler beim Zurücksetzen:', error);
+            logger.error('Fehler beim Zurücksetzen:', error);
             toast({
                 title: 'Fehler',
                 description: 'Einstellungen konnten nicht zurückgesetzt werden.',

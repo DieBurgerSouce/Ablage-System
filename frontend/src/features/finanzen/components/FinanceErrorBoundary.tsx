@@ -13,6 +13,7 @@ import { AlertTriangle, RefreshCw, Home, WifiOff, FileQuestion, ServerCrash, Ale
 import { Button } from '@/components/ui/button'
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { logger } from '@/lib/logger'
 
 // ==================== ERROR TYPES ====================
 
@@ -246,8 +247,8 @@ export class FinanceErrorBoundary extends Component<FinanceErrorBoundaryProps, F
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     // Log error for monitoring
-    console.error('[FinanceErrorBoundary] Error caught:', error)
-    console.error('[FinanceErrorBoundary] Component stack:', errorInfo.componentStack)
+    logger.error('FinanceErrorBoundary: Fehler abgefangen', error)
+    logger.error('FinanceErrorBoundary: Komponenten-Stack', errorInfo.componentStack)
 
     // Call custom error handler if provided
     this.props.onError?.(error, errorInfo)

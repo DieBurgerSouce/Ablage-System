@@ -40,6 +40,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
+import { logger } from '@/lib/logger';
 
 // ==================== Types ====================
 
@@ -168,9 +169,9 @@ export function MultiStepForm<T extends Record<string, unknown>>({
             // ENTERPRISE FIX: Size-Limit-Check VORHER um QuotaExceeded zu vermeiden
             const MAX_STORAGE_SIZE = 500_000; // 500KB max pro Form
             if (value.length > MAX_STORAGE_SIZE) {
-                console.warn(
-                    `[MultiStepForm] Form data exceeds ${MAX_STORAGE_SIZE / 1000}KB limit, ` +
-                    `truncating or clearing old wizard entries`
+                logger.warn(
+                    `Formulardaten überschreiten ${MAX_STORAGE_SIZE / 1000}KB Limit, ` +
+                    `alte Wizard-Einträge werden gelöscht`
                 );
 
                 // Cleanup alte wizard-Keys um Platz zu schaffen
@@ -187,7 +188,7 @@ export function MultiStepForm<T extends Record<string, unknown>>({
         } catch (e) {
             // ENTERPRISE FIX: QuotaExceeded spezifisch behandeln
             if (e instanceof Error && e.name === 'QuotaExceededError') {
-                console.warn('[MultiStepForm] Storage quota exceeded, clearing wizard entries');
+                logger.warn('Speicherplatz aufgebraucht, lösche Wizard-Einträge');
 
                 // Clear alle wizard-Keys um Platz zu schaffen
                 for (let i = sessionStorage.length - 1; i >= 0; i--) {
@@ -202,7 +203,7 @@ export function MultiStepForm<T extends Record<string, unknown>>({
                     sessionStorage.setItem(key, value);
                     return true;
                 } catch {
-                    console.error('[MultiStepForm] Storage quota exceeded permanently');
+                    logger.error('Speicherplatz aufgebraucht - kann nicht wiederhergestellt werden');
                     return false;
                 }
             }
@@ -256,7 +257,7 @@ export function MultiStepForm<T extends Record<string, unknown>>({
                     setCurrentStep(step);
                 }
             } catch (e) {
-                console.error('[MultiStepForm] Fehler beim Wiederherstellen:', e);
+                logger.error('Fehler beim Wiederherstellen von Formulardaten', e);
             }
         }
 
@@ -277,7 +278,7 @@ export function MultiStepForm<T extends Record<string, unknown>>({
         // SICHERHEIT: Nicht speichern wenn persistKey sich GERADE aendert
         // Dies verhindert dass alte Daten unter neuem Key gespeichert werden
         if (persistKey !== currentPersistKeyRef.current) {
-            console.warn('[MultiStepForm] persistKey changed during save, skipping');
+            logger.warn('persistKey hat sich während dem Speichern geändert, überspringe');
             return;
         }
 
@@ -334,7 +335,7 @@ export function MultiStepForm<T extends Record<string, unknown>>({
                 clearPersistence();
                 form.reset();
             } catch (error) {
-                console.error('Form submission failed:', error);
+                logger.error('Formularübermittlung fehlgeschlagen', error);
             } finally {
                 setIsSubmitting(false);
             }

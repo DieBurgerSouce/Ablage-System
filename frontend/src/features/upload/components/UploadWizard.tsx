@@ -10,6 +10,7 @@ import {
     type DragEndEvent,
     type DragOverEvent,
 } from '@dnd-kit/core';
+import { logger } from '@/lib/logger';
 import { UploadDropzone } from './UploadDropzone';
 import { UploadFileList } from './UploadFileList';
 import { TransactionGroupCard } from './TransactionGroupCard';
@@ -83,7 +84,7 @@ export function UploadWizard() {
     const uploadFile = useCallback(async (uploadingFile: UploadingFile) => {
         // Guard: File-Objekt muss vorhanden sein (bei wiederhergestellten Dateien ist es null)
         if (!uploadingFile.file) {
-            console.warn('uploadFile called without File object, skipping');
+            logger.warn('uploadFile ohne File-Objekt aufgerufen, ueberspringe');
             return;
         }
 
@@ -230,7 +231,7 @@ export function UploadWizard() {
                 });
             }
         } catch (error) {
-            console.error('Classification change failed:', error);
+            logger.error('Klassifizierungsaenderung fehlgeschlagen', error);
             toast({
                 title: 'Fehler',
                 description: 'Klassifizierung konnte nicht geändert werden',
@@ -264,7 +265,7 @@ export function UploadWizard() {
                 variant: 'success'
             });
         } catch (error) {
-            console.error('Rename confirmation failed:', error);
+            logger.error('Umbenennung fehlgeschlagen', error);
             toast({
                 title: 'Fehler',
                 description: 'Umbenennung konnte nicht durchgeführt werden',
@@ -400,7 +401,7 @@ export function UploadWizard() {
                 });
             }
         } catch (error) {
-            console.error('Backend group creation failed:', error);
+            logger.error('Backend-Gruppenerstellung fehlgeschlagen', error);
             toast({
                 title: 'Hinweis',
                 description: 'Vorgang lokal erstellt, Backend-Sync fehlgeschlagen',
@@ -445,7 +446,7 @@ export function UploadWizard() {
             try {
                 await groupsService.addDocument(group.backendGroupId, file.documentId);
             } catch (error) {
-                console.error('Failed to add document to group:', error);
+                logger.error('Dokument zur Gruppe hinzufuegen fehlgeschlagen', error);
             }
         }
     }, [transactionGroups, files]);
@@ -483,7 +484,7 @@ export function UploadWizard() {
             try {
                 await groupsService.removeDocument(group.backendGroupId, file.documentId);
             } catch (error) {
-                console.error('Failed to remove document from group:', error);
+                logger.error('Dokument aus Gruppe entfernen fehlgeschlagen', error);
             }
         }
     }, [transactionGroups, files]);
@@ -513,7 +514,7 @@ export function UploadWizard() {
                     variant: 'default'
                 });
             } catch (error) {
-                console.error('Failed to delete group:', error);
+                logger.error('Gruppe loeschen fehlgeschlagen', error);
             }
         }
     }, [transactionGroups]);
@@ -537,7 +538,7 @@ export function UploadWizard() {
             try {
                 await groupsService.update(group.backendGroupId, { name: newName });
             } catch (error) {
-                console.error('Failed to rename group:', error);
+                logger.error('Gruppe umbenennen fehlgeschlagen', error);
             }
         }
     }, [transactionGroups]);
@@ -599,7 +600,7 @@ export function UploadWizard() {
                 variant: 'success'
             });
         } catch (error) {
-            console.error('Group rename failed:', error);
+            logger.error('Vorgangs-Umbenennung fehlgeschlagen', error);
             toast({
                 title: 'Fehler',
                 description: 'Vorgang konnte nicht umbenannt werden',
@@ -883,7 +884,7 @@ export function UploadWizard() {
                         ));
                     }
                 } catch (e) {
-                    console.error('Status polling failed:', e);
+                    logger.error('Status-Polling fehlgeschlagen', e);
                 }
             }
         };
