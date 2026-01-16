@@ -753,3 +753,300 @@ class ApprovalService:
             next_step=None,
             message="Anfrage storniert",
         )
+
+    # =========================================================================
+    # API-COMPATIBLE METHODS (fuer app/api/v1/approvals.py)
+    # =========================================================================
+
+    async def get_requests_for_company(
+        self,
+        company_id: UUID,
+        status_filter: Optional[ApprovalStatus] = None,
+        entity_type: Optional[str] = None,
+        for_user_id: Optional[UUID] = None,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> Sequence[ApprovalRequest]:
+        """Holt Genehmigungsanfragen fuer eine Firma mit Filtern.
+
+        Args:
+            company_id: ID der Firma
+            status_filter: Optional: Nach Status filtern
+            entity_type: Optional: Nach Entitaetstyp filtern
+            for_user_id: Optional: Nur Anfragen fuer diesen User
+            offset: Offset fuer Pagination
+            limit: Max. Anzahl Ergebnisse
+
+        Returns:
+            Liste von ApprovalRequests
+        """
+        query = (
+            select(ApprovalRequest)
+            .where(ApprovalRequest.company_id == company_id)
+            .options(selectinload(ApprovalRequest.approval_steps))
+        )
+
+        if status_filter:
+            query = query.where(ApprovalRequest.status == status_filter)
+
+        if entity_type:
+            query = query.where(ApprovalRequest.entity_type == entity_type)
+
+        if for_user_id:
+            # Finde Anfragen wo der User im aktuellen Step zugewiesen ist
+            subquery = (
+                select(ApprovalStep.approval_request_id)
+                .where(
+                    and_(
+                        or_(
+                            ApprovalStep.assigned_user_id == for_user_id,
+                            ApprovalStep.delegated_to_id == for_user_id,
+                        ),
+                        ApprovalStep.status == ApprovalStatus.PENDING,
+                    )
+                )
+                .distinct()
+            )
+            query = query.where(ApprovalRequest.id.in_(subquery))
+
+        query = (
+            query
+            .order_by(ApprovalRequest.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+
+        result = await self.db.execute(query)
+        return result.scalars().all()
+
+    async def count_requests_for_company(
+        self,
+        company_id: UUID,
+        status_filter: Optional[ApprovalStatus] = None,
+        entity_type: Optional[str] = None,
+        for_user_id: Optional[UUID] = None,
+    ) -> int:
+        """Zaehlt Genehmigungsanfragen fuer eine Firma.
+
+        Args:
+            company_id: ID der Firma
+            status_filter: Optional: Nach Status filtern
+            entity_type: Optional: Nach Entitaetstyp filtern
+            for_user_id: Optional: Nur Anfragen fuer diesen User
+
+        Returns:
+            Anzahl der Anfragen
+        """
+        query = (
+            select(func.count(ApprovalRequest.id))
+            .where(ApprovalRequest.company_id == company_id)
+        )
+
+        if status_filter:
+            query = query.where(ApprovalRequest.status == status_filter)
+
+        if entity_type:
+            query = query.where(ApprovalRequest.entity_type == entity_type)
+
+        if for_user_id:
+            subquery = (
+                select(ApprovalStep.approval_request_id)
+                .where(
+                    and_(
+                        or_(
+                            ApprovalStep.assigned_user_id == for_user_id,
+                            ApprovalStep.delegated_to_id == for_user_id,
+                        ),
+                        ApprovalStep.status == ApprovalStatus.PENDING,
+                    )
+                )
+                .distinct()
+            )
+            query = query.where(ApprovalRequest.id.in_(subquery))
+
+        result = await self.db.execute(query)
+        return result.scalar() or 0
+
+    async def can_user_approve_step(
+        self,
+        request: ApprovalRequest,
+        user: User,
+        step_number: int,
+    ) -> bool:
+        """Prueft ob ein User einen bestimmten Schritt genehmigen kann.
+
+        Args:
+            request: Die ApprovalRequest
+            user: Der User
+            step_number: Nummer des Schritts
+
+        Returns:
+            True wenn berechtigt
+        """
+        if not request.approval_steps:
+            return False
+
+        step = next(
+            (s for s in request.approval_steps if s.step_number == step_number),
+            None
+        )
+
+        if not step:
+            return False
+
+        return await self._can_approve(step, user.id)
+
+    async def process_approval_decision(
+        self,
+        request_id: UUID,
+        user_id: UUID,
+        decision: str,
+        notes: Optional[str] = None,
+    ) -> ApprovalDecision:
+        """Verarbeitet eine Genehmigungsentscheidung (approve/reject).
+
+        Args:
+            request_id: ID der Anfrage
+            user_id: ID des entscheidenden Users
+            decision: "approved" oder "rejected"
+            notes: Optionale Notizen
+
+        Returns:
+            ApprovalDecision mit Ergebnis
+        """
+        if decision == "approved":
+            return await self.approve(request_id, user_id, notes)
+        elif decision == "rejected":
+            if not notes:
+                return ApprovalDecision(
+                    success=False,
+                    request_status=ApprovalStatus.PENDING,
+                    next_step=None,
+                    message="Begruendung bei Ablehnung erforderlich",
+                )
+            return await self.reject(request_id, user_id, notes)
+        else:
+            return ApprovalDecision(
+                success=False,
+                request_status=ApprovalStatus.PENDING,
+                next_step=None,
+                message=f"Ungueltige Entscheidung: {decision}",
+            )
+
+    async def escalate_request(
+        self,
+        request_id: UUID,
+        reason: str,
+        escalate_to_role: Optional[str] = None,
+        escalated_by_id: Optional[UUID] = None,
+    ) -> bool:
+        """Eskaliert eine einzelne Genehmigungsanfrage manuell.
+
+        Args:
+            request_id: ID der Anfrage
+            reason: Eskalationsgrund
+            escalate_to_role: Optional: An diese Rolle eskalieren
+            escalated_by_id: Optional: ID des eskalierenden Users
+
+        Returns:
+            True wenn erfolgreich
+        """
+        request = await self.get_request(request_id)
+
+        if not request:
+            logger.warning(f"Anfrage {request_id} nicht gefunden fuer Eskalation")
+            return False
+
+        if request.status != ApprovalStatus.PENDING:
+            logger.warning(
+                f"Anfrage {request_id} kann nicht eskaliert werden "
+                f"(Status: {request.status.value})"
+            )
+            return False
+
+        now = utc_now()
+        request.is_escalated = True
+        request.status = ApprovalStatus.ESCALATED
+        request.escalation_date = now
+        request.escalation_reason = reason
+
+        if escalate_to_role:
+            request.escalation_to_role = escalate_to_role
+
+        await self.db.commit()
+        await self.db.refresh(request)
+
+        logger.info(
+            f"Anfrage {request_id} eskaliert: {reason} "
+            f"(von User {escalated_by_id})"
+        )
+
+        return True
+
+    async def get_step(self, step_id: UUID) -> Optional[ApprovalStep]:
+        """Holt einen einzelnen Genehmigungsschritt.
+
+        Args:
+            step_id: ID des Schritts
+
+        Returns:
+            ApprovalStep oder None
+        """
+        result = await self.db.execute(
+            select(ApprovalStep).where(ApprovalStep.id == step_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def delegate_step(
+        self,
+        step_id: UUID,
+        delegate_to_id: UUID,
+        delegated_by_id: UUID,
+        reason: Optional[str] = None,
+    ) -> Optional[ApprovalStep]:
+        """Delegiert einen Genehmigungsschritt an einen anderen User.
+
+        Args:
+            step_id: ID des Schritts
+            delegate_to_id: ID des neuen Genehmigers
+            delegated_by_id: ID des delegierenden Users
+            reason: Optionale Begruendung
+
+        Returns:
+            Aktualisierter ApprovalStep oder None
+        """
+        step = await self.get_step(step_id)
+
+        if not step:
+            logger.warning(f"Step {step_id} nicht gefunden fuer Delegation")
+            return None
+
+        step.delegated_to_id = delegate_to_id
+        step.delegated_at = utc_now()
+        step.delegation_reason = reason
+        step.assigned_user_id = delegate_to_id
+
+        await self.db.commit()
+        await self.db.refresh(step)
+
+        logger.info(
+            f"Step {step_id} delegiert von {delegated_by_id} an {delegate_to_id}"
+        )
+
+        return step
+
+    async def get_approval_summary(
+        self,
+        company_id: UUID,
+        user_id: Optional[UUID] = None,
+    ) -> ApprovalSummary:
+        """Alias fuer get_summary (API-Kompatibilitaet).
+
+        Args:
+            company_id: ID der Firma
+            user_id: Optional: User fuer my_pending
+
+        Returns:
+            ApprovalSummary
+        """
+        return await self.get_summary(company_id, user_id)

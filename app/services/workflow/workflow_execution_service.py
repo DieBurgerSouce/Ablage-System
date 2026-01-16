@@ -155,8 +155,9 @@ class WorkflowExecutionService:
         execution = WorkflowExecution(
             id=uuid4(),
             workflow_id=workflow_id,
-            user_id=user_id,
+            triggered_by_id=user_id,
             document_id=document_id,
+            trigger_type="manual",
             status=ExecutionStatus.RUNNING.value,
             trigger_data=trigger_data or {},
             variables={**(workflow.variables or {}), **(initial_variables or {})},
@@ -779,7 +780,7 @@ class WorkflowExecutionService:
         if workflow_id:
             conditions.append(WorkflowExecution.workflow_id == workflow_id)
         if user_id:
-            conditions.append(WorkflowExecution.user_id == user_id)
+            conditions.append(WorkflowExecution.triggered_by_id == user_id)
         if status:
             conditions.append(WorkflowExecution.status == status)
         if document_id:
@@ -821,7 +822,7 @@ class WorkflowExecutionService:
         """
         query = (
             select(WorkflowStepExecution)
-            .where(WorkflowStepExecution.execution_id == execution_id)
+            .where(WorkflowStepExecution.workflow_execution_id == execution_id)
             .order_by(WorkflowStepExecution.started_at)
         )
 
@@ -851,7 +852,7 @@ class WorkflowExecutionService:
         )
 
         if user_id:
-            query = query.where(WorkflowExecution.user_id == user_id)
+            query = query.where(WorkflowExecution.triggered_by_id == user_id)
 
         result = await self.db.execute(query)
         return result.scalar_one_or_none()

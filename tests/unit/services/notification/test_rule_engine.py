@@ -1062,3 +1062,930 @@ class TestTemplateVariableRendering:
 
         # Variable bleibt als Platzhalter wenn nicht gefunden
         assert "{{missing_field}}" in result["title"]
+
+
+# =============================================================================
+# Build Event Data Tests
+# =============================================================================
+
+class TestBuildEventData:
+    """Tests fuer _build_event_data Methode."""
+
+    def test_build_event_data_structure(self) -> None:
+        """Testet dass _build_event_data korrekte Struktur zurueckgibt."""
+        from app.services.notification.rule_engine import NotificationRuleEngine
+        from unittest.mock import MagicMock
+
+        service = NotificationRuleEngine()
+
+        event = MagicMock()
+        event.event_id = uuid4()
+        event.event_type = MagicMock()
+        event.event_type.value = "document.processed"
+        event.timestamp = datetime.now(timezone.utc)
+        event.source = "ocr_worker"
+        event.user_id = uuid4()
+        event.space_id = uuid4()
+        event.payload = {"doc_id": "abc123", "pages": 5}
+
+        result = service._build_event_data(event)
+
+        # Basis-Felder vorhanden
+        assert "event_id" in result
+        assert "event_type" in result
+        assert "timestamp" in result
+        assert "source" in result
+        assert "user_id" in result
+        assert "space_id" in result
+        assert "payload" in result
+
+        # Werte korrekt
+        assert result["event_type"] == "document.processed"
+        assert result["source"] == "ocr_worker"
+        assert result["payload"]["doc_id"] == "abc123"
+
+        # Flattened payload fuer einfachen Zugriff
+        assert result["doc_id"] == "abc123"
+        assert result["pages"] == 5
+
+    def test_build_event_data_none_user(self) -> None:
+        """Testet _build_event_data mit None user_id."""
+        from app.services.notification.rule_engine import NotificationRuleEngine
+        from unittest.mock import MagicMock
+
+        service = NotificationRuleEngine()
+
+        event = MagicMock()
+        event.event_id = uuid4()
+        event.event_type = MagicMock()
+        event.event_type.value = "system.startup"
+        event.timestamp = datetime.now(timezone.utc)
+        event.source = "system"
+        event.user_id = None
+        event.space_id = None
+        event.payload = {}
+
+        result = service._build_event_data(event)
+
+        assert result["user_id"] is None
+        assert result["space_id"] is None
+
+    def test_build_event_data_empty_payload(self) -> None:
+        """Testet _build_event_data mit leerem Payload."""
+        from app.services.notification.rule_engine import NotificationRuleEngine
+        from unittest.mock import MagicMock
+
+        service = NotificationRuleEngine()
+
+        event = MagicMock()
+        event.event_id = uuid4()
+        event.event_type = MagicMock()
+        event.event_type.value = "test.event"
+        event.timestamp = datetime.now(timezone.utc)
+        event.source = "test"
+        event.user_id = uuid4()
+        event.space_id = None
+        event.payload = {}
+
+        result = service._build_event_data(event)
+
+        assert result["payload"] == {}
+
+
+# =============================================================================
+# Build Actions Tests
+# =============================================================================
+
+class TestBuildActions:
+    """Tests fuer _build_actions Methode."""
+
+    def test_build_actions_in_app(self) -> None:
+        """Testet Aktions-Generierung fuer in_app."""
+        from app.services.notification.rule_engine import (
+            NotificationRuleEngine,
+            ActionType,
+        )
+        from unittest.mock import MagicMock
+
+        service = NotificationRuleEngine()
+
+        rule = MagicMock()
+        rule.id = uuid4()
+        rule.user_id = uuid4()
+        rule.priority = "normal"
+        rule.actions = [
+            {
+                "type": "in_app",
+                "title": "Test Titel",
+                "body": "Test Nachricht",
+                "action_url": "/test/url",
+            }
+        ]
+
+        event = MagicMock()
+        event.event_id = uuid4()
+        event.event_type = MagicMock()
+        event.event_type.value = "test.event"
+        event.timestamp = datetime.now(timezone.utc)
+        event.source = "test"
+        event.user_id = uuid4()
+        event.space_id = None
+        event.payload = {}
+
+        actions = service._build_actions(rule, event)
+
+        assert len(actions) == 1
+        assert actions[0].action_type == ActionType.IN_APP
+        assert actions[0].title == "Test Titel"
+        assert actions[0].message == "Test Nachricht"
+        assert actions[0].action_url == "/test/url"
+        assert actions[0].rule_id == rule.id
+        assert actions[0].user_id == rule.user_id
+
+    def test_build_actions_email(self) -> None:
+        """Testet Aktions-Generierung fuer email."""
+        from app.services.notification.rule_engine import (
+            NotificationRuleEngine,
+            ActionType,
+        )
+        from unittest.mock import MagicMock
+
+        service = NotificationRuleEngine()
+
+        rule = MagicMock()
+        rule.id = uuid4()
+        rule.user_id = uuid4()
+        rule.priority = "high"
+        rule.actions = [
+            {
+                "type": "email",
+                "subject": "Test Betreff",
+                "body": "Test Email Body",
+                "template": "notification_email.j2",
+            }
+        ]
+
+        event = MagicMock()
+        event.event_id = uuid4()
+        event.event_type = MagicMock()
+        event.event_type.value = "test.event"
+        event.timestamp = datetime.now(timezone.utc)
+        event.source = "test"
+        event.user_id = uuid4()
+        event.space_id = None
+        event.payload = {}
+
+        actions = service._build_actions(rule, event)
+
+        assert len(actions) == 1
+        assert actions[0].action_type == ActionType.EMAIL
+        assert actions[0].email_subject == "Test Betreff"
+        assert actions[0].email_template == "notification_email.j2"
+
+    def test_build_actions_webhook(self) -> None:
+        """Testet Aktions-Generierung fuer webhook."""
+        from app.services.notification.rule_engine import (
+            NotificationRuleEngine,
+            ActionType,
+        )
+        from unittest.mock import MagicMock
+
+        service = NotificationRuleEngine()
+
+        rule = MagicMock()
+        rule.id = uuid4()
+        rule.user_id = uuid4()
+        rule.priority = "normal"
+        rule.actions = [
+            {
+                "type": "webhook",
+                "url": "https://example.com/webhook",
+                "title": "Event Notification",
+            }
+        ]
+
+        event = MagicMock()
+        event.event_id = uuid4()
+        event.event_type = MagicMock()
+        event.event_type.value = "test.event"
+        event.timestamp = datetime.now(timezone.utc)
+        event.source = "test"
+        event.user_id = uuid4()
+        event.space_id = None
+        event.payload = {"key": "value"}
+
+        actions = service._build_actions(rule, event)
+
+        assert len(actions) == 1
+        assert actions[0].action_type == ActionType.WEBHOOK
+        assert actions[0].webhook_url == "https://example.com/webhook"
+
+    def test_build_actions_multiple_types(self) -> None:
+        """Testet Generierung mehrerer Aktionstypen."""
+        from app.services.notification.rule_engine import (
+            NotificationRuleEngine,
+            ActionType,
+        )
+        from unittest.mock import MagicMock
+
+        service = NotificationRuleEngine()
+
+        rule = MagicMock()
+        rule.id = uuid4()
+        rule.user_id = uuid4()
+        rule.priority = "normal"
+        rule.actions = [
+            {"type": "in_app", "title": "In-App Titel"},
+            {"type": "push", "title": "Push Titel", "data": {"badge": 1}},
+            {"type": "email", "subject": "Email Betreff"},
+        ]
+
+        event = MagicMock()
+        event.event_id = uuid4()
+        event.event_type = MagicMock()
+        event.event_type.value = "test.event"
+        event.timestamp = datetime.now(timezone.utc)
+        event.source = "test"
+        event.user_id = uuid4()
+        event.space_id = None
+        event.payload = {}
+
+        actions = service._build_actions(rule, event)
+
+        assert len(actions) == 3
+        action_types = [a.action_type for a in actions]
+        assert ActionType.IN_APP in action_types
+        assert ActionType.PUSH in action_types
+        assert ActionType.EMAIL in action_types
+
+    def test_build_actions_unknown_type_skipped(self) -> None:
+        """Testet dass unbekannte Aktionstypen uebersprungen werden."""
+        from app.services.notification.rule_engine import NotificationRuleEngine
+        from unittest.mock import MagicMock
+
+        service = NotificationRuleEngine()
+
+        rule = MagicMock()
+        rule.id = uuid4()
+        rule.user_id = uuid4()
+        rule.priority = "normal"
+        rule.actions = [
+            {"type": "unknown_type", "title": "Test"},
+            {"type": "in_app", "title": "Valid"},
+        ]
+
+        event = MagicMock()
+        event.event_id = uuid4()
+        event.event_type = MagicMock()
+        event.event_type.value = "test.event"
+        event.timestamp = datetime.now(timezone.utc)
+        event.source = "test"
+        event.user_id = uuid4()
+        event.space_id = None
+        event.payload = {}
+
+        actions = service._build_actions(rule, event)
+
+        # Nur die gueltige Aktion wird generiert
+        assert len(actions) == 1
+        assert actions[0].title == "Valid"
+
+    def test_build_actions_dict_format(self) -> None:
+        """Testet Aktionen im Dict-Format mit 'actions' key."""
+        from app.services.notification.rule_engine import (
+            NotificationRuleEngine,
+            ActionType,
+        )
+        from unittest.mock import MagicMock
+
+        service = NotificationRuleEngine()
+
+        rule = MagicMock()
+        rule.id = uuid4()
+        rule.user_id = uuid4()
+        rule.priority = "normal"
+        rule.actions = {
+            "actions": [
+                {"type": "in_app", "title": "Test"}
+            ]
+        }
+
+        event = MagicMock()
+        event.event_id = uuid4()
+        event.event_type = MagicMock()
+        event.event_type.value = "test.event"
+        event.timestamp = datetime.now(timezone.utc)
+        event.source = "test"
+        event.user_id = uuid4()
+        event.space_id = None
+        event.payload = {}
+
+        actions = service._build_actions(rule, event)
+
+        assert len(actions) == 1
+        assert actions[0].action_type == ActionType.IN_APP
+
+
+# =============================================================================
+# Async Event Evaluation Tests
+# =============================================================================
+
+class TestAsyncEventEvaluation:
+    """Tests fuer async evaluate_event Methode."""
+
+    @pytest.mark.asyncio
+    async def test_evaluate_event_no_rules(self) -> None:
+        """Testet evaluate_event wenn keine Regeln existieren."""
+        from app.services.notification.rule_engine import NotificationRuleEngine
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        service = NotificationRuleEngine()
+
+        # Mock DB Session
+        db = AsyncMock()
+
+        # Mock Event
+        event = MagicMock()
+        event.event_id = uuid4()
+        event.event_type = MagicMock()
+        event.event_type.value = "test.event"
+        event.user_id = uuid4()
+
+        # Mock _get_active_rules to return empty list
+        with patch.object(service, '_get_active_rules', new_callable=AsyncMock) as mock_get_rules:
+            mock_get_rules.return_value = []
+
+            result = await service.evaluate_event(db, event)
+
+            assert result.event_id == event.event_id
+            assert result.event_type == "test.event"
+            assert result.rules_checked == 0
+            assert result.rules_matched == 0
+            assert result.actions_generated == 0
+
+    @pytest.mark.asyncio
+    async def test_evaluate_event_with_matching_rule(self) -> None:
+        """Testet evaluate_event mit passender Regel."""
+        from app.services.notification.rule_engine import NotificationRuleEngine
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        service = NotificationRuleEngine()
+
+        # Mock DB Session
+        db = AsyncMock()
+
+        # Mock Event
+        event = MagicMock()
+        event.event_id = uuid4()
+        event.event_type = MagicMock()
+        event.event_type.value = "document.processed"
+        event.user_id = uuid4()
+        event.space_id = None
+        event.timestamp = datetime.now(timezone.utc)
+        event.source = "test"
+        event.payload = {"status": "success"}
+
+        # Mock Rule
+        mock_rule = MagicMock()
+        mock_rule.id = uuid4()
+        mock_rule.name = "Test Rule"
+        mock_rule.user_id = event.user_id
+        mock_rule.conditions = {}  # Empty conditions = always match
+        mock_rule.actions = [{"type": "in_app", "title": "Processed"}]
+        mock_rule.quiet_hours_start = None
+        mock_rule.quiet_hours_end = None
+        mock_rule.cooldown_minutes = None
+        mock_rule.max_per_day = None
+        mock_rule.priority = "normal"
+
+        with patch.object(service, '_get_active_rules', new_callable=AsyncMock) as mock_get_rules:
+            mock_get_rules.return_value = [mock_rule]
+
+            result = await service.evaluate_event(db, event)
+
+            assert result.rules_checked == 1
+            assert result.rules_matched == 1
+            assert result.actions_generated == 1
+
+    @pytest.mark.asyncio
+    async def test_evaluate_event_rule_not_matching(self) -> None:
+        """Testet evaluate_event mit nicht passender Regel."""
+        from app.services.notification.rule_engine import NotificationRuleEngine
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        service = NotificationRuleEngine()
+
+        # Mock DB Session
+        db = AsyncMock()
+
+        # Mock Event
+        event = MagicMock()
+        event.event_id = uuid4()
+        event.event_type = MagicMock()
+        event.event_type.value = "document.processed"
+        event.user_id = uuid4()
+        event.space_id = None
+        event.timestamp = datetime.now(timezone.utc)
+        event.source = "test"
+        event.payload = {"status": "failed"}
+
+        # Mock Rule - requires status == "success"
+        mock_rule = MagicMock()
+        mock_rule.id = uuid4()
+        mock_rule.name = "Success Rule"
+        mock_rule.user_id = event.user_id
+        mock_rule.conditions = {"field": "status", "op": "eq", "value": "success"}
+        mock_rule.actions = [{"type": "in_app", "title": "Success"}]
+        mock_rule.quiet_hours_start = None
+        mock_rule.quiet_hours_end = None
+        mock_rule.cooldown_minutes = None
+        mock_rule.max_per_day = None
+        mock_rule.priority = "normal"
+
+        with patch.object(service, '_get_active_rules', new_callable=AsyncMock) as mock_get_rules:
+            mock_get_rules.return_value = [mock_rule]
+
+            result = await service.evaluate_event(db, event)
+
+            assert result.rules_checked == 1
+            assert result.rules_matched == 0
+            assert result.actions_generated == 0
+
+    @pytest.mark.asyncio
+    async def test_evaluate_event_skipped_quiet_hours(self) -> None:
+        """Testet dass Regel wegen Quiet Hours uebersprungen wird."""
+        from app.services.notification.rule_engine import NotificationRuleEngine
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        service = NotificationRuleEngine()
+
+        # Mock DB Session
+        db = AsyncMock()
+
+        # Mock Event
+        event = MagicMock()
+        event.event_id = uuid4()
+        event.event_type = MagicMock()
+        event.event_type.value = "test.event"
+        event.user_id = uuid4()
+        event.space_id = None
+        event.timestamp = datetime.now(timezone.utc)
+        event.source = "test"
+        event.payload = {}
+
+        # Mock Rule
+        mock_rule = MagicMock()
+        mock_rule.id = uuid4()
+        mock_rule.name = "Quiet Rule"
+        mock_rule.conditions = {}
+        mock_rule.actions = [{"type": "in_app", "title": "Test"}]
+        # Force quiet hours
+        mock_rule.quiet_hours_start = time(0, 0)
+        mock_rule.quiet_hours_end = time(23, 59)
+        mock_rule.timezone = "UTC"
+        mock_rule.cooldown_minutes = None
+        mock_rule.max_per_day = None
+
+        with patch.object(service, '_get_active_rules', new_callable=AsyncMock) as mock_get_rules:
+            mock_get_rules.return_value = [mock_rule]
+
+            result = await service.evaluate_event(db, event)
+
+            assert result.rules_checked == 1
+            assert result.rules_skipped == 1
+            assert result.rules_matched == 0
+
+
+# =============================================================================
+# Async CRUD Operations Tests
+# =============================================================================
+
+class TestAsyncCRUDOperations:
+    """Tests fuer async CRUD Operationen."""
+
+    @pytest.mark.asyncio
+    async def test_create_rule(self) -> None:
+        """Testet Regel-Erstellung."""
+        from app.services.notification.rule_engine import NotificationRuleEngine
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        service = NotificationRuleEngine()
+
+        # Mock DB Session
+        db = AsyncMock()
+        user_id = uuid4()
+
+        # Mock created rule
+        mock_rule = MagicMock()
+        mock_rule.id = uuid4()
+        mock_rule.user_id = user_id
+        mock_rule.name = "Test Rule"
+        mock_rule.event_type = "document.processed"
+
+        # Configure db mock
+        db.add = MagicMock()
+        db.commit = AsyncMock()
+        db.refresh = AsyncMock()
+
+        with patch('app.services.notification.rule_engine.NotificationRule') as mock_model:
+            mock_model.return_value = mock_rule
+
+            result = await service.create_rule(
+                db=db,
+                user_id=user_id,
+                name="Test Rule",
+                event_type="document.processed",
+                conditions={"field": "status", "op": "eq", "value": "done"},
+                actions=[{"type": "in_app", "title": "Fertig"}],
+            )
+
+            db.add.assert_called_once_with(mock_rule)
+            db.commit.assert_awaited_once()
+            db.refresh.assert_awaited_once_with(mock_rule)
+
+    @pytest.mark.asyncio
+    async def test_get_rules_for_user(self) -> None:
+        """Testet Abrufen aller Regeln eines Users."""
+        from app.services.notification.rule_engine import NotificationRuleEngine
+        from unittest.mock import AsyncMock, MagicMock
+
+        service = NotificationRuleEngine()
+
+        # Mock DB Session
+        db = AsyncMock()
+        user_id = uuid4()
+
+        # Mock rules
+        mock_rules = [MagicMock(), MagicMock()]
+
+        # Mock query result
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = mock_rules
+        db.execute = AsyncMock(return_value=mock_result)
+
+        result = await service.get_rules_for_user(db, user_id)
+
+        assert len(result) == 2
+        db.execute.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_get_rules_for_user_enabled_only(self) -> None:
+        """Testet Abrufen nur aktiver Regeln."""
+        from app.services.notification.rule_engine import NotificationRuleEngine
+        from unittest.mock import AsyncMock, MagicMock
+
+        service = NotificationRuleEngine()
+
+        # Mock DB Session
+        db = AsyncMock()
+        user_id = uuid4()
+
+        # Mock rules
+        mock_rules = [MagicMock()]
+
+        # Mock query result
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = mock_rules
+        db.execute = AsyncMock(return_value=mock_result)
+
+        result = await service.get_rules_for_user(db, user_id, enabled_only=True)
+
+        assert len(result) == 1
+        db.execute.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_update_rule_success(self) -> None:
+        """Testet erfolgreiche Regel-Aktualisierung."""
+        from app.services.notification.rule_engine import NotificationRuleEngine
+        from unittest.mock import AsyncMock, MagicMock
+
+        service = NotificationRuleEngine()
+
+        # Mock DB Session
+        db = AsyncMock()
+        rule_id = uuid4()
+        user_id = uuid4()
+
+        # Mock existing rule
+        mock_rule = MagicMock()
+        mock_rule.id = rule_id
+        mock_rule.user_id = user_id
+        mock_rule.name = "Old Name"
+
+        db.get = AsyncMock(return_value=mock_rule)
+        db.commit = AsyncMock()
+        db.refresh = AsyncMock()
+
+        result = await service.update_rule(
+            db=db,
+            rule_id=rule_id,
+            user_id=user_id,
+            name="New Name",
+        )
+
+        assert result is not None
+        assert mock_rule.name == "New Name"
+        db.commit.assert_awaited_once()
+        db.refresh.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_update_rule_not_found(self) -> None:
+        """Testet Regel-Aktualisierung bei nicht gefundener Regel."""
+        from app.services.notification.rule_engine import NotificationRuleEngine
+        from unittest.mock import AsyncMock
+
+        service = NotificationRuleEngine()
+
+        # Mock DB Session
+        db = AsyncMock()
+        db.get = AsyncMock(return_value=None)
+
+        result = await service.update_rule(
+            db=db,
+            rule_id=uuid4(),
+            user_id=uuid4(),
+            name="New Name",
+        )
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_update_rule_wrong_user(self) -> None:
+        """Testet Regel-Aktualisierung mit falschem User."""
+        from app.services.notification.rule_engine import NotificationRuleEngine
+        from unittest.mock import AsyncMock, MagicMock
+
+        service = NotificationRuleEngine()
+
+        # Mock DB Session
+        db = AsyncMock()
+        rule_id = uuid4()
+        owner_id = uuid4()
+        wrong_user_id = uuid4()
+
+        # Mock rule owned by different user
+        mock_rule = MagicMock()
+        mock_rule.id = rule_id
+        mock_rule.user_id = owner_id
+
+        db.get = AsyncMock(return_value=mock_rule)
+
+        result = await service.update_rule(
+            db=db,
+            rule_id=rule_id,
+            user_id=wrong_user_id,
+            name="New Name",
+        )
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_delete_rule_success(self) -> None:
+        """Testet erfolgreiche Regel-Loeschung."""
+        from app.services.notification.rule_engine import NotificationRuleEngine
+        from unittest.mock import AsyncMock, MagicMock
+
+        service = NotificationRuleEngine()
+
+        # Mock DB Session
+        db = AsyncMock()
+        rule_id = uuid4()
+        user_id = uuid4()
+
+        # Mock existing rule
+        mock_rule = MagicMock()
+        mock_rule.id = rule_id
+        mock_rule.user_id = user_id
+
+        db.get = AsyncMock(return_value=mock_rule)
+        db.delete = AsyncMock()
+        db.commit = AsyncMock()
+
+        result = await service.delete_rule(db, rule_id, user_id)
+
+        assert result is True
+        db.delete.assert_awaited_once_with(mock_rule)
+        db.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_delete_rule_not_found(self) -> None:
+        """Testet Regel-Loeschung bei nicht gefundener Regel."""
+        from app.services.notification.rule_engine import NotificationRuleEngine
+        from unittest.mock import AsyncMock
+
+        service = NotificationRuleEngine()
+
+        # Mock DB Session
+        db = AsyncMock()
+        db.get = AsyncMock(return_value=None)
+
+        result = await service.delete_rule(db, uuid4(), uuid4())
+
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_delete_rule_wrong_user(self) -> None:
+        """Testet Regel-Loeschung mit falschem User."""
+        from app.services.notification.rule_engine import NotificationRuleEngine
+        from unittest.mock import AsyncMock, MagicMock
+
+        service = NotificationRuleEngine()
+
+        # Mock DB Session
+        db = AsyncMock()
+        rule_id = uuid4()
+        owner_id = uuid4()
+        wrong_user_id = uuid4()
+
+        # Mock rule owned by different user
+        mock_rule = MagicMock()
+        mock_rule.id = rule_id
+        mock_rule.user_id = owner_id
+
+        db.get = AsyncMock(return_value=mock_rule)
+
+        result = await service.delete_rule(db, rule_id, wrong_user_id)
+
+        assert result is False
+
+
+# =============================================================================
+# Execute Actions Tests
+# =============================================================================
+
+class TestAsyncExecuteActions:
+    """Tests fuer async execute_actions Methode."""
+
+    @pytest.mark.asyncio
+    async def test_execute_actions_in_app(self) -> None:
+        """Testet Ausfuehrung von in_app Aktionen."""
+        from app.services.notification.rule_engine import (
+            NotificationRuleEngine,
+            NotificationAction,
+            ActionType,
+        )
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        service = NotificationRuleEngine()
+
+        # Mock DB Session
+        db = AsyncMock()
+        db.add = MagicMock()
+        db.commit = AsyncMock()
+
+        user_id = uuid4()
+        action = NotificationAction(
+            action_type=ActionType.IN_APP,
+            rule_id=uuid4(),
+            user_id=user_id,
+            event_type="test.event",
+            payload={},
+            title="Test Notification",
+            message="Test Message",
+            action_url="/test",
+        )
+
+        with patch('app.services.notification.rule_engine.UserNotification') as mock_model:
+            result = await service.execute_actions(db, [action])
+
+            assert result["in_app"] == 1
+            db.add.assert_called_once()
+            db.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_execute_actions_empty_list(self) -> None:
+        """Testet execute_actions mit leerer Aktionsliste."""
+        from app.services.notification.rule_engine import NotificationRuleEngine
+        from unittest.mock import AsyncMock
+
+        service = NotificationRuleEngine()
+
+        # Mock DB Session
+        db = AsyncMock()
+
+        result = await service.execute_actions(db, [])
+
+        assert result["in_app"] == 0
+        assert result["push"] == 0
+        assert result["email"] == 0
+        assert result["webhook"] == 0
+
+    @pytest.mark.asyncio
+    async def test_execute_actions_error_handling(self) -> None:
+        """Testet Fehlerbehandlung bei Aktions-Ausfuehrung."""
+        from app.services.notification.rule_engine import (
+            NotificationRuleEngine,
+            NotificationAction,
+            ActionType,
+        )
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        service = NotificationRuleEngine()
+
+        # Mock DB Session that raises error on commit
+        db = AsyncMock()
+        db.add = MagicMock()  # db.add is synchronous
+        db.commit = AsyncMock(side_effect=Exception("DB Error"))
+
+        action = NotificationAction(
+            action_type=ActionType.IN_APP,
+            rule_id=uuid4(),
+            user_id=uuid4(),
+            event_type="test.event",
+            payload={},
+            title="Test",
+            message="Test",
+        )
+
+        with patch('app.services.notification.rule_engine.UserNotification'):
+            # Should not raise, errors are caught internally
+            result = await service.execute_actions(db, [action])
+
+            # Action failed, count is 0
+            assert result["in_app"] == 0
+
+
+# =============================================================================
+# Update Rule Statistics Tests
+# =============================================================================
+
+class TestUpdateRuleStatistics:
+    """Tests fuer update_rule_statistics Methode."""
+
+    @pytest.mark.asyncio
+    async def test_update_rule_statistics(self) -> None:
+        """Testet Aktualisierung der Regel-Statistiken."""
+        from app.services.notification.rule_engine import NotificationRuleEngine
+        from unittest.mock import AsyncMock
+
+        service = NotificationRuleEngine()
+
+        # Mock DB Session
+        db = AsyncMock()
+        db.execute = AsyncMock()
+        db.commit = AsyncMock()
+
+        rule_id = uuid4()
+        event_id = uuid4()
+
+        await service.update_rule_statistics(db, rule_id, event_id)
+
+        db.execute.assert_awaited_once()
+        db.commit.assert_awaited_once()
+
+
+# =============================================================================
+# Get Active Rules Tests
+# =============================================================================
+
+class TestGetActiveRules:
+    """Tests fuer _get_active_rules Methode."""
+
+    @pytest.mark.asyncio
+    async def test_get_active_rules_basic(self) -> None:
+        """Testet Laden aktiver Regeln."""
+        from app.services.notification.rule_engine import NotificationRuleEngine
+        from unittest.mock import AsyncMock, MagicMock
+
+        service = NotificationRuleEngine()
+
+        # Mock DB Session
+        db = AsyncMock()
+
+        # Mock rules
+        mock_rules = [MagicMock(), MagicMock()]
+
+        # Mock query result
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = mock_rules
+        db.execute = AsyncMock(return_value=mock_result)
+
+        result = await service._get_active_rules(db, "test.event")
+
+        assert len(result) == 2
+        db.execute.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_get_active_rules_with_user_filter(self) -> None:
+        """Testet Laden aktiver Regeln mit User-Filter."""
+        from app.services.notification.rule_engine import NotificationRuleEngine
+        from unittest.mock import AsyncMock, MagicMock
+
+        service = NotificationRuleEngine()
+
+        # Mock DB Session
+        db = AsyncMock()
+        user_id = uuid4()
+
+        # Mock rules
+        mock_rules = [MagicMock()]
+
+        # Mock query result
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = mock_rules
+        db.execute = AsyncMock(return_value=mock_result)
+
+        result = await service._get_active_rules(db, "test.event", user_id)
+
+        assert len(result) == 1
+        db.execute.assert_awaited_once()

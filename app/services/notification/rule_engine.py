@@ -662,12 +662,20 @@ class NotificationRuleEngine:
         for action in actions:
             try:
                 if action.action_type == ActionType.IN_APP:
-                    await self._execute_in_app(db, action)
-                    results["in_app"] += 1
-                    RULES_TRIGGERED.labels(
-                        event_type=action.event_type,
-                        action_type="in_app"
-                    ).inc()
+                    try:
+                        await self._execute_in_app(db, action)
+                        results["in_app"] += 1
+                        RULES_TRIGGERED.labels(
+                            event_type=action.event_type,
+                            action_type="in_app"
+                        ).inc()
+                    except Exception as e:
+                        logger.error(
+                            "in_app_action_error",
+                            rule_id=str(action.rule_id),
+                            error=str(e)
+                        )
+                        continue
 
                 elif action.action_type == ActionType.PUSH:
                     push_service = PushNotificationService(db)
@@ -685,28 +693,51 @@ class NotificationRuleEngine:
                     ).inc()
 
                 elif action.action_type == ActionType.EMAIL:
-                    notification_service = NotificationService()
-                    await notification_service.connect()
-                    # TODO: Email-Versand implementieren
-                    results["email"] += 1
-                    RULES_TRIGGERED.labels(
-                        event_type=action.event_type,
-                        action_type="email"
-                    ).inc()
+                    # Email des Users aus der DB holen
+                    user_email = await self._get_user_email(db, action.user_id)
+                    if user_email:
+                        notification_service = NotificationService()
+                        # Verwende Template aus Aktion oder fallback auf generischen Text
+                        subject = action.email_subject or action.title or "Benachrichtigung"
+                        body = action.message or ""
+
+                        sent = await notification_service.email.send(
+                            to_email=user_email,
+                            subject=subject,
+                            body=body,
+                        )
+                        if sent:
+                            results["email"] += 1
+                            RULES_TRIGGERED.labels(
+                                event_type=action.event_type,
+                                action_type="email"
+                            ).inc()
+                    else:
+                        logger.warning(
+                            "email_action_no_recipient",
+                            rule_id=str(action.rule_id),
+                            user_id=str(action.user_id)
+                        )
 
                 elif action.action_type == ActionType.WEBHOOK:
                     notification_service = NotificationService()
-                    await notification_service.connect()
-                    await notification_service.trigger_webhook(
-                        event_type=action.event_type,
-                        payload=action.payload,
-                        webhook_urls=[action.webhook_url] if action.webhook_url else []
+                    payload = {
+                        "event_type": action.event_type,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "data": action.payload,
+                        "title": action.title,
+                        "message": action.message,
+                    }
+                    sent = await notification_service.webhook.send(
+                        webhook_url=action.webhook_url,
+                        payload=payload,
                     )
-                    results["webhook"] += 1
-                    RULES_TRIGGERED.labels(
-                        event_type=action.event_type,
-                        action_type="webhook"
-                    ).inc()
+                    if sent:
+                        results["webhook"] += 1
+                        RULES_TRIGGERED.labels(
+                            event_type=action.event_type,
+                            action_type="webhook"
+                        ).inc()
 
             except Exception as e:
                 logger.error(
@@ -739,6 +770,25 @@ class NotificationRuleEngine:
         )
         db.add(notification)
         await db.commit()
+
+    async def _get_user_email(
+        self,
+        db: AsyncSession,
+        user_id: UUID
+    ) -> Optional[str]:
+        """Holt die Email-Adresse eines Users aus der DB.
+
+        Args:
+            db: Database Session
+            user_id: Die User-ID
+
+        Returns:
+            Email-Adresse oder None wenn nicht gefunden
+        """
+        user = await db.get(User, user_id)
+        if user and user.email:
+            return user.email
+        return None
 
     async def update_rule_statistics(
         self,

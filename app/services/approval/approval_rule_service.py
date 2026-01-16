@@ -11,17 +11,16 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Any, Optional, Sequence
 from uuid import UUID
 
-from sqlalchemy import and_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
     ApprovalRule,
     ApprovalRuleType,
-    User,
 )
 
 logger = logging.getLogger(__name__)
@@ -278,11 +277,13 @@ class ApprovalRuleService:
         total_conditions = len(conditions)
 
         for condition_key, condition_value in conditions.items():
+            # WICHTIG: _not_in muss VOR _in ersetzt werden, da sonst
+            # "category_not_in" zu "category_not" wird statt "category"
             entity_value = entity_data.get(condition_key.replace("_greater_than", "")
                                            .replace("_less_than", "")
                                            .replace("_equals", "")
-                                           .replace("_in", "")
-                                           .replace("_not_in", ""))
+                                           .replace("_not_in", "")
+                                           .replace("_in", ""))
 
             if entity_value is None:
                 continue
@@ -296,11 +297,13 @@ class ApprovalRuleService:
             elif "_equals" in condition_key:
                 if entity_value == condition_value:
                     matched_conditions.append(condition_key)
+            elif "_not_in" in condition_key:
+                # WICHTIG: _not_in muss VOR _in geprueft werden,
+                # da "category_not_in" auch "_in" enthaelt
+                if entity_value not in condition_value:
+                    matched_conditions.append(condition_key)
             elif "_in" in condition_key:
                 if entity_value in condition_value:
-                    matched_conditions.append(condition_key)
-            elif "_not_in" in condition_key:
-                if entity_value not in condition_value:
                     matched_conditions.append(condition_key)
             else:
                 # Exakte Uebereinstimmung
@@ -345,7 +348,7 @@ class ApprovalRuleService:
                 return entity_value < condition_value
             elif operator == "==":
                 return entity_value == condition_value
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, InvalidOperation):
             return False
 
         return False
@@ -429,3 +432,20 @@ class ApprovalRuleService:
         )
 
         return created_rules
+
+    async def evaluate_rule_conditions(
+        self,
+        rule: ApprovalRule,
+        entity_data: dict[str, Any],
+    ) -> bool:
+        """Evaluiert ob eine Regel auf Entity-Daten zutrifft (fuer API Preview).
+
+        Args:
+            rule: Die zu pruefende Regel
+            entity_data: Testdaten der Entitaet
+
+        Returns:
+            True wenn die Regel zutrifft
+        """
+        result = self._evaluate_conditions(rule.conditions or {}, entity_data)
+        return result["matches"]
