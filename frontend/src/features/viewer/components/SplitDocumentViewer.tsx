@@ -15,16 +15,15 @@ import { CommentsPanel, ActivityStream } from '@/features/collaboration';
 import { apiClient } from '@/lib/api/client';
 import { AnnotationLayer } from './AnnotationLayer';
 import { ViewerErrorBoundary } from '@/components/errors';
+import { useViewerShortcuts } from '../hooks/useViewerShortcuts';
 
 // Lazy load Office/Email viewers
 const DocxViewer = lazy(() => import('./DocxViewer'));
 const XlsxViewer = lazy(() => import('./XlsxViewer'));
 const EmailViewer = lazy(() => import('./EmailViewer'));
 
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.min.mjs',
-    import.meta.url
-).toString();
+// Use CDN for PDF.js worker to avoid Vite bundling issues
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 /**
  * Hook um Dokument-Preview mit Auth-Token zu laden.
@@ -154,6 +153,18 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
     const effectiveNumPages = isImage || fileCategory === 'docx' || fileCategory === 'xlsx' || fileCategory === 'email'
         ? 1
         : numPages;
+
+    // Keyboard shortcuts für Zoom und Seiten-Navigation
+    useViewerShortcuts({
+        scale,
+        onScaleChange: setScale,
+        currentPage,
+        numPages: effectiveNumPages,
+        onPageChange: setCurrentPage,
+        minScale: 0.5,
+        maxScale: 3,
+        scaleStep: 0.25,
+    });
 
     // Check if this is an Office/Email document that uses a specialized viewer
     const usesSpecialViewer = fileCategory === 'docx' || fileCategory === 'xlsx' || fileCategory === 'email';

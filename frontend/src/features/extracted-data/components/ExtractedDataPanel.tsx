@@ -3,8 +3,8 @@
  *
  * Zeigt je nach Dokumenttyp die entsprechende Anzeige-Komponente:
  * - InvoiceDataDisplay für Rechnungen
- * - OrderDataDisplay für Bestellungen (TODO)
- * - ContractDataDisplay für Verträge (TODO)
+ * - OrderDataDisplay für Bestellungen
+ * - ContractDataDisplay für Verträge
  */
 
 import { FileText, AlertTriangle, Loader2, Clock } from "lucide-react";
@@ -15,6 +15,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ConfidenceIndicator } from "@/features/validation/components/ConfidenceIndicator";
 import { useExtractedData } from "../hooks/useExtractedData";
 import { InvoiceDataDisplay } from "./InvoiceDataDisplay";
+import { OrderDataDisplay } from "./OrderDataDisplay";
+import { ContractDataDisplay } from "./ContractDataDisplay";
 import { useQuery } from "@tanstack/react-query";
 import { documentsService } from "@/lib/api/services/documents";
 import type { ExtractedDocumentType } from "../types/extracted-data.types";
@@ -242,21 +244,11 @@ export function ExtractedDataPanel({
                 )}
 
                 {documentType === "order" && data.order && (
-                    <div className="text-center text-muted-foreground py-8">
-                        <p>Bestellungsanzeige wird in einer zukünftigen Version implementiert.</p>
-                        <pre className="mt-4 text-xs text-left bg-muted p-4 rounded overflow-auto max-h-96">
-                            {JSON.stringify(data.order, null, 2)}
-                        </pre>
-                    </div>
+                    <OrderDataDisplay order={data.order} />
                 )}
 
                 {documentType === "contract" && data.contract && (
-                    <div className="text-center text-muted-foreground py-8">
-                        <p>Vertragsanzeige wird in einer zukünftigen Version implementiert.</p>
-                        <pre className="mt-4 text-xs text-left bg-muted p-4 rounded overflow-auto max-h-96">
-                            {JSON.stringify(data.contract, null, 2)}
-                        </pre>
-                    </div>
+                    <ContractDataDisplay contract={data.contract} />
                 )}
 
                 {documentType === "unknown" && (

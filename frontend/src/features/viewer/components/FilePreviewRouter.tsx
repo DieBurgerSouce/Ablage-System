@@ -2,12 +2,16 @@
  * FilePreviewRouter - MIME Type Based Preview Router
  *
  * Routet Dateivorschauen basierend auf dem MIME-Typ zur passenden
- * Viewer-Komponente (PDF, Bild, DOCX, XLSX, Email).
+ * Viewer-Komponente (PDF, Bild, DOCX, XLSX, Email, Text).
  */
 
-import { lazy, Suspense } from 'react';
-import { Loader2, FileQuestion } from 'lucide-react';
+import { lazy, Suspense, useState, useMemo, useEffect } from 'react';
+import { Loader2, FileQuestion, AlertTriangle } from 'lucide-react';
+import { Document, Page, pdfjs } from 'react-pdf';
 import { cn } from '@/lib/utils';
+
+// PDF.js Worker setup
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 // ==================== Lazy Loaded Viewers ====================
 
@@ -150,6 +154,246 @@ function LoadingFallback({ className }: { className?: string }) {
     );
 }
 
+// ==================== Simple PDF Viewer ====================
+
+interface SimplePdfViewerProps {
+    fileData: ArrayBuffer | Blob | string;
+    className?: string;
+    onError?: (error: Error) => void;
+}
+
+function SimplePdfViewer({ fileData, className, onError }: SimplePdfViewerProps) {
+    const [numPages, setNumPages] = useState<number | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [error, setError] = useState<string | null>(null);
+
+    // Convert fileData to a format react-pdf can use
+    const pdfSource = useMemo(() => {
+        if (typeof fileData === 'string') {
+            return fileData; // URL or data URL
+        }
+        if (fileData instanceof Blob) {
+            return URL.createObjectURL(fileData);
+        }
+        // ArrayBuffer - convert to Blob then URL
+        return URL.createObjectURL(new Blob([fileData], { type: 'application/pdf' }));
+    }, [fileData]);
+
+    // Cleanup blob URL
+    useEffect(() => {
+        return () => {
+            if (typeof fileData !== 'string' && pdfSource.startsWith('blob:')) {
+                URL.revokeObjectURL(pdfSource);
+            }
+        };
+    }, [pdfSource, fileData]);
+
+    return (
+        <div className={cn('h-full overflow-auto bg-muted/30 flex flex-col', className)}>
+            {error ? (
+                <div className="flex-1 flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-3 text-destructive">
+                        <AlertTriangle className="h-8 w-8" />
+                        <span>PDF konnte nicht geladen werden</span>
+                        <span className="text-xs text-muted-foreground">{error}</span>
+                    </div>
+                </div>
+            ) : (
+                <>
+                    {numPages && numPages > 1 && (
+                        <div className="sticky top-0 bg-background/95 backdrop-blur px-4 py-2 border-b flex items-center justify-center gap-4 z-10">
+                            <button
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={currentPage <= 1}
+                                className="px-3 py-1 text-sm rounded border hover:bg-muted disabled:opacity-50"
+                            >
+                                Zurück
+                            </button>
+                            <span className="text-sm">
+                                Seite {currentPage} von {numPages}
+                            </span>
+                            <button
+                                onClick={() => setCurrentPage(p => Math.min(numPages, p + 1))}
+                                disabled={currentPage >= numPages}
+                                className="px-3 py-1 text-sm rounded border hover:bg-muted disabled:opacity-50"
+                            >
+                                Weiter
+                            </button>
+                        </div>
+                    )}
+                    <div className="flex-1 flex justify-center p-4">
+                        <Document
+                            file={pdfSource}
+                            onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+                            onLoadError={(err) => {
+                                const message = err instanceof Error ? err.message : 'Unbekannter Fehler';
+                                setError(message);
+                                onError?.(err instanceof Error ? err : new Error(message));
+                            }}
+                            className="shadow-lg"
+                            loading={<LoadingFallback />}
+                        >
+                            <Page
+                                pageNumber={currentPage}
+                                renderTextLayer={true}
+                                renderAnnotationLayer={true}
+                            />
+                        </Document>
+                    </div>
+                </>
+            )}
+        </div>
+    );
+}
+
+// ==================== Simple Image Viewer ====================
+
+interface SimpleImageViewerProps {
+    fileData: ArrayBuffer | Blob | string;
+    className?: string;
+    onError?: (error: Error) => void;
+}
+
+function SimpleImageViewer({ fileData, className, onError }: SimpleImageViewerProps) {
+    const [error, setError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    // Convert fileData to a displayable URL
+    const imageUrl = useMemo(() => {
+        if (typeof fileData === 'string') {
+            return fileData;
+        }
+        if (fileData instanceof Blob) {
+            return URL.createObjectURL(fileData);
+        }
+        // ArrayBuffer
+        return URL.createObjectURL(new Blob([fileData]));
+    }, [fileData]);
+
+    // Cleanup blob URL
+    useEffect(() => {
+        return () => {
+            if (typeof fileData !== 'string' && imageUrl.startsWith('blob:')) {
+                URL.revokeObjectURL(imageUrl);
+            }
+        };
+    }, [imageUrl, fileData]);
+
+    // Error state takes precedence
+    if (error) {
+        return (
+            <div className={cn('h-full overflow-auto bg-muted/30 flex items-center justify-center p-4', className)}>
+                <div className="flex flex-col items-center gap-3 text-destructive">
+                    <AlertTriangle className="h-8 w-8" />
+                    <span>Bild konnte nicht geladen werden</span>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className={cn('h-full overflow-auto bg-muted/30 flex items-center justify-center p-4 relative', className)}>
+            {/* Loading indicator shown while image loads */}
+            {isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-muted/30">
+                    <LoadingFallback />
+                </div>
+            )}
+            <img
+                src={imageUrl}
+                alt="Vorschau"
+                className={cn(
+                    'max-w-full max-h-full object-contain shadow-lg transition-opacity duration-200',
+                    isLoading ? 'opacity-0' : 'opacity-100'
+                )}
+                onLoad={() => setIsLoading(false)}
+                onError={() => {
+                    setIsLoading(false);
+                    setError('Bild konnte nicht geladen werden');
+                    onError?.(new Error('Failed to load image'));
+                }}
+            />
+        </div>
+    );
+}
+
+// ==================== Simple Text Viewer ====================
+
+interface SimpleTextViewerProps {
+    fileData: ArrayBuffer | Blob | string;
+    className?: string;
+    onError?: (error: Error) => void;
+}
+
+function SimpleTextViewer({ fileData, className, onError }: SimpleTextViewerProps) {
+    const [text, setText] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        async function loadText() {
+            try {
+                let content: string;
+
+                if (typeof fileData === 'string') {
+                    // Could be a URL or text content
+                    if (fileData.startsWith('blob:') || fileData.startsWith('http')) {
+                        const response = await fetch(fileData);
+                        content = await response.text();
+                    } else {
+                        content = fileData;
+                    }
+                } else if (fileData instanceof Blob) {
+                    content = await fileData.text();
+                } else {
+                    // ArrayBuffer
+                    const decoder = new TextDecoder('utf-8');
+                    content = decoder.decode(fileData);
+                }
+
+                if (!cancelled) {
+                    setText(content);
+                    setIsLoading(false);
+                }
+            } catch (err) {
+                if (!cancelled) {
+                    const message = err instanceof Error ? err.message : 'Fehler beim Laden';
+                    setError(message);
+                    setIsLoading(false);
+                    onError?.(err instanceof Error ? err : new Error(message));
+                }
+            }
+        }
+
+        loadText();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [fileData, onError]);
+
+    return (
+        <div className={cn('h-full overflow-auto bg-muted/30', className)}>
+            {isLoading ? (
+                <LoadingFallback />
+            ) : error ? (
+                <div className="flex items-center justify-center h-full">
+                    <div className="flex flex-col items-center gap-3 text-destructive">
+                        <AlertTriangle className="h-8 w-8" />
+                        <span>Text konnte nicht geladen werden</span>
+                    </div>
+                </div>
+            ) : (
+                <pre className="p-4 text-sm font-mono whitespace-pre-wrap break-words">
+                    {text}
+                </pre>
+            )}
+        </div>
+    );
+}
+
 // ==================== Unsupported Type Fallback ====================
 
 interface UnsupportedTypeFallbackProps {
@@ -194,23 +438,20 @@ export function FilePreviewRouter({
     // Route to appropriate viewer
     switch (category) {
         case 'pdf':
-            // PDF is handled by SplitDocumentViewer (react-pdf)
-            // This router is for the other types
             return (
-                <UnsupportedTypeFallback
-                    mimeType={mimeType}
-                    filename={filename}
+                <SimplePdfViewer
+                    fileData={fileData}
                     className={className}
+                    onError={onError}
                 />
             );
 
         case 'image':
-            // Images are handled by ImageViewer in SplitDocumentViewer
             return (
-                <UnsupportedTypeFallback
-                    mimeType={mimeType}
-                    filename={filename}
+                <SimpleImageViewer
+                    fileData={fileData}
                     className={className}
+                    onError={onError}
                 />
             );
 
@@ -236,13 +477,11 @@ export function FilePreviewRouter({
             );
 
         case 'text':
-            // For text files, we could add a simple text viewer
-            // For now, treat as unsupported
             return (
-                <UnsupportedTypeFallback
-                    mimeType={mimeType}
-                    filename={filename}
+                <SimpleTextViewer
+                    fileData={fileData}
                     className={className}
+                    onError={onError}
                 />
             );
 

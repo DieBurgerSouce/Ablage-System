@@ -112,6 +112,9 @@ export async function listQueueItems(
   if (params.sample_source) {
     searchParams.append('sample_source', params.sample_source);
   }
+  if (params.search) {
+    searchParams.append('search', params.search);
+  }
   if (params.created_from) {
     searchParams.append('created_from', params.created_from);
   }

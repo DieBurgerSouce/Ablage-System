@@ -308,6 +308,7 @@ export interface ValidationQueueFilters {
   confidence_max?: number;
   assigned_to_id?: string;
   sample_source?: SampleSource;
+  search?: string; // Multi-Feld-Suche (document_name, document_type, notes)
   created_from?: string;
   created_to?: string;
 }

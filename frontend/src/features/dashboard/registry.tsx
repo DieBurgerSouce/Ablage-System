@@ -4,6 +4,10 @@ import { TodayWidget } from './components/widgets/TodayWidget'
 import { QuickLinksWidget } from './components/widgets/QuickLinksWidget'
 import { UploadWidget } from './components/widgets/UploadWidget'
 import { RecentDocumentsWidget } from './components/widgets/RecentDocumentsWidget'
+import { CashFlowWidget } from './components/widgets/CashFlowWidget'
+import { AgingReportWidget } from './components/widgets/AgingReportWidget'
+import { DunningWidget } from './components/widgets/DunningWidget'
+import { OCRPerformanceWidget } from './components/widgets/OCRPerformanceWidget'
 import type { LucideIcon } from 'lucide-react'
 import {
     Calendar,
@@ -93,39 +97,39 @@ const WIDGET_DEFINITIONS: WidgetRegistryEntry[] = [
     // Neue Widgets fuer Feature 05
     {
         type: 'open-invoices',
-        component: () => <div className="p-4">Offene Posten Widget (coming soon)</div>,
-        label: 'Offene Posten',
-        description: 'Zeigt offene Rechnungen mit Fälligkeitsdatum und Gesamtbetrag.',
+        component: DunningWidget,
+        label: 'Offene Mahnungen',
+        description: 'Zeigt offene Mahnungen mit Mahnstufen, Gesamtbetrag und betroffenen Kunden.',
         icon: Receipt,
         category: 'finance',
         defaultSize: { w: 6, h: 3 },
     },
     {
         type: 'cashflow',
-        component: () => <div className="p-4">Cashflow Widget (coming soon)</div>,
+        component: CashFlowWidget,
         label: 'Cashflow',
-        description: 'Mini-Chart mit Einnahmen vs Ausgaben der letzten Tage.',
+        description: 'Liquiditätsprognose mit Einnahmen vs Ausgaben der nächsten Tage.',
         icon: TrendingUp,
         category: 'finance',
         defaultSize: { w: 6, h: 4 },
     },
     {
         type: 'aging-report',
-        component: () => <div className="p-4">Aging Report Widget (coming soon)</div>,
+        component: AgingReportWidget,
         label: 'Fälligkeitsstruktur',
-        description: 'Aufschlüsselung nach Fälligkeitszeiträumen (0-30, 31-60, etc.).',
+        description: 'Altersstruktur von Forderungen und Verbindlichkeiten als Balkendiagramm.',
         icon: Clock,
         category: 'finance',
         defaultSize: { w: 6, h: 4 },
     },
     {
         type: 'documents-today',
-        component: () => <div className="p-4">Dokumente heute Widget (coming soon)</div>,
-        label: 'Dokumente heute',
-        description: 'Heute verarbeitete Dokumente mit OCR-Erfolgsrate.',
+        component: OCRPerformanceWidget,
+        label: 'OCR-Performance',
+        description: 'Heute verarbeitete Dokumente mit Erfolgsrate und Backend-Verteilung.',
         icon: FileCheck,
         category: 'data',
-        defaultSize: { w: 4, h: 3 },
+        defaultSize: { w: 6, h: 4 },
     },
     // Enterprise KPI Widgets
     {

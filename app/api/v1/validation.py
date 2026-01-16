@@ -90,6 +90,7 @@ async def list_queue_items(
     confidence_max: Optional[float] = Query(None, ge=0, le=1, description="Maximale Confidence"),
     assigned_to_id: Optional[UUID] = Query(None, description="Filter nach zugewiesenem Editor"),
     sample_source: Optional[str] = Query(None, description="Filter nach Stichproben-Quelle"),
+    search: Optional[str] = Query(None, max_length=200, description="Multi-Feld-Suche (Dokumentname, Typ, Notizen)"),
     created_from: Optional[datetime] = Query(None, description="Erstellt ab"),
     created_to: Optional[datetime] = Query(None, description="Erstellt bis"),
     # Sorting and pagination
@@ -109,6 +110,11 @@ async def list_queue_items(
     service = get_validation_queue_service(db)
 
     # Einzelne Query-Parameter in Listen wrappen fuer ValidationQueueFilters
+    # Input Sanitization: Search-Parameter gegen SQL-Injection schützen
+    sanitized_search = None
+    if search:
+        sanitized_search = sanitize_text_field(search, max_length=200, field_name="search")
+
     filters = ValidationQueueFilters(
         status=[status] if status else None,
         document_type=[document_type] if document_type else None,
@@ -118,6 +124,7 @@ async def list_queue_items(
         confidence_max=confidence_max,
         assigned_to_id=assigned_to_id,
         sample_source=[sample_source] if sample_source else None,
+        search=sanitized_search,
         created_from=created_from,
         created_to=created_to
     )

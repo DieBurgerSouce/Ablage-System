@@ -216,8 +216,15 @@ class ValidationQueueService:
                 conditions.append(ValidationQueueItem.created_at <= filters.created_to)
 
             if filters.search:
+                # Multi-Feld-Suche: document_name, document_type, validation_notes
                 search_pattern = f"%{filters.search}%"
-                conditions.append(ValidationQueueItem.document_name.ilike(search_pattern))
+                search_conditions = or_(
+                    ValidationQueueItem.document_name.ilike(search_pattern),
+                    ValidationQueueItem.document_type.ilike(search_pattern),
+                    ValidationQueueItem.validation_notes.ilike(search_pattern),
+                    ValidationQueueItem.rejection_reason.ilike(search_pattern),
+                )
+                conditions.append(search_conditions)
 
             if conditions:
                 query = query.where(and_(*conditions))
