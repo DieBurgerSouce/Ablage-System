@@ -8,6 +8,7 @@ Enterprise Feature: Automatisierte Genehmigungsworkflows mit:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timedelta
 
@@ -15,8 +16,8 @@ from app.core.datetime_utils import utc_now
 from typing import Any, Optional
 from uuid import UUID
 
-from celery import shared_task
 from sqlalchemy import and_, select
+from sqlalchemy.orm import joinedload, Session
 
 from app.workers.celery_app import celery_app
 from app.db.session import get_sync_session
@@ -25,6 +26,13 @@ from app.db.models import (
     ApprovalStatus,
     ApprovalStep,
     Company,
+    User,
+    UserCompany,
+)
+from app.services.notification_service import (
+    NotificationService,
+    NotificationType,
+    NotificationPriority,
 )
 
 logger = logging.getLogger(__name__)
@@ -56,11 +64,18 @@ def escalate_overdue_approvals(
     with get_sync_session() as db:
         now = utc_now()
 
-        query = select(ApprovalRequest).where(
-            and_(
-                ApprovalRequest.status == ApprovalStatus.PENDING,
-                ApprovalRequest.due_date < now,
-                ApprovalRequest.is_escalated.is_(False),
+        query = (
+            select(ApprovalRequest)
+            .options(
+                joinedload(ApprovalRequest.requested_by),
+                joinedload(ApprovalRequest.triggered_by_rule),
+            )
+            .where(
+                and_(
+                    ApprovalRequest.status == ApprovalStatus.PENDING,
+                    ApprovalRequest.due_date < now,
+                    ApprovalRequest.is_escalated.is_(False),
+                )
             )
         )
 
@@ -68,9 +83,11 @@ def escalate_overdue_approvals(
             query = query.where(ApprovalRequest.company_id == UUID(company_id))
 
         result = db.execute(query)
-        overdue_requests = result.scalars().all()
+        overdue_requests = result.unique().scalars().all()
 
         escalated_count = 0
+        notifications_sent = 0
+
         for request in overdue_requests:
             request.is_escalated = True
             request.status = ApprovalStatus.ESCALATED
@@ -82,17 +99,155 @@ def escalate_overdue_approvals(
                 f"Faellig seit {request.due_date}"
             )
 
-            # TODO: Benachrichtigung an Eskalationsempfaenger senden
+            # Benachrichtigung an Eskalationsempfaenger senden
+            escalation_recipients = _get_escalation_recipients(db, request)
+            for recipient in escalation_recipients:
+                try:
+                    _send_escalation_notification(request, recipient, now)
+                    notifications_sent += 1
+                except Exception as e:
+                    logger.error(
+                        f"Fehler beim Senden der Eskalations-Benachrichtigung: {e}"
+                    )
 
         db.commit()
 
-    logger.info(f"Eskalation abgeschlossen: {escalated_count} Anfragen eskaliert")
+    logger.info(
+        f"Eskalation abgeschlossen: {escalated_count} Anfragen eskaliert, "
+        f"{notifications_sent} Benachrichtigungen gesendet"
+    )
 
     return {
         "success": True,
         "escalated_count": escalated_count,
+        "notifications_sent": notifications_sent,
         "timestamp": now.isoformat(),
     }
+
+
+def _get_escalation_recipients(
+    db: Session,
+    request: ApprovalRequest,
+) -> list[User]:
+    """Ermittelt die Eskalationsempfaenger fuer eine Anfrage.
+
+    Args:
+        db: Database Session
+        request: Die eskalierte Anfrage
+
+    Returns:
+        Liste von User-Objekten
+    """
+    recipients = []
+
+    # 1. Eskalations-Rolle aus der Regel holen
+    escalation_role = None
+    if request.triggered_by_rule and request.triggered_by_rule.escalation_to_role:
+        escalation_role = request.triggered_by_rule.escalation_to_role
+
+    # 2. Wenn Eskalations-Rolle definiert, User mit dieser Rolle finden
+    #    Nutze UserCompany-Tabelle fuer Multi-Tenant Zuordnung
+    if escalation_role:
+        role_users_query = (
+            select(User)
+            .join(UserCompany, User.id == UserCompany.user_id)
+            .where(
+                and_(
+                    UserCompany.company_id == request.company_id,
+                    UserCompany.role == escalation_role,
+                    User.is_active == True,
+                )
+            )
+        )
+        result = db.execute(role_users_query)
+        role_users = result.scalars().all()
+        recipients.extend(role_users)
+
+    # 3. Fallback: Wenn keine Rolle definiert oder keine User gefunden,
+    #    suche nach Administratoren der Firma (owner, admin, manager)
+    if not recipients:
+        admin_query = (
+            select(User)
+            .join(UserCompany, User.id == UserCompany.user_id)
+            .where(
+                and_(
+                    UserCompany.company_id == request.company_id,
+                    UserCompany.role.in_(["admin", "manager", "owner"]),
+                    User.is_active == True,
+                )
+            )
+        )
+        result = db.execute(admin_query)
+        admins = result.scalars().all()
+        recipients.extend(admins)
+
+    return recipients
+
+
+def _send_escalation_notification(
+    request: ApprovalRequest,
+    recipient: User,
+    escalated_at: datetime,
+) -> None:
+    """Sendet eine Eskalations-Benachrichtigung.
+
+    Args:
+        request: Die eskalierte Anfrage
+        recipient: Der Empfaenger
+        escalated_at: Zeitpunkt der Eskalation
+    """
+    # Antragsteller-Name ermitteln
+    requester_name = "Unbekannt"
+    if request.requested_by:
+        requester_name = (
+            request.requested_by.full_name
+            if request.requested_by.full_name
+            else request.requested_by.email
+        )
+
+    # Faelligkeitsdatum formatieren
+    due_date_str = (
+        request.due_date.strftime("%d.%m.%Y %H:%M")
+        if request.due_date
+        else "Nicht angegeben"
+    )
+
+    # Eskalations-Zeitpunkt formatieren
+    escalated_at_str = escalated_at.strftime("%d.%m.%Y %H:%M")
+
+    context = {
+        "request_id": str(request.id),
+        "request_subject": request.title,
+        "requester_name": requester_name,
+        "due_date": due_date_str,
+        "escalated_at": escalated_at_str,
+    }
+
+    # Benachrichtigung senden (async via asyncio.run)
+    async def _send() -> None:
+        notification_service = NotificationService()
+        await notification_service.notify(
+            notification_type=NotificationType.APPROVAL_ESCALATED,
+            context=context,
+            user_id=str(recipient.id),
+            email=recipient.email if recipient.email else None,
+            priority=NotificationPriority.HIGH,
+        )
+
+    recipient_identifier = recipient.email or str(recipient.id)
+    try:
+        asyncio.run(_send())
+        logger.info(
+            f"Eskalations-Benachrichtigung gesendet an {recipient_identifier} "
+            f"fuer Anfrage {request.id}"
+        )
+    except Exception as e:
+        # Fehler loggen aber nicht werfen - Notification-Fehler sollten
+        # nicht den gesamten Eskalationsprozess abbrechen
+        logger.error(
+            f"Fehler beim Senden der Eskalations-Benachrichtigung "
+            f"an {recipient_identifier}: {e}"
+        )
 
 
 @celery_app.task(
@@ -119,9 +274,15 @@ def send_approval_reminders(
         now = utc_now()
         reminder_threshold = now + timedelta(hours=hours_before_due)
 
-        # Finde bald faellige Steps
+        # Finde bald faellige Steps mit allen benoetigten Relationen
         query = (
             select(ApprovalStep)
+            .options(
+                joinedload(ApprovalStep.assigned_user),
+                joinedload(ApprovalStep.approval_request).joinedload(
+                    ApprovalRequest.requested_by
+                ),
+            )
             .join(ApprovalRequest)
             .where(
                 and_(
@@ -135,7 +296,7 @@ def send_approval_reminders(
         )
 
         result = db.execute(query)
-        pending_steps = result.scalars().all()
+        pending_steps = result.unique().scalars().all()
 
         reminders_sent = 0
         for step in pending_steps:
@@ -145,10 +306,17 @@ def send_approval_reminders(
                     continue
 
             # Erinnerung senden
-            # TODO: Notification Service aufrufen
+            try:
+                _send_reminder_notification(step, now)
+                reminders_sent += 1
+            except Exception as e:
+                logger.error(
+                    f"Fehler beim Senden der Erinnerung fuer Step {step.id}: {e}"
+                )
+                continue
+
             step.reminder_sent_count += 1
             step.last_reminder_at = now
-            reminders_sent += 1
 
             logger.info(
                 f"Erinnerung gesendet fuer Approval-Schritt {step.id} "
@@ -164,6 +332,92 @@ def send_approval_reminders(
         "reminders_sent": reminders_sent,
         "timestamp": now.isoformat(),
     }
+
+
+def _send_reminder_notification(
+    step: ApprovalStep,
+    now: datetime,
+) -> None:
+    """Sendet eine Erinnerungs-Benachrichtigung an den zugewiesenen User.
+
+    Args:
+        step: Der Approval-Schritt
+        now: Aktueller Zeitpunkt
+    """
+    if not step.assigned_user:
+        logger.warning(f"Kein zugewiesener User fuer Step {step.id}")
+        return
+
+    approval_request = step.approval_request
+    if not approval_request:
+        logger.warning(f"Keine ApprovalRequest fuer Step {step.id}")
+        return
+
+    # Antragsteller-Name ermitteln
+    requester_name = "Unbekannt"
+    if approval_request.requested_by:
+        requester_name = (
+            approval_request.requested_by.full_name
+            if approval_request.requested_by.full_name
+            else approval_request.requested_by.email
+        )
+
+    # Faelligkeitsdatum formatieren
+    due_date_str = (
+        approval_request.due_date.strftime("%d.%m.%Y %H:%M")
+        if approval_request.due_date
+        else "Nicht angegeben"
+    )
+
+    # Verbleibende Zeit berechnen
+    time_remaining = "Unbekannt"
+    if approval_request.due_date:
+        remaining_delta = approval_request.due_date - now
+        if remaining_delta.total_seconds() > 0:
+            hours = int(remaining_delta.total_seconds() // 3600)
+            minutes = int((remaining_delta.total_seconds() % 3600) // 60)
+            if hours > 24:
+                days = hours // 24
+                time_remaining = f"{days} Tag(e) und {hours % 24} Stunde(n)"
+            elif hours > 0:
+                time_remaining = f"{hours} Stunde(n) und {minutes} Minute(n)"
+            else:
+                time_remaining = f"{minutes} Minute(n)"
+
+    context = {
+        "request_id": str(approval_request.id),
+        "request_subject": approval_request.title,
+        "requester_name": requester_name,
+        "due_date": due_date_str,
+        "time_remaining": time_remaining,
+        "reminder_count": step.reminder_sent_count + 1,
+    }
+
+    # Benachrichtigung senden (async via asyncio.run)
+    async def _send() -> None:
+        notification_service = NotificationService()
+        await notification_service.notify(
+            notification_type=NotificationType.APPROVAL_REMINDER,
+            context=context,
+            user_id=str(step.assigned_user_id),
+            email=step.assigned_user.email if step.assigned_user.email else None,
+            priority=NotificationPriority.NORMAL,
+        )
+
+    user_identifier = step.assigned_user.email or str(step.assigned_user_id)
+    try:
+        asyncio.run(_send())
+        logger.debug(
+            f"Erinnerungs-Benachrichtigung gesendet an {user_identifier} "
+            f"fuer Anfrage {approval_request.id}"
+        )
+    except Exception as e:
+        # Fehler loggen aber nicht werfen - Notification-Fehler sollten
+        # nicht den gesamten Reminder-Prozess abbrechen
+        logger.error(
+            f"Fehler beim Senden der Erinnerungs-Benachrichtigung "
+            f"an {user_identifier}: {e}"
+        )
 
 
 @celery_app.task(

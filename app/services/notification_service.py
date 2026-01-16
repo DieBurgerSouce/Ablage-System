@@ -100,6 +100,10 @@ class NotificationType:
     EXPORT_FAILED = "export_failed"
     SCHEDULED_EXPORT_COMPLETED = "scheduled_export_completed"
     SCHEDULED_EXPORT_FAILED = "scheduled_export_failed"
+    # Approval-spezifische Typen
+    APPROVAL_ESCALATED = "approval_escalated"
+    APPROVAL_REMINDER = "approval_reminder"
+    APPROVAL_ACTION_REQUIRED = "approval_action_required"
 
 
 class NotificationChannel:
@@ -352,6 +356,74 @@ Fehlerdetails:
 
 Der nächste Versuch ist für {next_run} geplant.
 Bei wiederholten Fehlern überprüfen Sie bitte die Export-Konfiguration.
+
+Mit freundlichen Grüßen,
+Ablage-System
+            """.strip(),
+        },
+        NotificationType.APPROVAL_ESCALATED: {
+            "subject": "Genehmigungsanfrage eskaliert - Sofortige Aufmerksamkeit erforderlich",
+            "body": """
+Sehr geehrter Benutzer,
+
+Eine Genehmigungsanfrage wurde eskaliert und erfordert Ihre sofortige Aufmerksamkeit.
+
+Anfrage-Details:
+- Anfrage-ID: {request_id}
+- Betreff: {request_subject}
+- Ursprünglicher Antragsteller: {requester_name}
+- Fälligkeitsdatum: {due_date}
+- Eskaliert am: {escalated_at}
+
+Grund der Eskalation:
+Die ursprüngliche Fälligkeitsfrist wurde überschritten ohne dass eine Entscheidung getroffen wurde.
+
+Bitte bearbeiten Sie diese Anfrage umgehend im Dashboard.
+
+Mit freundlichen Grüßen,
+Ablage-System
+            """.strip(),
+        },
+        NotificationType.APPROVAL_REMINDER: {
+            "subject": "Erinnerung: Ausstehende Genehmigung wartet auf Ihre Entscheidung",
+            "body": """
+Sehr geehrter Benutzer,
+
+Sie haben eine ausstehende Genehmigungsanfrage, die bald fällig ist.
+
+Anfrage-Details:
+- Anfrage-ID: {request_id}
+- Betreff: {request_subject}
+- Antragsteller: {requester_name}
+- Fälligkeitsdatum: {due_date}
+- Verbleibende Zeit: {time_remaining}
+
+Erinnerungszähler: {reminder_count}
+
+Bitte treffen Sie eine Entscheidung, um eine Eskalation zu vermeiden.
+
+Mit freundlichen Grüßen,
+Ablage-System
+            """.strip(),
+        },
+        NotificationType.APPROVAL_ACTION_REQUIRED: {
+            "subject": "Neue Genehmigungsanfrage: {request_subject}",
+            "body": """
+Sehr geehrter Benutzer,
+
+Sie haben eine neue Genehmigungsanfrage erhalten, die Ihre Aufmerksamkeit erfordert.
+
+Anfrage-Details:
+- Anfrage-ID: {request_id}
+- Betreff: {request_subject}
+- Antragsteller: {requester_name}
+- Priorität: {priority}
+- Fälligkeitsdatum: {due_date}
+
+Beschreibung:
+{description}
+
+Bitte prüfen und genehmigen oder ablehnen Sie diese Anfrage im Dashboard.
 
 Mit freundlichen Grüßen,
 Ablage-System
