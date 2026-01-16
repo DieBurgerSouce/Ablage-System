@@ -16,6 +16,8 @@ import {
   Settings,
   X,
 } from 'lucide-react';
+import { FilterBuilder } from './FilterBuilder';
+import { ChartBuilder } from './ChartBuilder';
 import {
   Sheet,
   SheetContent,
@@ -231,7 +233,7 @@ export function ReportBuilder({ template, open, onClose }: ReportBuilderProps) {
         </SheetHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="basics" className="gap-2">
               <Settings className="h-4 w-4" />
               <span className="hidden sm:inline">Basics</span>
@@ -243,6 +245,10 @@ export function ReportBuilder({ template, open, onClose }: ReportBuilderProps) {
             <TabsTrigger value="filters" className="gap-2" disabled={!isEditing}>
               <Filter className="h-4 w-4" />
               <span className="hidden sm:inline">Filter</span>
+            </TabsTrigger>
+            <TabsTrigger value="charts" className="gap-2" disabled={!isEditing}>
+              <PieChart className="h-4 w-4" />
+              <span className="hidden sm:inline">Charts</span>
             </TabsTrigger>
             <TabsTrigger value="preview" className="gap-2" disabled={!isEditing}>
               <FileText className="h-4 w-4" />
@@ -470,17 +476,31 @@ export function ReportBuilder({ template, open, onClose }: ReportBuilderProps) {
             </TabsContent>
 
             <TabsContent value="filters" className="space-y-4 pr-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-center text-muted-foreground py-8">
-                    <Filter className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Filter-Konfiguration kommt bald.</p>
-                    <p className="text-sm mt-1">
-                      Hier können Sie später Bedingungen für die Datenfilterung definieren.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+              {template ? (
+                <FilterBuilder template={template} />
+              ) : (
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center text-muted-foreground py-8">
+                      <p>Bitte speichern Sie zuerst das Template.</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value="charts" className="space-y-4 pr-4">
+              {template ? (
+                <ChartBuilder template={template} />
+              ) : (
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center text-muted-foreground py-8">
+                      <p>Bitte speichern Sie zuerst das Template.</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             <TabsContent value="preview" className="space-y-4 pr-4">

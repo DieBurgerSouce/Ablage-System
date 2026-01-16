@@ -37,6 +37,7 @@ class OCRBackend(str, Enum):
 
 class DocumentType(str, Enum):
     """Document type classification."""
+    DOCUMENT = "document"  # Generic document (default for uncategorized)
     INVOICE = "invoice"
     ORDER = "order"
     CONTRACT = "contract"
@@ -865,6 +866,17 @@ class SearchRequest(BaseModel):
     similarity_threshold: float = Field(0.5, ge=0, le=1, description="Minimum similarity for semantic search")
 
 
+class MatchedEntityInfo(BaseModel):
+    """Entity match information for entity-aware search."""
+    entity_id: uuid.UUID
+    entity_name: str
+    entity_type: str = Field(..., description="customer or supplier")
+    match_type: str = Field(..., description="How entity was matched: name, customer_number, iban, vat_id")
+    match_confidence: float = Field(..., ge=0, le=1, description="Confidence of the entity match")
+    customer_number: Optional[str] = None
+    supplier_number: Optional[str] = None
+
+
 class SearchResultItem(BaseModel):
     """Single search result item."""
     document_id: uuid.UUID
@@ -891,7 +903,19 @@ class SearchResultItem(BaseModel):
     tags: List[str] = []
     owner_id: uuid.UUID
 
+    # Entity-aware search
+    matched_entity: Optional[MatchedEntityInfo] = Field(
+        None,
+        description="Entity that was matched if search found this document via entity linking"
+    )
+
     model_config = ConfigDict(from_attributes=True)
+
+
+class SynonymExpansion(BaseModel):
+    """Information about a synonym expansion."""
+    original: str = Field(..., description="Original search term")
+    synonyms: List[str] = Field(default_factory=list, description="Synonyms used for this term")
 
 
 class SearchResponse(BaseModel):
@@ -906,6 +930,10 @@ class SearchResponse(BaseModel):
     took_ms: int = Field(..., description="Query execution time in milliseconds")
     filters_applied: Dict[str, Any] = {}
     analytics_id: Optional[uuid.UUID] = Field(None, description="Analytics ID for click tracking")
+    synonym_expansions: List[SynonymExpansion] = Field(
+        default_factory=list,
+        description="List of synonyms used in query expansion"
+    )
 
 
 class SimilarDocumentsRequest(BaseModel):
@@ -2533,6 +2561,13 @@ class BusinessEntityResponse(BusinessEntityBase):
     verified: bool = False
     confidence_score: float = 0.0
     auto_detected: bool = False
+
+    # Risk Scoring
+    risk_score: Optional[float] = Field(None, ge=0, le=100, description="Risk score 0-100")
+    risk_factors: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Risk factor breakdown")
+    payment_behavior_score: Optional[float] = Field(None, ge=0, le=100, description="Payment behavior 0-100")
+    risk_calculated_at: Optional[datetime] = None
+
     created_at: datetime
     updated_at: Optional[datetime] = None
     full_address: Optional[str] = None
@@ -2549,6 +2584,7 @@ class BusinessEntitySummary(BaseModel):
     city: Optional[str] = None
     document_count: int = 0
     is_active: bool = True
+    risk_score: Optional[float] = None  # Quick access for dashboard
 
 
 class BusinessEntityListResponse(BaseModel):

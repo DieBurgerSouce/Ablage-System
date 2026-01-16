@@ -21,7 +21,8 @@ from sqlalchemy.orm import selectinload
 from app.db.models import Document, Tag, document_tags, DocumentAccess
 from app.db.schemas import (
     SearchType, SearchFilters, SearchResultItem, SearchResponse,
-    SimilarDocumentItem, SortField, SortOrder, DocumentType, ProcessingStatus
+    SimilarDocumentItem, SortField, SortOrder, DocumentType, ProcessingStatus,
+    SynonymExpansion
 )
 from app.core.config import settings
 from app.core.redis_state import RedisStateManager
@@ -35,6 +36,7 @@ from app.services.german_compound_splitter import (
     expand_query_with_umlauts
 )
 from app.services.reranker_service import get_reranker_service, RerankerService
+from app.services.query_expansion_service import QueryExpansionService
 
 logger = structlog.get_logger(__name__)
 
@@ -374,7 +376,8 @@ class SearchService:
         highlight: bool = True,
         similarity_threshold: Optional[float] = None,
         skip_cache: bool = False,
-        rerank: bool = True
+        rerank: bool = True,
+        use_synonyms: bool = False
     ) -> SearchResponse:
         """Dokumente durchsuchen.
 
@@ -392,6 +395,7 @@ class SearchService:
             similarity_threshold: Min. Aehnlichkeit fuer semantische Suche
             skip_cache: Cache fuer diese Anfrage umgehen
             rerank: Ergebnisse mit BGE-Reranker neu sortieren (verbessert Relevanz)
+            use_synonyms: Suchanfrage mit deutschen Geschaeftsbegriff-Synonymen erweitern
 
         Returns:
             SearchResponse mit Ergebnissen und Metadaten
@@ -440,15 +444,38 @@ class SearchService:
             except Exception as e:
                 logger.warning("search_cache_error", error=str(e), cache_key=cache_key[:50])
 
-        # Query erweitern: Compound-Splits + Umlaut-Varianten (fuer FTS und Hybrid)
+        # Query erweitern: Compound-Splits + Umlaut-Varianten + Synonyme (fuer FTS und Hybrid)
         expanded_query = query
         compound_terms: List[str] = []
         umlaut_terms: List[str] = []
+        synonym_expansions: List[Dict[str, Any]] = []
+
         if search_type in (SearchType.FTS, SearchType.HYBRID):
             # 1. Umlaut-Varianten expandieren (z.B. "Größe" -> auch "Groesse", "Grosse")
             expanded_query, umlaut_terms = expand_query_with_umlauts(query)
             # 2. Compound-Splits hinzufuegen (z.B. "Finanzamt" -> "Finanz", "Amt")
             expanded_query, compound_terms = self._expand_query_with_compounds(expanded_query)
+            # 3. Synonyme hinzufuegen (z.B. "Rechnung" -> auch "Invoice", "Faktura")
+            if use_synonyms:
+                try:
+                    synonym_service = QueryExpansionService()
+                    expanded_with_synonyms = synonym_service.expand_query_simple(
+                        expanded_query,
+                        max_expansions_per_term=3
+                    )
+                    # Hole Expansions-Info fuer Response
+                    preview = synonym_service.get_expansion_preview(query)
+                    synonym_expansions = preview.get("expansions", [])
+                    if expanded_with_synonyms != expanded_query:
+                        expanded_query = expanded_with_synonyms
+                        logger.debug(
+                            "synonyms_expanded",
+                            original=query[:50],
+                            expanded=expanded_query[:100],
+                            expansions_count=len(synonym_expansions)
+                        )
+                except Exception as e:
+                    logger.warning("synonym_expansion_error", error=str(e))
 
         logger.info(
             "search_started",
@@ -456,6 +483,7 @@ class SearchService:
             expanded_query=expanded_query[:100] if expanded_query != query else None,
             compound_terms_count=len(compound_terms),
             umlaut_terms_count=len(umlaut_terms),
+            synonym_expansions_count=len(synonym_expansions),
             search_type=search_type.value,
             user_id=str(user_id)
         )
@@ -508,6 +536,12 @@ class SearchService:
                 embedding=filters.has_embedding is not None,
             )
 
+        # Baue Synonym-Expansions fuer Response
+        synonym_expansion_models = [
+            SynonymExpansion(original=exp["original"], synonyms=exp["synonyms"])
+            for exp in synonym_expansions
+        ] if synonym_expansions else []
+
         response = SearchResponse(
             query=query,
             search_type=search_type,
@@ -517,7 +551,8 @@ class SearchService:
             total_pages=total_pages,
             results=results,
             took_ms=took_ms,
-            filters_applied=filters.model_dump(exclude_none=True) if filters else {}
+            filters_applied=filters.model_dump(exclude_none=True) if filters else {},
+            synonym_expansions=synonym_expansion_models
         )
 
         # Ergebnis cachen (wenn aktiviert und Ergebnisse vorhanden)

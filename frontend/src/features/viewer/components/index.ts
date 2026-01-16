@@ -11,6 +11,7 @@ export { BoundingBoxOverlay, type BoundingBox } from './BoundingBoxOverlay';
 export { OCRTextPanel } from './OCRTextPanel';
 export { ViewerToolbar } from './ViewerToolbar';
 export { AnnotationLayer } from './AnnotationLayer';
+export { SimilarDocumentsDrawer } from './SimilarDocumentsDrawer';
 
 // Office document viewers
 export { DocxViewer } from './DocxViewer';

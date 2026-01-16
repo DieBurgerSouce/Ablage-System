@@ -23,12 +23,14 @@ import {
     FileText,
     Layers,
     Bookmark,
+    Languages,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -60,6 +62,7 @@ interface SearchPanelValue {
     query: string;
     mode: string;
     filters: SearchFilters;
+    useSynonyms?: boolean;
 }
 
 interface SearchPanelProps {
@@ -270,6 +273,23 @@ export function SearchPanel({ value, onChange, onReset }: SearchPanelProps) {
                     onChange={(v) => updateFilter('dateRange', v)}
                     single
                 />
+
+                {/* Synonym Toggle */}
+                <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg border bg-card">
+                    <Languages className="h-4 w-4 text-muted-foreground" />
+                    <label
+                        htmlFor="synonyms-toggle"
+                        className="text-sm text-muted-foreground cursor-pointer select-none"
+                    >
+                        Synonyme
+                    </label>
+                    <Switch
+                        id="synonyms-toggle"
+                        checked={value.useSynonyms ?? false}
+                        onCheckedChange={(checked) => onChange({ useSynonyms: checked })}
+                        className="data-[state=checked]:bg-blue-600"
+                    />
+                </div>
 
                 {hasActiveFilters && onReset && (
                     <Button

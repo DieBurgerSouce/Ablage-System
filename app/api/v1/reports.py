@@ -21,6 +21,7 @@ from app.api.dependencies import get_current_user, get_db
 from app.db.models import User
 from app.services.reports import (
     ReportBuilderService,
+    ReportCatalogService,
     ReportRendererService,
     ReportSchedulerService,
     ReportTemplateService,
@@ -376,6 +377,10 @@ def get_renderer_service() -> ReportRendererService:
 
 def get_scheduler_service() -> ReportSchedulerService:
     return ReportSchedulerService()
+
+
+def get_catalog_service() -> ReportCatalogService:
+    return ReportCatalogService()
 
 
 # =============================================================================
@@ -1022,3 +1027,110 @@ async def get_formats(
 ) -> List[Dict[str, Any]]:
     """Gibt unterstuetzte Export-Formate zurueck."""
     return renderer_service.get_supported_formats()
+
+
+# =============================================================================
+# CATALOG SCHEMAS
+# =============================================================================
+
+
+class CatalogColumnDefinition(BaseModel):
+    field_path: str
+    display_name: str
+    data_type: str
+
+
+class CatalogChartDefinition(BaseModel):
+    chart_type: str
+    title: Optional[str]
+    x_axis_field: Optional[str]
+    y_axis_fields: List[str]
+
+
+class CatalogTemplateResponse(BaseModel):
+    id: str
+    name: str
+    description: str
+    category: str
+    report_type: str
+    data_source: str
+    icon: str
+    default_columns: List[CatalogColumnDefinition]
+    default_filters: Optional[List[Dict[str, Any]]] = None
+    default_charts: Optional[List[CatalogChartDefinition]] = None
+    tags: List[str]
+
+
+class CatalogCategoryResponse(BaseModel):
+    id: str
+    name: str
+    description: str
+    template_count: int
+
+
+class CatalogListResponse(BaseModel):
+    templates: List[CatalogTemplateResponse]
+    categories: List[CatalogCategoryResponse]
+    total: int
+
+
+class InstantiateRequest(BaseModel):
+    name: Optional[str] = Field(None, description="Name fuer den neuen Report")
+
+
+# =============================================================================
+# CATALOG ENDPOINTS
+# =============================================================================
+
+
+@router.get("/catalog", response_model=CatalogListResponse)
+async def get_catalog(
+    category: Optional[str] = Query(None, description="Filter nach Kategorie"),
+    catalog_service: ReportCatalogService = Depends(get_catalog_service),
+) -> CatalogListResponse:
+    """Gibt den Template-Katalog zurueck."""
+    templates = catalog_service.get_catalog(category=category)
+    categories = catalog_service.get_categories()
+
+    return CatalogListResponse(
+        templates=[CatalogTemplateResponse(**t) for t in templates],
+        categories=[CatalogCategoryResponse(**c) for c in categories],
+        total=len(templates),
+    )
+
+
+@router.get("/catalog/{template_id}")
+async def get_catalog_template(
+    template_id: str,
+    catalog_service: ReportCatalogService = Depends(get_catalog_service),
+) -> CatalogTemplateResponse:
+    """Gibt Details eines Katalog-Templates zurueck."""
+    template = catalog_service.get_template_preview(template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="Template nicht gefunden")
+
+    return CatalogTemplateResponse(**template)
+
+
+@router.post("/catalog/{template_id}/instantiate", response_model=ReportTemplateResponse, status_code=status.HTTP_201_CREATED)
+async def instantiate_catalog_template(
+    template_id: str,
+    data: Optional[InstantiateRequest] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    catalog_service: ReportCatalogService = Depends(get_catalog_service),
+) -> ReportTemplateResponse:
+    """Erstellt einen neuen Report aus einem Katalog-Template."""
+    new_name = data.name if data else None
+
+    result = await catalog_service.instantiate_template(
+        template_id=template_id,
+        user_id=current_user.id,
+        new_name=new_name,
+        db=db,
+    )
+
+    if not result:
+        raise HTTPException(status_code=404, detail="Template nicht gefunden")
+
+    return ReportTemplateResponse.model_validate(result)

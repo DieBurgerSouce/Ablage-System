@@ -2323,6 +2323,28 @@ class BusinessEntity(Base):
         comment="Primary supplier number for display"
     )
 
+    # Risk Scoring (fuer Zahlungsverhalten-Analyse)
+    risk_score = Column(
+        Float,
+        nullable=True,
+        comment="Overall risk score 0-100 (100 = highest risk)"
+    )
+    risk_factors = Column(
+        CrossDBJSON,
+        default=dict,
+        comment="Risk factor breakdown: {payment_delay, default_rate, ...}"
+    )
+    payment_behavior_score = Column(
+        Float,
+        nullable=True,
+        comment="Payment behavior score 0-100 (100 = best payer)"
+    )
+    risk_calculated_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Timestamp of last risk calculation"
+    )
+
     # Metadata & Audit
     notes = Column(Text, nullable=True)
     custom_fields = Column(CrossDBJSON, default=dict)  # Flexible Zusatzfelder

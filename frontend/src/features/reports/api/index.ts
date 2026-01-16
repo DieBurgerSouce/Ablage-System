@@ -32,6 +32,9 @@ import type {
   ScheduleEnableRequest,
   ExecuteReportRequest,
   ExecuteReportResponse,
+  CatalogListResponse,
+  CatalogTemplate,
+  InstantiateTemplateRequest,
 } from '../types';
 
 const BASE_URL = '/reports';
@@ -396,6 +399,42 @@ export async function getFormats(): Promise<FormatInfo[]> {
 }
 
 // =============================================================================
+// Catalog
+// =============================================================================
+
+/**
+ * Hole den Template-Katalog.
+ */
+export async function getCatalog(category?: string): Promise<CatalogListResponse> {
+  const response = await api.get<CatalogListResponse>(`${BASE_URL}/catalog`, {
+    params: category ? { category } : undefined,
+  });
+  return response.data;
+}
+
+/**
+ * Hole ein spezifisches Katalog-Template.
+ */
+export async function getCatalogTemplate(templateId: string): Promise<CatalogTemplate> {
+  const response = await api.get<CatalogTemplate>(`${BASE_URL}/catalog/${templateId}`);
+  return response.data;
+}
+
+/**
+ * Erstelle einen neuen Report aus einem Katalog-Template.
+ */
+export async function instantiateTemplate(
+  templateId: string,
+  data?: InstantiateTemplateRequest
+): Promise<ReportTemplate> {
+  const response = await api.post<ReportTemplate>(
+    `${BASE_URL}/catalog/${templateId}/instantiate`,
+    data || {}
+  );
+  return response.data;
+}
+
+// =============================================================================
 // React Query Keys
 // =============================================================================
 
@@ -433,4 +472,9 @@ export const reportKeys = {
 
   // Preview
   preview: (templateId: string) => [...reportKeys.template(templateId), 'preview'] as const,
+
+  // Catalog
+  catalog: () => [...reportKeys.all, 'catalog'] as const,
+  catalogList: (category?: string) => [...reportKeys.catalog(), 'list', { category }] as const,
+  catalogTemplate: (id: string) => [...reportKeys.catalog(), 'template', id] as const,
 };

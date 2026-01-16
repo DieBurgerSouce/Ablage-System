@@ -703,6 +703,7 @@ from app.api.v1.gdpr import router as gdpr_router, admin_router as gdpr_admin_ro
 from app.api.v1.webhooks import router as webhooks_router
 from app.api.v1.favorites import router as favorites_router
 from app.api.v1.search import router as search_router
+from app.api.v1.unified_search import router as unified_search_router
 from app.api.v1.api_keys import router as api_keys_router
 from app.api.v1.batch_jobs import router as batch_jobs_router
 from app.api.v1.sharing import router as sharing_router
@@ -764,6 +765,7 @@ app.include_router(gdpr_admin_router, prefix="/api/v1")
 app.include_router(webhooks_router, prefix="/api/v1")
 app.include_router(favorites_router, prefix="/api/v1")
 app.include_router(search_router, prefix="/api/v1")
+app.include_router(unified_search_router, prefix="/api/v1")
 app.include_router(api_keys_router, prefix="/api/v1")
 app.include_router(batch_jobs_router, prefix="/api/v1")
 app.include_router(sharing_router, prefix="/api/v1")

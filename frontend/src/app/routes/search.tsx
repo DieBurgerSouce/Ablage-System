@@ -6,20 +6,20 @@
  * - Deep-Linking (URL teilen)
  * - Browser-History (Zurueck/Vor)
  * - Gespeicherte Suchen
+ * - Relevanz-Score Visualisierung
  */
 
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
 import { SearchPanel } from '@/features/search/components/SearchPanel'
 import { SavedSearches } from '@/features/search/components/SavedSearches'
-import { documentsService } from '@/lib/api/services/documents'
-import { DocumentCard } from '@/features/documents/components/DocumentCard'
+import { SearchResultCard } from '@/features/search/components/SearchResultCard'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useSearch, type SearchType } from '@/features/search/hooks/useSearch'
+import { Loader2, Clock, FileSearch } from 'lucide-react'
 import {
     searchParamsSchema,
     type SearchParams,
     defaultSearchParams,
-    toLegacyFilters,
 } from '@/features/search/types/search-params'
 
 // ==================== Route Definition ====================
@@ -55,32 +55,34 @@ function SearchPage() {
         })
     }
 
-    // Convert to legacy format for API
-    const { query, mode, filters } = toLegacyFilters(search)
-
     // Check if we have an active search
-    const hasSearch = !!search.q?.trim()
+    const hasSearch = !!search.q?.trim() && search.q.trim().length >= 2
 
-    // Query for search results
-    const { data: results = [], isLoading } = useQuery({
-        queryKey: ['search', search.q, search.mode, search.type, search.ocrStatus, search.dateRange, search.page, search.limit, search.sort],
-        queryFn: () =>
-            documentsService.getAll({
-                query: search.q,
-                type: search.type?.join(','),
-                ocrStatus: search.ocrStatus?.join(','),
-                dateRange: search.dateRange,
-                sort: search.sort as 'date_asc' | 'date_desc' | 'name_asc' | 'name_desc' | undefined,
-                limit: search.limit,
-            }),
+    // Use the search API with relevance scores
+    const { data: searchResponse, isLoading, isFetching } = useSearch({
+        query: search.q ?? '',
+        searchType: (search.mode as SearchType) ?? 'hybrid',
+        page: search.page ?? 1,
+        perPage: search.limit ?? 20,
+        filters: {
+            documentType: search.type?.[0],
+            status: search.ocrStatus?.[0],
+        },
+        sortBy: search.sort?.includes('date') ? 'created_at' : search.sort?.includes('name') ? 'filename' : 'relevance',
+        sortOrder: search.sort?.includes('asc') ? 'asc' : 'desc',
+        highlight: true,
+    }, {
         enabled: hasSearch,
     })
+
+    const results = searchResponse?.results ?? []
 
     return (
         <div className="p-8 space-y-8">
             {/* Header */}
             <div className="text-center space-y-4 mb-12">
-                <h1 className="text-3xl font-bold tracking-tight">
+                <h1 className="text-3xl font-bold tracking-tight flex items-center justify-center gap-3">
+                    <FileSearch className="h-8 w-8 text-primary" />
                     Dokumentensuche
                 </h1>
                 <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
@@ -119,38 +121,52 @@ function SearchPage() {
                 }}
             />
 
+            {/* Search Stats */}
+            {searchResponse && results.length > 0 && (
+                <div className="flex items-center justify-between text-sm text-muted-foreground border-b pb-4">
+                    <span>
+                        {searchResponse.total} Ergebnis{searchResponse.total !== 1 ? 'se' : ''} gefunden
+                        {searchResponse.totalPages > 1 && ` (Seite ${searchResponse.page} von ${searchResponse.totalPages})`}
+                    </span>
+                    <span className="flex items-center gap-1">
+                        <Clock className="h-4 w-4" />
+                        {searchResponse.executionTimeMs}ms
+                        {searchResponse.searchType === 'hybrid' && ' (Hybrid)'}
+                        {searchResponse.searchType === 'semantic' && ' (Semantisch)'}
+                        {searchResponse.searchType === 'fts' && ' (Volltext)'}
+                    </span>
+                </div>
+            )}
+
             {/* Results / Empty States */}
             {!hasSearch && !isLoading && (
                 <EmptyState
                     variant="search"
                     title="Dokumente durchsuchen"
-                    description="Geben Sie einen Suchbegriff ein oder nutzen Sie die Filter, um Dokumente zu finden."
+                    description="Geben Sie einen Suchbegriff ein (mindestens 2 Zeichen) oder nutzen Sie die Filter, um Dokumente zu finden."
                     size="lg"
                 />
             )}
 
-            {isLoading && (
-                <div className="text-center p-8 text-muted-foreground">
-                    Suche läuft...
+            {(isLoading || isFetching) && (
+                <div className="flex items-center justify-center gap-3 p-8 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Suche läuft...</span>
                 </div>
             )}
 
-            {results.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-8">
-                    {results.map((doc) => (
-                        <DocumentCard
-                            key={doc.id}
-                            document={doc}
-                            isSelected={false}
-                            onClick={() => {}}
-                            onDoubleClick={() => {}}
-                            onSelect={() => {}}
+            {results.length > 0 && !isLoading && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {results.map((result) => (
+                        <SearchResultCard
+                            key={result.documentId}
+                            result={result}
                         />
                     ))}
                 </div>
             )}
 
-            {hasSearch && !isLoading && results.length === 0 && (
+            {hasSearch && !isLoading && !isFetching && results.length === 0 && (
                 <EmptyState
                     variant="search"
                     title="Keine Ergebnisse gefunden"

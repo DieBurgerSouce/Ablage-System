@@ -25,6 +25,10 @@ from app.db.models import (
     ReportColumn,
     ReportFilter,
     User,
+    BankAccount,
+    BankTransaction,
+    ExpenseReport,
+    ExpenseItem,
 )
 
 logger = structlog.get_logger(__name__)
@@ -63,6 +67,10 @@ DATA_SOURCE_MODELS: Dict[str, Type] = {
     "documents": Document,
     "invoices": Document,  # Gefiltert nach document_type
     "entities": BusinessEntity,
+    "bank_accounts": BankAccount,
+    "bank_transactions": BankTransaction,
+    "expenses": ExpenseReport,
+    "expense_items": ExpenseItem,
 }
 
 # Feld-Mappings pro Datenquelle
@@ -109,6 +117,67 @@ FIELD_DEFINITIONS: Dict[str, Dict[str, Dict[str, Any]]] = {
         "country": {"path": "country", "type": "string", "display": "Land"},
         "created_at": {"path": "created_at", "type": "date", "display": "Erstellt am"},
     },
+    "bank_accounts": {
+        "id": {"path": "id", "type": "string", "display": "ID"},
+        "account_name": {"path": "account_name", "type": "string", "display": "Kontoname"},
+        "iban": {"path": "iban", "type": "string", "display": "IBAN"},
+        "bic": {"path": "bic", "type": "string", "display": "BIC"},
+        "bank_name": {"path": "bank_name", "type": "string", "display": "Bankname"},
+        "account_holder": {"path": "account_holder", "type": "string", "display": "Kontoinhaber"},
+        "account_type": {"path": "account_type", "type": "string", "display": "Kontotyp"},
+        "current_balance": {"path": "current_balance", "type": "currency", "display": "Aktueller Saldo"},
+        "balance_date": {"path": "balance_date", "type": "date", "display": "Saldo-Datum"},
+        "currency": {"path": "currency", "type": "string", "display": "Waehrung"},
+        "is_active": {"path": "is_active", "type": "boolean", "display": "Aktiv"},
+        "last_sync_at": {"path": "last_sync_at", "type": "date", "display": "Letzte Synchronisierung"},
+    },
+    "bank_transactions": {
+        "id": {"path": "id", "type": "string", "display": "ID"},
+        "booking_date": {"path": "booking_date", "type": "date", "display": "Buchungsdatum"},
+        "value_date": {"path": "value_date", "type": "date", "display": "Valuta"},
+        "amount": {"path": "amount", "type": "currency", "display": "Betrag"},
+        "currency": {"path": "currency", "type": "string", "display": "Waehrung"},
+        "counterparty_name": {"path": "counterparty_name", "type": "string", "display": "Gegenpartei"},
+        "counterparty_iban": {"path": "counterparty_iban", "type": "string", "display": "Gegenpartei-IBAN"},
+        "reference_text": {"path": "reference_text", "type": "string", "display": "Verwendungszweck"},
+        "transaction_type": {"path": "transaction_type", "type": "string", "display": "Transaktionstyp"},
+        "booking_text": {"path": "booking_text", "type": "string", "display": "Buchungstext"},
+        "reconciliation_status": {"path": "reconciliation_status", "type": "string", "display": "Abgleich-Status"},
+        "match_confidence": {"path": "match_confidence", "type": "number", "display": "Match-Konfidenz"},
+        "matched_invoice_number": {"path": "matched_invoice_number", "type": "string", "display": "Zugeordnete Rechnungsnr."},
+    },
+    "expenses": {
+        "id": {"path": "id", "type": "string", "display": "ID"},
+        "report_number": {"path": "report_number", "type": "string", "display": "Abrechnungsnummer"},
+        "title": {"path": "title", "type": "string", "display": "Titel"},
+        "period_start": {"path": "period_start", "type": "date", "display": "Zeitraum von"},
+        "period_end": {"path": "period_end", "type": "date", "display": "Zeitraum bis"},
+        "employee_name": {"path": "employee_name", "type": "string", "display": "Mitarbeiter"},
+        "total_amount": {"path": "total_amount", "type": "currency", "display": "Gesamtbetrag"},
+        "total_vat": {"path": "total_vat", "type": "currency", "display": "MwSt-Gesamt"},
+        "total_deductible": {"path": "total_deductible", "type": "currency", "display": "Abzugsfaehig"},
+        "travel_days": {"path": "travel_days", "type": "number", "display": "Reisetage"},
+        "travel_allowance_total": {"path": "travel_allowance_total", "type": "currency", "display": "Verpflegungspauschale"},
+        "total_kilometers": {"path": "total_kilometers", "type": "number", "display": "Gefahrene km"},
+        "mileage_allowance_total": {"path": "mileage_allowance_total", "type": "currency", "display": "Kilometergeld"},
+        "status": {"path": "status", "type": "string", "display": "Status"},
+        "submitted_at": {"path": "submitted_at", "type": "date", "display": "Eingereicht am"},
+        "approved_at": {"path": "approved_at", "type": "date", "display": "Genehmigt am"},
+        "created_at": {"path": "created_at", "type": "date", "display": "Erstellt am"},
+    },
+    "expense_items": {
+        "id": {"path": "id", "type": "string", "display": "ID"},
+        "expense_type": {"path": "expense_type", "type": "string", "display": "Ausgabentyp"},
+        "expense_date": {"path": "expense_date", "type": "date", "display": "Datum"},
+        "amount": {"path": "amount", "type": "currency", "display": "Betrag"},
+        "currency": {"path": "currency", "type": "string", "display": "Waehrung"},
+        "tax_rate": {"path": "tax_rate", "type": "number", "display": "Steuersatz"},
+        "tax_amount": {"path": "tax_amount", "type": "currency", "display": "Steuerbetrag"},
+        "net_amount": {"path": "net_amount", "type": "currency", "display": "Nettobetrag"},
+        "is_deductible": {"path": "is_deductible", "type": "boolean", "display": "Abzugsfaehig"},
+        "deductible_percentage": {"path": "deductible_percentage", "type": "number", "display": "Abzugsfaehig %"},
+        "deductible_amount": {"path": "deductible_amount", "type": "currency", "display": "Abzugsfaehiger Betrag"},
+    },
 }
 
 
@@ -144,6 +213,10 @@ class ReportBuilderService:
             {"id": "documents", "name": "Alle Dokumente", "description": "Alle hochgeladenen Dokumente"},
             {"id": "invoices", "name": "Rechnungen", "description": "Nur Rechnungsdokumente"},
             {"id": "entities", "name": "Geschaeftspartner", "description": "Kunden und Lieferanten"},
+            {"id": "bank_accounts", "name": "Bankkonten", "description": "Verknuepfte Bankkonten"},
+            {"id": "bank_transactions", "name": "Kontobewegungen", "description": "Banktransaktionen und Buchungen"},
+            {"id": "expenses", "name": "Spesenabrechnungen", "description": "Reisekosten und Spesenabrechnungen"},
+            {"id": "expense_items", "name": "Spesenpositionen", "description": "Einzelne Positionen der Spesenabrechnungen"},
         ]
 
     def get_available_operators(self) -> List[Dict[str, Any]]:

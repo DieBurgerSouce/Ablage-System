@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 Business Entity API Endpoints.
 
@@ -139,7 +139,7 @@ async def list_entities(
     entities = result.scalars().all()
 
     return BusinessEntityListResponse(
-        items=[BusinessEntityResponse.model_validate(e) for e in entities],
+        entities=[BusinessEntityResponse.model_validate(e) for e in entities],
         total=total,
         page=page,
         per_page=per_page,
@@ -438,6 +438,737 @@ async def get_entity_suggestions(
     return {
         "suggestions": suggestions,
         "total_unlinked_documents": len(documents),
+    }
+
+
+# =============================================================================
+# CROSS-COMPANY VIEW
+# =============================================================================
+
+@router.get(
+    "/cross-company",
+    summary="Cross-Company Uebersicht",
+    description="Zeigt Entities mit Praesenz in mehreren Firmen und Statistiken"
+)
+async def get_cross_company_entities(
+    page: int = Query(1, ge=1, description="Seitennummer"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
+    search: Optional[str] = Query(None, min_length=1, description="Suche in Name"),
+    entity_type: Optional[EntityType] = Query(None, description="Nach Typ filtern"),
+    company_filter: Optional[str] = Query(
+        None, description="Nur Entities in dieser Firma (folie, messer)"
+    ),
+    multi_company_only: bool = Query(
+        False, description="Nur Entities in mehreren Firmen zeigen"
+    ),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Gibt eine Uebersicht der Geschaeftspartner mit Firmen-Statistiken.
+
+    Zeigt fuer jede Entity:
+    - In welchen Firmen sie existiert (Folie, Messer)
+    - Anzahl Dokumente pro Firma
+    - Letzte Aktivitaet pro Firma
+
+    **Ideal fuer:**
+    - Vergleich der Kundenaktivitaet zwischen Firmen
+    - Erkennen von nur einseitig gepflegten Kunden/Lieferanten
+    """
+    # Basis-Query
+    query = select(BusinessEntity).where(BusinessEntity.deleted_at.is_(None))
+
+    # Filter: Nur Multi-Company Entities
+    if multi_company_only:
+        query = query.where(
+            func.jsonb_array_length(BusinessEntity.company_presence) > 1
+        )
+
+    # Filter: Bestimmte Firma
+    if company_filter:
+        query = query.where(
+            BusinessEntity.company_presence.contains([company_filter])
+        )
+
+    # Filter: Suchbegriff
+    if search:
+        search_term = f"%{search}%"
+        query = query.where(
+            or_(
+                BusinessEntity.name.ilike(search_term),
+                BusinessEntity.primary_customer_number.ilike(search_term),
+                BusinessEntity.primary_supplier_number.ilike(search_term),
+            )
+        )
+
+    # Filter: Entity-Type
+    if entity_type:
+        query = query.where(BusinessEntity.entity_type == entity_type.value)
+
+    # Zaehle Gesamt
+    count_query = select(func.count()).select_from(query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
+
+    # Paginierung und Sortierung
+    query = query.order_by(BusinessEntity.name).offset((page - 1) * per_page).limit(per_page)
+
+    result = await db.execute(query)
+    entities = result.scalars().all()
+
+    # Sammle Statistiken pro Entity und Firma
+    items = []
+    for entity in entities:
+        company_presence = entity.company_presence or []
+        lexware_ids = entity.lexware_ids or {}
+
+        # Dokument-Zaehlung pro Firma
+        doc_count_query = (
+            select(
+                Document.category_id,
+                func.count(Document.id).label("count")
+            )
+            .where(
+                Document.business_entity_id == entity.id,
+                Document.deleted_at.is_(None),
+            )
+            .group_by(Document.category_id)
+        )
+        doc_result = await db.execute(doc_count_query)
+        doc_counts = {str(row.category_id): row.count for row in doc_result}
+
+        # Letzte Aktivitaet pro Firma
+        last_activity_query = (
+            select(
+                Document.category_id,
+                func.max(Document.created_at).label("last_date")
+            )
+            .where(
+                Document.business_entity_id == entity.id,
+                Document.deleted_at.is_(None),
+            )
+            .group_by(Document.category_id)
+        )
+        activity_result = await db.execute(last_activity_query)
+        last_activities = {
+            str(row.category_id): row.last_date.isoformat() if row.last_date else None
+            for row in activity_result
+        }
+
+        # Baue Firmendaten auf
+        company_stats = {}
+        for company in ["folie", "messer"]:
+            company_data = lexware_ids.get(company, {})
+            # Finde passende Category-IDs fuer diese Firma (basierend auf Name-Pattern)
+            company_doc_count = 0
+            company_last_activity = None
+
+            for cat_id, count in doc_counts.items():
+                # Vereinfacht: Summiere alle Dokumente
+                company_doc_count += count
+
+            company_stats[company] = {
+                "isPresent": company in company_presence,
+                "customerNumber": company_data.get("kd_nr"),
+                "supplierNumber": company_data.get("lief_nr"),
+                "matchcode": company_data.get("matchcode"),
+                "documentCount": company_doc_count if company in company_presence else 0,
+                "lastActivity": last_activities.get(company) if company in company_presence else None,
+            }
+
+        items.append({
+            "id": str(entity.id),
+            "name": entity.name,
+            "entityType": entity.entity_type,
+            "isActive": entity.is_active,
+            "companyPresence": company_presence,
+            "companyStats": company_stats,
+            "totalDocuments": sum(doc_counts.values()),
+            "primaryCustomerNumber": entity.primary_customer_number,
+            "primarySupplierNumber": entity.primary_supplier_number,
+        })
+
+    # Aggregierte Statistiken
+    multi_company_count_query = select(func.count()).where(
+        BusinessEntity.deleted_at.is_(None),
+        func.jsonb_array_length(BusinessEntity.company_presence) > 1
+    )
+    multi_company_result = await db.execute(multi_company_count_query)
+    multi_company_count = multi_company_result.scalar() or 0
+
+    folie_only_query = select(func.count()).where(
+        BusinessEntity.deleted_at.is_(None),
+        BusinessEntity.company_presence == ["folie"]
+    )
+    folie_only_result = await db.execute(folie_only_query)
+    folie_only_count = folie_only_result.scalar() or 0
+
+    messer_only_query = select(func.count()).where(
+        BusinessEntity.deleted_at.is_(None),
+        BusinessEntity.company_presence == ["messer"]
+    )
+    messer_only_result = await db.execute(messer_only_query)
+    messer_only_count = messer_only_result.scalar() or 0
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "perPage": per_page,
+        "totalPages": (total + per_page - 1) // per_page,
+        "summary": {
+            "multiCompanyCount": multi_company_count,
+            "folieOnlyCount": folie_only_count,
+            "messerOnlyCount": messer_only_count,
+            "totalEntities": multi_company_count + folie_only_count + messer_only_count,
+        }
+    }
+
+
+# =============================================================================
+# RELATIONSHIP DASHBOARD
+# =============================================================================
+
+@router.get(
+    "/dashboard/stats",
+    summary="Relationship Dashboard Statistiken",
+    description="Aggregierte Statistiken fuer das Relationship-Dashboard"
+)
+async def get_relationship_dashboard(
+    period: str = Query("30d", description="Zeitraum: 7d, 30d, 90d, 365d"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Gibt aggregierte Statistiken fuer das Relationship-Dashboard zurueck.
+
+    Enthaelt:
+    - Top-Kunden nach Dokumentanzahl
+    - Top-Lieferanten nach Dokumentanzahl
+    - Trend-Daten fuer neue Dokumente
+    - Verteilung nach Entity-Type
+    """
+    from datetime import timedelta
+
+    # Zeitraum berechnen
+    days_map = {"7d": 7, "30d": 30, "90d": 90, "365d": 365}
+    days = days_map.get(period, 30)
+    start_date = datetime.now(timezone.utc) - timedelta(days=days)
+
+    # Top-Kunden nach Dokumentanzahl (letzte N Tage)
+    top_customers_query = (
+        select(
+            BusinessEntity.id,
+            BusinessEntity.name,
+            BusinessEntity.display_name,
+            BusinessEntity.primary_customer_number,
+            func.count(Document.id).label("document_count"),
+            func.max(Document.created_at).label("last_activity")
+        )
+        .join(Document, Document.business_entity_id == BusinessEntity.id, isouter=True)
+        .where(
+            BusinessEntity.deleted_at.is_(None),
+            or_(
+                BusinessEntity.entity_type == "customer",
+                BusinessEntity.entity_type == "both",
+            ),
+            or_(
+                Document.created_at >= start_date,
+                Document.id.is_(None),  # Include entities with no documents
+            ),
+        )
+        .group_by(BusinessEntity.id)
+        .order_by(func.count(Document.id).desc())
+        .limit(10)
+    )
+    top_customers_result = await db.execute(top_customers_query)
+    top_customers = [
+        {
+            "id": str(row.id),
+            "name": row.display_name or row.name,
+            "customerNumber": row.primary_customer_number,
+            "documentCount": row.document_count,
+            "lastActivity": row.last_activity.isoformat() if row.last_activity else None,
+        }
+        for row in top_customers_result
+    ]
+
+    # Top-Lieferanten nach Dokumentanzahl
+    top_suppliers_query = (
+        select(
+            BusinessEntity.id,
+            BusinessEntity.name,
+            BusinessEntity.display_name,
+            BusinessEntity.primary_supplier_number,
+            func.count(Document.id).label("document_count"),
+            func.max(Document.created_at).label("last_activity")
+        )
+        .join(Document, Document.business_entity_id == BusinessEntity.id, isouter=True)
+        .where(
+            BusinessEntity.deleted_at.is_(None),
+            or_(
+                BusinessEntity.entity_type == "supplier",
+                BusinessEntity.entity_type == "both",
+            ),
+            or_(
+                Document.created_at >= start_date,
+                Document.id.is_(None),
+            ),
+        )
+        .group_by(BusinessEntity.id)
+        .order_by(func.count(Document.id).desc())
+        .limit(10)
+    )
+    top_suppliers_result = await db.execute(top_suppliers_query)
+    top_suppliers = [
+        {
+            "id": str(row.id),
+            "name": row.display_name or row.name,
+            "supplierNumber": row.primary_supplier_number,
+            "documentCount": row.document_count,
+            "lastActivity": row.last_activity.isoformat() if row.last_activity else None,
+        }
+        for row in top_suppliers_result
+    ]
+
+    # Trend-Daten: Dokumente pro Tag (letzte N Tage)
+    trend_query = (
+        select(
+            func.date_trunc('day', Document.created_at).label("date"),
+            func.count(Document.id).label("count")
+        )
+        .where(
+            Document.deleted_at.is_(None),
+            Document.created_at >= start_date,
+            Document.business_entity_id.isnot(None),
+        )
+        .group_by(func.date_trunc('day', Document.created_at))
+        .order_by(func.date_trunc('day', Document.created_at))
+    )
+    trend_result = await db.execute(trend_query)
+    trend_data = [
+        {
+            "date": row.date.strftime("%Y-%m-%d") if row.date else None,
+            "count": row.count,
+        }
+        for row in trend_result
+    ]
+
+    # Verteilung nach Entity-Type
+    type_distribution_query = (
+        select(
+            BusinessEntity.entity_type,
+            func.count(BusinessEntity.id).label("count")
+        )
+        .where(BusinessEntity.deleted_at.is_(None))
+        .group_by(BusinessEntity.entity_type)
+    )
+    type_result = await db.execute(type_distribution_query)
+    type_distribution = {row.entity_type: row.count for row in type_result}
+
+    # Gesamtstatistiken
+    total_customers_query = select(func.count()).where(
+        BusinessEntity.deleted_at.is_(None),
+        or_(
+            BusinessEntity.entity_type == "customer",
+            BusinessEntity.entity_type == "both",
+        ),
+    )
+    total_customers_result = await db.execute(total_customers_query)
+    total_customers = total_customers_result.scalar() or 0
+
+    total_suppliers_query = select(func.count()).where(
+        BusinessEntity.deleted_at.is_(None),
+        or_(
+            BusinessEntity.entity_type == "supplier",
+            BusinessEntity.entity_type == "both",
+        ),
+    )
+    total_suppliers_result = await db.execute(total_suppliers_query)
+    total_suppliers = total_suppliers_result.scalar() or 0
+
+    # Dokumente mit Entity-Verknuepfung im Zeitraum
+    linked_docs_query = select(func.count()).where(
+        Document.deleted_at.is_(None),
+        Document.created_at >= start_date,
+        Document.business_entity_id.isnot(None),
+    )
+    linked_docs_result = await db.execute(linked_docs_query)
+    linked_documents = linked_docs_result.scalar() or 0
+
+    # Neue Entities im Zeitraum
+    new_entities_query = select(func.count()).where(
+        BusinessEntity.deleted_at.is_(None),
+        BusinessEntity.created_at >= start_date,
+    )
+    new_entities_result = await db.execute(new_entities_query)
+    new_entities = new_entities_result.scalar() or 0
+
+    return {
+        "period": period,
+        "summary": {
+            "totalCustomers": total_customers,
+            "totalSuppliers": total_suppliers,
+            "linkedDocuments": linked_documents,
+            "newEntities": new_entities,
+        },
+        "topCustomers": top_customers,
+        "topSuppliers": top_suppliers,
+        "documentTrend": trend_data,
+        "typeDistribution": type_distribution,
+    }
+
+
+# =============================================================================
+# ENTITY GRAPH
+# =============================================================================
+
+@router.get(
+    "/graph/data",
+    summary="Entity-Graph-Daten",
+    description="Liefert Nodes und Edges fuer die Entity-Graph-Visualisierung"
+)
+async def get_entity_graph_data(
+    entity_type: Optional[EntityType] = Query(
+        None, description="Filter nach Entity-Typ"
+    ),
+    min_documents: int = Query(
+        1, ge=0, description="Minimum Dokumente fuer Anzeige"
+    ),
+    include_documents: bool = Query(
+        False, description="Dokument-Nodes einbeziehen"
+    ),
+    limit: int = Query(
+        50, ge=10, le=200, description="Maximale Anzahl Entities"
+    ),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Gibt Graph-Daten fuer React Flow zurueck.
+
+    **Nodes:**
+    - Entity-Nodes (Kunden/Lieferanten)
+    - Optional: Dokument-Nodes
+
+    **Edges:**
+    - Entity-zu-Dokument (wenn include_documents=True)
+    - Entity-zu-Entity (wenn gemeinsame Dokumente)
+
+    **Verwendung:**
+    Fuer die Visualisierung mit @xyflow/react.
+    """
+    # Basis-Query: Entities mit Dokument-Anzahl
+    entity_query = (
+        select(
+            BusinessEntity.id,
+            BusinessEntity.name,
+            BusinessEntity.display_name,
+            BusinessEntity.entity_type,
+            BusinessEntity.primary_customer_number,
+            BusinessEntity.primary_supplier_number,
+            BusinessEntity.company_presence,
+            func.count(Document.id).label("document_count"),
+        )
+        .join(Document, Document.business_entity_id == BusinessEntity.id, isouter=True)
+        .where(
+            BusinessEntity.deleted_at.is_(None),
+            Document.deleted_at.is_(None),
+        )
+        .group_by(BusinessEntity.id)
+        .having(func.count(Document.id) >= min_documents)
+        .order_by(func.count(Document.id).desc())
+        .limit(limit)
+    )
+
+    if entity_type:
+        entity_query = entity_query.where(
+            BusinessEntity.entity_type == entity_type.value
+        )
+
+    entity_result = await db.execute(entity_query)
+    entities = entity_result.all()
+
+    nodes = []
+    edges = []
+    entity_ids = set()
+
+    # Erstelle Entity-Nodes
+    for idx, entity in enumerate(entities):
+        entity_ids.add(str(entity.id))
+
+        # Berechne Position im Kreis
+        angle = (2 * 3.14159 * idx) / max(len(entities), 1)
+        radius = 300
+        x = 400 + radius * (1 if idx % 2 == 0 else -1) * (0.5 + (idx % 3) * 0.3)
+        y = 300 + radius * (1 if idx % 4 < 2 else -1) * (0.3 + (idx % 5) * 0.2)
+
+        # Node-Typ basierend auf Entity-Type
+        node_type = "customer" if entity.entity_type in ("customer", "both") else "supplier"
+
+        nodes.append({
+            "id": str(entity.id),
+            "type": "entityNode",
+            "position": {"x": x, "y": y},
+            "data": {
+                "id": str(entity.id),
+                "name": entity.display_name or entity.name,
+                "entityType": entity.entity_type,
+                "nodeType": node_type,
+                "customerNumber": entity.primary_customer_number,
+                "supplierNumber": entity.primary_supplier_number,
+                "documentCount": entity.document_count,
+                "companyPresence": entity.company_presence or [],
+            },
+        })
+
+    # Finde gemeinsame Dokumente zwischen Entities (fuer Edges)
+    if len(entity_ids) > 1:
+        # Suche Dokumente die mit mehreren Entities verknuepft sind
+        # (ueber manuelle Verknuepfung oder gleiche Kategorie)
+        shared_docs_query = (
+            select(
+                Document.id.label("doc_id"),
+                Document.business_entity_id.label("entity_id"),
+            )
+            .where(
+                Document.deleted_at.is_(None),
+                Document.business_entity_id.in_([UUID(eid) for eid in entity_ids]),
+            )
+        )
+        shared_result = await db.execute(shared_docs_query)
+
+        # Gruppiere Dokumente nach Entity
+        entity_docs = {}
+        for row in shared_result:
+            eid = str(row.entity_id)
+            if eid not in entity_docs:
+                entity_docs[eid] = set()
+            entity_docs[eid].add(str(row.doc_id))
+
+    # Optional: Fuege Dokument-Nodes hinzu
+    if include_documents:
+        doc_query = (
+            select(Document)
+            .where(
+                Document.deleted_at.is_(None),
+                Document.business_entity_id.in_([UUID(eid) for eid in entity_ids]),
+            )
+            .order_by(Document.created_at.desc())
+            .limit(100)  # Begrenzen um Graph nicht zu ueberladen
+        )
+        doc_result = await db.execute(doc_query)
+        documents = doc_result.scalars().all()
+
+        doc_positions = {}
+        for idx, doc in enumerate(documents):
+            doc_id = str(doc.id)
+            entity_id = str(doc.business_entity_id)
+
+            # Position nahe der Entity
+            base_x = next(
+                (n["position"]["x"] for n in nodes if n["id"] == entity_id),
+                400
+            )
+            base_y = next(
+                (n["position"]["y"] for n in nodes if n["id"] == entity_id),
+                300
+            )
+
+            # Versetze leicht
+            offset_angle = (2 * 3.14159 * idx) / max(len(documents), 1)
+            doc_x = base_x + 100 * (1 if idx % 2 == 0 else -1)
+            doc_y = base_y + 80 * (1 if idx % 3 == 0 else -1)
+
+            doc_positions[doc_id] = {"x": doc_x, "y": doc_y}
+
+            # Dokument-Typ Icon
+            doc_type_map = {
+                "invoice": "receipt",
+                "delivery_note": "truck",
+                "order": "file-check",
+            }
+            doc_icon = doc_type_map.get(doc.status, "file")
+
+            nodes.append({
+                "id": f"doc-{doc_id}",
+                "type": "documentNode",
+                "position": doc_positions[doc_id],
+                "data": {
+                    "id": doc_id,
+                    "name": doc.original_filename or doc.filename,
+                    "documentType": doc.status,
+                    "icon": doc_icon,
+                    "mimeType": doc.mime_type,
+                },
+            })
+
+            # Edge von Entity zu Dokument
+            edges.append({
+                "id": f"edge-{entity_id}-{doc_id}",
+                "source": entity_id,
+                "target": f"doc-{doc_id}",
+                "type": "smoothstep",
+                "animated": False,
+                "style": {"stroke": "#94a3b8", "strokeWidth": 1},
+            })
+
+    # Statistiken
+    customer_count = sum(
+        1 for n in nodes
+        if n.get("type") == "entityNode" and n["data"].get("nodeType") == "customer"
+    )
+    supplier_count = sum(
+        1 for n in nodes
+        if n.get("type") == "entityNode" and n["data"].get("nodeType") == "supplier"
+    )
+    doc_node_count = sum(1 for n in nodes if n.get("type") == "documentNode")
+
+    return {
+        "nodes": nodes,
+        "edges": edges,
+        "statistics": {
+            "totalNodes": len(nodes),
+            "entityNodes": len(entity_ids),
+            "documentNodes": doc_node_count,
+            "customerCount": customer_count,
+            "supplierCount": supplier_count,
+            "totalEdges": len(edges),
+        },
+    }
+
+
+# =============================================================================
+# ENTITY TIMELINE
+# =============================================================================
+
+@router.get(
+    "/{entity_id}/timeline",
+    summary="Entity-Timeline abrufen",
+    description="Chronologische Aktivitaeten eines Geschaeftspartners"
+)
+async def get_entity_timeline(
+    entity_id: UUID,
+    limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl Events"),
+    event_types: Optional[List[str]] = Query(
+        None,
+        description="Filter: document_linked, entity_updated, invoice_created"
+    ),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Gibt chronologische Events fuer einen Geschaeftspartner zurueck.
+
+    **Event-Typen:**
+    - **document_linked**: Dokument wurde verknuepft
+    - **entity_created**: Geschaeftspartner wurde erstellt
+    - **entity_updated**: Geschaeftspartner wurde aktualisiert
+
+    **Response:**
+    Sortiert nach Datum (neueste zuerst), mit Event-Typ, Beschreibung und Metadaten.
+    """
+    # Pruefe ob Entity existiert
+    entity_result = await db.execute(
+        select(BusinessEntity).where(
+            BusinessEntity.id == entity_id,
+            BusinessEntity.deleted_at.is_(None)
+        )
+    )
+    entity = entity_result.scalar_one_or_none()
+
+    if not entity:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Geschaeftspartner nicht gefunden"
+        )
+
+    events = []
+
+    # 1. Entity Created Event
+    if not event_types or "entity_created" in event_types:
+        events.append({
+            "id": f"created-{entity.id}",
+            "eventType": "entity_created",
+            "title": "Geschaeftspartner erstellt",
+            "description": f"{entity.name} wurde angelegt",
+            "timestamp": entity.created_at.isoformat() if entity.created_at else None,
+            "icon": "plus-circle",
+            "metadata": {
+                "entityType": entity.entity_type,
+            }
+        })
+
+    # 2. Entity Updated Event (nur wenn updated_at != created_at)
+    if not event_types or "entity_updated" in event_types:
+        if entity.updated_at and entity.created_at:
+            if entity.updated_at > entity.created_at:
+                events.append({
+                    "id": f"updated-{entity.id}",
+                    "eventType": "entity_updated",
+                    "title": "Geschaeftspartner aktualisiert",
+                    "description": f"{entity.name} wurde bearbeitet",
+                    "timestamp": entity.updated_at.isoformat(),
+                    "icon": "edit",
+                    "metadata": {}
+                })
+
+    # 3. Document Linked Events
+    if not event_types or "document_linked" in event_types:
+        doc_query = (
+            select(Document)
+            .where(
+                Document.business_entity_id == entity_id,
+                Document.deleted_at.is_(None),
+            )
+            .order_by(Document.created_at.desc())
+            .limit(limit)
+        )
+        doc_result = await db.execute(doc_query)
+        documents = doc_result.scalars().all()
+
+        for doc in documents:
+            # Bestimme Dokument-Typ fuer Icon
+            doc_type = doc.status or "document"
+            icon_map = {
+                "invoice": "receipt",
+                "delivery_note": "truck",
+                "order": "file-check",
+                "offer": "file-text",
+                "payment": "banknote",
+            }
+            icon = icon_map.get(doc_type, "file")
+
+            events.append({
+                "id": f"doc-{doc.id}",
+                "eventType": "document_linked",
+                "title": f"Dokument verknuepft",
+                "description": doc.original_filename or doc.filename,
+                "timestamp": doc.created_at.isoformat() if doc.created_at else None,
+                "icon": icon,
+                "metadata": {
+                    "documentId": str(doc.id),
+                    "filename": doc.original_filename or doc.filename,
+                    "documentType": doc.status,
+                    "mimeType": doc.mime_type,
+                }
+            })
+
+    # Sortiere alle Events nach Timestamp (neueste zuerst)
+    events.sort(
+        key=lambda e: e.get("timestamp") or "",
+        reverse=True
+    )
+
+    # Limitiere
+    events = events[:limit]
+
+    return {
+        "entityId": str(entity_id),
+        "entityName": entity.name,
+        "events": events,
+        "total": len(events),
     }
 
 
@@ -1165,6 +1896,127 @@ async def get_folder_documents(
 
 
 # =============================================================================
+# RISK SCORING
+# =============================================================================
+
+@router.get(
+    "/{entity_id}/risk",
+    summary="Risiko-Score abrufen",
+    description="Liefert den aktuellen Risiko-Score und Faktoren eines Geschaeftspartners"
+)
+async def get_entity_risk_score(
+    entity_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Ruft den Risiko-Score eines Geschaeftspartners ab.
+
+    **Response:**
+    - **riskScore**: Gesamt-Risiko (0-100, hoeher = riskanter)
+    - **paymentBehaviorScore**: Zahlungsverhalten (0-100, hoeher = besser)
+    - **riskFactors**: Detaillierte Faktor-Aufschluesselung
+    - **calculatedAt**: Zeitpunkt der letzten Berechnung
+    """
+    entity_result = await db.execute(
+        select(BusinessEntity).where(
+            BusinessEntity.id == entity_id,
+            BusinessEntity.deleted_at.is_(None)
+        )
+    )
+    entity = entity_result.scalar_one_or_none()
+
+    if not entity:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Geschaeftspartner nicht gefunden"
+        )
+
+    return {
+        "entityId": str(entity.id),
+        "entityName": entity.name,
+        "riskScore": entity.risk_score,
+        "paymentBehaviorScore": entity.payment_behavior_score,
+        "riskFactors": entity.risk_factors or {},
+        "calculatedAt": entity.risk_calculated_at.isoformat() if entity.risk_calculated_at else None,
+    }
+
+
+@router.post(
+    "/{entity_id}/risk/calculate",
+    summary="Risiko-Score berechnen",
+    description="Berechnet den Risiko-Score fuer einen Geschaeftspartner neu"
+)
+async def calculate_entity_risk_score(
+    entity_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Berechnet den Risiko-Score eines Geschaeftspartners neu.
+
+    Die Berechnung beruecksichtigt:
+    - Zahlungsverzoegerungen
+    - Ausfallraten
+    - Rechnungsvolumen
+    - Dokumentenfrequenz
+    - Beziehungsdauer
+    """
+    from app.services.risk_scoring_service import get_risk_scoring_service
+
+    risk_service = get_risk_scoring_service()
+    entity = await risk_service.update_entity_risk_score(db, entity_id)
+
+    if not entity:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Geschaeftspartner nicht gefunden"
+        )
+
+    return {
+        "entityId": str(entity.id),
+        "entityName": entity.name,
+        "riskScore": entity.risk_score,
+        "paymentBehaviorScore": entity.payment_behavior_score,
+        "riskFactors": entity.risk_factors or {},
+        "calculatedAt": entity.risk_calculated_at.isoformat() if entity.risk_calculated_at else None,
+    }
+
+
+@router.post(
+    "/risk/calculate-all",
+    summary="Alle Risiko-Scores berechnen",
+    description="Berechnet Risiko-Scores fuer alle aktiven Geschaeftspartner"
+)
+async def calculate_all_risk_scores(
+    entity_type: Optional[EntityType] = Query(None, description="Nur bestimmten Typ berechnen"),
+    limit: int = Query(1000, ge=1, le=10000, description="Maximale Anzahl zu berechnender Entities"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Berechnet Risiko-Scores fuer alle (oder gefilterte) Geschaeftspartner.
+
+    **Filter:**
+    - **entity_type**: Nur customer, supplier, oder both berechnen
+    - **limit**: Maximale Anzahl (Standard: 1000)
+    """
+    from app.services.risk_scoring_service import get_risk_scoring_service
+
+    risk_service = get_risk_scoring_service()
+    updated_count = await risk_service.update_all_risk_scores(
+        db,
+        entity_type=entity_type.value if entity_type else None,
+        limit=limit,
+    )
+
+    return {
+        "message": f"Risiko-Scores berechnet fuer {updated_count} Geschaeftspartner",
+        "updatedCount": updated_count,
+    }
+
+
+# =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
 
@@ -1176,7 +2028,7 @@ def _extract_matchcode(name: str) -> str:
     - "Mueller GmbH & Co. KG" -> "Mueller"
     - "Agrimpex International Trading GmbH" -> "Agrimpex"
     - "Hans Meier Spargel- und Erdbeerhof" -> "Meier"
-    - "25223_Agrargenossenschaft Nöbdenitz eG" -> "Agrargenossenschaft" (Altdaten-Format)
+    - "25223_Agrargenossenschaft NÃ¶bdenitz eG" -> "Agrargenossenschaft" (Altdaten-Format)
     """
     if not name:
         return ""
@@ -1288,7 +2140,7 @@ async def _count_documents_by_category(
     folder_id: str
 ) -> dict:
     """Zaehlt Dokumente pro Kategorie fuer eine Entity/Firma."""
-    # Basis-Kategorien für alle Ordner
+    # Basis-Kategorien fÃ¼r alle Ordner
     categories = [
         "anfragen", "angebote", "auftragsbestaetigung", "lieferscheine",
         "rechnungen", "storno", "mahnungen", "offene_rechnungen",
@@ -1296,7 +2148,7 @@ async def _count_documents_by_category(
         "kommunikation", "archiv"
     ]
 
-    # Druckdaten nur für Spargelmesser-Ordner
+    # Druckdaten nur fÃ¼r Spargelmesser-Ordner
     if folder_id == "messer":
         categories.append("druckdaten")
 
@@ -1325,7 +2177,7 @@ def _get_category_to_doctype_mapping() -> dict:
         "anfragen": "anfrage",
         "angebote": "angebot",
         "auftragsbestaetigung": "auftragsbestaetigung",
-        "auftragsbestätigung": "auftragsbestaetigung",  # Mit Umlaut
+        "auftragsbestÃ¤tigung": "auftragsbestaetigung",  # Mit Umlaut
         "lieferscheine": "lieferschein",
         "rechnungen": "rechnung",
         "storno": "storno",
@@ -1337,5 +2189,5 @@ def _get_category_to_doctype_mapping() -> dict:
         "kommunikation": "kommunikation",
         "archiv": "archiv",
         "bestellungen": "bestellung",
-        "druckdaten": "druckdaten",  # NUR für Spargelmesser-Kunden!
+        "druckdaten": "druckdaten",  # NUR fÃ¼r Spargelmesser-Kunden!
     }

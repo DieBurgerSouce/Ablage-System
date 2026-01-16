@@ -1,12 +1,14 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, RotateCw, Download, Printer, Highlighter, MessageSquare, MousePointer2 } from 'lucide-react';
+import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, RotateCw, Download, Printer, Highlighter, MessageSquare, MousePointer2, FileSearch } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { motionTokens } from '@/lib/motion-tokens';
 import { useAnnotationStore } from '../store/useAnnotationStore';
-// cn utility removed - not currently used
+import { SimilarDocumentsDrawer } from './SimilarDocumentsDrawer';
 
 interface ViewerToolbarProps {
+    documentId?: string;
     currentPage: number;
     numPages: number | null;
     scale: number;
@@ -17,8 +19,9 @@ interface ViewerToolbarProps {
 
 const MotionDiv = motion.div;
 
-export function ViewerToolbar({ currentPage, numPages, scale, onPageChange, onZoomIn, onZoomOut }: ViewerToolbarProps) {
+export function ViewerToolbar({ documentId, currentPage, numPages, scale, onPageChange, onZoomIn, onZoomOut }: ViewerToolbarProps) {
     const { mode, setMode } = useAnnotationStore()
+    const [similarDrawerOpen, setSimilarDrawerOpen] = useState(false)
 
     return (
         <MotionDiv
@@ -127,6 +130,18 @@ export function ViewerToolbar({ currentPage, numPages, scale, onPageChange, onZo
             </div>
 
             <div className="flex items-center gap-2">
+                {documentId && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 gap-2 text-xs font-medium"
+                        onClick={() => setSimilarDrawerOpen(true)}
+                        title="Ähnliche Dokumente finden"
+                    >
+                        <FileSearch className="w-3.5 h-3.5" />
+                        Ähnliche
+                    </Button>
+                )}
                 <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-medium">
                     <Download className="w-3.5 h-3.5" />
                     Download
@@ -135,6 +150,15 @@ export function ViewerToolbar({ currentPage, numPages, scale, onPageChange, onZo
                     <Printer className="w-4 h-4" />
                 </Button>
             </div>
+
+            {/* Similar Documents Drawer */}
+            {documentId && (
+                <SimilarDocumentsDrawer
+                    documentId={documentId}
+                    open={similarDrawerOpen}
+                    onOpenChange={setSimilarDrawerOpen}
+                />
+            )}
         </MotionDiv>
     );
 }

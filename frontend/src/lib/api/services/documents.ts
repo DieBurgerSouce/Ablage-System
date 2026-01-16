@@ -289,4 +289,58 @@ export const documentsService = {
         );
         return response.data;
     },
+
+    /**
+     * Findet ähnliche Dokumente basierend auf Embedding-Ähnlichkeit.
+     */
+    getSimilarDocuments: async (
+        documentId: string,
+        options?: {
+            limit?: number;
+            similarityThreshold?: number;
+            excludeSameType?: boolean;
+        }
+    ): Promise<SimilarDocument[]> => {
+        const params: Record<string, unknown> = {};
+        if (options?.limit) params.limit = options.limit;
+        if (options?.similarityThreshold) params.similarity_threshold = options.similarityThreshold;
+        if (options?.excludeSameType !== undefined) params.exclude_same_type = options.excludeSameType;
+
+        const response = await apiClient.get<SimilarDocumentBackend[]>(
+            `/documents/${documentId}/similar`,
+            { params }
+        );
+        return response.data.map(transformSimilarDocument);
+    },
 };
+
+// Backend response for similar documents
+interface SimilarDocumentBackend {
+    document_id: string;
+    filename: string;
+    document_type: string;
+    similarity: number;
+    created_at: string;
+    text_preview?: string;
+}
+
+// Frontend interface for similar documents
+export interface SimilarDocument {
+    documentId: string;
+    filename: string;
+    documentType: string;
+    similarity: number;
+    createdAt: string;
+    textPreview?: string;
+}
+
+function transformSimilarDocument(doc: SimilarDocumentBackend): SimilarDocument {
+    return {
+        documentId: doc.document_id,
+        filename: doc.filename,
+        documentType: doc.document_type,
+        similarity: doc.similarity,
+        createdAt: doc.created_at,
+        textPreview: doc.text_preview,
+    };
+}

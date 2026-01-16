@@ -379,3 +379,57 @@ export interface ExecuteReportResponse {
   message: string;
   download_url?: string;
 }
+
+// =============================================================================
+// Catalog Types
+// =============================================================================
+
+export interface CatalogColumnDefinition {
+  field_path: string;
+  display_name: string;
+  data_type: string;
+}
+
+export interface CatalogChartDefinition {
+  chart_type: string;
+  title?: string;
+  x_axis_field?: string;
+  y_axis_fields: string[];
+}
+
+export interface CatalogFilterDefinition {
+  field_path: string;
+  operator: string;
+  value?: unknown;
+}
+
+export interface CatalogTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  report_type: ReportType;
+  data_source: DataSource;
+  icon: string;
+  default_columns: CatalogColumnDefinition[];
+  default_filters?: CatalogFilterDefinition[];
+  default_charts?: CatalogChartDefinition[];
+  tags: string[];
+}
+
+export interface CatalogCategory {
+  id: string;
+  name: string;
+  description: string;
+  template_count: number;
+}
+
+export interface CatalogListResponse {
+  templates: CatalogTemplate[];
+  categories: CatalogCategory[];
+  total: number;
+}
+
+export interface InstantiateTemplateRequest {
+  name?: string;
+}
