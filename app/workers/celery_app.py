@@ -270,6 +270,8 @@ celery_app = Celery(
         "app.workers.tasks.privat_tasks",  # Privat-Modul Intelligence Tasks (KPIs, Deadlines, Financial Health)
         "app.workers.tasks.orchestration_tasks",  # Cross-Module Orchestration (Phase 2 - Intelligent Event Routing)
         "app.workers.tasks.entity_linking_tasks",  # Entity Linking (Lexware Integration - Document-Entity Matching)
+        "app.workers.tasks.workflow_tasks",  # Document Workflow Triggers (on_document_created)
+        "app.workers.tasks.notification_tasks",  # Notification Tasks (Daily Digest, Cleanup)
     ]
 )
 
@@ -590,6 +592,23 @@ celery_app.conf.update(
             "task": "app.workers.tasks.dlq_management_tasks.cleanup_old_dlq_tasks",
             "schedule": crontab(hour=6, minute=0),  # Täglich um 06:00 Uhr
             "kwargs": {"max_age_days": 7},
+        },
+        # =================================================================
+        # Risk Scoring Tasks (Entity Payment Behavior Analysis)
+        # =================================================================
+        "risk-scoring-daily-batch": {
+            "task": "risk_scoring.calculate_all",
+            "schedule": crontab(hour=2, minute=0),  # Taeglich um 02:00 Uhr
+            "kwargs": {"limit": 1000, "recalculate_all": False},
+        },
+        "risk-scoring-check-high-risk": {
+            "task": "risk_scoring.check_high_risk_entities",
+            "schedule": crontab(hour=2, minute=30),  # Taeglich um 02:30 Uhr (nach Batch)
+            "kwargs": {"threshold": 75.0},
+        },
+        "risk-scoring-weekly-statistics": {
+            "task": "risk_scoring.generate_statistics",
+            "schedule": crontab(day_of_week=1, hour=6, minute=30),  # Montag 06:30 Uhr
         },
         # =================================================================
         # Document Intelligence Tasks (Grouping & Entity Extraction)

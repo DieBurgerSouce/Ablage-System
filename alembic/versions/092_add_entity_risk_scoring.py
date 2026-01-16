@@ -11,8 +11,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = "092_add_entity_risk_scoring"
-down_revision = "091_add_expense_report_soft_delete"
+revision = "092"
+down_revision = "091"
 branch_labels = None
 depends_on = None
 

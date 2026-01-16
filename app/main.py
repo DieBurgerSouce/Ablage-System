@@ -748,6 +748,7 @@ from app.api.v1.notification_rules import router as notification_rules_router
 from app.api.v1.orchestration import router as orchestration_router
 from app.api.v1.ai import router as ai_router
 from app.api.v1.lexware import router as lexware_router
+from app.api.v1.invoices import router as invoices_router
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -811,6 +812,7 @@ app.include_router(notification_rules_router, prefix="/api/v1")
 app.include_router(orchestration_router, prefix="/api/v1")
 app.include_router(ai_router, prefix="/api/v1")
 app.include_router(lexware_router, prefix="/api/v1")
+app.include_router(invoices_router, prefix="/api/v1")
 
 
 # ==================== Health & Status Endpoints ====================

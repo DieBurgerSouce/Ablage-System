@@ -3009,6 +3009,173 @@ class EntityMergeRequest(BaseModel):
 
 
 # ============================================================================
+# INVOICE TRACKING SCHEMAS (Rechnungsverfolgung fuer Risk Scoring)
+# ============================================================================
+
+class InvoiceStatusEnum(str, Enum):
+    """Rechnungsstatus fuer Zahlungsverfolgung."""
+    OPEN = "open"
+    SENT = "sent"
+    PAID = "paid"
+    OVERDUE = "overdue"
+    DUNNING = "dunning"
+    CANCELLED = "cancelled"
+    PARTIAL = "partial"
+
+
+class InvoiceTrackingBase(BaseModel):
+    """Basis-Schema fuer Rechnungsverfolgung."""
+    invoice_number: Optional[str] = Field(None, max_length=100, description="Rechnungsnummer")
+    invoice_date: Optional[datetime] = Field(None, description="Rechnungsdatum")
+    due_date: Optional[datetime] = Field(None, description="Faelligkeitsdatum")
+    amount: float = Field(0.0, ge=0, description="Rechnungsbetrag")
+    currency: str = Field("EUR", pattern="^[A-Z]{3}$", description="Waehrung (ISO 4217)")
+    status: InvoiceStatusEnum = Field(InvoiceStatusEnum.OPEN, description="Zahlungsstatus")
+
+
+class InvoiceTrackingCreate(InvoiceTrackingBase):
+    """Schema zum Erstellen einer Rechnungsverfolgung."""
+    document_id: uuid.UUID = Field(..., description="Verknuepftes Rechnungsdokument")
+
+
+class InvoiceTrackingUpdate(BaseModel):
+    """Schema zum Aktualisieren einer Rechnungsverfolgung."""
+    invoice_number: Optional[str] = Field(None, max_length=100)
+    invoice_date: Optional[datetime] = None
+    due_date: Optional[datetime] = None
+    amount: Optional[float] = Field(None, ge=0)
+    currency: Optional[str] = Field(None, pattern="^[A-Z]{3}$")
+    status: Optional[InvoiceStatusEnum] = None
+    paid_at: Optional[datetime] = None
+    paid_amount: Optional[float] = Field(None, ge=0)
+    dunning_level: Optional[int] = Field(None, ge=0, le=4)
+
+
+class InvoiceTrackingResponse(InvoiceTrackingBase):
+    """Antwort-Schema fuer Rechnungsverfolgung."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    document_id: uuid.UUID
+    paid_at: Optional[datetime] = None
+    paid_amount: Optional[float] = None
+    dunning_level: int = 0
+    last_dunning_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    # Computed properties
+    is_overdue: bool = False
+    days_overdue: int = 0
+
+
+# ============================================================================
+# RISK SCORING SCHEMAS (Entity Risiko-Bewertung)
+# ============================================================================
+
+class RiskFactorsResponse(BaseModel):
+    """Detaillierte Aufschluesselung der Risiko-Faktoren."""
+    model_config = ConfigDict(from_attributes=True)
+
+    # Payment behavior metrics
+    payment_delay_days: float = Field(0.0, description="Durchschnittliche Zahlungsverzoegerung in Tagen")
+    default_rate: float = Field(0.0, ge=0, le=1, description="Ausfallrate (0-1)")
+
+    # Invoice metrics
+    invoice_volume: float = Field(0.0, ge=0, description="Gesamtes Rechnungsvolumen")
+    document_frequency: float = Field(0.0, ge=0, description="Dokumente pro Monat")
+    relationship_months: float = Field(0.0, ge=0, description="Geschaeftsbeziehung in Monaten")
+
+    # Invoice counts
+    total_invoices: int = Field(0, ge=0, description="Gesamtzahl Rechnungen")
+    paid_invoices: int = Field(0, ge=0, description="Bezahlte Rechnungen")
+    overdue_invoices: int = Field(0, ge=0, description="Ueberfaellige Rechnungen")
+    open_invoices: int = Field(0, ge=0, description="Offene Rechnungen")
+
+    # Additional metrics
+    avg_invoice_amount: float = Field(0.0, ge=0, description="Durchschnittlicher Rechnungsbetrag")
+    max_dunning_level: int = Field(0, ge=0, le=4, description="Hoechste erreichte Mahnstufe")
+
+
+class RiskLevelEnum(str, Enum):
+    """Risiko-Einstufung basierend auf Score."""
+    UNKNOWN = "unbekannt"   # Keine Daten
+    LOW = "niedrig"         # 0-25
+    MEDIUM = "mittel"       # 26-50
+    HIGH = "hoch"           # 51-75
+    CRITICAL = "kritisch"   # 76-100
+
+
+class EntityRiskResponse(BaseModel):
+    """Vollstaendige Risiko-Bewertung einer Entitaet."""
+    model_config = ConfigDict(from_attributes=True)
+
+    entity_id: uuid.UUID = Field(..., description="ID der Entitaet")
+    entity_name: str = Field(..., description="Name der Entitaet")
+
+    # Risk scores
+    risk_score: Optional[float] = Field(None, ge=0, le=100, description="Gesamt-Risiko-Score (0-100, 100=hoechstes Risiko)")
+    payment_behavior_score: Optional[float] = Field(None, ge=0, le=100, description="Zahlungsverhalten-Score (0-100, 100=bestes Verhalten)")
+
+    # Risk factors breakdown
+    risk_factors: RiskFactorsResponse = Field(
+        default_factory=RiskFactorsResponse,
+        description="Detaillierte Risiko-Faktoren"
+    )
+
+    # Metadata
+    calculated_at: Optional[datetime] = Field(None, description="Zeitpunkt der letzten Berechnung")
+    risk_level: RiskLevelEnum = Field(RiskLevelEnum.UNKNOWN, description="Risiko-Einstufung")
+
+    # Entity context
+    entity_type: Optional[str] = Field(None, description="Typ: customer, supplier, both")
+    total_invoice_amount: float = Field(0.0, ge=0, description="Gesamtes Rechnungsvolumen")
+    document_count: int = Field(0, ge=0, description="Anzahl verknuepfter Dokumente")
+
+
+class RiskScoreCalculationRequest(BaseModel):
+    """Anfrage zur Berechnung des Risk Scores."""
+    entity_id: uuid.UUID = Field(..., description="ID der Entitaet")
+    force_recalculate: bool = Field(False, description="Neuberechnung erzwingen (auch wenn aktuell)")
+
+
+class RiskScoreBatchRequest(BaseModel):
+    """Anfrage zur Batch-Berechnung von Risk Scores."""
+    entity_type: Optional[str] = Field(None, pattern="^(customer|supplier|both)$", description="Nur bestimmten Typ berechnen")
+    limit: int = Field(1000, ge=1, le=10000, description="Maximale Anzahl zu bearbeitender Entitaeten")
+    recalculate_all: bool = Field(False, description="Alle neu berechnen (nicht nur veraltete)")
+
+
+class RiskScoreBatchResponse(BaseModel):
+    """Antwort der Batch-Berechnung."""
+    total_processed: int = Field(..., ge=0, description="Anzahl verarbeiteter Entitaeten")
+    successful: int = Field(..., ge=0, description="Erfolgreich berechnet")
+    failed: int = Field(..., ge=0, description="Fehlgeschlagen")
+    skipped: int = Field(..., ge=0, description="Uebersprungen (noch aktuell)")
+    processing_time_ms: int = Field(..., ge=0, description="Verarbeitungszeit in Millisekunden")
+    errors: List[Dict[str, Any]] = Field(default_factory=list, description="Fehlerdetails")
+
+
+class InvoiceStatusDistributionItem(BaseModel):
+    """Verteilung eines Rechnungsstatus."""
+    count: int = Field(..., ge=0, description="Anzahl Rechnungen")
+    amount: float = Field(..., ge=0, description="Gesamtbetrag")
+
+
+class InvoiceStatisticsResponse(BaseModel):
+    """Antwort-Schema fuer Rechnungsstatistiken."""
+    totalInvoices: int = Field(..., ge=0, description="Gesamtzahl Rechnungen")
+    totalAmount: float = Field(..., ge=0, description="Gesamtbetrag aller Rechnungen")
+    statusDistribution: Dict[str, InvoiceStatusDistributionItem] = Field(
+        ..., description="Verteilung nach Status"
+    )
+    overdueInvoices: InvoiceStatusDistributionItem = Field(
+        ..., description="Ueberfaellige Rechnungen"
+    )
+    generatedAt: datetime = Field(..., description="Zeitpunkt der Generierung")
+
+
+# ============================================================================
 # OCR TRAINING & VALIDATION SCHEMAS
 # Enterprise OCR Training System mit Self-Learning
 # ============================================================================
@@ -7521,3 +7688,122 @@ class ReactionAdd(BaseModel):
             raise ValueError("Emoji darf nicht nur aus Variation Selectors bestehen")
 
         return v
+
+
+# =============================================================================
+# RISK SCORING SCHEMAS
+# Risiko-Bewertung von Geschaeftspartnern
+# =============================================================================
+
+class RiskLevel(str, Enum):
+    """Risiko-Stufe fuer Geschaeftspartner."""
+    NIEDRIG = "niedrig"     # 0-30
+    MITTEL = "mittel"       # 31-60
+    ERHOEHT = "erhoeht"     # 61-80
+    HOCH = "hoch"           # 81-100
+    UNBEKANNT = "unbekannt" # Keine Daten
+
+
+class RiskFactorsResponse(BaseModel):
+    """Detaillierte Risikofaktoren eines Geschaeftspartners."""
+
+    # Zahlungsverzoegerung
+    payment_delay_days: float = Field(0.0, ge=0, description="Durchschnittliche Zahlungsverzoegerung in Tagen")
+
+    # Ausfallrate
+    default_rate: float = Field(0.0, ge=0, le=100, description="Prozent ausgefallener Zahlungen")
+
+    # Rechnungsvolumen
+    invoice_volume: float = Field(0.0, ge=0, description="Gesamtes Rechnungsvolumen in EUR")
+
+    # Dokumentenfrequenz
+    document_frequency: float = Field(0.0, ge=0, description="Dokumente pro Monat")
+
+    # Beziehungsdauer
+    relationship_months: float = Field(0.0, ge=0, description="Beziehungsdauer in Monaten")
+
+    # Rechnungsstatistiken
+    total_invoices: int = Field(0, ge=0, description="Gesamtanzahl Rechnungen")
+    paid_invoices: int = Field(0, ge=0, description="Bezahlte Rechnungen")
+    overdue_invoices: int = Field(0, ge=0, description="Ueberfaellige Rechnungen")
+    open_invoices: int = Field(0, ge=0, description="Offene Rechnungen")
+
+
+class EntityRiskResponse(BaseModel):
+    """Vollstaendige Risiko-Bewertung eines Geschaeftspartners."""
+    model_config = ConfigDict(from_attributes=True)
+
+    entity_id: uuid.UUID
+    entity_name: str
+
+    # Scores
+    risk_score: Optional[float] = Field(
+        None, ge=0, le=100,
+        description="Gesamt-Risiko-Score 0-100 (100 = hoechstes Risiko)"
+    )
+    payment_behavior_score: Optional[float] = Field(
+        None, ge=0, le=100,
+        description="Zahlungsverhalten-Score 0-100 (100 = bester Zahler)"
+    )
+
+    # Detaillierte Faktoren
+    risk_factors: RiskFactorsResponse
+
+    # Metadaten
+    calculated_at: Optional[datetime] = None
+    risk_level: RiskLevel = Field(
+        RiskLevel.UNBEKANNT,
+        description="Kategorisiertes Risiko-Level"
+    )
+
+    @classmethod
+    def from_entity(cls, entity: Any, factors: Optional[Dict[str, Any]] = None) -> "EntityRiskResponse":
+        """Erstellt EntityRiskResponse aus BusinessEntity."""
+        risk_factors = RiskFactorsResponse(**(factors or entity.risk_factors or {}))
+
+        # Risk Level bestimmen
+        risk_level = RiskLevel.UNBEKANNT
+        if entity.risk_score is not None:
+            if entity.risk_score <= 30:
+                risk_level = RiskLevel.NIEDRIG
+            elif entity.risk_score <= 60:
+                risk_level = RiskLevel.MITTEL
+            elif entity.risk_score <= 80:
+                risk_level = RiskLevel.ERHOEHT
+            else:
+                risk_level = RiskLevel.HOCH
+
+        return cls(
+            entity_id=entity.id,
+            entity_name=entity.name,
+            risk_score=entity.risk_score,
+            payment_behavior_score=entity.payment_behavior_score,
+            risk_factors=risk_factors,
+            calculated_at=entity.risk_calculated_at,
+            risk_level=risk_level,
+        )
+
+
+class EntityRiskCalculateRequest(BaseModel):
+    """Anfrage zur Neuberechnung des Risiko-Scores."""
+    force_recalculate: bool = Field(
+        False,
+        description="Erzwingt Neuberechnung auch wenn kuerzlich berechnet"
+    )
+
+
+class EntityRiskBatchResponse(BaseModel):
+    """Antwort auf Batch-Risiko-Berechnung."""
+    updated_count: int = Field(0, description="Anzahl aktualisierter Entities")
+    failed_count: int = Field(0, description="Anzahl fehlgeschlagener Updates")
+    entity_type: Optional[str] = None
+    started_at: datetime
+    completed_at: datetime
+    duration_ms: int
+
+
+# NOTE: InvoiceTracking Schemas sind definiert bei:
+# - InvoiceStatusEnum (ca. Zeile 3015)
+# - InvoiceTrackingBase, InvoiceTrackingCreate, InvoiceTrackingUpdate, InvoiceTrackingResponse (ca. Zeile 3026-3070)
+# - InvoiceStatisticsResponse (ca. Zeile 3165)
+# Diese duplizierten Definitionen wurden entfernt um Konsistenz zu gewaehrleisten.

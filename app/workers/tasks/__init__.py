@@ -48,6 +48,13 @@ from app.workers.tasks.entity_linking_tasks import (
     on_entity_imported_check_documents,
     ENTITY_LINKING_BEAT_SCHEDULE,
 )
+from app.workers.tasks.risk_scoring_tasks import (
+    calculate_all_risk_scores_task,
+    calculate_single_risk_score_task,
+    on_invoice_updated_recalculate,
+    check_high_risk_entities_task,
+    generate_risk_statistics_task,
+)
 
 __all__ = [
     # OCR tasks
@@ -92,4 +99,10 @@ __all__ = [
     "on_ocr_completed_link_entity",
     "on_entity_imported_check_documents",
     "ENTITY_LINKING_BEAT_SCHEDULE",
+    # Risk Scoring tasks
+    "calculate_all_risk_scores_task",
+    "calculate_single_risk_score_task",
+    "on_invoice_updated_recalculate",
+    "check_high_risk_entities_task",
+    "generate_risk_statistics_task",
 ]

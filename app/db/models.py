@@ -2394,6 +2394,102 @@ class BusinessEntity(Base):
 
 
 # ============================================================================
+# INVOICE TRACKING MODEL (Rechnungsverfolgung)
+# ============================================================================
+
+class InvoiceStatus(str, Enum):
+    """Rechnungsstatus fuer Zahlungsverfolgung."""
+    OPEN = "open"           # Neu erstellt, noch nicht versandt
+    SENT = "sent"           # Versandt, noch nicht faellig
+    PAID = "paid"           # Vollstaendig bezahlt
+    OVERDUE = "overdue"     # Faellig und nicht bezahlt
+    DUNNING = "dunning"     # Im Mahnverfahren
+    CANCELLED = "cancelled" # Storniert
+    PARTIAL = "partial"     # Teilweise bezahlt
+
+
+class InvoiceTracking(Base):
+    """
+    Rechnungsverfolgung fuer Risk Scoring.
+
+    Verknuepft Dokumente (Rechnungen) mit Zahlungsinformationen
+    fuer die Berechnung von Risiko-Scores.
+    """
+    __tablename__ = "invoice_tracking"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Document reference
+    document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Invoice identification
+    invoice_number = Column(String(100), index=True, nullable=True)
+    invoice_date = Column(DateTime(timezone=True), nullable=True)
+    due_date = Column(DateTime(timezone=True), nullable=True, index=True)
+
+    # Amount information
+    amount = Column(Float, default=0.0)
+    currency = Column(String(3), default="EUR")
+
+    # Payment status
+    status = Column(
+        String(20),
+        default=InvoiceStatus.OPEN.value,
+        index=True,
+        nullable=False
+    )
+
+    # Payment tracking
+    paid_at = Column(DateTime(timezone=True), nullable=True)
+    paid_amount = Column(Float, nullable=True)
+
+    # Dunning tracking (Mahnwesen)
+    dunning_level = Column(Integer, default=0)
+    last_dunning_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Audit fields
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    document = relationship(
+        "Document",
+        backref=backref("invoice_tracking", uselist=False, cascade="all, delete-orphan")
+    )
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_invoice_tracking_document_id", "document_id"),
+        Index("ix_invoice_tracking_status", "status"),
+        Index("ix_invoice_tracking_due_date", "due_date"),
+        Index("ix_invoice_tracking_invoice_number", "invoice_number"),
+    )
+
+    @property
+    def is_overdue(self) -> bool:
+        """Prueft ob Rechnung ueberfaellig ist."""
+        if self.status in (InvoiceStatus.PAID.value, InvoiceStatus.CANCELLED.value):
+            return False
+        if self.due_date:
+            return datetime.now(self.due_date.tzinfo) > self.due_date
+        return False
+
+    @property
+    def days_overdue(self) -> int:
+        """Anzahl Tage ueberfaellig (0 wenn nicht ueberfaellig)."""
+        if not self.is_overdue or not self.due_date:
+            return 0
+        delta = datetime.now(self.due_date.tzinfo) - self.due_date
+        return max(0, delta.days)
+
+
+# ============================================================================
 # DOCUMENT GROUP MODELS (Zusammengehoerige Dokumente)
 # ============================================================================
 

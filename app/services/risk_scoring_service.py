@@ -7,15 +7,15 @@ Berechnet Risiko-Scores fuer Geschaeftspartner basierend auf:
 - Rechnungsvolumen und -muster
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
 from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import BusinessEntity, Document, InvoiceTracking, DocumentCategory
-from app.core.logging import get_logger
+from app.db.models import BusinessEntity, Document, InvoiceTracking
+from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
 
@@ -187,7 +187,7 @@ class RiskScoringService:
         overdue_count = 0
         open_count = 0
 
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
 
         for inv in invoices:
             if inv.status == "paid":
@@ -197,8 +197,9 @@ class RiskScoringService:
                 overdue_count += 1
                 factors.overdue_invoices += 1
             elif inv.status in ("open", "sent"):
-                # Pruefen ob ueberfaellig
-                if inv.due_date and inv.due_date.replace(tzinfo=None) < now:
+                # Pruefen ob ueberfaellig (UTC-Vergleich)
+                due_utc = inv.due_date.replace(tzinfo=timezone.utc) if inv.due_date and not inv.due_date.tzinfo else inv.due_date
+                if due_utc and due_utc < now:
                     overdue_count += 1
                     factors.overdue_invoices += 1
                 else:
@@ -293,14 +294,17 @@ class RiskScoringService:
         entity.risk_score = risk_score
         entity.payment_behavior_score = payment_score
         entity.risk_factors = factors.to_dict()
-        entity.risk_calculated_at = datetime.now()
+        entity.risk_calculated_at = datetime.now(timezone.utc)
 
         await db.commit()
         await db.refresh(entity)
 
+        # SECURITY: Kein entity.name loggen (PII) - nur entity_id
         logger.info(
-            f"Risk-Score aktualisiert fuer Entity {entity.name}: "
-            f"risk={risk_score:.1f}, payment_behavior={payment_score:.1f}"
+            "risk_score_updated",
+            entity_id=str(entity.id),
+            risk_score=round(risk_score, 1),
+            payment_behavior_score=round(payment_score, 1),
         )
 
         return entity
