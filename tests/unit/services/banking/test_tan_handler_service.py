@@ -11,7 +11,8 @@ Testet:
 """
 
 import pytest
-from datetime import datetime, timedelta
+import os
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 from unittest.mock import patch
 
@@ -108,7 +109,7 @@ class TestChallengeCreation:
         )
 
         # Ablauf sollte ~5 Minuten in der Zukunft sein
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         assert challenge.expires_at > now
         assert challenge.expires_at < now + timedelta(minutes=10)
 
@@ -149,8 +150,9 @@ class TestTANVerification:
             method=TANMethod.PUSH_TAN,
         )
 
-        # Development: "123456" wird immer akzeptiert
-        result = service.verify_tan(challenge.challenge_id, "123456", user_id)
+        # TAN_DEV_BYPASS_ENABLED muss aktiv sein fuer "123456"
+        with patch.dict(os.environ, {"TAN_DEV_BYPASS_ENABLED": "true"}):
+            result = service.verify_tan(challenge.challenge_id, "123456", user_id)
 
         assert result.success
         assert result.message == "TAN erfolgreich verifiziert"
@@ -197,8 +199,12 @@ class TestTANVerification:
             result = service.verify_tan(challenge.challenge_id, "999999", user_id)
 
         assert not result.success
-        assert result.locked
+        # locked ist nur True wenn User-Level Lockout erreicht (3 fehlgeschlagene Challenges)
+        # Bei erstem Challenge: locked=False, da USER_LOCKOUT_THRESHOLD=3
         assert result.remaining_attempts == 0
+        # Challenge-Status sollte FAILED sein
+        updated = service.get_challenge(challenge.challenge_id, user_id)
+        assert updated.status == ChallengeStatus.FAILED
 
     def test_verify_tan_challenge_not_found(self, service: TANHandlerService):
         """Sollte Fehler bei unbekannter Challenge zurueckgeben."""
@@ -233,7 +239,7 @@ class TestTANVerification:
         )
 
         # Setze Ablaufzeit in die Vergangenheit
-        challenge.expires_at = datetime.utcnow() - timedelta(minutes=1)
+        challenge.expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
 
         result = service.verify_tan(challenge.challenge_id, "123456", user_id)
 
@@ -259,7 +265,9 @@ class TestChallengeStatus:
 
         assert challenge.status == ChallengeStatus.PENDING
 
-        service.verify_tan(challenge.challenge_id, "123456", user_id)
+        # TAN_DEV_BYPASS_ENABLED muss aktiv sein fuer "123456"
+        with patch.dict(os.environ, {"TAN_DEV_BYPASS_ENABLED": "true"}):
+            service.verify_tan(challenge.challenge_id, "123456", user_id)
 
         # Hole aktualisierte Challenge
         updated = service.get_challenge(challenge.challenge_id, user_id)
@@ -328,7 +336,9 @@ class TestChallengeCancellation:
             method=TANMethod.PUSH_TAN,
         )
 
-        service.verify_tan(challenge.challenge_id, "123456", user_id)
+        # TAN_DEV_BYPASS_ENABLED muss aktiv sein fuer "123456"
+        with patch.dict(os.environ, {"TAN_DEV_BYPASS_ENABLED": "true"}):
+            service.verify_tan(challenge.challenge_id, "123456", user_id)
 
         result = service.cancel_challenge(challenge.challenge_id, user_id)
 
@@ -377,7 +387,8 @@ class TestCleanup:
             user_id=user_id,
             method=TANMethod.PUSH_TAN,
         )
-        challenge.expires_at = datetime.utcnow() - timedelta(hours=2)
+        # Muss timezone-aware sein wegen utc_now() im Service
+        challenge.expires_at = datetime.now(timezone.utc) - timedelta(hours=2)
 
         count = service.cleanup_expired()
 

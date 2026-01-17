@@ -137,6 +137,13 @@ class TestTransactionServiceResponseConversion:
         mock_tx.parsed_references = []
         mock_tx.created_at = datetime.now()
         mock_tx.updated_at = datetime.now()
+        # Zusaetzliche Felder fuer BankTransactionResponse
+        mock_tx.matched_invoice_number = None
+        mock_tx.match_method = None
+        mock_tx.is_partial_payment = False
+        mock_tx.allocated_amount = None
+        mock_tx.remaining_amount = None
+        mock_tx.imported_at = datetime.now()
 
         response = service._to_response(mock_tx)
 
@@ -146,8 +153,7 @@ class TestTransactionServiceResponseConversion:
         assert response.counterparty_name == "Max Mustermann"
         assert response.transaction_type == TransactionType.TRANSFER
         assert response.reconciliation_status == ReconciliationStatus.UNMATCHED
-        assert response.notes == "Test-Notiz"
-        assert response.tags == ["miete", "dezember"]
+        # notes und tags sind nicht im Response-Schema exponiert
 
     def test_to_response_default_values(self, service: TransactionService):
         """Sollte Standardwerte fuer fehlende Felder setzen."""
@@ -157,7 +163,8 @@ class TestTransactionServiceResponseConversion:
         mock_tx.import_id = None
         mock_tx.transaction_id = None
         mock_tx.booking_date = date(2024, 12, 15)
-        mock_tx.value_date = None
+        # value_date muss gesetzt sein (Pflichtfeld im Schema)
+        mock_tx.value_date = date(2024, 12, 15)
         mock_tx.amount = Decimal("100.00")
         mock_tx.currency = None
         mock_tx.counterparty_name = None
@@ -181,13 +188,20 @@ class TestTransactionServiceResponseConversion:
         mock_tx.parsed_references = None
         mock_tx.created_at = datetime.now()
         mock_tx.updated_at = None
+        # Zusaetzliche Pflichtfelder fuer BankTransactionResponse
+        mock_tx.matched_invoice_number = None
+        mock_tx.match_method = None
+        mock_tx.is_partial_payment = False
+        mock_tx.allocated_amount = None
+        mock_tx.remaining_amount = None
+        mock_tx.imported_at = datetime.now()
 
         response = service._to_response(mock_tx)
 
         assert response.currency == "EUR"
         assert response.transaction_type is None
         assert response.reconciliation_status == ReconciliationStatus.UNMATCHED
-        assert response.tags == []
+        # tags ist nicht im Response-Schema exponiert
 
 
 class TestTransactionServiceWithMockedDB:
@@ -314,7 +328,7 @@ class TestReconciliationStatus:
         mock_tx.import_id = None
         mock_tx.transaction_id = "TX123"
         mock_tx.booking_date = date(2024, 12, 15)
-        mock_tx.value_date = None
+        mock_tx.value_date = date(2024, 12, 15)  # Pflichtfeld
         mock_tx.amount = Decimal("100.00")
         mock_tx.currency = "EUR"
         mock_tx.counterparty_name = "Test"
@@ -338,6 +352,13 @@ class TestReconciliationStatus:
         mock_tx.parsed_references = []
         mock_tx.created_at = datetime.now()
         mock_tx.updated_at = None
+        # Zusaetzliche Pflichtfelder fuer BankTransactionResponse
+        mock_tx.matched_invoice_number = None
+        mock_tx.match_method = None
+        mock_tx.is_partial_payment = False
+        mock_tx.allocated_amount = None
+        mock_tx.remaining_amount = None
+        mock_tx.imported_at = datetime.now()
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_tx
