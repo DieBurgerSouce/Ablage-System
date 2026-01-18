@@ -621,3 +621,542 @@ async def delete_invoice(
         invoice_id=str(invoice_id),
         document_id=document_id,
     )
+
+
+# =============================================================================
+# SKONTO ENDPOINTS
+# =============================================================================
+
+
+@router.get(
+    "/{invoice_id}/skonto",
+    summary="Skonto-Informationen abrufen",
+    description="Liefert Skonto-Details und -Berechnung fuer eine Rechnung"
+)
+async def get_invoice_skonto(
+    invoice_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Liefert Skonto-Informationen fuer eine Rechnung.
+
+    **Response:**
+    - skonto_percentage: Skonto-Prozentsatz
+    - skonto_amount: Berechneter Skonto-Betrag
+    - skonto_deadline: Ablaufdatum fuer Skonto
+    - skonto_used: Ob Skonto bereits angewendet wurde
+    - days_remaining: Verbleibende Tage
+    - is_expired: Ob Skonto-Frist abgelaufen ist
+    """
+    from app.services.banking.skonto_service import SkontoService
+    from decimal import Decimal
+
+    # SECURITY: Multi-Tenant RLS
+    result = await db.execute(
+        select(InvoiceTracking)
+        .join(Document, InvoiceTracking.document_id == Document.id)
+        .where(
+            InvoiceTracking.id == invoice_id,
+            InvoiceTracking.deleted_at.is_(None),
+            Document.owner_id == current_user.id,
+        )
+    )
+    invoice = result.scalar_one_or_none()
+
+    if not invoice:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Rechnungsverfolgung nicht gefunden"
+        )
+
+    skonto_service = SkontoService()
+
+    # Falls Skonto-Felder vorhanden, berechnen
+    if invoice.skonto_percentage and invoice.invoice_date:
+        calc = await skonto_service.calculate_skonto(
+            db=db,
+            invoice_amount=Decimal(str(invoice.amount)),
+            invoice_date=invoice.invoice_date,
+            skonto_percentage=invoice.skonto_percentage,
+            skonto_days=invoice.skonto_days,
+            net_days=invoice.net_payment_days,
+        )
+        return {
+            "invoice_id": str(invoice_id),
+            "skonto_percentage": calc.skonto_percentage,
+            "skonto_amount": float(calc.skonto_amount),
+            "skonto_deadline": calc.skonto_deadline.isoformat() if calc.skonto_deadline else None,
+            "amount_with_skonto": float(calc.amount_with_skonto),
+            "days_remaining": calc.days_remaining,
+            "is_expired": calc.is_expired,
+            "skonto_used": invoice.skonto_used,
+            "savings_potential": float(calc.savings_potential),
+        }
+    else:
+        return {
+            "invoice_id": str(invoice_id),
+            "skonto_percentage": None,
+            "skonto_amount": None,
+            "skonto_deadline": None,
+            "message": "Keine Skonto-Konditionen hinterlegt",
+        }
+
+
+@router.patch(
+    "/{invoice_id}/skonto",
+    response_model=InvoiceTrackingResponse,
+    summary="Skonto-Konditionen setzen",
+    description="Setzt oder aktualisiert Skonto-Konditionen fuer eine Rechnung"
+)
+async def set_invoice_skonto(
+    invoice_id: UUID,
+    skonto_percentage: float = Query(..., ge=0, le=10, description="Skonto-Prozentsatz (0-10%)"),
+    skonto_days: int = Query(10, ge=1, le=60, description="Tage fuer Skonto-Berechtigung"),
+    net_days: int = Query(30, ge=1, le=120, description="Zahlungsziel netto"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> InvoiceTrackingResponse:
+    """
+    Setzt Skonto-Konditionen fuer eine Rechnung.
+
+    Berechnet automatisch:
+    - skonto_deadline
+    - skonto_amount
+    - due_date (aus net_days)
+    """
+    from app.services.banking.skonto_service import SkontoService
+
+    # SECURITY: Multi-Tenant RLS
+    result = await db.execute(
+        select(InvoiceTracking)
+        .join(Document, InvoiceTracking.document_id == Document.id)
+        .where(
+            InvoiceTracking.id == invoice_id,
+            InvoiceTracking.deleted_at.is_(None),
+            Document.owner_id == current_user.id,
+        )
+    )
+    invoice = result.scalar_one_or_none()
+
+    if not invoice:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Rechnungsverfolgung nicht gefunden"
+        )
+
+    skonto_service = SkontoService()
+    # SECURITY: company_id fuer Defense-in-Depth Multi-Tenant Isolation
+    success = await skonto_service.update_invoice_skonto_fields(
+        db=db,
+        invoice_tracking_id=invoice_id,
+        company_id=current_user.company_id,
+        skonto_percentage=skonto_percentage,
+        skonto_days=skonto_days,
+        net_days=net_days,
+    )
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fehler beim Aktualisieren der Skonto-Konditionen"
+        )
+
+    await db.commit()
+    await db.refresh(invoice)
+
+    logger.info(
+        "invoice_skonto_updated",
+        invoice_id=str(invoice_id),
+        skonto_percentage=skonto_percentage,
+        skonto_days=skonto_days,
+    )
+
+    return InvoiceTrackingResponse.model_validate(invoice)
+
+
+@router.post(
+    "/{invoice_id}/apply-skonto",
+    response_model=InvoiceTrackingResponse,
+    summary="Skonto bei Zahlung anwenden",
+    description="Wendet Skonto auf eine Zahlung an"
+)
+async def apply_invoice_skonto(
+    invoice_id: UUID,
+    payment_amount: float = Query(..., description="Gezahlter Betrag (mit Skonto-Abzug)"),
+    payment_date: Optional[datetime] = Query(None, description="Zahlungsdatum"),
+    force_apply: bool = Query(False, description="Skonto auch nach Fristablauf anwenden"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> InvoiceTrackingResponse:
+    """
+    Wendet Skonto bei einer Zahlung an.
+
+    Prueft automatisch:
+    - Ob Skonto-Konditionen vorhanden sind
+    - Ob Skonto-Frist eingehalten wurde
+    - Ob der Betrag zum Skonto-Abzug passt
+
+    Mit force_apply=true kann Skonto auch nach Fristablauf angewendet werden.
+    """
+    from app.services.banking.skonto_service import SkontoService
+    from decimal import Decimal
+
+    # SECURITY: Multi-Tenant RLS
+    result = await db.execute(
+        select(InvoiceTracking)
+        .join(Document, InvoiceTracking.document_id == Document.id)
+        .where(
+            InvoiceTracking.id == invoice_id,
+            InvoiceTracking.deleted_at.is_(None),
+            Document.owner_id == current_user.id,
+        )
+    )
+    invoice = result.scalar_one_or_none()
+
+    if not invoice:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Rechnungsverfolgung nicht gefunden"
+        )
+
+    skonto_service = SkontoService()
+    # SECURITY: company_id fuer Defense-in-Depth Multi-Tenant Isolation
+    applied, skonto_amount, message = await skonto_service.apply_skonto(
+        db=db,
+        invoice_tracking_id=invoice_id,
+        payment_amount=Decimal(str(payment_amount)),
+        payment_date=payment_date or datetime.now(timezone.utc),
+        user_id=current_user.id,
+        company_id=current_user.company_id,
+        force_apply=force_apply,
+    )
+
+    await db.commit()
+    await db.refresh(invoice)
+
+    if not applied:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=message
+        )
+
+    # Trigger Risk Score Recalculation
+    on_invoice_updated_recalculate.delay(str(invoice.document_id))
+
+    logger.info(
+        "invoice_skonto_applied",
+        invoice_id=str(invoice_id),
+        skonto_amount=float(skonto_amount),
+        message=message,
+    )
+
+    return InvoiceTrackingResponse.model_validate(invoice)
+
+
+@router.get(
+    "/skonto/upcoming",
+    summary="Anstehende Skonto-Fristen",
+    description="Listet Rechnungen mit bald ablaufenden Skonto-Fristen"
+)
+async def get_upcoming_skonto_deadlines(
+    days_ahead: int = Query(7, ge=1, le=30, description="Tage im Voraus"),
+    limit: int = Query(20, ge=1, le=100, description="Maximale Anzahl"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> list:
+    """
+    Listet Rechnungen mit anstehenden Skonto-Fristen.
+
+    **Response:**
+    - Sortiert nach Dringlichkeit (kritisch < 1 Tag, warning < 3 Tage)
+    - Zeigt potenzielle Ersparnis
+    """
+    from app.services.banking.skonto_service import SkontoService
+
+    # Hole company_id vom User
+    company_id = current_user.company_id
+    if not company_id:
+        return []
+
+    skonto_service = SkontoService()
+    alerts = await skonto_service.get_upcoming_skonto_deadlines(
+        db=db,
+        company_id=company_id,
+        days_ahead=days_ahead,
+        limit=limit,
+    )
+
+    return [
+        {
+            "invoice_id": str(alert.invoice_id),
+            "invoice_number": alert.invoice_number,
+            "entity_name": alert.entity_name,
+            "skonto_deadline": alert.skonto_deadline.isoformat(),
+            "skonto_amount": float(alert.skonto_amount),
+            "days_remaining": alert.days_remaining,
+            "urgency": alert.urgency,
+        }
+        for alert in alerts
+    ]
+
+
+# =============================================================================
+# PARTIAL PAYMENT ENDPOINTS
+# =============================================================================
+
+
+@router.post(
+    "/{invoice_id}/payments",
+    status_code=status.HTTP_201_CREATED,
+    summary="Teilzahlung erfassen",
+    description="Erfasst eine Teilzahlung fuer eine Rechnung"
+)
+async def record_partial_payment(
+    invoice_id: UUID,
+    amount: float = Query(..., gt=0, description="Zahlungsbetrag"),
+    payment_reference: Optional[str] = Query(None, description="Verwendungszweck/Referenz"),
+    payment_method: str = Query("bank_transfer", description="Zahlungsmethode"),
+    transaction_date: Optional[datetime] = Query(None, description="Zahlungsdatum"),
+    notes: Optional[str] = Query(None, description="Interne Notizen"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Erfasst eine Teilzahlung.
+
+    **Zahlungsmethoden:**
+    - bank_transfer (Standard)
+    - credit_card
+    - cash
+    - sepa_direct_debit
+    - paypal
+
+    Aktualisiert automatisch:
+    - paid_amount (Summe aller Zahlungen)
+    - outstanding_amount (Restbetrag)
+    - Status (partial oder paid)
+    """
+    from app.services.banking.partial_payment_service import (
+        PartialPaymentService,
+        PaymentTransactionCreate,
+    )
+    from decimal import Decimal
+
+    # SECURITY: Multi-Tenant RLS
+    result = await db.execute(
+        select(InvoiceTracking)
+        .join(Document, InvoiceTracking.document_id == Document.id)
+        .where(
+            InvoiceTracking.id == invoice_id,
+            InvoiceTracking.deleted_at.is_(None),
+            Document.owner_id == current_user.id,
+        )
+    )
+    invoice = result.scalar_one_or_none()
+
+    if not invoice:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Rechnungsverfolgung nicht gefunden"
+        )
+
+    company_id = current_user.company_id
+    if not company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Benutzer hat keine Firmenzuordnung"
+        )
+
+    payment_service = PartialPaymentService()
+    payment_data = PaymentTransactionCreate(
+        amount=Decimal(str(amount)),
+        transaction_date=transaction_date,
+        payment_reference=payment_reference,
+        payment_method=payment_method,
+        notes=notes,
+    )
+
+    try:
+        transaction, message = await payment_service.record_payment(
+            db=db,
+            invoice_tracking_id=invoice_id,
+            payment_data=payment_data,
+            user_id=current_user.id,
+            company_id=company_id,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+    await db.commit()
+
+    # Trigger Risk Score Recalculation
+    on_invoice_updated_recalculate.delay(str(invoice.document_id))
+
+    logger.info(
+        "partial_payment_recorded",
+        invoice_id=str(invoice_id),
+        payment_id=str(transaction.id),
+        amount=float(amount),
+    )
+
+    return {
+        "payment_id": str(transaction.id),
+        "invoice_id": str(invoice_id),
+        "amount": float(transaction.amount),
+        "transaction_date": transaction.transaction_date.isoformat(),
+        "payment_method": transaction.payment_method,
+        "reconciliation_status": transaction.reconciliation_status,
+        "message": message,
+    }
+
+
+@router.get(
+    "/{invoice_id}/payments",
+    summary="Zahlungen einer Rechnung abrufen",
+    description="Listet alle Zahlungen fuer eine Rechnung"
+)
+async def get_invoice_payments(
+    invoice_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Liefert Zahlungsuebersicht fuer eine Rechnung.
+
+    **Response:**
+    - total_amount: Rechnungsbetrag
+    - paid_amount: Summe aller Zahlungen
+    - outstanding_amount: Ausstehender Betrag
+    - payment_count: Anzahl Zahlungen
+    - payments: Liste der einzelnen Zahlungen
+    - is_fully_paid: Ob vollstaendig bezahlt
+    """
+    from app.services.banking.partial_payment_service import PartialPaymentService
+
+    # SECURITY: Multi-Tenant RLS
+    result = await db.execute(
+        select(InvoiceTracking)
+        .join(Document, InvoiceTracking.document_id == Document.id)
+        .where(
+            InvoiceTracking.id == invoice_id,
+            InvoiceTracking.deleted_at.is_(None),
+            Document.owner_id == current_user.id,
+        )
+    )
+    invoice = result.scalar_one_or_none()
+
+    if not invoice:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Rechnungsverfolgung nicht gefunden"
+        )
+
+    payment_service = PartialPaymentService()
+
+    try:
+        # SECURITY: company_id fuer Multi-Tenant Isolation
+        summary = await payment_service.get_payment_summary(
+            db=db,
+            invoice_tracking_id=invoice_id,
+            company_id=current_user.company_id,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+
+    return {
+        "invoice_id": str(summary.invoice_tracking_id),
+        "invoice_number": summary.invoice_number,
+        "total_amount": float(summary.total_amount),
+        "paid_amount": float(summary.paid_amount),
+        "outstanding_amount": float(summary.outstanding_amount),
+        "skonto_total": float(summary.skonto_total),
+        "payment_count": summary.payment_count,
+        "is_fully_paid": summary.is_fully_paid,
+        "overpaid_amount": float(summary.overpaid_amount),
+        "payments": [
+            {
+                "id": str(p.id),
+                "amount": float(p.amount),
+                "transaction_date": p.transaction_date.isoformat(),
+                "payment_reference": p.payment_reference,
+                "payment_method": p.payment_method,
+                "skonto_deducted": float(p.skonto_deducted) if p.skonto_deducted else None,
+                "reconciliation_status": p.reconciliation_status,
+                "created_at": p.created_at.isoformat(),
+            }
+            for p in summary.payments
+        ],
+    }
+
+
+@router.delete(
+    "/{invoice_id}/payments/{payment_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Teilzahlung loeschen",
+    description="Loescht eine Teilzahlung (nur wenn nicht reconciled)"
+)
+async def delete_partial_payment(
+    invoice_id: UUID,
+    payment_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """
+    Loescht eine Teilzahlung.
+
+    Nur moeglich wenn:
+    - Zahlung noch nicht mit Bank-Transaktion verknuepft
+    - Benutzer berechtigt
+    """
+    from app.services.banking.partial_payment_service import PartialPaymentService
+
+    # SECURITY: Multi-Tenant RLS - Pruefen ob Invoice dem User gehoert
+    result = await db.execute(
+        select(InvoiceTracking)
+        .join(Document, InvoiceTracking.document_id == Document.id)
+        .where(
+            InvoiceTracking.id == invoice_id,
+            InvoiceTracking.deleted_at.is_(None),
+            Document.owner_id == current_user.id,
+        )
+    )
+    invoice = result.scalar_one_or_none()
+
+    if not invoice:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Rechnungsverfolgung nicht gefunden"
+        )
+
+    payment_service = PartialPaymentService()
+    # SECURITY: company_id fuer Multi-Tenant Isolation
+    success, message = await payment_service.delete_payment(
+        db=db,
+        payment_transaction_id=payment_id,
+        user_id=current_user.id,
+        company_id=current_user.company_id,
+    )
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=message
+        )
+
+    await db.commit()
+
+    # Trigger Risk Score Recalculation
+    on_invoice_updated_recalculate.delay(str(invoice.document_id))
+
+    logger.info(
+        "partial_payment_deleted",
+        invoice_id=str(invoice_id),
+        payment_id=str(payment_id),
+    )

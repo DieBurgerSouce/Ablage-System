@@ -821,14 +821,18 @@ class DocumentGroupingService:
     async def confirm_group(
         self,
         group_id: UUID,
-        user_id: UUID
+        user_id: UUID,
+        owner_id: UUID,
     ) -> bool:
         """
         Bestaetigt eine Gruppe manuell.
 
+        SECURITY: owner_id ist REQUIRED fuer Multi-Tenant Isolation.
+
         Args:
             group_id: Gruppen-ID
             user_id: User-ID der bestaetigt
+            owner_id: Owner-ID (REQUIRED fuer Multi-Tenant)
 
         Returns:
             True wenn erfolgreich
@@ -838,12 +842,24 @@ class DocumentGroupingService:
 
         from app.db.models import DocumentGroup
 
+        # SECURITY: owner_id Filter fuer Multi-Tenant Isolation
         result = await self.db.execute(
-            select(DocumentGroup).where(DocumentGroup.id == group_id)
+            select(DocumentGroup).where(
+                and_(
+                    DocumentGroup.id == group_id,
+                    DocumentGroup.owner_id == owner_id,
+                )
+            )
         )
         group = result.scalar_one_or_none()
 
         if not group:
+            logger.warning(
+                "confirm_group_failed",
+                group_id=str(group_id),
+                owner_id=str(owner_id),
+                reason="not_found_or_wrong_owner",
+            )
             return False
 
         group.user_confirmed = True
@@ -865,15 +881,19 @@ class DocumentGroupingService:
         self,
         group_id: UUID,
         user_id: UUID,
-        new_groups: List[List[UUID]]
+        new_groups: List[List[UUID]],
+        owner_id: UUID,
     ) -> List[UUID]:
         """
         Teilt eine Gruppe in mehrere neue Gruppen.
+
+        SECURITY: owner_id ist REQUIRED fuer Multi-Tenant Isolation.
 
         Args:
             group_id: Urspruengliche Gruppen-ID
             user_id: User-ID
             new_groups: Liste von Dokument-ID-Listen fuer neue Gruppen
+            owner_id: Owner-ID (REQUIRED fuer Multi-Tenant)
 
         Returns:
             Liste der neuen Gruppen-IDs
@@ -883,13 +903,24 @@ class DocumentGroupingService:
 
         from app.db.models import DocumentGroup, Document
 
-        # Alte Gruppe laden
+        # Alte Gruppe laden - SECURITY: owner_id Filter fuer Multi-Tenant Isolation
         result = await self.db.execute(
-            select(DocumentGroup).where(DocumentGroup.id == group_id)
+            select(DocumentGroup).where(
+                and_(
+                    DocumentGroup.id == group_id,
+                    DocumentGroup.owner_id == owner_id,
+                )
+            )
         )
         old_group = result.scalar_one_or_none()
 
         if not old_group:
+            logger.warning(
+                "split_group_failed",
+                group_id=str(group_id),
+                owner_id=str(owner_id),
+                reason="not_found_or_wrong_owner",
+            )
             return []
 
         new_group_ids = []
@@ -950,14 +981,16 @@ class DocumentGroupingService:
 
     async def get_review_queue(
         self,
-        owner_id: Optional[UUID] = None,
+        owner_id: UUID,
         limit: int = 50
     ) -> List[Any]:
         """
         Gibt Gruppen zurueck die auf Ueberpruefung warten.
 
+        SECURITY: owner_id ist REQUIRED fuer Multi-Tenant Isolation.
+
         Args:
-            owner_id: Optionale Owner-ID
+            owner_id: Owner-ID (REQUIRED fuer Multi-Tenant)
             limit: Maximale Anzahl
 
         Returns:
@@ -968,13 +1001,14 @@ class DocumentGroupingService:
 
         from app.db.models import DocumentGroup
 
+        # SECURITY: IMMER nach owner_id filtern fuer Multi-Tenant Isolation
         query = select(DocumentGroup).where(
-            DocumentGroup.needs_review == True,
-            DocumentGroup.deleted_at.is_(None)
+            and_(
+                DocumentGroup.needs_review == True,
+                DocumentGroup.deleted_at.is_(None),
+                DocumentGroup.owner_id == owner_id,
+            )
         )
-
-        if owner_id:
-            query = query.where(DocumentGroup.owner_id == owner_id)
 
         query = query.order_by(
             DocumentGroup.review_priority.asc(),

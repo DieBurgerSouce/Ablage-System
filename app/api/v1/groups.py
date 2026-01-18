@@ -585,7 +585,12 @@ async def confirm_group(
     """
     service = DocumentGroupingService(db)
 
-    success = await service.confirm_group(group_id, current_user.id)
+    # SECURITY: owner_id fuer Multi-Tenant Isolation
+    success = await service.confirm_group(
+        group_id=group_id,
+        user_id=current_user.id,
+        owner_id=current_user.id,
+    )
 
     if not success:
         raise HTTPException(
@@ -593,8 +598,12 @@ async def confirm_group(
             detail="Dokumentgruppe nicht gefunden"
         )
 
+    # SECURITY: owner_id Filter fuer Defense-in-Depth
     result = await db.execute(
-        select(DocumentGroup).where(DocumentGroup.id == group_id)
+        select(DocumentGroup).where(
+            DocumentGroup.id == group_id,
+            DocumentGroup.owner_id == current_user.id,
+        )
     )
     group = result.scalar_one()
 
@@ -715,10 +724,12 @@ async def split_group(
 
     service = DocumentGroupingService(db)
 
+    # SECURITY: owner_id fuer Multi-Tenant Isolation (Defense-in-Depth)
     new_group_ids = await service.split_group(
         group_id=group_id,
         user_id=current_user.id,
-        new_groups=data.new_groups
+        new_groups=data.new_groups,
+        owner_id=current_user.id,
     )
 
     return {
