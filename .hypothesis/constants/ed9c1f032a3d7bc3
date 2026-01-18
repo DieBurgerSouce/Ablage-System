@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\models\qwen2\tokenization_qwen2.py
+# hypothesis_version: 6.148.7
+
+[32768, '!', '#version:', '#version: 0.2\n', '-', '<|endoftext|>', 'NFC', 'Qwen2Tokenizer', 'add_prefix_space', 'attention_mask', 'inf', 'input_ids', 'merges.txt', 'merges_file', 'qwen/qwen-tokenizer', 'replace', 'utf-8', 'vocab.json', 'vocab_file', 'w', '~', '¡', '¬', '®', 'ÿ']

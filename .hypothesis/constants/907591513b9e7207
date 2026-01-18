@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\workers\tasks\export_tasks.py
+# hypothesis_version: 6.148.7
+
+[100, 1000, '%d.%m.%Y %H:%M', '+00:00', 'Keine Dokumente', 'N/A', 'Unbekannter Fehler', 'Z', 'astimezone', 'batch_export_error', 'batch_export_failed', 'batch_start', 'cancelled', 'checked', 'checked_at', 'completed', 'completed_at', 'content_type', 'count', 'data', 'date_from', 'date_to', 'default', 'document_types', 'documents', 'documents_exported', 'error', 'error_message', 'errors', 'executed_at', 'export', 'export.batch_export', 'export_format', 'export_name', 'export_type', 'failed', 'filter_config', 'format', 'include_metadata', 'include_text', 'json', 'max_documents', 'message', 'next_run', 'processed', 'processed_count', 'progress', 'result_summary', 'scheduled_export_id', 'started', 'status', 'statuses', 'success', 'total', 'total_bytes', 'total_count', 'total_requested']

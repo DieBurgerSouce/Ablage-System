@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\communication\stream\all_to_all.py
+# hypothesis_version: 6.148.7
+
+['all_to_all', 'default', 'float16', 'float32', 'float64', 'in_tensor', 'int32', 'int64', 'out', 'ring_id', 'uint16', 'x']

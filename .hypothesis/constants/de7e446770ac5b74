@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\optimizer\adagrad.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-06, 'Grad', 'LearningRate', 'MasterParam', 'MasterParamOut', 'Moment', 'MomentOut', 'Param', 'ParamOut', 'adagrad', 'epsilon', 'moment', 'multi_precision', 'params']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\optimizer\recompute.py
+# hypothesis_version: 6.148.7
+
+[0.0, '@Fetch', '@Pinned', 'Out', 'X', 'apply_optimize', 'count', 'dst_place_type', 'dtype', 'fetch', 'fill_constant', 'idx', 'memcpy', 'offload', 'op_role', 'place_type', 'shape', 'sync', 'value']

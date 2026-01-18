@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\agents\ocr\doctr_agent.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.7, 1.0, 300.0, 100, 300, 1000, 1024, ' +', '.pdf', 'A', 'DOCTR_OCR_ERROR', 'O', 'RGB', 'U', '\\n{3,}', '\\s+', 'a', 'aouAOUs', 'confidence', 'crnn_vgg16_bn', 'db_resnet50', 'de', 'default_language', 'det_arch', 'doctr_agent', 'doctr_available', 'doctr_loading_models', 'doctr_models_loaded', 'doctr_not_available', 'doctr_pages_loaded', 'doctr_processing_pdf', 'document_id', 'error', 'geometry', 'gpu_required', 'image_path', 'language', 'low_confidence_count', 'models_loaded', 'name', 'not_loaded', 'o', 'page_confidence', 'page_number', 'ram_required_mb', 'ready', 'reco_arch', 's', 'status', 'text', 'text_blocks', 'type', 'u', 'unknown', 'vram_gb', 'word', 'word_count']

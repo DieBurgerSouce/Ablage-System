@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\workflow\workflow_engine_service.py
+# hypothesis_version: 6.148.7
+
+[100, '0', 'EUR', 'NORMAL', 'admin', 'amount', 'amount_greater_than', 'amount_less_than', 'approved', 'approved_at', 'category', 'category_in', 'company_id', 'cost_center_id', 'currency', 'document', 'entity_auto_approved', 'entity_id', 'entity_rejected', 'entity_type', 'escalated_to_role', 'escalation_to_role', 'expense', 'invoice', 'matching_rules_found', 'original_priority', 'purchase_order', 'rejected', 'rejected_at', 'request_id', 'request_title', 'required', 'role', 'roles', 'rule_matched', 'status', 'step', 'supplier_risk_level', 'total_amount', 'type', 'unknown_entity_type', 'user', 'value']

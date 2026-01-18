@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\tunes.py
+# hypothesis_version: 6.148.7
+
+[100, 200, 400, 404, '/', '/{tune_id}', 'Tune nicht gefunden']

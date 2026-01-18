@@ -1,7 +1,7 @@
 {
   "name": "Ablage-System",
   "short_name": "Ablage",
-  "description": "Intelligente Dokumentenverarbeitung mit OCR",
+  "description": "Intelligente Dokumentenverarbeitung mit OCR - Offline-faehig",
   "start_url": "/",
   "display": "standalone",
   "orientation": "any",
@@ -11,13 +11,142 @@
   "dir": "ltr",
   "categories": ["business", "productivity", "utilities"],
   "scope": "/",
+  "id": "/",
   "icons": [
+    {
+      "src": "/icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
     {
       "src": "/icons/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ],
-  "prefer_related_applications": false
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop-1.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Ablage-System Desktop Ansicht"
+    },
+    {
+      "src": "/screenshots/mobile-1.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Ablage-System Mobile Ansicht"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Neues Dokument",
+      "short_name": "Hochladen",
+      "description": "Dokument hochladen oder fotografieren",
+      "url": "/upload?source=shortcut",
+      "icons": [{ "src": "/icons/shortcut-upload.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Genehmigungen",
+      "short_name": "Approve",
+      "description": "Ausstehende Genehmigungen anzeigen",
+      "url": "/approvals?source=shortcut",
+      "icons": [{ "src": "/icons/shortcut-approve.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Suche",
+      "short_name": "Suchen",
+      "description": "Dokumente durchsuchen",
+      "url": "/search?source=shortcut",
+      "icons": [{ "src": "/icons/shortcut-search.png", "sizes": "96x96" }]
+    }
+  ],
+  "share_target": {
+    "action": "/share-target",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "files",
+          "accept": ["image/*", "application/pdf", ".pdf", ".png", ".jpg", ".jpeg"]
+        }
+      ]
+    }
+  },
+  "file_handlers": [
+    {
+      "action": "/open-file",
+      "accept": {
+        "application/pdf": [".pdf"],
+        "image/png": [".png"],
+        "image/jpeg": [".jpg", ".jpeg"],
+        "image/tiff": [".tif", ".tiff"]
+      }
+    }
+  ],
+  "launch_handler": {
+    "client_mode": ["navigate-existing", "auto"]
+  },
+  "handle_links": "preferred",
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "edge_side_panel": {
+    "preferred_width": 400
+  }
 }

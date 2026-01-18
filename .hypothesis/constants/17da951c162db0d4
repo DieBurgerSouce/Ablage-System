@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\passes\auto_parallel_data_parallel_optimization.py
+# hypothesis_version: 6.148.7
+
+[2048, 'FusedOutput', 'Grad', 'Input', 'Out', 'Output', 'X', 'all_reduce', 'c_wait_comm', 'c_wait_compute', 'coalesce_grad', 'coalesce_tensor', 'concated_ranks', 'concated_shapes', 'copy_data', 'default', 'dgc_momentum', 'dist_context', 'dtype', 'fill_constant', 'global_rank', 'gradient_sync_stream', 'lars_momentum', 'merge_momentum', 'momentum', 'op_role', 'reduce_type', 'rescale_grad', 'ring_id', 'scale', 'sparse_momentum', 'use_align', 'use_calc_stream', 'use_sharding', 'value']

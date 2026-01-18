@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\distributed\utils\io\dist_load.py
+# hypothesis_version: 6.148.7
+
+['^(cpu|gpu:[0-9]*)$', 'cpu', 'model_filename', 'params_filename', 'place', 'return_numpy']

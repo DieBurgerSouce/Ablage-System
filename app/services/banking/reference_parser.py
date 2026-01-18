@@ -79,9 +79,10 @@ class ReferenceParser:
     ]
 
     # SEPA-Referenzen
-    E2E_PATTERN = re.compile(r"(?:EREF\+|END[\s-]*TO[\s-]*END[\s-]*ID[\s.:]*|E2E[\s.:]*|KREF\+)([A-Z0-9+/-]+)", re.IGNORECASE)
-    MANDATE_PATTERN = re.compile(r"(?:MREF\+|MANDAT[\s-]*(?:ID|REF)?[\s.:]*|MAND[\s.:]*|MANDATSREF[\s.:]*|MNDTID[+:])([A-Z0-9+/-]+)", re.IGNORECASE)
-    CREDITOR_PATTERN = re.compile(r"(?:CRED\+|CREDITOR[\s-]*ID[\s.:]*|GLAUB[\s.:]*ID[\s.:]*|CI[\s.:]*|CREDITORID[+:])([A-Z]{2}\d{2}[A-Z0-9]+)", re.IGNORECASE)
+    # Hinweis: _normalize_text wandelt + in Leerzeichen um, daher [\s+]* fuer beide Faelle
+    E2E_PATTERN = re.compile(r"(?:EREF[\s+]*|END[\s-]*TO[\s-]*END[\s-]*ID[\s.:]*|E2E[\s.:]*|KREF[\s+]*)([A-Z0-9+/\-]+)", re.IGNORECASE)
+    MANDATE_PATTERN = re.compile(r"(?:MREF[\s+]*|MANDAT[\s-]*(?:ID|REF)?[\s.:]*|MAND[\s.:]*|MANDATSREF[\s.:]*|MNDTID[\s+:]+)([A-Z0-9+/\-]+)", re.IGNORECASE)
+    CREDITOR_PATTERN = re.compile(r"(?:CRED[\s+]*|CREDITOR[\s-]*ID[\s.:]*|GLAUB[\s.:]*ID[\s.:]*|CI[\s.:]*|CREDITORID[\s+:]+)([A-Z]{2}\d{2}[A-Z0-9]+)", re.IGNORECASE)
 
     # Datums-Muster
     DATE_PATTERNS: List[Pattern] = [

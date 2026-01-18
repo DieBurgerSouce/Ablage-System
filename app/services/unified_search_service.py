@@ -16,7 +16,7 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.search_service import SearchService, get_search_service
-from app.services.rag.rag_search_service import RAGSearchService, get_rag_search_service
+from app.services.rag.search_service import RAGSearchService, get_rag_search_service
 from app.db.schemas import (
     SearchType,
     SearchFilters,

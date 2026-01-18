@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\tools\infer\predict_cls.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.5, 1.0, 255, ',', '../..', '180', 'ClsPostProcess', 'Predicts of {}:{}', '__main__', 'auto_growth', 'cls', 'float32', 'label_list', 'name']

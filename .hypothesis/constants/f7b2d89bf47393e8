@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\docling\backend\docx\drawingml\utils.py
+# hypothesis_version: 6.148.7
+
+['--convert-to', '--headless', '--outdir', '-h', '.pdf', 'drawing_only.docx', 'drawing_only.pdf', 'libreoffice', 'pdf', 'soffice']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\core\transforms_interface.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.5, 1.0, 'BasicTransform', 'C_CONTIGUOUS', 'DualTransform', 'ImageOnlyTransform', 'InitSchema', 'NoOp', 'Transform3D', '__class_fullname__', '__init__', '_init_args', '_targets', 'bboxes', 'fill', 'fill_mask', 'id', 'image', 'images', 'interpolation', 'keypoints', 'mask', 'mask3d', 'masks', 'masks3d', 'p', 'params', 'replay', 'seed', 'self', 'shape', 'spatial', 'strict', 'volume', 'volumes']

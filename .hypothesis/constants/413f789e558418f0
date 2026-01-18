@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\static\amp\fp16_lists.py
+# hypothesis_version: 6.148.7
+
+['GPU', 'XPU', 'all_reduce', 'batch_norm', 'bfloat16', 'c_concat', 'c_identity', 'cast', 'concat', 'conditional_block', 'dropout', 'elementwise_add', 'elementwise_div', 'elementwise_floordiv', 'elementwise_max', 'elementwise_min', 'elementwise_mod', 'elementwise_mul', 'elementwise_pow', 'elementwise_sub', 'fill_constant', 'flatten2', 'float16', 'fused_attention', 'fused_feedforward', 'gather', 'gaussian_random', 'layer_norm', 'leaky_relu', 'lod_array_length', 'pool2d', 'pool3d', 'rank', 'relu', 'relu6', 'reshape2', 'resnet_unit', 'scale', 'select_input', 'sigmoid', 'sign', 'slice', 'soft_relu', 'split', 'stack', 'tanh', 'top_k', 'transpose2', 'uniform_random', 'unstack', 'while', 'write_to_array']

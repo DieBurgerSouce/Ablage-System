@@ -10,13 +10,16 @@
  * - Error Retry mit Backoff
  */
 
-import { useQuery, useMutation, useQueryClient, useCallback } from '@tanstack/react-query';
+import { useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invoiceService, InvoiceApiError } from '../api/invoice-api';
 import type {
   InvoiceFilter,
   InvoiceTrackingCreate,
   InvoiceTrackingUpdate,
   InvoiceTrackingResponse,
+  SkontoUpdate,
+  PaymentCreate,
 } from '../types/invoice-types';
 
 // ==================== Konfiguration ====================
@@ -62,6 +65,14 @@ export const invoiceQueryKeys = {
 
   // Einzelne Rechnung
   detail: (id: string) => [...invoiceQueryKeys.all, 'detail', id] as const,
+
+  // Skonto
+  skonto: (id: string) => [...invoiceQueryKeys.all, 'skonto', id] as const,
+  upcomingSkonto: (daysAhead: number) =>
+    [...invoiceQueryKeys.all, 'upcoming-skonto', daysAhead] as const,
+
+  // Teilzahlungen
+  payments: (id: string) => [...invoiceQueryKeys.all, 'payments', id] as const,
 };
 
 // ==================== Query Hooks ====================
@@ -210,6 +221,163 @@ export function useDeleteInvoice() {
     onSuccess: (_, invoiceId) => {
       queryClient.invalidateQueries({
         queryKey: invoiceQueryKeys.detail(invoiceId),
+      });
+      queryClient.invalidateQueries({ queryKey: invoiceQueryKeys.list() });
+      queryClient.invalidateQueries({ queryKey: invoiceQueryKeys.statistics() });
+    },
+  });
+}
+
+// ==================== Skonto Hooks ====================
+
+/**
+ * Skonto-Informationen einer Rechnung abrufen
+ */
+export function useSkonto(invoiceId: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: invoiceQueryKeys.skonto(invoiceId),
+    queryFn: () => invoiceService.getSkonto(invoiceId),
+    staleTime: STALE_TIMES.detail,
+    gcTime: GC_TIMES.detail,
+    enabled: options?.enabled !== false && !!invoiceId,
+    ...RETRY_CONFIG,
+  });
+}
+
+/**
+ * Bevorstehende Skonto-Fristen abrufen
+ */
+export function useUpcomingSkontoDeadlines(
+  daysAhead: number = 7,
+  options?: { enabled?: boolean }
+) {
+  return useQuery({
+    queryKey: invoiceQueryKeys.upcomingSkonto(daysAhead),
+    queryFn: () => invoiceService.getUpcomingSkontoDeadlines(daysAhead),
+    staleTime: STALE_TIMES.statistics, // Wie Statistiken - aendert sich nicht so oft
+    gcTime: GC_TIMES.statistics,
+    enabled: options?.enabled !== false,
+    ...RETRY_CONFIG,
+  });
+}
+
+/**
+ * Skonto-Bedingungen aktualisieren
+ */
+export function useUpdateSkonto() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      invoiceId,
+      data,
+    }: {
+      invoiceId: string;
+      data: SkontoUpdate;
+    }) => invoiceService.updateSkonto(invoiceId, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: invoiceQueryKeys.skonto(variables.invoiceId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: invoiceQueryKeys.detail(variables.invoiceId),
+      });
+      queryClient.invalidateQueries({ queryKey: invoiceQueryKeys.list() });
+    },
+  });
+}
+
+/**
+ * Skonto anwenden (mit Skonto bezahlen)
+ */
+export function useApplySkonto() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (invoiceId: string) => invoiceService.applySkonto(invoiceId),
+    onSuccess: (updatedInvoice) => {
+      queryClient.invalidateQueries({
+        queryKey: invoiceQueryKeys.skonto(updatedInvoice.id),
+      });
+      queryClient.invalidateQueries({
+        queryKey: invoiceQueryKeys.detail(updatedInvoice.id),
+      });
+      queryClient.invalidateQueries({ queryKey: invoiceQueryKeys.list() });
+      queryClient.invalidateQueries({ queryKey: invoiceQueryKeys.statistics() });
+      // Auch die upcoming-Skonto Liste invalidieren
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          Array.isArray(query.queryKey) &&
+          query.queryKey[0] === 'invoices' &&
+          query.queryKey[1] === 'upcoming-skonto',
+      });
+    },
+  });
+}
+
+// ==================== Teilzahlung Hooks ====================
+
+/**
+ * Zahlungen einer Rechnung abrufen
+ */
+export function usePayments(invoiceId: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: invoiceQueryKeys.payments(invoiceId),
+    queryFn: () => invoiceService.listPayments(invoiceId),
+    staleTime: STALE_TIMES.invoices, // Zahlungen koennen sich schnell aendern
+    gcTime: GC_TIMES.invoices,
+    enabled: options?.enabled !== false && !!invoiceId,
+    ...RETRY_CONFIG,
+  });
+}
+
+/**
+ * Teilzahlung erfassen
+ */
+export function useAddPayment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      invoiceId,
+      data,
+    }: {
+      invoiceId: string;
+      data: PaymentCreate;
+    }) => invoiceService.addPayment(invoiceId, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: invoiceQueryKeys.payments(variables.invoiceId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: invoiceQueryKeys.detail(variables.invoiceId),
+      });
+      queryClient.invalidateQueries({ queryKey: invoiceQueryKeys.list() });
+      queryClient.invalidateQueries({ queryKey: invoiceQueryKeys.statistics() });
+    },
+  });
+}
+
+/**
+ * Teilzahlung loeschen
+ */
+export function useDeletePayment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      invoiceId,
+      paymentId,
+    }: {
+      invoiceId: string;
+      paymentId: string;
+    }) => invoiceService.deletePayment(invoiceId, paymentId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: invoiceQueryKeys.payments(variables.invoiceId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: invoiceQueryKeys.detail(variables.invoiceId),
       });
       queryClient.invalidateQueries({ queryKey: invoiceQueryKeys.list() });
       queryClient.invalidateQueries({ queryKey: invoiceQueryKeys.statistics() });

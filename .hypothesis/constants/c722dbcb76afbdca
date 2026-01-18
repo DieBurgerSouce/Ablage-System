@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\alembic\script\write_hooks.py
+# hypothesis_version: 6.148.7
+
+['-c', '-m', '_hook_name', 'console_scripts', 'cwd', 'entrypoint', 'exec', 'executable', 'module', 'options', 'stderr', 'stdout', 'type']

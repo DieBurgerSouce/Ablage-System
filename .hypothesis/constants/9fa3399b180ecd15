@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\alembic\util\sqla_compat.py
+# hypothesis_version: 6.148.7
+
+['(\\d+|[abc]\\d)', '.', 'ColumnElement[Any]', 'SchemaItem', '_CE', '_as_dict', '_copy', '_immutable', '_readonly', '_textual_idx_element', '_variant_mapping', 'always', 'auto', 'cache', 'column', 'cycle', 'increment', 'inherit_schema', 'maxvalue', 'minvalue', 'nomaxvalue', 'nominvalue', 'on_null', 'order', 'start']

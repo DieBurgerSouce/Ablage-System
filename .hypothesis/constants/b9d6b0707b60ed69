@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\batch_job_service.py
+# hypothesis_version: 6.148.7
+
+[100, 200, 500, 1000, 3000, 'Batch fehlgeschlagen', 'Batch pausiert', 'auto', 'backend', 'batch_id', 'batch_job_cancelled', 'batch_job_completed', 'batch_job_created', 'batch_job_paused', 'batch_job_resumed', 'batch_job_started', 'batch_jobs', 'completed_at', 'created_at', 'current_document', 'de', 'embedding', 'estimated_completion', 'export', 'failed', 'failed_documents', 'id', 'is_paused', 'job_type', 'language', 'message', 'ocr', 'priority', 'processed_documents', 'processing_time_ms', 'progress', 'result_summary', 'started_at', 'status', 'successful', 'successful_documents', 'total', 'total_documents', 'validation']

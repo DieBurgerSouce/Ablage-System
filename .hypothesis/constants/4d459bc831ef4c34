@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sentence_transformers\backend\__init__.py
+# hypothesis_version: 6.148.7
+
+['backend_warn_to_save', 'load_onnx_model', 'load_openvino_model']

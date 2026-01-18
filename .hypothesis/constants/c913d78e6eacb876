@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\jit\dy2static\convert_call_func.py
+# hypothesis_version: 6.148.7
+
+['*', '<lambda>', '__class__', '__code__', '__file__', '__init__.py$', '__self__', 'enumerate', 'forward', 'len', 'print', 'range', 'zip']

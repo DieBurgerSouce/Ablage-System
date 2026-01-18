@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\surya\common\surya\decoder\__init__.py
+# hypothesis_version: 6.148.7
+
+[-0.5, 0.0, 1e-06, 'Qwen2DecoderLayer', 'cache_idxs', 'cache_position', 'cos', 'cpu', 'default', 'dynamic', 'eager', 'flash_attention_2', 'head_dim', 'inv_freq', 'model', 'mps', 'num_valid_tokens', 'output_attentions', 'past_key_values', 'prefill', 'rope_scaling', 'rope_type', 'sdpa', 'sin', 'text_lengths', 'type']

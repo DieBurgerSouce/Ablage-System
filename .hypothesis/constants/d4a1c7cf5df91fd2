@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\personal\__init__.py
+# hypothesis_version: 6.148.7
+
+['DepartmentService', 'EmployeeService', 'PositionService', 'department_service', 'employee_service', 'position_service']

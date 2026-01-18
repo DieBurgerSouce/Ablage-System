@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\reshard_funcs\same_status_reshard_func.py
+# hypothesis_version: 6.148.7
+
+['builtin.combine', 'p2p', 'pd_op.add_n', 'pd_op.send_v2']

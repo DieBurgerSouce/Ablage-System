@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\passes\fuse_resnet_unit_pass.py
+# hypothesis_version: 6.148.7
+
+['NHWC', 'Y', 'act_type', 'batch_norm', 'conv2d', 'data_format', 'dilation', 'epsilon', 'fuse_add', 'group', 'groups', 'has_shortcut', 'momentum', 'op_device', 'op_namescope', 'padding', 'paddings', 'relu', 'shape', 'stride', 'strides', 'use_global_stats']

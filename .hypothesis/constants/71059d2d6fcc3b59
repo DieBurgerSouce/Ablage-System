@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\middleware\logging_middleware.py
+# hypothesis_version: 6.148.7
+
+[200, 400, 500, 1000, 5000, 10000, '/favicon.ico', '/health', '/metrics', '0', 'LoggingMiddleware', 'PATCH', 'POST', 'PUT', 'User-Agent', 'X-Correlation-ID', 'X-Request-ID', 'X-Response-Time-ms', 'anfrage_koerper', 'antwort_koerper', 'ausgehende_antwort', 'berechtigung', 'berechtigungsfehler', 'body', 'content-length', 'correlation_id', 'correlation_id_var', 'eingehende_anfrage', 'get_correlation_id', 'request', 'request_id', 'request_var', 'set_correlation_id', 'timeout', 'unbekannt', 'unerwarteter_fehler', 'unknown', 'user', 'validierung', 'validierungsfehler', 'verbindung', 'verbindungsfehler', 'zeitueberschreitung']

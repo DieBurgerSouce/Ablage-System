@@ -64,15 +64,15 @@ class BackendErrorPattern:
             return 0.0
 
         # Gewichtung nach Schwere
+        # NOTE: CorrectionType hat nur: UMLAUT, DATE, AMOUNT, NAME, IBAN, VAT_ID, GENERAL
         weights = {
             CorrectionType.UMLAUT.value: 2.0,      # Umlaute sind kritisch
-            CorrectionType.CURRENCY.value: 2.0,    # Geldbeträge kritisch
-            CorrectionType.NUMBER.value: 1.5,      # Zahlen wichtig
+            CorrectionType.AMOUNT.value: 2.0,      # Geldbetraege/Zahlen kritisch
+            CorrectionType.IBAN.value: 2.0,        # Bankdaten kritisch
+            CorrectionType.VAT_ID.value: 1.8,      # USt-IdNr wichtig
             CorrectionType.DATE.value: 1.5,        # Daten wichtig
-            CorrectionType.FIELD.value: 1.0,       # Feld-Korrekturen
-            CorrectionType.SPELLING.value: 0.5,    # Rechtschreibung weniger kritisch
-            CorrectionType.FORMATTING.value: 0.3,  # Format am wenigsten kritisch
-            CorrectionType.GENERAL.value: 0.5,
+            CorrectionType.NAME.value: 1.0,        # Namen/Felder
+            CorrectionType.GENERAL.value: 0.5,     # Allgemeine Korrekturen
         }
 
         weighted_sum = sum(
@@ -255,13 +255,15 @@ class FeedbackLearningService:
                 )
 
             # Spezifische Fehlertypen
+            # NOTE: CorrectionType hat nur: UMLAUT, DATE, AMOUNT, NAME, IBAN, VAT_ID, GENERAL
+            # number_errors und currency_errors werden beide durch AMOUNT abgedeckt
             if corr_type == CorrectionType.UMLAUT.value:
                 pattern.umlaut_errors += 1
-            elif corr_type == CorrectionType.NUMBER.value:
-                pattern.number_errors += 1
             elif corr_type == CorrectionType.DATE.value:
                 pattern.date_errors += 1
-            elif corr_type == CorrectionType.CURRENCY.value:
+            elif corr_type == CorrectionType.AMOUNT.value:
+                # AMOUNT deckt sowohl Zahlen als auch Waehrungen ab
+                pattern.number_errors += 1
                 pattern.currency_errors += 1
 
             # Confidence wenn falsch

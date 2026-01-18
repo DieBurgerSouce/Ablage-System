@@ -157,24 +157,39 @@ class MT940Parser(BaseParser):
         return result
 
     def _parse_transaction(self, tx: MT940Transaction) -> Optional[ParsedTransaction]:
-        """Parse einzelne MT940-Transaktion."""
-        try:
-            # Betrag
-            amount = Decimal(str(tx.amount.amount)) if tx.amount else Decimal("0")
+        """Parse einzelne MT940-Transaktion.
 
-            # Datum
-            booking_date = tx.date if hasattr(tx, "date") else None
-            value_date = tx.entry_date if hasattr(tx, "entry_date") else booking_date
+        Die mt940 Bibliothek speichert Transaktionsdaten im `data` Dictionary.
+        Zugriff erfolgt ueber tx.data.get('key') statt tx.key.
+        """
+        try:
+            # mt940 Bibliothek: Daten sind in tx.data Dictionary
+            tx_data = getattr(tx, "data", {}) or {}
+
+            # Betrag - in tx.data['amount'] als Amount-Objekt
+            amount_obj = tx_data.get("amount")
+            if amount_obj and hasattr(amount_obj, "amount"):
+                amount = Decimal(str(amount_obj.amount))
+            else:
+                amount = Decimal("0")
+
+            # Datum - aus tx.data
+            booking_date = tx_data.get("date")
+            value_date = tx_data.get("entry_date") or booking_date
 
             # Verwendungszweck zusammenbauen
             reference_parts = []
 
             # :86: Feld - Verwendungszweck
-            if hasattr(tx, "transaction_details") and tx.transaction_details:
-                reference_parts.append(tx.transaction_details)
+            transaction_details = tx_data.get("transaction_details")
+            if transaction_details:
+                reference_parts.append(transaction_details)
 
             # Strukturierte Felder aus :86:
-            extra_details = getattr(tx, "extra_details", None) or {}
+            extra_details = tx_data.get("extra_details")
+            if isinstance(extra_details, str):
+                # extra_details kann String sein (z.B. Name)
+                extra_details = {"name": extra_details}
 
             # Empfaenger/Auftraggeber
             counterparty_name = None
@@ -213,18 +228,18 @@ class MT940Parser(BaseParser):
             if parsed_refs["creditor_ids"]:
                 creditor_id = parsed_refs["creditor_ids"][0]
 
-            # Transaktionstyp
-            booking_text = getattr(tx, "id", None) or getattr(tx, "guvc", None) or ""
+            # Transaktionstyp - aus tx_data
+            booking_text = tx_data.get("id") or tx_data.get("guvc") or ""
             transaction_type = self.detect_transaction_type(
                 booking_text + " " + (reference_text or ""),
                 amount
             )
 
-            # Prima Nota
-            prima_nota = getattr(tx, "bank_reference", None)
+            # Prima Nota - aus tx_data
+            prima_nota = tx_data.get("bank_reference")
 
-            # Transaction-ID generieren falls nicht vorhanden
-            transaction_id = getattr(tx, "customer_reference", None)
+            # Transaction-ID generieren falls nicht vorhanden - aus tx_data
+            transaction_id = tx_data.get("customer_reference")
             if not transaction_id:
                 transaction_id = self.generate_transaction_hash(
                     booking_date or date.today(),
@@ -233,12 +248,15 @@ class MT940Parser(BaseParser):
                     reference_text or ""
                 )
 
+            # Waehrung aus tx_data oder Fallback auf EUR
+            currency = tx_data.get("currency", "EUR")
+
             return ParsedTransaction(
                 transaction_id=transaction_id,
                 booking_date=booking_date,
                 value_date=value_date,
                 amount=amount,
-                currency="EUR",  # MT940 in Deutschland meist EUR
+                currency=currency,
                 counterparty_name=counterparty_name,
                 counterparty_iban=self.normalize_iban(counterparty_iban) if counterparty_iban else None,
                 counterparty_bic=counterparty_bic,
@@ -253,8 +271,8 @@ class MT940Parser(BaseParser):
                 parsed_customer_numbers=parsed_refs["customer_numbers"],
                 parsed_references=parsed_refs["order_numbers"],
                 raw_data={
-                    "mt940_id": getattr(tx, "id", None),
-                    "mt940_guvc": getattr(tx, "guvc", None),
+                    "mt940_id": tx_data.get("id"),
+                    "mt940_guvc": tx_data.get("guvc"),
                     "mt940_extra": extra_details if isinstance(extra_details, dict) else {},
                 },
             )

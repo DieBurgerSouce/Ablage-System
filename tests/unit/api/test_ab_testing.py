@@ -52,7 +52,7 @@ class TestABTestingMetrics:
             }
         }
 
-        with patch('app.api.v1.metrics.get_ab_testing_router', return_value=mock_router), \
+        with patch('app.services.rag.ab_testing_router.get_ab_testing_router', return_value=mock_router), \
              patch('httpx.AsyncClient') as mock_client:
             mock_client.return_value.__aenter__.return_value.get = AsyncMock(return_value=mock_response)
 
@@ -80,7 +80,7 @@ class TestABTestingMetrics:
             "metrics": {}
         }
 
-        with patch('app.api.v1.metrics.get_ab_testing_router', return_value=mock_router), \
+        with patch('app.services.rag.ab_testing_router.get_ab_testing_router', return_value=mock_router), \
              patch('httpx.AsyncClient') as mock_client:
             mock_client.return_value.__aenter__.return_value.get = AsyncMock(
                 return_value=MagicMock(status_code=404)
@@ -99,7 +99,7 @@ class TestABTestingMetrics:
         """A/B Testing Metrics behandelt Router-Fehler mit deutschem Fehlertext."""
         from app.api.v1.metrics import get_ab_testing_metrics
 
-        with patch('app.api.v1.metrics.get_ab_testing_router') as mock_get_router, \
+        with patch('app.services.rag.ab_testing_router.get_ab_testing_router') as mock_get_router, \
              patch('httpx.AsyncClient') as mock_client:
             mock_get_router.side_effect = Exception("Router nicht initialisiert")
             mock_client.return_value.__aenter__.return_value.get = AsyncMock(
@@ -125,7 +125,7 @@ class TestABTestingMetrics:
             "metrics": {}
         }
 
-        with patch('app.api.v1.metrics.get_ab_testing_router', return_value=mock_router), \
+        with patch('app.services.rag.ab_testing_router.get_ab_testing_router', return_value=mock_router), \
              patch('httpx.AsyncClient') as mock_client:
             mock_client.return_value.__aenter__.return_value.get = AsyncMock(
                 side_effect=httpx.TimeoutException("Timeout")
@@ -151,7 +151,7 @@ class TestABTestingMetrics:
             "metrics": {}
         }
 
-        with patch('app.api.v1.metrics.get_ab_testing_router', return_value=mock_router), \
+        with patch('app.services.rag.ab_testing_router.get_ab_testing_router', return_value=mock_router), \
              patch('httpx.AsyncClient') as mock_client:
             mock_client.return_value.__aenter__.return_value.get = AsyncMock(
                 side_effect=httpx.ConnectError("Connection refused")
@@ -187,7 +187,7 @@ class TestABTestingMetrics:
             }
         }
 
-        with patch('app.api.v1.metrics.get_ab_testing_router', return_value=mock_router), \
+        with patch('app.services.rag.ab_testing_router.get_ab_testing_router', return_value=mock_router), \
              patch('httpx.AsyncClient') as mock_client:
             mock_client.return_value.__aenter__.return_value.get = AsyncMock(return_value=mock_response)
 
@@ -214,7 +214,7 @@ class TestABTestingTrafficSplit:
         mock_user.id = uuid4()
         mock_user.email = "admin@test.de"
 
-        with patch('app.api.v1.metrics.get_ab_testing_router', return_value=mock_router):
+        with patch('app.services.rag.ab_testing_router.get_ab_testing_router', return_value=mock_router):
             result = await update_ab_testing_traffic_split(25, mock_user)
 
             assert result["status"] == "erfolg"
@@ -261,7 +261,7 @@ class TestABTestingTrafficSplit:
         mock_user.id = uuid4()
         mock_user.email = "admin@test.de"
 
-        with patch('app.api.v1.metrics.get_ab_testing_router', return_value=mock_router):
+        with patch('app.services.rag.ab_testing_router.get_ab_testing_router', return_value=mock_router):
             # Test 0%
             result = await update_ab_testing_traffic_split(0, mock_user)
             assert result["neuer_split"] == 0
@@ -285,7 +285,7 @@ class TestABTestingResetMetrics:
         mock_user.id = uuid4()
         mock_user.email = "admin@test.de"
 
-        with patch('app.api.v1.metrics.get_ab_testing_router', return_value=mock_router):
+        with patch('app.services.rag.ab_testing_router.get_ab_testing_router', return_value=mock_router):
             result = await reset_ab_testing_metrics(mock_user)
 
             assert result["status"] == "erfolg"
@@ -304,7 +304,7 @@ class TestABTestingResetMetrics:
         mock_user.id = test_user_id
         mock_user.email = "admin@test.de"
 
-        with patch('app.api.v1.metrics.get_ab_testing_router', return_value=mock_router):
+        with patch('app.services.rag.ab_testing_router.get_ab_testing_router', return_value=mock_router):
             result = await reset_ab_testing_metrics(mock_user)
 
             assert "durchgeführt_von" in result
@@ -331,7 +331,7 @@ class TestABTestingRecommendations:
             }
         }
 
-        with patch('app.api.v1.metrics.get_ab_testing_router', return_value=mock_router), \
+        with patch('app.services.rag.ab_testing_router.get_ab_testing_router', return_value=mock_router), \
              patch('httpx.AsyncClient') as mock_client:
             mock_client.return_value.__aenter__.return_value.get = AsyncMock(
                 return_value=MagicMock(status_code=200, json=lambda: {"result": {"points_count": 674}})
@@ -358,7 +358,7 @@ class TestABTestingRecommendations:
             "metrics": {}
         }
 
-        with patch('app.api.v1.metrics.get_ab_testing_router', return_value=mock_router), \
+        with patch('app.services.rag.ab_testing_router.get_ab_testing_router', return_value=mock_router), \
              patch('httpx.AsyncClient') as mock_client:
             mock_client.return_value.__aenter__.return_value.get = AsyncMock(
                 return_value=MagicMock(
@@ -391,7 +391,7 @@ class TestABTestingRecommendations:
             }
         }
 
-        with patch('app.api.v1.metrics.get_ab_testing_router', return_value=mock_router), \
+        with patch('app.services.rag.ab_testing_router.get_ab_testing_router', return_value=mock_router), \
              patch('httpx.AsyncClient') as mock_client:
             mock_client.return_value.__aenter__.return_value.get = AsyncMock(
                 return_value=MagicMock(status_code=200, json=lambda: {"result": {"points_count": 674}})
@@ -421,7 +421,7 @@ class TestABTestingConcurrency:
         mock_user.id = uuid4()
         mock_user.email = "admin@test.de"
 
-        with patch('app.api.v1.metrics.get_ab_testing_router', return_value=mock_router):
+        with patch('app.services.rag.ab_testing_router.get_ab_testing_router', return_value=mock_router):
             # Mehrere Updates parallel
             tasks = [
                 update_ab_testing_traffic_split(20, mock_user),

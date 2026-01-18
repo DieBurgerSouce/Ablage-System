@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\core\redis_state.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.1, 1.0, 1.5, 100, 3600, '0', '1', ':', '@', 'RedisStateManager', '[]', 'added_at', 'agent:*:status', 'agent_id', 'agent_status_set', 'cache_batch_deleted', 'cache_invalidated', 'celery', 'channel', 'data', 'document_id', 'embedding_high', 'embedding_normal', 'event_callback_error', 'event_parse_error', 'event_published', 'events', 'human_review_queue', 'lock_acquired', 'message', 'metadata', 'ocr_high', 'ocr_normal', 'pmessage', 'priority_score', 'progress', 'pubsub_cleanup_error', 'pubsub_closed', 'qa_score', 'reasons', 'redis_connected', 'redis_disconnected', 'redis_ping_failed', 'review_events', 'state', 'status', 'subscribed_to_events', 'timestamp', 'type', 'updated_at', 'utf-8', '{}']

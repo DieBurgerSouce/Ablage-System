@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\operators\dist_embedding.py
+# hypothesis_version: 6.148.7
+
+['.', '/', 'Ids', 'Out', 'Out@GRAD', 'W', 'W@GRAD', 'X', 'XShape', 'all_reduce', 'broadcast', 'c_embedding', 'c_embedding_grad', 'c_identity', 'default', 'dist_Xshape', 'dist_reshape', 'embedding', 'input', 'int32', 'int64', 'is_sparse', 'lookup_table', 'lookup_table_v2', 'nop', 'op_namescope', 'op_role', 'out', 'padding_idx', 'reduce_type', 'reshape2', 'ring_id', 'root', 'row_parallel', 'shape', 'start_index', 'tmp', 'use_calc_stream', 'use_model_parallel', 'x']

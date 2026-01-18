@@ -313,11 +313,14 @@ class TestDetectUmlauts:
 
     def test_extract_umlaut_words(self, service: AutoGroundTruthService):
         """Sollte Woerter mit Umlauten extrahieren."""
-        text = "Grue_e aus Muenchen und Duesseldorf"
+        # Text mit echten Umlauten (ä, ö, ü, ß) - nicht Umschreibungen
+        text = "Grüße aus München und Düsseldorf"
 
         words = service._extract_umlaut_words(text)
 
         assert len(words) > 0
+        # Sollte "Grüße", "München", "Düsseldorf" finden
+        assert any("ü" in w or "ß" in w for w in words)
 
 
 @pytest.mark.asyncio

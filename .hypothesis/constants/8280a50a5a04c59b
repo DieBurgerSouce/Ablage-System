@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\base\reader.py
+# hypothesis_version: 6.148.7
+
+['Dataloader_', 'Out', 'Reader', 'blocking_queue', 'create_py_reader', 'darwin', 'double_buffer', 'drop_last', 'dtypes', 'lod_levels', 'need_check_feed', 'paddle.io.DataLoader', 'ranks', 'read', 'shape_concat', 'win32']

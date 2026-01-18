@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pptx\oxml\chart\datalabel.py
+# hypothesis_version: 6.148.7
+
+['a', 'c', 'c:dLbl', 'c:dLblPos', 'c:extLst', 'c:idx', 'c:layout', 'c:leaderLines', 'c:numFmt', 'c:separator', 'c:showBubbleSize', 'c:showCatName', 'c:showLeaderLines', 'c:showLegendKey', 'c:showPercent', 'c:showSerName', 'c:showVal', 'c:spPr', 'c:tx', 'c:txPr', 'c:tx[c:rich]', 'val']

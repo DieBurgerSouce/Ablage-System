@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\data\pgnet_dataset.py
+# hypothesis_version: 6.148.7
+
+[1.0, '.', 'Global', 'data_dir', 'dataset', 'delimiter', 'eval', 'image', 'img_id', 'img_path', 'label', 'label_file_list', 'loader', 'ratio_list', 'rb', 'shuffle', 'train', 'transforms', 'utf-8', '{} does not exist!']

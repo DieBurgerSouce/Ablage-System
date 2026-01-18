@@ -34,7 +34,7 @@ class TestCreateExportJob:
         with patch("app.api.v1.exports.get_current_active_user") as mock_auth:
             mock_auth.return_value = Mock(id=user_id, is_active=True)
 
-            with patch("app.api.v1.exports.batch_export_task") as mock_task:
+            with patch("app.workers.tasks.export_tasks.batch_export_task") as mock_task:
                 mock_task.delay = Mock()
 
                 response = await async_client.post(
@@ -63,7 +63,7 @@ class TestCreateExportJob:
         with patch("app.api.v1.exports.get_current_active_user") as mock_auth:
             mock_auth.return_value = Mock(id=uuid4(), is_active=True)
 
-            with patch("app.api.v1.exports.batch_export_task") as mock_task:
+            with patch("app.workers.tasks.export_tasks.batch_export_task") as mock_task:
                 mock_task.delay = Mock()
 
                 response = await async_client.post(
@@ -83,7 +83,7 @@ class TestCreateExportJob:
         with patch("app.api.v1.exports.get_current_active_user") as mock_auth:
             mock_auth.return_value = Mock(id=uuid4(), is_active=True)
 
-            with patch("app.api.v1.exports.batch_export_task") as mock_task:
+            with patch("app.workers.tasks.export_tasks.batch_export_task") as mock_task:
                 mock_task.delay = Mock()
 
                 response = await async_client.post(
@@ -405,7 +405,7 @@ class TestResumeExportJob:
         with patch("app.api.v1.exports.get_current_active_user") as mock_auth:
             mock_auth.return_value = Mock(id=uuid4(), is_active=True)
 
-            with patch("app.api.v1.exports.batch_export_task") as mock_task:
+            with patch("app.workers.tasks.export_tasks.batch_export_task") as mock_task:
                 mock_task.delay = Mock()
 
                 response = await async_client.post(

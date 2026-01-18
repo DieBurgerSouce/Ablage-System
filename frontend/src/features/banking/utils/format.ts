@@ -99,3 +99,17 @@ export function formatNumber(value: number, decimals = 0): string {
         maximumFractionDigits: decimals,
     }).format(value);
 }
+
+/**
+ * Formatiert Tage bis zu einem Datum
+ *
+ * @param days - Anzahl der Tage (positiv = in der Zukunft)
+ * @returns Formatierter String (z.B. "3 Tage", "Heute", "Morgen")
+ */
+export function formatDaysUntil(days: number): string {
+    if (days === 0) return 'Heute';
+    if (days === 1) return 'Morgen';
+    if (days === -1) return 'Gestern';
+    if (days < 0) return `vor ${Math.abs(days)} Tagen`;
+    return `${days} Tage`;
+}

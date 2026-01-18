@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\recompute\recompute.py
+# hypothesis_version: 6.148.7
+
+[':', 'O1', 'O2', 'bfloat16', 'cpu', 'cpy', 'float16', 'float32', 'gpu:', 'main_grad', 'offload_indices', 'preserve_rng_state', 'segments', 'use_reentrant', 'xpu:']

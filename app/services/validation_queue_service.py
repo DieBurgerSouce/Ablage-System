@@ -41,7 +41,7 @@ from app.db.schemas import (
     BatchApproveRequest,
     BatchRejectRequest,
     BatchAssignRequest,
-    BatchOperationResult,
+    ValidationBatchOperationResult as BatchOperationResult,  # Alias fuer Rueckwaertskompatibilitaet
     ValidationQueueFilters,
     ValidationQueueSortOptions,
     ValidationStatusEnum,
@@ -66,6 +66,7 @@ class ValidationQueueService:
     async def add_to_queue(
         self,
         document_id: uuid.UUID,
+        company_id: uuid.UUID,
         source: SampleSourceEnum = SampleSourceEnum.AUTOMATIC,
         priority: int = 5,
         created_by_id: Optional[uuid.UUID] = None,
@@ -73,8 +74,11 @@ class ValidationQueueService:
     ) -> ValidationQueueItem:
         """Fuegt ein Dokument zur Validierungswarteschlange hinzu.
 
+        SECURITY: company_id ist PFLICHT fuer Multi-Tenant Isolation.
+
         Args:
             document_id: ID des Dokuments
+            company_id: ID der Company (PFLICHT fuer Multi-Tenant)
             source: Quelle der Stichprobenauswahl
             priority: Prioritaet (1-10, 1 = hoechste)
             created_by_id: ID des Erstellers
@@ -85,7 +89,33 @@ class ValidationQueueService:
 
         Raises:
             ValueError: Wenn das Dokument bereits in der Queue ist
+            ValueError: Wenn das Dokument nicht zur Company gehoert
         """
+        # SECURITY: Dokument mit company_id Validierung laden
+        doc_result = await self.db.execute(
+            select(Document).where(
+                and_(
+                    Document.id == document_id,
+                    Document.company_id == company_id,
+                )
+            )
+        )
+        document = doc_result.scalar_one_or_none()
+        if not document:
+            # SECURITY: Pruefen ob Dokument existiert aber falsche Company
+            check_result = await self.db.execute(
+                select(Document.company_id).where(Document.id == document_id)
+            )
+            actual_company_id = check_result.scalar_one_or_none()
+            if actual_company_id and actual_company_id != company_id:
+                logger.warning(
+                    "cross_tenant_validation_queue_blocked",
+                    document_id=str(document_id),
+                    requested_company_id=str(company_id),
+                    actual_company_id=str(actual_company_id),
+                )
+            raise ValueError(f"Dokument {document_id} nicht gefunden")
+
         # Pruefen ob Dokument bereits in Queue (pending oder in_progress)
         existing = await self.db.execute(
             select(ValidationQueueItem).where(
@@ -100,14 +130,6 @@ class ValidationQueueService:
         )
         if existing.scalar_one_or_none():
             raise ValueError(f"Dokument {document_id} ist bereits in der Validierungswarteschlange")
-
-        # Dokument-Informationen laden
-        doc_result = await self.db.execute(
-            select(Document).where(Document.id == document_id)
-        )
-        document = doc_result.scalar_one_or_none()
-        if not document:
-            raise ValueError(f"Dokument {document_id} nicht gefunden")
 
         # Queue-Item erstellen
         queue_item = ValidationQueueItem(
@@ -139,27 +161,65 @@ class ValidationQueueService:
     async def get_queue_item(
         self,
         item_id: uuid.UUID,
+        company_id: Optional[uuid.UUID] = None,
         include_fields: bool = False
     ) -> Optional[ValidationQueueItem]:
         """Holt ein Queue-Item nach ID.
 
+        SECURITY: company_id SOLLTE fuer Multi-Tenant Isolation angegeben werden.
+        Die Validierung erfolgt ueber JOIN auf Document.company_id.
+
         Args:
             item_id: ID des Queue-Items
+            company_id: ID der Company fuer Multi-Tenant Isolation
             include_fields: Ob Feld-Reviews mitgeladen werden sollen
 
         Returns:
             Das Queue-Item oder None
         """
-        query = select(ValidationQueueItem).where(ValidationQueueItem.id == item_id)
+        # SECURITY: Multi-Tenant Isolation via Join auf Document
+        if company_id:
+            query = (
+                select(ValidationQueueItem)
+                .join(Document, ValidationQueueItem.document_id == Document.id)
+                .where(
+                    and_(
+                        ValidationQueueItem.id == item_id,
+                        Document.company_id == company_id,
+                    )
+                )
+            )
+        else:
+            query = select(ValidationQueueItem).where(ValidationQueueItem.id == item_id)
 
         if include_fields:
             query = query.options(selectinload(ValidationQueueItem.field_reviews))
 
         result = await self.db.execute(query)
-        return result.scalar_one_or_none()
+        item = result.scalar_one_or_none()
+
+        # SECURITY: Log Cross-Tenant Zugriffsversuch
+        if company_id and not item:
+            check_query = (
+                select(Document.company_id)
+                .join(ValidationQueueItem, ValidationQueueItem.document_id == Document.id)
+                .where(ValidationQueueItem.id == item_id)
+            )
+            check_result = await self.db.execute(check_query)
+            actual_company_id = check_result.scalar_one_or_none()
+            if actual_company_id and actual_company_id != company_id:
+                logger.warning(
+                    "cross_tenant_validation_item_access_blocked",
+                    item_id=str(item_id),
+                    requested_company_id=str(company_id),
+                    actual_company_id=str(actual_company_id),
+                )
+
+        return item
 
     async def get_queue_items(
         self,
+        company_id: uuid.UUID,
         filters: Optional[ValidationQueueFilters] = None,
         sort_by: ValidationQueueSortOptions = ValidationQueueSortOptions.PRIORITY_DESC,
         page: int = 1,
@@ -167,7 +227,11 @@ class ValidationQueueService:
     ) -> Tuple[List[ValidationQueueItem], int]:
         """Holt Queue-Items mit Filterung und Paginierung.
 
+        SECURITY: company_id ist PFLICHT fuer Multi-Tenant Isolation.
+        Filtert Items ueber JOIN auf Document.company_id.
+
         Args:
+            company_id: ID der Company (PFLICHT fuer Multi-Tenant)
             filters: Filter-Optionen
             sort_by: Sortierung
             page: Seitennummer (1-basiert)
@@ -176,8 +240,17 @@ class ValidationQueueService:
         Returns:
             Tuple aus (Items, Gesamtanzahl)
         """
-        query = select(ValidationQueueItem)
-        count_query = select(func.count(ValidationQueueItem.id))
+        # SECURITY: Multi-Tenant Isolation via Join auf Document
+        query = (
+            select(ValidationQueueItem)
+            .join(Document, ValidationQueueItem.document_id == Document.id)
+            .where(Document.company_id == company_id)
+        )
+        count_query = (
+            select(func.count(ValidationQueueItem.id))
+            .join(Document, ValidationQueueItem.document_id == Document.id)
+            .where(Document.company_id == company_id)
+        )
 
         # Filter anwenden
         if filters:
@@ -258,18 +331,23 @@ class ValidationQueueService:
     async def update_queue_item(
         self,
         item_id: uuid.UUID,
+        company_id: uuid.UUID,
         update_data: ValidationQueueItemUpdate
     ) -> Optional[ValidationQueueItem]:
         """Aktualisiert ein Queue-Item.
 
+        SECURITY: company_id ist PFLICHT fuer Multi-Tenant Isolation.
+
         Args:
             item_id: ID des Queue-Items
+            company_id: ID der Company (PFLICHT fuer Multi-Tenant)
             update_data: Zu aktualisierende Felder
 
         Returns:
             Das aktualisierte Queue-Item oder None
         """
-        item = await self.get_queue_item(item_id)
+        # SECURITY: Multi-Tenant Isolation
+        item = await self.get_queue_item(item_id, company_id=company_id)
         if not item:
             return None
 
@@ -289,16 +367,24 @@ class ValidationQueueService:
 
         return item
 
-    async def delete_queue_item(self, item_id: uuid.UUID) -> bool:
+    async def delete_queue_item(
+        self,
+        item_id: uuid.UUID,
+        company_id: uuid.UUID,
+    ) -> bool:
         """Loescht ein Queue-Item.
+
+        SECURITY: company_id ist PFLICHT fuer Multi-Tenant Isolation.
 
         Args:
             item_id: ID des Queue-Items
+            company_id: ID der Company (PFLICHT fuer Multi-Tenant)
 
         Returns:
             True wenn geloescht, False wenn nicht gefunden
         """
-        item = await self.get_queue_item(item_id)
+        # SECURITY: Multi-Tenant Isolation
+        item = await self.get_queue_item(item_id, company_id=company_id)
         if not item:
             return False
 
@@ -316,29 +402,40 @@ class ValidationQueueService:
         self,
         item_id: uuid.UUID,
         editor_id: uuid.UUID,
+        company_id: uuid.UUID,
         priority: Optional[int] = None
     ) -> Optional[ValidationQueueItem]:
         """Weist ein Queue-Item einem Editor zu.
 
+        SECURITY: company_id ist PFLICHT fuer Multi-Tenant Isolation.
+        Validiert auch, dass der Editor zur selben Company gehoert.
+
         Args:
             item_id: ID des Queue-Items
             editor_id: ID des Editors
+            company_id: ID der Company (PFLICHT fuer Multi-Tenant)
             priority: Optionale neue Prioritaet
 
         Returns:
             Das aktualisierte Queue-Item oder None
         """
-        item = await self.get_queue_item(item_id)
+        # SECURITY: Multi-Tenant Isolation
+        item = await self.get_queue_item(item_id, company_id=company_id)
         if not item:
             return None
 
-        # Pruefen ob Editor existiert
+        # SECURITY: Pruefen ob Editor zur selben Company gehoert
         editor_result = await self.db.execute(
-            select(User).where(User.id == editor_id)
+            select(User).where(
+                and_(
+                    User.id == editor_id,
+                    User.company_id == company_id,
+                )
+            )
         )
         editor = editor_result.scalar_one_or_none()
         if not editor:
-            raise ValueError(f"Editor {editor_id} nicht gefunden")
+            raise ValueError(f"Editor {editor_id} nicht gefunden oder gehoert nicht zur Company")
 
         item.assigned_to_id = editor_id
         item.assigned_at = utc_now()
@@ -360,16 +457,24 @@ class ValidationQueueService:
 
         return item
 
-    async def unassign(self, item_id: uuid.UUID) -> Optional[ValidationQueueItem]:
+    async def unassign(
+        self,
+        item_id: uuid.UUID,
+        company_id: uuid.UUID,
+    ) -> Optional[ValidationQueueItem]:
         """Entfernt die Zuweisung eines Queue-Items.
+
+        SECURITY: company_id ist PFLICHT fuer Multi-Tenant Isolation.
 
         Args:
             item_id: ID des Queue-Items
+            company_id: ID der Company (PFLICHT fuer Multi-Tenant)
 
         Returns:
             Das aktualisierte Queue-Item oder None
         """
-        item = await self.get_queue_item(item_id)
+        # SECURITY: Multi-Tenant Isolation
+        item = await self.get_queue_item(item_id, company_id=company_id)
         if not item:
             return None
 
@@ -393,19 +498,24 @@ class ValidationQueueService:
         self,
         item_id: uuid.UUID,
         validated_by_id: uuid.UUID,
+        company_id: uuid.UUID,
         notes: Optional[str] = None
     ) -> Optional[ValidationQueueItem]:
         """Genehmigt ein Queue-Item.
 
+        SECURITY: company_id ist PFLICHT fuer Multi-Tenant Isolation.
+
         Args:
             item_id: ID des Queue-Items
             validated_by_id: ID des validierenden Users
+            company_id: ID der Company (PFLICHT fuer Multi-Tenant)
             notes: Optionale Notizen
 
         Returns:
             Das aktualisierte Queue-Item oder None
         """
-        item = await self.get_queue_item(item_id, include_fields=True)
+        # SECURITY: Multi-Tenant Isolation
+        item = await self.get_queue_item(item_id, company_id=company_id, include_fields=True)
         if not item:
             return None
 
@@ -457,21 +567,26 @@ class ValidationQueueService:
         self,
         item_id: uuid.UUID,
         validated_by_id: uuid.UUID,
+        company_id: uuid.UUID,
         reason: str,
         category: RejectionCategoryEnum = RejectionCategoryEnum.OTHER
     ) -> Optional[ValidationQueueItem]:
         """Lehnt ein Queue-Item ab.
 
+        SECURITY: company_id ist PFLICHT fuer Multi-Tenant Isolation.
+
         Args:
             item_id: ID des Queue-Items
             validated_by_id: ID des validierenden Users
+            company_id: ID der Company (PFLICHT fuer Multi-Tenant)
             reason: Ablehnungsgrund
             category: Kategorie des Ablehnungsgrunds
 
         Returns:
             Das aktualisierte Queue-Item oder None
         """
-        item = await self.get_queue_item(item_id)
+        # SECURITY: Multi-Tenant Isolation
+        item = await self.get_queue_item(item_id, company_id=company_id)
         if not item:
             return None
 
@@ -511,13 +626,17 @@ class ValidationQueueService:
         self,
         item_ids: List[uuid.UUID],
         validated_by_id: uuid.UUID,
+        company_id: uuid.UUID,
         notes: Optional[str] = None
     ) -> BatchOperationResult:
         """Genehmigt mehrere Queue-Items.
 
+        SECURITY: company_id ist PFLICHT fuer Multi-Tenant Isolation.
+
         Args:
             item_ids: Liste der Queue-Item IDs
             validated_by_id: ID des validierenden Users
+            company_id: ID der Company (PFLICHT fuer Multi-Tenant)
             notes: Optionale gemeinsame Notizen
 
         Returns:
@@ -528,7 +647,8 @@ class ValidationQueueService:
 
         for item_id in item_ids:
             try:
-                result = await self.approve_item(item_id, validated_by_id, notes)
+                # SECURITY: company_id wird an approve_item weitergegeben
+                result = await self.approve_item(item_id, validated_by_id, company_id, notes)
                 if result:
                     success_count += 1
                 else:
@@ -559,14 +679,18 @@ class ValidationQueueService:
         self,
         item_ids: List[uuid.UUID],
         validated_by_id: uuid.UUID,
+        company_id: uuid.UUID,
         reason: str,
         category: RejectionCategoryEnum = RejectionCategoryEnum.OTHER
     ) -> BatchOperationResult:
         """Lehnt mehrere Queue-Items ab.
 
+        SECURITY: company_id ist PFLICHT fuer Multi-Tenant Isolation.
+
         Args:
             item_ids: Liste der Queue-Item IDs
             validated_by_id: ID des validierenden Users
+            company_id: ID der Company (PFLICHT fuer Multi-Tenant)
             reason: Gemeinsamer Ablehnungsgrund
             category: Kategorie des Ablehnungsgrunds
 
@@ -578,7 +702,8 @@ class ValidationQueueService:
 
         for item_id in item_ids:
             try:
-                result = await self.reject_item(item_id, validated_by_id, reason, category)
+                # SECURITY: company_id wird an reject_item weitergegeben
+                result = await self.reject_item(item_id, validated_by_id, company_id, reason, category)
                 if result:
                     success_count += 1
                 else:
@@ -609,13 +734,17 @@ class ValidationQueueService:
     async def batch_assign(
         self,
         item_ids: List[uuid.UUID],
-        editor_id: uuid.UUID
+        editor_id: uuid.UUID,
+        company_id: uuid.UUID,
     ) -> BatchOperationResult:
         """Weist mehrere Queue-Items einem Editor zu.
+
+        SECURITY: company_id ist PFLICHT fuer Multi-Tenant Isolation.
 
         Args:
             item_ids: Liste der Queue-Item IDs
             editor_id: ID des Editors
+            company_id: ID der Company (PFLICHT fuer Multi-Tenant)
 
         Returns:
             BatchOperationResult mit Erfolgs-/Fehlerstatistik
@@ -625,7 +754,8 @@ class ValidationQueueService:
 
         for item_id in item_ids:
             try:
-                result = await self.assign_to_editor(item_id, editor_id)
+                # SECURITY: company_id wird an assign_to_editor weitergegeben
+                result = await self.assign_to_editor(item_id, editor_id, company_id)
                 if result:
                     success_count += 1
                 else:
@@ -657,8 +787,14 @@ class ValidationQueueService:
     # STATISTICS
     # =========================================================================
 
-    async def get_queue_stats(self) -> Dict[str, int]:
+    async def get_queue_stats(self, company_id: uuid.UUID) -> Dict[str, int]:
         """Holt Statistiken zur Warteschlange.
+
+        SECURITY: company_id ist PFLICHT fuer Multi-Tenant Isolation.
+        Zeigt nur Statistiken fuer die eigene Company.
+
+        Args:
+            company_id: ID der Company (PFLICHT fuer Multi-Tenant)
 
         Returns:
             Dictionary mit Statistiken
@@ -666,10 +802,21 @@ class ValidationQueueService:
         today = date.today()
         today_start = datetime.combine(today, datetime.min.time())
 
+        # SECURITY: Base-Subquery fuer company_id Filter
+        company_filtered_ids = (
+            select(ValidationQueueItem.id)
+            .join(Document, ValidationQueueItem.document_id == Document.id)
+            .where(Document.company_id == company_id)
+            .scalar_subquery()
+        )
+
         # Pending count
         pending_result = await self.db.execute(
             select(func.count(ValidationQueueItem.id)).where(
-                ValidationQueueItem.status == ValidationStatus.PENDING.value
+                and_(
+                    ValidationQueueItem.status == ValidationStatus.PENDING.value,
+                    ValidationQueueItem.id.in_(company_filtered_ids),
+                )
             )
         )
         pending_count = pending_result.scalar() or 0
@@ -677,7 +824,10 @@ class ValidationQueueService:
         # In Progress count
         in_progress_result = await self.db.execute(
             select(func.count(ValidationQueueItem.id)).where(
-                ValidationQueueItem.status == ValidationStatus.IN_PROGRESS.value
+                and_(
+                    ValidationQueueItem.status == ValidationStatus.IN_PROGRESS.value,
+                    ValidationQueueItem.id.in_(company_filtered_ids),
+                )
             )
         )
         in_progress_count = in_progress_result.scalar() or 0
@@ -687,7 +837,8 @@ class ValidationQueueService:
             select(func.count(ValidationQueueItem.id)).where(
                 and_(
                     ValidationQueueItem.status == ValidationStatus.APPROVED.value,
-                    ValidationQueueItem.validated_at >= today_start
+                    ValidationQueueItem.validated_at >= today_start,
+                    ValidationQueueItem.id.in_(company_filtered_ids),
                 )
             )
         )
@@ -698,7 +849,8 @@ class ValidationQueueService:
             select(func.count(ValidationQueueItem.id)).where(
                 and_(
                     ValidationQueueItem.status == ValidationStatus.REJECTED.value,
-                    ValidationQueueItem.validated_at >= today_start
+                    ValidationQueueItem.validated_at >= today_start,
+                    ValidationQueueItem.id.in_(company_filtered_ids),
                 )
             )
         )
@@ -714,14 +866,19 @@ class ValidationQueueService:
     async def get_my_assigned_items(
         self,
         editor_id: uuid.UUID,
+        company_id: uuid.UUID,
         status: Optional[str] = None,
         limit: int = 50,
         offset: int = 0
     ) -> Tuple[List[ValidationQueueItem], int]:
         """Holt alle einem Editor zugewiesenen Items mit Pagination.
 
+        SECURITY: company_id ist PFLICHT fuer Multi-Tenant Isolation.
+        Filtert Items zusaetzlich ueber Document.company_id.
+
         Args:
             editor_id: ID des Editors
+            company_id: ID der Company (PFLICHT fuer Multi-Tenant)
             status: Optionaler Status-Filter (String-Wert)
             limit: Maximale Anzahl der Items
             offset: Offset fuer Pagination
@@ -729,19 +886,30 @@ class ValidationQueueService:
         Returns:
             Tuple aus (Liste der zugewiesenen Items, Gesamtanzahl)
         """
-        # Basis-Query
-        base_conditions = [ValidationQueueItem.assigned_to_id == editor_id]
+        # SECURITY: Multi-Tenant Isolation via Join auf Document
+        base_conditions = [
+            ValidationQueueItem.assigned_to_id == editor_id,
+            Document.company_id == company_id,  # Multi-Tenant Filter
+        ]
 
         if status:
             base_conditions.append(ValidationQueueItem.status == status)
 
-        # Count Query
-        count_query = select(func.count(ValidationQueueItem.id)).where(*base_conditions)
+        # Count Query mit Join
+        count_query = (
+            select(func.count(ValidationQueueItem.id))
+            .join(Document, ValidationQueueItem.document_id == Document.id)
+            .where(and_(*base_conditions))
+        )
         count_result = await self.db.execute(count_query)
         total = count_result.scalar() or 0
 
-        # Items Query mit Pagination
-        query = select(ValidationQueueItem).where(*base_conditions)
+        # Items Query mit Pagination und Join
+        query = (
+            select(ValidationQueueItem)
+            .join(Document, ValidationQueueItem.document_id == Document.id)
+            .where(and_(*base_conditions))
+        )
         query = query.order_by(ValidationQueueItem.priority.asc())
         query = query.limit(limit).offset(offset)
 

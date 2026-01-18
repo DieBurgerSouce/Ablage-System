@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_optimizers\raw_program_optimizer.py
+# hypothesis_version: 6.148.7
+
+[1.0, '0', '1', 'AMPOptimizer', 'Cond', 'DGCOptimizer', 'Dep', 'FusedOutput', 'Input', 'LambOptimizer', 'LarsOptimizer', 'LocalSGDOptimizer', 'Out', 'Output', 'RecomputeOptimizer', 'X', 'all_reduce', 'broadcast', 'c_allreduce_sum', 'c_sync_calc_stream', 'c_sync_comm_stream', 'coalesce_tensor', 'conditional_block', 'copy_data', 'depend', 'dtype', 'false', 'grad_merge_cond_name', 'off', 'out', 'reduce_type', 'ring_id', 'root', 'scale', 'sub_block', 'use_align', 'use_cuda', 'x']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\augmentations\dropout\grid_dropout.py
+# hypothesis_version: 6.148.7
+
+[0.5, 'GridDropout', 'holes', 'inpaint_ns', 'inpaint_telea', 'random', 'random_uniform', 'seed', 'shape']

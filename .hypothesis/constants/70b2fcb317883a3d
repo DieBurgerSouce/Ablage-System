@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\.claude\orchestration\validators.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, 365, 1000, 10000, 50000, 100000, 1000000, 3600000, '->', '..', '/', ':', '^[a-z0-9_-]+$', 'affected_patterns', 'cache_hit', 'code', 'confidence', 'context', 'critical', 'decision', 'escalated', 'escalation_path', 'execution_time_ms', 'failed', 'file_paths', 'haiku', 'high', 'low', 'medium', 'model', 'opus', 'passed', 'pattern', 'quality_level', 'reasoning', 'sonnet', 'success', 'tags', 'task_prompt', 'tier', 'tokens', 'ttl_days', 'warning']

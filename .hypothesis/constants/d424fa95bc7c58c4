@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\rpc\__init__.py
+# hypothesis_version: 6.148.7
+
+['get_all_worker_infos', 'get_worker_info', 'init_rpc', 'rpc_async', 'rpc_sync', 'shutdown']

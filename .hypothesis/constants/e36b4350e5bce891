@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\profiler\timer.py
+# hypothesis_version: 6.148.7
+
+[1.0, 100, ' {}: {:.5f} s', '%', '/s', '=', 'Perf Summary', 'Reader Ratio: ', '_dataset', 'avg', 'batch_cost', 'batch_summary', 'inf', 'ips', 'ips_summary', 'max', 'min', 'reader_cost', 'reader_ratio', 'reader_summary', 'samples/s', 'steps/s', 'timer_hook', 'total', '{:.3f}', '{:.5f}', '|']

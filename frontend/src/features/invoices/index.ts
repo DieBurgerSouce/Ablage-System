@@ -24,6 +24,15 @@ export {
   useMarkInvoicePaid,
   useIncreaseDunning,
   useDeleteInvoice,
+  // Skonto Hooks (NEU)
+  useSkonto,
+  useUpcomingSkontoDeadlines,
+  useUpdateSkonto,
+  useApplySkonto,
+  // Teilzahlung Hooks (NEU)
+  usePayments,
+  useAddPayment,
+  useDeletePayment,
   // Combined Hooks
   useInvoicePage,
   useInvoiceMutations,
@@ -37,6 +46,15 @@ export {
 // Components
 export { DunningLevelBadge, DunningLevelBadgeCompact } from './components/DunningLevelBadge';
 export { InvoiceStatsCards } from './components/InvoiceStatsCards';
+// Skonto Components (NEU)
+export {
+  SkontoAlertBadge,
+  SkontoAlertBadgeCompact,
+  SkontoExpiringAlert,
+} from './components/SkontoAlertBadge';
+export { SkontoDetailPanel } from './components/SkontoDetailPanel';
+// Teilzahlung Components (NEU)
+export { PaymentHistoryPanel } from './components/PaymentHistoryPanel';
 export { InvoiceFilterBar } from './components/InvoiceFilterBar';
 export { InvoiceTable } from './components/InvoiceTable';
 export { InvoiceActions } from './components/InvoiceActions';

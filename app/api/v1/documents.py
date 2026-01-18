@@ -767,6 +767,7 @@ async def search_documents(
     sort_order: SortOrder = Query(SortOrder.DESC, description="Sortierreihenfolge"),
     highlight: bool = Query(True, description="Textausschnitte hervorheben"),
     similarity_threshold: float = Query(0.5, ge=0, le=1, description="Min. Aehnlichkeit fuer semantische Suche"),
+    use_synonyms: bool = Query(False, description="Suche mit Synonymen erweitern (z.B. Rechnung -> Invoice, Faktura)"),
     session_id: Optional[str] = Query(None, description="Session-ID fuer Analytics"),
     current_user: User = Depends(check_rate_limit),
     db: AsyncSession = Depends(get_db)
@@ -780,6 +781,9 @@ async def search_documents(
 
     Die Hybrid-Suche kombiniert Volltext- und semantische Ergebnisse
     mittels Reciprocal Rank Fusion fuer optimale Relevanz.
+
+    Mit **use_synonyms=true** werden deutsche Geschaeftsbegriffe automatisch
+    um Synonyme erweitert (z.B. "Rechnung" findet auch "Invoice", "Faktura").
     """
     import time
     start_time = time.time()
@@ -818,7 +822,8 @@ async def search_documents(
                 sort_by=sort_by,
                 sort_order=sort_order,
                 highlight=highlight,
-                similarity_threshold=similarity_threshold
+                similarity_threshold=similarity_threshold,
+                use_synonyms=use_synonyms
             ),
             timeout=SEARCH_TIMEOUT_SECONDS
         )

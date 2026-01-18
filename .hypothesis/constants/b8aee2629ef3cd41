@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\models\qwen3_vl\configuration_qwen3_vl.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-06, 0.02, 5000000.0, 128, 1152, 2304, 3584, 4096, 4304, 22016, 128000, 151652, 151653, 151655, 151656, 151936, 'Qwen3VLConfig', 'Qwen3VLTextConfig', 'gelu_pytorch_tanh', 'mrope_interleaved', 'mrope_section', 'past_key_values', 'qwen3_vl', 'qwen3_vl_text', 'silu', 'text_config', 'vision_config']

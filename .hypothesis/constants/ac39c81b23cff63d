@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\augmentations\mixing\functional.py
+# hypothesis_version: 6.148.7
+
+[1.0, 2.0, 'ProcessedMosaicItem', 'albumentations', 'bbox_params', 'bboxes', 'bottom', 'bottom_left', 'bottom_right', 'center', 'contain', 'cover', 'format', 'height', 'image', 'keypoint_params', 'keypoints', 'left', 'mask', 'p', 'right', 'top', 'top_left', 'top_right', 'width']

@@ -15,7 +15,7 @@ from sqlalchemy import select, and_, delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models import Document, Tag, ProcessingStatus
+from app.db.models import Document, Tag
 from app.db.schemas import (
     TagOperation,
     BatchOperationResult,
@@ -119,6 +119,7 @@ class DocumentBatchService(DocumentServiceBase):
             if found_ids:
                 if soft_delete:
                     # GDPR-konformes Soft-Delete: Markiere als geloescht
+                    # Status bleibt unveraendert - deleted_at ist das Kriterium fuer Soft-Delete
                     now = datetime.now(timezone.utc)
                     update_stmt = update(Document).where(
                         and_(
@@ -127,8 +128,7 @@ class DocumentBatchService(DocumentServiceBase):
                         )
                     ).values(
                         deleted_at=now,
-                        deleted_by_id=user_id,
-                        status=ProcessingStatus.DELETED
+                        deleted_by_id=user_id
                     )
                     update_result = await db.execute(update_stmt)
                     processed = update_result.rowcount

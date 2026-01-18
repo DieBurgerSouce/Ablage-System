@@ -454,6 +454,99 @@ export interface TANMethod {
     description: string;
 }
 
+// ==================== Liquidity Forecast Types ====================
+
+export type LiquidityRiskLevel = 'healthy' | 'adequate' | 'caution' | 'warning' | 'critical';
+export type AnomalyType = 'unusual_amount' | 'unexpected_timing' | 'missing_recurring' | 'duplicate_payment' | 'pattern_deviation';
+export type ForecastConfidence = 'high' | 'medium' | 'low';
+
+export interface ConfidenceInterval {
+    lower_bound: number;
+    upper_bound: number;
+    confidence_level: number;
+}
+
+export interface LiquidityBottleneck {
+    date: string;
+    projected_balance: number;
+    shortfall_amount: number;
+    severity: LiquidityRiskLevel;
+    contributing_factors: string[];
+    recommendation: string;
+}
+
+export interface PaymentAnomaly {
+    transaction_id: string | null;
+    date: string;
+    amount: number;
+    anomaly_type: AnomalyType;
+    description: string;
+    confidence: number;
+    expected_amount: number | null;
+    deviation_percent: number | null;
+}
+
+export interface WaterfallChartData {
+    date: string;
+    label: string;
+    starting_balance: number;
+    inflow: number;
+    outflow: number;
+    ending_balance: number;
+    is_running_total: boolean;
+}
+
+export interface RollingForecast {
+    period_days: number;
+    expected_inflow: number;
+    expected_outflow: number;
+    expected_net_flow: number;
+    risk_level: LiquidityRiskLevel;
+    probability_of_shortfall: number;
+    bottlenecks: LiquidityBottleneck[];
+    confidence_interval: ConfidenceInterval;
+}
+
+export interface LiquidityForecastResponse {
+    forecast_date: string;
+    starting_balance: number;
+    current_risk_level: LiquidityRiskLevel;
+    forecasts: {
+        days_30: RollingForecast;
+        days_60: RollingForecast;
+        days_90: RollingForecast;
+    };
+    overall_confidence: ForecastConfidence;
+    recommendations: string[];
+}
+
+export interface BottleneckPredictionResponse {
+    analysis_date: string;
+    days_analyzed: number;
+    bottlenecks: LiquidityBottleneck[];
+    has_critical_bottleneck: boolean;
+    earliest_bottleneck_date: string | null;
+    total_shortfall: number;
+}
+
+export interface WaterfallChartResponse {
+    start_date: string;
+    end_date: string;
+    starting_balance: number;
+    entries: WaterfallChartData[];
+    total_inflow: number;
+    total_outflow: number;
+    ending_balance: number;
+}
+
+export interface AnomalyDetectionResponse {
+    analysis_date: string;
+    days_analyzed: number;
+    anomalies: PaymentAnomaly[];
+    anomaly_count: number;
+    high_confidence_count: number;
+}
+
 // Skonto Types
 export interface SkontoOpportunity {
     document_id: string;
@@ -499,6 +592,55 @@ export const bankingService = {
 
     getCashFlowScenarios: async (params?: { days_ahead?: number; bank_account_id?: string }) => {
         const response = await apiClient.get<ScenarioComparison>('/banking/cashflow/scenarios', { params });
+        return response.data;
+    },
+
+    // ==================== Liquidity Forecast ====================
+
+    /**
+     * Umfassende Liquiditätsprognose abrufen (30/60/90 Tage)
+     */
+    getLiquidityForecast: async (params?: {
+        bank_account_id?: string;
+        starting_balance?: number;
+    }) => {
+        const response = await apiClient.get<LiquidityForecastResponse>('/finance/liquidity/forecast', { params });
+        return response.data;
+    },
+
+    /**
+     * Engpass-Vorhersage abrufen
+     */
+    getLiquidityBottlenecks: async (params?: {
+        bank_account_id?: string;
+        days_ahead?: number;
+        min_severity?: LiquidityRiskLevel;
+    }) => {
+        const response = await apiClient.get<BottleneckPredictionResponse>('/finance/liquidity/bottlenecks', { params });
+        return response.data;
+    },
+
+    /**
+     * Wasserfall-Chart-Daten abrufen
+     */
+    getWaterfallChart: async (params?: {
+        bank_account_id?: string;
+        days?: number;
+        granularity?: 'daily' | 'weekly' | 'monthly';
+    }) => {
+        const response = await apiClient.get<WaterfallChartResponse>('/finance/liquidity/waterfall', { params });
+        return response.data;
+    },
+
+    /**
+     * Zahlungsanomalien erkennen
+     */
+    detectPaymentAnomalies: async (params?: {
+        bank_account_id?: string;
+        days_back?: number;
+        min_confidence?: number;
+    }) => {
+        const response = await apiClient.get<AnomalyDetectionResponse>('/finance/liquidity/anomalies', { params });
         return response.data;
     },
 

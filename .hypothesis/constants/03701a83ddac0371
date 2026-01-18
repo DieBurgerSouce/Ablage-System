@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\vision\models\mobilenetv3.py
+# hypothesis_version: 6.148.7
+
+[0.001, 0.2, 0.99, 1.0, 112, 120, 144, 160, 184, 200, 240, 288, 480, 576, 672, 960, 1000, 1024, 1280, 'hardswish', 'mobilenet_v3_large', 'mobilenet_v3_small', 'relu']

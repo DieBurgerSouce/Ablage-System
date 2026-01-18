@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\metric\metrics.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.5, 1.0, 2.0, 4095, 'Accuracy', 'Correct', 'Indices', 'Label', 'Out', 'PR', 'ROC', 'Total', 'acc', 'accuracy', 'auc', 'float16', 'float32', 'float64', 'input', 'int32', 'precision', 'recall', 'uint16']

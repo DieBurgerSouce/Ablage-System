@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\base\variable_index.py
+# hypothesis_version: 6.148.7
+
+['EndsTensorList', 'Input', 'Out', 'StartsTensorList', 'StepsTensorList', 'StridesTensorList', 'ValueTensor', '_', 'axes', 'decrease_axes', 'decrease_axis', 'desc', 'dtype', 'ends', 'infer_flags', 'int64', 'is_view_var', 'none_axes', 'set_value', 'shape', 'slice', 'starts', 'steps', 'strided_slice', 'strides', 'values']

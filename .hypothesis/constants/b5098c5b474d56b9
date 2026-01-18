@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppstructure\table\predict_structure.py
+# hypothesis_version: 6.148.7
+
+[0.224, 0.225, 0.229, 0.406, 0.456, 0.485, 0.5, '../..', '1./255.', '</body>', '</html>', '</table>', '<body>', '<html>', '<table>', 'KeepKeys', 'NormalizeImage', 'PaddingTableImage', 'ResizeTableImage', 'TableLabelDecode', 'TableMaster', 'ToCHWImage', '__main__', 'auto_growth', 'bbox_batch_list', 'box_shape', 'character_dict_path', 'dynamic', 'hwc', 'image', 'infer.txt', 'inference_time', 'keep_keys', 'loc_preds', 'max_len', 'mean', 'name', 'order', 'pad', 'postprocess_time', 'preprocess_time', 'result: {}, {}', 'result: {}, {}\n', 'scale', 'shape', 'size', 'std', 'structure_batch_list', 'structure_probs', 'table', 'utf-8', 'w']

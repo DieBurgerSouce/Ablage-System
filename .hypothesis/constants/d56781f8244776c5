@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\filetype\types\archive.py
+# hypothesis_version: 6.148.7
+
+[100, 101, 102, 104, 105, 108, 109, 110, 111, 112, 114, 115, 116, 117, 121, 122, 123, 127, 128, 129, 131, 137, 139, 157, 160, 171, 175, 178, 181, 187, 188, 191, 206, 207, 219, 237, 238, 239, 253, 257, 258, 259, 260, 261, 407710288, 4294967280, '7z', '<L', 'Z', 'application/dicom', 'application/epub+zip', 'application/gzip', 'application/pdf', 'application/rtf', 'application/x-brotli', 'application/x-bzip2', 'application/x-deb', 'application/x-lz4', 'application/x-lzip', 'application/x-lzop', 'application/x-rpm', 'application/x-tar', 'application/x-xz', 'application/zip', 'application/zstd', 'ar', 'br', 'bz2', 'cab', 'crx', 'dcm', 'deb', 'elf', 'eot', 'epub', 'exe', 'gz', 'lz', 'lz4', 'lzo', 'nes', 'pdf', 'ps', 'rar', 'rpm', 'rtf', 'sqlite', 'swf', 'tar', 'xz', 'zip', 'zst']

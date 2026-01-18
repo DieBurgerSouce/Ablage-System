@@ -250,23 +250,29 @@ class EInvoiceGeneratorService:
                 "Pflicht fuer XRechnung B2G-Rechnungen"
             )
 
-        # XML generieren (CII-Syntax ueber Mapper, UBL wuerde Mustang erfordern)
+        # XML generieren
         if syntax == XRechnungSyntax.UBL:
-            # UBL erfordert zusaetzlichen Konverter oder Mustang
-            raise NotImplementedError(
-                "UBL-Syntax erfordert Mustang Microservice. "
-                "Bitte CII-Syntax verwenden oder Mustang aktivieren."
+            # UBL-Syntax ueber XRechnungUBLMapper
+            from .mapping.xrechnung_ubl_mapper import get_ubl_mapper
+            ubl_mapper = get_ubl_mapper()
+            xml_content = ubl_mapper.invoice_data_to_ubl(
+                invoice=invoice_data,
+                leitweg_id=invoice_data.buyer_reference,
             )
-
-        xml_content = self.mapper.invoice_data_to_xml(invoice_data, "XRECHNUNG")
+        else:
+            # CII-Syntax (Default) ueber ZUGFeRD Mapper
+            xml_content = self.mapper.invoice_data_to_xml(invoice_data, "XRECHNUNG")
 
         # Hash berechnen
         xml_hash = hashlib.sha256(xml_content.encode("utf-8")).hexdigest()
 
+        # Format basierend auf Syntax
+        format_name = "xrechnung_ubl" if syntax == XRechnungSyntax.UBL else "xrechnung_cii"
+
         # In DB speichern
         einvoice_doc = models.EInvoiceDocument(
             document_id=document_id,
-            format="xrechnung_cii",
+            format=format_name,
             profile="XRECHNUNG",
             version="3.0.2",
             xml_content=xml_content,

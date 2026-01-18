@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\dataset\wmt14.py
+# hypothesis_version: 6.148.7
+
+['2.0.0', '<e>', '<s>', '<unk>', 'gen/gen', 'r', 'src.dict', 'test/test', 'train/train', 'trg.dict', 'wmt14']

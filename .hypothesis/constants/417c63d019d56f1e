@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\launch\utils\kv_client.py
+# hypothesis_version: 6.148.7
+
+[200, '/', '/healthy', '/key', '/workers', '/workers/1', '/workers/2', '__main__', 'error', 'http://', 'key', 'localhost:2379', 'ok', 'rank1', 'rank2', 'value']

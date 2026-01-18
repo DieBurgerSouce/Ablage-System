@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distribution\uniform.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, 'Uniform', '_entropy', '_log_prob', '_probs', '_sample', 'float32', 'float64', 'high', 'low', 'sample', 'seed', 'shape']

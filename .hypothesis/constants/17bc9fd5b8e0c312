@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\docling\backend\mets_gbs_backend.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.5, 100.0, './/mets:fileGrp', './mets:file', './mets:fptr', '.xml', ';', 'FILEID', 'ID', 'InputDocument', 'MIMETYPE', 'OCR', 'ORDER', 'PROFILE', 'RGB', 'USE', '_dpage', '_im', 'bbox ', 'coordOCR', 'gbs', 'image', 'marc', 'mets', 'mets:FLocat', 'ocr', 'premis', 'r:gz', 'title', 'x_wconf', 'xlink', 'xsi']

@@ -25,6 +25,8 @@ export const aiKeys = {
   explain: () => [...aiKeys.all, 'explain'] as const,
   explanation: (docId: string) => [...aiKeys.explain(), docId] as const,
   featureImportance: () => [...aiKeys.explain(), 'importance'] as const,
+  decisionExplanation: (decisionId: string) => [...aiKeys.explain(), 'decision', decisionId] as const,
+  documentExplanation: (documentId: string) => [...aiKeys.explain(), 'document', documentId] as const,
   experiments: () => [...aiKeys.all, 'experiments'] as const,
   experimentsList: (status?: string) => [...aiKeys.experiments(), 'list', status] as const,
   experiment: (id: string) => [...aiKeys.experiments(), id] as const,
@@ -97,6 +99,46 @@ export function useGlobalFeatureImportance() {
   return useQuery({
     queryKey: aiKeys.featureImportance(),
     queryFn: aiApi.getGlobalFeatureImportance,
+    staleTime: 300000, // 5 Minuten
+  });
+}
+
+// =============================================================================
+// XAI Decision Explanation Hooks
+// =============================================================================
+
+/**
+ * Hook fuer KI-Entscheidungserklaerung
+ *
+ * @param decisionId - ID der Entscheidung
+ * @param enabled - Optional: Nur laden wenn true (fuer Lazy Loading)
+ *
+ * @example
+ * const { data: explanation, isLoading } = useDecisionExplanation(decisionId);
+ */
+export function useDecisionExplanation(decisionId: string, enabled = true) {
+  return useQuery({
+    queryKey: aiKeys.decisionExplanation(decisionId),
+    queryFn: () => aiApi.getDecisionExplanation(decisionId),
+    enabled: enabled && !!decisionId,
+    staleTime: 300000, // 5 Minuten - Erklaerungen aendern sich selten
+  });
+}
+
+/**
+ * Hook fuer Dokumenten-Erklaerung (letzte Entscheidung zum Dokument)
+ *
+ * @param documentId - ID des Dokuments
+ * @param enabled - Optional: Nur laden wenn true
+ *
+ * @example
+ * const { data: explanation } = useDocumentExplanation(documentId, showExplanation);
+ */
+export function useDocumentExplanation(documentId: string, enabled = true) {
+  return useQuery({
+    queryKey: aiKeys.documentExplanation(documentId),
+    queryFn: () => aiApi.getDocumentExplanation(documentId),
+    enabled: enabled && !!documentId,
     staleTime: 300000, // 5 Minuten
   });
 }

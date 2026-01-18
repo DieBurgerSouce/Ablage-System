@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\postprocess\rec_postprocess.py
+# hypothesis_version: 6.148.7
+
+[1e-06, 2048, '(%s)\\s+?(%s)', '(?!\\\\ )(%s)\\s+?(%s)', '-', '.', '</s>', '<BOS/EOS>', '<EOS>', '<PAD>', '<UKN>', '<UNK>', '<pad>', '<s>', '<unk>', '[0-9]', '[BOS]', '[B]', '[EOS]', '[E]', '[PAD]', '[P]', '[\\W_^\\d]', '[^A-Z^a-z^0-9^一-龥]', '[a-zA-Z0-9 :*./%+-]', '[a-zA-Z0-9]', '[a-zA-Z]', '\\1\\2', '_', 'added_tokens_decoder', 'align', 'arabic', 'attention_mask', 'beg', 'blank', 'bos_token', 'cls_token', 'cn', 'ctc', 'en&num', 'end', 'eos', 'eos_token', 'eval', 'float32', 'input_ids', 'mask_token', 'max_text_length', 'max_wh_ratio', 'pad_token', 'padding', 'predict', 'rb', 'rec_pred', 'rec_pred_scores', 'right', 'rm_symbol', 'sar', 'sep_token', 'sos', 'splitter', 'student', 'token_type_ids', 'tokenizer.json', 'train', 'unk_token', 'unknown', 'utf-8', 'wh_ratio_list', 'Ġ', '一', '鿿']

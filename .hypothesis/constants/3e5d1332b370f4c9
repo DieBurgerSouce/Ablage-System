@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\parallel_with_gloo.py
+# hypothesis_version: 6.148.7
+
+[3600, 9999999, ':', '_worker', 'running']

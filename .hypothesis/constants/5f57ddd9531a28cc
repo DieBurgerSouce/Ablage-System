@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\augmentations\geometric\transforms.py
+# hypothesis_version: 6.148.7
+
+[-1.0, -0.1, -0.0625, 0.0, 0.05, 0.0625, 0.1, 0.5, 1.0, 'Affine', 'BboxProcessor', 'GridElasticDeform', 'Morphological', 'Perspective', 'RandomGridShuffle', 'ShiftScaleRotate', 'after', 'bbox_matrix', 'bboxes', 'border_mode', 'dict[str, int]', 'dilation', 'ellipse', 'erosion', 'fill', 'fill_mask', 'generated_mesh', 'inf', 'interpolation', 'kernel', 'largest_box', 'mapping', 'mask_interpolation', 'matrix', 'matrix_bbox', 'max_height', 'max_width', 'output_shape', 'rotate', 'rotate_limit', 'rotate_method', 'scale', 'scale_limit', 'shape', 'shear', 'shift_limit_x', 'shift_limit_y', 'spatial', 'tiles', 'translate_percent', 'translate_px', 'tuple[float, float]', 'tuple[int, int]', 'x', 'y']

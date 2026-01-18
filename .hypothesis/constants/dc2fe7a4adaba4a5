@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\ai\anomaly_detection_service.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.01, 0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 1.0, 2.0, 3.0, 5.0, 365, 500, 1000, 2000, 5000, 10000, '1000', '10000', '20000', '500', '5000', 'Samstag', 'Sonntag', 'amount', 'amount_mismatch', 'anomalies', 'anomaly_check_failed', 'anomaly_count', 'anomaly_type', 'calculated_gross', 'critical', 'days_ahead', 'description', 'details', 'difference', 'duplicate_count', 'duplicate_number', 'factor', 'future_date', 'high', 'high_amount', 'invoice_date', 'invoice_number', 'is_suspicious', 'low', 'median', 'medium', 'missing_vat', 'payment_term_days', 'reasons', 'recommendations', 'risk_score', 'round_amount', 'severity', 'supplier_name', 'threshold', 'today', 'total_gross', 'total_net', 'type', 'vat_amount', 'weekday', 'weekend_invoice']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pptx\oxml\presentation.py
+# hypothesis_version: 6.148.7
+
+[256, 2147483647, './p:sldId/@id', 'cx', 'cy', 'id', 'list[str]', 'p:handoutMasterIdLst', 'p:notesMasterIdLst', 'p:notesSz', 'p:sldId', 'p:sldIdLst', 'p:sldMasterId', 'p:sldMasterIdLst', 'p:sldSz', 'r:id']

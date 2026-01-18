@@ -20,16 +20,18 @@ Beispiel:
         owner = relationship("User", back_populates="documents")
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date, timedelta
 from typing import Optional, List, Dict, Any
 from enum import Enum
+from decimal import Decimal
 import uuid
 
-from sqlalchemy import Column, String, Integer, BigInteger, DateTime, Date, Time, Boolean, Float, Numeric, Text, JSON, ForeignKey, Index, Table, CheckConstraint, UniqueConstraint, text, Enum as SQLAlchemyEnum
+from sqlalchemy import Column, String, Integer, BigInteger, DateTime, Date, Time, Boolean, Float, Numeric, Text, JSON, ForeignKey, Index, Table, CheckConstraint, UniqueConstraint, text, Enum as SQLAlchemyEnum, event
 from sqlalchemy.dialects.postgresql import UUID, JSONB, TSVECTOR
 from sqlalchemy.types import TypeDecorator
 from pgvector.sqlalchemy import Vector
-from sqlalchemy.orm import relationship, declarative_base, backref
+from sqlalchemy.orm import relationship, declarative_base, backref, Mapped, mapped_column
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql import func
 
 
@@ -219,6 +221,28 @@ class Document(Base):
     page_number_in_group = Column(Integer, nullable=True)  # Seitennummer innerhalb der Gruppe
     is_group_primary = Column(Boolean, default=False)  # Ist das primaere Dokument der Gruppe
 
+    # =========================================================================
+    # Document Chain (Auftragsketten-Tracking)
+    # Angebot -> Auftrag -> Lieferschein -> Rechnung -> Gutschrift
+    # =========================================================================
+    chain_id = Column(
+        String(100),
+        nullable=True,
+        index=True,
+        comment="Auftragsketten-ID (z.B. CHAIN-2026-00001)"
+    )
+    chain_position = Column(
+        Integer,
+        nullable=True,
+        comment="Position in Kette: 1=Angebot, 2=Auftrag, 3=Lieferschein, 4=Rechnung, 5=Gutschrift"
+    )
+    chain_root_document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="Erstes Dokument der Kette (Root)"
+    )
+
     # Structured extracted data (from OCR)
     extracted_data = Column(CrossDBJSON, default=dict)  # Strukturierte OCR-Daten (Rechnungsnr., Datum, etc.)
 
@@ -265,6 +289,15 @@ class Document(Base):
         cascade="all, delete-orphan"
     )
 
+    # Document Chain Relationship (self-referential)
+    chain_root_document = relationship(
+        "Document",
+        remote_side="Document.id",
+        foreign_keys=[chain_root_document_id],
+        backref="chain_children",
+        uselist=False
+    )
+
     # Indexes
     __table_args__ = (
         Index("ix_documents_status", "status"),
@@ -287,6 +320,10 @@ class Document(Base):
         Index("ix_documents_group_sequence", "group_id", "page_number_in_group"),
         # GoBD Archivierung (Feature 02)
         Index("ix_documents_is_archived", "is_archived"),
+        # Document Chain (Auftragsketten-Tracking)
+        Index("ix_documents_chain_id", "chain_id"),
+        Index("ix_documents_chain_position", "chain_id", "chain_position"),
+        Index("ix_documents_chain_root", "chain_root_document_id"),
     )
 
     @property
@@ -778,6 +815,10 @@ class AuditLog(Base):
     user_agent = Column(String(255))
     request_method = Column(String(10))
     request_path = Column(String(255))
+
+    # Success/Error tracking
+    success = Column(Boolean, default=True, nullable=False)
+    error_message = Column(String(2000), nullable=True)
 
     # Additional data
     audit_metadata = Column(CrossDBJSON, default=dict)
@@ -2410,10 +2451,15 @@ class InvoiceStatus(str, Enum):
 
 class InvoiceTracking(Base):
     """
-    Rechnungsverfolgung fuer Risk Scoring.
+    Rechnungsverfolgung fuer Risk Scoring, Skonto und Teilzahlungen.
 
     Verknuepft Dokumente (Rechnungen) mit Zahlungsinformationen
     fuer die Berechnung von Risiko-Scores.
+
+    Enterprise Features (Januar 2026):
+    - Skonto-Tracking mit Deadline-Alerts
+    - Teilzahlungs-Verwaltung
+    - Ausstehender Betrag Tracking
     """
     __tablename__ = "invoice_tracking"
 
@@ -2448,9 +2494,72 @@ class InvoiceTracking(Base):
     paid_at = Column(DateTime(timezone=True), nullable=True)
     paid_amount = Column(Float, nullable=True)
 
+    # ==========================================================================
+    # SKONTO TRACKING (P0 Feature - Januar 2026)
+    # ==========================================================================
+    skonto_percentage = Column(
+        Float,
+        nullable=True,
+        comment="Skonto-Prozentsatz (z.B. 2.0 fuer 2%)"
+    )
+    skonto_days = Column(
+        Integer,
+        nullable=True,
+        comment="Tage fuer Skonto-Frist ab Rechnungsdatum"
+    )
+    skonto_deadline = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+        comment="Berechnete Skonto-Frist (invoice_date + skonto_days)"
+    )
+    skonto_amount = Column(
+        Float,
+        nullable=True,
+        comment="Berechneter Skonto-Betrag"
+    )
+    skonto_used = Column(
+        Boolean,
+        default=False,
+        comment="True wenn Skonto genutzt wurde"
+    )
+    skonto_used_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Zeitpunkt der Skonto-Nutzung"
+    )
+    net_days = Column(
+        Integer,
+        nullable=True,
+        comment="Zahlungsziel netto (z.B. 30 Tage)"
+    )
+
+    # ==========================================================================
+    # TEILZAHLUNGS-TRACKING (P0 Feature - Januar 2026)
+    # ==========================================================================
+    outstanding_amount = Column(
+        Float,
+        nullable=True,
+        comment="Ausstehender Betrag (amount - paid_amount)"
+    )
+    is_partial_payment = Column(
+        Boolean,
+        default=False,
+        comment="True wenn Teilzahlung(en) erfasst"
+    )
+
     # Dunning tracking (Mahnwesen)
     dunning_level = Column(Integer, default=0)
     last_dunning_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Multi-tenant
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+        comment="Mandanten-Zuordnung"
+    )
 
     # Audit fields
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -2462,6 +2571,13 @@ class InvoiceTracking(Base):
         "Document",
         backref=backref("invoice_tracking", uselist=False, cascade="all, delete-orphan")
     )
+    company = relationship("Company", backref="invoice_trackings")
+    payment_transactions = relationship(
+        "PaymentTransaction",
+        back_populates="invoice_tracking",
+        cascade="all, delete-orphan",
+        order_by="PaymentTransaction.transaction_date.asc()"
+    )
 
     # Indexes
     __table_args__ = (
@@ -2469,6 +2585,9 @@ class InvoiceTracking(Base):
         Index("ix_invoice_tracking_status", "status"),
         Index("ix_invoice_tracking_due_date", "due_date"),
         Index("ix_invoice_tracking_invoice_number", "invoice_number"),
+        Index("ix_invoice_tracking_skonto_deadline", "skonto_deadline"),
+        Index("ix_invoice_tracking_company_id", "company_id"),
+        Index("ix_invoice_tracking_partial", "is_partial_payment", "status"),
     )
 
     @property
@@ -2487,6 +2606,201 @@ class InvoiceTracking(Base):
             return 0
         delta = datetime.now(self.due_date.tzinfo) - self.due_date
         return max(0, delta.days)
+
+    @property
+    def skonto_still_valid(self) -> bool:
+        """Prueft ob Skonto noch nutzbar ist."""
+        if not self.skonto_deadline or self.skonto_used:
+            return False
+        return datetime.now(self.skonto_deadline.tzinfo) <= self.skonto_deadline
+
+    @property
+    def days_until_skonto_expires(self) -> Optional[int]:
+        """Tage bis Skonto ablaeuft (None wenn kein Skonto oder abgelaufen)."""
+        if not self.skonto_deadline or self.skonto_used:
+            return None
+        delta = self.skonto_deadline - datetime.now(self.skonto_deadline.tzinfo)
+        return max(0, delta.days) if delta.days >= 0 else None
+
+
+class PaymentTransaction(Base):
+    """
+    Teilzahlung fuer eine Rechnung.
+
+    Ermoeglicht mehrere Zahlungen pro Rechnung mit:
+    - Skonto-Abzug Tracking
+    - Bank-Reconciliation
+    - Audit Trail
+    """
+    __tablename__ = "payment_transactions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Reference to invoice
+    invoice_tracking_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("invoice_tracking.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Payment details
+    transaction_date = Column(DateTime(timezone=True), nullable=False)
+    amount = Column(Float, nullable=False, comment="Gezahlter Betrag")
+    payment_reference = Column(String(200), nullable=True, comment="Verwendungszweck/Referenz")
+    payment_method = Column(
+        String(30),
+        default="bank_transfer",
+        comment="Zahlungsmethode: bank_transfer, cash, credit_card, direct_debit"
+    )
+
+    # Skonto
+    skonto_deducted = Column(
+        Float,
+        nullable=True,
+        comment="Abgezogener Skonto-Betrag"
+    )
+
+    # Bank reconciliation
+    bank_transaction_id = Column(
+        UUID(as_uuid=True),
+        nullable=True,
+        index=True,
+        comment="Verknuepfte Bank-Transaktion ID"
+    )
+    reconciliation_status = Column(
+        String(20),
+        default="pending",
+        comment="pending, matched, unmatched"
+    )
+    reconciled_at = Column(DateTime(timezone=True), nullable=True)
+    reconciled_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Notes
+    notes = Column(Text, nullable=True)
+
+    # Multi-tenant
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True
+    )
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Relationships
+    invoice_tracking = relationship(
+        "InvoiceTracking",
+        back_populates="payment_transactions"
+    )
+    company = relationship("Company", backref="payment_transactions")
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    reconciled_by = relationship("User", foreign_keys=[reconciled_by_id])
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_payment_transactions_invoice", "invoice_tracking_id"),
+        Index("ix_payment_transactions_date", "transaction_date"),
+        Index("ix_payment_transactions_bank", "bank_transaction_id"),
+        Index("ix_payment_transactions_company", "company_id"),
+        Index("ix_payment_transactions_reconciliation", "reconciliation_status"),
+    )
+
+
+class DocumentChainDiscrepancy(Base):
+    """
+    Abweichungen in Dokumentenketten.
+
+    Erfasst Unterschiede zwischen verknuepften Dokumenten:
+    - Betragsabweichungen (Angebot vs Rechnung)
+    - Mengenabweichungen
+    - Preisabweichungen
+    """
+    __tablename__ = "document_chain_discrepancies"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Chain reference
+    chain_id = Column(String(100), nullable=False, index=True)
+
+    # Documents involved
+    source_document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    target_document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Discrepancy details
+    discrepancy_type = Column(
+        String(30),
+        nullable=False,
+        comment="amount, quantity, price, date, missing_item"
+    )
+    field_name = Column(String(100), nullable=True, comment="Betroffenes Feld")
+    expected_value = Column(String(500), nullable=True)
+    actual_value = Column(String(500), nullable=True)
+    difference_amount = Column(Float, nullable=True, comment="Numerische Differenz")
+    difference_percentage = Column(Float, nullable=True, comment="Prozentuale Differenz")
+
+    # Severity
+    severity = Column(
+        String(20),
+        default="warning",
+        comment="info, warning, error, critical"
+    )
+    description = Column(Text, nullable=True)
+
+    # Resolution
+    is_resolved = Column(Boolean, default=False)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+    resolved_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+    resolution_notes = Column(Text, nullable=True)
+
+    # Multi-tenant
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True
+    )
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    source_document = relationship("Document", foreign_keys=[source_document_id])
+    target_document = relationship("Document", foreign_keys=[target_document_id])
+    resolved_by = relationship("User", foreign_keys=[resolved_by_id])
+    company = relationship("Company", backref="chain_discrepancies")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_chain_discrepancies_chain", "chain_id"),
+        Index("ix_chain_discrepancies_type", "discrepancy_type"),
+        Index("ix_chain_discrepancies_severity", "severity"),
+        Index("ix_chain_discrepancies_resolved", "is_resolved"),
+        Index("ix_chain_discrepancies_company", "company_id"),
+    )
 
 
 # ============================================================================
@@ -2614,6 +2928,7 @@ class DocumentRelationship(Base):
     - Seitenreihenfolge in mehrseitigen Dokumenten
     - Verweise zwischen Dokumenten (Rechnung -> Vertrag)
     - Duplikat-Erkennung
+    - Auftragsketten (Angebot -> Auftrag -> Lieferschein -> Rechnung)
 
     Bidirektionale Beziehungen werden als zwei separate Eintraege gespeichert.
     """
@@ -2635,7 +2950,16 @@ class DocumentRelationship(Base):
 
     # Relationship details
     relationship_type = Column(String(30), nullable=False)
-    confidence = Column(Float, default=1.0)  # 0.0-1.0
+    confidence = Column(Float, default=1.0)  # 0.0-1.0 (legacy)
+    confidence_score = Column(Float, nullable=True, comment="Konfidenz bei Auto-Detection (0.0-1.0)")
+
+    # Chain reference (fuer Auftragsketten)
+    chain_id = Column(
+        String(100),
+        nullable=True,
+        index=True,
+        comment="Auftragsketten-ID (z.B. CHAIN-2026-00001)"
+    )
 
     # Ordering (fuer CHILD_OF Beziehungen)
     sequence_number = Column(Integer, nullable=True)  # Seitennummer/Reihenfolge
@@ -2643,10 +2967,36 @@ class DocumentRelationship(Base):
     # Detection metadata
     detected_by = Column(String(50), nullable=True)  # "algorithm", "user", "ocr_reference"
     detection_details = Column(CrossDBJSON, default=dict)
+    auto_detected = Column(
+        Boolean,
+        default=False,
+        comment="True wenn automatisch erkannt (nicht manuell)"
+    )
 
-    # User interaction
+    # User interaction / Validation
     user_confirmed = Column(Boolean, default=False)
     user_rejected = Column(Boolean, default=False)
+    validated = Column(
+        Boolean,
+        default=False,
+        comment="True wenn manuell validiert oder manuell erstellt"
+    )
+    validated_at = Column(DateTime(timezone=True), nullable=True)
+    validated_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="Wer hat validiert"
+    )
+
+    # Multi-Tenant
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+        comment="Firmen-Zuordnung fuer Multi-Tenant"
+    )
 
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -2663,7 +3013,9 @@ class DocumentRelationship(Base):
         foreign_keys=[target_document_id],
         backref="incoming_relationships"
     )
-    created_by = relationship("User")
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    validated_by = relationship("User", foreign_keys=[validated_by_id])
+    company = relationship("Company", backref="document_relationships")
 
     # Indexes and constraints
     __table_args__ = (
@@ -2671,6 +3023,8 @@ class DocumentRelationship(Base):
         Index("ix_document_relationships_target", "target_document_id"),
         Index("ix_document_relationships_type", "relationship_type"),
         Index("ix_document_relationships_confidence", "confidence"),
+        Index("ix_document_relationships_chain", "chain_id"),
+        Index("ix_document_relationships_company", "company_id"),
         # Prevent duplicate relationships
         Index(
             "ix_document_relationships_unique",
@@ -5869,6 +6223,8 @@ class Company(Base):
     documents = relationship("Document", back_populates="company", cascade="all, delete-orphan")
     cash_registers = relationship("CashRegister", back_populates="company", cascade="all, delete-orphan")
     expense_reports = relationship("ExpenseReport", back_populates="company", cascade="all, delete-orphan")
+    # Document Template relationships - imported from app.db.models.document_template
+    document_templates = relationship("DocumentTemplate", back_populates="company", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("ix_companies_vat_id", "vat_id"),
@@ -9120,7 +9476,20 @@ class ValidationAnalytics(Base):
 
 
 class DocumentComment(Base):
-    """Kommentare zu Dokumenten fuer Collaboration."""
+    """Kommentare zu Dokumenten fuer Collaboration.
+
+    Multi-Tenant Support:
+    - company_id: Firmenzugehoerigkeit (Migration 103)
+
+    Feld-Referenz (Inline-Kommentare):
+    - field_reference: Optionaler Feldname fuer Inline-Kommentare auf Extraktionsfeldern
+      (z.B. "invoice_number", "total_amount", "vendor_name")
+
+    Soft Delete mit Timestamp:
+    - deleted_at: Zeitpunkt des Loeschens (NULL = nicht geloescht)
+    - deleted_by_id: User der den Kommentar geloescht hat
+    - is_deleted: Legacy-Flag (wird parallel gepflegt)
+    """
     __tablename__ = "document_comments"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -9128,26 +9497,40 @@ class DocumentComment(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     parent_id = Column(UUID(as_uuid=True), ForeignKey("document_comments.id", ondelete="CASCADE"), nullable=True)
 
+    # Multi-Tenant Support (Migration 103)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
+
+    # Feld-Referenz fuer Inline-Kommentare (Migration 103)
+    field_reference = Column(String(100), nullable=True)
+
     content = Column(Text, nullable=False)
     mentions = Column(CrossDBJSON, default=list)  # [{"userId": "...", "userName": "...", "startIndex": 0, "endIndex": 10}]
     reactions = Column(CrossDBJSON, default=list)  # [{"emoji": "👍", "count": 2, "userIds": ["..."]}]
 
     is_edited = Column(Boolean, default=False)
-    is_deleted = Column(Boolean, default=False)
+    is_deleted = Column(Boolean, default=False)  # Legacy-Flag
+
+    # Soft Delete mit Timestamp (Migration 103)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    deleted_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
     document = relationship("Document", backref="comments")
-    user = relationship("User", backref="document_comments")
+    user = relationship("User", backref="document_comments", foreign_keys=[user_id])
     parent = relationship("DocumentComment", remote_side=[id], backref="replies")
+    company = relationship("Company", backref="document_comments")
+    deleted_by = relationship("User", foreign_keys=[deleted_by_id])
 
     __table_args__ = (
         Index("ix_doc_comment_document", "document_id"),
         Index("ix_doc_comment_user", "user_id"),
         Index("ix_doc_comment_parent", "parent_id"),
         Index("ix_doc_comment_created", "created_at"),
+        Index("ix_doc_comment_company", "company_id"),
+        Index("ix_doc_comment_company_document", "company_id", "document_id"),
     )
 
     def __repr__(self) -> str:
@@ -9203,6 +9586,9 @@ class NotificationType(str, Enum):
     COMMENT_REPLY = "comment_reply"
     DOCUMENT_SHARED = "document_shared"
     TASK_ASSIGNED = "task_assigned"
+    TASK_COMPLETED = "task_completed"
+    TASK_ESCALATED = "task_escalated"
+    TASK_REMINDER = "task_reminder"
     DOCUMENT_APPROVED = "document_approved"
     DOCUMENT_REJECTED = "document_rejected"
 
@@ -9242,6 +9628,318 @@ class UserNotification(Base):
 
 
 # =============================================================================
+# COLLABORATION MODELS - Task Assignment System
+# =============================================================================
+
+
+class TaskStatus(str, Enum):
+    """Status einer zugewiesenen Aufgabe."""
+    OPEN = "open"                  # Neu erstellt, noch nicht begonnen
+    IN_PROGRESS = "in_progress"    # In Bearbeitung
+    COMPLETED = "completed"        # Erledigt
+    CANCELLED = "cancelled"        # Abgebrochen
+    BLOCKED = "blocked"            # Blockiert (wartet auf etwas)
+
+
+class TaskPriority(str, Enum):
+    """Prioritaet einer Aufgabe."""
+    LOW = "low"
+    NORMAL = "normal"
+    HIGH = "high"
+    URGENT = "urgent"
+
+
+class DocumentTask(Base):
+    """Aufgaben-Zuweisung fuer Dokumente.
+
+    Ermoeglicht Team-Collaboration durch:
+    - Zuweisung von Aufgaben an Benutzer ("Bitte pruefen")
+    - Deadlines mit automatischer Eskalation
+    - Status-Tracking
+    - Benachrichtigungen bei Aenderungen
+    """
+    __tablename__ = "document_tasks"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Referenzen
+    document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Aufgaben-Details
+    title = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    task_type = Column(String(50), nullable=False, default="review")  # review, approve, process, other
+
+    # Zuweisung
+    created_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+    assigned_to_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
+
+    # Status und Prioritaet
+    status = Column(String(20), nullable=False, default=TaskStatus.OPEN.value)
+    priority = Column(String(20), nullable=False, default=TaskPriority.NORMAL.value)
+
+    # Deadlines
+    due_date = Column(DateTime(timezone=True), nullable=True, index=True)
+    reminder_sent = Column(Boolean, default=False)  # "Bald faellig" Erinnerung gesendet
+    last_reminder_at = Column(DateTime(timezone=True), nullable=True)  # Letzte Ueberfaellig-Erinnerung
+    escalated = Column(Boolean, default=False)
+    escalated_at = Column(DateTime(timezone=True), nullable=True)
+    escalated_to_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Completion-Details
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    completed_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+    completion_notes = Column(Text, nullable=True)
+
+    # Metadaten
+    task_metadata = Column(CrossDBJSON, default=dict)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    document = relationship("Document", backref="tasks")
+    company = relationship("Company", backref="document_tasks")
+    created_by = relationship("User", foreign_keys=[created_by_id], backref="created_tasks")
+    assigned_to = relationship("User", foreign_keys=[assigned_to_id], backref="assigned_tasks")
+    completed_by = relationship("User", foreign_keys=[completed_by_id])
+    escalated_to = relationship("User", foreign_keys=[escalated_to_id])
+
+    __table_args__ = (
+        Index("ix_task_document", "document_id"),
+        Index("ix_task_assigned", "assigned_to_id"),
+        Index("ix_task_status", "status"),
+        Index("ix_task_due_date", "due_date"),
+        Index("ix_task_company_status", "company_id", "status"),
+        Index("ix_task_assigned_status", "assigned_to_id", "status"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<DocumentTask {self.id} '{self.title}' -> {self.assigned_to_id}>"
+
+
+# =============================================================================
+# NOTIFICATION PREFERENCES & DIGEST SYSTEM
+# =============================================================================
+
+
+class NotificationChannel(str, Enum):
+    """Verfuegbare Benachrichtigungskanaele."""
+    IN_APP = "in_app"        # In-App Benachrichtigung (Glocke)
+    EMAIL = "email"          # Email
+    WEBSOCKET = "websocket"  # Real-time WebSocket
+    SLACK = "slack"          # Slack Integration
+    SMS = "sms"              # SMS (future)
+
+
+class DigestFrequency(str, Enum):
+    """Haeufigkeit fuer Email-Digest."""
+    IMMEDIATE = "immediate"  # Sofort senden
+    HOURLY = "hourly"        # Stuendlich
+    DAILY = "daily"          # Taeglich
+    WEEKLY = "weekly"        # Woechentlich
+    DISABLED = "disabled"    # Deaktiviert
+
+
+class NotificationPreference(Base):
+    """Benutzer-Praeferenzen fuer Benachrichtigungen.
+
+    Ermoeglicht granulare Kontrolle ueber:
+    - Welche Benachrichtigungstypen empfangen werden
+    - Ueber welche Kanaele (In-App, Email, Slack, etc.)
+    - Digest-Einstellungen (sofort, taeglich, woechentlich)
+    """
+    __tablename__ = "notification_preferences"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Notification Type (z.B. "mention", "task_assigned", "document_shared")
+    notification_type = Column(String(50), nullable=False)
+
+    # Kanal-Einstellungen (JSON: {"in_app": true, "email": false, "slack": true})
+    enabled_channels = Column(CrossDBJSON, default=lambda: {
+        "in_app": True,
+        "email": True,
+        "websocket": True,
+        "slack": False,
+        "sms": False
+    })
+
+    # Digest-Einstellung fuer diesen Typ
+    digest_frequency = Column(String(20), default=DigestFrequency.IMMEDIATE.value)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    user = relationship("User", backref="notification_preferences")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "notification_type", name="uq_user_notification_type"),
+        Index("ix_notif_pref_user", "user_id"),
+        Index("ix_notif_pref_type", "notification_type"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<NotificationPreference {self.user_id} - {self.notification_type}>"
+
+
+class NotificationDigestQueue(Base):
+    """Queue fuer Digest-Benachrichtigungen.
+
+    Sammelt Benachrichtigungen fuer spaetere Zustellung als Digest.
+    Wird von einem Celery Task periodisch verarbeitet.
+    """
+    __tablename__ = "notification_digest_queue"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Originale Notification-Daten
+    notification_type = Column(String(50), nullable=False)
+    title = Column(String(200), nullable=False)
+    message = Column(Text, nullable=False)
+    action_url = Column(String(500), nullable=True)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=True)
+    from_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Digest-Metadaten
+    digest_frequency = Column(String(20), nullable=False)  # daily, weekly
+    scheduled_for = Column(DateTime(timezone=True), nullable=False, index=True)  # Wann soll Digest gesendet werden
+
+    # Status
+    is_sent = Column(Boolean, default=False)
+    sent_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id])
+    document = relationship("Document")
+    from_user = relationship("User", foreign_keys=[from_user_id])
+
+    __table_args__ = (
+        Index("ix_digest_queue_user_unsent", "user_id", "is_sent"),
+        Index("ix_digest_queue_scheduled", "scheduled_for", "is_sent"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<NotificationDigestQueue {self.id} for {self.user_id}>"
+
+
+# =============================================================================
+# ESCALATION SYSTEM
+# =============================================================================
+
+
+class EscalationRule(Base):
+    """Eskalationsregeln fuer automatische Weiterleitung.
+
+    Definiert wann und an wen Aufgaben eskaliert werden:
+    - Nach X Stunden/Tagen ohne Reaktion
+    - An Vorgesetzten oder bestimmten Benutzer
+    - Mit optionaler Benachrichtigung
+    """
+    __tablename__ = "escalation_rules"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Regel-Details
+    name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+
+    # Trigger-Bedingungen
+    task_type = Column(String(50), nullable=True)  # null = alle Typen
+    priority = Column(String(20), nullable=True)   # null = alle Prioritaeten
+
+    # Eskalations-Timeout (in Stunden)
+    timeout_hours = Column(Integer, nullable=False, default=24)
+
+    # Eskalations-Ziel
+    escalate_to_user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+    escalate_to_role = Column(String(50), nullable=True)  # "manager", "admin", etc.
+
+    # Benachrichtigungs-Optionen
+    notify_original_assignee = Column(Boolean, default=True)
+    notify_escalation_target = Column(Boolean, default=True)
+    notify_task_creator = Column(Boolean, default=False)
+
+    # Status
+    is_active = Column(Boolean, default=True)
+
+    # Prioritaet der Regel (niedrigere Zahl = hoehere Prioritaet)
+    rule_priority = Column(Integer, default=100)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    company = relationship("Company", backref="escalation_rules")
+    escalate_to_user = relationship("User")
+
+    __table_args__ = (
+        Index("ix_escalation_company_active", "company_id", "is_active"),
+        Index("ix_escalation_task_type", "task_type"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<EscalationRule {self.name} ({self.timeout_hours}h)>"
+
+
+# =============================================================================
 # GoBD COMPLIANCE MODELS (Feature 02)
 # =============================================================================
 # GoBD (Grundsaetze zur ordnungsmaessigen Fuehrung und Aufbewahrung von
@@ -9268,6 +9966,130 @@ class HashAlgorithm(str, Enum):
     SHA256 = "SHA-256"
     SHA384 = "SHA-384"
     SHA512 = "SHA-512"
+
+
+class DocumentAccessType(str, Enum):
+    """Typen von Dokumentzugriffen fuer GoBD Audit-Trail."""
+    VIEW = "view"                    # Dokument angesehen (Metadaten)
+    DOWNLOAD = "download"            # Dokument heruntergeladen
+    PREVIEW = "preview"              # Vorschau/Thumbnail angezeigt
+    PRINT = "print"                  # Dokument gedruckt
+    EXPORT = "export"                # Dokument exportiert (DATEV, PDF, etc.)
+    SHARE = "share"                  # Dokument geteilt
+    SEARCH_HIT = "search_hit"        # In Suchergebnis aufgetaucht
+    OCR_ACCESS = "ocr_access"        # OCR-Text abgerufen
+    METADATA_UPDATE = "metadata_update"  # Metadaten geaendert (erlaubt!)
+    ANNOTATION = "annotation"        # Anmerkung hinzugefuegt
+
+
+class DocumentAccessLog(Base):
+    """GoBD-konformes Dokumenten-Zugriffsprotokoll.
+
+    Erfasst JEDEN Zugriff auf ein Dokument fuer:
+    - GoBD-Nachvollziehbarkeit: Wer hat wann was zugegriffen?
+    - DSGVO Art. 30: Verarbeitungsverzeichnis
+    - Interne Compliance: Zugriffskontrolle und Reporting
+
+    WICHTIG: Diese Tabelle sollte IMMUTABLE sein (kein UPDATE/DELETE).
+    """
+    __tablename__ = "document_access_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Referenzen
+    document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Zugriffsdetails
+    access_type = Column(
+        String(30),
+        nullable=False,
+        comment="Art des Zugriffs: view, download, export, etc."
+    )
+    access_reason = Column(
+        String(255),
+        nullable=True,
+        comment="Optionaler Grund/Kontext des Zugriffs"
+    )
+
+    # Request-Kontext (fuer Audit)
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(String(500), nullable=True)
+    request_id = Column(
+        String(36),
+        nullable=True,
+        comment="Korrelations-ID zur Request-Verfolgung"
+    )
+
+    # Ergebnis
+    success = Column(Boolean, nullable=False, default=True)
+    error_message = Column(String(500), nullable=True)
+    bytes_transferred = Column(
+        BigInteger,
+        nullable=True,
+        comment="Uebertragene Bytes (bei Download/Export)"
+    )
+
+    # Zeitstempel (immutable!)
+    accessed_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False
+    )
+
+    # Zusaetzliche Metadaten
+    access_metadata = Column(
+        CrossDBJSON,
+        default=dict,
+        comment="Zusaetzliche Kontext-Infos (Format, Export-Typ, etc.)"
+    )
+
+    # Sequenznummer fuer Immutabilitaets-Nachweis
+    sequence_number = Column(
+        BigInteger,
+        unique=True,
+        nullable=True,
+        comment="Aufsteigende Sequenz fuer Lueckendetektion"
+    )
+
+    # Relationships
+    document = relationship("Document", backref="access_logs")
+    user = relationship("User", backref="document_accesses")
+    company = relationship("Company", backref="document_access_logs")
+
+    __table_args__ = (
+        Index("ix_document_access_logs_document_id", "document_id"),
+        Index("ix_document_access_logs_user_id", "user_id"),
+        Index("ix_document_access_logs_company_id", "company_id"),
+        Index("ix_document_access_logs_accessed_at", "accessed_at"),
+        Index("ix_document_access_logs_access_type", "access_type"),
+        Index("ix_document_access_logs_sequence", "sequence_number"),
+        # Composite index fuer typische Abfragen
+        Index(
+            "ix_document_access_logs_doc_time",
+            "document_id", "accessed_at"
+        ),
+        {"comment": "GoBD-konformes Dokumenten-Zugriffsprotokoll"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<DocumentAccessLog {self.id} doc={self.document_id} type={self.access_type}>"
 
 
 class DocumentArchive(Base):
@@ -12642,3 +13464,1753 @@ class PrivatThresholdRecommendation(Base):
         Index("ix_threshold_recommendations_pending", "user_id", "accepted", postgresql_where=text("accepted IS NULL")),
         {"comment": "AI-Empfehlungen fuer Schwellenwert-Anpassungen (Privat-Modul)"}
     )
+
+
+# =============================================================================
+# Document Template Models
+# =============================================================================
+
+class TemplateCategory(str, Enum):
+    """Kategorien fuer Dokumentvorlagen."""
+    INVOICE = "invoice"
+    OFFER = "offer"
+    CONTRACT = "contract"
+    LETTER = "letter"
+    REMINDER = "reminder"
+    DUNNING = "dunning"
+    CONFIRMATION = "confirmation"
+    REPORT = "report"
+    CERTIFICATE = "certificate"
+    OTHER = "other"
+
+
+class TemplateOutputFormat(str, Enum):
+    """Ausgabeformate fuer generierte Dokumente."""
+    PDF = "pdf"
+    DOCX = "docx"
+    HTML = "html"
+    MARKDOWN = "markdown"
+
+
+class VariableType(str, Enum):
+    """Typen fuer Template-Variablen."""
+    TEXT = "text"
+    NUMBER = "number"
+    CURRENCY = "currency"
+    DATE = "date"
+    DATETIME = "datetime"
+    BOOLEAN = "boolean"
+    SELECT = "select"
+    ENTITY = "entity"  # Referenz auf BusinessEntity
+    DOCUMENT = "document"  # Referenz auf anderes Dokument
+
+
+class DocumentTemplate(Base):
+    """
+    Dokumentvorlage mit Platzhaltern und Metadaten.
+
+    Unterstuetzt:
+    - Jinja2-Syntax fuer Platzhalter: {{ variable_name }}
+    - Bedingte Bloecke: {% if condition %}...{% endif %}
+    - Schleifen: {% for item in items %}...{% endfor %}
+    """
+    __tablename__ = "document_templates"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"), nullable=False, index=True)
+
+    # Identifikation
+    name = Column(String(255), nullable=False)
+    code = Column(String(50), nullable=False)  # Kurzcode wie "INV-STANDARD"
+    description = Column(Text, nullable=True)
+    category = Column(SQLAlchemyEnum(TemplateCategory, name="templatecategory"), default=TemplateCategory.OTHER)
+
+    # Vorlage
+    content = Column(Text, nullable=False)  # Jinja2 Template
+    header_content = Column(Text, nullable=True)  # Optional header
+    footer_content = Column(Text, nullable=True)  # Optional footer
+
+    # Styling
+    css_styles = Column(Text, nullable=True)
+    page_size = Column(String(20), default="A4")  # A4, Letter, etc.
+    orientation = Column(String(20), default="portrait")  # portrait, landscape
+    margins = Column(CrossDBJSON, default=lambda: {"top": 20, "right": 15, "bottom": 20, "left": 15})  # mm
+
+    # Ausgabeformat
+    output_format = Column(SQLAlchemyEnum(TemplateOutputFormat, name="templateoutputformat"), default=TemplateOutputFormat.PDF)
+
+    # Variablen-Definition (Schema)
+    variables = Column(CrossDBJSON, default=list, comment="Schema der Template-Variablen")
+    # Format: [{"name": "kunde", "type": "entity", "label": "Kunde", "required": true, "default": null, "options": [...]}]
+
+    # Versionierung
+    version = Column(Integer, default=1)
+    is_latest = Column(Boolean, default=True)
+    parent_template_id = Column(UUID(as_uuid=True), ForeignKey("document_templates.id"), nullable=True)
+
+    # Status
+    is_active = Column(Boolean, default=True)
+    is_default = Column(Boolean, default=False)  # Default fuer Kategorie
+
+    # Nutzungsstatistik
+    usage_count = Column(Integer, default=0)
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Metadaten
+    tags = Column(CrossDBJSON, default=list)
+    template_metadata = Column(CrossDBJSON, default=dict)  # 'metadata' is SQLAlchemy reserved
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+    # Relationships
+    company = relationship("Company", back_populates="document_templates")
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    parent_template = relationship(
+        "DocumentTemplate",
+        remote_side=[id],
+        backref=backref("child_versions", lazy="dynamic"),
+    )
+    generated_documents = relationship("GeneratedDocument", back_populates="template", lazy="dynamic")
+
+    __table_args__ = (
+        UniqueConstraint("company_id", "code", "version", name="uq_template_code_version"),
+        Index("ix_template_company", "company_id"),
+        Index("ix_template_category", "category"),
+        Index("ix_template_code", "code"),
+        Index("ix_template_is_active", "is_active"),
+        Index("ix_template_is_default", "is_default"),
+        {"comment": "Dokumentvorlagen mit Jinja2-Syntax (Vorlagen-System)"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<DocumentTemplate {self.code} v{self.version}>"
+
+
+class GeneratedDocument(Base):
+    """
+    Generiertes Dokument aus einer Vorlage.
+
+    Speichert:
+    - Die verwendeten Variablen-Werte
+    - Referenz zur Vorlage
+    - Generiertes Dokument (als Datei oder in Storage)
+    """
+    __tablename__ = "generated_documents"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"), nullable=False, index=True)
+    template_id = Column(UUID(as_uuid=True), ForeignKey("document_templates.id"), nullable=False, index=True)
+
+    # Generierte Datei
+    title = Column(String(500), nullable=False)
+    filename = Column(String(255), nullable=False)
+    storage_path = Column(String(500), nullable=True)  # MinIO path
+    file_size = Column(Integer, nullable=True)
+
+    # Verwendete Werte
+    variable_values = Column(CrossDBJSON, default=dict, comment="Verwendete Variablen-Werte bei Generierung")
+    # Format: {"kunde": {"id": "...", "name": "..."}, "datum": "2026-01-17", "betrag": 1500.00}
+
+    # Template-Version zum Zeitpunkt der Generierung
+    template_version = Column(Integer, nullable=False)
+    template_snapshot = Column(CrossDBJSON, nullable=True, comment="Snapshot des Templates bei Generierung (optional)")
+
+    # Referenzen
+    linked_entity_id = Column(UUID(as_uuid=True), ForeignKey("business_entities.id"), nullable=True, index=True)
+    linked_document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id"), nullable=True, index=True)
+
+    # Status
+    is_finalized = Column(Boolean, default=False)  # Unveraenderbar
+    is_sent = Column(Boolean, default=False)  # Per Email versendet
+    sent_at = Column(DateTime(timezone=True), nullable=True)
+    sent_to = Column(CrossDBJSON, default=list)  # Email-Adressen
+
+    # Metadaten
+    gen_doc_metadata = Column(CrossDBJSON, default=dict)  # 'metadata' is SQLAlchemy reserved
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+    # Relationships
+    company = relationship("Company")
+    template = relationship("DocumentTemplate", back_populates="generated_documents")
+    created_by = relationship("User", foreign_keys=[created_by_id])
+
+    __table_args__ = (
+        Index("ix_generated_company", "company_id"),
+        Index("ix_generated_template", "template_id"),
+        Index("ix_generated_entity", "linked_entity_id"),
+        Index("ix_generated_document", "linked_document_id"),
+        Index("ix_generated_created", "created_at"),
+        {"comment": "Aus Vorlagen generierte Dokumente (Vorlagen-System)"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<GeneratedDocument {self.title}>"
+
+
+class TemplateSnippet(Base):
+    """
+    Wiederverwendbare Textbausteine fuer Templates.
+
+    z.B. Standard-Fusszeilen, AGBs, Grussformeln.
+    """
+    __tablename__ = "template_snippets"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"), nullable=False, index=True)
+
+    # Identifikation
+    name = Column(String(255), nullable=False)
+    code = Column(String(50), nullable=False)  # z.B. "AGB-FOOTER"
+    description = Column(Text, nullable=True)
+    category = Column(String(100), default="general")
+
+    # Inhalt
+    content = Column(Text, nullable=False)
+
+    # Status
+    is_active = Column(Boolean, default=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("company_id", "code", name="uq_snippet_code"),
+        Index("ix_snippet_company", "company_id"),
+        Index("ix_snippet_category", "category"),
+        Index("ix_snippet_is_active", "is_active"),
+        {"comment": "Wiederverwendbare Textbausteine fuer Templates (Vorlagen-System)"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<TemplateSnippet {self.code}>"
+
+
+# =============================================================================
+# KNOWLEDGE MANAGEMENT SYSTEM
+# =============================================================================
+
+
+class NoteType(str, Enum):
+    """Typen von Knowledge Notes."""
+
+    GENERAL = "general"
+    PROCEDURE = "procedure"  # Prozessbeschreibung
+    FAQ = "faq"
+    TEMPLATE = "template"
+    MEETING_NOTES = "meeting_notes"
+    DECISION = "decision"
+    DOCUMENTATION = "documentation"
+
+
+class ContentFormat(str, Enum):
+    """Format des Note-Inhalts."""
+
+    MARKDOWN = "markdown"
+    HTML = "html"
+    PLAIN = "plain"
+
+
+class KnowledgeLinkType(str, Enum):
+    """Typen von Knowledge Links."""
+
+    RELATED = "related"  # Allgemein verwandt
+    REFERENCES = "references"  # Referenziert
+    REPLACES = "replaces"  # Ersetzt
+    CONTINUES = "continues"  # Fortsetzung
+    CONTRADICTS = "contradicts"  # Widerspricht
+    EXPLAINS = "explains"  # Erklaert
+
+
+class LinkableType(str, Enum):
+    """Typen von verlinkbaren Objekten."""
+
+    NOTE = "note"
+    DOCUMENT = "document"
+    ENTITY = "entity"
+    CHECKLIST = "checklist"
+
+
+class KnowledgeNote(Base):
+    """
+    Wiki-artige Notiz im Knowledge Management System.
+
+    Features:
+    - Markdown-Content
+    - Hierarchische Struktur (parent_note_id)
+    - Polymorph verknuepfbar (Document, Entity, Company)
+    - Tags fuer Kategorisierung
+    - Full-Text-Suche (via DB Index)
+    """
+
+    __tablename__ = "knowledge_notes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Content
+    title = Column(String(500), nullable=False)
+    content = Column(Text, nullable=True)
+    content_format = Column(String(20), default=ContentFormat.MARKDOWN.value)
+
+    # Kategorisierung
+    note_type = Column(String(50), nullable=False, default=NoteType.GENERAL.value)
+
+    # Polymorph Verknuepfungen
+    linked_document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    linked_entity_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("business_entities.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    linked_company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    linked_project_id = Column(UUID(as_uuid=True), nullable=True)
+
+    # Hierarchie
+    parent_note_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("knowledge_notes.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    # Metadaten
+    is_pinned = Column(Boolean, default=False)
+    is_template = Column(Boolean, default=False)
+    view_count = Column(Integer, default=0)
+    tags = Column(CrossDBJSON, default=list)
+
+    # Audit
+    created_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    updated_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    linked_document = relationship("Document", foreign_keys=[linked_document_id])
+    linked_entity = relationship("BusinessEntity", foreign_keys=[linked_entity_id])
+    linked_company = relationship("Company", foreign_keys=[linked_company_id])
+    parent_note = relationship(
+        "KnowledgeNote",
+        remote_side=[id],
+        foreign_keys=[parent_note_id],
+        back_populates="child_notes",
+    )
+    child_notes = relationship(
+        "KnowledgeNote",
+        back_populates="parent_note",
+        foreign_keys=[parent_note_id],
+    )
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    updated_by = relationship("User", foreign_keys=[updated_by_id])
+    checklists = relationship(
+        "KnowledgeChecklist",
+        back_populates="linked_note",
+        foreign_keys="KnowledgeChecklist.linked_note_id",
+    )
+
+    __table_args__ = (
+        Index("ix_knowledge_notes_linked_document_id", "linked_document_id"),
+        Index("ix_knowledge_notes_linked_entity_id", "linked_entity_id"),
+        Index("ix_knowledge_notes_linked_company_id", "linked_company_id"),
+        Index("ix_knowledge_notes_parent_note_id", "parent_note_id"),
+        Index("ix_knowledge_notes_note_type", "note_type"),
+        Index("ix_knowledge_notes_is_pinned", "is_pinned"),
+        Index("ix_knowledge_notes_created_by_id", "created_by_id"),
+        Index("ix_knowledge_notes_deleted_at", "deleted_at"),
+        {"comment": "Wiki-artige Notizen (Knowledge Management)"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<KnowledgeNote {self.title[:50]} ({self.id})>"
+
+
+class KnowledgeChecklist(Base):
+    """
+    Checkliste im Knowledge Management System.
+
+    Features:
+    - Titel und Beschreibung
+    - Verknuepfbar mit Documents, Entities, Notes
+    - Template-Funktion fuer wiederverwendbare Checklisten
+    """
+
+    __tablename__ = "knowledge_checklists"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Content
+    title = Column(String(500), nullable=False)
+    description = Column(Text, nullable=True)
+
+    # Polymorph Verknuepfungen
+    linked_document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    linked_entity_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("business_entities.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    linked_company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    linked_note_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("knowledge_notes.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    # Status
+    is_template = Column(Boolean, default=False)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Audit
+    created_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    items = relationship(
+        "KnowledgeChecklistItem",
+        back_populates="checklist",
+        cascade="all, delete-orphan",
+        order_by="KnowledgeChecklistItem.sort_order",
+    )
+    linked_document = relationship("Document", foreign_keys=[linked_document_id])
+    linked_entity = relationship("BusinessEntity", foreign_keys=[linked_entity_id])
+    linked_company = relationship("Company", foreign_keys=[linked_company_id])
+    linked_note = relationship(
+        "KnowledgeNote",
+        foreign_keys=[linked_note_id],
+        back_populates="checklists",
+    )
+    created_by = relationship("User", foreign_keys=[created_by_id])
+
+    __table_args__ = (
+        Index("ix_knowledge_checklists_linked_document_id", "linked_document_id"),
+        Index("ix_knowledge_checklists_linked_entity_id", "linked_entity_id"),
+        Index("ix_knowledge_checklists_linked_company_id", "linked_company_id"),
+        Index("ix_knowledge_checklists_linked_note_id", "linked_note_id"),
+        Index("ix_knowledge_checklists_deleted_at", "deleted_at"),
+        {"comment": "Checklisten (Knowledge Management)"}
+    )
+
+    @property
+    def is_completed(self) -> bool:
+        """Prueft ob alle Items abgehakt sind."""
+        if not self.items:
+            return False
+        return all(item.is_completed for item in self.items)
+
+    @property
+    def completion_percentage(self) -> float:
+        """Berechnet den Fortschritt in Prozent."""
+        if not self.items:
+            return 0.0
+        completed = sum(1 for item in self.items if item.is_completed)
+        return (completed / len(self.items)) * 100
+
+    def __repr__(self) -> str:
+        return f"<KnowledgeChecklist {self.title[:50]} ({self.id})>"
+
+
+class KnowledgeChecklistItem(Base):
+    """Einzelnes Item in einer Checklist."""
+
+    __tablename__ = "knowledge_checklist_items"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    checklist_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("knowledge_checklists.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    # Content
+    text = Column(String(1000), nullable=False)
+    description = Column(Text, nullable=True)
+
+    # Status
+    is_completed = Column(Boolean, default=False)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    completed_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    # Sortierung
+    sort_order = Column(Integer, default=0)
+
+    # Optional: Deadline
+    due_date = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    checklist = relationship("KnowledgeChecklist", back_populates="items")
+    completed_by = relationship("User", foreign_keys=[completed_by_id])
+
+    __table_args__ = (
+        Index("ix_knowledge_checklist_items_checklist_id", "checklist_id"),
+        Index("ix_knowledge_checklist_items_is_completed", "is_completed"),
+        Index("ix_knowledge_checklist_items_sort_order", "sort_order"),
+        {"comment": "Checklist Items (Knowledge Management)"}
+    )
+
+    def __repr__(self) -> str:
+        status = "✓" if self.is_completed else "○"
+        return f"<KnowledgeChecklistItem {status} {self.text[:30]} ({self.id})>"
+
+
+class KnowledgeLink(Base):
+    """
+    Verknuepfung im Knowledge Graph.
+
+    Ermoeglicht die Verbindung verschiedener Objekte:
+    - Note <-> Note
+    - Note <-> Document
+    - Note <-> Entity
+    - Document <-> Entity
+    """
+
+    __tablename__ = "knowledge_links"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Source (polymorph)
+    source_type = Column(String(50), nullable=False)
+    source_id = Column(UUID(as_uuid=True), nullable=False)
+
+    # Target (polymorph)
+    target_type = Column(String(50), nullable=False)
+    target_id = Column(UUID(as_uuid=True), nullable=False)
+
+    # Beziehungstyp
+    link_type = Column(String(50), nullable=False, default=KnowledgeLinkType.RELATED.value)
+
+    # Metadaten
+    description = Column(String(500), nullable=True)
+    confidence = Column(Float, nullable=True)  # Fuer automatisch erstellte Links
+    is_bidirectional = Column(Boolean, default=True)
+
+    # Audit
+    created_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    created_by = relationship("User", foreign_keys=[created_by_id])
+
+    __table_args__ = (
+        Index("ix_knowledge_links_source", "source_type", "source_id"),
+        Index("ix_knowledge_links_target", "target_type", "target_id"),
+        Index("ix_knowledge_links_link_type", "link_type"),
+        UniqueConstraint(
+            "source_type", "source_id", "target_type", "target_id", "link_type",
+            name="uq_knowledge_links_source_target_type",
+        ),
+        {"comment": "Knowledge Graph Links (Knowledge Management)"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<KnowledgeLink {self.source_type}:{self.source_id} --[{self.link_type}]--> {self.target_type}:{self.target_id}>"
+
+
+class KnowledgeTag(Base):
+    """Tag fuer Kategorisierung von Knowledge Items."""
+
+    __tablename__ = "knowledge_tags"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(100), nullable=False, unique=True)
+    color = Column(String(7), nullable=True)  # Hex #FF0000
+    description = Column(String(500), nullable=True)
+    usage_count = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_knowledge_tags_name", "name"),
+        Index("ix_knowledge_tags_usage_count", "usage_count"),
+        {"comment": "Tags fuer Knowledge Items (Knowledge Management)"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<KnowledgeTag {self.name} ({self.usage_count} uses)>"
+
+
+# ============================================================================
+# SLACK INTEGRATION MODELS
+# Slack-Kanal-Konfiguration und Benachrichtigungsverlauf
+# ============================================================================
+
+
+class SlackChannelType(str, Enum):
+    """Typ des Slack-Kanals."""
+    PUBLIC = "public"
+    PRIVATE = "private"
+    DM = "dm"  # Direct Message
+
+
+class SlackChannel(Base):
+    """
+    Slack-Kanal-Konfiguration fuer Benachrichtigungen.
+
+    Ermoeglicht Multi-Kanal-Routing basierend auf:
+    - Notification-Typ (document_processed, approval_required, etc.)
+    - Firma (Multi-Tenant)
+    - Prioritaet
+    """
+
+    __tablename__ = "slack_channels"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Kanal-Identifikation
+    channel_id = Column(String(50), nullable=False, comment="Slack Channel ID (z.B. C01234567)")
+    channel_name = Column(String(100), nullable=False, comment="Kanal-Name ohne #")
+    channel_type = Column(
+        String(20),
+        default=SlackChannelType.PUBLIC.value,
+        comment="Kanal-Typ: public, private, dm"
+    )
+
+    # Multi-Tenant Support
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=True,
+        comment="Firmen-spezifischer Kanal (NULL = global)"
+    )
+
+    # Routing-Konfiguration
+    notification_types = Column(
+        CrossDBJSON,
+        default=[],
+        comment="Notification-Typen die an diesen Kanal gehen"
+    )
+    min_priority = Column(
+        String(20),
+        default="normal",
+        comment="Mindest-Prioritaet: low, normal, high, urgent"
+    )
+    is_default = Column(Boolean, default=False, comment="Standard-Kanal fuer nicht-routbare Nachrichten")
+
+    # Formatierung
+    include_context = Column(Boolean, default=True, comment="Kontext-Details einschliessen")
+    mention_users = Column(
+        CrossDBJSON,
+        default=[],
+        comment="Slack User-IDs die bei Nachrichten erwaehnt werden"
+    )
+    custom_icon = Column(String(100), nullable=True, comment="Custom Emoji als Icon")
+
+    # Status
+    is_active = Column(Boolean, default=True)
+    last_message_at = Column(DateTime(timezone=True), nullable=True)
+    message_count = Column(Integer, default=0)
+
+    # Audit
+    created_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    company = relationship("Company", backref="slack_channels")
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    messages = relationship("SlackMessageLog", back_populates="channel", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("ix_slack_channels_company", "company_id"),
+        Index("ix_slack_channels_active", "is_active"),
+        Index("ix_slack_channels_channel_id", "channel_id"),
+        UniqueConstraint("channel_id", "company_id", name="uq_slack_channels_channel_company"),
+        {"comment": "Slack-Kanal-Konfiguration fuer Benachrichtigungen"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<SlackChannel #{self.channel_name} ({self.channel_id})>"
+
+
+class SlackMessageStatus(str, Enum):
+    """Status einer Slack-Nachricht."""
+    PENDING = "pending"
+    SENT = "sent"
+    FAILED = "failed"
+    RATE_LIMITED = "rate_limited"
+
+
+class SlackMessageLog(Base):
+    """
+    Log fuer gesendete Slack-Nachrichten.
+
+    Ermoeglicht:
+    - Nachverfolgung von Benachrichtigungen
+    - Rate Limit Monitoring
+    - Fehleranalyse
+    - Audit Trail
+    """
+
+    __tablename__ = "slack_message_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Kanal-Referenz
+    channel_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("slack_channels.id", ondelete="SET NULL"),
+        nullable=True
+    )
+    slack_channel_id = Column(String(50), nullable=False, comment="Slack Channel ID als Backup")
+
+    # Nachricht
+    message_ts = Column(String(50), nullable=True, comment="Slack Message Timestamp/ID")
+    thread_ts = Column(String(50), nullable=True, comment="Thread Timestamp wenn Antwort")
+    notification_type = Column(String(50), nullable=False)
+    title = Column(String(255), nullable=False)
+    message_preview = Column(String(500), nullable=True, comment="Erste 500 Zeichen")
+    priority = Column(String(20), default="normal")
+
+    # Status
+    status = Column(
+        String(20),
+        default=SlackMessageStatus.PENDING.value,
+    )
+    error_message = Column(String(500), nullable=True)
+    retry_count = Column(Integer, default=0)
+
+    # Referenz zum Ausloesenden Objekt (polymorph)
+    reference_type = Column(String(50), nullable=True, comment="document, approval, workflow, etc.")
+    reference_id = Column(UUID(as_uuid=True), nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    sent_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    channel = relationship("SlackChannel", back_populates="messages")
+
+    __table_args__ = (
+        Index("ix_slack_messages_channel", "channel_id"),
+        Index("ix_slack_messages_status", "status"),
+        Index("ix_slack_messages_created", "created_at"),
+        Index("ix_slack_messages_notification_type", "notification_type"),
+        Index("ix_slack_messages_reference", "reference_type", "reference_id"),
+        {"comment": "Log fuer gesendete Slack-Nachrichten"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<SlackMessageLog {self.notification_type} -> {self.slack_channel_id} ({self.status})>"
+
+
+class SlackUserMapping(Base):
+    """
+    Mapping zwischen Ablage-System Benutzern und Slack User-IDs.
+
+    Ermoeglicht:
+    - Direkte Benachrichtigungen an Benutzer
+    - @mentions in Kanal-Nachrichten
+    - Berechtigungs-Pruefung fuer Slack-Aktionen
+    """
+
+    __tablename__ = "slack_user_mappings"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # User-Referenzen
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True
+    )
+    slack_user_id = Column(String(50), nullable=False, comment="Slack User ID (z.B. U01234567)")
+    slack_username = Column(String(100), nullable=True, comment="Slack Display Name")
+
+    # Benachrichtigungs-Praeferenzen
+    dm_enabled = Column(Boolean, default=False, comment="Direkte Nachrichten erlauben")
+    dm_notification_types = Column(
+        CrossDBJSON,
+        default=[],
+        comment="Notification-Typen die als DM gesendet werden"
+    )
+    mention_on_approval = Column(Boolean, default=True, comment="Bei Freigabe-Anfragen erwaehnen")
+    quiet_hours_start = Column(String(5), nullable=True, comment="Ruhezeit Start (HH:MM)")
+    quiet_hours_end = Column(String(5), nullable=True, comment="Ruhezeit Ende (HH:MM)")
+
+    # Verifizierung
+    is_verified = Column(Boolean, default=False, comment="Slack-Account verifiziert")
+    verified_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    user = relationship("User", backref="slack_mapping", uselist=False)
+
+    __table_args__ = (
+        Index("ix_slack_user_mappings_slack_user", "slack_user_id"),
+        UniqueConstraint("slack_user_id", name="uq_slack_user_mappings_slack_user"),
+        {"comment": "Mapping Ablage-System User <-> Slack User"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<SlackUserMapping User:{self.user_id} -> Slack:{self.slack_user_id}>"
+
+
+# ==================== Shipping/Paketdienst Models ====================
+
+
+class ShipmentCarrier(str, Enum):
+    """Unterstuetzte Paketdienste."""
+    DHL = "dhl"
+    DPD = "dpd"
+    HERMES = "hermes"
+    UPS = "ups"
+    GLS = "gls"
+    FEDEX = "fedex"
+    DEUTSCHE_POST = "deutsche_post"
+    UNKNOWN = "unknown"
+
+
+class ShipmentDirection(str, Enum):
+    """Sendungsrichtung."""
+    INBOUND = "inbound"    # Eingehend (Wareneingang)
+    OUTBOUND = "outbound"  # Ausgehend (Versand an Kunden)
+    RETURN = "return"      # Retoure
+
+
+class ShipmentStatusEnum(str, Enum):
+    """Standardisierte Sendungsstatus."""
+    UNKNOWN = "unknown"
+    LABEL_CREATED = "label_created"          # Label erstellt, noch nicht abgeholt
+    PICKED_UP = "picked_up"                  # Vom Carrier abgeholt
+    IN_TRANSIT = "in_transit"                # Unterwegs
+    OUT_FOR_DELIVERY = "out_for_delivery"    # In Zustellung
+    DELIVERED = "delivered"                  # Zugestellt
+    DELIVERY_ATTEMPT = "delivery_attempt"    # Zustellversuch (nicht angetroffen)
+    HELD_AT_LOCATION = "held_at_location"    # Liegt zur Abholung bereit
+    RETURNED = "returned"                    # Zurueck an Absender
+    EXCEPTION = "exception"                  # Problem/Ausnahme
+    CUSTOMS = "customs"                      # Im Zoll
+
+
+class Shipment(Base):
+    """
+    Sendungsverfolgung fuer Paketdienste.
+
+    Features:
+    - Multi-Carrier Support (DHL, DPD, Hermes, UPS, GLS, FedEx, Deutsche Post)
+    - Automatische Carrier-Erkennung anhand Tracking-Nummer
+    - Verknuepfung mit Business Entities und Dokumenten
+    - Kosten-Tracking und Analyse
+
+    Multi-Tenant: Alle Abfragen MUESSEN company_id filtern!
+    """
+
+    __tablename__ = "shipments"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Multi-Tenant: PFLICHT
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Tracking-Daten
+    tracking_number = Column(String(50), nullable=False)
+    carrier = Column(String(20), nullable=False, default=ShipmentCarrier.UNKNOWN.value)
+    direction = Column(String(20), nullable=False, default=ShipmentDirection.INBOUND.value)
+    status = Column(String(30), nullable=False, default=ShipmentStatusEnum.UNKNOWN.value)
+    status_description = Column(String(255), nullable=True)
+
+    # Tracking URL (oeffentlich)
+    tracking_url = Column(String(500), nullable=True)
+
+    # Zeitpunkte
+    estimated_delivery = Column(DateTime(timezone=True), nullable=True)
+    actual_delivery = Column(DateTime(timezone=True), nullable=True)
+    last_tracking_update = Column(DateTime(timezone=True), nullable=True)
+
+    # Herkunft/Ziel
+    origin = Column(String(100), nullable=True)
+    destination = Column(String(100), nullable=True)
+
+    # Details
+    weight_kg = Column(Float, nullable=True)
+    service_type = Column(String(100), nullable=True)  # z.B. "DHL Paket", "Express"
+    reference = Column(String(100), nullable=True)  # z.B. Bestellnummer
+    notes = Column(Text, nullable=True)
+
+    # Kosten (optional)
+    shipping_cost = Column(Numeric(10, 2), nullable=True)
+    currency = Column(String(3), default="EUR")
+
+    # Verknuepfungen
+    entity_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("business_entities.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="Verknuepfter Kunde/Lieferant"
+    )
+    document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="Verknuepfter Lieferschein/Rechnung"
+    )
+
+    # Raw API Response (fuer Debugging)
+    raw_tracking_data = Column(CrossDBJSON, default={})
+
+    # Soft Delete
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Relationships
+    company = relationship("Company")
+    entity = relationship("BusinessEntity", backref="shipments")
+    document = relationship("Document", backref="shipments")
+    events = relationship("ShipmentEvent", back_populates="shipment", order_by="desc(ShipmentEvent.timestamp)")
+    creator = relationship("User")
+
+    __table_args__ = (
+        # Composite Index fuer Multi-Tenant
+        Index("ix_shipments_company_status", "company_id", "status"),
+        Index("ix_shipments_company_carrier", "company_id", "carrier"),
+        Index("ix_shipments_company_direction", "company_id", "direction"),
+        Index("ix_shipments_tracking", "tracking_number"),
+        Index("ix_shipments_entity", "entity_id"),
+        Index("ix_shipments_document", "document_id"),
+        Index("ix_shipments_estimated_delivery", "estimated_delivery"),
+        Index("ix_shipments_created", "created_at"),
+        # Unique: Tracking-Nummer pro Company
+        UniqueConstraint("company_id", "tracking_number", name="uq_shipments_company_tracking"),
+        {"comment": "Sendungsverfolgung fuer Paketdienste"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<Shipment {self.carrier}:{self.tracking_number} ({self.status})>"
+
+
+class ShipmentEvent(Base):
+    """
+    Einzelnes Tracking-Event fuer eine Sendung.
+
+    Chronologischer Verlauf aller Status-Aenderungen.
+    """
+
+    __tablename__ = "shipment_events"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Sendungs-Referenz
+    shipment_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("shipments.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Event-Daten
+    timestamp = Column(DateTime(timezone=True), nullable=False)
+    status = Column(String(30), nullable=False)
+    description = Column(String(500), nullable=True)
+
+    # Ort
+    location = Column(String(100), nullable=True)
+    postal_code = Column(String(20), nullable=True)
+    country_code = Column(String(3), nullable=True)
+
+    # Original-Status vom Carrier
+    raw_status = Column(String(100), nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    shipment = relationship("Shipment", back_populates="events")
+
+    __table_args__ = (
+        Index("ix_shipment_events_shipment", "shipment_id"),
+        Index("ix_shipment_events_timestamp", "timestamp"),
+        Index("ix_shipment_events_status", "status"),
+        # Unique: Ein Event pro Sendung und Zeitstempel
+        UniqueConstraint("shipment_id", "timestamp", name="uq_shipment_events_shipment_timestamp"),
+        {"comment": "Tracking-Events fuer Sendungen"}
+    )
+
+
+# =============================================================================
+# Business Contract Models (from app.db.models.contract)
+# =============================================================================
+
+class ContractType(str, Enum):
+    """Types of business contracts."""
+    SERVICE = "service"  # Dienstleistungsvertrag
+    SUPPLY = "supply"  # Liefervertrag
+    FRAMEWORK = "framework"  # Rahmenvertrag
+    MAINTENANCE = "maintenance"  # Wartungsvertrag
+    LICENSE = "license"  # Lizenzvertrag
+    LEASE = "lease"  # Mietvertrag (Geschaeftsraeume)
+    CONSULTING = "consulting"  # Beratungsvertrag
+    COOPERATION = "cooperation"  # Kooperationsvertrag
+    NDA = "nda"  # Geheimhaltungsvereinbarung
+    PURCHASE = "purchase"  # Kaufvertrag
+    OTHER = "other"
+
+
+class ContractStatus(str, Enum):
+    """Contract lifecycle status."""
+    DRAFT = "draft"  # Entwurf
+    PENDING_SIGNATURE = "pending_signature"  # Unterschrift ausstehend
+    ACTIVE = "active"  # Aktiv
+    SUSPENDED = "suspended"  # Ausgesetzt
+    EXPIRING_SOON = "expiring_soon"  # Laeuft bald ab
+    EXPIRED = "expired"  # Abgelaufen
+    TERMINATED = "terminated"  # Gekuendigt
+    RENEWED = "renewed"  # Verlaengert
+
+
+class RenewalOptionStatus(str, Enum):
+    """Status of renewal options."""
+    AVAILABLE = "available"  # Verfuegbar
+    PENDING = "pending"  # Entscheidung ausstehend
+    EXERCISED = "exercised"  # Ausgeubt
+    DECLINED = "declined"  # Abgelehnt
+    EXPIRED = "expired"  # Abgelaufen
+
+
+class MilestoneType(str, Enum):
+    """Types of contract milestones."""
+    CONTRACT_START = "contract_start"
+    CONTRACT_END = "contract_end"
+    RENEWAL_OPTION = "renewal_option"
+    NOTICE_DEADLINE = "notice_deadline"
+    PRICE_ADJUSTMENT = "price_adjustment"
+    SERVICE_LEVEL_REVIEW = "service_level_review"
+    DELIVERABLE_DUE = "deliverable_due"
+    PAYMENT_DUE = "payment_due"
+    AUDIT = "audit"
+    CUSTOM = "custom"
+
+
+class AmendmentStatus(str, Enum):
+    """Status of contract amendments."""
+    DRAFT = "draft"
+    PENDING_APPROVAL = "pending_approval"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    SUPERSEDED = "superseded"
+
+
+class BusinessContract(Base):
+    """
+    Business Contract entity for B2B contract management.
+
+    Supports:
+    - Contract lifecycle tracking
+    - Automatic deadline calculations
+    - Renewal options management
+    - Multi-tenant operation
+    """
+    __tablename__ = "business_contracts"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    company_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("companies.id"), nullable=False
+    )
+
+    # Contract identification
+    contract_number: Mapped[str] = mapped_column(String(100), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    contract_type: Mapped[ContractType] = mapped_column(
+        SQLAlchemyEnum(ContractType), default=ContractType.OTHER
+    )
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Contract parties
+    party_a_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("business_entities.id"), nullable=True
+    )
+    party_a_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    party_a_signatory: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    party_b_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("business_entities.id"), nullable=True
+    )
+    party_b_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    party_b_signatory: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    # Contract timeline
+    contract_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    start_date: Mapped[date] = mapped_column(Date, nullable=False)
+    end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    duration_months: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    # Termination and renewal
+    notice_period_days: Mapped[int] = mapped_column(Integer, default=30)
+    notice_deadline: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    auto_renewal: Mapped[bool] = mapped_column(Boolean, default=False)
+    renewal_period_months: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    max_renewals: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    current_renewal_count: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Financial terms
+    total_value: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(15, 2), nullable=True
+    )
+    monthly_value: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(15, 2), nullable=True
+    )
+    currency: Mapped[str] = mapped_column(String(3), default="EUR")
+    payment_terms: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    # Price adjustments
+    price_adjustment_clause: Mapped[bool] = mapped_column(Boolean, default=False)
+    price_adjustment_index: Mapped[Optional[str]] = mapped_column(
+        String(100), nullable=True
+    )  # e.g., "VPI", "Verbraucherpreisindex"
+    price_adjustment_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    price_adjustment_percent: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(5, 2), nullable=True
+    )
+
+    # Legal terms
+    governing_law: Mapped[str] = mapped_column(String(100), default="Deutsches Recht")
+    jurisdiction: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    arbitration_clause: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Document references
+    document_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("documents.id"), nullable=True
+    )
+
+    # Status and workflow
+    status: Mapped[ContractStatus] = mapped_column(
+        SQLAlchemyEnum(ContractStatus), default=ContractStatus.DRAFT
+    )
+    signed_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    terminated_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    termination_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Notifications
+    reminder_days: Mapped[List[int]] = mapped_column(
+        JSONB, default=lambda: [90, 60, 30, 14, 7]
+    )
+    last_reminder_sent: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    notification_emails: Mapped[List[str]] = mapped_column(
+        JSONB, default=list
+    )
+
+    # Metadata
+    tags: Mapped[List[str]] = mapped_column(JSONB, default=list)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    key_contacts: Mapped[List[dict]] = mapped_column(JSONB, default=list)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Audit
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+    created_by_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+
+    # Relationships
+    company = relationship("Company", foreign_keys=[company_id])
+    party_a = relationship("BusinessEntity", foreign_keys=[party_a_id])
+    party_b = relationship("BusinessEntity", foreign_keys=[party_b_id])
+    document = relationship("Document", foreign_keys=[document_id])
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    milestones = relationship(
+        "ContractMilestone", back_populates="contract", cascade="all, delete-orphan"
+    )
+    amendments = relationship(
+        "ContractAmendment", back_populates="contract", cascade="all, delete-orphan"
+    )
+    renewal_options = relationship(
+        "ContractRenewalOption", back_populates="contract", cascade="all, delete-orphan"
+    )
+
+    # Indexes and constraints
+    __table_args__ = (
+        UniqueConstraint("company_id", "contract_number", name="uq_contract_number"),
+        Index("ix_contract_company", "company_id"),
+        Index("ix_contract_status", "status"),
+        Index("ix_contract_end_date", "end_date"),
+        Index("ix_contract_notice_deadline", "notice_deadline"),
+        Index("ix_contract_party_a", "party_a_id"),
+        Index("ix_contract_party_b", "party_b_id"),
+    )
+
+    @hybrid_property
+    def days_until_end(self) -> Optional[int]:
+        """Calculate days until contract ends."""
+        if not self.end_date:
+            return None
+        delta = self.end_date - date.today()
+        return delta.days
+
+    @hybrid_property
+    def days_until_notice_deadline(self) -> Optional[int]:
+        """Calculate days until notice deadline."""
+        if not self.notice_deadline:
+            return None
+        delta = self.notice_deadline - date.today()
+        return delta.days
+
+    @hybrid_property
+    def is_expiring_soon(self) -> bool:
+        """Check if contract is expiring within 90 days."""
+        if not self.end_date:
+            return False
+        return 0 < (self.end_date - date.today()).days <= 90
+
+    @hybrid_property
+    def is_notice_deadline_critical(self) -> bool:
+        """Check if notice deadline is within 30 days."""
+        if not self.notice_deadline:
+            return False
+        days = (self.notice_deadline - date.today()).days
+        return 0 < days <= 30
+
+    def calculate_notice_deadline(self) -> Optional[date]:
+        """Calculate notice deadline based on end date and notice period."""
+        if not self.end_date:
+            return None
+        return self.end_date - timedelta(days=self.notice_period_days)
+
+    def update_notice_deadline(self) -> None:
+        """Update the notice deadline field."""
+        self.notice_deadline = self.calculate_notice_deadline()
+
+
+class ContractMilestone(Base):
+    """
+    Contract milestones for tracking key dates and events.
+    """
+    __tablename__ = "contract_milestones"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    contract_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("business_contracts.id"), nullable=False
+    )
+
+    milestone_type: Mapped[MilestoneType] = mapped_column(
+        SQLAlchemyEnum(MilestoneType), nullable=False
+    )
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    scheduled_date: Mapped[date] = mapped_column(Date, nullable=False)
+
+    # Completion tracking
+    is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    completed_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    completion_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Notifications
+    reminder_days_before: Mapped[List[int]] = mapped_column(
+        JSONB, default=lambda: [14, 7, 1]
+    )
+    last_reminder_sent: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+
+    # Linked task (optional)
+    linked_task_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
+
+    # Audit
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    # Relationships
+    contract = relationship("BusinessContract", back_populates="milestones")
+
+    __table_args__ = (
+        Index("ix_milestone_contract", "contract_id"),
+        Index("ix_milestone_scheduled", "scheduled_date"),
+        Index("ix_milestone_type", "milestone_type"),
+    )
+
+    @hybrid_property
+    def days_until_due(self) -> int:
+        """Calculate days until milestone is due."""
+        delta = self.scheduled_date - date.today()
+        return delta.days
+
+    @hybrid_property
+    def is_overdue(self) -> bool:
+        """Check if milestone is overdue and not completed."""
+        return not self.is_completed and self.scheduled_date < date.today()
+
+
+class ContractRenewalOption(Base):
+    """
+    Tracks available renewal options for a contract.
+    """
+    __tablename__ = "contract_renewal_options"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    contract_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("business_contracts.id"), nullable=False
+    )
+
+    # Option details
+    option_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    renewal_duration_months: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # Pricing
+    price_adjustment_type: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True
+    )  # "fixed", "percentage", "index"
+    price_adjustment_value: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(10, 2), nullable=True
+    )
+    new_monthly_value: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(15, 2), nullable=True
+    )
+
+    # Deadlines
+    exercise_deadline: Mapped[date] = mapped_column(Date, nullable=False)
+    renewal_start_date: Mapped[date] = mapped_column(Date, nullable=False)
+    notice_required_days: Mapped[int] = mapped_column(Integer, default=30)
+
+    # Status
+    status: Mapped[RenewalOptionStatus] = mapped_column(
+        SQLAlchemyEnum(RenewalOptionStatus), default=RenewalOptionStatus.AVAILABLE
+    )
+    exercised_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    exercised_by_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    decision_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Audit
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    # Relationships
+    contract = relationship("BusinessContract", back_populates="renewal_options")
+    exercised_by = relationship("User", foreign_keys=[exercised_by_id])
+
+    __table_args__ = (
+        UniqueConstraint(
+            "contract_id", "option_number", name="uq_contract_renewal_option"
+        ),
+        Index("ix_renewal_contract", "contract_id"),
+        Index("ix_renewal_deadline", "exercise_deadline"),
+        Index("ix_renewal_status", "status"),
+    )
+
+    @hybrid_property
+    def days_until_deadline(self) -> int:
+        """Calculate days until exercise deadline."""
+        delta = self.exercise_deadline - date.today()
+        return delta.days
+
+    @hybrid_property
+    def is_deadline_critical(self) -> bool:
+        """Check if deadline is within 30 days and option still available."""
+        if self.status != RenewalOptionStatus.AVAILABLE:
+            return False
+        return 0 < self.days_until_deadline <= 30
+
+
+class ContractAmendment(Base):
+    """
+    Tracks contract amendments and changes.
+    """
+    __tablename__ = "contract_amendments"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    contract_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("business_contracts.id"), nullable=False
+    )
+
+    # Amendment identification
+    amendment_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    amendment_date: Mapped[date] = mapped_column(Date, nullable=False)
+    effective_date: Mapped[date] = mapped_column(Date, nullable=False)
+
+    # Changes
+    changes_summary: Mapped[str] = mapped_column(Text, nullable=False)
+    affected_clauses: Mapped[List[str]] = mapped_column(JSONB, default=list)
+    changes_detail: Mapped[dict] = mapped_column(JSONB, default=dict)
+
+    # Financial impact
+    value_change: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(15, 2), nullable=True
+    )
+    new_total_value: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(15, 2), nullable=True
+    )
+
+    # Document
+    document_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("documents.id"), nullable=True
+    )
+
+    # Status
+    status: Mapped[AmendmentStatus] = mapped_column(
+        SQLAlchemyEnum(AmendmentStatus), default=AmendmentStatus.DRAFT
+    )
+    approved_by_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    approved_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+
+    # Audit
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+    created_by_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+
+    # Relationships
+    contract = relationship("BusinessContract", back_populates="amendments")
+    document = relationship("Document", foreign_keys=[document_id])
+    approved_by = relationship("User", foreign_keys=[approved_by_id])
+    created_by = relationship("User", foreign_keys=[created_by_id])
+
+    __table_args__ = (
+        UniqueConstraint(
+            "contract_id", "amendment_number", name="uq_contract_amendment_number"
+        ),
+        Index("ix_amendment_contract", "contract_id"),
+        Index("ix_amendment_status", "status"),
+        Index("ix_amendment_effective", "effective_date"),
+    )
+
+
+# Event Listeners for BusinessContract
+@event.listens_for(BusinessContract, 'before_insert')
+@event.listens_for(BusinessContract, 'before_update')
+def contract_before_save(mapper, connection, target: BusinessContract):
+    """Auto-calculate notice deadline before saving."""
+    if target.end_date and target.notice_period_days:
+        target.notice_deadline = target.calculate_notice_deadline()
+
+    # Auto-update status based on dates
+    today = date.today()
+    if target.status not in [ContractStatus.DRAFT, ContractStatus.TERMINATED]:
+        if target.end_date:
+            if target.end_date < today:
+                target.status = ContractStatus.EXPIRED
+            elif (target.end_date - today).days <= 90:
+                target.status = ContractStatus.EXPIRING_SOON
+            elif target.status == ContractStatus.EXPIRING_SOON:
+                target.status = ContractStatus.ACTIVE
+
+
+# =============================================================================
+# MULTI-TENANT SUBSCRIPTION SYSTEM (Migration 104)
+# =============================================================================
+
+
+class SubscriptionTier(str, Enum):
+    """Abonnement-Stufen fuer Multi-Tenant SaaS."""
+    FREE = "free"
+    BASIC = "basic"
+    PROFESSIONAL = "professional"
+    ENTERPRISE = "enterprise"
+
+
+class TenantRateLimit(Base):
+    """Tenant-spezifische Rate Limit Konfiguration.
+
+    Ermoeglicht individuelle Rate-Limits pro Mandant und Endpoint-Pattern.
+    Wird durch SubscriptionTierDefaults mit Defaults befuellt.
+    """
+    __tablename__ = "tenant_rate_limits"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Endpoint-spezifische Limits
+    endpoint_pattern = Column(
+        String(255),
+        nullable=False,
+        comment="Endpoint-Pattern (z.B. /api/v1/documents/*)"
+    )
+    requests_per_minute = Column(Integer, nullable=False, default=100)
+    requests_per_hour = Column(Integer, nullable=False, default=1000)
+    requests_per_day = Column(Integer, nullable=False, default=10000)
+
+    # Burst-Limits
+    burst_limit = Column(
+        Integer,
+        nullable=False,
+        default=50,
+        comment="Max Requests in 1 Sekunde"
+    )
+
+    # Spezielle Limits
+    ocr_requests_per_hour = Column(Integer, nullable=True, comment="OCR-spezifisches Limit")
+    batch_requests_per_hour = Column(Integer, nullable=True, comment="Batch-Operations Limit")
+    export_requests_per_day = Column(Integer, nullable=True, comment="Export-Limit pro Tag")
+
+    # Flags
+    is_custom = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        comment="True wenn manuell angepasst"
+    )
+    is_active = Column(Boolean, nullable=False, default=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Relationships
+    company = relationship("Company", backref="rate_limits")
+    created_by = relationship("User", foreign_keys=[created_by_id])
+
+    __table_args__ = (
+        UniqueConstraint("company_id", "endpoint_pattern", name="uq_tenant_rate_limits_company_endpoint"),
+        Index("ix_tenant_rate_limits_endpoint", "endpoint_pattern"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<TenantRateLimit {self.company_id}:{self.endpoint_pattern}>"
+
+
+class TenantUsageMetrics(Base):
+    """Aggregierte Nutzungsmetriken pro Tenant fuer Dashboard und Analytics.
+
+    Wird automatisch durch Celery-Tasks befuellt (hourly, daily, monthly).
+    """
+    __tablename__ = "tenant_usage_metrics"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Zeitraum
+    period_type = Column(
+        String(20),
+        nullable=False,
+        comment="hourly, daily, monthly"
+    )
+    period_start = Column(DateTime(timezone=True), nullable=False)
+    period_end = Column(DateTime(timezone=True), nullable=False)
+
+    # API Metriken
+    total_requests = Column(BigInteger, nullable=False, default=0)
+    rate_limited_requests = Column(BigInteger, nullable=False, default=0)
+    failed_requests = Column(BigInteger, nullable=False, default=0)
+    avg_response_time_ms = Column(Float, nullable=True)
+    p95_response_time_ms = Column(Float, nullable=True)
+    p99_response_time_ms = Column(Float, nullable=True)
+
+    # OCR Metriken
+    documents_processed = Column(Integer, nullable=False, default=0)
+    pages_processed = Column(Integer, nullable=False, default=0)
+    ocr_processing_time_ms = Column(BigInteger, nullable=False, default=0)
+
+    # Storage Metriken
+    storage_used_bytes = Column(BigInteger, nullable=False, default=0)
+    documents_stored = Column(Integer, nullable=False, default=0)
+
+    # User Metriken
+    active_users = Column(Integer, nullable=False, default=0)
+    unique_sessions = Column(Integer, nullable=False, default=0)
+
+    # Endpoint-Breakdown
+    endpoint_breakdown = Column(
+        CrossDBJSON,
+        nullable=True,
+        comment="Requests pro Endpoint"
+    )
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    company = relationship("Company", backref="usage_metrics")
+
+    __table_args__ = (
+        UniqueConstraint("company_id", "period_type", "period_start", name="uq_tenant_metrics_period"),
+        Index("ix_tenant_metrics_period", "period_type", "period_start"),
+        Index("ix_tenant_metrics_company_period", "company_id", "period_type", "period_start"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<TenantUsageMetrics {self.company_id}:{self.period_type}:{self.period_start}>"
+
+
+class RateLimitViolation(Base):
+    """Log fuer Rate-Limit-Verletzungen.
+
+    Wird fuer Security-Monitoring und Abuse-Detection verwendet.
+    """
+    __tablename__ = "rate_limit_violations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True
+    )
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True
+    )
+
+    # Violation Details
+    endpoint = Column(String(255), nullable=False)
+    method = Column(String(10), nullable=False)
+    ip_address = Column(String(45), nullable=False)
+    user_agent = Column(String(500), nullable=True)
+
+    # Limit Info
+    limit_type = Column(
+        String(50),
+        nullable=False,
+        comment="minute, hour, day, burst"
+    )
+    limit_value = Column(Integer, nullable=False)
+    current_count = Column(Integer, nullable=False)
+    retry_after_seconds = Column(Integer, nullable=True)
+
+    # Timestamp
+    occurred_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    company = relationship("Company", backref="rate_limit_violations")
+    user = relationship("User", backref="rate_limit_violations")
+
+    __table_args__ = (
+        Index("ix_rate_violations_time", "occurred_at"),
+        Index("ix_rate_violations_endpoint", "endpoint"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<RateLimitViolation {self.endpoint}@{self.occurred_at}>"
+
+
+class SubscriptionTierDefaults(Base):
+    """Default-Konfiguration fuer Subscription Tiers.
+
+    Definiert die Standard-Limits und Features pro Tier.
+    Admin kann diese anpassen.
+    """
+    __tablename__ = "subscription_tier_defaults"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tier = Column(String(50), nullable=False, unique=True)
+
+    # Limits
+    max_users = Column(Integer, nullable=False)
+    max_documents_per_month = Column(Integer, nullable=False)
+    max_storage_gb = Column(Integer, nullable=False)
+
+    # Rate Limits
+    requests_per_minute = Column(Integer, nullable=False)
+    requests_per_hour = Column(Integer, nullable=False)
+    requests_per_day = Column(Integer, nullable=False)
+    ocr_requests_per_hour = Column(Integer, nullable=False)
+    batch_requests_per_hour = Column(Integer, nullable=False)
+
+    # Features
+    features_enabled = Column(CrossDBJSON, nullable=False)
+
+    # Pricing (fuer Billing-Vorbereitung)
+    price_monthly_eur = Column(Numeric(10, 2), nullable=True)
+    price_yearly_eur = Column(Numeric(10, 2), nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    def __repr__(self) -> str:
+        return f"<SubscriptionTierDefaults {self.tier}>"

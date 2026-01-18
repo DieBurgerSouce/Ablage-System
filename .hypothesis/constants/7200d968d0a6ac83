@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\docling_parse\pdf_parser.py
+# hypothesis_version: 6.148.7
+
+[0.33, 1.0, 8192, '"data" in cells', '"data" in images', '"header" in cells', '"header" in images', "'original' in page", '<root>', 'angle', 'art-bbox', 'bleed-bbox', 'cells', 'children', 'crop-bbox', 'data', 'dimension', 'fatal', 'font-key', 'font-name', 'header', 'i', 'id', 'images', 'json', 'left_to_right', 'line_cells', 'lines', 'media-bbox', 'original', 'page_boundary', 'pages', 'pdf_parser_v2', 'r_x0', 'r_x1', 'r_x2', 'r_x3', 'r_y0', 'r_y1', 'r_y2', 'r_y3', 'rectangles', 'rendering-mode', 'text', 'title', 'trim-bbox', 'utf8', 'widget', 'word_cells', 'x', 'y']

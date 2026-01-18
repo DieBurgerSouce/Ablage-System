@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\jit\dy2static\program_translator.py
+# hypothesis_version: 6.148.7
+
+['0', '1', 'Not implemented yet.', '_', '_InputT', '_RetT', '_original_funcs', '_pir_flags', '_spec_names_id', 'backend', 'build_strategy', 'class_instance', 'code', 'concrete_program', 'constraints', 'enable_to_static', 'forward', 'function', 'function_spec', 'get_concrete_program', 'get_traced_count', 'input_args_with_spec', 'inputs', 'is_prim_infer', 'is_train', 'kwargs', 'main_program', 'outputs', 'parameters', 'pd_op.set_value_', 'pd_op.share_data_', 'program_cache', 'property', 'ranges', 'startup_program', 'training', 'with_hook']

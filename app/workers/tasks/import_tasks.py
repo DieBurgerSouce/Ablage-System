@@ -385,16 +385,43 @@ def retry_failed_imports(self) -> Dict[str, Any]:
                     stats["retried"] += 1
 
                     if log.source_type == "email" and log.email_config_id:
-                        # Email-Import wiederholen (TODO: Implementierung)
-                        pass
-                    elif log.source_type == "folder" and log.original_path:
-                        # Folder-Import wiederholen (TODO: Implementierung)
-                        pass
+                        # Email-Import: Trigger Celery Task fuer einzelne Email
+                        from app.workers.celery_app import celery_app as celery
+                        celery.send_task(
+                            "import.retry_single_email",
+                            kwargs={
+                                "config_id": str(log.email_config_id),
+                                "email_uid": log.email_uid,
+                                "log_id": str(log.id),
+                            },
+                        )
+                        log.retry_count += 1
+                        log.status = "pending"
+                        await db.commit()
 
-                    # Fuer jetzt: Nur Status aktualisieren
-                    log.retry_count += 1
-                    log.status = "pending"
-                    await db.commit()
+                    elif log.source_type == "folder" and log.original_path:
+                        # Folder-Import: Trigger Celery Task fuer einzelne Datei
+                        from app.workers.celery_app import celery_app as celery
+                        celery.send_task(
+                            "import.retry_single_file",
+                            kwargs={
+                                "config_id": str(log.folder_config_id) if log.folder_config_id else None,
+                                "file_path": log.original_path,
+                                "log_id": str(log.id),
+                            },
+                        )
+                        log.retry_count += 1
+                        log.status = "pending"
+                        await db.commit()
+
+                    else:
+                        # Unbekannter Source-Type - nur Status aktualisieren
+                        log.retry_count += 1
+                        log.status = "failed"
+                        log.error_message = "Unbekannter Import-Typ fuer Retry"
+                        await db.commit()
+                        stats["failed"] += 1
+                        continue
 
                 except Exception as e:
                     stats["failed"] += 1
@@ -417,6 +444,8 @@ def retry_failed_imports(self) -> Dict[str, Any]:
 def retry_import_task(log_id: str) -> Dict[str, Any]:
     """Wiederholt einen einzelnen fehlgeschlagenen Import.
 
+    Dispatcht automatisch zum richtigen Retry-Task basierend auf source_type.
+
     Args:
         log_id: UUID des Import-Logs
 
@@ -435,17 +464,353 @@ def retry_import_task(log_id: str) -> Dict[str, Any]:
             if not log:
                 return {"success": False, "error": "Log nicht gefunden"}
 
-            if log.status != "pending":
-                return {"success": False, "error": "Log nicht in pending Status"}
+            if log.status not in ("pending", "failed"):
+                return {"success": False, "error": f"Log Status ist '{log.status}', nicht retry-faehig"}
 
-            # TODO: Tatsaechliche Retry-Logik implementieren
-            # Momentan nur Status-Update
+            # Dispatch basierend auf source_type
+            if log.source_type == "email" and log.email_config_id:
+                celery_app.send_task(
+                    "import.retry_single_email",
+                    kwargs={
+                        "config_id": str(log.email_config_id),
+                        "email_uid": log.email_uid,
+                        "log_id": str(log.id),
+                    },
+                )
+                log.status = "pending"
+                log.retry_count += 1
+                await db.commit()
+                return {"success": True, "log_id": log_id, "type": "email"}
+
+            elif log.source_type == "folder" and log.original_path:
+                celery_app.send_task(
+                    "import.retry_single_file",
+                    kwargs={
+                        "config_id": str(log.folder_config_id) if log.folder_config_id else None,
+                        "file_path": log.original_path,
+                        "log_id": str(log.id),
+                    },
+                )
+                log.status = "pending"
+                log.retry_count += 1
+                await db.commit()
+                return {"success": True, "log_id": log_id, "type": "folder"}
+
+            else:
+                return {"success": False, "error": "Unbekannter Import-Typ"}
+
+    return asyncio.get_event_loop().run_until_complete(_retry())
+
+
+@celery_app.task(
+    name="import.retry_single_email",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=60,
+)
+def retry_single_email(
+    self,
+    config_id: str,
+    email_uid: int,
+    log_id: str,
+) -> Dict[str, Any]:
+    """Wiederholt den Import einer einzelnen E-Mail.
+
+    Holt die E-Mail erneut via IMAP und verarbeitet die Anhaenge.
+
+    Args:
+        config_id: UUID der EmailImportConfig
+        email_uid: IMAP UID der E-Mail
+        log_id: UUID des Import-Logs fuer Status-Update
+
+    Returns:
+        Dict mit Import-Ergebnis
+    """
+    import asyncio
+    from uuid import UUID
+    from datetime import datetime, timezone
+
+    async def _retry_email():
+        from app.services.imports.email_import_service import (
+            EmailImportService,
+            IMAP_AVAILABLE,
+        )
+        from app.core.encryption import decrypt_data
+
+        if not IMAP_AVAILABLE:
+            return {
+                "success": False,
+                "error": "imapclient nicht installiert",
+            }
+
+        async with get_async_session_context() as db:
+            # Import-Log laden
+            log_result = await db.execute(
+                select(ImportLog).where(ImportLog.id == UUID(log_id))
+            )
+            log = log_result.scalar_one_or_none()
+            if not log:
+                return {"success": False, "error": "Import-Log nicht gefunden"}
+
+            # Config laden
+            config_result = await db.execute(
+                select(EmailImportConfig).where(EmailImportConfig.id == UUID(config_id))
+            )
+            config = config_result.scalar_one_or_none()
+            if not config:
+                log.status = "failed"
+                log.error_message = "Email-Konfiguration nicht gefunden"
+                await db.commit()
+                return {"success": False, "error": "Konfiguration nicht gefunden"}
+
             log.status = "processing"
             await db.commit()
 
-            return {"success": True, "log_id": log_id}
+            try:
+                # Email-Service verwenden
+                email_service = EmailImportService(db)
 
-    return asyncio.get_event_loop().run_until_complete(_retry())
+                # Credentials entschluesseln
+                from app.core.encryption import decrypt_data
+                username = decrypt_data(
+                    config.username_encrypted,
+                    associated_data=f"email_config:{config_id}"
+                )
+                password = decrypt_data(
+                    config.password_encrypted,
+                    associated_data=f"email_config:{config_id}"
+                )
+
+                # IMAP-Verbindung erstellen
+                client = email_service._create_imap_connection(
+                    server=config.imap_server,
+                    port=config.imap_port,
+                    username=username,
+                    password=password,
+                    use_ssl=config.use_ssl,
+                    use_starttls=config.use_starttls,
+                )
+
+                try:
+                    # Ordner auswaehlen
+                    folder = config.imap_folder or "INBOX"
+                    client.select_folder(folder, readonly=True)
+
+                    # Einzelne Email abrufen
+                    raw_messages = client.fetch([email_uid], ["RFC822"])
+                    if email_uid not in raw_messages:
+                        log.status = "failed"
+                        log.error_message = "E-Mail nicht mehr verfuegbar (UID nicht gefunden)"
+                        await db.commit()
+                        return {"success": False, "error": "E-Mail nicht gefunden"}
+
+                    raw_email = raw_messages[email_uid][b"RFC822"]
+                    parsed = email_service._parse_email(email_uid, raw_email)
+
+                    # Anhaenge verarbeiten
+                    documents_created = 0
+                    from uuid import uuid4
+                    batch_id = uuid4()
+
+                    for attachment in parsed.attachments:
+                        doc_result = await email_service._process_attachment(
+                            config=config,
+                            email=parsed,
+                            attachment=attachment,
+                            batch_id=batch_id,
+                            user_id=config.user_id,
+                        )
+                        if doc_result.get("success"):
+                            documents_created += 1
+                            log.document_id = doc_result.get("document_id")
+
+                    # Erfolg protokollieren
+                    log.status = "completed"
+                    log.error_message = None
+                    log.error_code = None
+                    log.completed_at = datetime.now(timezone.utc)
+                    await db.commit()
+
+                    logger.info(
+                        "email_retry_success",
+                        log_id=log_id,
+                        email_uid=email_uid,
+                        documents_created=documents_created,
+                    )
+
+                    return {
+                        "success": True,
+                        "documents_created": documents_created,
+                    }
+
+                finally:
+                    client.logout()
+
+            except Exception as e:
+                log.status = "failed"
+                log.error_message = f"Retry fehlgeschlagen: {str(e)}"
+                await db.commit()
+
+                logger.error(
+                    "email_retry_failed",
+                    log_id=log_id,
+                    email_uid=email_uid,
+                    error=str(e),
+                )
+
+                return {"success": False, "error": str(e)}
+
+    return asyncio.get_event_loop().run_until_complete(_retry_email())
+
+
+@celery_app.task(
+    name="import.retry_single_file",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=60,
+)
+def retry_single_file(
+    self,
+    config_id: Optional[str],
+    file_path: str,
+    log_id: str,
+) -> Dict[str, Any]:
+    """Wiederholt den Import einer einzelnen Datei.
+
+    Args:
+        config_id: UUID der FolderImportConfig (optional)
+        file_path: Pfad zur Datei
+        log_id: UUID des Import-Logs fuer Status-Update
+
+    Returns:
+        Dict mit Import-Ergebnis
+    """
+    import asyncio
+    import os
+    from uuid import UUID, uuid4
+    from datetime import datetime, timezone
+    from pathlib import Path
+
+    async def _retry_file():
+        async with get_async_session_context() as db:
+            # Import-Log laden
+            log_result = await db.execute(
+                select(ImportLog).where(ImportLog.id == UUID(log_id))
+            )
+            log = log_result.scalar_one_or_none()
+            if not log:
+                return {"success": False, "error": "Import-Log nicht gefunden"}
+
+            # Pruefen ob Datei noch existiert
+            if not os.path.exists(file_path):
+                log.status = "failed"
+                log.error_message = "Datei existiert nicht mehr"
+                await db.commit()
+                return {"success": False, "error": "Datei nicht gefunden"}
+
+            log.status = "processing"
+            await db.commit()
+
+            try:
+                from app.services.imports.folder_import_service import FolderImportService
+
+                folder_service = FolderImportService(db)
+
+                # Config laden wenn vorhanden
+                config = None
+                if config_id:
+                    config_result = await db.execute(
+                        select(FolderImportConfig).where(
+                            FolderImportConfig.id == UUID(config_id)
+                        )
+                    )
+                    config = config_result.scalar_one_or_none()
+
+                # Datei verarbeiten
+                batch_id = uuid4()
+                user_id = log.user_id
+
+                if config:
+                    # Mit Config verarbeiten
+                    result = await folder_service._process_file(
+                        config=config,
+                        file_path=Path(file_path),
+                        batch_id=batch_id,
+                        user_id=user_id,
+                    )
+                else:
+                    # Ohne Config: Direkter Dokument-Upload
+                    from app.services.document_services.crud_service import DocumentCRUDService
+                    from app.core.storage import StorageService
+                    import mimetypes
+
+                    storage = StorageService()
+                    crud_service = DocumentCRUDService(db, storage)
+
+                    # Datei lesen
+                    with open(file_path, "rb") as f:
+                        content = f.read()
+
+                    filename = os.path.basename(file_path)
+                    mime_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+
+                    # Dokument erstellen
+                    document = await crud_service.create_document(
+                        user_id=user_id,
+                        filename=filename,
+                        content=content,
+                        mime_type=mime_type,
+                        metadata={"retry_from_log": log_id},
+                    )
+
+                    result = {
+                        "success": True,
+                        "document_id": document.id,
+                    }
+
+                if result.get("success"):
+                    log.status = "completed"
+                    log.error_message = None
+                    log.error_code = None
+                    log.completed_at = datetime.now(timezone.utc)
+                    log.document_id = result.get("document_id")
+                    await db.commit()
+
+                    logger.info(
+                        "file_retry_success",
+                        log_id=log_id,
+                        file_path=file_path,
+                    )
+
+                    return {"success": True, "document_id": str(result.get("document_id"))}
+
+                elif result.get("duplicate"):
+                    log.status = "skipped"
+                    log.error_message = "Duplikat"
+                    await db.commit()
+                    return {"success": True, "skipped": True, "reason": "duplicate"}
+
+                else:
+                    log.status = "failed"
+                    log.error_message = result.get("error", "Unbekannter Fehler")
+                    await db.commit()
+                    return {"success": False, "error": result.get("error")}
+
+            except Exception as e:
+                log.status = "failed"
+                log.error_message = f"Retry fehlgeschlagen: {str(e)}"
+                await db.commit()
+
+                logger.error(
+                    "file_retry_failed",
+                    log_id=log_id,
+                    file_path=file_path,
+                    error=str(e),
+                )
+
+                return {"success": False, "error": str(e)}
+
+    return asyncio.get_event_loop().run_until_complete(_retry_file())
 
 
 # =============================================================================

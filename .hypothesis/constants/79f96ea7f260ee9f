@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\vision\models\densenet.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, 121, 161, 169, 201, 264, 1000, 'conv', 'densenet121', 'densenet161', 'densenet169', 'densenet201', 'densenet264', 'downscale_in_infer', 'relu']

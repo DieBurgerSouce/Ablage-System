@@ -367,26 +367,29 @@ class TestIPAddressEdgeCases:
         request.state = Mock()
         request.state.user = None
         request.client = Mock()
+        # Properly mock headers to return None for missing keys
+        request.headers = Mock()
+        request.headers.get = Mock(return_value=None)
         return request
 
     def test_ipv4_address_identification(self, mock_request):
         """IPv4-Adressen sollten erkannt werden."""
         mock_request.client.host = "192.168.1.100"
 
-        with patch("app.core.rate_limiting.get_remote_address", return_value="192.168.1.100"):
-            from app.core.rate_limiting import get_ip_identifier
-            identifier = get_ip_identifier(mock_request)
+        from app.core.rate_limiting import get_ip_identifier
+        identifier = get_ip_identifier(mock_request)
 
+        # Client is from private network, returns client.host directly
         assert identifier == "192.168.1.100"
 
     def test_ipv6_address_identification(self, mock_request):
         """IPv6-Adressen sollten erkannt werden."""
         mock_request.client.host = "2001:db8::1"
 
-        with patch("app.core.rate_limiting.get_remote_address", return_value="2001:db8::1"):
-            from app.core.rate_limiting import get_ip_identifier
-            identifier = get_ip_identifier(mock_request)
+        from app.core.rate_limiting import get_ip_identifier
+        identifier = get_ip_identifier(mock_request)
 
+        # Client is public IPv6, returns client.host directly
         assert identifier == "2001:db8::1"
 
     def test_localhost_ipv4_whitelisted(self):

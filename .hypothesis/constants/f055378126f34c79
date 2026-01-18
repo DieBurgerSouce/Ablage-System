@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\docling\models\code_formula_model.py
+# hypothesis_version: 6.148.7
+
+[0.18, 1.67, '</code>', '</formula>', '<code>', '<end_of_utterance>', '<formula>', '^<_([^_>]+)_>\\s*(.*)', 'code', 'code_formula', 'content', 'formula', 'image', 'main', 'pt', 'role', 'text', 'type', 'user']

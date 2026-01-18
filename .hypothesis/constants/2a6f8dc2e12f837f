@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppstructure\layout\predict_layout.py
+# hypothesis_version: 6.148.7
+
+[0.224, 0.225, 0.229, 0.406, 0.456, 0.485, 608, 800, '../..', '1./255.', 'KeepKeys', 'NormalizeImage', 'PicoDetPostProcess', 'Resize', 'ToCHWImage', '__main__', 'auto_growth', 'hwc', 'image', 'keep_keys', 'layout', 'layout_dict_path', 'mean', 'name', 'nms_threshold', 'order', 'result: {}', 'scale', 'score_threshold', 'size', 'std']

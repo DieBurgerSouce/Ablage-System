@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\layer\rnn.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, ', dropout={dropout}', 'DropoutState', 'FusedOutput', 'GRU', 'Input', 'LSTM', 'Out', 'Output', 'PreState', 'RNN_RELU', 'RNN_TANH', 'Reserve', 'SequenceLength', 'State', 'WeightList', ']', '_reverse', 'activation', 'bias_hh_attr', 'bias_hh_l{}{}', 'bias_ih_attr', 'bias_ih_l{}{}', 'bidirect', 'bidirectional', 'call', 'coalesce_tensor', 'copy_data', 'cpu', 'dropout_prob', 'dtype', 'float32', 'float64', 'forward', 'hidden_size', 'initial_states', 'input_size', 'inputs', 'inputs[', 'int64', 'is_bidirec', 'is_test', 'mode', 'num_layers', 'proj_size', 'relu', 'rnn', 'sequence_length', 'tanh', 'uint8', 'upscale_in_train', 'use_align', 'weight_hh_attr', 'weight_hh_l{}{}', 'weight_ih_attr', 'weight_ih_l{}{}']

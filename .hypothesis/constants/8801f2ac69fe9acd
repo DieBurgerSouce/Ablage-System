@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\autograd\ir_backward.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, '_grad', 'bfloat6', 'builtin.combine', 'builtin.parameter', 'builtin.split', 'calc_gradient', 'calc_gradient_helper', 'cf.tuple_pop', 'cf.tuple_push', 'cf.yield', 'chunk_id', 'dist_op.reshard', 'float16', 'float32', 'grad', 'grad_outputs', 'inputs', 'loss', 'no_grad_vars', 'outputs', 'parameter_list', 'pd_op.add_', 'pd_op.add_n_', 'pd_op.array_read', 'pd_op.array_write_', 'pd_op.assign_out_', 'pd_op.full_like', 'pd_op.if', 'pd_op.increment_', 'pd_op.pylayer', 'pd_op.while', 'persistable']

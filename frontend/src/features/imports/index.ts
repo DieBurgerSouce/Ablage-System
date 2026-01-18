@@ -12,9 +12,15 @@ export * from './api';
 
 // React Query Hooks
 export * from './hooks/useImports';
+export * from './hooks/use-import-queries';
 
-// Components (placeholders for future implementation)
-// export * from './components/EmailImportWizard';
-// export * from './components/FolderWatchConfig';
-// export * from './components/ImportRuleBuilder';
-// export * from './components/ImportLogViewer';
+// Components
+export { EmailConfigList } from './components/EmailConfigList';
+export { EmailConfigForm } from './components/EmailConfigForm';
+export { FolderConfigList } from './components/FolderConfigList';
+export { FolderConfigForm } from './components/FolderConfigForm';
+export { ImportLogTable } from './components/ImportLogTable';
+export { ImportRuleBuilder } from './components/ImportRuleBuilder';
+
+// Pages
+export { ImportsPage } from './pages/ImportsPage';

@@ -44,10 +44,21 @@ export {
 } from './registry';
 
 // Store
-export { useDashboardStore, type WidgetItem } from './stores/useDashboardStore';
+export {
+  useDashboardStore,
+  DASHBOARD_PRESETS,
+  GRID_COLUMNS,
+  type WidgetItem,
+  type UserRole,
+  type DashboardPreset,
+} from './stores/useDashboardStore';
 
 // Components
 export { DashboardGrid } from './components/DashboardGrid';
+export { DashboardGridEnhanced } from './components/DashboardGridEnhanced';
 export { SortableWidget } from './components/SortableWidget';
+export { ResizableWidget } from './components/ResizableWidget';
 export { WidgetCatalogDrawer } from './components/WidgetCatalogDrawer';
 export { WidgetPreviewCard } from './components/WidgetPreviewCard';
+export { PresetSelector } from './components/PresetSelector';
+export { ActivityFeed, ActivityFeedWidget } from './components/ActivityFeed';

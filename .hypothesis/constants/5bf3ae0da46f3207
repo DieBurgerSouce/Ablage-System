@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\ps\coordinator.py
+# hypothesis_version: 6.148.7
+
+[0.9, 100, ':', 'Android', 'FINISH', 'InmemoryDataset', 'JOIN', 'QueueDataset', 'auc', 'client id', 'dump_fields', 'dump_fields_path', 'dump_param', 'epoch', 'finish', 'infer', 'init_worker', 'next_state', 'runner.dataset_debug', 'runner.dump_fields', 'runner.dump_param', 'runner.epochs', 'runner.need_dump', 'runner.reader_type', 'runner.use_gpu', 'save_model', 'speed', 'train', 'utf8', 'w+', '{}/epoch_{}']

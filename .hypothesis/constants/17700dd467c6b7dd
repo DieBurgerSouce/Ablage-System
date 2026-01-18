@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\passes\pipeline_scheduler_pass\pipeline_zero_bubble.py
+# hypothesis_version: 6.148.7
+
+[0.2, '_b', '_w', 'backward_b', 'backward_w', 'chunk', 'communication', 'down', 'forward', 'forward0', 'inf', 'loss', 'memory_limit_times', 'micro_batch', 'num_micro_batches', 'pp_degree', 'pp_stage', 'program_runtimes', 'type', 'up', 'vpp_degree']

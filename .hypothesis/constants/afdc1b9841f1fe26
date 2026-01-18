@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\tensor\einsum.py
+# hypothesis_version: 6.148.7
+
+[' * ', ',', '->', '.', '...', '1', 'FLAGS_new_einsum', 'InnerCache', 'Operands', 'Out', 'XShape', '\\.+', 'a', 'dtype', 'einsum', 'equation', 'float32', 'float64', 'z']

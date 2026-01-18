@@ -558,7 +558,51 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: Optional[SecretStr] = None
     SMTP_FROM_EMAIL: Optional[str] = "noreply@ablage-system.local"
     SMTP_TLS: bool = True
-    
+
+    # =============================================================================
+    # Slack Integration
+    # =============================================================================
+    # Webhook-URL: Erstellen unter https://api.slack.com/apps -> Incoming Webhooks
+    SLACK_WEBHOOK_URL: Optional[SecretStr] = Field(
+        default=None,
+        description="Slack Incoming Webhook URL fuer Benachrichtigungen"
+    )
+    # Bot Token: Erstellen unter https://api.slack.com/apps -> OAuth & Permissions
+    # Scopes: chat:write, files:write, users:read
+    SLACK_BOT_TOKEN: Optional[SecretStr] = Field(
+        default=None,
+        description="Slack Bot OAuth Token (xoxb-...) fuer erweiterte Funktionen"
+    )
+    # Standard-Kanal fuer Benachrichtigungen (ohne #)
+    SLACK_DEFAULT_CHANNEL: str = Field(
+        default="ablage-notifications",
+        description="Standard-Slack-Kanal fuer Benachrichtigungen"
+    )
+    # Aktivierung der Slack-Integration
+    SLACK_ENABLED: bool = Field(
+        default=False,
+        description="Slack-Integration aktivieren"
+    )
+    # Notification-Typen die an Slack gesendet werden
+    SLACK_NOTIFICATION_TYPES: List[str] = Field(
+        default_factory=lambda: [
+            "document_processed",
+            "document_error",
+            "approval_required",
+            "approval_completed",
+            "workflow_completed",
+            "high_risk_entity",
+            "dunning_escalation",
+        ],
+        description="Notification-Typen die an Slack weitergeleitet werden"
+    )
+    # Rate Limiting fuer Slack (max Nachrichten pro Minute)
+    SLACK_RATE_LIMIT_PER_MINUTE: int = Field(
+        default=30,
+        ge=1, le=100,
+        description="Maximale Slack-Nachrichten pro Minute"
+    )
+
     # Development
     TESTING: bool = False
 

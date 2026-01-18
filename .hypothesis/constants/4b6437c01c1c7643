@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\docling\backend\docx\latex\omml.py
+# hypothesis_version: 6.148.7
+
+['ACC_VAL', 'BAR_VAL', 'Not support lim {}', 'Pr', '\\', '\\\\', '\\ensuremath{', '\\text', '\\{', '\\}', 'acc', 'accPr', 'bar', 'barPr', 'begChr', 'box', 'braces-all', 'brk', 'chr', 'd', 'dPr', 'deg', 'den', 'e', 'endChr', 'ensuremath', 'eqArr', 'f', 'fName', 'fPr', 'func', 'groupChr', 'groupChrPr', 'keep', 'left', 'lim', 'limLow', 'limUpp', 'm', 'mPr', 'mr', 'nary', 'naryPr', 'null', 'num', 'oMath', 'pos', 'r', 'rad', 'right', 'sSub', 'sSubSup', 'sSup', 'sub', 'sup', 'type', '{', '}']

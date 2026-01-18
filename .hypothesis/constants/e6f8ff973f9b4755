@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\expenses.py
+# hypothesis_version: 6.148.7
+
+[0.0, 200, '/expenses/calculate', '/expenses/items', '/expenses/reports', '/mileage', '/per-diem', '/{item_id}', '/{report_id}', '/{report_id}/approve', '/{report_id}/items', '/{report_id}/pay', '/{report_id}/reject', '/{report_id}/submit', '10/minute', '20/minute', '30/minute', '5/minute', 'DE', 'Filter Periode ab', 'Filter Periode bis', 'Filter nach Status', 'Position hinzufuegen', 'Position loeschen', 'Spesen - Positionen', 'Spesen - Rechner', 'Spesen - Workflow', 'status']

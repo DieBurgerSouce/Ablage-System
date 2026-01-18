@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\sharding\group_sharded.py
+# hypothesis_version: 6.148.7
+
+['*', ':', '_optim', 'gpu', 'model.pdmodel', 'model.pdopt', 'os', 'os_g', 'p_g_os', 'xpu']

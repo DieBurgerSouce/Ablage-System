@@ -27,3 +27,6 @@ export { SampleConfigDialog } from './SampleConfigDialog';
 
 // Analytics
 export { AnalyticsDashboard } from './AnalyticsDashboard';
+
+// Quick Validation (Mobile + Keyboard Support)
+export { QuickValidationCard, QuickValidationList } from './QuickValidationCard';

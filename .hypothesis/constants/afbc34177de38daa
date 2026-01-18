@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\api.py
+# hypothesis_version: 6.148.7
+
+[256, 1024, '.', '1', 'FLAGS_enable_pir_api', 'LR_Scheduler', 'Out', 'POD_NAME', 'X', '_dp_optimization', '_grad_clip', '_inner_opt', '_is_initialized', '_mp_optimization', '_param_groups', '_pow_acc', '_recompute', '_sp_optimization', 'all', 'assign', 'beta', 'bool', 'config', 'dim_names', 'dims_mapping', 'dp', 'dropout_add', 'eval', 'full_graph', 'gemm_epilogue', 'grad', 'index', 'int32', 'is_dist', 'last_idx', 'loss', 'main_grad', 'master_weights', 'meshes must be set', 'mp', 'opt', 'outputs', 'param', 'params', 'pd_op.data', 'pp', 'predict', 'process_group', 'process_mesh', 'process_shape', 'reshard_api', 'state', 'stop_gradient', 'tmp', 'to_static', 'train', 'xpu']

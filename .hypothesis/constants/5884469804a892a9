@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\flex_checkpoint\aoa\aoa_engine.py
+# hypothesis_version: 6.148.7
+
+['.beta1_pow_acc_0', '.beta2_pow_acc_0', '.moment1_0', '.moment2_0', '.w_0', '[', '[]', '_', 'aoa_statements', 'axis', 'dtype', 'permute']

@@ -20,6 +20,8 @@ from app.db.schemas import (
     UserRole,
     ProcessingStatus,
     MessageResponse,
+    JobListResponse,
+    JobActionResponse,
 )
 
 
@@ -356,7 +358,7 @@ class TestJobQueueOperations:
 try:
     from httpx import AsyncClient, ASGITransport
     from app.main import app
-    from app.api.dependencies import get_current_superuser, get_db
+    from app.api.dependencies import get_current_superuser, get_db, check_destructive_admin_rate_limit
     INTEGRATION_AVAILABLE = True
 except ImportError:
     INTEGRATION_AVAILABLE = False
@@ -382,6 +384,13 @@ class TestJobsAdminAPIIntegration:
             yield mock_db
         return _get_test_db
 
+    @pytest.fixture
+    def override_rate_limit(self, admin_user):
+        """Override destructive rate limit dependency for testing."""
+        async def _bypass_rate_limit(request=None, admin=None):
+            return admin_user
+        return _bypass_rate_limit
+
     @pytest.mark.asyncio
     async def test_list_jobs_returns_200(self, admin_user, mock_db, override_superuser, override_db):
         """GET /admin/jobs sollte 200 zurueckgeben."""
@@ -391,7 +400,10 @@ class TestJobsAdminAPIIntegration:
         app.dependency_overrides[get_db] = override_db
 
         try:
-            with patch.object(JobAdminService, "list_jobs", return_value={"jobs": [], "total": 0}):
+            mock_response = JobListResponse(
+                jobs=[], total=0, page=1, per_page=20, total_pages=1, status_summary={}
+            )
+            with patch.object(JobAdminService, "list_jobs", return_value=mock_response):
                 async with AsyncClient(
                     transport=ASGITransport(app=app),
                     base_url="http://test"
@@ -421,19 +433,27 @@ class TestJobsAdminAPIIntegration:
             app.dependency_overrides.clear()
 
     @pytest.mark.asyncio
-    async def test_cancel_job_returns_200_on_success(self, admin_user, mock_db, override_superuser, override_db):
+    async def test_cancel_job_returns_200_on_success(self, admin_user, mock_db, override_superuser, override_db, override_rate_limit):
         """POST /admin/jobs/{id}/cancel sollte 200 bei Erfolg zurueckgeben."""
         from app.services.admin import JobAdminService
 
         app.dependency_overrides[get_current_superuser] = override_superuser
         app.dependency_overrides[get_db] = override_db
+        app.dependency_overrides[check_destructive_admin_rate_limit] = override_rate_limit
 
         job_id = uuid4()
         try:
-            with patch.object(JobAdminService, "cancel_job", return_value=True):
+            mock_response = JobActionResponse(
+                success=True,
+                job_id=job_id,
+                action="cancel",
+                message="Auftrag erfolgreich abgebrochen"
+            )
+            with patch.object(JobAdminService, "cancel_job", return_value=mock_response):
                 async with AsyncClient(
                     transport=ASGITransport(app=app),
-                    base_url="http://test"
+                    base_url="http://test",
+                    headers={"Authorization": "Bearer test_token"}  # Bypass CSRF
                 ) as client:
                     response = await client.post(f"/api/v1/admin/jobs/{job_id}/cancel")
                     assert response.status_code == 200
@@ -477,22 +497,19 @@ class TestPaginationEdgeCases:
             app.dependency_overrides.clear()
 
     @pytest.mark.asyncio
-    async def test_list_jobs_large_page_size_capped(self, admin_user, mock_db, override_superuser, override_db):
-        """Zu grosse Seitenzahl sollte auf Maximum begrenzt werden."""
-        from app.services.admin import JobAdminService
-
+    async def test_list_jobs_large_page_size_rejected(self, admin_user, mock_db, override_superuser, override_db):
+        """Zu grosse Seitenzahl sollte 422 zurueckgeben (max 100)."""
         app.dependency_overrides[get_current_superuser] = override_superuser
         app.dependency_overrides[get_db] = override_db
 
         try:
-            with patch.object(JobAdminService, "list_jobs", return_value={"jobs": [], "total": 0}) as mock_list:
-                async with AsyncClient(
-                    transport=ASGITransport(app=app),
-                    base_url="http://test"
-                ) as client:
-                    response = await client.get("/api/v1/admin/jobs?per_page=10000")
-                    # Should succeed but cap the per_page
-                    assert response.status_code == 200
+            async with AsyncClient(
+                transport=ASGITransport(app=app),
+                base_url="http://test"
+            ) as client:
+                response = await client.get("/api/v1/admin/jobs?per_page=10000")
+                # FastAPI validates per_page <= 100, returns 422 for invalid values
+                assert response.status_code == 422
         finally:
             app.dependency_overrides.clear()
 
@@ -505,7 +522,10 @@ class TestPaginationEdgeCases:
         app.dependency_overrides[get_db] = override_db
 
         try:
-            with patch.object(JobAdminService, "list_jobs", return_value={"jobs": [], "total": 10}):
+            mock_response = JobListResponse(
+                jobs=[], total=10, page=100, per_page=20, total_pages=1, status_summary={}
+            )
+            with patch.object(JobAdminService, "list_jobs", return_value=mock_response):
                 async with AsyncClient(
                     transport=ASGITransport(app=app),
                     base_url="http://test"
@@ -536,6 +556,13 @@ class TestInputValidation:
         async def _get_test_db():
             yield mock_db
         return _get_test_db
+
+    @pytest.fixture
+    def override_rate_limit(self, admin_user):
+        """Override destructive rate limit dependency for testing."""
+        async def _bypass_rate_limit(request=None, admin=None):
+            return admin_user
+        return _bypass_rate_limit
 
     @pytest.mark.asyncio
     async def test_malformed_uuid_returns_422(self, admin_user, mock_db, override_superuser, override_db):
@@ -570,15 +597,17 @@ class TestInputValidation:
             app.dependency_overrides.clear()
 
     @pytest.mark.asyncio
-    async def test_bulk_cancel_empty_list_returns_400(self, admin_user, mock_db, override_superuser, override_db):
+    async def test_bulk_cancel_empty_list_returns_400(self, admin_user, mock_db, override_superuser, override_db, override_rate_limit):
         """Bulk-Cancel mit leerer Liste sollte 400 zurueckgeben."""
         app.dependency_overrides[get_current_superuser] = override_superuser
         app.dependency_overrides[get_db] = override_db
+        app.dependency_overrides[check_destructive_admin_rate_limit] = override_rate_limit
 
         try:
             async with AsyncClient(
                 transport=ASGITransport(app=app),
-                base_url="http://test"
+                base_url="http://test",
+                headers={"Authorization": "Bearer test_token"}  # Bypass CSRF
             ) as client:
                 response = await client.post(
                     "/api/v1/admin/jobs/bulk/cancel",

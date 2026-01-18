@@ -129,12 +129,9 @@ class TestPaddleOCRModelLoading:
             agent = PaddleOCRAgent()
             agent._load_model_sync()
 
-            mock_class.assert_called_once_with(
-                use_angle_cls=True,
-                lang="german",
-                use_gpu=False,
-                show_log=False,
-            )
+            # PaddleOCR 3.3.2 API - nur lang Parameter benoetigt
+            # Device (CPU/GPU) wird automatisch erkannt
+            mock_class.assert_called_once_with(lang="german")
             assert agent._model_loaded is True
             assert agent._ocr is mock_ocr
 

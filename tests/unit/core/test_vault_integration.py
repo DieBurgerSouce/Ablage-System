@@ -70,13 +70,13 @@ class TestVaultClientConnection:
     @pytest.fixture
     def mock_hvac(self):
         """Mock hvac Client."""
-        with patch('app.core.config.VAULT_AVAILABLE', True):
-            with patch('app.core.config.hvac') as mock:
+        with patch('app.core.config.vault_client.VAULT_AVAILABLE', True):
+            with patch('app.core.config.vault_client.hvac') as mock:
                 yield mock
 
     def test_connect_returns_false_when_hvac_not_available(self):
         """Connect sollte False zurückgeben wenn hvac nicht verfügbar."""
-        with patch('app.core.config.VAULT_AVAILABLE', False):
+        with patch('app.core.config.vault_client.VAULT_AVAILABLE', False):
             client = VaultClient(
                 vault_addr="https://vault.example.com:8200",
                 vault_token="token",
@@ -239,8 +239,8 @@ class TestVaultClientAppRole:
     @pytest.fixture
     def mock_hvac(self):
         """Mock hvac Client."""
-        with patch('app.core.config.VAULT_AVAILABLE', True):
-            with patch('app.core.config.hvac') as mock:
+        with patch('app.core.config.vault_client.VAULT_AVAILABLE', True):
+            with patch('app.core.config.vault_client.hvac') as mock:
                 yield mock
 
     def test_approle_authentication(self, mock_hvac):

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\initializer\kaiming.py
+# hypothesis_version: 6.148.7
+
+[0.0, 3.0, '.', 'Out', 'X', 'cast', 'dtype', 'fan_in', 'fan_out', 'gaussian_random', 'in_dtype', 'masra_init', 'max', 'mean', 'min', 'out_dtype', 'relu', 'seed', 'shape', 'std', 'tmp', 'uniform_random']

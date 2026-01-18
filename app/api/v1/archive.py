@@ -32,6 +32,8 @@ from app.middleware.company_context import require_company, Company
 from app.services.archive_service import archive_service
 from app.services.procedure_doc_service import procedure_doc_service
 from app.services.gdpdu_export_service import gdpdu_export_service, GDPdUExportOptions
+from app.services.document_access_service import document_access_service
+from app.services.gobd_compliance_service import gobd_compliance_service
 
 router = APIRouter(prefix="/archive", tags=["Archive (GoBD)"])
 
@@ -165,7 +167,28 @@ async def archive_document(
     Raises:
         404: Dokument nicht gefunden
         400: Dokument bereits archiviert
+        403: Keine Berechtigung fuer dieses Dokument
     """
+    # SECURITY: IDOR-Schutz - Dokument muss zur Company gehoeren
+    from sqlalchemy import select
+    from app.db.models import Document
+
+    stmt = select(Document).where(Document.id == request.document_id)
+    result = await db.execute(stmt)
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dokument nicht gefunden"
+        )
+
+    if document.company_id != company.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Keine Berechtigung fuer dieses Dokument"
+        )
+
     try:
         archive = await archive_service.archive_document(
             db=db,
@@ -646,6 +669,7 @@ async def get_procedure_documentation_version(
     version_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company: Company = Depends(require_company),
 ) -> ProcedureDocDetailResponse:
     """Holt eine bestimmte Version.
 
@@ -653,12 +677,14 @@ async def get_procedure_documentation_version(
         version_id: Versions-ID
         db: Datenbank-Session
         current_user: Aktueller Benutzer
+        company: Aktuelle Firma
 
     Returns:
         Dokumentationsversion
 
     Raises:
         404: Version nicht gefunden
+        403: Keine Berechtigung
     """
     version = await procedure_doc_service.get_version_by_id(db, version_id)
     if not version:
@@ -666,6 +692,14 @@ async def get_procedure_documentation_version(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Version nicht gefunden"
         )
+
+    # SECURITY: IDOR-Schutz - Version muss zur Company gehoeren
+    if version.company_id and version.company_id != company.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Keine Berechtigung fuer diese Version"
+        )
+
     return ProcedureDocDetailResponse.model_validate(version)
 
 
@@ -678,6 +712,7 @@ async def export_procedure_documentation_markdown(
     version_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company: Company = Depends(require_company),
 ):
     """Exportiert die Verfahrensdokumentation als Markdown.
 
@@ -685,11 +720,30 @@ async def export_procedure_documentation_markdown(
         version_id: Versions-ID
         db: Datenbank-Session
         current_user: Aktueller Benutzer
+        company: Aktuelle Firma
 
     Returns:
         Markdown-Datei
+
+    Raises:
+        404: Version nicht gefunden
+        403: Keine Berechtigung
     """
     from fastapi.responses import Response
+
+    # SECURITY: IDOR-Schutz - Version muss zur Company gehoeren
+    version = await procedure_doc_service.get_version_by_id(db, version_id)
+    if not version:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Version nicht gefunden"
+        )
+
+    if version.company_id and version.company_id != company.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Keine Berechtigung fuer diese Version"
+        )
 
     try:
         markdown = await procedure_doc_service.export_as_markdown(db, version_id)
@@ -842,3 +896,593 @@ async def create_gdpdu_export(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+
+
+# =============================================================================
+# Document Access Audit Trail Endpoints (GoBD Nachvollziehbarkeit)
+# =============================================================================
+
+
+class DocumentAccessLogResponse(BaseModel):
+    """Response fuer einen einzelnen Dokumentzugriff."""
+
+    id: uuid.UUID
+    document_id: uuid.UUID
+    user_id: Optional[uuid.UUID]
+    access_type: str
+    access_reason: Optional[str] = None
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    request_id: Optional[str] = None
+    success: bool
+    error_message: Optional[str] = None
+    bytes_transferred: Optional[int] = None
+    accessed_at: datetime
+    access_metadata: Optional[dict] = None
+    sequence_number: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DocumentAuditTrailResponse(BaseModel):
+    """Response fuer Dokument-Audit-Trail."""
+
+    document_id: uuid.UUID
+    access_logs: list[DocumentAccessLogResponse]
+    total_count: int
+    has_gaps: bool
+    gap_count: int
+    first_access: Optional[datetime] = None
+    last_access: Optional[datetime] = None
+
+
+class AccessStatisticsResponse(BaseModel):
+    """Response fuer Zugriffs-Statistiken."""
+
+    total_accesses: int
+    by_access_type: dict
+    by_day: list[dict]
+    top_documents: list[dict]
+    top_users: list[dict]
+    failed_access_count: int
+
+
+class AuditTrailIntegrityResponse(BaseModel):
+    """Response fuer Audit-Trail Integritaetspruefung."""
+
+    is_valid: bool
+    total_records: int
+    expected_sequence: int
+    gaps_found: list[dict]
+    message: str
+
+
+class AccessLogListResponse(BaseModel):
+    """Paginierte Liste von Access-Logs."""
+
+    items: list[DocumentAccessLogResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
+@router.get(
+    "/documents/{document_id}/audit-trail",
+    response_model=DocumentAuditTrailResponse,
+    summary="Dokument-Zugriffshistorie",
+    description="Holt die vollstaendige Zugriffshistorie fuer ein Dokument (GoBD Nachvollziehbarkeit)"
+)
+async def get_document_audit_trail(
+    document_id: uuid.UUID,
+    access_type: Optional[str] = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    limit: int = 100,
+    offset: int = 0,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    company: Company = Depends(require_company),
+) -> DocumentAuditTrailResponse:
+    """Holt die Zugriffshistorie fuer ein Dokument.
+
+    GoBD-Anforderung: Nachvollziehbarkeit - Wer hat wann was mit dem Dokument gemacht?
+
+    Args:
+        document_id: ID des Dokuments
+        access_type: Optionaler Filter fuer Zugriffstyp
+        start_date: Optionaler Filter - Startdatum
+        end_date: Optionaler Filter - Enddatum
+        limit: Maximale Anzahl Ergebnisse (default: 100)
+        offset: Offset fuer Paginierung (default: 0)
+        db: Datenbank-Session
+        current_user: Aktueller Benutzer
+        company: Aktuelle Firma
+
+    Returns:
+        DocumentAuditTrailResponse mit Zugriffshistorie
+
+    Raises:
+        404: Dokument nicht gefunden
+        403: Keine Berechtigung
+    """
+    # IDOR-Schutz: Pruefen ob Dokument zur Firma gehoert
+    from sqlalchemy import select
+    from app.db.models import Document
+
+    stmt = select(Document).where(Document.id == document_id)
+    result = await db.execute(stmt)
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dokument nicht gefunden"
+        )
+
+    if document.company_id != company.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Keine Berechtigung fuer dieses Dokument"
+        )
+
+    # Audit Trail abrufen
+    audit_trail = await document_access_service.get_document_audit_trail(
+        db=db,
+        document_id=document_id,
+        company_id=company.id,
+        access_type=access_type,
+        start_date=start_date,
+        end_date=end_date,
+        limit=limit,
+        offset=offset,
+    )
+
+    return DocumentAuditTrailResponse(
+        document_id=document_id,
+        access_logs=[DocumentAccessLogResponse.model_validate(log) for log in audit_trail["logs"]],
+        total_count=audit_trail["total_count"],
+        has_gaps=audit_trail["has_gaps"],
+        gap_count=audit_trail["gap_count"],
+        first_access=audit_trail.get("first_access"),
+        last_access=audit_trail.get("last_access"),
+    )
+
+
+@router.get(
+    "/access-statistics",
+    response_model=AccessStatisticsResponse,
+    summary="Zugriffs-Statistiken",
+    description="Holt aggregierte Zugriffs-Statistiken fuer die aktuelle Firma"
+)
+async def get_access_statistics(
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    company: Company = Depends(require_company),
+) -> AccessStatisticsResponse:
+    """Holt Zugriffs-Statistiken fuer die aktuelle Firma.
+
+    Zeigt aggregierte Statistiken ueber Dokumentzugriffe:
+    - Gesamtzugriffe
+    - Aufschluesselung nach Zugriffstyp
+    - Tages-Verlauf
+    - Top-Dokumente und Top-Benutzer
+
+    Args:
+        start_date: Optionaler Filter - Startdatum
+        end_date: Optionaler Filter - Enddatum
+        db: Datenbank-Session
+        current_user: Aktueller Benutzer
+        company: Aktuelle Firma
+
+    Returns:
+        AccessStatisticsResponse mit aggregierten Statistiken
+    """
+    stats = await document_access_service.get_company_access_statistics(
+        db=db,
+        company_id=company.id,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    return AccessStatisticsResponse(**stats)
+
+
+@router.post(
+    "/verify-audit-trail",
+    response_model=AuditTrailIntegrityResponse,
+    summary="Audit-Trail Integritaet pruefen",
+    description="Prueft die Integritaet des Audit-Trails auf Luecken (GoBD Vollstaendigkeit)"
+)
+async def verify_audit_trail_integrity(
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+    company: Company = Depends(require_company),
+) -> AuditTrailIntegrityResponse:
+    """Prueft die Integritaet des Audit-Trails.
+
+    GoBD-Anforderung: Vollstaendigkeit - Der Audit-Trail muss lueckenlos sein.
+    Diese Pruefung erkennt fehlende Sequenznummern.
+
+    Nur fuer Administratoren.
+
+    Args:
+        start_date: Optionaler Filter - Startdatum
+        end_date: Optionaler Filter - Enddatum
+        db: Datenbank-Session
+        current_user: Admin-Benutzer
+        company: Aktuelle Firma
+
+    Returns:
+        AuditTrailIntegrityResponse mit Integritaetspruefung
+    """
+    integrity = await document_access_service.verify_audit_trail_integrity(
+        db=db,
+        company_id=company.id,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    if integrity["is_valid"]:
+        message = "Audit-Trail ist vollstaendig - keine Luecken gefunden"
+    else:
+        message = (
+            f"WARNUNG: {len(integrity['gaps'])} Luecken im Audit-Trail gefunden! "
+            f"GoBD-Vollstaendigkeit moeglicherweise verletzt."
+        )
+
+    return AuditTrailIntegrityResponse(
+        is_valid=integrity["is_valid"],
+        total_records=integrity["total_records"],
+        expected_sequence=integrity["expected_sequence"],
+        gaps_found=integrity["gaps"],
+        message=message,
+    )
+
+
+@router.get(
+    "/access-logs",
+    response_model=AccessLogListResponse,
+    summary="Zugriffsprotokolle (Admin)",
+    description="Listet alle Zugriffsprotokolle der Firma auf (nur Admin)"
+)
+async def list_access_logs(
+    page: int = 1,
+    page_size: int = 50,
+    access_type: Optional[str] = None,
+    user_id: Optional[uuid.UUID] = None,
+    document_id: Optional[uuid.UUID] = None,
+    success_only: Optional[bool] = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+    company: Company = Depends(require_company),
+) -> AccessLogListResponse:
+    """Listet alle Zugriffsprotokolle der Firma auf.
+
+    Paginierte Liste mit umfangreichen Filtermoglichkeiten.
+    Nur fuer Administratoren.
+
+    Args:
+        page: Seitennummer (default: 1)
+        page_size: Eintraege pro Seite (default: 50, max: 200)
+        access_type: Optionaler Filter fuer Zugriffstyp
+        user_id: Optionaler Filter fuer Benutzer
+        document_id: Optionaler Filter fuer Dokument
+        success_only: Optionaler Filter - nur erfolgreiche Zugriffe
+        start_date: Optionaler Filter - Startdatum
+        end_date: Optionaler Filter - Enddatum
+        db: Datenbank-Session
+        current_user: Admin-Benutzer
+        company: Aktuelle Firma
+
+    Returns:
+        AccessLogListResponse mit paginierten Zugriffsprotokollen
+    """
+    # Paginierung limitieren
+    page_size = min(page_size, 200)
+    offset = (page - 1) * page_size
+
+    # Filter zusammenstellen
+    from sqlalchemy import select, func
+    from app.db.models import DocumentAccessLog
+
+    # Basis-Query
+    base_query = select(DocumentAccessLog).where(
+        DocumentAccessLog.company_id == company.id
+    )
+
+    if access_type:
+        base_query = base_query.where(DocumentAccessLog.access_type == access_type)
+    if user_id:
+        base_query = base_query.where(DocumentAccessLog.user_id == user_id)
+    if document_id:
+        base_query = base_query.where(DocumentAccessLog.document_id == document_id)
+    if success_only is not None:
+        base_query = base_query.where(DocumentAccessLog.success == success_only)
+    if start_date:
+        base_query = base_query.where(DocumentAccessLog.accessed_at >= start_date)
+    if end_date:
+        base_query = base_query.where(DocumentAccessLog.accessed_at <= end_date)
+
+    # Count Query
+    count_query = select(func.count()).select_from(base_query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
+
+    # Data Query mit Paginierung
+    data_query = base_query.order_by(
+        DocumentAccessLog.accessed_at.desc()
+    ).offset(offset).limit(page_size)
+
+    result = await db.execute(data_query)
+    logs = result.scalars().all()
+
+    total_pages = (total + page_size - 1) // page_size if page_size > 0 else 0
+
+    return AccessLogListResponse(
+        items=[DocumentAccessLogResponse.model_validate(log) for log in logs],
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+    )
+
+
+# =============================================================================
+# GoBD Compliance Report Endpoints
+# =============================================================================
+
+
+class ComplianceReportResponse(BaseModel):
+    """Response fuer GoBD-Compliance-Bericht."""
+
+    report_id: str
+    company_id: str
+    report_date: str
+    generated_at: str
+    overall_status: str
+    overall_score: float
+    score_description: str
+    summary: dict
+    recommendations: list
+    legal_basis: list
+    details: Optional[dict] = None
+
+
+class QuickComplianceResponse(BaseModel):
+    """Response fuer schnellen Compliance-Status."""
+
+    status: str
+    failed_verifications: int
+    audit_trail_gaps: int
+    checked_at: str
+
+
+@router.get(
+    "/compliance/report",
+    response_model=ComplianceReportResponse,
+    summary="GoBD-Compliance-Bericht",
+    description="Generiert einen vollstaendigen GoBD-Compliance-Bericht"
+)
+async def get_compliance_report(
+    report_date: Optional[date] = None,
+    include_details: bool = True,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    company: Company = Depends(require_company),
+) -> ComplianceReportResponse:
+    """Generiert einen GoBD-Compliance-Bericht.
+
+    Der Bericht umfasst:
+    - Archivierungsstatus (Anteil archivierter Dokumente, Hash-Signaturen)
+    - Aufbewahrungsfristen-Compliance (abgelaufen, bald ablaufend)
+    - Audit-Trail-Vollstaendigkeit (Nachvollziehbarkeit)
+    - Integritaetspruefungen (Unveraenderbarkeit)
+    - Gesamt-Score und Handlungsempfehlungen
+
+    Args:
+        report_date: Stichtag fuer den Bericht (default: heute)
+        include_details: Detaillierte Metriken einschliessen
+        db: Datenbank-Session
+        current_user: Aktueller Benutzer
+        company: Aktuelle Firma
+
+    Returns:
+        ComplianceReportResponse mit vollstaendigem Bericht
+    """
+    report = await gobd_compliance_service.generate_compliance_report(
+        db=db,
+        company_id=company.id,
+        report_date=report_date,
+        include_details=include_details,
+    )
+
+    return ComplianceReportResponse(**report)
+
+
+@router.get(
+    "/compliance/status",
+    response_model=QuickComplianceResponse,
+    summary="Schneller Compliance-Status",
+    description="Gibt einen schnellen Compliance-Status zurueck (fuer Dashboard)"
+)
+async def get_quick_compliance_status(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    company: Company = Depends(require_company),
+) -> QuickComplianceResponse:
+    """Gibt einen schnellen Compliance-Status zurueck.
+
+    Fuer Dashboard-Widgets und Uebersichten.
+    Prueft nur die kritischsten Metriken.
+
+    Args:
+        db: Datenbank-Session
+        current_user: Aktueller Benutzer
+        company: Aktuelle Firma
+
+    Returns:
+        QuickComplianceResponse mit Status und kritischen Metriken
+    """
+    status = await gobd_compliance_service.get_quick_compliance_status(
+        db=db,
+        company_id=company.id,
+    )
+
+    return QuickComplianceResponse(**status)
+
+
+@router.get(
+    "/compliance/export",
+    summary="Compliance-Bericht als PDF exportieren",
+    description="Exportiert den GoBD-Compliance-Bericht als PDF (fuer Steuerberater)"
+)
+async def export_compliance_report_pdf(
+    report_date: Optional[date] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    company: Company = Depends(require_company),
+):
+    """Exportiert den Compliance-Bericht als PDF.
+
+    Fuer Steuerberater und Betriebspruefungen.
+
+    Args:
+        report_date: Stichtag fuer den Bericht
+        db: Datenbank-Session
+        current_user: Aktueller Benutzer
+        company: Aktuelle Firma
+
+    Returns:
+        PDF-Datei als Download
+    """
+    from fastapi.responses import Response
+
+    # Generiere Bericht
+    report = await gobd_compliance_service.generate_compliance_report(
+        db=db,
+        company_id=company.id,
+        report_date=report_date,
+        include_details=True,
+    )
+
+    # Erzeuge Markdown-Inhalt (PDF-Generierung wuerde externe Library benoetigen)
+    markdown = _generate_compliance_markdown(report, company.name)
+
+    filename = (
+        f"gobd_compliance_{company.name.replace(' ', '_')}_"
+        f"{report['report_date']}.md"
+    )
+
+    return Response(
+        content=markdown,
+        media_type="text/markdown",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )
+
+
+def _generate_compliance_markdown(report: dict, company_name: str) -> str:
+    """Generiert Markdown-Inhalt fuer den Compliance-Bericht."""
+    lines = [
+        f"# GoBD-Compliance-Bericht",
+        f"",
+        f"**Firma:** {company_name}",
+        f"**Stichtag:** {report['report_date']}",
+        f"**Erstellt am:** {report['generated_at']}",
+        f"",
+        f"---",
+        f"",
+        f"## Zusammenfassung",
+        f"",
+        f"| Metrik | Wert |",
+        f"|--------|------|",
+        f"| **Gesamt-Status** | {report['overall_status'].upper()} |",
+        f"| **Compliance-Score** | {report['overall_score']}/100 |",
+        f"| **Bewertung** | {report['score_description']} |",
+        f"",
+        f"### Bereichs-Uebersicht",
+        f"",
+        f"| Bereich | Status | Compliant | Warnung | Non-Compliant |",
+        f"|---------|--------|-----------|---------|---------------|",
+    ]
+
+    for area_name, area_data in report['summary'].items():
+        lines.append(
+            f"| {area_name.replace('_', ' ').title()} | "
+            f"{area_data['status'].upper()} | "
+            f"{area_data.get('compliant', 0)} | "
+            f"{area_data.get('warning', 0)} | "
+            f"{area_data.get('non_compliant', 0)} |"
+        )
+
+    lines.extend([
+        f"",
+        f"---",
+        f"",
+        f"## Handlungsempfehlungen",
+        f"",
+    ])
+
+    if report['recommendations']:
+        for rec in report['recommendations']:
+            severity_emoji = "🔴" if rec['severity'] == 'non_compliant' else "🟡"
+            lines.append(f"{rec['priority']}. {severity_emoji} **{rec['metric']}**: {rec['recommendation']}")
+    else:
+        lines.append("✅ Keine Handlungsempfehlungen - alle Pruefungen bestanden!")
+
+    lines.extend([
+        f"",
+        f"---",
+        f"",
+        f"## Rechtliche Grundlagen",
+        f"",
+    ])
+
+    for basis in report['legal_basis']:
+        lines.append(f"- **{basis['law']}**: {basis['description']}")
+
+    if 'details' in report and report['details']:
+        lines.extend([
+            f"",
+            f"---",
+            f"",
+            f"## Details",
+            f"",
+        ])
+
+        for area_name, metrics in report['details'].items():
+            lines.append(f"### {area_name.replace('_', ' ').title()}")
+            lines.append("")
+            lines.append("| Metrik | Wert | Status | Beschreibung |")
+            lines.append("|--------|------|--------|--------------|")
+
+            for metric in metrics:
+                status_icon = (
+                    "✅" if metric['status'] == 'compliant'
+                    else "⚠️" if metric['status'] == 'warning'
+                    else "❌"
+                )
+                lines.append(
+                    f"| {metric['name']} | {metric['value']} | "
+                    f"{status_icon} | {metric['description'][:50]}... |"
+                )
+
+            lines.append("")
+
+    lines.extend([
+        f"",
+        f"---",
+        f"",
+        f"*Dieser Bericht wurde automatisch generiert. "
+        f"Bei Fragen wenden Sie sich an Ihren Steuerberater.*",
+    ])
+
+    return "\n".join(lines)

@@ -22,7 +22,11 @@ from app.services.banking.reconciliation_service import (
     ReconciliationService,
     MatchCandidate,
 )
-from app.services.banking.models import ReconciliationStatus
+from app.services.banking.models import (
+    ReconciliationStatus,
+    ReconciliationResult,
+    BatchReconciliationResult,
+)
 
 
 class TestMatchCandidate:

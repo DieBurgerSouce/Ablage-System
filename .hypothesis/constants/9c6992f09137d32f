@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\utils\ps_util.py
+# hypothesis_version: 6.148.7
+
+['@GRAD', 'Ids', 'Out', 'Outputs', 'W', 'is_distributed', 'is_test', 'lookup_table', 'lookup_table_v2', 'lookup_table_version', 'padding_idx', 'remote_prefetch', 'table_id']

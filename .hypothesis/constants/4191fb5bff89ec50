@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\io.py
+# hypothesis_version: 6.148.7
+
+[',', '.block', '.trainer_', 'Optimizer', 'Out', 'RemotePrefetch', '__lookup_table__', '__model__', 'checkpoint_notify', 'dir', 'endpoints', 'epmap', 'file_path', 'load', 'lookup_table', 'rb', 'recv_save', 'remote_varnames', 'seek', 'shape', 'slice_shapes', 'slice_varnames', 'trainer_id']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\initializer\uniform.py
+# hypothesis_version: 6.148.7
+
+[-1.0, 1.0, '.', 'Out', 'X', 'cast', 'diag_num', 'diag_step', 'diag_val', 'dtype', 'float16', 'float32', 'float64', 'in_dtype', 'max', 'min', 'out_dtype', 'seed', 'shape', 'tmp', 'uint16', 'uniform_random']

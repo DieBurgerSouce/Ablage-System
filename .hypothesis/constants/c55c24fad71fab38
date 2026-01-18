@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pptx\oxml\shapes\autoshape.py
+# hypothesis_version: 6.148.7
+
+['%d', '%s', 'a', 'a:ahLst', 'a:avLst', 'a:close', 'a:cxnLst', 'a:gd', 'a:gdLst', 'a:lnTo', 'a:moveTo', 'a:path', 'a:pathLst', 'a:pt', 'a:rect', 'a:spLocks', 'fmla', 'h', 'name', 'p', 'p:cNvPr', 'p:cNvSpPr', 'p:extLst', 'p:nvPr', 'p:nvSpPr', 'p:spPr', 'p:txBody', 'prst', 'txBox', 'val %d', 'w', 'x', 'y']

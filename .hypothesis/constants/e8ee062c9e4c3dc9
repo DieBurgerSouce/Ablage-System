@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\privat\space_service.py
+# hypothesis_version: 6.148.7
+
+['admin', 'document_count', 'folder_count', 'manage', 'pending_deadlines', 'personal', 'privat_space_created', 'privat_space_deleted', 'privat_space_updated', 'read', 'shared', 'total_size_bytes', 'value', 'write']

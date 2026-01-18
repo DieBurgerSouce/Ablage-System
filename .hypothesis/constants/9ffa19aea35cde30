@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\static\amp\bf16\amp_utils.py
+# hypothesis_version: 6.148.7
+
+['.cast_', '<I', '<f', 'Out', 'X', 'Y', 'Z', '__use_bf16__', 'batch_norm', 'bf16', 'cast', 'create_py_reader', 'dtype', 'fp32', 'in_dtype', 'layer_norm', 'learning_rate', 'op_namescope', 'out_dtype', 'read']

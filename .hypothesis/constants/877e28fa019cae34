@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\ai\learning_pipeline.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.02, 0.05, 0.5, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0, 100, 500, 1000, 'accuracy_rate', 'ai_accuracy_rate', 'approved', 'auto_applied', 'avg_confidence', 'by_decision_type', 'company_id', 'corrected', 'correction_rate', 'decision_type', 'direction', 'down', 'feedback_type', 'generated_at', 'overall_accuracy', 'pending_adjustments', 'period_days', 'reason', 'rejected', 'reviewed', 'summary', 'threshold_adjusted', 'total_decision_types', 'total_decisions', 'up']

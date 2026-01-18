@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\audio\backends\__init__.py
+# hypothesis_version: 6.148.7
+
+['get_current_backend', 'set_backend']

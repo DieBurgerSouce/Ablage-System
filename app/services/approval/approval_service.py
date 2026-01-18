@@ -28,7 +28,9 @@ from app.db.models import (
     ApprovalRule,
     ApprovalStatus,
     ApprovalStep,
+    Role,
     User,
+    user_roles,
 )
 from app.services.approval.approval_rule_service import ApprovalRuleService
 
@@ -240,24 +242,50 @@ class ApprovalService:
     async def get_request(
         self,
         request_id: UUID,
+        company_id: Optional[UUID] = None,
         include_steps: bool = True,
     ) -> Optional[ApprovalRequest]:
         """Holt eine Genehmigungsanfrage.
 
+        SECURITY: company_id MUSS fuer Multi-Tenant Isolation angegeben werden.
+
         Args:
             request_id: ID der Anfrage
+            company_id: ID der Firma (REQUIRED fuer Multi-Tenant Isolation)
             include_steps: Steps mit laden
 
         Returns:
             ApprovalRequest oder None
         """
-        query = select(ApprovalRequest).where(ApprovalRequest.id == request_id)
+        conditions = [ApprovalRequest.id == request_id]
+
+        # SECURITY: Multi-Tenant Isolation
+        if company_id:
+            conditions.append(ApprovalRequest.company_id == company_id)
+
+        query = select(ApprovalRequest).where(and_(*conditions))
 
         if include_steps:
             query = query.options(selectinload(ApprovalRequest.approval_steps))
 
         result = await self.db.execute(query)
-        return result.scalar_one_or_none()
+        request = result.scalar_one_or_none()
+
+        # SECURITY: Log Cross-Tenant Zugriffsversuch wenn company_id angegeben aber nicht gefunden
+        if company_id and not request:
+            # Pruefen ob Request existiert aber zu anderer Company gehoert
+            check_query = select(ApprovalRequest.company_id).where(ApprovalRequest.id == request_id)
+            check_result = await self.db.execute(check_query)
+            actual_company_id = check_result.scalar_one_or_none()
+            if actual_company_id and actual_company_id != company_id:
+                logger.warning(
+                    "cross_tenant_approval_access_blocked",
+                    request_id=str(request_id),
+                    requested_company_id=str(company_id),
+                    actual_company_id=str(actual_company_id),
+                )
+
+        return request
 
     async def get_pending_for_user(
         self,
@@ -307,19 +335,23 @@ class ApprovalService:
         self,
         request_id: UUID,
         user_id: UUID,
+        company_id: Optional[UUID] = None,
         notes: Optional[str] = None,
     ) -> ApprovalDecision:
         """Genehmigt den aktuellen Schritt einer Anfrage.
 
+        SECURITY: company_id MUSS fuer Multi-Tenant Isolation angegeben werden.
+
         Args:
             request_id: ID der Anfrage
             user_id: ID des genehmigenden Users
+            company_id: ID der Firma (REQUIRED fuer Multi-Tenant Isolation)
             notes: Optionale Notizen
 
         Returns:
             ApprovalDecision mit Ergebnis
         """
-        request = await self.get_request(request_id, include_steps=True)
+        request = await self.get_request(request_id, company_id=company_id, include_steps=True)
 
         if not request:
             return ApprovalDecision(
@@ -407,18 +439,22 @@ class ApprovalService:
         request_id: UUID,
         user_id: UUID,
         notes: str,
+        company_id: Optional[UUID] = None,
     ) -> ApprovalDecision:
         """Lehnt eine Genehmigungsanfrage ab.
+
+        SECURITY: company_id MUSS fuer Multi-Tenant Isolation angegeben werden.
 
         Args:
             request_id: ID der Anfrage
             user_id: ID des ablehnenden Users
             notes: Begruendung (Pflicht bei Ablehnung)
+            company_id: ID der Firma (REQUIRED fuer Multi-Tenant Isolation)
 
         Returns:
             ApprovalDecision mit Ergebnis
         """
-        request = await self.get_request(request_id, include_steps=True)
+        request = await self.get_request(request_id, company_id=company_id, include_steps=True)
 
         if not request:
             return ApprovalDecision(
@@ -490,19 +526,23 @@ class ApprovalService:
         user_id: UUID,
         delegate_to_id: UUID,
         reason: str,
+        company_id: Optional[UUID] = None,
     ) -> ApprovalDecision:
         """Delegiert eine Genehmigung an einen anderen User.
+
+        SECURITY: company_id MUSS fuer Multi-Tenant Isolation angegeben werden.
 
         Args:
             request_id: ID der Anfrage
             user_id: ID des delegierenden Users
             delegate_to_id: ID des neuen Genehmigers
             reason: Begruendung
+            company_id: ID der Firma (REQUIRED fuer Multi-Tenant Isolation)
 
         Returns:
             ApprovalDecision mit Ergebnis
         """
-        request = await self.get_request(request_id, include_steps=True)
+        request = await self.get_request(request_id, company_id=company_id, include_steps=True)
 
         if not request:
             return ApprovalDecision(
@@ -697,8 +737,38 @@ class ApprovalService:
         if step.delegated_to_id == user_id:
             return True
 
-        # TODO: Rollenbasierte Pruefung implementieren
-        # Hier muesste man die User-Rollen pruefen wenn step.approver_type == "role"
+        # Rollenbasierte Pruefung
+        if step.approver_type == "role":
+            # Pruefe ob User die erforderliche Rolle hat
+            required_role_name = step.approver_value
+            user_role_query = (
+                select(Role.name)
+                .select_from(user_roles)
+                .join(Role, Role.id == user_roles.c.role_id)
+                .where(
+                    and_(
+                        user_roles.c.user_id == user_id,
+                        Role.name == required_role_name,
+                        Role.is_active == True,
+                    )
+                )
+            )
+            result = await self.db.execute(user_role_query)
+            has_role = result.scalar_one_or_none() is not None
+
+            if has_role:
+                logger.debug(
+                    "approval_role_match",
+                    user_id=str(user_id),
+                    required_role=required_role_name,
+                )
+                return True
+
+        # Gruppenbasierte Pruefung (wenn implementiert)
+        if step.approver_type == "group":
+            # Hier koennte man Gruppenmitgliedschaft pruefen
+            # Aktuell nicht implementiert - als Platzhalter fuer zukuenftige Erweiterung
+            pass
 
         return False
 
@@ -707,18 +777,22 @@ class ApprovalService:
         request_id: UUID,
         user_id: UUID,
         reason: str,
+        company_id: Optional[UUID] = None,
     ) -> ApprovalDecision:
         """Storniert eine Genehmigungsanfrage.
+
+        SECURITY: company_id MUSS fuer Multi-Tenant Isolation angegeben werden.
 
         Args:
             request_id: ID der Anfrage
             user_id: ID des stornierenden Users
             reason: Begruendung
+            company_id: ID der Firma (REQUIRED fuer Multi-Tenant Isolation)
 
         Returns:
             ApprovalDecision mit Ergebnis
         """
-        request = await self.get_request(request_id)
+        request = await self.get_request(request_id, company_id=company_id)
 
         if not request:
             return ApprovalDecision(
@@ -901,21 +975,25 @@ class ApprovalService:
         request_id: UUID,
         user_id: UUID,
         decision: str,
+        company_id: Optional[UUID] = None,
         notes: Optional[str] = None,
     ) -> ApprovalDecision:
         """Verarbeitet eine Genehmigungsentscheidung (approve/reject).
+
+        SECURITY: company_id MUSS fuer Multi-Tenant Isolation angegeben werden.
 
         Args:
             request_id: ID der Anfrage
             user_id: ID des entscheidenden Users
             decision: "approved" oder "rejected"
+            company_id: ID der Firma (REQUIRED fuer Multi-Tenant Isolation)
             notes: Optionale Notizen
 
         Returns:
             ApprovalDecision mit Ergebnis
         """
         if decision == "approved":
-            return await self.approve(request_id, user_id, notes)
+            return await self.approve(request_id, user_id, company_id=company_id, notes=notes)
         elif decision == "rejected":
             if not notes:
                 return ApprovalDecision(
@@ -924,7 +1002,7 @@ class ApprovalService:
                     next_step=None,
                     message="Begruendung bei Ablehnung erforderlich",
                 )
-            return await self.reject(request_id, user_id, notes)
+            return await self.reject(request_id, user_id, notes, company_id=company_id)
         else:
             return ApprovalDecision(
                 success=False,
@@ -937,21 +1015,25 @@ class ApprovalService:
         self,
         request_id: UUID,
         reason: str,
+        company_id: Optional[UUID] = None,
         escalate_to_role: Optional[str] = None,
         escalated_by_id: Optional[UUID] = None,
     ) -> bool:
         """Eskaliert eine einzelne Genehmigungsanfrage manuell.
 
+        SECURITY: company_id MUSS fuer Multi-Tenant Isolation angegeben werden.
+
         Args:
             request_id: ID der Anfrage
             reason: Eskalationsgrund
+            company_id: ID der Firma (REQUIRED fuer Multi-Tenant Isolation)
             escalate_to_role: Optional: An diese Rolle eskalieren
             escalated_by_id: Optional: ID des eskalierenden Users
 
         Returns:
             True wenn erfolgreich
         """
-        request = await self.get_request(request_id)
+        request = await self.get_request(request_id, company_id=company_id)
 
         if not request:
             logger.warning(f"Anfrage {request_id} nicht gefunden fuer Eskalation")
@@ -983,39 +1065,82 @@ class ApprovalService:
 
         return True
 
-    async def get_step(self, step_id: UUID) -> Optional[ApprovalStep]:
+    async def get_step(
+        self,
+        step_id: UUID,
+        company_id: Optional[UUID] = None,
+    ) -> Optional[ApprovalStep]:
         """Holt einen einzelnen Genehmigungsschritt.
+
+        SECURITY: company_id MUSS fuer Multi-Tenant Isolation angegeben werden.
 
         Args:
             step_id: ID des Schritts
+            company_id: ID der Firma (REQUIRED fuer Multi-Tenant Isolation)
 
         Returns:
             ApprovalStep oder None
         """
-        result = await self.db.execute(
-            select(ApprovalStep).where(ApprovalStep.id == step_id)
-        )
-        return result.scalar_one_or_none()
+        # SECURITY: Multi-Tenant Isolation via Join auf ApprovalRequest
+        if company_id:
+            query = (
+                select(ApprovalStep)
+                .join(ApprovalRequest, ApprovalStep.approval_request_id == ApprovalRequest.id)
+                .where(
+                    and_(
+                        ApprovalStep.id == step_id,
+                        ApprovalRequest.company_id == company_id,
+                    )
+                )
+            )
+        else:
+            query = select(ApprovalStep).where(ApprovalStep.id == step_id)
+
+        result = await self.db.execute(query)
+        step = result.scalar_one_or_none()
+
+        # SECURITY: Log Cross-Tenant Zugriffsversuch
+        if company_id and not step:
+            check_query = (
+                select(ApprovalRequest.company_id)
+                .join(ApprovalStep, ApprovalStep.approval_request_id == ApprovalRequest.id)
+                .where(ApprovalStep.id == step_id)
+            )
+            check_result = await self.db.execute(check_query)
+            actual_company_id = check_result.scalar_one_or_none()
+            if actual_company_id and actual_company_id != company_id:
+                logger.warning(
+                    "cross_tenant_approval_step_access_blocked",
+                    step_id=str(step_id),
+                    requested_company_id=str(company_id),
+                    actual_company_id=str(actual_company_id),
+                )
+
+        return step
 
     async def delegate_step(
         self,
         step_id: UUID,
         delegate_to_id: UUID,
         delegated_by_id: UUID,
+        company_id: Optional[UUID] = None,
         reason: Optional[str] = None,
     ) -> Optional[ApprovalStep]:
         """Delegiert einen Genehmigungsschritt an einen anderen User.
+
+        SECURITY: company_id MUSS fuer Multi-Tenant Isolation angegeben werden.
 
         Args:
             step_id: ID des Schritts
             delegate_to_id: ID des neuen Genehmigers
             delegated_by_id: ID des delegierenden Users
+            company_id: ID der Firma (REQUIRED fuer Multi-Tenant Isolation)
             reason: Optionale Begruendung
 
         Returns:
             Aktualisierter ApprovalStep oder None
         """
-        step = await self.get_step(step_id)
+        step = await self.get_step(step_id, company_id=company_id)
 
         if not step:
             logger.warning(f"Step {step_id} nicht gefunden fuer Delegation")

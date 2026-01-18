@@ -13,7 +13,8 @@ import structlog
 import re
 
 # S.2 SECURITY FIX: defusedxml gegen XXE-Angriffe bei User-supplied Bank-Dateien
-from defusedxml.ElementTree import fromstring as safe_xml_fromstring, ElementTree as ET
+from defusedxml.ElementTree import fromstring as safe_xml_fromstring
+import xml.etree.ElementTree as ET  # Only for type hints and element creation (not parsing)
 
 from .base import BaseParser, ParsedTransaction, ParseResult, ParserRegistry
 from ..models import ImportFormat, TransactionType

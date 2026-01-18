@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\banking\parsers\mt940_parser.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.3, 0.4, 0.7, 0.9, 0.95, 100, 2000, '.', '.940', '.mt940', '.sta', '.txt', '0', ':20:', ':25:', ':28C:', ':60', ':60F:', ':61:', ':62F:', ':86:', 'EREF+', 'EUR', 'KREF+', 'NAME\\+([^\\+]+)', '^[0-9\\+\\-]', 'account_holder', 'account_id', 'amount', 'bank_reference', 'bic', 'closing_balance', 'cp1252', 'creditor_ids', 'customer_numbers', 'customer_reference', 'data', 'date', 'end_to_end_ids', 'entry_date', 'extra_details', 'guvc', 'iban', 'id', 'invoice_numbers', 'latin-1', 'mandate_ids', 'message', 'mt940_extra', 'mt940_guvc', 'mt940_id', 'name', 'opening_balance', 'order_numbers', 'parse_error', 'purpose', 'replace', 'transaction_details', 'transactions', 'type', 'utf-8']

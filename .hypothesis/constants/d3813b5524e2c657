@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\workers\tasks\risk_scoring_tasks.py
+# hypothesis_version: 6.148.7
+
+[75.0, 100, 120, 180, 300, 1000, 'action', 'average_risk_score', 'avg_payment', 'avg_risk', 'calculated_at', 'count', 'critical', 'document_id', 'entity_id', 'entity_type', 'error', 'errors', 'failed', 'generated_at', 'high', 'high_risk_entities', 'low', 'maintenance', 'max_risk', 'max_risk_score', 'medium', 'metadata', 'min_risk', 'min_risk_score', 'processing_time_ms', 'risk_distribution', 'risk_factors', 'risk_score', 'skipped', 'success', 'successful', 'threshold', 'total', 'total_processed']

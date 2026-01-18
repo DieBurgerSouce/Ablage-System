@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\functional\vision.py
+# hypothesis_version: 6.148.7
+
+[6000, 'Grid', 'NCHW', 'NHWC', 'Out', 'Output', 'OutputShape', 'Theta', 'X', 'affine_grid', 'align_corners', 'bilinear', 'border', 'channel_shuffle', 'data_format', 'downscale_factor', 'float16', 'float32', 'float64', 'grid', 'grid_sample', 'grid_sampler', 'groups', 'int32', 'mode', 'nearest', 'out_shape', 'output_shape', 'padding_mode', 'pixel_shuffle', 'pixel_unshuffle', 'reflection', 'theta', 'uint16', 'upscale_factor', 'use_cudnn', 'x', 'zeros']

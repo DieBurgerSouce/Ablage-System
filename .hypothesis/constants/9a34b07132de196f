@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\ai_autonomy.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.8, 0.95, 1.0, 200, 365, '/ai', '/decisions', '/stats/accuracy', '/stats/learning', '/thresholds', 'AI Autonomy', 'admin:full', 'auto_applied', 'category', 'confidence', 'confidence_level', 'decision_id', 'display_name', 'is_primary', 'message', 'new_auto_threshold', 'success']

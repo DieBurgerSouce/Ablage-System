@@ -41,10 +41,12 @@ from app.db.schemas import (
     CommentUpdate,
     CommentResponse,
     CommentsListResponse,
+    CommentStatistics,
     MentionSchema,
     ReactionSchema,
     ReactionAdd,
 )
+from app.services.collaboration import CommentService, get_comment_service
 
 logger = structlog.get_logger(__name__)
 
@@ -147,7 +149,13 @@ async def _verify_document_access(
 
 
 def _build_comment_response(comment: DocumentComment, user: User) -> CommentResponse:
-    """Erstellt CommentResponse aus DB-Modell."""
+    """Erstellt CommentResponse aus DB-Modell.
+
+    Unterstuetzt die neuen Felder aus Migration 103:
+    - companyId: Multi-Tenant Isolation
+    - fieldReference: Feld-Referenz fuer Inline-Kommentare
+    - deletedAt: Soft-Delete Timestamp
+    """
     # Parse mentions from JSON - MentionSchema erwartet UUID
     mentions = []
     if comment.mentions:
@@ -184,12 +192,15 @@ def _build_comment_response(comment: DocumentComment, user: User) -> CommentResp
         userId=str(comment.user_id),
         userName=user.full_name or user.username or user.email,
         userAvatar=None,  # Could be extended with avatar URL
+        companyId=str(comment.company_id) if hasattr(comment, 'company_id') and comment.company_id else None,
+        fieldReference=comment.field_reference if hasattr(comment, 'field_reference') else None,
         content=comment.content,
         mentions=mentions,
         parentId=str(comment.parent_id) if comment.parent_id else None,
         createdAt=comment.created_at.isoformat() if comment.created_at else "",
         updatedAt=comment.updated_at.isoformat() if comment.updated_at else None,
         isEdited=comment.is_edited,
+        deletedAt=comment.deleted_at.isoformat() if hasattr(comment, 'deleted_at') and comment.deleted_at else None,
         reactions=reactions,
     )
 
@@ -374,11 +385,13 @@ async def create_comment(
                 "endIndex": m.endIndex,
             })
 
-    # Kommentar erstellen
+    # Kommentar erstellen - mit Multi-Tenant Support (Migration 103)
     comment = DocumentComment(
         document_id=document_id,
         user_id=current_user.id,
+        company_id=document.company_id,  # Multi-Tenant
         parent_id=comment_data.parentId,
+        field_reference=comment_data.fieldReference,  # Inline-Kommentar Feld
         content=comment_data.content,
         mentions=mentions_json,
         reactions=[],
@@ -561,8 +574,11 @@ async def delete_comment(
             detail="Keine Berechtigung zum Loeschen dieses Kommentars"
         )
 
-    # Soft-Delete
-    comment.is_deleted = True
+    # Soft-Delete mit Timestamp (Migration 103)
+    from app.core.datetime_utils import utc_now
+    comment.is_deleted = True  # Legacy-Flag
+    comment.deleted_at = utc_now()  # Neuer Timestamp
+    comment.deleted_by_id = current_user.id  # Wer hat geloescht
     await db.commit()
 
     logger.info(
@@ -730,3 +746,157 @@ async def remove_reaction(
     )
 
     return _build_comment_response(comment, comment_user)
+
+
+# =============================================================================
+# FIELD COMMENTS - Inline-Kommentare auf Extraktionsfeldern
+# =============================================================================
+
+
+@router.get(
+    "/{document_id}/comments/field/{field_name}",
+    response_model=CommentsListResponse,
+    summary="Feld-Kommentare abrufen",
+    description="Gibt alle Kommentare zu einem bestimmten Extraktionsfeld zurueck."
+)
+async def get_field_comments(
+    document_id: UUID,
+    field_name: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CommentsListResponse:
+    """Holt Kommentare zu einem spezifischen Feld.
+
+    Felder koennen z.B. sein:
+    - invoice_number
+    - total_amount
+    - vendor_name
+    - etc.
+    """
+    # Security: Pruefe Dokumentzugriff (VIEW reicht zum Lesen)
+    document = await _verify_document_access(
+        db, document_id, current_user.id,
+        required_level=AccessLevel.VIEW.value
+    )
+
+    # Field-Name validieren (nur alphanumerisch + underscore)
+    import re
+    if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', field_name):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ungueltiger Feldname"
+        )
+
+    # Feld-Kommentare abrufen
+    comment_service = get_comment_service(db)
+    comments = await comment_service.get_field_comments(
+        document_id=document_id,
+        company_id=document.company_id,
+        field_name=field_name,
+    )
+
+    # Responses bauen
+    comment_responses = []
+    for comment in comments:
+        if comment.user:
+            comment_responses.append(_build_comment_response(comment, comment.user))
+
+    return CommentsListResponse(
+        comments=comment_responses,
+        total=len(comment_responses),
+        hasMore=False,
+    )
+
+
+@router.post(
+    "/{document_id}/comments/field/{field_name}",
+    response_model=CommentResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Feld-Kommentar erstellen",
+    description="Erstellt einen Inline-Kommentar zu einem Extraktionsfeld."
+)
+async def create_field_comment(
+    document_id: UUID,
+    field_name: str,
+    comment_data: CommentCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CommentResponse:
+    """Erstellt einen Kommentar zu einem spezifischen Feld."""
+    # Security: Pruefe Dokumentzugriff
+    document = await _verify_document_access(db, document_id, current_user.id)
+
+    # Field-Name validieren
+    import re
+    if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', field_name):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ungueltiger Feldname"
+        )
+
+    # Mentions vorbereiten
+    mentions_json = []
+    if comment_data.mentions:
+        for m in comment_data.mentions:
+            mentions_json.append({
+                "userId": str(m.userId),
+                "userName": m.userName,
+                "startIndex": m.startIndex,
+                "endIndex": m.endIndex,
+            })
+
+    # Kommentar mit Feld-Referenz erstellen
+    comment_service = get_comment_service(db)
+    comment = await comment_service.create_comment(
+        document_id=document_id,
+        user_id=current_user.id,
+        company_id=document.company_id,
+        content=comment_data.content,
+        parent_id=comment_data.parentId,
+        field_reference=field_name,
+        mentions=mentions_json if mentions_json else None,
+        auto_parse_mentions=not bool(mentions_json),
+        notify_mentions=True,
+    )
+
+    logger.info(
+        "field_comment_created",
+        comment_id=str(comment.id),
+        document_id=str(document_id),
+        field_name=field_name,
+    )
+
+    return _build_comment_response(comment, current_user)
+
+
+# =============================================================================
+# STATISTICS - Kommentar-Statistiken
+# =============================================================================
+
+
+@router.get(
+    "/{document_id}/comments/statistics",
+    response_model=CommentStatistics,
+    summary="Kommentar-Statistiken",
+    description="Gibt aggregierte Statistiken zu den Kommentaren eines Dokuments zurueck."
+)
+async def get_comment_statistics(
+    document_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CommentStatistics:
+    """Holt Statistiken zu den Kommentaren eines Dokuments."""
+    # Security: Pruefe Dokumentzugriff
+    document = await _verify_document_access(
+        db, document_id, current_user.id,
+        required_level=AccessLevel.VIEW.value
+    )
+
+    # Statistiken berechnen
+    comment_service = get_comment_service(db)
+    stats = await comment_service.get_comment_statistics(
+        document_id=document_id,
+        company_id=document.company_id,
+    )
+
+    return CommentStatistics(**stats)

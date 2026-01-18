@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\functional\pooling.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.001, 'EXPLICIT', 'Indices', 'Mask', 'NCDHW', 'NCHW', 'NCL', 'NDHWC', 'NHWC', 'NLC', 'Out', 'SAME', 'VALID', 'X', 'adaptive', 'adaptive_avg_pool2d', 'adaptive_max_pool1d', 'adaptive_max_pool2d', 'adaptive_max_pool3d', 'adaptive_pool1d', 'adaptive_pool2d', 'avg', 'avg_pool1d', 'avg_pool2d', 'avg_pool3d', 'ceil_mode', 'data_format', 'divisor_override', 'exclusive', 'float16', 'float32', 'float64', 'global_pooling', 'int32', 'kernel_size', 'ksize', 'lp', 'lp_pool1d', 'lp_pool2d', 'mask', 'max', 'max_pool1d', 'max_pool2d', 'max_pool3d', 'norm_type', 'out', 'output_size', 'padding', 'padding_algorithm', 'paddings', 'pool2d', 'pool3d', 'pool_size', 'pool_stride', 'pooling_type', 'random_u', 'return_mask', 'stride', 'strides', 'uint16', 'unpool', 'unpool3d', 'unpooling_type', 'use_cudnn', 'x']

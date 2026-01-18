@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\core\serialization.py
+# hypothesis_version: 6.148.7
+
+[0.5, '.', 'Compose', 'Sequential', 'Serializable', '__class_fullname__', '__name__', '__version__', 'albumentations.', 'from_dict', 'json', 'load', 'p', 'raise', 'save', 'to_dict', 'torch', 'transform', 'transforms', 'w', 'warn', 'yaml']

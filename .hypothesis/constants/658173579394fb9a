@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\optimizer\adamax.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-08, 0.001, 0.9, 0.999, 'Beta1Pow', 'Grad', 'InfNorm', 'InfNormOut', 'LearningRate', 'MasterParam', 'MasterParamOut', 'Moment', 'MomentOut', 'Out', 'Param', 'ParamOut', 'X', 'adamax', 'beta1', 'beta1_pow_acc', 'beta2', 'epsilon', 'inf_norm', 'moment', 'multi_precision', 'params', 'scale']

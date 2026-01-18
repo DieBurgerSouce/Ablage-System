@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\augmentations\crops\transforms.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.08, 0.1, 0.3, 0.75, 1.0, 1.3333333333333333, 1024, 'BBoxSafeRandomCrop', 'CenterCrop', 'Crop', 'CropAndPad', 'RandomCrop', 'RandomCropNearBBox', 'RandomResizedCrop', 'RandomSizedCrop', 'after', 'bboxes', 'bottom_left', 'bottom_right', 'center', 'crop_coords', 'crop_params', 'cropping_bbox', 'fill', 'fill_mask', 'image', 'image_mask', 'mask', 'masks', 'pad_bottom', 'pad_left', 'pad_params', 'pad_right', 'pad_top', 'percent is not set', 'px is not set', 'random', 'result_shape', 'shape', 'top_left', 'top_right', 'tuple[float, float]']

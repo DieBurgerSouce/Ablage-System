@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\agents\ocr\surya_docling_agent.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.7, 600.0, 1000.0, 300, 1000, '.pdf', 'RGB', 'SURYA_DOCLING_ERROR', 'bbox', 'block_count', 'block_idx', 'confidence', 'corrections', 'de', 'default_language', 'error', 'eszett_corrections', 'full_text', 'german_text', 'gpu_required', 'image_load_failed', 'image_path', 'language', 'max_block_confidence', 'min_block_confidence', 'model_version', 'models_loaded', 'name', 'not_loaded', 'ocr_completed', 'page_confidence', 'page_number', 'pages_loaded_for_ocr', 'pdf_load_failed', 'pdf_page_loaded', 'processing_image', 'processing_page', 'processing_pdf', 'quality_score', 'ready', 'recognition_complete', 'stats', 'status', 'surya', 'surya-ocr-0.17.0', 'surya_docling_agent', 'text', 'text_blocks', 'text_lines', 'text_preview', 'umlaut_corrections', 'vram_gb', 'äöüÄÖÜß']

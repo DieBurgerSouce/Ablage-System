@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\rag\chunks.py
+# hypothesis_version: 6.148.7
+
+[100, 1000, '/bulk', '/chunks', '/stats', 'Chunking-Strategie', 'Dokument chunken', 'Dokument neu chunken', 'all', 'avg_tokens_per_chunk', 'bulk_chunk_request', 'deleted_chunks', 'document_id', 'documents_chunked', 'documents_with_text', 'force', 'message', 'rag-chunks', 'semantic', 'strategy', 'success', 'task_id', 'total_chunks', 'total_tokens']

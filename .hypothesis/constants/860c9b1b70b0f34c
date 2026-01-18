@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\optimizer\adam.py
+# hypothesis_version: 6.148.7
+
+[1e-08, 0.001, 0.9, 0.999, 1000, 'Beta1Pow', 'Beta1PowOut', 'Beta1Tensor', 'Beta2Pow', 'Beta2PowOut', 'Beta2Tensor', 'EpsilonTensor', 'FP16_DenseTensor', 'FP32_DenseTensor', 'Grad', 'LearningRate', 'MasterParam', 'MasterParamOut', 'Moment1', 'Moment1Out', 'Moment2', 'Moment2Max', 'Moment2MaxOut', 'Moment2Out', 'Param', 'ParamOut', 'SkipUpdate', '_is_sparse', 'adam', 'amsgrad', 'beta1', 'beta1_pow_acc', 'beta2', 'beta2_pow_acc', 'cpu', 'epsilon', 'found_inf', 'is_selected_rows', 'lazy_mode', 'merged_adam', 'moment1', 'moment2', 'moment2_max', 'multi_precision', 'params']

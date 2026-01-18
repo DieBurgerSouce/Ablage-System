@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pptx\oxml\chart\chart.py
+# hypothesis_version: 6.148.7
+
+['c:area3DChart', 'c:areaChart', 'c:autoTitleDeleted', 'c:autoUpdate', 'c:backWall', 'c:bar3DChart', 'c:barChart', 'c:bubbleChart', 'c:catAx', 'c:chart', 'c:clrMapOvr', 'c:date1904', 'c:dispBlanksAs', 'c:doughnutChart', 'c:extLst', 'c:externalData', 'c:floor', 'c:lang', 'c:legend', 'c:line3DChart', 'c:lineChart', 'c:ofPieChart', 'c:pie3DChart', 'c:pieChart', 'c:pivotFmts', 'c:pivotSource', 'c:plotArea', 'c:plotVisOnly', 'c:printSettings', 'c:protection', 'c:radarChart', 'c:roundedCorners', 'c:scatterChart', 'c:showDLblsOverMax', 'c:sideWall', 'c:spPr', 'c:stockChart', 'c:style', 'c:surface3DChart', 'c:surfaceChart', 'c:title', 'c:txPr', 'c:userShapes', 'c:valAx', 'c:view3D', 'r:id', 'val']

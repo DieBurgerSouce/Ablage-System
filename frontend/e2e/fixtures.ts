@@ -1,66 +1,54 @@
 /**
  * Custom Playwright Test Fixtures for Ablage-System.
  *
- * Provides authenticated page fixture that handles sessionStorage auth.
+ * Uses cached auth tokens from global setup to avoid rate limiting.
  */
 
 import { test as base, expect, type Page } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
 
-// Test user credentials from environment variables or defaults
-const TEST_USER_EMAIL = process.env.TEST_USER_EMAIL || 'admin@localhost.com';
-const TEST_USER_PASSWORD = process.env.TEST_USER_PASSWORD || 'admin123';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const AUTH_CACHE_FILE = path.join(__dirname, '.auth', 'auth-state.json');
+
+interface CachedAuth {
+  access_token: string;
+  refresh_token: string;
+  user: {
+    id: string;
+    email: string;
+    username: string;
+    full_name: string;
+    is_superuser: boolean;
+    is_active: boolean;
+    role: string;
+  };
+  cached_at: string;
+}
 
 // Extend base test with custom fixtures
 export const test = base.extend<{
   authenticatedPage: Page;
 }>({
-  authenticatedPage: async ({ page, request }, use) => {
-    // Determine the API base URL
-    const baseURL = process.env.BASE_URL || 'http://localhost:80';
-    const apiBaseURL = baseURL.includes('5173') ? 'http://localhost:8000' : baseURL;
-
-    // Login via API
-    const loginResponse = await request.post(`${apiBaseURL}/api/v1/auth/login`, {
-      data: {
-        email: TEST_USER_EMAIL,
-        password: TEST_USER_PASSWORD,
-      },
-    });
-
-    if (!loginResponse.ok()) {
-      throw new Error(`Login failed: ${loginResponse.status()}`);
+  authenticatedPage: async ({ page }, use) => {
+    // Read cached auth data
+    if (!fs.existsSync(AUTH_CACHE_FILE)) {
+      throw new Error(
+        'Auth cache file not found. Make sure globalSetup ran successfully. ' +
+        'Expected file: ' + AUTH_CACHE_FILE
+      );
     }
 
-    const tokens = await loginResponse.json();
-
-    if (tokens.requires_2fa) {
-      throw new Error('2FA is enabled for test user - please disable for tests');
-    }
-
-    // Fetch user info
-    const userResponse = await request.get(`${apiBaseURL}/api/v1/auth/me`, {
-      headers: { Authorization: `Bearer ${tokens.access_token}` },
-    });
-
-    if (!userResponse.ok()) {
-      throw new Error(`Failed to fetch user info: ${userResponse.status()}`);
-    }
-
-    const userData = await userResponse.json();
+    const authData: CachedAuth = JSON.parse(fs.readFileSync(AUTH_CACHE_FILE, 'utf-8'));
 
     // Prepare auth data for injection
-    const authData = {
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token || '',
-      user: JSON.stringify({
-        id: userData.id,
-        email: userData.email,
-        username: userData.username,
-        full_name: userData.full_name,
-        is_superuser: userData.is_superuser,
-        is_active: userData.is_active,
-        role: userData.role || (userData.is_superuser ? 'admin' : 'viewer'),
-      }),
+    const sessionData = {
+      access_token: authData.access_token,
+      refresh_token: authData.refresh_token,
+      user: JSON.stringify(authData.user),
     };
 
     // Use addInitScript to set sessionStorage BEFORE React mounts
@@ -69,7 +57,7 @@ export const test = base.extend<{
       window.sessionStorage.setItem('auth_token', data.access_token);
       window.sessionStorage.setItem('refresh_token', data.refresh_token);
       window.sessionStorage.setItem('user', data.user);
-    }, authData);
+    }, sessionData);
 
     // Now navigate to the app - auth data will already be in sessionStorage
     await page.goto('/');
@@ -77,7 +65,7 @@ export const test = base.extend<{
 
     // Verify we're logged in (not on login page)
     const currentUrl = page.url();
-    console.log(`After auth setup, current URL: ${currentUrl}`);
+    console.log('After auth setup, current URL: ' + currentUrl);
 
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
 

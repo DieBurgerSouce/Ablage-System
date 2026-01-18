@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\einvoice\generator_service.py
+# hypothesis_version: 6.148.7
+
+[0.2, 0.3, 0.5, 2.5, ' | ', '#4a4a4a', '#666666', '#cccccc', '#f5f5f5', '%d.%m.%Y', ',', '-', '.', '100%', '2.3.3', '3.0.2', 'ALIGN', 'Absender', 'BACKGROUND', 'Beschreibung', 'Beträge', 'CENTER', 'DejaVuSans', 'DejaVuSans-Bold', 'EN16931', 'EUR', 'Einzelpreis', 'Empfänger', 'FONTNAME', 'FONTSIZE', 'GRID', 'Gesamt', 'Heading1', 'Helvetica', 'Helvetica-Bold', 'Label', 'Menge', 'Meta', 'Normal', 'Pos', 'Positionen', 'RIGHT', 'ROWBACKGROUNDS', 'Small', 'Stk', 'TEXTCOLOR', 'TableDesc', 'Title', 'X', 'XRECHNUNG', 'basic', 'basicwl', 'document_id', 'einvoice_id', 'en16931', 'error', 'extended', 'factur-x', 'invoice', 'minimum', 'pdf_size_bytes', 'profile', 'strftime', 'syntax', 'utf-8', 'xrechnung_cii', 'xrechnung_ubl', 'zugferd']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pptx\oxml\shapes\shared.py
+# hypothesis_version: 6.148.7
+
+[0.0, './*[1]', './*[1]/p:nvPr/p:ph', './a:xfrm/a:ext/@cx', './a:xfrm/a:ext/@cy', './a:xfrm/a:off/@x', './a:xfrm/a:off/@y', 'a:audioCd', 'a:audioFile', 'a:bevel', 'a:blipFill', 'a:chExt', 'a:chOff', 'a:custDash', 'a:custGeom', 'a:effectDag', 'a:effectLst', 'a:ext', 'a:extLst', 'a:gradFill', 'a:grpFill', 'a:headEnd', 'a:hlinkClick', 'a:hlinkHover', 'a:ln', 'a:miter', 'a:noFill', 'a:off', 'a:pattFill', 'a:prstDash', 'a:prstGeom', 'a:quickTimeFile', 'a:round', 'a:scene3d', 'a:solidFill', 'a:sp3d', 'a:tailEnd', 'a:videoFile', 'a:wavAudioFile', 'a:xfrm', 'cx', 'cy', 'flipH', 'flipV', 'id', 'idx', 'name', 'orient', 'p:custDataLst', 'p:extLst', 'p:ph', 'p:txBody', 'rot', 'sz', 'type', 'w', 'x', 'y']

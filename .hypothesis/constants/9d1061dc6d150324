@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\workers\celery_metrics.py
+# hypothesis_version: 6.148.7
+
+[b'OK', 0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 100, 200, 404, 8001, '/health', '/metrics', '0.0.0.0', '5.3', 'Anzahl Task Retries', 'Content-Length', 'Content-Type', 'Worker Pool Größe', 'ablage_celery_worker', 'allocated', 'default', 'exception_type', 'failed', 'hostname', 'name', 'pool', 'queue', 'queue_name', 'reserved', 'retried', 'solo', 'started', 'status', 'succeeded', 'task_name', 'text/plain', 'total', 'type', 'unknown', 'version']

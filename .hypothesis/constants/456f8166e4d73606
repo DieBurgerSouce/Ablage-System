@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_optimizers\sharding\shard.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, '@', '_beta1_pow_acc_0', '_beta2_pow_acc_0', '_moment1_0', '_moment2_0', '_velocity_0']

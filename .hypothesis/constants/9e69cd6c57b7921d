@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\notifications.py
+# hypothesis_version: 6.148.7
+
+[100, 4001, '/', '/mark-all-read', '/notifications', '/unread-count', '/ws', '/{notification_id}', 'System', 'Ungelesene Anzahl', 'auth', 'connected', 'error', 'message', 'notification_deleted', 'notifications', 'ping', 'pong', 'query_token', 'success', 'token', 'type', 'unreadCount', 'user_id']

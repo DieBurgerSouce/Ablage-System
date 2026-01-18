@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_optimizers\common.py
+# hypothesis_version: 6.148.7
+
+[',', 'Grad', 'LearningRate', 'Out', 'Param', 'X', 'all_reduce', 'broadcast', 'c_comm_init', 'c_gen_bkcl_id', 'c_gen_nccl_id', 'c_sync_calc_stream', 'c_sync_comm_stream', 'comm_id', 'dtype', 'endpoint', 'endpoints', 'fill_constant', 'force_cpu', 'nranks', 'other_endpoints', 'out', 'rank', 'reduce_type', 'ring_id', 'root', 'shape', 'sync_var', 'value', 'x']

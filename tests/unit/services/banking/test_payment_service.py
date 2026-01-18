@@ -11,9 +11,9 @@ Testet:
 """
 
 import pytest
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
-from uuid import uuid4
+from uuid import uuid4, UUID
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.services.banking.payment_service import (
@@ -25,6 +25,47 @@ from app.services.banking.models import (
     PaymentType,
     PaymentOrderCreate,
 )
+
+
+def create_mock_payment(
+    payment_id: UUID = None,
+    user_id: UUID = None,
+    status: str = PaymentStatus.DRAFT.value,
+    **overrides
+) -> MagicMock:
+    """Erstelle vollstaendiges Mock-PaymentOrder Objekt.
+
+    Alle Felder die PaymentOrderResponse benoetigt werden gesetzt.
+    """
+    now = datetime.now(timezone.utc)
+    mock = MagicMock()
+    mock.id = payment_id or uuid4()
+    mock.user_id = user_id or uuid4()
+    mock.bank_account_id = overrides.get("bank_account_id", uuid4())
+    mock.document_id = overrides.get("document_id", None)
+    mock.invoice_number = overrides.get("invoice_number", None)
+    mock.payment_type = overrides.get("payment_type", PaymentType.TRANSFER.value)
+    mock.sepa_type = overrides.get("sepa_type", None)
+    mock.status = status
+    mock.beneficiary_name = overrides.get("beneficiary_name", "Test GmbH")
+    mock.beneficiary_iban = overrides.get("beneficiary_iban", "DE89370400440532013000")
+    mock.beneficiary_bic = overrides.get("beneficiary_bic", None)
+    mock.amount = overrides.get("amount", Decimal("100.00"))
+    mock.currency = overrides.get("currency", "EUR")
+    mock.reference = overrides.get("reference", "Test-Zahlung")
+    mock.execution_date = overrides.get("execution_date", None)
+    mock.tan_required = overrides.get("tan_required", False)
+    mock.tan_attempts = overrides.get("tan_attempts", 0)
+    mock.uses_skonto = overrides.get("uses_skonto", False)
+    mock.skonto_amount = overrides.get("skonto_amount", None)
+    mock.original_amount = overrides.get("original_amount", None)
+    mock.skonto_deadline = overrides.get("skonto_deadline", None)
+    mock.bank_reference = overrides.get("bank_reference", None)
+    mock.approved_at = overrides.get("approved_at", None)
+    mock.submitted_at = overrides.get("submitted_at", None)
+    mock.created_at = overrides.get("created_at", now)
+    mock.updated_at = overrides.get("updated_at", now)
+    return mock
 
 
 class TestIBANValidation:
@@ -362,10 +403,12 @@ class TestTANWorkflow:
         self, service: PaymentService, mock_db, sample_user_id, sample_payment_id
     ):
         """Sollte Zahlung mit gueltiger TAN bestaetigen."""
-        mock_payment = MagicMock()
-        mock_payment.id = sample_payment_id
-        mock_payment.status = PaymentStatus.PENDING_TAN.value
-        mock_payment.tan_attempts = 0
+        mock_payment = create_mock_payment(
+            payment_id=sample_payment_id,
+            user_id=sample_user_id,
+            status=PaymentStatus.PENDING_TAN.value,
+            tan_attempts=0,
+        )
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_payment
@@ -595,7 +638,7 @@ class TestBatchPayments:
             PaymentOrderCreate(
                 bank_account_id=uuid4(),
                 beneficiary_name="Test",
-                beneficiary_iban="INVALID_IBAN",  # Ungueltig
+                beneficiary_iban="DE00000000000000000",  # Ungueltig (falsche Pruefziffer)
                 amount=Decimal("100.00"),
             ),
         ]
@@ -746,30 +789,12 @@ class TestPendingPayments:
             PaymentStatus.APPROVED.value,
             PaymentStatus.PENDING_TAN.value,
         ]):
-            mock_payment = MagicMock()
-            mock_payment.id = uuid4()
-            mock_payment.bank_account_id = uuid4()
-            mock_payment.batch_id = None
-            mock_payment.payment_type = PaymentType.TRANSFER.value
-            mock_payment.status = status
-            mock_payment.creditor_name = f"Test {i}"
-            mock_payment.creditor_iban = "DE89370400440532013000"
-            mock_payment.creditor_bic = None
-            mock_payment.amount = Decimal("100.00")
-            mock_payment.currency = "EUR"
-            mock_payment.reference = f"Test {i}"
-            mock_payment.end_to_end_id = f"E2E{i}"
-            mock_payment.execution_date = date.today()
-            mock_payment.urgent = False
-            mock_payment.linked_document_id = None
-            mock_payment.linked_transaction_id = None
-            mock_payment.bank_reference = None
-            mock_payment.error_message = None
-            mock_payment.created_at = datetime.utcnow()
-            mock_payment.approved_at = None
-            mock_payment.submitted_at = None
-            mock_payment.confirmed_at = None
-            mock_payment.updated_at = None
+            mock_payment = create_mock_payment(
+                user_id=sample_user_id,
+                status=status,
+                beneficiary_name=f"Test {i}",
+                reference=f"Test {i}",
+            )
             mock_payments.append(mock_payment)
 
         mock_result = MagicMock()
@@ -822,30 +847,11 @@ class TestPaymentApproval:
         self, service: PaymentService, mock_db, sample_user_id, sample_payment_id
     ):
         """Sollte Zahlung erfolgreich genehmigen."""
-        mock_payment = MagicMock()
-        mock_payment.id = sample_payment_id
-        mock_payment.bank_account_id = uuid4()
-        mock_payment.batch_id = None
-        mock_payment.payment_type = PaymentType.TRANSFER.value
-        mock_payment.status = PaymentStatus.DRAFT.value
-        mock_payment.creditor_name = "Test GmbH"
-        mock_payment.creditor_iban = "DE89370400440532013000"
-        mock_payment.creditor_bic = None
-        mock_payment.amount = Decimal("100.00")
-        mock_payment.currency = "EUR"
-        mock_payment.reference = "Test"
-        mock_payment.end_to_end_id = "E2E123"
-        mock_payment.execution_date = date.today()
-        mock_payment.urgent = False
-        mock_payment.linked_document_id = None
-        mock_payment.linked_transaction_id = None
-        mock_payment.bank_reference = None
-        mock_payment.error_message = None
-        mock_payment.created_at = datetime.utcnow()
-        mock_payment.approved_at = None
-        mock_payment.submitted_at = None
-        mock_payment.confirmed_at = None
-        mock_payment.updated_at = None
+        mock_payment = create_mock_payment(
+            payment_id=sample_payment_id,
+            user_id=sample_user_id,
+            status=PaymentStatus.DRAFT.value,
+        )
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_payment
@@ -898,30 +904,11 @@ class TestPaymentCancellation:
         self, service: PaymentService, mock_db, sample_user_id, sample_payment_id
     ):
         """Sollte Draft-Zahlung stornieren koennen."""
-        mock_payment = MagicMock()
-        mock_payment.id = sample_payment_id
-        mock_payment.bank_account_id = uuid4()
-        mock_payment.batch_id = None
-        mock_payment.payment_type = PaymentType.TRANSFER.value
-        mock_payment.status = PaymentStatus.DRAFT.value
-        mock_payment.creditor_name = "Test GmbH"
-        mock_payment.creditor_iban = "DE89370400440532013000"
-        mock_payment.creditor_bic = None
-        mock_payment.amount = Decimal("100.00")
-        mock_payment.currency = "EUR"
-        mock_payment.reference = "Test"
-        mock_payment.end_to_end_id = "E2E123"
-        mock_payment.execution_date = date.today()
-        mock_payment.urgent = False
-        mock_payment.linked_document_id = None
-        mock_payment.linked_transaction_id = None
-        mock_payment.bank_reference = None
-        mock_payment.error_message = None
-        mock_payment.created_at = datetime.utcnow()
-        mock_payment.approved_at = None
-        mock_payment.submitted_at = None
-        mock_payment.confirmed_at = None
-        mock_payment.updated_at = None
+        mock_payment = create_mock_payment(
+            payment_id=sample_payment_id,
+            user_id=sample_user_id,
+            status=PaymentStatus.DRAFT.value,
+        )
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_payment
@@ -940,30 +927,11 @@ class TestPaymentCancellation:
         self, service: PaymentService, mock_db, sample_user_id, sample_payment_id
     ):
         """Sollte PENDING_TAN-Zahlung stornieren koennen."""
-        mock_payment = MagicMock()
-        mock_payment.id = sample_payment_id
-        mock_payment.bank_account_id = uuid4()
-        mock_payment.batch_id = None
-        mock_payment.payment_type = PaymentType.TRANSFER.value
-        mock_payment.status = PaymentStatus.PENDING_TAN.value
-        mock_payment.creditor_name = "Test GmbH"
-        mock_payment.creditor_iban = "DE89370400440532013000"
-        mock_payment.creditor_bic = None
-        mock_payment.amount = Decimal("100.00")
-        mock_payment.currency = "EUR"
-        mock_payment.reference = "Test"
-        mock_payment.end_to_end_id = "E2E123"
-        mock_payment.execution_date = date.today()
-        mock_payment.urgent = False
-        mock_payment.linked_document_id = None
-        mock_payment.linked_transaction_id = None
-        mock_payment.bank_reference = None
-        mock_payment.error_message = None
-        mock_payment.created_at = datetime.utcnow()
-        mock_payment.approved_at = None
-        mock_payment.submitted_at = None
-        mock_payment.confirmed_at = None
-        mock_payment.updated_at = None
+        mock_payment = create_mock_payment(
+            payment_id=sample_payment_id,
+            user_id=sample_user_id,
+            status=PaymentStatus.PENDING_TAN.value,
+        )
 
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_payment
@@ -992,40 +960,12 @@ class TestListPayments:
     def sample_user_id(self):
         return uuid4()
 
-    def _create_mock_payment(self, status: str = PaymentStatus.DRAFT.value):
-        """Erstelle Mock-Payment."""
-        mock_payment = MagicMock()
-        mock_payment.id = uuid4()
-        mock_payment.bank_account_id = uuid4()
-        mock_payment.batch_id = None
-        mock_payment.payment_type = PaymentType.TRANSFER.value
-        mock_payment.status = status
-        mock_payment.creditor_name = "Test GmbH"
-        mock_payment.creditor_iban = "DE89370400440532013000"
-        mock_payment.creditor_bic = None
-        mock_payment.amount = Decimal("100.00")
-        mock_payment.currency = "EUR"
-        mock_payment.reference = "Test"
-        mock_payment.end_to_end_id = "E2E123"
-        mock_payment.execution_date = date.today()
-        mock_payment.urgent = False
-        mock_payment.linked_document_id = None
-        mock_payment.linked_transaction_id = None
-        mock_payment.bank_reference = None
-        mock_payment.error_message = None
-        mock_payment.created_at = datetime.utcnow()
-        mock_payment.approved_at = None
-        mock_payment.submitted_at = None
-        mock_payment.confirmed_at = None
-        mock_payment.updated_at = None
-        return mock_payment
-
     @pytest.mark.asyncio
     async def test_list_payments_with_pagination(
         self, service: PaymentService, mock_db, sample_user_id
     ):
         """Sollte Zahlungen mit Pagination zurueckgeben."""
-        mock_payments = [self._create_mock_payment() for _ in range(5)]
+        mock_payments = [create_mock_payment(user_id=sample_user_id) for _ in range(5)]
 
         # Mock count query
         mock_count_result = MagicMock()
@@ -1050,7 +990,7 @@ class TestListPayments:
     ):
         """Sollte Zahlungen nach Status filtern."""
         mock_payments = [
-            self._create_mock_payment(status=PaymentStatus.CONFIRMED.value)
+            create_mock_payment(user_id=sample_user_id, status=PaymentStatus.CONFIRMED.value)
             for _ in range(2)
         ]
 

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\hapi\callbacks.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.0001, 0.1, 1.0, '%.5f samples/sec', '%.5f sec', '/', 'Eval begin...', 'Predict begin...', '_is_fit', '_learning_rate', 'acc', 'auto', 'avg_batch_cost', 'avg_reader_cost', 'batch_data_end_time', 'batch_size', 'batch_start_time', 'batch_time', 'best_model', 'count', 'data_time', 'dir', 'disabled', 'entity', 'epoch', 'epochs', 'eval', 'eval/*', 'ips', 'job_type', 'loss', 'max', 'metrics', 'min', 'mode', 'name', 'offline', 'on_epoch_begin', 'on_epoch_end', 'online', 'predict', 'project', 'run', 'samples', 'steps', 'test', 'train', 'train/*', 'train/step', 'verbose', 'visualdl', 'wandb', 'writer']

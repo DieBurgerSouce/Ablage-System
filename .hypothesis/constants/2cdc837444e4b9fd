@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\vision\models\vgg.py
+# hypothesis_version: 6.148.7
+
+[128, 256, 512, 1000, 4096, 'A', 'B', 'D', 'E', 'M', '_bn', 'vgg11', 'vgg13', 'vgg16', 'vgg19']

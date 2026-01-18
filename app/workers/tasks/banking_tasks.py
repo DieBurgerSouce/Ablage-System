@@ -32,6 +32,193 @@ def run_async(coro):
     return asyncio.run(coro)
 
 
+async def _match_transaction_to_document(
+    db,
+    transaction,
+    parsed_reference,
+) -> Optional[Dict[str, Any]]:
+    """Matched eine Transaktion gegen Dokumente im System.
+
+    Matching-Strategien (nach Prioritaet):
+    1. Rechnungsnummer (exakt) - Confidence: 95%
+    2. Kundennummer + Betrag - Confidence: 85%
+    3. Fuzzy Betrag + Datum - Confidence: 70%
+
+    Args:
+        db: AsyncSession
+        transaction: BankTransaction
+        parsed_reference: ParsedReference mit extrahierten Daten
+
+    Returns:
+        Match-Ergebnis dict oder None
+    """
+    from sqlalchemy import select, and_, or_, func
+    from sqlalchemy.dialects.postgresql import JSONB
+    from app.db.models import Document
+
+    # Strategie 1: Exakte Rechnungsnummer-Matching
+    if parsed_reference.invoice_numbers:
+        for invoice_num in parsed_reference.invoice_numbers:
+            # Suche in extracted_data.invoice_number
+            query = select(Document).where(
+                and_(
+                    Document.deleted_at.is_(None),
+                    or_(
+                        Document.extracted_data["invoice_number"].astext == invoice_num,
+                        Document.extracted_data["rechnung"]["nummer"].astext == invoice_num,
+                    )
+                )
+            ).limit(1)
+
+            result = await db.execute(query)
+            doc = result.scalar_one_or_none()
+
+            if doc:
+                logger.info(
+                    "transaction_matched_by_invoice_number",
+                    transaction_id=str(transaction.id),
+                    document_id=str(doc.id),
+                    invoice_number=invoice_num,
+                )
+                return {
+                    "document_id": doc.id,
+                    "confidence": 0.95,
+                    "method": "invoice_number_exact",
+                    "invoice_number": invoice_num,
+                }
+
+    # Strategie 2: Kundennummer + Betrag
+    if parsed_reference.customer_numbers and transaction.amount:
+        tx_amount = abs(float(transaction.amount))
+
+        for customer_num in parsed_reference.customer_numbers:
+            # Suche Dokumente mit passender Kundennummer
+            query = select(Document).where(
+                and_(
+                    Document.deleted_at.is_(None),
+                    or_(
+                        Document.extracted_data["customer_number"].astext == customer_num,
+                        Document.extracted_data["kunde"]["nummer"].astext == customer_num,
+                    )
+                )
+            ).limit(10)
+
+            result = await db.execute(query)
+            docs = result.scalars().all()
+
+            for doc in docs:
+                # Pruefe Betrag mit Toleranz (0.5%)
+                doc_amount = None
+                if doc.extracted_data:
+                    doc_amount = (
+                        doc.extracted_data.get("total_gross") or
+                        doc.extracted_data.get("betrag") or
+                        doc.extracted_data.get("gesamt")
+                    )
+
+                if doc_amount:
+                    try:
+                        doc_amount_float = float(doc_amount)
+                        tolerance = tx_amount * 0.005  # 0.5% Toleranz
+                        if abs(doc_amount_float - tx_amount) <= tolerance:
+                            logger.info(
+                                "transaction_matched_by_customer_amount",
+                                transaction_id=str(transaction.id),
+                                document_id=str(doc.id),
+                                customer_number=customer_num,
+                            )
+                            return {
+                                "document_id": doc.id,
+                                "confidence": 0.85,
+                                "method": "customer_number_amount",
+                                "invoice_number": doc.extracted_data.get("invoice_number"),
+                            }
+                    except (ValueError, TypeError):
+                        pass
+
+    # Strategie 3: Fuzzy Betrag + Datum-Naehe
+    if transaction.amount and transaction.booking_date:
+        tx_amount = abs(float(transaction.amount))
+        tx_date = transaction.booking_date.date() if hasattr(transaction.booking_date, 'date') else transaction.booking_date
+
+        # Suche Dokumente mit aehnlichem Betrag (1% Toleranz)
+        tolerance = tx_amount * 0.01
+
+        # Zeitraum: 30 Tage vor Buchungsdatum
+        date_from = tx_date - timedelta(days=30)
+
+        query = select(Document).where(
+            and_(
+                Document.deleted_at.is_(None),
+                Document.document_type.in_(["invoice", "rechnung", "bill"]),
+                Document.created_at >= date_from,
+                Document.created_at <= tx_date + timedelta(days=1),
+            )
+        ).limit(20)
+
+        result = await db.execute(query)
+        docs = result.scalars().all()
+
+        best_match = None
+        best_score = 0.0
+
+        for doc in docs:
+            if not doc.extracted_data:
+                continue
+
+            doc_amount = (
+                doc.extracted_data.get("total_gross") or
+                doc.extracted_data.get("betrag") or
+                doc.extracted_data.get("gesamt")
+            )
+
+            if not doc_amount:
+                continue
+
+            try:
+                doc_amount_float = float(doc_amount)
+
+                # Betrag-Score (max 60%)
+                amount_diff = abs(doc_amount_float - tx_amount)
+                if amount_diff <= tolerance:
+                    amount_score = 0.6 * (1 - (amount_diff / max(tolerance, 0.01)))
+                else:
+                    continue
+
+                # Datum-Score (max 40%)
+                doc_date = doc.created_at.date() if doc.created_at else None
+                if doc_date:
+                    date_diff = abs((tx_date - doc_date).days)
+                    date_score = 0.4 * max(0, 1 - (date_diff / 30))
+                else:
+                    date_score = 0.0
+
+                total_score = amount_score + date_score
+
+                if total_score > best_score and total_score >= 0.70:
+                    best_score = total_score
+                    best_match = doc
+
+            except (ValueError, TypeError):
+                pass
+
+        if best_match:
+            logger.info(
+                "transaction_matched_by_fuzzy",
+                transaction_id=str(transaction.id),
+                document_id=str(best_match.id),
+                confidence=round(best_score, 2),
+            )
+            return {
+                "document_id": best_match.id,
+                "confidence": round(best_score, 2),
+                "method": "fuzzy_amount_date",
+                "invoice_number": best_match.extracted_data.get("invoice_number") if best_match.extracted_data else None,
+            }
+
+    return None
+
+
 @celery_app.task(
     bind=True,
     base=CPUTask,
@@ -211,10 +398,21 @@ def auto_reconcile(
                         if parsed.customer_numbers:
                             tx.parsed_customer_numbers = parsed.customer_numbers
 
-                        # TODO: Implementiere Matching-Logik mit Documents
-                        # Fuer jetzt nur Referenz-Parsing
+                        # Matching-Logik mit Documents
+                        match_result = await _match_transaction_to_document(
+                            db, tx, parsed
+                        )
 
-                        stats["unmatched"] += 1
+                        if match_result:
+                            tx.matched_document_id = match_result["document_id"]
+                            tx.match_confidence = match_result["confidence"]
+                            tx.match_method = match_result["method"]
+                            tx.matched_invoice_number = match_result.get("invoice_number")
+                            tx.matched_at = datetime.now(timezone.utc)
+                            tx.reconciliation_status = "matched"
+                            stats["matched"] += 1
+                        else:
+                            stats["unmatched"] += 1
 
                     except Exception as e:
                         stats["errors"] += 1
@@ -758,13 +956,42 @@ def send_skonto_alerts(self, days_ahead: int = 7) -> Dict[str, Any]:
 
                         stats["users_checked"] += 1
                         stats["opportunities_found"] += len(opportunities)
-                        stats["total_savings"] += sum(
+                        user_savings = sum(
                             float(o.get("savings", 0))
                             for o in opportunities
                         )
+                        stats["total_savings"] += user_savings
 
-                        # TODO: Sende Notifications fuer ablaufende Skonti
-                        # (Email, Push, etc.)
+                        # Sende Notifications fuer ablaufende Skonti
+                        if opportunities and user.email:
+                            from app.services.notification_service import (
+                                NotificationService,
+                                NotificationType,
+                                NotificationPriority,
+                            )
+
+                            # Formatiere Opportunities-Liste
+                            opportunities_list = "\n".join([
+                                f"- {o.get('invoice_number', 'N/A')}: "
+                                f"{o.get('amount', 0):.2f} EUR "
+                                f"(Skonto: {o.get('savings', 0):.2f} EUR, "
+                                f"Frist: {o.get('deadline', 'N/A')})"
+                                for o in opportunities[:10]  # Max 10 anzeigen
+                            ])
+                            if len(opportunities) > 10:
+                                opportunities_list += f"\n... und {len(opportunities) - 10} weitere"
+
+                            notification_service = NotificationService()
+                            await notification_service.notify(
+                                notification_type=NotificationType.SKONTO_EXPIRING,
+                                context={
+                                    "opportunities_list": opportunities_list,
+                                    "total_savings": f"{user_savings:.2f}",
+                                },
+                                user_id=str(user.id),
+                                email=user.email,
+                                priority=NotificationPriority.HIGH,
+                            )
 
                     except Exception as e:
                         logger.warning(
@@ -967,7 +1194,40 @@ def daily_mahnlauf(self) -> Dict[str, Any]:
                                 continue
 
                             # Customer Override pruefen
-                            # TODO: BusinessEntity aus Document holen und Override pruefen
+                            entity_override = None
+                            max_allowed_stufe = None
+                            exclude_from_dunning = False
+
+                            # Lade Document mit BusinessEntity
+                            doc_query = select(Document).where(
+                                Document.id == candidate.document_id
+                            )
+                            doc_result = await db.execute(doc_query)
+                            document = doc_result.scalar_one_or_none()
+
+                            if document and document.business_entity_id:
+                                # Lade CustomerDunningOverride
+                                from app.db.models import CustomerDunningOverride
+                                override_query = select(CustomerDunningOverride).where(
+                                    CustomerDunningOverride.business_entity_id == document.business_entity_id
+                                )
+                                override_result = await db.execute(override_query)
+                                entity_override = override_result.scalar_one_or_none()
+
+                                if entity_override:
+                                    if entity_override.exclude_from_auto_dunning:
+                                        exclude_from_dunning = True
+                                        logger.info(
+                                            "dunning_skipped_entity_exclusion",
+                                            document_id=str(candidate.document_id),
+                                            entity_id=str(document.business_entity_id),
+                                        )
+                                    if entity_override.max_mahn_stufe is not None:
+                                        max_allowed_stufe = entity_override.max_mahn_stufe
+
+                            if exclude_from_dunning:
+                                stats["skipped_mahnstopp"] += 1
+                                continue
 
                             # Welche Stufe ist faellig?
                             for stage in active_stages:
@@ -975,6 +1235,16 @@ def daily_mahnlauf(self) -> Dict[str, Any]:
                                     # Aktuelle Stufe ist kleiner als diese?
                                     current_level = candidate.current_level.value if candidate.current_level else 0
                                     stage_number = stage.get("stage_number", 0)
+
+                                    # Customer Override: Max-Stufe pruefen
+                                    if max_allowed_stufe is not None and stage_number > max_allowed_stufe:
+                                        logger.debug(
+                                            "dunning_stage_capped",
+                                            document_id=str(candidate.document_id),
+                                            requested_stage=stage_number,
+                                            max_allowed=max_allowed_stufe,
+                                        )
+                                        break  # Keine weiteren Stufen erlaubt
 
                                     if current_level < stage_number:
                                         # Task erstellen
@@ -1093,6 +1363,196 @@ def reactivate_snoozed_tasks(self) -> Dict[str, Any]:
 @celery_app.task(
     bind=True,
     base=CPUTask,
+    name="app.workers.tasks.banking_tasks.send_pre_due_reminders",
+)
+def send_pre_due_reminders(self, days_before: int = 3) -> Dict[str, Any]:
+    """
+    Sende Zahlungserinnerungen VOR Faelligkeit.
+
+    Proaktive Erinnerungen um Mahnverfahren zu vermeiden.
+    BGB-konform: Freundliche Erinnerung, keine Verzugsfolgen.
+
+    Args:
+        days_before: Tage vor Faelligkeit (default: 3)
+
+    Returns:
+        Statistik der versendeten Erinnerungen
+    """
+    logger.info(
+        "send_pre_due_reminders_started",
+        task_id=self.request.id,
+        days_before=days_before,
+    )
+
+    try:
+        async def do_send_reminders():
+            from sqlalchemy import select, and_, or_
+            from app.db.session import get_async_session
+            from app.db.models import (
+                InvoiceTracking,
+                Document,
+                User,
+                BusinessEntity,
+                Notification,
+                NotificationStatus,
+            )
+            from app.services.notification_service import notification_service
+            from app.services.banking.models import DunningStatus
+
+            stats = {
+                "invoices_checked": 0,
+                "reminders_sent": 0,
+                "already_notified": 0,
+                "skipped_no_email": 0,
+                "errors": 0,
+            }
+
+            async with get_async_session() as db:
+                today = date.today()
+                target_due_date = today + timedelta(days=days_before)
+
+                # Finde Rechnungen die in {days_before} Tagen faellig werden
+                # und noch nicht bezahlt sind
+                query = select(InvoiceTracking).where(
+                    and_(
+                        InvoiceTracking.due_date == target_due_date,
+                        InvoiceTracking.status.in_([
+                            "pending", "overdue", "partial"
+                        ]),
+                        # Kein aktives Mahnverfahren
+                        or_(
+                            InvoiceTracking.dunning_level == 0,
+                            InvoiceTracking.dunning_level.is_(None),
+                        ),
+                    )
+                )
+
+                result = await db.execute(query)
+                invoices = result.scalars().all()
+                stats["invoices_checked"] = len(invoices)
+
+                for invoice in invoices:
+                    try:
+                        # Lade zugehoeriges Dokument
+                        doc_query = select(Document).where(
+                            Document.id == invoice.document_id
+                        )
+                        doc_result = await db.execute(doc_query)
+                        document = doc_result.scalar_one_or_none()
+
+                        if not document:
+                            continue
+
+                        # Lade BusinessEntity fuer Kontaktdaten
+                        entity = None
+                        if invoice.entity_id:
+                            entity_query = select(BusinessEntity).where(
+                                BusinessEntity.id == invoice.entity_id
+                            )
+                            entity_result = await db.execute(entity_query)
+                            entity = entity_result.scalar_one_or_none()
+
+                        # Pruefe ob bereits Pre-Due Erinnerung gesendet wurde
+                        # (innerhalb der letzten 7 Tage)
+                        existing_query = select(Notification).where(
+                            and_(
+                                Notification.document_id == invoice.document_id,
+                                Notification.notification_type == "payment_reminder",
+                                Notification.created_at >= datetime.now(timezone.utc) - timedelta(days=7),
+                            )
+                        ).limit(1)
+                        existing_result = await db.execute(existing_query)
+
+                        if existing_result.scalar_one_or_none():
+                            stats["already_notified"] += 1
+                            continue
+
+                        # Hole User fuer Benachrichtigung
+                        user_query = select(User).where(
+                            User.id == document.user_id
+                        )
+                        user_result = await db.execute(user_query)
+                        user = user_result.scalar_one_or_none()
+
+                        if not user:
+                            stats["skipped_no_email"] += 1
+                            continue
+
+                        # Erstelle freundliche Erinnerungsnachricht
+                        entity_name = entity.name if entity else "Unbekannt"
+                        invoice_number = invoice.invoice_number or "N/A"
+                        amount = invoice.outstanding_amount or invoice.total_amount or 0
+
+                        message_data = {
+                            "subject": f"Zahlungserinnerung: Rechnung {invoice_number}",
+                            "entity_name": entity_name,
+                            "invoice_number": invoice_number,
+                            "amount": f"{amount:.2f} EUR",
+                            "due_date": target_due_date.strftime("%d.%m.%Y"),
+                            "days_until_due": days_before,
+                        }
+
+                        # Sende Benachrichtigung
+                        await notification_service.send_notification(
+                            db=db,
+                            user_id=user.id,
+                            notification_type="payment_reminder",
+                            title=f"Zahlungserinnerung: {invoice_number}",
+                            message=(
+                                f"Die Rechnung {invoice_number} von {entity_name} "
+                                f"ueber {amount:.2f} EUR ist am {target_due_date.strftime('%d.%m.%Y')} "
+                                f"faellig (in {days_before} Tagen). "
+                                f"Bitte ueberweisen Sie den Betrag rechtzeitig."
+                            ),
+                            document_id=invoice.document_id,
+                            metadata=message_data,
+                            channels=["email", "in_app"],
+                        )
+
+                        stats["reminders_sent"] += 1
+
+                        logger.debug(
+                            "pre_due_reminder_sent",
+                            invoice_id=str(invoice.id),
+                            document_id=str(invoice.document_id),
+                            days_before=days_before,
+                        )
+
+                    except Exception as e:
+                        stats["errors"] += 1
+                        logger.warning(
+                            "pre_due_reminder_error",
+                            invoice_id=str(invoice.id) if invoice else "unknown",
+                            error=str(e),
+                        )
+
+                await db.commit()
+
+            return stats
+
+        result = run_async(do_send_reminders())
+
+        logger.info(
+            "send_pre_due_reminders_completed",
+            task_id=self.request.id,
+            **result,
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "send_pre_due_reminders_failed",
+            task_id=self.request.id,
+            error=str(e),
+            exc_info=True,
+        )
+        raise
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
     name="app.workers.tasks.banking_tasks.check_expired_mahnstopp",
 )
 def check_expired_mahnstopp(self) -> Dict[str, Any]:
@@ -1132,6 +1592,171 @@ def check_expired_mahnstopp(self) -> Dict[str, Any]:
     except Exception as e:
         logger.error(
             "check_expired_mahnstopp_failed",
+            task_id=self.request.id,
+            error=str(e),
+            exc_info=True,
+        )
+        raise
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.banking_tasks.generate_dunning_daily_report",
+)
+def generate_dunning_daily_report(self) -> Dict[str, Any]:
+    """
+    Generiere taeglichen Mahnlauf-Bericht.
+
+    Erstellt eine Zusammenfassung aller Mahnaktivitaeten des Tages
+    und sendet sie an Admin-Benutzer.
+
+    Returns:
+        Report-Statistik
+    """
+    logger.info(
+        "generate_dunning_daily_report_started",
+        task_id=self.request.id,
+    )
+
+    try:
+        async def do_generate_report():
+            from sqlalchemy import select, and_, func
+            from app.db.session import get_async_session
+            from app.db.models import (
+                DunningRecord,
+                DunningHistoryEvent,
+                InvoiceTracking,
+                User,
+                Notification,
+            )
+            from app.services.notification_service import notification_service
+
+            today = date.today()
+            today_start = datetime.combine(today, datetime.min.time()).replace(tzinfo=timezone.utc)
+            today_end = datetime.combine(today, datetime.max.time()).replace(tzinfo=timezone.utc)
+
+            report = {
+                "report_date": today.isoformat(),
+                "pre_due_reminders_sent": 0,
+                "new_dunnings_created": 0,
+                "dunnings_escalated": 0,
+                "dunnings_closed": 0,
+                "payments_received": 0,
+                "total_outstanding_amount": 0.0,
+                "mahnstopps_set": 0,
+                "mahnstopps_lifted": 0,
+                "errors_count": 0,
+            }
+
+            async with get_async_session() as db:
+                # Pre-Due Reminders gesendet heute
+                pre_due_query = select(func.count(Notification.id)).where(
+                    and_(
+                        Notification.notification_type == "payment_reminder",
+                        Notification.created_at >= today_start,
+                        Notification.created_at <= today_end,
+                    )
+                )
+                pre_due_result = await db.execute(pre_due_query)
+                report["pre_due_reminders_sent"] = pre_due_result.scalar() or 0
+
+                # Neue Mahnungen heute erstellt
+                new_dunnings_query = select(func.count(DunningRecord.id)).where(
+                    and_(
+                        DunningRecord.created_at >= today_start,
+                        DunningRecord.created_at <= today_end,
+                    )
+                )
+                new_result = await db.execute(new_dunnings_query)
+                report["new_dunnings_created"] = new_result.scalar() or 0
+
+                # History Events heute
+                history_query = select(DunningHistoryEvent).where(
+                    and_(
+                        DunningHistoryEvent.created_at >= today_start,
+                        DunningHistoryEvent.created_at <= today_end,
+                    )
+                )
+                history_result = await db.execute(history_query)
+                events = history_result.scalars().all()
+
+                for event in events:
+                    event_type = event.event_type
+                    if event_type == "escalated":
+                        report["dunnings_escalated"] += 1
+                    elif event_type == "closed":
+                        report["dunnings_closed"] += 1
+                    elif event_type == "payment_received":
+                        report["payments_received"] += 1
+                    elif event_type == "mahnstopp_set":
+                        report["mahnstopps_set"] += 1
+                    elif event_type == "mahnstopp_lifted":
+                        report["mahnstopps_lifted"] += 1
+
+                # Offene Forderungen (outstanding)
+                outstanding_query = select(func.sum(InvoiceTracking.outstanding_amount)).where(
+                    and_(
+                        InvoiceTracking.status.in_(["pending", "overdue", "partial"]),
+                        InvoiceTracking.outstanding_amount > 0,
+                    )
+                )
+                outstanding_result = await db.execute(outstanding_query)
+                report["total_outstanding_amount"] = float(outstanding_result.scalar() or 0)
+
+                # Sende Report an alle Admin-Benutzer
+                admin_query = select(User).where(User.is_admin == True)
+                admin_result = await db.execute(admin_query)
+                admins = admin_result.scalars().all()
+
+                report_message = (
+                    f"📊 Taeglicher Mahnlauf-Bericht ({today.strftime('%d.%m.%Y')})\n\n"
+                    f"• Zahlungserinnerungen gesendet: {report['pre_due_reminders_sent']}\n"
+                    f"• Neue Mahnungen erstellt: {report['new_dunnings_created']}\n"
+                    f"• Mahnungen eskaliert: {report['dunnings_escalated']}\n"
+                    f"• Mahnungen geschlossen: {report['dunnings_closed']}\n"
+                    f"• Zahlungseingaenge: {report['payments_received']}\n"
+                    f"• Mahnstopps gesetzt: {report['mahnstopps_set']}\n"
+                    f"• Mahnstopps aufgehoben: {report['mahnstopps_lifted']}\n\n"
+                    f"💰 Offene Forderungen: {report['total_outstanding_amount']:,.2f} EUR"
+                )
+
+                for admin in admins:
+                    try:
+                        await notification_service.send_notification(
+                            db=db,
+                            user_id=admin.id,
+                            notification_type="dunning_report",
+                            title=f"Mahnlauf-Bericht {today.strftime('%d.%m.%Y')}",
+                            message=report_message,
+                            metadata=report,
+                            channels=["email", "in_app"],
+                        )
+                    except Exception as e:
+                        report["errors_count"] += 1
+                        logger.warning(
+                            "dunning_report_send_error",
+                            admin_id=str(admin.id),
+                            error=str(e),
+                        )
+
+                await db.commit()
+
+            return report
+
+        result = run_async(do_generate_report())
+
+        logger.info(
+            "generate_dunning_daily_report_completed",
+            task_id=self.request.id,
+            **result,
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "generate_dunning_daily_report_failed",
             task_id=self.request.id,
             error=str(e),
             exc_info=True,
@@ -1218,6 +1843,25 @@ BANKING_BEAT_SCHEDULE = {
         "schedule": {
             "hour": 8,
             "minute": 45,
+        },
+        "options": {"queue": "default"},
+    },
+    # Pre-Due-Date Reminders (proaktive Zahlungserinnerungen)
+    "banking-pre-due-reminders-morning": {
+        "task": "app.workers.tasks.banking_tasks.send_pre_due_reminders",
+        "schedule": {
+            "hour": 7,
+            "minute": 0,
+        },
+        "kwargs": {"days_before": 3},
+        "options": {"queue": "default"},
+    },
+    # Dunning-Run Daily Report (nach allen Mahnlauf-Tasks)
+    "banking-dunning-daily-report": {
+        "task": "app.workers.tasks.banking_tasks.generate_dunning_daily_report",
+        "schedule": {
+            "hour": 18,
+            "minute": 0,
         },
         "options": {"queue": "default"},
     },

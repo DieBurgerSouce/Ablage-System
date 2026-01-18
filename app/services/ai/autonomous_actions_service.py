@@ -1,0 +1,869 @@
+# -*- coding: utf-8 -*-
+"""
+AutonomousActionsService - Konkrete autonome KI-Aktionen.
+
+Baut auf AIDecisionService auf und implementiert spezifische autonome Aktionen:
+1. Ablageort automatisch bestimmen
+2. Kleine Zahlungsfreigaben (<Schwelle)
+3. Mahnungen automatisch versenden
+4. Offensichtliche Stammdaten-Korrekturen
+
+Human-in-the-Loop Pattern:
+- Confidence-basierte Eskalation
+- One-Click Bestaetigung bei Unsicherheit
+- Lernschleife: Bestaetigte Entscheidungen trainieren KI
+"""
+
+from __future__ import annotations
+
+import uuid
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from decimal import Decimal
+from enum import Enum
+from typing import Any, Dict, List, Optional, Callable, Awaitable
+
+import structlog
+from sqlalchemy import select, and_, or_, func
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.datetime_utils import utc_now
+from app.db.models import (
+    Document,
+    Folder,
+    BusinessEntity,
+    InvoiceTracking,
+    AIDecision,
+)
+from app.services.ai.decision_service import (
+    AIDecisionService,
+    DecisionType,
+    ConfidenceLevel,
+    AIDecisionResult,
+    get_ai_decision_service,
+)
+
+logger = structlog.get_logger(__name__)
+
+
+# ============================================================================
+# Data Classes
+# ============================================================================
+
+
+class AutonomousAction(str, Enum):
+    """Typen von autonomen Aktionen."""
+
+    FILE_DOCUMENT = "file_document"  # Dokument ablegen
+    APPROVE_PAYMENT = "approve_payment"  # Zahlung freigeben
+    SEND_DUNNING = "send_dunning"  # Mahnung senden
+    UPDATE_MASTER_DATA = "update_master_data"  # Stammdaten korrigieren
+    ASSIGN_ENTITY = "assign_entity"  # Entity zuweisen
+    CLASSIFY_DOCUMENT = "classify_document"  # Dokumenttyp bestimmen
+
+
+@dataclass
+class ActionProposal:
+    """Vorschlag fuer eine autonome Aktion."""
+
+    action_type: AutonomousAction
+    target_id: uuid.UUID  # Document-ID, Invoice-ID, etc.
+    proposed_value: Dict[str, Any]
+    confidence: float
+    reasoning: str
+    requires_confirmation: bool
+    auto_approved: bool = False
+    decision_id: Optional[uuid.UUID] = None
+
+
+@dataclass
+class ActionResult:
+    """Ergebnis einer ausgefuehrten Aktion."""
+
+    success: bool
+    action_type: AutonomousAction
+    target_id: uuid.UUID
+    applied_value: Optional[Dict[str, Any]] = None
+    error_message: Optional[str] = None
+    was_autonomous: bool = False
+    decision_id: Optional[uuid.UUID] = None
+
+
+@dataclass
+class AutonomyConfig:
+    """Konfiguration fuer autonome Aktionen."""
+
+    # Zahlungsfreigabe
+    payment_auto_approve_limit: Decimal = Decimal("100.00")
+    payment_suggest_limit: Decimal = Decimal("1000.00")
+
+    # Mahnungen
+    dunning_auto_send_level: int = 1  # Bis Level 1 automatisch
+    dunning_min_overdue_days: int = 14  # Min Tage ueberfaellig
+
+    # Stammdaten
+    master_data_auto_update_confidence: float = 0.95
+    master_data_fields_auto_update: List[str] = None  # None = alle
+
+    # Ablage
+    filing_auto_confidence: float = 0.95
+    filing_suggest_confidence: float = 0.80
+
+    def __post_init__(self):
+        if self.master_data_fields_auto_update is None:
+            self.master_data_fields_auto_update = [
+                "email",
+                "phone",
+                "website",
+            ]
+
+
+# ============================================================================
+# Autonomous Actions Service
+# ============================================================================
+
+
+class AutonomousActionsService:
+    """Service fuer autonome KI-Aktionen mit Human-in-the-Loop.
+
+    Koordiniert spezifische autonome Aktionen und integriert sie
+    mit dem AIDecisionService fuer Audit-Trail und Self-Learning.
+    """
+
+    def __init__(
+        self,
+        db: AsyncSession,
+        config: Optional[AutonomyConfig] = None,
+    ):
+        """Initialisiert den Service.
+
+        Args:
+            db: Async Database Session
+            config: Autonomie-Konfiguration (oder Defaults)
+        """
+        self.db = db
+        self.config = config or AutonomyConfig()
+        self.decision_service = get_ai_decision_service()
+
+    # ========================================================================
+    # 1. Ablageort automatisch bestimmen
+    # ========================================================================
+
+    async def propose_filing_location(
+        self,
+        document_id: uuid.UUID,
+        company_id: Optional[uuid.UUID] = None,
+    ) -> ActionProposal:
+        """Schlaegt Ablageort fuer ein Dokument vor.
+
+        Analysiert:
+        - Dokumenttyp
+        - Erkannte Entitaet
+        - Historische Ablage aehnlicher Dokumente
+        - OCR-Inhalt
+
+        Args:
+            document_id: ID des Dokuments
+            company_id: Optional Company-ID
+
+        Returns:
+            ActionProposal mit vorgeschlagenem Folder
+        """
+        # Dokument laden
+        stmt = select(Document).where(Document.id == document_id)
+        result = await self.db.execute(stmt)
+        document = result.scalar_one_or_none()
+
+        if not document:
+            return ActionProposal(
+                action_type=AutonomousAction.FILE_DOCUMENT,
+                target_id=document_id,
+                proposed_value={},
+                confidence=0.0,
+                reasoning="Dokument nicht gefunden",
+                requires_confirmation=True,
+            )
+
+        confidence = 0.0
+        proposed_folder_id: Optional[uuid.UUID] = None
+        reasoning_parts: List[str] = []
+
+        # 1. Wenn Entity zugewiesen, deren Standard-Folder nutzen
+        if document.business_entity_id:
+            stmt = select(BusinessEntity).where(
+                BusinessEntity.id == document.business_entity_id
+            )
+            result = await self.db.execute(stmt)
+            entity = result.scalar_one_or_none()
+
+            if entity and entity.default_folder_id:
+                proposed_folder_id = entity.default_folder_id
+                confidence = 0.90
+                reasoning_parts.append(f"Standard-Ablage von {entity.name}")
+
+        # 2. Dokumenttyp-basierte Ablage
+        if not proposed_folder_id and document.document_type:
+            folder = await self._find_folder_by_document_type(
+                document.document_type, company_id
+            )
+            if folder:
+                proposed_folder_id = folder.id
+                confidence = max(confidence, 0.85)
+                reasoning_parts.append(f"Typ-Zuordnung: {document.document_type}")
+
+        # 3. Historische Ablage aehnlicher Dokumente
+        if not proposed_folder_id:
+            folder, hist_confidence = await self._find_folder_by_history(
+                document, company_id
+            )
+            if folder:
+                proposed_folder_id = folder.id
+                confidence = max(confidence, hist_confidence)
+                reasoning_parts.append("Basierend auf aehnlichen Dokumenten")
+
+        # Keine Zuordnung moeglich
+        if not proposed_folder_id:
+            return ActionProposal(
+                action_type=AutonomousAction.FILE_DOCUMENT,
+                target_id=document_id,
+                proposed_value={},
+                confidence=0.0,
+                reasoning="Kein passender Ablageort gefunden",
+                requires_confirmation=True,
+            )
+
+        # Entscheidung fuer Auto-Apply oder Bestaetigung
+        auto_approved = confidence >= self.config.filing_auto_confidence
+        requires_confirmation = not auto_approved
+
+        # AI Decision erstellen fuer Audit-Trail
+        decision_result = await self.decision_service.make_decision(
+            db=self.db,
+            decision_type=DecisionType.CATEGORIZATION,
+            decision_value={
+                "action": AutonomousAction.FILE_DOCUMENT.value,
+                "folder_id": str(proposed_folder_id),
+            },
+            confidence=confidence,
+            document_id=document_id,
+            company_id=company_id,
+            explanation={"reasoning": reasoning_parts},
+        )
+
+        return ActionProposal(
+            action_type=AutonomousAction.FILE_DOCUMENT,
+            target_id=document_id,
+            proposed_value={"folder_id": proposed_folder_id},
+            confidence=confidence,
+            reasoning="; ".join(reasoning_parts),
+            requires_confirmation=requires_confirmation,
+            auto_approved=auto_approved,
+            decision_id=decision_result.decision_id,
+        )
+
+    async def execute_filing(
+        self,
+        document_id: uuid.UUID,
+        folder_id: uuid.UUID,
+        decision_id: Optional[uuid.UUID] = None,
+    ) -> ActionResult:
+        """Fuehrt die Ablage eines Dokuments aus.
+
+        Args:
+            document_id: ID des Dokuments
+            folder_id: Ziel-Folder-ID
+            decision_id: Optional AIDecision-ID fuer Tracking
+
+        Returns:
+            ActionResult
+        """
+        stmt = select(Document).where(Document.id == document_id)
+        result = await self.db.execute(stmt)
+        document = result.scalar_one_or_none()
+
+        if not document:
+            return ActionResult(
+                success=False,
+                action_type=AutonomousAction.FILE_DOCUMENT,
+                target_id=document_id,
+                error_message="Dokument nicht gefunden",
+            )
+
+        # Folder pruefen
+        stmt = select(Folder).where(Folder.id == folder_id)
+        result = await self.db.execute(stmt)
+        folder = result.scalar_one_or_none()
+
+        if not folder:
+            return ActionResult(
+                success=False,
+                action_type=AutonomousAction.FILE_DOCUMENT,
+                target_id=document_id,
+                error_message="Folder nicht gefunden",
+            )
+
+        # Ablegen
+        document.folder_id = folder_id
+        document.updated_at = utc_now()
+        await self.db.commit()
+
+        logger.info(
+            "document_filed_autonomously",
+            document_id=str(document_id),
+            folder_id=str(folder_id),
+            decision_id=str(decision_id) if decision_id else None,
+        )
+
+        return ActionResult(
+            success=True,
+            action_type=AutonomousAction.FILE_DOCUMENT,
+            target_id=document_id,
+            applied_value={"folder_id": folder_id},
+            was_autonomous=True,
+            decision_id=decision_id,
+        )
+
+    # ========================================================================
+    # 2. Kleine Zahlungsfreigaben
+    # ========================================================================
+
+    async def propose_payment_approval(
+        self,
+        invoice_id: uuid.UUID,
+        company_id: Optional[uuid.UUID] = None,
+    ) -> ActionProposal:
+        """Schlaegt Zahlungsfreigabe vor.
+
+        Automatisch genehmigt wenn:
+        - Betrag unter Schwelle
+        - Lieferant bekannt und vertrauenswuerdig
+        - Keine Anomalien erkannt
+
+        Args:
+            invoice_id: ID der Rechnung
+            company_id: Optional Company-ID
+
+        Returns:
+            ActionProposal
+        """
+        stmt = select(InvoiceTracking).where(InvoiceTracking.id == invoice_id)
+        result = await self.db.execute(stmt)
+        invoice = result.scalar_one_or_none()
+
+        if not invoice:
+            return ActionProposal(
+                action_type=AutonomousAction.APPROVE_PAYMENT,
+                target_id=invoice_id,
+                proposed_value={},
+                confidence=0.0,
+                reasoning="Rechnung nicht gefunden",
+                requires_confirmation=True,
+            )
+
+        confidence = 0.5  # Basis-Confidence
+        reasoning_parts: List[str] = []
+
+        # 1. Betrag pruefen
+        amount = Decimal(str(invoice.amount)) if invoice.amount else Decimal("0")
+
+        if amount <= self.config.payment_auto_approve_limit:
+            confidence += 0.3
+            reasoning_parts.append(f"Betrag {amount} EUR unter Auto-Limit")
+        elif amount <= self.config.payment_suggest_limit:
+            confidence += 0.15
+            reasoning_parts.append(f"Betrag {amount} EUR im Suggest-Bereich")
+        else:
+            reasoning_parts.append(f"Betrag {amount} EUR ueber Limit")
+
+        # 2. Entity pruefen
+        if invoice.entity_id:
+            stmt = select(BusinessEntity).where(
+                BusinessEntity.id == invoice.entity_id
+            )
+            result = await self.db.execute(stmt)
+            entity = result.scalar_one_or_none()
+
+            if entity:
+                # Pruefen ob Geschaeftsbeziehung etabliert
+                # (vereinfacht: Entity existiert und hat Dokumente)
+                stmt = select(func.count(Document.id)).where(
+                    Document.business_entity_id == entity.id
+                )
+                result = await self.db.execute(stmt)
+                doc_count = result.scalar() or 0
+
+                if doc_count >= 5:
+                    confidence += 0.2
+                    reasoning_parts.append(f"Etablierter Lieferant ({doc_count} Dokumente)")
+                elif doc_count >= 1:
+                    confidence += 0.1
+                    reasoning_parts.append("Bekannter Lieferant")
+        else:
+            reasoning_parts.append("Unbekannter Lieferant")
+
+        # Auto-Approve Entscheidung
+        auto_approved = (
+            confidence >= 0.95
+            and amount <= self.config.payment_auto_approve_limit
+        )
+        requires_confirmation = not auto_approved
+
+        # AI Decision erstellen
+        decision_result = await self.decision_service.make_decision(
+            db=self.db,
+            decision_type=DecisionType.ACCOUNTING,
+            decision_value={
+                "action": AutonomousAction.APPROVE_PAYMENT.value,
+                "invoice_id": str(invoice_id),
+                "amount": float(amount),
+            },
+            confidence=confidence,
+            document_id=invoice.document_id,
+            company_id=company_id,
+            explanation={"reasoning": reasoning_parts},
+        )
+
+        return ActionProposal(
+            action_type=AutonomousAction.APPROVE_PAYMENT,
+            target_id=invoice_id,
+            proposed_value={"approved": True, "amount": float(amount)},
+            confidence=confidence,
+            reasoning="; ".join(reasoning_parts),
+            requires_confirmation=requires_confirmation,
+            auto_approved=auto_approved,
+            decision_id=decision_result.decision_id,
+        )
+
+    async def execute_payment_approval(
+        self,
+        invoice_id: uuid.UUID,
+        decision_id: Optional[uuid.UUID] = None,
+    ) -> ActionResult:
+        """Fuehrt Zahlungsfreigabe aus.
+
+        Args:
+            invoice_id: ID der Rechnung
+            decision_id: Optional AIDecision-ID
+
+        Returns:
+            ActionResult
+        """
+        stmt = select(InvoiceTracking).where(InvoiceTracking.id == invoice_id)
+        result = await self.db.execute(stmt)
+        invoice = result.scalar_one_or_none()
+
+        if not invoice:
+            return ActionResult(
+                success=False,
+                action_type=AutonomousAction.APPROVE_PAYMENT,
+                target_id=invoice_id,
+                error_message="Rechnung nicht gefunden",
+            )
+
+        invoice.status = "approved"
+        invoice.updated_at = utc_now()
+        await self.db.commit()
+
+        logger.info(
+            "payment_approved_autonomously",
+            invoice_id=str(invoice_id),
+            amount=float(invoice.amount) if invoice.amount else 0,
+            decision_id=str(decision_id) if decision_id else None,
+        )
+
+        return ActionResult(
+            success=True,
+            action_type=AutonomousAction.APPROVE_PAYMENT,
+            target_id=invoice_id,
+            applied_value={"status": "approved"},
+            was_autonomous=True,
+            decision_id=decision_id,
+        )
+
+    # ========================================================================
+    # 3. Mahnungen automatisch versenden
+    # ========================================================================
+
+    async def get_dunning_candidates(
+        self,
+        company_id: Optional[uuid.UUID] = None,
+        limit: int = 50,
+    ) -> List[ActionProposal]:
+        """Findet Kandidaten fuer automatische Mahnungen.
+
+        Kriterien:
+        - Rechnung ueberfaellig > min_overdue_days
+        - Dunning-Level <= auto_send_level
+        - Keine kuerzliche Zahlung
+
+        Args:
+            company_id: Optional Company-ID
+            limit: Maximale Anzahl
+
+        Returns:
+            Liste von ActionProposals
+        """
+        today = utc_now().date()
+        min_due_date = today - timedelta(days=self.config.dunning_min_overdue_days)
+
+        stmt = (
+            select(InvoiceTracking)
+            .where(
+                and_(
+                    InvoiceTracking.status == "overdue",
+                    InvoiceTracking.due_date <= min_due_date,
+                    InvoiceTracking.dunning_level <= self.config.dunning_auto_send_level,
+                )
+            )
+            .limit(limit)
+        )
+
+        result = await self.db.execute(stmt)
+        invoices = result.scalars().all()
+
+        proposals: List[ActionProposal] = []
+
+        for invoice in invoices:
+            days_overdue = (today - invoice.due_date).days
+            confidence = min(0.95, 0.70 + (days_overdue / 100))  # Mehr Tage = hoehere Confidence
+
+            auto_approved = (
+                confidence >= 0.90
+                and invoice.dunning_level < self.config.dunning_auto_send_level
+            )
+
+            proposals.append(
+                ActionProposal(
+                    action_type=AutonomousAction.SEND_DUNNING,
+                    target_id=invoice.id,
+                    proposed_value={
+                        "current_level": invoice.dunning_level,
+                        "new_level": invoice.dunning_level + 1,
+                        "days_overdue": days_overdue,
+                    },
+                    confidence=confidence,
+                    reasoning=f"{days_overdue} Tage ueberfaellig, Mahnstufe {invoice.dunning_level}",
+                    requires_confirmation=not auto_approved,
+                    auto_approved=auto_approved,
+                )
+            )
+
+        return proposals
+
+    async def execute_dunning(
+        self,
+        invoice_id: uuid.UUID,
+        decision_id: Optional[uuid.UUID] = None,
+    ) -> ActionResult:
+        """Fuehrt Mahnungsstufen-Erhoehung aus.
+
+        Args:
+            invoice_id: ID der Rechnung
+            decision_id: Optional AIDecision-ID
+
+        Returns:
+            ActionResult
+        """
+        stmt = select(InvoiceTracking).where(InvoiceTracking.id == invoice_id)
+        result = await self.db.execute(stmt)
+        invoice = result.scalar_one_or_none()
+
+        if not invoice:
+            return ActionResult(
+                success=False,
+                action_type=AutonomousAction.SEND_DUNNING,
+                target_id=invoice_id,
+                error_message="Rechnung nicht gefunden",
+            )
+
+        old_level = invoice.dunning_level or 0
+        new_level = min(old_level + 1, 4)  # Max Level 4
+
+        invoice.dunning_level = new_level
+        invoice.last_dunning_date = utc_now().date()
+        invoice.updated_at = utc_now()
+        await self.db.commit()
+
+        logger.info(
+            "dunning_sent_autonomously",
+            invoice_id=str(invoice_id),
+            old_level=old_level,
+            new_level=new_level,
+            decision_id=str(decision_id) if decision_id else None,
+        )
+
+        return ActionResult(
+            success=True,
+            action_type=AutonomousAction.SEND_DUNNING,
+            target_id=invoice_id,
+            applied_value={
+                "old_level": old_level,
+                "new_level": new_level,
+            },
+            was_autonomous=True,
+            decision_id=decision_id,
+        )
+
+    # ========================================================================
+    # 4. Stammdaten-Korrekturen
+    # ========================================================================
+
+    async def propose_master_data_update(
+        self,
+        entity_id: uuid.UUID,
+        field: str,
+        new_value: str,
+        source: str,
+        confidence: float,
+        company_id: Optional[uuid.UUID] = None,
+    ) -> ActionProposal:
+        """Schlaegt Stammdaten-Korrektur vor.
+
+        Args:
+            entity_id: ID der Entity
+            field: Feldname (z.B. "email", "phone")
+            new_value: Neuer Wert
+            source: Quelle der Aenderung (z.B. "document_ocr")
+            confidence: Confidence des neuen Werts
+            company_id: Optional Company-ID
+
+        Returns:
+            ActionProposal
+        """
+        stmt = select(BusinessEntity).where(BusinessEntity.id == entity_id)
+        result = await self.db.execute(stmt)
+        entity = result.scalar_one_or_none()
+
+        if not entity:
+            return ActionProposal(
+                action_type=AutonomousAction.UPDATE_MASTER_DATA,
+                target_id=entity_id,
+                proposed_value={},
+                confidence=0.0,
+                reasoning="Entity nicht gefunden",
+                requires_confirmation=True,
+            )
+
+        current_value = getattr(entity, field, None)
+
+        # Pruefen ob Aenderung sinnvoll
+        if current_value == new_value:
+            return ActionProposal(
+                action_type=AutonomousAction.UPDATE_MASTER_DATA,
+                target_id=entity_id,
+                proposed_value={},
+                confidence=0.0,
+                reasoning="Wert ist bereits aktuell",
+                requires_confirmation=False,
+            )
+
+        reasoning_parts = [f"Neuer Wert '{new_value}' aus {source}"]
+
+        if current_value:
+            reasoning_parts.append(f"Aktueller Wert: '{current_value}'")
+
+        # Auto-Update wenn:
+        # - Feld in Auto-Update-Liste
+        # - Confidence hoch genug
+        # - Aktueller Wert leer
+        auto_approved = (
+            field in self.config.master_data_fields_auto_update
+            and confidence >= self.config.master_data_auto_update_confidence
+            and not current_value
+        )
+
+        # AI Decision erstellen
+        decision_result = await self.decision_service.make_decision(
+            db=self.db,
+            decision_type=DecisionType.MATCHING,
+            decision_value={
+                "action": AutonomousAction.UPDATE_MASTER_DATA.value,
+                "entity_id": str(entity_id),
+                "field": field,
+                "old_value": current_value,
+                "new_value": new_value,
+            },
+            confidence=confidence,
+            company_id=company_id,
+            explanation={
+                "source": source,
+                "reasoning": reasoning_parts,
+            },
+        )
+
+        return ActionProposal(
+            action_type=AutonomousAction.UPDATE_MASTER_DATA,
+            target_id=entity_id,
+            proposed_value={
+                "field": field,
+                "old_value": current_value,
+                "new_value": new_value,
+            },
+            confidence=confidence,
+            reasoning="; ".join(reasoning_parts),
+            requires_confirmation=not auto_approved,
+            auto_approved=auto_approved,
+            decision_id=decision_result.decision_id,
+        )
+
+    async def execute_master_data_update(
+        self,
+        entity_id: uuid.UUID,
+        field: str,
+        new_value: str,
+        decision_id: Optional[uuid.UUID] = None,
+    ) -> ActionResult:
+        """Fuehrt Stammdaten-Update aus.
+
+        Args:
+            entity_id: ID der Entity
+            field: Feldname
+            new_value: Neuer Wert
+            decision_id: Optional AIDecision-ID
+
+        Returns:
+            ActionResult
+        """
+        stmt = select(BusinessEntity).where(BusinessEntity.id == entity_id)
+        result = await self.db.execute(stmt)
+        entity = result.scalar_one_or_none()
+
+        if not entity:
+            return ActionResult(
+                success=False,
+                action_type=AutonomousAction.UPDATE_MASTER_DATA,
+                target_id=entity_id,
+                error_message="Entity nicht gefunden",
+            )
+
+        # Nur erlaubte Felder updaten
+        allowed_fields = ["email", "phone", "website", "address", "city", "postal_code"]
+        if field not in allowed_fields:
+            return ActionResult(
+                success=False,
+                action_type=AutonomousAction.UPDATE_MASTER_DATA,
+                target_id=entity_id,
+                error_message=f"Feld '{field}' nicht fuer Auto-Update erlaubt",
+            )
+
+        old_value = getattr(entity, field, None)
+        setattr(entity, field, new_value)
+        entity.updated_at = utc_now()
+        await self.db.commit()
+
+        logger.info(
+            "master_data_updated_autonomously",
+            entity_id=str(entity_id),
+            field=field,
+            old_value=old_value,
+            decision_id=str(decision_id) if decision_id else None,
+            # SECURITY: new_value nicht loggen (PII)
+        )
+
+        return ActionResult(
+            success=True,
+            action_type=AutonomousAction.UPDATE_MASTER_DATA,
+            target_id=entity_id,
+            applied_value={
+                "field": field,
+                "updated": True,
+            },
+            was_autonomous=True,
+            decision_id=decision_id,
+        )
+
+    # ========================================================================
+    # Private Helpers
+    # ========================================================================
+
+    async def _find_folder_by_document_type(
+        self,
+        document_type: str,
+        company_id: Optional[uuid.UUID],
+    ) -> Optional[Folder]:
+        """Findet Standard-Folder fuer Dokumenttyp."""
+        # Mapping von Dokumenttypen zu Folder-Namen (vereinfacht)
+        type_folder_map = {
+            "invoice": "Rechnungen",
+            "contract": "Vertraege",
+            "delivery_note": "Lieferscheine",
+            "offer": "Angebote",
+            "correspondence": "Korrespondenz",
+        }
+
+        folder_name = type_folder_map.get(document_type)
+        if not folder_name:
+            return None
+
+        stmt = select(Folder).where(
+            and_(
+                Folder.name.ilike(f"%{folder_name}%"),
+                Folder.company_id == company_id if company_id else True,
+            )
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def _find_folder_by_history(
+        self,
+        document: Document,
+        company_id: Optional[uuid.UUID],
+    ) -> tuple[Optional[Folder], float]:
+        """Findet Folder basierend auf historischer Ablage."""
+        if not document.document_type:
+            return None, 0.0
+
+        # Finde haeufigsten Folder fuer diesen Dokumenttyp
+        stmt = (
+            select(
+                Document.folder_id,
+                func.count(Document.id).label("count"),
+            )
+            .where(
+                and_(
+                    Document.document_type == document.document_type,
+                    Document.folder_id.isnot(None),
+                    Document.company_id == company_id if company_id else True,
+                )
+            )
+            .group_by(Document.folder_id)
+            .order_by(func.count(Document.id).desc())
+            .limit(1)
+        )
+
+        result = await self.db.execute(stmt)
+        row = result.first()
+
+        if not row or not row.folder_id:
+            return None, 0.0
+
+        # Folder laden
+        stmt = select(Folder).where(Folder.id == row.folder_id)
+        result = await self.db.execute(stmt)
+        folder = result.scalar_one_or_none()
+
+        # Confidence basierend auf Anzahl historischer Dokumente
+        confidence = min(0.90, 0.60 + (row.count / 50))
+
+        return folder, confidence
+
+
+# ============================================================================
+# Factory Function
+# ============================================================================
+
+
+async def get_autonomous_actions_service(
+    db: AsyncSession,
+    config: Optional[AutonomyConfig] = None,
+) -> AutonomousActionsService:
+    """Factory-Funktion fuer AutonomousActionsService.
+
+    Args:
+        db: Async Database Session
+        config: Optional Autonomie-Konfiguration
+
+    Returns:
+        Konfigurierter AutonomousActionsService
+    """
+    return AutonomousActionsService(db=db, config=config)

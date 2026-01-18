@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\profiler\profiler.py
+# hypothesis_version: 6.148.7
+
+[100, '%Y_%m_%d_%H_%M_%S_%f', '-', './profiler_log/', 'args', 'cpu', 'gpu', 'json', 'kwargs', 'module', 'ms', 'ns', 'on_trace_ready', 'pb', 'r', 's', 'samples', 'scheduler', 'targets', 'timer_only', 'us', 'use_direct']

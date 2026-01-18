@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\nn\functional\blha_get_max_len.py
+# hypothesis_version: 6.148.7
+
+['batch_size', 'blha_get_max_len', 'int32', 'seq_lens_decoder', 'seq_lens_encoder']

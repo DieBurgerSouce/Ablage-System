@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppstructure\table\table_master_match.py
+# hypothesis_version: 6.148.7
+
+[0.0, ' colspan=', ' rowspan=', '(</b>)+', '(<b>)+', ',', '</b>', '</b></b>', '</b></td>', '</tbody>', '</td>', '</tr>', '<b>', '<b><b>', '<eb10></eb10>', '<eb1></eb1>', '<eb2></eb2>', '<eb3></eb3>', '<eb4></eb4>', '<eb5></eb5>', '<eb6></eb6>', '<eb7></eb7>', '<eb8></eb8>', '<eb9></eb9>', '<eb></eb>', '<html><body><table>', '<space>', '<td', '<td>', '<td> </td>', '<td></td>', '<td><b>', '<td><b> </b></td>', '<td><b></b></td>', '<td><i> </i></td>', '<td><i></i></td>', '<td>\u2028\u2028</td>', '<td{}></td>', '<thead>(.*?)</thead>', '<tr>', '>', '><', '><b>', '>{}<', 'Break in merge...', 'bbox', 'end2end', 'master', 'match_list', 'rb', 'sorted_bboxes_groups', 'sorted_groups', 'structure', 'text', '{}_*.pkl']

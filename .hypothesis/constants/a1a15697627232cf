@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\workflows.py
+# hypothesis_version: 6.148.7
+
+[0.0, 100, 255, 365, 3600, 86400, '/fields', '/operators', '/stats/overview', '/templates', '/workflows', '/{workflow_id}', '/{workflow_id}/stats', '/{workflow_id}/steps', 'Anzahl Tage', 'Ausfuehrung abrufen', 'Filter nach Status', 'Gesamt-Statistiken', 'Name fuer Kopie', 'Step aktualisieren', 'Step erstellen', 'Step loeschen', 'Step nicht gefunden', 'Steps abrufen', 'Steps neu ordnen', 'Suchbegriff', 'Template abrufen', 'Templates auflisten', 'Verfuegbare Felder', 'Webhook Trigger', 'Workflow abrufen', 'Workflow ausfuehren', 'Workflow duplizieren', 'Workflow erstellen', 'Workflow loeschen', 'Workflow validieren', 'Workflow-Statistiken', 'Workflows auflisten', 'active', 'cancelled', 'completed', 'date', 'execution_id', 'failed', 'paused', 'resumed', 'secret', 'status', 'step_id', 'step_order', 'success', 'today', 'total', 'workflows']

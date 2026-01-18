@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_parallel\pipeline_parallel.py
+# hypothesis_version: 6.148.7
+
+[1.0, 128, 1000, 1024, '"B"', '"E"', '0', '1', 'After backward_step', 'After forward_step', 'B', 'Before backward_step', 'Before forward_step', 'F', '_param2rank', 'a+', 'accumulate_steps', 'backward_begin', 'backward_end', 'backward_step', 'broadcast_final_loss', 'float16', 'float32', 'forward_begin', 'forward_end', 'forward_step', 'input_tensors', 'int64', 'key', 'main_grad', 'micro_batch_size', 'optimizer', 'output_tensor_grads', 'output_tensors', 'p2p_cache_shape', 'pin_memory', 'pp_can_free', 'pp_configs', 'rail_idle', 'rail_load', 'sharding_configs', 'thread_state_running', 'thread_state_unknown', '{', '}']

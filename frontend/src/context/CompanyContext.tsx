@@ -126,8 +126,8 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
         }
     }, [currentCompany?.id]);
 
-    // Daten extrahieren
-    const companies = listData?.companies ?? [];
+    // Daten extrahieren - API returns 'items' (nicht 'companies')
+    const companies = listData?.items ?? [];
     const companyCount = listData?.total ?? 0;
     const isLoading = isListLoading || isCurrentLoading || switchMutation.isPending;
     const error = listError ?? currentError ?? switchError;

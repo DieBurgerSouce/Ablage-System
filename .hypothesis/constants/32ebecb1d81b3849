@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\operators\dist_slice.py
+# hypothesis_version: 6.148.7
+
+['Input', 'Out', 'axes', 'decrease_axis', 'decrease_in_axis', 'slice']

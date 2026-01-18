@@ -50,6 +50,19 @@ from .tan_handler_service import TANHandlerService, TANMethod
 from .cash_flow_service import CashFlowService, ForecastScenario, ForecastPeriod
 from .dunning_service import DunningService, DunningConfig, DunningAction
 from .aging_report_service import AgingReportService, AgingBucket, ReportType
+from .liquidity_forecast_service import (
+    LiquidityForecastService,
+    LiquidityForecastResult,
+    RollingForecast,
+    LiquidityBottleneck,
+    LiquidityRiskLevel,
+    PaymentAnomaly,
+    AnomalyType,
+    WaterfallChartData,
+    ConfidenceInterval,
+    ForecastConfidence,
+    get_liquidity_forecast_service,
+)
 
 __all__ = [
     # Enums
@@ -103,4 +116,16 @@ __all__ = [
     # Filter & Stats
     "TransactionFilter",
     "TransactionStats",
+    # Phase 6: Liquidity Forecasting (Januar 2026)
+    "LiquidityForecastService",
+    "LiquidityForecastResult",
+    "RollingForecast",
+    "LiquidityBottleneck",
+    "LiquidityRiskLevel",
+    "PaymentAnomaly",
+    "AnomalyType",
+    "WaterfallChartData",
+    "ConfidenceInterval",
+    "ForecastConfidence",
+    "get_liquidity_forecast_service",
 ]

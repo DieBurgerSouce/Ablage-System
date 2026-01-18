@@ -7,16 +7,19 @@ Verwaltet finanzielle Ziele:
 - Auto-Completion bei Zielerreichung
 """
 
+import logging
 from dataclasses import dataclass
 from decimal import Decimal, ROUND_HALF_UP
 from datetime import date, timedelta
 from typing import Optional, Any, List, Dict
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import FinancialGoal as FinancialGoalModel
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -110,17 +113,36 @@ class FinancialGoalsService:
 
         return goal
 
-    async def update_progress(self, goal_id: UUID, new_value: Decimal) -> GoalProgress:
+    async def update_progress(
+        self,
+        goal_id: UUID,
+        new_value: Decimal,
+        space_id: Optional[UUID] = None,
+    ) -> GoalProgress:
         """Aktualisiert den Fortschritt eines Ziels.
+
+        SECURITY: space_id SOLLTE fuer Multi-Tenant Isolation uebergeben werden.
 
         Args:
             goal_id: UUID des Ziels
             new_value: Neuer aktueller Wert
+            space_id: Optional: ID des Privat-Space fuer Multi-Tenant Validierung
 
         Returns:
             Aktualisierter GoalProgress
+
+        Raises:
+            ValueError: Wenn Ziel nicht gefunden oder falscher Space
         """
-        goal = await self._get_goal(goal_id)
+        goal = await self._get_goal(goal_id, space_id=space_id)
+        if not goal:
+            logger.warning(
+                "update_progress_failed",
+                goal_id=str(goal_id),
+                space_id=str(space_id) if space_id else "not_provided",
+                reason="goal_not_found_or_wrong_space",
+            )
+            raise ValueError(f"Ziel {goal_id} nicht gefunden")
         goal.current_value = new_value
 
         # Progress berechnen
@@ -146,15 +168,35 @@ class FinancialGoalsService:
             projected_completion_date=self._calc_projected_completion_date(goal),
         )
 
-    async def complete_goal(self, goal_id: UUID) -> None:
+    async def complete_goal(
+        self,
+        goal_id: UUID,
+        space_id: Optional[UUID] = None,
+    ) -> bool:
         """Markiert ein Ziel als abgeschlossen.
+
+        SECURITY: space_id SOLLTE fuer Multi-Tenant Isolation uebergeben werden.
 
         Args:
             goal_id: UUID des Ziels
+            space_id: Optional: ID des Privat-Space fuer Multi-Tenant Validierung
+
+        Returns:
+            True wenn erfolgreich, False wenn nicht gefunden
         """
-        goal = await self._get_goal(goal_id)
+        goal = await self._get_goal(goal_id, space_id=space_id)
+        if not goal:
+            logger.warning(
+                "complete_goal_failed",
+                goal_id=str(goal_id),
+                space_id=str(space_id) if space_id else "not_provided",
+                reason="goal_not_found_or_wrong_space",
+            )
+            return False
+
         goal.status = "completed"
         await self.db.commit()
+        return True
 
     async def get_goals_summary(self, space_id: UUID) -> Dict[str, Any]:
         """Erstellt eine Zusammenfassung aller Ziele.
@@ -292,18 +334,31 @@ class FinancialGoalsService:
         """
         return (monthly_income * Decimal("0.15")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-    async def _get_goal(self, goal_id: UUID) -> Optional[FinancialGoalModel]:
+    async def _get_goal(
+        self,
+        goal_id: UUID,
+        space_id: Optional[UUID] = None,
+    ) -> Optional[FinancialGoalModel]:
         """Laedt ein Ziel aus der DB.
+
+        SECURITY: space_id SOLLTE fuer Multi-Tenant Isolation uebergeben werden.
+        Wenn space_id gegeben, wird zusaetzlich validiert dass das Ziel
+        zum angegebenen Space gehoert.
 
         Args:
             goal_id: UUID des Ziels
+            space_id: Optional: ID des Privat-Space fuer Multi-Tenant Validierung
 
         Returns:
             FinancialGoalModel oder None
         """
-        result = await self.db.execute(
-            select(FinancialGoalModel).where(FinancialGoalModel.id == goal_id)
-        )
+        query = select(FinancialGoalModel).where(FinancialGoalModel.id == goal_id)
+
+        # SECURITY: space_id Filter fuer Multi-Tenant Isolation
+        if space_id is not None:
+            query = query.where(FinancialGoalModel.space_id == space_id)
+
+        result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
     async def _get_all_goals(self, space_id: UUID) -> List[FinancialGoalModel]:
@@ -382,21 +437,39 @@ class FinancialGoalsService:
 
         return total_count
 
-    async def get_goals_at_risk(self) -> List[FinancialGoalModel]:
-        """Findet alle gefaehrdeten Ziele.
+    async def get_goals_at_risk(
+        self,
+        space_id: Optional[UUID] = None,
+    ) -> List[FinancialGoalModel]:
+        """Findet gefaehrdete Ziele.
+
+        SECURITY: space_id SOLLTE fuer Multi-Tenant Isolation uebergeben werden.
+        Ohne space_id werden ALLE aktiven Ziele durchsucht (nur fuer Admin/System-Tasks).
 
         Ein Ziel ist gefaehrdet wenn:
         - is_on_track == False
         - Weniger als 6 Monate verbleiben
         - Progress unter 50% bei weniger als 12 Monaten verbleibend
 
+        Args:
+            space_id: Optional: ID des Privat-Space fuer Multi-Tenant Isolation
+
         Returns:
             Liste gefaehrdeter Ziele
         """
-        result = await self.db.execute(
-            select(FinancialGoalModel)
-            .where(FinancialGoalModel.status == "active")
-        )
+        query = select(FinancialGoalModel).where(FinancialGoalModel.status == "active")
+
+        # SECURITY: space_id Filter fuer Multi-Tenant Isolation
+        if space_id is not None:
+            query = query.where(FinancialGoalModel.space_id == space_id)
+        else:
+            # Log wenn ohne space_id aufgerufen (sollte nur System-Task sein)
+            logger.info(
+                "get_goals_at_risk_all_spaces",
+                reason="system_task_without_space_filter",
+            )
+
+        result = await self.db.execute(query)
         all_goals = result.scalars().all()
 
         at_risk = []

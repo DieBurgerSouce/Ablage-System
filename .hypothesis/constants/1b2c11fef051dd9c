@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\surya\recognition\util.py
+# hypothesis_version: 6.148.7
+
+[0.1, 1.25, '(</?math[^>]*>)', '*', '+', '-', '/', '<', '</math>', '<math', '<math.*?>', '=', '>', '\\', '^', '_', 'bbox', 'li', 'ol', 'p', 'pre', 'table', 'tbody', 'td', 'th', 'tr', 'ul', '{', '}']

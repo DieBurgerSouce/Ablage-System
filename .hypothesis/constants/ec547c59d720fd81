@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\autograd\__init__.py
+# hypothesis_version: 6.148.7
+
+['Function', 'PyLayer', 'PyLayerContext', 'backward', 'hessian', 'jacobian', 'saved_tensors_hooks']

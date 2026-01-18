@@ -127,7 +127,7 @@ class BackendDocTypeCalibrator:
     """
     backend: str
     doc_type: str
-    calibrator: Optional[CalibratorType] = None
+    calibrator: Optional[Any] = None  # Runtime: CalibratorType (forward reference)
     training_data: CalibrationData = field(default_factory=CalibrationData)
     stats: Optional[CalibrationStats] = None
     auto_retrain_threshold: int = 50  # Retrain nach X neuen Samples

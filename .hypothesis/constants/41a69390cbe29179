@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\operators\dist_fused_attention.py
+# hypothesis_version: 6.148.7
+
+['OutLinearBias', 'OutLinearW', 'QKVBias', 'QKVW', 'X', 'Y', 'fused_attention', 'fused_attention_grad', 'ring_id', 'tensor_parallel']

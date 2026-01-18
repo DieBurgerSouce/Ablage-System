@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\device\cuda\graphs.py
+# hypothesis_version: 6.148.7
+
+[2047, ';', 'CUDAGraph', 'FLAGS_selected_gpus', 'Out', 'OutScope', 'X', 'ascii', 'conditional_block', 'cuda_graph_', 'cuda_graph_pool_id', 'default', 'end_op_index', 'forward_global_block', 'global', 'global_block', 'is_test', 'new', 'program_id', 'program_out_scope_', 'relaxed', 'run_program', 'start_op_index', 'thread_local', 'use_interpretorcore', 'while']

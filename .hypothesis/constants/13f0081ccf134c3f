@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\tuner\parallel_tuner.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.8, 1000, 1024, 9999, '\tcomplete_time', '\testimate_time', '\tmax_memory', '\tprocess_mesh list', '\tsample_time', '=', 'construct_space time', 'create_py_reader', 'create_trial time', 'default', 'dims_mapping', 'direction', 'estimate_time', 'eval', 'eval_trial time', 'loss', 'min', 'mode', 'num_machines', 'predict', 'process_mesh', 'read', 'read_from_array', 'seed', 'size', 'status', 'time', 'to_backup', 'to_default', 'train', 'utf-8', 'values', 'while', 'write_to_array']

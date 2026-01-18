@@ -51,7 +51,7 @@ from app.db.schemas import (
     BatchApproveRequest,
     BatchRejectRequest,
     BatchAssignRequest,
-    BatchOperationResult,
+    ValidationBatchOperationResult as BatchOperationResult,  # Alias fuer Rueckwaertskompatibilitaet
     # Analytics Schemas
     ValidationAnalyticsOverview,
     EditorStatsListResponse,
@@ -60,6 +60,7 @@ from app.db.schemas import (
     ConfidenceDistribution,
     # Enums
     ValidationStatusEnum,
+    SampleSourceEnum,
 )
 from app.api.dependencies import get_db
 from app.core.rbac import require_permission, require_any_permission
@@ -149,7 +150,9 @@ async def list_queue_items(
     page = (offset // limit) + 1 if limit > 0 else 1
     per_page = limit
 
+    # SECURITY: Multi-Tenant Isolation via company_id
     items, total = await service.get_queue_items(
+        company_id=current_user.company_id,
         filters=filters,
         sort_by=sort_enum,
         page=page,
@@ -179,7 +182,8 @@ async def get_queue_stats(
     Erfordert `validation:read` Berechtigung.
     """
     service = get_validation_queue_service(db)
-    stats = await service.get_queue_stats()
+    # SECURITY: Multi-Tenant Isolation via company_id
+    stats = await service.get_queue_stats(company_id=current_user.company_id)
     return stats
 
 
@@ -202,8 +206,10 @@ async def get_my_assigned_items(
     page = (offset // limit) + 1 if limit > 0 else 1
     per_page = limit
 
+    # SECURITY: Multi-Tenant Isolation via company_id
     items, total = await service.get_my_assigned_items(
         editor_id=current_user.id,
+        company_id=current_user.company_id,
         status=status.value if status else None,
         limit=limit,
         offset=offset
@@ -235,12 +241,14 @@ async def create_queue_item(
     Erfordert `validation:write` Berechtigung.
     """
     service = get_validation_queue_service(db)
+    # SECURITY: Multi-Tenant Isolation via company_id
     item = await service.add_to_queue(
         document_id=item_data.document_id,
-        source=item_data.sample_source.value if item_data.sample_source else "manual",
+        company_id=current_user.company_id,
+        source=item_data.sample_source if item_data.sample_source else SampleSourceEnum.MANUAL,
         priority=item_data.priority or 50,
-        notes=item_data.notes,
-        rule_id=item_data.triggered_by_rule_id
+        created_by_id=current_user.id,
+        sample_rule_id=item_data.triggered_by_rule_id
     )
 
     return ValidationQueueItemResponse.model_validate(item)
@@ -258,7 +266,8 @@ async def get_queue_item(
     Erfordert `validation:read` Berechtigung.
     """
     service = get_validation_queue_service(db)
-    item = await service.get_queue_item(item_id)
+    # SECURITY: Multi-Tenant Isolation via company_id
+    item = await service.get_queue_item(item_id, company_id=current_user.company_id)
 
     if not item:
         raise HTTPException(
@@ -289,7 +298,8 @@ async def update_queue_item(
     Erfordert `validation:write` Berechtigung.
     """
     service = get_validation_queue_service(db)
-    item = await service.update_queue_item(item_id, update_data)
+    # SECURITY: Multi-Tenant Isolation via company_id
+    item = await service.update_queue_item(item_id, current_user.company_id, update_data)
 
     if not item:
         raise HTTPException(
@@ -312,7 +322,8 @@ async def delete_queue_item(
     Erfordert `validation:manage` Berechtigung (nur Admins).
     """
     service = get_validation_queue_service(db)
-    deleted = await service.delete_queue_item(item_id)
+    # SECURITY: Multi-Tenant Isolation via company_id
+    deleted = await service.delete_queue_item(item_id, current_user.company_id)
 
     if not deleted:
         raise HTTPException(
@@ -344,10 +355,11 @@ async def assign_queue_item(
     service = get_validation_queue_service(db)
 
     try:
+        # SECURITY: Multi-Tenant Isolation via company_id
         item = await service.assign_to_editor(
             item_id=item_id,
             editor_id=assign_data.editor_id,
-            assigned_by_id=current_user.id
+            company_id=current_user.company_id,
         )
     except ValueError as e:
         # SECURITY FIX 28-22: Generische Fehlermeldung
@@ -374,7 +386,8 @@ async def unassign_queue_item(
     Erfordert `validation:manage` Berechtigung.
     """
     service = get_validation_queue_service(db)
-    item = await service.unassign(item_id)
+    # SECURITY: Multi-Tenant Isolation via company_id
+    item = await service.unassign(item_id, current_user.company_id)
 
     if not item:
         raise HTTPException(
@@ -415,11 +428,12 @@ async def approve_queue_item(
         )
 
     try:
+        # SECURITY: Multi-Tenant Isolation via company_id
         item = await service.approve_item(
             item_id=item_id,
             validated_by_id=current_user.id,
-            notes=sanitized_notes,
-            apply_corrections=approve_data.apply_corrections
+            company_id=current_user.company_id,
+            notes=sanitized_notes
         )
     except ValueError as e:
         # SECURITY FIX 28-22: Generische Fehlermeldung
@@ -458,11 +472,13 @@ async def reject_queue_item(
     )
 
     try:
+        # SECURITY: Multi-Tenant Isolation via company_id
         item = await service.reject_item(
             item_id=item_id,
             validated_by_id=current_user.id,
+            company_id=current_user.company_id,
             reason=sanitized_reason,
-            rejection_category=reject_data.rejection_category.value if reject_data.rejection_category else None
+            category=reject_data.rejection_category if reject_data.rejection_category else None
         )
     except ValueError as e:
         # SECURITY FIX 28-22: Generische Fehlermeldung
@@ -505,9 +521,11 @@ async def batch_approve(
             field_name="batch_approval_notes"
         )
 
+    # SECURITY: Multi-Tenant Isolation via company_id
     result = await service.batch_approve(
         item_ids=batch_data.item_ids,
         validated_by_id=current_user.id,
+        company_id=current_user.company_id,
         notes=sanitized_notes
     )
 
@@ -536,11 +554,13 @@ async def batch_reject(
         field_name="batch_rejection_reason"
     )
 
+    # SECURITY: Multi-Tenant Isolation via company_id
     result = await service.batch_reject(
         item_ids=batch_data.item_ids,
         validated_by_id=current_user.id,
+        company_id=current_user.company_id,
         reason=sanitized_reason,
-        rejection_category=batch_data.rejection_category.value if batch_data.rejection_category else None
+        category=batch_data.rejection_category if batch_data.rejection_category else None
     )
 
     return BatchOperationResult(**result)
@@ -561,10 +581,11 @@ async def batch_assign(
     """
     service = get_validation_queue_service(db)
 
+    # SECURITY: Multi-Tenant Isolation via company_id
     result = await service.batch_assign(
         item_ids=batch_data.item_ids,
         editor_id=batch_data.editor_id,
-        assigned_by_id=current_user.id
+        company_id=current_user.company_id,
     )
 
     return BatchOperationResult(**result)
@@ -585,6 +606,15 @@ async def get_queue_item_fields(
 
     Erfordert `validation:read` Berechtigung.
     """
+    # SECURITY: Multi-Tenant Isolation - zuerst Queue-Item Ownership pruefen
+    queue_service = get_validation_queue_service(db)
+    item = await queue_service.get_queue_item(item_id, company_id=current_user.company_id)
+    if not item:
+        raise HTTPException(
+            status_code=404,
+            detail="Validierungs-Item nicht gefunden"
+        )
+
     field_service = get_validation_field_service(db)
     fields = await field_service.get_fields_for_review(item_id)
     return [ValidationFieldResponse.model_validate(f) for f in fields]
@@ -603,6 +633,15 @@ async def update_field(
 
     Erfordert `validation:write` Berechtigung.
     """
+    # SECURITY: Multi-Tenant Isolation - zuerst Queue-Item Ownership pruefen
+    queue_service = get_validation_queue_service(db)
+    item = await queue_service.get_queue_item(item_id, company_id=current_user.company_id)
+    if not item:
+        raise HTTPException(
+            status_code=404,
+            detail="Validierungs-Item nicht gefunden"
+        )
+
     field_service = get_validation_field_service(db)
 
     field = await field_service.update_field(
@@ -632,6 +671,15 @@ async def validate_field(
 
     Erfordert `validation:write` Berechtigung.
     """
+    # SECURITY: Multi-Tenant Isolation - zuerst Queue-Item Ownership pruefen
+    queue_service = get_validation_queue_service(db)
+    item = await queue_service.get_queue_item(item_id, company_id=current_user.company_id)
+    if not item:
+        raise HTTPException(
+            status_code=404,
+            detail="Validierungs-Item nicht gefunden"
+        )
+
     field_service = get_validation_field_service(db)
 
     try:
@@ -654,6 +702,15 @@ async def validate_all_fields(
 
     Erfordert `validation:write` Berechtigung.
     """
+    # SECURITY: Multi-Tenant Isolation - zuerst Queue-Item Ownership pruefen
+    queue_service = get_validation_queue_service(db)
+    item = await queue_service.get_queue_item(item_id, company_id=current_user.company_id)
+    if not item:
+        raise HTTPException(
+            status_code=404,
+            detail="Validierungs-Item nicht gefunden"
+        )
+
     field_service = get_validation_field_service(db)
     results = await field_service.validate_all_fields(item_id)
     return results
@@ -670,6 +727,15 @@ async def get_field_stats(
 
     Erfordert `validation:read` Berechtigung.
     """
+    # SECURITY: Multi-Tenant Isolation - zuerst Queue-Item Ownership pruefen
+    queue_service = get_validation_queue_service(db)
+    item = await queue_service.get_queue_item(item_id, company_id=current_user.company_id)
+    if not item:
+        raise HTTPException(
+            status_code=404,
+            detail="Validierungs-Item nicht gefunden"
+        )
+
     field_service = get_validation_field_service(db)
     stats = await field_service.get_field_stats(item_id)
     return stats
@@ -972,11 +1038,13 @@ async def queue_document_for_validation(
     service = get_validation_queue_service(db)
 
     try:
+        # SECURITY: Multi-Tenant Isolation via company_id
         item = await service.add_to_queue(
             document_id=document_id,
-            source="manual",
+            company_id=current_user.company_id,
+            source=SampleSourceEnum.MANUAL,
             priority=priority,
-            notes=notes
+            created_by_id=current_user.id,
         )
     except ValueError as e:
         # SECURITY FIX 28-22: Generische Fehlermeldung

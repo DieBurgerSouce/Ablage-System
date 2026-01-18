@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\kpi\insurance_kpi_service.py
+# hypothesis_version: 6.148.7
+
+[100, 365, 50000, 300000, '0', '0.01', '0.80', '1', '100', '100000', '10000000', '100000000', '500000', '650', 'annual_income', 'berufsunfaehigkeit', 'critical', 'current_coverage', 'falling', 'gap_amount', 'gap_severity', 'haftpflicht_kfz', 'haftpflicht_privat', 'hausrat', 'high', 'living_space_sqm', 'low', 'medium', 'monthly', 'none', 'property_value', 'quarterly', 'rechtsschutz', 'recommended_coverage', 'risikoleben', 'rising', 'risk_exposure', 'semi_annual', 'stable', 'total_debts', 'unknown', 'wohngebaeude', 'yearly']

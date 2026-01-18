@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\dataset\movielens.py
+# hypothesis_version: 6.148.7
+
+[0.1, 5.0, '2.0.0', '::', 'F', 'M', '^(.*)\\((\\d+)\\)$', '__main__', 'latin', 'ml-1m/movies.dat', 'ml-1m/ratings.dat', 'ml-1m/users.dat', 'movielens', '|']

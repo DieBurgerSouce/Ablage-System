@@ -387,11 +387,15 @@ async def get_workflow(
     current_user: User = Depends(get_current_user),
 ) -> WorkflowResponse:
     """Ruft einen Workflow nach ID ab."""
+    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
+
     service = WorkflowService(db)
 
     workflow = await service.get_workflow(
         workflow_id=workflow_id,
         user_id=current_user.id,
+        company_id=company_id,
     )
 
     if not workflow:
@@ -415,11 +419,15 @@ async def update_workflow(
     current_user: User = Depends(get_current_user),
 ) -> WorkflowResponse:
     """Aktualisiert einen Workflow."""
+    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
+
     service = WorkflowService(db)
 
     workflow = await service.update_workflow(
         workflow_id=workflow_id,
         user_id=current_user.id,
+        company_id=company_id,
         **data.model_dump(exclude_unset=True),
     )
 
@@ -444,11 +452,15 @@ async def delete_workflow(
     current_user: User = Depends(get_current_user),
 ) -> Response:
     """Loescht einen Workflow."""
+    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
+
     service = WorkflowService(db)
 
     success = await service.delete_workflow(
         workflow_id=workflow_id,
         user_id=current_user.id,
+        company_id=company_id,
     )
 
     if not success:
@@ -473,11 +485,15 @@ async def duplicate_workflow(
     current_user: User = Depends(get_current_user),
 ) -> WorkflowResponse:
     """Dupliziert einen Workflow."""
+    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
+
     service = WorkflowService(db)
 
     duplicate = await service.duplicate_workflow(
         workflow_id=workflow_id,
         user_id=current_user.id,
+        company_id=company_id,
         new_name=new_name,
     )
 
@@ -501,11 +517,15 @@ async def toggle_workflow(
     current_user: User = Depends(get_current_user),
 ) -> WorkflowResponse:
     """Aktiviert oder deaktiviert einen Workflow."""
+    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
+
     service = WorkflowService(db)
 
     workflow = await service.toggle_workflow(
         workflow_id=workflow_id,
         user_id=current_user.id,
+        company_id=company_id,
     )
 
     if not workflow:
@@ -528,9 +548,16 @@ async def validate_workflow(
     current_user: User = Depends(get_current_user),
 ) -> ValidationResult:
     """Validiert einen Workflow."""
+    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
+
     service = WorkflowService(db)
 
-    result = await service.validate_workflow(workflow_id)
+    result = await service.validate_workflow(
+        workflow_id=workflow_id,
+        user_id=current_user.id,
+        company_id=company_id,
+    )
 
     return ValidationResult(**result)
 
@@ -551,17 +578,22 @@ async def get_workflow_steps(
     current_user: User = Depends(get_current_user),
 ) -> List[StepResponse]:
     """Ruft alle Steps eines Workflows ab."""
+    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
+
     service = WorkflowService(db)
 
-    # Workflow-Zugriff pruefen
-    workflow = await service.get_workflow(workflow_id, current_user.id, include_steps=False)
+    # Workflow-Zugriff pruefen (mit company_id)
+    workflow = await service.get_workflow(
+        workflow_id, current_user.id, company_id=company_id, include_steps=False
+    )
     if not workflow:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Workflow nicht gefunden",
         )
 
-    steps = await service.get_steps(workflow_id)
+    steps = await service.get_steps(workflow_id, user_id=current_user.id, company_id=company_id)
 
     return [StepResponse.model_validate(s) for s in steps]
 
@@ -579,10 +611,15 @@ async def create_step(
     current_user: User = Depends(get_current_user),
 ) -> StepResponse:
     """Erstellt einen neuen Step."""
+    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
+
     service = WorkflowService(db)
 
-    # Workflow-Zugriff pruefen
-    workflow = await service.get_workflow(workflow_id, current_user.id, include_steps=False)
+    # Workflow-Zugriff pruefen (mit company_id)
+    workflow = await service.get_workflow(
+        workflow_id, current_user.id, company_id=company_id, include_steps=False
+    )
     if not workflow or workflow.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -593,6 +630,8 @@ async def create_step(
         workflow_id=workflow_id,
         step_order=data.step_order,
         step_type=data.step_type,
+        user_id=current_user.id,
+        company_id=company_id,
         step_name=data.step_name,
         config=data.config,
         retry_on_failure=data.retry_on_failure,
@@ -617,10 +656,15 @@ async def update_step(
     current_user: User = Depends(get_current_user),
 ) -> StepResponse:
     """Aktualisiert einen Step."""
+    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
+
     service = WorkflowService(db)
 
-    # Workflow-Zugriff pruefen
-    workflow = await service.get_workflow(workflow_id, current_user.id, include_steps=False)
+    # Workflow-Zugriff pruefen (mit company_id)
+    workflow = await service.get_workflow(
+        workflow_id, current_user.id, company_id=company_id, include_steps=False
+    )
     if not workflow or workflow.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -629,6 +673,8 @@ async def update_step(
 
     step = await service.update_step(
         step_id=step_id,
+        user_id=current_user.id,
+        company_id=company_id,
         **data.model_dump(exclude_unset=True),
     )
 
@@ -654,17 +700,22 @@ async def delete_step(
     current_user: User = Depends(get_current_user),
 ) -> Response:
     """Loescht einen Step."""
+    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
+
     service = WorkflowService(db)
 
-    # Workflow-Zugriff pruefen
-    workflow = await service.get_workflow(workflow_id, current_user.id, include_steps=False)
+    # Workflow-Zugriff pruefen (mit company_id)
+    workflow = await service.get_workflow(
+        workflow_id, current_user.id, company_id=company_id, include_steps=False
+    )
     if not workflow or workflow.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Workflow nicht gefunden oder keine Berechtigung",
         )
 
-    success = await service.delete_step(step_id)
+    success = await service.delete_step(step_id, user_id=current_user.id, company_id=company_id)
 
     if not success:
         raise HTTPException(
@@ -687,10 +738,15 @@ async def reorder_steps(
     current_user: User = Depends(get_current_user),
 ) -> List[StepResponse]:
     """Ordnet Steps neu an."""
+    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
+
     service = WorkflowService(db)
 
-    # Workflow-Zugriff pruefen
-    workflow = await service.get_workflow(workflow_id, current_user.id, include_steps=False)
+    # Workflow-Zugriff pruefen (mit company_id)
+    workflow = await service.get_workflow(
+        workflow_id, current_user.id, company_id=company_id, include_steps=False
+    )
     if not workflow or workflow.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -700,9 +756,11 @@ async def reorder_steps(
     await service.reorder_steps(
         workflow_id=workflow_id,
         step_orders=[{"step_id": str(s.step_id), "step_order": s.step_order} for s in step_orders],
+        user_id=current_user.id,
+        company_id=company_id,
     )
 
-    steps = await service.get_steps(workflow_id)
+    steps = await service.get_steps(workflow_id, user_id=current_user.id, company_id=company_id)
 
     return [StepResponse.model_validate(s) for s in steps]
 
@@ -719,10 +777,15 @@ async def batch_update_steps(
     current_user: User = Depends(get_current_user),
 ) -> List[StepResponse]:
     """Aktualisiert mehrere Steps (ReactFlow Bulk-Update)."""
+    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
+
     service = WorkflowService(db)
 
-    # Workflow-Zugriff pruefen
-    workflow = await service.get_workflow(workflow_id, current_user.id, include_steps=False)
+    # Workflow-Zugriff pruefen (mit company_id)
+    workflow = await service.get_workflow(
+        workflow_id, current_user.id, company_id=company_id, include_steps=False
+    )
     if not workflow or workflow.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -732,6 +795,8 @@ async def batch_update_steps(
     updated_steps = await service.batch_update_steps(
         workflow_id=workflow_id,
         steps_data=steps_data,
+        user_id=current_user.id,
+        company_id=company_id,
     )
 
     return [StepResponse.model_validate(s) for s in updated_steps]
@@ -755,6 +820,9 @@ async def execute_workflow(
     current_user: User = Depends(get_current_user),
 ) -> ExecutionResponse:
     """Startet eine Workflow-Ausfuehrung."""
+    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
+
     step_executor = WorkflowStepExecutor(db)
     execution_service = WorkflowExecutionService(db, step_executor)
 
@@ -762,6 +830,7 @@ async def execute_workflow(
         execution = await execution_service.start_execution(
             workflow_id=workflow_id,
             user_id=current_user.id,
+            company_id=company_id,
             document_id=data.document_id,
             initial_variables=data.variables,
         )
@@ -789,9 +858,12 @@ async def get_workflow_executions(
     current_user: User = Depends(get_current_user),
 ) -> ExecutionListResponse:
     """Ruft Ausfuehrungen eines Workflows ab."""
+    # SECURITY: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
     execution_service = WorkflowExecutionService(db)
 
     executions, total = await execution_service.list_executions(
+        company_id=company_id,  # SECURITY: Multi-Tenant Filter
         workflow_id=workflow_id,
         user_id=current_user.id,
         status=status_filter,
@@ -818,11 +890,14 @@ async def get_execution(
     current_user: User = Depends(get_current_user),
 ) -> ExecutionResponse:
     """Ruft eine Ausfuehrung nach ID ab."""
+    # SECURITY: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
     execution_service = WorkflowExecutionService(db)
 
     execution = await execution_service.get_execution(
         execution_id=execution_id,
         user_id=current_user.id,
+        company_id=company_id,  # SECURITY: Multi-Tenant Validation
     )
 
     if not execution:
@@ -845,17 +920,23 @@ async def get_step_executions(
     current_user: User = Depends(get_current_user),
 ) -> List[StepExecutionResponse]:
     """Ruft Step-Ausfuehrungen ab."""
+    # SECURITY: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
     execution_service = WorkflowExecutionService(db)
 
-    # Execution-Zugriff pruefen
-    execution = await execution_service.get_execution(execution_id, current_user.id)
+    # Execution-Zugriff pruefen (mit company_id Validierung)
+    execution = await execution_service.get_execution(
+        execution_id, current_user.id, company_id=company_id
+    )
     if not execution:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Ausfuehrung nicht gefunden",
         )
 
-    step_executions = await execution_service.get_step_executions(execution_id)
+    step_executions = await execution_service.get_step_executions(
+        execution_id, user_id=current_user.id, company_id=company_id
+    )
 
     return [StepExecutionResponse.model_validate(se) for se in step_executions]
 
@@ -871,11 +952,14 @@ async def pause_execution(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, bool]:
     """Pausiert eine laufende Ausfuehrung."""
+    # SECURITY: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
     execution_service = WorkflowExecutionService(db)
 
     success = await execution_service.pause_execution(
         execution_id=execution_id,
         user_id=current_user.id,
+        company_id=company_id,  # SECURITY: Multi-Tenant Validation
     )
 
     if not success:
@@ -898,12 +982,15 @@ async def resume_execution(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, bool]:
     """Setzt eine pausierte Ausfuehrung fort."""
+    # SECURITY: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
     step_executor = WorkflowStepExecutor(db)
     execution_service = WorkflowExecutionService(db, step_executor)
 
     success = await execution_service.resume_execution(
         execution_id=execution_id,
         user_id=current_user.id,
+        company_id=company_id,  # SECURITY: Multi-Tenant Validation
     )
 
     if not success:
@@ -926,11 +1013,14 @@ async def cancel_execution(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, bool]:
     """Bricht eine Ausfuehrung ab."""
+    # SECURITY: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
     execution_service = WorkflowExecutionService(db)
 
     success = await execution_service.cancel_execution(
         execution_id=execution_id,
         user_id=current_user.id,
+        company_id=company_id,  # SECURITY: Multi-Tenant Validation
     )
 
     if not success:
@@ -954,12 +1044,15 @@ async def retry_execution(
     current_user: User = Depends(get_current_user),
 ) -> ExecutionResponse:
     """Wiederholt eine fehlgeschlagene Ausfuehrung."""
+    # SECURITY: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
     step_executor = WorkflowStepExecutor(db)
     execution_service = WorkflowExecutionService(db, step_executor)
 
     new_execution = await execution_service.retry_execution(
         execution_id=execution_id,
         user_id=current_user.id,
+        company_id=company_id,  # SECURITY: Multi-Tenant Validation
     )
 
     if not new_execution:
@@ -987,9 +1080,12 @@ async def list_templates(
     current_user: User = Depends(get_current_user),
 ) -> List[WorkflowResponse]:
     """Listet verfuegbare Workflow-Templates."""
+    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
+
     service = WorkflowService(db)
 
-    templates = await service.list_templates(category=category)
+    templates = await service.list_templates(company_id=company_id, category=category)
 
     return [WorkflowResponse.model_validate(t) for t in templates]
 
@@ -1005,11 +1101,35 @@ async def get_template(
     current_user: User = Depends(get_current_user),
 ) -> WorkflowResponse:
     """Ruft ein Template nach ID ab."""
+    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    # Templates koennen company-spezifisch oder global (NULL) sein
+    company_id = await get_user_company_id(db, current_user)
+
     service = WorkflowService(db)
 
-    template = await service.get_workflow(template_id, include_steps=True)
+    # Template laden - entweder Company-spezifisch oder global
+    from sqlalchemy import select, and_, or_
+    from app.db.models import Workflow
+    from sqlalchemy.orm import selectinload
 
-    if not template or not template.is_template:
+    query = (
+        select(Workflow)
+        .where(
+            and_(
+                Workflow.id == template_id,
+                Workflow.is_template == True,  # noqa: E712
+                or_(
+                    Workflow.company_id == company_id,
+                    Workflow.company_id.is_(None),  # Globale Templates
+                ),
+            )
+        )
+        .options(selectinload(Workflow.steps))
+    )
+    result = await db.execute(query)
+    template = result.scalar_one_or_none()
+
+    if not template:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Template nicht gefunden",
@@ -1031,13 +1151,21 @@ async def instantiate_template(
     current_user: User = Depends(get_current_user),
 ) -> WorkflowResponse:
     """Erstellt einen Workflow aus einem Template."""
+    # SECURITY FIX: company_id aus User-Context, NICHT aus Request-Body (IDOR Prevention)
+    company_id = await get_user_company_id(db, current_user)
+    if not company_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Benutzer muss einer Firma zugeordnet sein",
+        )
+
     service = WorkflowService(db)
 
     workflow = await service.instantiate_template(
         template_id=template_id,
         user_id=current_user.id,
         name=data.name,
-        company_id=data.company_id,
+        company_id=company_id,  # SECURITY: Aus User-Context, nicht Request
     )
 
     if not workflow:
@@ -1140,11 +1268,15 @@ async def get_webhook_config(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """Ruft die Webhook-Konfiguration eines Workflows ab."""
+    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
+
     trigger_service = WorkflowTriggerService(db)
 
     config = await trigger_service.get_webhook_config(
         workflow_id=workflow_id,
         user_id=current_user.id,
+        company_id=company_id,
     )
 
     if not config:
@@ -1167,11 +1299,15 @@ async def regenerate_webhook_secret(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, str]:
     """Generiert ein neues Webhook-Secret."""
+    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
+
     trigger_service = WorkflowTriggerService(db)
 
     new_secret = await trigger_service.regenerate_webhook_secret(
         workflow_id=workflow_id,
         user_id=current_user.id,
+        company_id=company_id,
     )
 
     if not new_secret:
@@ -1199,9 +1335,16 @@ async def get_workflow_stats(
     current_user: User = Depends(get_current_user),
 ) -> WorkflowStats:
     """Ruft Statistiken fuer einen Workflow ab."""
+    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
+
     service = WorkflowService(db)
 
-    stats = await service.get_workflow_stats(workflow_id)
+    stats = await service.get_workflow_stats(
+        workflow_id=workflow_id,
+        user_id=current_user.id,
+        company_id=company_id,
+    )
 
     if not stats:
         raise HTTPException(
@@ -1222,24 +1365,38 @@ async def get_overview_stats(
     current_user: User = Depends(get_current_user),
 ) -> OverviewStats:
     """Ruft Gesamt-Statistiken ab."""
-    from sqlalchemy import func, and_
+    from sqlalchemy import func, and_, or_
     from app.db.models import Workflow, WorkflowExecution
 
-    # Workflows zaehlen
+    # SECURITY: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
+
+    # Workflows zaehlen - filtert nach user_id UND company_id
+    workflow_conditions = [Workflow.user_id == current_user.id]
+    if company_id:
+        workflow_conditions.append(Workflow.company_id == company_id)
+
     workflow_query = select(
         func.count(Workflow.id).label("total"),
         func.sum(func.cast(Workflow.is_active == True, Integer)).label("active"),  # noqa: E712
-    ).where(Workflow.user_id == current_user.id)
+    ).where(and_(*workflow_conditions))
 
     from sqlalchemy import Integer
 
     result = await db.execute(workflow_query)
     workflow_row = result.one()
 
-    # Executions zaehlen
+    # SECURITY: Subquery fuer Workflow-IDs mit company_id Filter
+    workflow_ids_subquery = select(Workflow.id).where(and_(*workflow_conditions)).scalar_subquery()
+
+    # Executions zaehlen - nur fuer Workflows der eigenen Company
+    exec_conditions = [WorkflowExecution.user_id == current_user.id]
+    if company_id:
+        exec_conditions.append(WorkflowExecution.workflow_id.in_(workflow_ids_subquery))
+
     exec_query = select(
         func.count(WorkflowExecution.id).label("total"),
-    ).where(WorkflowExecution.user_id == current_user.id)
+    ).where(and_(*exec_conditions))
 
     exec_result = await db.execute(exec_query)
     exec_row = exec_result.one()
@@ -1247,27 +1404,19 @@ async def get_overview_stats(
     # Executions heute
     from datetime import date
 
+    today_conditions = exec_conditions + [func.date(WorkflowExecution.started_at) == date.today()]
     today_query = select(
         func.count(WorkflowExecution.id).label("today"),
-    ).where(
-        and_(
-            WorkflowExecution.user_id == current_user.id,
-            func.date(WorkflowExecution.started_at) == date.today(),
-        )
-    )
+    ).where(and_(*today_conditions))
 
     today_result = await db.execute(today_query)
     today_row = today_result.one()
 
     # Success Rate
+    success_conditions = exec_conditions + [WorkflowExecution.status == "completed"]
     success_query = select(
         func.count(WorkflowExecution.id).label("completed"),
-    ).where(
-        and_(
-            WorkflowExecution.user_id == current_user.id,
-            WorkflowExecution.status == "completed",
-        )
-    )
+    ).where(and_(*success_conditions))
 
     success_result = await db.execute(success_query)
     success_row = success_result.one()
@@ -1295,11 +1444,29 @@ async def get_execution_history(
     current_user: User = Depends(get_current_user),
 ) -> List[Dict[str, Any]]:
     """Ruft Ausfuehrungs-Historie ab."""
-    from sqlalchemy import func, and_
+    from sqlalchemy import func, and_, Integer
     from datetime import datetime, timedelta, timezone
-    from app.db.models import WorkflowExecution
+    from app.db.models import Workflow, WorkflowExecution
+
+    # SECURITY: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
 
     start_date = datetime.now(timezone.utc) - timedelta(days=days)
+
+    # Base conditions
+    conditions = [
+        WorkflowExecution.user_id == current_user.id,
+        WorkflowExecution.started_at >= start_date,
+    ]
+
+    # SECURITY: Filter nach company_id via Workflow-Subquery
+    if company_id:
+        workflow_ids_subquery = (
+            select(Workflow.id)
+            .where(and_(Workflow.user_id == current_user.id, Workflow.company_id == company_id))
+            .scalar_subquery()
+        )
+        conditions.append(WorkflowExecution.workflow_id.in_(workflow_ids_subquery))
 
     query = (
         select(
@@ -1312,17 +1479,10 @@ async def get_execution_history(
                 func.cast(WorkflowExecution.status == "failed", Integer)
             ).label("failed"),
         )
-        .where(
-            and_(
-                WorkflowExecution.user_id == current_user.id,
-                WorkflowExecution.started_at >= start_date,
-            )
-        )
+        .where(and_(*conditions))
         .group_by(func.date(WorkflowExecution.started_at))
         .order_by(func.date(WorkflowExecution.started_at))
     )
-
-    from sqlalchemy import Integer
 
     result = await db.execute(query)
     rows = result.all()

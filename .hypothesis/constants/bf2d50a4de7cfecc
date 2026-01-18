@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\dataset\dataset.py
+# hypothesis_version: 6.148.7
+
+[1024, 10000, 'MultiSlotDataFeed', 'MultiSlotDataset', 'PaddleBoxDataFeed', 'SlotRecordDataset', 'batch_size', 'candidate_size', 'cat', 'download_cmd', 'enable_pv_merge', 'fea_eval', 'float', 'fs_name', 'fs_ugi', 'input_type', 'int', 'merge_by_sid', 'merge_size', 'parse_content', 'parse_ins_id', 'parse_logkey', 'pipe_command', 'pv_batch_size', 'queue_num', 'r', 'rank_offset', 'thread_num', 'uint64', 'use_var']

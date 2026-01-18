@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\push_notifications.py
+# hypothesis_version: 6.148.7
+
+[100, 255, '/push', '/stats', '/subscriptions', '/test', '/track-click', '/vapid-public-key', 'Auth Secret', 'Betriebssystem', 'Browser Name', 'Expiration Timestamp', 'Geraetename', 'Geraetetyp', 'Notification Tag', 'P-256 Public Key', 'Push Notifications', 'Subscription ID', 'Subscription Keys', 'Test Notification', 'test', 'test-notification', 'timestamp', 'type']

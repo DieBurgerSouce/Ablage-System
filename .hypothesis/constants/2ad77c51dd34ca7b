@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\query_expansion_service.py
+# hypothesis_version: 6.148.7
+
+[' & ', '[^\\w\\säöüÄÖÜß]', '_', 'ae', 'business_german.json', 'data', 'expanded', 'expansions', 'oe', 'original', 'r', 'ss', 'synonyms', 'synonyms_load_error', 'synonyms_loaded', 'term_count', 'ue', 'utf-8', 'ß', 'ä', 'ö', 'ü']

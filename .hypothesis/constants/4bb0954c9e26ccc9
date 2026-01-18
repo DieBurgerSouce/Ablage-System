@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_optimizers\sharding\fp16_helper.py
+# hypothesis_version: 6.148.7
+
+['@GRAD', '@MERGED', '@cast_int32', 'FoundInfinite', 'Out', 'X', 'all_reduce', 'cast', 'in_dtype', 'op_type', 'out', 'out_dtype', 'ring_id', 'update_loss_scaling', 'x']

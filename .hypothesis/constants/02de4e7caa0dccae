@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\postprocess\__init__.py
+# hypothesis_version: 6.148.7
+
+['ABINetLabelDecode', 'AttnLabelDecode', 'CANLabelDecode', 'CPPDLabelDecode', 'CTCLabelDecode', 'CTPostProcess', 'ClsPostProcess', 'DBPostProcess', 'DRRGPostprocess', 'EASTPostProcess', 'FCEPostProcess', 'LaTeXOCRDecode', 'NRTRLabelDecode', 'None', 'PGPostProcess', 'PRENLabelDecode', 'PSEPostProcess', 'ParseQLabelDecode', 'PicoDetPostProcess', 'RFLLabelDecode', 'SARLabelDecode', 'SASTPostProcess', 'SATRNLabelDecode', 'SEEDLabelDecode', 'SPINLabelDecode', 'SRNLabelDecode', 'TableLabelDecode', 'UniMERNetDecode', 'VLLabelDecode', 'ViTSTRLabelDecode', 'build_post_process', 'name']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\comments.py
+# hypothesis_version: 6.148.7
+
+[100, '/documents', 'Antwort hinzugefuegt', 'Kommentar loeschen', 'Kommentare auflisten', 'Reaktion entfernen', 'Reaktion hinzufuegen', 'comment', 'comment_created', 'comment_deleted', 'comment_id', 'comment_updated', 'comments', 'count', 'emoji', 'endIndex', 'invalid_mention_uuid', 'reaction_added', 'reaction_removed', 'startIndex', 'userId', 'userIds', 'userName']

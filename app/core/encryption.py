@@ -324,6 +324,40 @@ def decrypt_totp_secret(encrypted_secret: str, user_id: str) -> str:
     return decrypt_data(encrypted_secret, associated_data=f"totp:{user_id}")
 
 
+def encrypt_api_key(api_key: str, connection_id: str) -> str:
+    """
+    Verschlüsselt einen API-Key für ERP-Verbindungen.
+
+    Verwendet Connection-ID als AAD für zusätzliche Sicherheit
+    (verhindert das Übertragen verschlüsselter Keys zwischen Verbindungen).
+
+    Args:
+        api_key: Der zu verschlüsselnde API-Key
+        connection_id: ERP-Connection-ID als AAD
+
+    Returns:
+        Verschlüsselter API-Key
+    """
+    return encrypt_data(api_key, associated_data=f"erp_connection:{connection_id}")
+
+
+def decrypt_api_key(encrypted_api_key: str, connection_id: str) -> str:
+    """
+    Entschlüsselt einen API-Key für ERP-Verbindungen.
+
+    Args:
+        encrypted_api_key: Verschlüsselter API-Key
+        connection_id: ERP-Connection-ID als AAD
+
+    Returns:
+        Entschlüsselter API-Key
+
+    Raises:
+        DecryptionError: Wenn Entschlüsselung fehlschlägt
+    """
+    return decrypt_data(encrypted_api_key, associated_data=f"erp_connection:{connection_id}")
+
+
 def rotate_encryption_key(
     old_key: bytes,
     new_key: bytes,

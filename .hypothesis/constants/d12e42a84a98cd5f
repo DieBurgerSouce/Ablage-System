@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\amp\grad_scaler.py
+# hypothesis_version: 6.148.7
+
+[0.5, 1.0, 2.0, 1000, 2000, 'AmpScaler.scale()', '_param_groups', '_set_auxiliary_var', 'decr_count', 'decr_ratio', 'float16', 'float32', 'found_inf', 'incr_count', 'incr_every_n_steps', 'incr_ratio', 'loss_scaling', 'params', 'scale', 'state', 'var']

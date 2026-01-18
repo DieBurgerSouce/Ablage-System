@@ -179,39 +179,60 @@ class BaseParser(ABC):
         pass
 
     def _compile_reference_patterns(self) -> Dict[str, re.Pattern]:
-        """Kompiliere Regex-Patterns fuer Referenz-Extraktion."""
+        """Kompiliere Regex-Patterns fuer Referenz-Extraktion.
+
+        WICHTIG: Mehrere Patterns pro Typ fuer praezises Matching.
+        Laengere Praefixe (RECHNUNG) haben Vorrang vor kuerzeren (RE).
+        Verhindert False Positives wie 'chnung' bei 'Rechnung' oder 'ferenz' bei 'Referenz'.
+        """
         return {
-            # Rechnungsnummern
-            "invoice_number": re.compile(
-                r"(?:RE|RG|INV|RECHNUNG|INVOICE)[.\-/\s]?(?:NR\.?|NO\.?|NUM\.?)?[:\s]?\s*"
-                r"([A-Z0-9][A-Z0-9\-/]{2,20})",
-                re.IGNORECASE
-            ),
+            # Rechnungsnummern - Liste von Patterns fuer verschiedene Formate
+            "invoice_number": [
+                # Vollstaendige Woerter: RECHNUNG, INVOICE, FAKTURA
+                re.compile(
+                    r"(?:RECHNUNG|INVOICE|FAKTURA)[\s.\-:/#]*(?:NR\.?|NO\.?|NUM\.?)?[\s.:]*"
+                    r"([A-Z0-9][A-Z0-9\-/]{2,20})(?=[\s\.,;]|$)",
+                    re.IGNORECASE
+                ),
+                # INV mit Bindestrich am Anfang (INV-2024-0042)
+                re.compile(r"\b(INV[\-][A-Z0-9\-/]{4,20})\b", re.IGNORECASE),
+                # RE/RG mit explizitem Nr/No
+                re.compile(
+                    r"(?:^|[\s])(?:RE|RG)\s*(?:NR\.?|NO\.?)[\s.:]*"
+                    r"([A-Z0-9][A-Z0-9\-/]{2,20})(?=[\s\.,;]|$)",
+                    re.IGNORECASE
+                ),
+                # RE/RG gefolgt von einer Nummer (muss mit Ziffer beginnen um 'Referenz' zu vermeiden)
+                re.compile(
+                    r"(?:^|[\s])(?:RE|RG)\s+(\d[A-Z0-9\-/]{2,20})(?=[\s\.,;]|$)",
+                    re.IGNORECASE
+                ),
+            ],
             # Kundennummern
             "customer_number": re.compile(
-                r"(?:KD|KUNDE|KUNDEN|CUSTOMER)[.\-/\s]?(?:NR\.?|NO\.?|NUM\.?)?[:\s]?\s*"
-                r"([A-Z0-9]{3,15})",
+                r"(?:^|[\s])(?:KD|KUNDE|KUNDEN|CUSTOMER)[\-.\s]*(?:NR\.?|NO\.?|NUM\.?)?[\s.:]*"
+                r"([A-Z0-9]{3,15})(?=[\s\.,;]|$)",
                 re.IGNORECASE
             ),
             # Bestellnummern
             "order_number": re.compile(
-                r"(?:BEST|ORDER|AUFTRAG)[.\-/\s]?(?:NR\.?|NO\.?|NUM\.?)?[:\s]?\s*"
-                r"([A-Z0-9][A-Z0-9\-/]{2,20})",
+                r"(?:^|[\s])(?:BEST|ORDER|AUFTRAG)[\-.\s]*(?:NR\.?|NO\.?|NUM\.?)?[\s.:]*"
+                r"([A-Z0-9][A-Z0-9\-/]{2,20})(?=[\s\.,;]|$)",
                 re.IGNORECASE
             ),
             # SEPA End-to-End-ID
             "end_to_end_id": re.compile(
-                r"(?:EREF\+|END-TO-END-ID:?|E2E:?)\s*([A-Z0-9\-]{1,35})",
+                r"(?:EREF\+|END-TO-END-ID:?|E2E:?)\s*([A-Z0-9\-]{1,35})(?=[\s]|$)",
                 re.IGNORECASE
             ),
             # SEPA Mandatsreferenz
             "mandate_id": re.compile(
-                r"(?:MREF\+|MANDATE-ID:?|MANDAT:?)\s*([A-Z0-9\-]{1,35})",
+                r"(?:MREF\+|MANDATE-ID:?|MANDAT:?)\s*([A-Z0-9\-]{1,35})(?=[\s]|$)",
                 re.IGNORECASE
             ),
             # SEPA Glaeubiger-ID
             "creditor_id": re.compile(
-                r"(?:CRED\+|CREDITOR-ID:?|GLAUB-ID:?)\s*([A-Z]{2}\d{2}[A-Z0-9]{1,28})",
+                r"(?:CRED\+|CREDITOR-ID:?|GLAUB-ID:?)\s*([A-Z]{2}\d{2}[A-Z0-9]{1,28})(?=[\s]|$)",
                 re.IGNORECASE
             ),
         }
@@ -237,9 +258,15 @@ class BaseParser(ABC):
 
         result = {}
 
-        # Rechnungsnummern
-        matches = self._reference_patterns["invoice_number"].findall(text)
-        result["invoice_numbers"] = list(set(m.strip() for m in matches if m.strip()))
+        # Rechnungsnummern - mehrere Patterns durchlaufen
+        invoice_patterns = self._reference_patterns["invoice_number"]
+        invoice_matches = set()
+        for pattern in invoice_patterns:
+            for match in pattern.finditer(text):
+                value = match.group(1).strip()
+                if value:
+                    invoice_matches.add(value)
+        result["invoice_numbers"] = list(invoice_matches)
 
         # Kundennummern
         matches = self._reference_patterns["customer_number"].findall(text)

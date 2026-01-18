@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\vision\transforms\functional_pil.py
+# hypothesis_version: 6.148.7
+
+[-0.5, 0.5, 2.0, 255.0, 255, 256, '1', 'CHW', 'F', 'HSV', 'HWC', 'I', 'I;16', 'L', 'P', 'RGB', 'YCbCr', 'bicubic', 'bilinear', 'box', 'constant', 'edge', 'hamming', 'lanczos', 'nearest', 'reflect', 'symmetric', 'uint8']

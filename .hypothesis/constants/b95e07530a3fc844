@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\passes\auto_parallel_sequence_parallel_optimization.py
+# hypothesis_version: 6.148.7
+
+['Out', 'X', 'all_reduce', 'axis', 'dist_context', 'global_rank', 'nranks', 'op_namescope', 'out', 'reduce_scatter', 'reduce_type', 'ring_id', 'split', 'x']

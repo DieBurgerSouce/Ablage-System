@@ -2,7 +2,7 @@
 
 > **Detaillierte Dokumentation**: `.claude/CLAUDE.md`
 > **Memory-Dateien**: `.claude/memory/` (Auto-Managed)
-> **Letzte Aktualisierung**: 2026-01-10
+> **Letzte Aktualisierung**: 2026-01-17
 
 ---
 
@@ -158,6 +158,135 @@ primary_supplier_number: str  # Hauptlieferantennummer
 ```
 
 **Details**: Siehe `.claude/Docs/Integrations/Lexware.md`
+
+### Entity Risk Scoring (Januar 2026)
+
+**Status**: Production-Ready | **Migration**: 092, 093
+
+| Service | Beschreibung |
+|---------|--------------|
+| `RiskScoringService` | Risiko-Score Berechnung (0-100) für Geschäftspartner |
+| `InvoiceTracking` | Rechnungsverfolgung mit Mahnstufen (0-4) |
+
+**Risk Faktoren:**
+- payment_delay (35%): Zahlungsverzögerung in Tagen
+- default_rate (25%): Ausfallrate (überfällig/gesamt)
+- invoice_volume (15%): Rechnungsvolumen (höher = weniger Risiko)
+- document_frequency (10%): Regelmäßigkeit der Dokumente
+- relationship_age (15%): Beziehungsdauer in Monaten
+
+**API Endpoints:**
+- `GET/POST/PATCH/DELETE /api/v1/invoices/*` - CRUD
+- `POST /api/v1/invoices/{id}/mark-paid` - Rechnung bezahlt
+- `POST /api/v1/invoices/{id}/increase-dunning` - Mahnstufe erhöhen
+
+**Celery Tasks:**
+- `risk_scoring.calculate_all` - Täglich 02:00 (maintenance queue)
+- `risk_scoring.calculate_single` - Nach Invoice-Updates (metadata queue)
+- `risk_scoring.check_high_risk_entities` - High-Risk Alert (threshold: 75)
+
+**SECURITY**: NIEMALS Entity-Namen in Logs/Responses (PII-Compliance)
+
+### Skonto & Teilzahlungen (Januar 2026)
+
+**Status**: Production-Ready | **Migration**: 094
+
+| Service | Beschreibung |
+|---------|--------------|
+| `SkontoService` | Skonto-Berechnung, Deadline-Tracking, Auto-Detection |
+| `PartialPaymentService` | Teilzahlungen, Bank-Reconciliation |
+
+**API Endpoints:**
+- `GET/PATCH /api/v1/invoices/{id}/skonto` - Skonto verwalten
+- `POST /api/v1/invoices/{id}/apply-skonto` - Skonto anwenden
+- `GET /api/v1/invoices/skonto/upcoming` - Ablaufende Fristen
+- `POST/GET /api/v1/invoices/{id}/payments` - Teilzahlungen
+
+**Features:**
+- Auto-Detection von "2% Skonto 14 Tage" aus OCR
+- Deadline-Alerts vor Ablauf
+- Teilzahlungs-Tracking mit Status-Updates
+- Bank-Abgleich (Reconciliation)
+
+### Document Chain Tracking (Januar 2026)
+
+**Status**: Production-Ready | **Migration**: 095
+
+| Service | Beschreibung |
+|---------|--------------|
+| `DocumentChainService` | Auftragsketten Angebot→Auftrag→Lieferschein→Rechnung |
+
+**API Endpoints:**
+- `POST/GET /api/v1/document-chains` - Ketten erstellen/auflisten
+- `POST /api/v1/document-chains/link` - Dokumente verknuepfen
+- `GET /api/v1/document-chains/auto-match/{id}` - Auto-Matching
+- `GET /api/v1/document-chains/{id}/discrepancies` - Abweichungen
+
+**Features:**
+- Auto-Matching ueber Referenznummer (95%+), Kunde+Betrag (85%+)
+- Abweichungserkennung (Betraege, Mengen)
+- Kettenfortschritt-Tracking
+
+### Email & Folder Import (Januar 2026)
+
+**Status**: Production-Ready | **Frontend**: Vollstaendig
+
+| Service | Beschreibung |
+|---------|--------------|
+| `EmailImportService` | IMAP-Email-Abruf, Attachment-Extraktion, Entity-Matching |
+| `FolderImportService` | Dateisystem-Ueberwachung, Auto-Import |
+| `ImportRuleService` | Regelbasierte Verarbeitung (Bedingungen + Aktionen) |
+| `EmailSenderMatcherService` | Absender → Entity Zuordnung (85%+ Confidence) |
+
+**API Endpoints:**
+- `GET/POST/PATCH/DELETE /api/v1/imports/email/configs` - Email-Konfigurationen
+- `POST /api/v1/imports/email/configs/{id}/test` - IMAP-Verbindung testen
+- `POST /api/v1/imports/email/configs/{id}/sync` - Manueller Email-Sync
+- `GET/POST/PATCH/DELETE /api/v1/imports/folder/configs` - Folder-Konfigurationen
+- `POST /api/v1/imports/folder/configs/{id}/start|stop|poll` - Watcher-Steuerung
+- `GET/POST/PATCH/DELETE /api/v1/imports/rules` - Import-Regeln
+- `GET /api/v1/imports/logs` - Import-Logs mit Filterung
+
+**Celery Tasks (IMPORT_BEAT_SCHEDULE):**
+- `import.sync_all_email_configs` - Alle 15 Min
+- `import.poll_all_folder_configs` - Alle 5 Min
+- `import.retry_failed_imports` - Alle 30 Min
+- `import.cleanup_old_logs` - Taeglich 03:00
+- `import.check_connection_health` - Alle 30 Min
+
+**Features:**
+- IMAP Support mit SSL/TLS
+- Absender-Matching fuer automatische Entity-Zuordnung
+- Folder-Watching mit konfigurierbarem Polling
+- Import Rules mit Bedingungen und Aktionen
+- Automatischer Retry bei Fehlern
+
+**Frontend Routes:**
+- `/admin/imports/` - Import Dashboard
+- `/admin/imports/email` - Email-Konfigurationen
+- `/admin/imports/folder` - Folder-Konfigurationen
+- `/admin/imports/rules` - Import-Regeln Builder
+- `/admin/imports/logs` - Import-Logs
+
+**SECURITY**: Email-Passwoerter verschluesselt (AES-256-GCM), NIEMALS Email-Inhalte in Logs
+
+### Validation UI (Januar 2026)
+
+**Status**: Production-Ready | **Features**: Keyboard + Swipe
+
+**Keyboard Shortcuts:**
+- `A` - Genehmigen (Approve)
+- `R` - Ablehnen (Reject)
+- `J/K` - Naechstes/Vorheriges Item
+- `Enter/Space` - Item oeffnen
+- `Escape` - Auswahl aufheben
+- `Ctrl+A` - Alle auswaehlen
+
+**Mobile Swipe:**
+- Rechts swipen = Genehmigen (gruener Hintergrund)
+- Links swipen = Ablehnen (roter Hintergrund)
+- Threshold: 100px fuer Trigger
+- Animierte Feedback-Anzeige
 <!-- /AUTO-MANAGED: enterprise-features -->
 
 ---

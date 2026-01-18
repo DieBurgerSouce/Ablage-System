@@ -178,6 +178,12 @@ class DataExportService:
                 size_bytes=export.file_size_bytes
             )
 
+        except UserNotFoundError:
+            # UserNotFoundError direkt durchreichen
+            export.status = ExportStatus.FAILED
+            export.error_message = "User nicht gefunden"
+            await db.commit()
+            raise
         except Exception as e:
             export.status = ExportStatus.FAILED
             export.error_message = str(e)[:500]

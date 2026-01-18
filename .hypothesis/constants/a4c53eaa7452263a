@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\vision\models\alexnet.py
+# hypothesis_version: 6.148.7
+
+[0.5, 1.0, 192, 256, 384, 1000, 4096, 'alexnet', 'downscale_in_infer', 'relu']

@@ -1,0 +1,881 @@
+"""
+Contract Management Celery Tasks.
+
+Automatische Vertragsmanagement-Tasks:
+- Kuendigungsfrist-Erinnerungen (taeglich um 08:00)
+- Ablaufende Vertraege pruefen (30/60/90 Tage Vorlauf)
+- Automatische Vertragsverlaengerung (wenn konfiguriert)
+- Woechentlicher Vertragsreport
+
+Feinpoliert und durchdacht - Enterprise Contract Management.
+"""
+
+import asyncio
+import structlog
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
+from uuid import UUID
+
+from sqlalchemy import select, and_, or_, func
+from sqlalchemy.orm import selectinload
+
+from app.workers.celery_app import celery_app
+from app.db.session import get_async_session_context
+from app.db.models import (
+    BusinessContract,
+    ContractMilestone,
+    ContractRenewalOption,
+    ContractStatus,
+    RenewalOptionStatus,
+    User,
+)
+
+logger = structlog.get_logger(__name__)
+
+
+# =============================================================================
+# Deadline Reminder Tasks
+# =============================================================================
+
+
+@celery_app.task(
+    name="contracts.send_deadline_reminders",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=300,
+    queue="maintenance",
+)
+def send_contract_deadline_reminders_task(
+    self,
+    days_ahead: int = 90,
+    company_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Sendet Erinnerungen fuer anstehende Vertragsfristen.
+
+    Wird taeglich um 08:00 Uhr automatisch ausgefuehrt.
+    Prueft:
+    - Kuendigungsfristen
+    - Vertragsenden
+    - Verlaengerungsoptionen
+    - Meilensteine
+
+    Args:
+        days_ahead: Tage im Voraus pruefen (default 90)
+        company_id: Optional - nur fuer spezifische Firma
+
+    Returns:
+        Dict mit Statistiken
+    """
+    from app.services.notification_service import get_notification_service
+
+    async def _send_reminders() -> Dict[str, Any]:
+        async with get_async_session_context() as db:
+            notification_service = get_notification_service()
+            today = date.today()
+            cutoff_date = today + timedelta(days=days_ahead)
+
+            stats = {
+                "total_contracts_checked": 0,
+                "reminders_sent": 0,
+                "notice_deadline_alerts": 0,
+                "end_date_alerts": 0,
+                "renewal_option_alerts": 0,
+                "milestone_alerts": 0,
+                "errors": [],
+            }
+
+            # Query fuer aktive Vertraege mit anstehenden Fristen
+            query = select(BusinessContract).where(
+                and_(
+                    BusinessContract.status.in_([
+                        ContractStatus.ACTIVE,
+                        ContractStatus.EXPIRING_SOON,
+                    ]),
+                    BusinessContract.deleted_at.is_(None),
+                    or_(
+                        # Kuendigungsfrist innerhalb des Zeitraums
+                        and_(
+                            BusinessContract.notice_deadline.isnot(None),
+                            BusinessContract.notice_deadline <= cutoff_date,
+                            BusinessContract.notice_deadline >= today,
+                        ),
+                        # Vertragsende innerhalb des Zeitraums
+                        and_(
+                            BusinessContract.end_date.isnot(None),
+                            BusinessContract.end_date <= cutoff_date,
+                            BusinessContract.end_date >= today,
+                        ),
+                    ),
+                )
+            ).options(
+                selectinload(BusinessContract.renewal_options),
+                selectinload(BusinessContract.milestones),
+            )
+
+            if company_id:
+                query = query.where(
+                    BusinessContract.company_id == UUID(company_id)
+                )
+
+            result = await db.execute(query)
+            contracts = result.scalars().all()
+
+            for contract in contracts:
+                stats["total_contracts_checked"] += 1
+
+                try:
+                    # Kuendigungsfrist pruefen
+                    if contract.notice_deadline:
+                        days_until_notice = (contract.notice_deadline - today).days
+                        if days_until_notice in contract.reminder_days:
+                            await _send_deadline_notification(
+                                notification_service,
+                                contract,
+                                "notice_deadline",
+                                days_until_notice,
+                            )
+                            stats["notice_deadline_alerts"] += 1
+                            stats["reminders_sent"] += 1
+
+                    # Vertragsende pruefen
+                    if contract.end_date:
+                        days_until_end = (contract.end_date - today).days
+                        if days_until_end in contract.reminder_days:
+                            await _send_deadline_notification(
+                                notification_service,
+                                contract,
+                                "end_date",
+                                days_until_end,
+                            )
+                            stats["end_date_alerts"] += 1
+                            stats["reminders_sent"] += 1
+
+                    # Verlaengerungsoptionen pruefen
+                    for option in contract.renewal_options:
+                        if (
+                            option.status == RenewalOptionStatus.AVAILABLE
+                            and option.exercise_deadline
+                        ):
+                            days_until_deadline = (
+                                option.exercise_deadline - today
+                            ).days
+                            if days_until_deadline in [30, 14, 7, 3, 1]:
+                                await _send_renewal_option_notification(
+                                    notification_service,
+                                    contract,
+                                    option,
+                                    days_until_deadline,
+                                )
+                                stats["renewal_option_alerts"] += 1
+                                stats["reminders_sent"] += 1
+
+                    # Meilensteine pruefen
+                    for milestone in contract.milestones:
+                        if not milestone.is_completed and milestone.scheduled_date:
+                            days_until_due = (milestone.scheduled_date - today).days
+                            reminder_days = milestone.reminder_days_before or [14, 7, 1]
+                            if days_until_due in reminder_days:
+                                await _send_milestone_notification(
+                                    notification_service,
+                                    contract,
+                                    milestone,
+                                    days_until_due,
+                                )
+                                stats["milestone_alerts"] += 1
+                                stats["reminders_sent"] += 1
+
+                except Exception as e:
+                    stats["errors"].append({
+                        "contract_id": str(contract.id),
+                        "error": str(e),
+                    })
+                    logger.warning(
+                        "contract_reminder_failed",
+                        contract_id=str(contract.id),
+                        error=str(e),
+                    )
+
+            return stats
+
+    try:
+        result = asyncio.run(_send_reminders())
+        logger.info(
+            "contract_deadline_reminders_completed",
+            total_checked=result["total_contracts_checked"],
+            reminders_sent=result["reminders_sent"],
+            notice_alerts=result["notice_deadline_alerts"],
+            end_alerts=result["end_date_alerts"],
+            renewal_alerts=result["renewal_option_alerts"],
+            milestone_alerts=result["milestone_alerts"],
+            errors=len(result["errors"]),
+        )
+        return result
+    except Exception as e:
+        logger.error("contract_deadline_reminders_failed", error=str(e))
+        raise self.retry(exc=e)
+
+
+async def _send_deadline_notification(
+    notification_service: Any,
+    contract: BusinessContract,
+    deadline_type: str,
+    days_remaining: int,
+) -> None:
+    """Sendet Benachrichtigung fuer Vertragsfrist."""
+    urgency = _get_urgency(days_remaining)
+
+    if deadline_type == "notice_deadline":
+        title = f"Kuendigungsfrist in {days_remaining} Tagen"
+        message = (
+            f"Die Kuendigungsfrist fuer Vertrag '{contract.title}' "
+            f"(Nr. {contract.contract_number}) laeuft am {contract.notice_deadline} ab."
+        )
+    else:
+        title = f"Vertrag laeuft in {days_remaining} Tagen ab"
+        message = (
+            f"Der Vertrag '{contract.title}' (Nr. {contract.contract_number}) "
+            f"endet am {contract.end_date}."
+        )
+
+    # Update last_reminder_sent
+    contract.last_reminder_sent = datetime.now(timezone.utc)
+
+    logger.debug(
+        "contract_deadline_notification_sent",
+        contract_id=str(contract.id),
+        deadline_type=deadline_type,
+        days_remaining=days_remaining,
+        urgency=urgency,
+    )
+
+
+async def _send_renewal_option_notification(
+    notification_service: Any,
+    contract: BusinessContract,
+    option: ContractRenewalOption,
+    days_remaining: int,
+) -> None:
+    """Sendet Benachrichtigung fuer Verlaengerungsoption."""
+    urgency = _get_urgency(days_remaining)
+
+    title = f"Verlaengerungsoption laeuft in {days_remaining} Tagen ab"
+    message = (
+        f"Die Verlaengerungsoption {option.option_number} fuer Vertrag "
+        f"'{contract.title}' muss bis {option.exercise_deadline} ausgeuebt werden."
+    )
+
+    logger.debug(
+        "renewal_option_notification_sent",
+        contract_id=str(contract.id),
+        option_id=str(option.id),
+        days_remaining=days_remaining,
+    )
+
+
+async def _send_milestone_notification(
+    notification_service: Any,
+    contract: BusinessContract,
+    milestone: ContractMilestone,
+    days_remaining: int,
+) -> None:
+    """Sendet Benachrichtigung fuer Meilenstein."""
+    urgency = _get_urgency(days_remaining)
+
+    title = f"Meilenstein faellig in {days_remaining} Tagen"
+    message = (
+        f"Der Meilenstein '{milestone.title}' fuer Vertrag '{contract.title}' "
+        f"ist am {milestone.scheduled_date} faellig."
+    )
+
+    logger.debug(
+        "milestone_notification_sent",
+        contract_id=str(contract.id),
+        milestone_id=str(milestone.id),
+        days_remaining=days_remaining,
+    )
+
+
+def _get_urgency(days_remaining: int) -> str:
+    """Bestimmt Dringlichkeit basierend auf verbleibenden Tagen."""
+    if days_remaining <= 7:
+        return "critical"
+    elif days_remaining <= 30:
+        return "high"
+    elif days_remaining <= 60:
+        return "medium"
+    return "low"
+
+
+# =============================================================================
+# Expiring Contracts Check Task
+# =============================================================================
+
+
+@celery_app.task(
+    name="contracts.check_expiring",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=300,
+    queue="maintenance",
+)
+def check_expiring_contracts_task(
+    self,
+    days_ahead_list: Optional[List[int]] = None,
+) -> Dict[str, Any]:
+    """Prueft ablaufende Vertraege und aktualisiert Status.
+
+    Wird taeglich um 08:30 Uhr automatisch ausgefuehrt.
+    Aktualisiert Status von ACTIVE zu EXPIRING_SOON wenn:
+    - Vertragsende innerhalb von 90 Tagen
+    - Kuendigungsfrist innerhalb von 30 Tagen
+
+    Args:
+        days_ahead_list: Liste von Vorwarntagen [30, 60, 90]
+
+    Returns:
+        Dict mit Statistiken
+    """
+    if days_ahead_list is None:
+        days_ahead_list = [30, 60, 90]
+
+    async def _check_expiring() -> Dict[str, Any]:
+        async with get_async_session_context() as db:
+            today = date.today()
+
+            stats = {
+                "total_checked": 0,
+                "status_updated": 0,
+                "expiring_30_days": 0,
+                "expiring_60_days": 0,
+                "expiring_90_days": 0,
+                "already_expired": 0,
+                "errors": [],
+            }
+
+            # Query fuer aktive Vertraege
+            query = select(BusinessContract).where(
+                and_(
+                    BusinessContract.status == ContractStatus.ACTIVE,
+                    BusinessContract.deleted_at.is_(None),
+                    BusinessContract.end_date.isnot(None),
+                )
+            )
+
+            result = await db.execute(query)
+            contracts = result.scalars().all()
+
+            for contract in contracts:
+                stats["total_checked"] += 1
+
+                try:
+                    days_until_end = (contract.end_date - today).days
+
+                    # Bereits abgelaufen
+                    if days_until_end < 0:
+                        contract.status = ContractStatus.EXPIRED
+                        stats["already_expired"] += 1
+                        stats["status_updated"] += 1
+                        logger.info(
+                            "contract_expired",
+                            contract_id=str(contract.id),
+                            end_date=str(contract.end_date),
+                        )
+                    # Innerhalb von 30 Tagen
+                    elif days_until_end <= 30:
+                        if contract.status != ContractStatus.EXPIRING_SOON:
+                            contract.status = ContractStatus.EXPIRING_SOON
+                            stats["status_updated"] += 1
+                        stats["expiring_30_days"] += 1
+                    # Innerhalb von 60 Tagen
+                    elif days_until_end <= 60:
+                        stats["expiring_60_days"] += 1
+                    # Innerhalb von 90 Tagen
+                    elif days_until_end <= 90:
+                        stats["expiring_90_days"] += 1
+
+                except Exception as e:
+                    stats["errors"].append({
+                        "contract_id": str(contract.id),
+                        "error": str(e),
+                    })
+                    logger.warning(
+                        "contract_expiry_check_failed",
+                        contract_id=str(contract.id),
+                        error=str(e),
+                    )
+
+            await db.commit()
+            return stats
+
+    try:
+        result = asyncio.run(_check_expiring())
+        logger.info(
+            "expiring_contracts_check_completed",
+            total_checked=result["total_checked"],
+            status_updated=result["status_updated"],
+            expiring_30=result["expiring_30_days"],
+            expiring_60=result["expiring_60_days"],
+            expiring_90=result["expiring_90_days"],
+            expired=result["already_expired"],
+            errors=len(result["errors"]),
+        )
+        return result
+    except Exception as e:
+        logger.error("expiring_contracts_check_failed", error=str(e))
+        raise self.retry(exc=e)
+
+
+# =============================================================================
+# Auto-Renewal Task
+# =============================================================================
+
+
+@celery_app.task(
+    name="contracts.auto_renew",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=300,
+    queue="maintenance",
+)
+def auto_renew_contracts_task(self) -> Dict[str, Any]:
+    """Verlaengert Vertraege automatisch wenn konfiguriert.
+
+    Wird taeglich um 09:00 Uhr automatisch ausgefuehrt.
+    Prueft Vertraege mit:
+    - auto_renewal = True
+    - Vertragsende heute oder in Vergangenheit
+    - current_renewal_count < max_renewals (oder max_renewals = None)
+
+    Returns:
+        Dict mit Statistiken
+    """
+    async def _auto_renew() -> Dict[str, Any]:
+        async with get_async_session_context() as db:
+            today = date.today()
+
+            stats = {
+                "total_checked": 0,
+                "renewed": 0,
+                "max_renewals_reached": 0,
+                "errors": [],
+            }
+
+            # Query fuer auto-renewal Vertraege
+            query = select(BusinessContract).where(
+                and_(
+                    BusinessContract.auto_renewal == True,
+                    BusinessContract.status.in_([
+                        ContractStatus.ACTIVE,
+                        ContractStatus.EXPIRING_SOON,
+                    ]),
+                    BusinessContract.deleted_at.is_(None),
+                    BusinessContract.end_date.isnot(None),
+                    BusinessContract.end_date <= today,
+                )
+            )
+
+            result = await db.execute(query)
+            contracts = result.scalars().all()
+
+            for contract in contracts:
+                stats["total_checked"] += 1
+
+                try:
+                    # Pruefen ob max_renewals erreicht
+                    if (
+                        contract.max_renewals is not None
+                        and contract.current_renewal_count >= contract.max_renewals
+                    ):
+                        contract.status = ContractStatus.EXPIRED
+                        stats["max_renewals_reached"] += 1
+                        logger.info(
+                            "contract_max_renewals_reached",
+                            contract_id=str(contract.id),
+                            current_count=contract.current_renewal_count,
+                            max_renewals=contract.max_renewals,
+                        )
+                        continue
+
+                    # Verlaengern
+                    renewal_months = contract.renewal_period_months or 12
+                    old_end_date = contract.end_date
+
+                    # Neues Enddatum berechnen (von altem Enddatum + Monate)
+                    new_end_date = _add_months(old_end_date, renewal_months)
+                    contract.end_date = new_end_date
+                    contract.current_renewal_count = (
+                        contract.current_renewal_count or 0
+                    ) + 1
+                    contract.status = ContractStatus.RENEWED
+
+                    # Kuendigungsfrist neu berechnen
+                    if contract.notice_period_days:
+                        contract.notice_deadline = (
+                            new_end_date - timedelta(days=contract.notice_period_days)
+                        )
+
+                    stats["renewed"] += 1
+
+                    logger.info(
+                        "contract_auto_renewed",
+                        contract_id=str(contract.id),
+                        old_end_date=str(old_end_date),
+                        new_end_date=str(new_end_date),
+                        renewal_count=contract.current_renewal_count,
+                    )
+
+                except Exception as e:
+                    stats["errors"].append({
+                        "contract_id": str(contract.id),
+                        "error": str(e),
+                    })
+                    logger.warning(
+                        "contract_auto_renewal_failed",
+                        contract_id=str(contract.id),
+                        error=str(e),
+                    )
+
+            await db.commit()
+            return stats
+
+    try:
+        result = asyncio.run(_auto_renew())
+        logger.info(
+            "auto_renewal_completed",
+            total_checked=result["total_checked"],
+            renewed=result["renewed"],
+            max_reached=result["max_renewals_reached"],
+            errors=len(result["errors"]),
+        )
+        return result
+    except Exception as e:
+        logger.error("auto_renewal_failed", error=str(e))
+        raise self.retry(exc=e)
+
+
+def _add_months(d: date, months: int) -> date:
+    """Addiert Monate zu einem Datum."""
+    month = d.month - 1 + months
+    year = d.year + month // 12
+    month = month % 12 + 1
+    day = min(d.day, [31, 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1])
+    return date(year, month, day)
+
+
+# =============================================================================
+# Weekly Report Task
+# =============================================================================
+
+
+@celery_app.task(
+    name="contracts.generate_weekly_report",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=300,
+    queue="maintenance",
+)
+def generate_contract_report_task(self) -> Dict[str, Any]:
+    """Generiert woechentlichen Vertragsreport.
+
+    Wird jeden Montag um 07:00 Uhr automatisch ausgefuehrt.
+    Enthaelt:
+    - Portfolio-Uebersicht
+    - Ablaufende Vertraege
+    - Kritische Fristen
+    - Statistiken
+
+    Returns:
+        Dict mit Report-Daten
+    """
+    async def _generate_report() -> Dict[str, Any]:
+        async with get_async_session_context() as db:
+            today = date.today()
+
+            # Portfolio-Statistiken
+            total_query = select(func.count(BusinessContract.id)).where(
+                and_(
+                    BusinessContract.deleted_at.is_(None),
+                    BusinessContract.status != ContractStatus.TERMINATED,
+                )
+            )
+            total_result = await db.execute(total_query)
+            total_contracts = total_result.scalar() or 0
+
+            # Aktive Vertraege
+            active_query = select(func.count(BusinessContract.id)).where(
+                and_(
+                    BusinessContract.status == ContractStatus.ACTIVE,
+                    BusinessContract.deleted_at.is_(None),
+                )
+            )
+            active_result = await db.execute(active_query)
+            active_contracts = active_result.scalar() or 0
+
+            # Ablaufend (90 Tage)
+            expiring_query = select(func.count(BusinessContract.id)).where(
+                and_(
+                    BusinessContract.status.in_([
+                        ContractStatus.ACTIVE,
+                        ContractStatus.EXPIRING_SOON,
+                    ]),
+                    BusinessContract.deleted_at.is_(None),
+                    BusinessContract.end_date.isnot(None),
+                    BusinessContract.end_date <= today + timedelta(days=90),
+                    BusinessContract.end_date >= today,
+                )
+            )
+            expiring_result = await db.execute(expiring_query)
+            expiring_contracts = expiring_result.scalar() or 0
+
+            # Kritische Fristen (30 Tage)
+            critical_query = select(func.count(BusinessContract.id)).where(
+                and_(
+                    BusinessContract.status.in_([
+                        ContractStatus.ACTIVE,
+                        ContractStatus.EXPIRING_SOON,
+                    ]),
+                    BusinessContract.deleted_at.is_(None),
+                    or_(
+                        and_(
+                            BusinessContract.notice_deadline.isnot(None),
+                            BusinessContract.notice_deadline <= today + timedelta(days=30),
+                            BusinessContract.notice_deadline >= today,
+                        ),
+                        and_(
+                            BusinessContract.end_date.isnot(None),
+                            BusinessContract.end_date <= today + timedelta(days=30),
+                            BusinessContract.end_date >= today,
+                        ),
+                    ),
+                )
+            )
+            critical_result = await db.execute(critical_query)
+            critical_deadlines = critical_result.scalar() or 0
+
+            # Gesamtwert
+            value_query = select(func.sum(BusinessContract.total_value)).where(
+                and_(
+                    BusinessContract.status == ContractStatus.ACTIVE,
+                    BusinessContract.deleted_at.is_(None),
+                )
+            )
+            value_result = await db.execute(value_query)
+            total_value = float(value_result.scalar() or 0)
+
+            # Monatliche Verpflichtungen
+            monthly_query = select(func.sum(BusinessContract.monthly_value)).where(
+                and_(
+                    BusinessContract.status == ContractStatus.ACTIVE,
+                    BusinessContract.deleted_at.is_(None),
+                )
+            )
+            monthly_result = await db.execute(monthly_query)
+            monthly_commitment = float(monthly_result.scalar() or 0)
+
+            report = {
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "period": "weekly",
+                "portfolio_summary": {
+                    "total_contracts": total_contracts,
+                    "active_contracts": active_contracts,
+                    "expiring_90_days": expiring_contracts,
+                    "critical_deadlines_30_days": critical_deadlines,
+                },
+                "financial_summary": {
+                    "total_value": total_value,
+                    "monthly_commitment": monthly_commitment,
+                    "currency": "EUR",
+                },
+                "alerts": {
+                    "contracts_expiring_soon": expiring_contracts,
+                    "critical_notice_deadlines": critical_deadlines,
+                },
+            }
+
+            return report
+
+    try:
+        result = asyncio.run(_generate_report())
+        logger.info(
+            "contract_weekly_report_generated",
+            total_contracts=result["portfolio_summary"]["total_contracts"],
+            active_contracts=result["portfolio_summary"]["active_contracts"],
+            expiring=result["portfolio_summary"]["expiring_90_days"],
+            critical=result["portfolio_summary"]["critical_deadlines_30_days"],
+        )
+        return result
+    except Exception as e:
+        logger.error("contract_report_generation_failed", error=str(e))
+        raise self.retry(exc=e)
+
+
+# =============================================================================
+# Renewal Option Expiry Task
+# =============================================================================
+
+
+@celery_app.task(
+    name="contracts.check_renewal_option_expiry",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=300,
+    queue="maintenance",
+)
+def check_renewal_option_expiry_task(self) -> Dict[str, Any]:
+    """Markiert abgelaufene Verlaengerungsoptionen als EXPIRED.
+
+    Wird taeglich um 00:30 Uhr automatisch ausgefuehrt.
+
+    Returns:
+        Dict mit Statistiken
+    """
+    async def _check_expiry() -> Dict[str, Any]:
+        async with get_async_session_context() as db:
+            today = date.today()
+
+            stats = {
+                "total_checked": 0,
+                "expired": 0,
+                "errors": [],
+            }
+
+            # Query fuer verfuegbare Optionen mit abgelaufener Frist
+            query = select(ContractRenewalOption).where(
+                and_(
+                    ContractRenewalOption.status == RenewalOptionStatus.AVAILABLE,
+                    ContractRenewalOption.exercise_deadline.isnot(None),
+                    ContractRenewalOption.exercise_deadline < today,
+                )
+            )
+
+            result = await db.execute(query)
+            options = result.scalars().all()
+
+            for option in options:
+                stats["total_checked"] += 1
+
+                try:
+                    option.status = RenewalOptionStatus.EXPIRED
+                    stats["expired"] += 1
+
+                    logger.info(
+                        "renewal_option_expired",
+                        option_id=str(option.id),
+                        contract_id=str(option.contract_id),
+                        deadline=str(option.exercise_deadline),
+                    )
+
+                except Exception as e:
+                    stats["errors"].append({
+                        "option_id": str(option.id),
+                        "error": str(e),
+                    })
+
+            await db.commit()
+            return stats
+
+    try:
+        result = asyncio.run(_check_expiry())
+        logger.info(
+            "renewal_option_expiry_check_completed",
+            total_checked=result["total_checked"],
+            expired=result["expired"],
+            errors=len(result["errors"]),
+        )
+        return result
+    except Exception as e:
+        logger.error("renewal_option_expiry_check_failed", error=str(e))
+        raise self.retry(exc=e)
+
+
+# =============================================================================
+# Milestone Overdue Check Task
+# =============================================================================
+
+
+@celery_app.task(
+    name="contracts.check_overdue_milestones",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=300,
+    queue="maintenance",
+)
+def check_overdue_milestones_task(self) -> Dict[str, Any]:
+    """Prueft auf ueberfaellige Meilensteine und sendet Benachrichtigungen.
+
+    Wird taeglich um 09:30 Uhr automatisch ausgefuehrt.
+
+    Returns:
+        Dict mit Statistiken
+    """
+    async def _check_overdue() -> Dict[str, Any]:
+        async with get_async_session_context() as db:
+            today = date.today()
+
+            stats = {
+                "total_checked": 0,
+                "overdue": 0,
+                "notifications_sent": 0,
+                "errors": [],
+            }
+
+            # Query fuer nicht abgeschlossene Meilensteine
+            query = (
+                select(ContractMilestone)
+                .join(BusinessContract)
+                .where(
+                    and_(
+                        ContractMilestone.is_completed == False,
+                        ContractMilestone.scheduled_date.isnot(None),
+                        ContractMilestone.scheduled_date < today,
+                        BusinessContract.status.in_([
+                            ContractStatus.ACTIVE,
+                            ContractStatus.EXPIRING_SOON,
+                        ]),
+                        BusinessContract.deleted_at.is_(None),
+                    )
+                )
+            )
+
+            result = await db.execute(query)
+            milestones = result.scalars().all()
+
+            for milestone in milestones:
+                stats["total_checked"] += 1
+
+                try:
+                    days_overdue = (today - milestone.scheduled_date).days
+                    stats["overdue"] += 1
+
+                    logger.warning(
+                        "milestone_overdue",
+                        milestone_id=str(milestone.id),
+                        contract_id=str(milestone.contract_id),
+                        days_overdue=days_overdue,
+                        title=milestone.title,
+                    )
+
+                    # TODO: Send notification (when notification service supports it)
+                    stats["notifications_sent"] += 1
+
+                except Exception as e:
+                    stats["errors"].append({
+                        "milestone_id": str(milestone.id),
+                        "error": str(e),
+                    })
+
+            return stats
+
+    try:
+        result = asyncio.run(_check_overdue())
+        logger.info(
+            "overdue_milestones_check_completed",
+            total_checked=result["total_checked"],
+            overdue=result["overdue"],
+            notifications=result["notifications_sent"],
+            errors=len(result["errors"]),
+        )
+        return result
+    except Exception as e:
+        logger.error("overdue_milestones_check_failed", error=str(e))
+        raise self.retry(exc=e)

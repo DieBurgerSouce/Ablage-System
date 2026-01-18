@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\sparse\__init__.py
+# hypothesis_version: 6.148.7
+
+['abs', 'add', 'addmm', 'asin', 'asinh', 'atan', 'atanh', 'cast', 'coalesce', 'deg2rad', 'divide', 'expm1', 'is_same_shape', 'isnan', 'log1p', 'mask_as', 'masked_matmul', 'matmul', 'multiply', 'mv', 'neg', 'pca_lowrank', 'pow', 'rad2deg', 'reshape', 'sin', 'sinh', 'slice', 'sparse_coo_tensor', 'sparse_csr_tensor', 'sqrt', 'square', 'subtract', 'sum', 'tan', 'tanh', 'transpose']

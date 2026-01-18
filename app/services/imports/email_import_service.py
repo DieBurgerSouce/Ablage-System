@@ -722,6 +722,22 @@ class EmailImportService:
                 attachment=attachment,
             )
 
+            # Entity-Matching via EmailSenderMatcher
+            await self._match_and_link_entity(
+                document_id=document_id,
+                email=email,
+                user_id=user_id,
+            )
+
+            # Import Rules ausfuehren
+            await self._apply_import_rules(
+                document_id=document_id,
+                email=email,
+                attachment=attachment,
+                config=config,
+                user_id=user_id,
+            )
+
             # Import-Log aktualisieren
             import_log.status = "completed"
             import_log.document_id = document_id
@@ -849,6 +865,315 @@ class EmailImportService:
         )
 
         return document.id
+
+    async def _match_and_link_entity(
+        self,
+        document_id: UUID,
+        email: ParsedEmail,
+        user_id: UUID,
+    ) -> None:
+        """Matcht Email-Absender gegen BusinessEntities und verknuepft das Dokument.
+
+        Verwendet den EmailSenderMatcherService fuer intelligentes Matching:
+        - Bei Confidence >= 85%: Automatische Verknuepfung mit Entity
+        - Bei Confidence < 85%: Speichert Vorschlaege in Metadaten
+
+        Args:
+            document_id: ID des erstellten Dokuments
+            email: ParsedEmail mit Absender-Informationen
+            user_id: User-ID fuer Berechtigungspruefung
+        """
+        from app.services.imports import get_email_sender_matcher
+        from app.db.models import Document
+
+        try:
+            # EmailSenderMatcher mit User-spezifischen Settings laden
+            matcher = await get_email_sender_matcher(self.db, user_id)
+
+            # Matching durchfuehren
+            match_result = await matcher.match_sender(
+                from_address=email.from_address,
+                subject=email.subject,
+            )
+
+            logger.info(
+                "email_entity_match_result",
+                document_id=str(document_id),
+                entity_id=str(match_result.entity_id) if match_result.entity_id else None,
+                confidence=match_result.confidence,
+                strategy=match_result.match_strategy,
+            )
+
+            # Dokument aktualisieren
+            if match_result.entity_id and match_result.confidence >= 0.85:
+                # Hohe Confidence: Automatisch verknuepfen
+                await self.db.execute(
+                    update(Document).where(Document.id == document_id).values(
+                        entity_id=match_result.entity_id,
+                        metadata=Document.metadata.concat({
+                            "entity_match": {
+                                "auto_linked": True,
+                                "confidence": match_result.confidence,
+                                "strategy": match_result.match_strategy,
+                                "details": match_result.match_details,
+                            }
+                        })
+                    )
+                )
+                logger.info(
+                    "document_auto_linked_to_entity",
+                    document_id=str(document_id),
+                    entity_id=str(match_result.entity_id),
+                    entity_name=match_result.entity_name,
+                    confidence=match_result.confidence,
+                )
+
+            elif match_result.suggestions:
+                # Niedrige Confidence aber Vorschlaege vorhanden: Speichern fuer Validierung
+                suggestions_data = [
+                    {
+                        "entity_id": str(s.entity_id),
+                        "entity_name": s.entity_name,
+                        "entity_type": s.entity_type,
+                        "confidence": s.confidence,
+                        "match_reason": s.match_reason,
+                    }
+                    for s in match_result.suggestions[:3]  # Max 3 Vorschlaege
+                ]
+
+                await self.db.execute(
+                    update(Document).where(Document.id == document_id).values(
+                        metadata=Document.metadata.concat({
+                            "entity_suggestions": suggestions_data,
+                            "entity_match": {
+                                "auto_linked": False,
+                                "confidence": match_result.confidence,
+                                "strategy": match_result.match_strategy,
+                                "needs_validation": True,
+                            }
+                        })
+                    )
+                )
+                logger.info(
+                    "document_entity_suggestions_saved",
+                    document_id=str(document_id),
+                    suggestion_count=len(suggestions_data),
+                )
+
+        except Exception as e:
+            # Fehler im Matching sollte Import nicht blockieren
+            logger.warning(
+                "email_entity_matching_failed",
+                document_id=str(document_id),
+                error=str(e),
+            )
+
+    async def _apply_import_rules(
+        self,
+        document_id: UUID,
+        email: ParsedEmail,
+        attachment: EmailAttachment,
+        config,
+        user_id: UUID,
+    ) -> None:
+        """Wendet Import-Regeln auf das erstellte Dokument an.
+
+        Args:
+            document_id: ID des erstellten Dokuments
+            email: ParsedEmail mit Absender-Informationen
+            attachment: EmailAttachment
+            config: EmailImportConfig
+            user_id: User-ID
+        """
+        from app.services.imports import ImportRuleService
+        from app.db.models import Document
+
+        try:
+            rule_service = ImportRuleService(self.db)
+
+            # Metadaten fuer Rule-Matching aufbauen
+            metadata = {
+                "sender_email": email.from_address,
+                "sender_name": self._extract_display_name(email.from_address),
+                "subject": email.subject,
+                "email_date": email.date.isoformat() if email.date else None,
+                "filename": attachment.filename,
+                "file_extension": self._get_file_extension(attachment.filename),
+                "file_size": attachment.size,
+                "mime_type": attachment.mime_type,
+            }
+
+            # Regeln evaluieren
+            matches = await rule_service.evaluate_rules(
+                user_id=user_id,
+                metadata=metadata,
+                source_type="email",
+                config_id=config.id,
+            )
+
+            if not matches:
+                logger.debug(
+                    "no_import_rules_matched",
+                    document_id=str(document_id),
+                )
+                return
+
+            # Aktionen konsolidieren
+            actions = rule_service.apply_actions(matches)
+
+            logger.info(
+                "import_rules_matched",
+                document_id=str(document_id),
+                rule_count=len(matches),
+                actions=list(actions.keys()),
+            )
+
+            # Aktionen anwenden
+            await self._execute_rule_actions(
+                document_id=document_id,
+                actions=actions,
+                user_id=user_id,
+            )
+
+        except Exception as e:
+            # Fehler in Import Rules sollte Import nicht blockieren
+            logger.warning(
+                "import_rules_execution_failed",
+                document_id=str(document_id),
+                error=str(e),
+            )
+
+    async def _execute_rule_actions(
+        self,
+        document_id: UUID,
+        actions: Dict,
+        user_id: UUID,
+    ) -> None:
+        """Fuehrt die konsolidierten Rule-Actions aus.
+
+        Args:
+            document_id: Dokument-ID
+            actions: Konsolidierte Aktionen
+            user_id: User-ID
+        """
+        from app.db.models import Document
+
+        update_values = {}
+        metadata_updates = {}
+
+        for action_key, action_value in actions.items():
+            if action_key == "assign_folder_id" and action_value:
+                # Ordner-Zuweisung
+                try:
+                    update_values["folder_id"] = UUID(str(action_value))
+                    logger.info(
+                        "rule_action_assign_folder",
+                        document_id=str(document_id),
+                        folder_id=str(action_value),
+                    )
+                except ValueError:
+                    logger.warning(
+                        "invalid_folder_id_in_rule",
+                        action_value=action_value,
+                    )
+
+            elif action_key == "assign_tags" and action_value:
+                # Tags hinzufuegen (als Metadata)
+                if isinstance(action_value, list):
+                    metadata_updates["rule_tags"] = action_value
+                    logger.info(
+                        "rule_action_assign_tags",
+                        document_id=str(document_id),
+                        tags=action_value,
+                    )
+
+            elif action_key == "assign_document_type" and action_value:
+                # Dokumenttyp setzen
+                update_values["document_type"] = action_value
+                logger.info(
+                    "rule_action_assign_document_type",
+                    document_id=str(document_id),
+                    document_type=action_value,
+                )
+
+            elif action_key == "skip_ocr" and action_value:
+                # OCR ueberspringen (via Metadata)
+                metadata_updates["skip_ocr"] = True
+                logger.info(
+                    "rule_action_skip_ocr",
+                    document_id=str(document_id),
+                )
+
+            elif action_key == "priority_ocr" and action_value:
+                # Prioritaets-OCR (via Metadata)
+                metadata_updates["priority_ocr"] = True
+                logger.info(
+                    "rule_action_priority_ocr",
+                    document_id=str(document_id),
+                )
+
+            elif action_key == "add_metadata" and action_value:
+                # Zusaetzliche Metadaten
+                if isinstance(action_value, dict):
+                    metadata_updates.update(action_value)
+
+            elif action_key == "notify_users" and action_value:
+                # Benachrichtigungen (async, nicht blockierend)
+                metadata_updates["notify_users"] = action_value
+                # Hier koennte ein Celery Task gestartet werden
+
+        # Dokument aktualisieren
+        if update_values or metadata_updates:
+            stmt = update(Document).where(Document.id == document_id)
+
+            if update_values:
+                stmt = stmt.values(**update_values)
+
+            if metadata_updates:
+                stmt = stmt.values(
+                    metadata=Document.metadata.concat({
+                        "import_rule_actions": metadata_updates
+                    })
+                )
+
+            await self.db.execute(stmt)
+            logger.info(
+                "document_updated_by_rules",
+                document_id=str(document_id),
+                update_fields=list(update_values.keys()),
+                metadata_fields=list(metadata_updates.keys()),
+            )
+
+    def _extract_display_name(self, from_address: str) -> Optional[str]:
+        """Extrahiert den Display-Namen aus einer E-Mail-Adresse.
+
+        Args:
+            from_address: z.B. "Max Müller <max@example.com>"
+
+        Returns:
+            Display-Name oder None
+        """
+        if not from_address:
+            return None
+
+        # Pattern: "Name <email>" oder nur "email"
+        match = re.match(r'^"?([^"<]+)"?\s*<', from_address)
+        if match:
+            return match.group(1).strip()
+        return None
+
+    def _get_file_extension(self, filename: str) -> str:
+        """Extrahiert die Dateiendung.
+
+        Args:
+            filename: Dateiname
+
+        Returns:
+            Dateiendung mit Punkt (z.B. ".pdf") oder leer
+        """
+        if not filename or "." not in filename:
+            return ""
+        return "." + filename.rsplit(".", 1)[-1].lower()
 
     # ========================================================================
     # CRUD Operations

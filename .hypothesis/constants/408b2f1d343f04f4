@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\db\repositories\personalized_thresholds_repository.py
+# hypothesis_version: 6.148.7
+
+['threshold_created', 'threshold_type', 'threshold_updated', 'user_id', 'user_profile_created', 'user_profile_updated']

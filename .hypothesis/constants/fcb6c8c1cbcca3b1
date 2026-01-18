@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\nn\functional\fused_rms_norm_ext.py
+# hypothesis_version: 6.148.7
+
+[1e-05, 'epsilon', 'float32', 'fused_rms_norm_ext', 'invvar', 'scale', 'x', 'y']

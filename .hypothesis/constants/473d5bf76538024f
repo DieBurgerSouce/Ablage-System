@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\vision\transforms\functional_cv2.py
+# hypothesis_version: 6.148.7
+
+[-0.5, 0.0, 0.5, 2.0, 255.0, 180, 255, 256, 'CHW', 'HWC', 'area', 'bicubic', 'bilinear', 'constant', 'cv2', 'edge', 'float32', 'lanczos', 'nearest', 'reflect', 'symmetric', 'uint8']

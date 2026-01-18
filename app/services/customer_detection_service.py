@@ -238,6 +238,117 @@ def extract_address_from_text(text: str) -> Dict[str, Optional[str]]:
     return result
 
 
+# Singleton-Pattern fuer EntityExtractionAgent (spaCy-Model-Caching)
+_entity_extraction_agent: Optional["EntityExtractionAgent"] = None  # type: ignore
+
+
+def _get_entity_extraction_agent() -> "EntityExtractionAgent":
+    """Gibt gecachte EntityExtractionAgent-Instanz zurueck.
+
+    Verhindert wiederholtes Laden des spaCy-Models (~500MB, ~30s Ladezeit).
+    Thread-safe durch GIL bei Python-Objektzuweisung.
+    """
+    global _entity_extraction_agent
+    if _entity_extraction_agent is None:
+        from app.agents.postprocessing.entity_extraction_agent import EntityExtractionAgent
+        _entity_extraction_agent = EntityExtractionAgent()
+        logger.info("entity_extraction_agent_initialized", spacy_loaded=True)
+    return _entity_extraction_agent
+
+
+def extract_name_from_text(text: str) -> Optional[Dict[str, Any]]:
+    """Extrahiert Namen (Personen/Organisationen) aus Text via NER.
+
+    Nutzt EntityExtractionAgent mit spaCy (falls verfuegbar) oder Pattern-Matching.
+    PERFORMANCE: Agent wird als Singleton gecacht (spaCy-Model-Loading ~30s).
+
+    Args:
+        text: OCR-Text (begrenzt auf ~5000 Zeichen)
+
+    Returns:
+        Dict mit name, entity_type, confidence oder None wenn kein Name gefunden
+    """
+    try:
+        agent = _get_entity_extraction_agent()
+
+        # Text limitieren
+        text_limited = text[:5000]
+
+        # Extrahiere Named Entities ueber oeffentliche API
+        all_entities = agent.extract_named_entities(text_limited)
+
+        # Zusaetzlich: Organisationen via Pattern-Matching
+        org_entities = _extract_organizations_pattern(text_limited)
+        all_entities.extend(org_entities)
+
+        if not all_entities:
+            return None
+
+        # Priorisierung: Organisation vor Person (bei Geschaeftsdokumenten)
+        orgs = [e for e in all_entities if e.get("type") == "ORGANIZATION"]
+        persons = [e for e in all_entities if e.get("type") == "PERSON"]
+
+        # Bevorzuge Organisation (Firmenname), dann Person
+        if orgs:
+            best = max(orgs, key=lambda e: e.get("confidence", 0))
+            return {
+                "name": best["value"],
+                "entity_type": "organization",
+                "confidence": best.get("confidence", 0.7),
+            }
+        elif persons:
+            best = max(persons, key=lambda e: e.get("confidence", 0))
+            return {
+                "name": best["value"],
+                "entity_type": "person",
+                "confidence": best.get("confidence", 0.7),
+            }
+
+        return None
+
+    except Exception as e:
+        logger.warning("name_extraction_error", error=str(e))
+        return None
+
+
+def _extract_organizations_pattern(text: str) -> List[Dict[str, Any]]:
+    """Extrahiert Organisationsnamen via Pattern-Matching.
+
+    Sucht nach typischen deutschen Rechtsformen und Firmennamen.
+    """
+    entities = []
+
+    # Muster fuer deutsche Firmen mit Rechtsform
+    company_patterns = [
+        # GmbH & Co. KG/OHG
+        r"\b([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ]?[a-zäöüß]+)*)\s+GmbH\s*&\s*Co\.?\s*(?:KG|OHG)\b",
+        # GmbH
+        r"\b([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ]?[a-zäöüß]+)*)\s+GmbH\b",
+        # AG
+        r"\b([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ]?[a-zäöüß]+)*)\s+AG\b",
+        # KG/OHG
+        r"\b([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ]?[a-zäöüß]+)*)\s+(?:KG|OHG|e\.K\.|e\.G\.)\b",
+        # Fa. / Firma
+        r"\b(?:Fa\.|Firma)\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ]?[a-zäöüß]+)*)\b",
+    ]
+
+    for pattern in company_patterns:
+        matches = re.finditer(pattern, text, re.IGNORECASE)
+        for match in matches:
+            full_match = match.group(0)
+
+            # Vollstaendigen Firmennamen mit Rechtsform verwenden (Deduplizierung)
+            if not any(e["value"] == full_match for e in entities):
+                entities.append({
+                    "type": "ORGANIZATION",
+                    "value": full_match.strip(),
+                    "confidence": 0.85,
+                    "source": "pattern_org_extraction",
+                })
+
+    return entities
+
+
 # ==================== Document Extraction ====================
 
 
@@ -645,13 +756,62 @@ class CustomerDetectionService:
 
             # Wenn wir mindestens eine VAT-ID oder Adresse haben
             if vat_id or (address.get("postal_code") and address.get("city")):
-                # TODO: Name aus Text extrahieren (erfordert NER)
-                logger.debug(
-                    "contact_extraction_from_text_partial",
-                    document_id=str(document.id),
-                    vat_id=vat_id,
-                    has_address=bool(address.get("city")),
-                )
+                # Name via NER extrahieren (spaCy oder Pattern-Matching)
+                name_result = extract_name_from_text(text)
+
+                if name_result and name_result.get("name"):
+                    # Kontaktdaten zusammenstellen
+                    contact_data = {
+                        "name": name_result["name"],
+                        "vat_id": vat_id,
+                        "email": email,
+                        **address,
+                    }
+
+                    # Kontakttyp basierend auf Entity-Typ
+                    contact_type = (
+                        "company" if name_result.get("entity_type") == "organization"
+                        else "person"
+                    )
+
+                    contact, created = await self.find_or_create_contact(
+                        db=db,
+                        contact_data=contact_data,
+                        owner_id=owner_id,
+                        source="auto_ner_extraction",
+                        document_id=document.id,
+                        auto_create=auto_create,
+                        contact_type=contact_type,
+                    )
+
+                    if contact:
+                        await self._link_contact_to_document(
+                            db, document.id, contact.id, "detected"
+                        )
+                        results.append({
+                            "contact_id": str(contact.id),
+                            "name": contact.name,
+                            "role": "detected",
+                            "created": created,
+                            "contact_type": contact.contact_type,
+                            "extraction_confidence": name_result.get("confidence", 0.7),
+                        })
+
+                    logger.info(
+                        "contact_ner_extraction_success",
+                        document_id=str(document.id),
+                        name=name_result["name"][:50],  # Truncate fuer Log
+                        entity_type=name_result.get("entity_type"),
+                        confidence=name_result.get("confidence"),
+                    )
+                else:
+                    logger.debug(
+                        "contact_extraction_from_text_partial",
+                        document_id=str(document.id),
+                        vat_id=vat_id,
+                        has_address=bool(address.get("city")),
+                        name_found=False,
+                    )
 
         if results:
             await db.commit()

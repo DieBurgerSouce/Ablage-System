@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\core\composition.py
+# hypothesis_version: 6.148.7
+
+[0.5, 1.0, '([', ',', 'BaseCompose', 'BasicTransform', 'BboxParams', 'Compose', 'KeypointParams', 'OneOf', 'OneOrOther', 'RandomOrder', 'ReplayCompose', 'Sequential', 'SomeOf', '__', '__class_fullname__', 'additional_targets', 'applied', 'applied_transforms', 'bbox_params', 'bboxes', 'check_each_transform', 'id', 'image', 'images', 'indented_repr', 'invalid_args', 'is_check_shapes', 'keypoint_params', 'keypoints', 'labels', 'mask', 'mask3d', 'mask_interpolation', 'masks', 'masks3d', 'n', 'p', 'params', 'replace', 'replay', 'save_key', 'set_processors', 'targets_as_params', 'transforms', 'volume', 'volumes']

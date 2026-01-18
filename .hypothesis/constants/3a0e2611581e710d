@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\docling\pipeline\asr_pipeline.py
+# hypothesis_version: 6.148.7
+
+['.wav', 'DoclingDocument', 'audio.wav', 'audio/x-wav', 'doc_build', 'end', 'segments', 'start', 'text', 'word', 'words']

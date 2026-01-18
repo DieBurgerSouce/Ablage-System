@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\alembic\ddl\sqlite.py
+# hypothesis_version: 6.148.7
+
+['%s RENAME TO %s', '(%s)', '\\1', "^'.+'$", '^[0-9\\.]$', '^\\"?\'(.+)\'\\"?$', '^\\((.+)\\)$', '^\\(.+\\)$', 'add_column', 'create_index', 'default', 'drop_index', 'expr', 'sqlite']

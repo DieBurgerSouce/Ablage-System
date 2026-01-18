@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
     testDir: './e2e',
+    globalSetup: './e2e/global-setup.ts',
     fullyParallel: true,
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 0,
@@ -16,17 +17,17 @@ export default defineConfig({
         {
             name: 'chromium',
             use: { ...devices['Desktop Chrome'] },
-            testIgnore: /auth\.setup\.ts/,
+            testIgnore: /auth\.setup\.ts|global-setup\.ts/,
         },
         {
             name: 'firefox',
             use: { ...devices['Desktop Firefox'] },
-            testIgnore: /auth\.setup\.ts/,
+            testIgnore: /auth\.setup\.ts|global-setup\.ts/,
         },
         {
             name: 'webkit',
             use: { ...devices['Desktop Safari'] },
-            testIgnore: /auth\.setup\.ts/,
+            testIgnore: /auth\.setup\.ts|global-setup\.ts/,
         },
     ],
     // Use Docker container when available, otherwise Vite dev server

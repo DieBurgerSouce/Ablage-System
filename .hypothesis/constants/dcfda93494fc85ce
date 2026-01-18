@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\hapi\model_summary.py
+# hypothesis_version: 6.148.7
+
+[2.0, 4.0, 1024, "'", '-', '.', '=', 'Input Shape', 'Layer (type)', 'Output Shape', 'Param #', '_', 'could_use_cudnn', 'float32', 'input_shape', 'input_shape_width', 'layer_width', 'nb_params', 'output_shape', 'output_shape_width', 'params_width', 'shape', 'table_width', 'total_params', 'trainable', 'trainable_params', '{:,}']

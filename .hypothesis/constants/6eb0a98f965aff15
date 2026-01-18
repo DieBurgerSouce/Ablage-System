@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\rag\vector_sync_service.py
+# hypothesis_version: 6.148.7
+
+[0.0, 100, 500, 1000, 'VectorSyncService', '_initialized', 'async_mode', 'chunk_index', 'chunk_text', 'collection', 'collection_exists', 'completed', 'created_at', 'document_id', 'enabled', 'error', 'failed', 'failed_batches', 'failed_chunks', 'failed_count', 'healthy', 'idle', 'migration_completed', 'migration_failed', 'migration_started', 'migration_status', 'page_number', 'paused', 'pending', 'points_count', 'qdrant_connected', 'running', 'section_type', 'skipped', 'started_at', 'status', 'sync_timestamp', 'synced', 'synced_chunks', 'synced_count', 'syncing']

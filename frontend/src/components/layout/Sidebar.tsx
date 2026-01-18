@@ -1,5 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package, Landmark, AlertTriangle, Wallet, Receipt, GitBranch, UserCircle, Shield, Lock, Bookmark, Search, Pin, Database } from 'lucide-react'
+import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package, Landmark, AlertTriangle, Wallet, Receipt, GitBranch, UserCircle, Shield, Lock, Bookmark, Search, Pin, Database, FileSignature, FilePlus, Building2, BookOpen, BarChart3, MessageCircle, FolderInput, Truck, Gauge, Award, CreditCard } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { usePermissions } from '@/lib/auth/hooks/use-permissions'
@@ -93,6 +93,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                 )}
                 <SidebarLink to="/document-groups" icon={Layers} label="Dokumentgruppen" onNavigate={onNavigate} />
                 <SidebarLink to="/admin/datev" icon={FileSpreadsheet} label="DATEV Export" onNavigate={onNavigate} />
+                <SidebarLink to="/berichte" icon={BarChart3} label="Berichte" onNavigate={onNavigate} />
 
                 {/* Ablage-Struktur Section */}
                 <div className="pt-4">
@@ -103,14 +104,29 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                     </div>
                     <SidebarLink to="/kunden" icon={Users} label="Kunden" onNavigate={onNavigate} />
                     <SidebarLink to="/lieferanten" icon={Package} label="Lieferanten" onNavigate={onNavigate} />
+                    <SidebarLink to="/lieferanten/ranking" icon={Award} label="Lieferanten-Ranking" onNavigate={onNavigate} />
                     <SidebarLink to="/finanzen" icon={Landmark} label="Finanzen" onNavigate={onNavigate} />
+                    <SidebarLink to="/finanzen/zahlungsverhalten" icon={CreditCard} label="Zahlungsverhalten" onNavigate={onNavigate} />
                     <SidebarLink to="/kasse" icon={Wallet} label="Kassenbuch" onNavigate={onNavigate} />
                     <SidebarLink to="/spesen" icon={Receipt} label="Spesen" onNavigate={onNavigate} />
                     <SidebarLink to="/streckengeschaeft" icon={GitBranch} label="Streckengeschäft" onNavigate={onNavigate} />
                     <SidebarLink to="/personal" icon={UserCircle} label="Personal" onNavigate={onNavigate} />
+                    <SidebarLink to="/vertraege" icon={FileSignature} label="Vertraege" onNavigate={onNavigate} />
+                    <SidebarLink to="/vorlagen" icon={FilePlus} label="Vorlagen" onNavigate={onNavigate} />
+                    <SidebarLink to="/wissen" icon={BookOpen} label="Wissen" onNavigate={onNavigate} />
                     {permissions.canViewPrivat && (
                         <SidebarLink to="/privat" icon={Lock} label="Privat" onNavigate={onNavigate} />
                     )}
+                </div>
+
+                {/* Logistik Section */}
+                <div className="pt-4">
+                    <div className="px-3 mb-2">
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            Logistik
+                        </span>
+                    </div>
+                    <SidebarLink to="/sendungen" icon={Truck} label="Sendungen" onNavigate={onNavigate} />
                 </div>
 
                 {/* Smart Folders (Gespeicherte Suchen) */}
@@ -215,7 +231,22 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                                     <SidebarLink to="/admin/mahnungen" icon={AlertTriangle} label="Mahnwesen" onNavigate={onNavigate} />
                                 )}
                                 {permissions.isAdmin && (
+                                    <SidebarLink to="/risk" icon={Gauge} label="Risiko-Scoring" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
                                     <SidebarLink to="/admin/lexware" icon={Database} label="Lexware Import" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/firmen" icon={Building2} label="Firmenverwaltung" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/firmen/dashboard" icon={BarChart3} label="Firmen-Dashboard" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/slack" icon={MessageCircle} label="Slack" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/imports" icon={FolderInput} label="Imports" onNavigate={onNavigate} />
                                 )}
                             </div>
                         )}

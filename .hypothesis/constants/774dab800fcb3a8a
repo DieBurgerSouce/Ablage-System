@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\base\dataset.py
+# hypothesis_version: 6.148.7
+
+[1000, 1024, 8000, 800000, '2.0.0', 'MultiSlotDataFeed', 'MultiSlotDataset', 'PaddleBoxDataFeed', 'QueueDataset', 'SlotRecordDataset', 'accumulate_num', 'barrier_worker', 'batch_size', 'cat', 'debug_mode', 'excluded_train_pair', 'first_node_type', 'float', 'get_degree', 'gpu_graph_training', 'infer_node_type', 'infer_table_cap', 'meta_path', 'pair_label', 'pscore fleet', 'return_weight', 'sage_mode', 'samples', 'train_table_cap', 'uint32', 'uint64', 'util', 'walk_degree', 'walk_len', 'weighted_sample', 'window']

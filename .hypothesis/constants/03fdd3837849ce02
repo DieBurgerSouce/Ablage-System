@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\base\dygraph\math_op_patch.py
+# hypothesis_version: 6.148.7
+
+[-1.0, 0.0, 'T', '__abs__', '__add__', '__array_ufunc__', '__complex__', '__div__', '__eq__', '__float__', '__floordiv__', '__ge__', '__gt__', '__index__', '__int__', '__le__', '__len__', '__long__', '__lt__', '__matmul__', '__mod__', '__mul__', '__ne__', '__neg__', '__pow__', '__radd__', '__rdiv__', '__rfloordiv__', '__rmatmul__', '__rmod__', '__rmul__', '__rpow__', '__rsub__', '__rtruediv__', '__sub__', '__truediv__', 'astype', 'bfloat16', 'bool', 'byte', 'cdouble', 'cfloat', 'char', 'complex128', 'complex64', 'dim', 'double', 'float', 'float16', 'float32', 'float64', 'half', 'int', 'int16', 'int32', 'int64', 'int8', 'long', 'mT', 'ndim', 'ndimension', 'new_empty', 'new_full', 'new_ones', 'new_zeros', 'requires_grad', 'short', 'size', 'type_as', 'uint8']

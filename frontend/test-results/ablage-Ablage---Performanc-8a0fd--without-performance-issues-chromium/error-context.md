@@ -1,0 +1,146 @@
+# Page snapshot
+
+```yaml
+- generic:
+  - generic:
+    - link:
+      - /url: "#main-content"
+      - text: Zum Hauptinhalt springen
+    - generic:
+      - generic:
+        - complementary:
+          - generic:
+            - generic:
+              - heading [level=1]:
+                - img
+                - text: Ablage-System
+              - button [expanded]:
+                - img
+                - generic: 0 ungelesene Benachrichtigungen
+            - paragraph: Enterprise Document Management
+          - navigation:
+            - link:
+              - /url: /
+              - img
+              - text: Dashboard
+            - link:
+              - /url: /chat
+              - img
+              - text: Chat
+            - link:
+              - /url: /upload
+              - img
+              - text: Upload Wizard
+            - link:
+              - /url: /jobs
+              - img
+              - text: Job Queue
+            - link:
+              - /url: /validation-queue
+              - img
+              - text: Validierung
+            - link:
+              - /url: /document-groups
+              - img
+              - text: Dokumentgruppen
+            - link:
+              - /url: /admin/datev
+              - img
+              - text: DATEV Export
+            - generic:
+              - generic: Ablage
+              - link:
+                - /url: /kunden
+                - img
+                - text: Kunden
+              - link:
+                - /url: /lieferanten
+                - img
+                - text: Lieferanten
+              - link:
+                - /url: /finanzen
+                - img
+                - text: Finanzen
+              - link:
+                - /url: /kasse
+                - img
+                - text: Kassenbuch
+              - link:
+                - /url: /spesen
+                - img
+                - text: Spesen
+              - link:
+                - /url: /streckengeschaeft
+                - img
+                - text: Streckengeschäft
+              - link:
+                - /url: /personal
+                - img
+                - text: Personal
+              - link:
+                - /url: /privat
+                - img
+                - text: Privat
+            - generic:
+              - button:
+                - generic:
+                  - img
+                  - text: Administration
+                - img
+          - generic:
+            - button:
+              - img
+              - text: Einstellungen
+          - generic:
+            - generic:
+              - generic:
+                - generic: SA
+              - generic:
+                - generic: System Administrator
+                - generic:
+                  - generic: Admin
+      - main:
+        - generic:
+          - generic:
+            - navigation:
+              - list:
+                - listitem:
+                  - link:
+                    - /url: /
+                    - img
+                - listitem:
+                  - img
+                  - generic: Kunden
+        - generic:
+          - generic:
+            - generic:
+              - heading [level=1]:
+                - img
+                - text: Kunden
+              - paragraph: Wähle einen Kunden um die Dokumentenablage zu öffnen
+            - generic:
+              - generic:
+                - img
+                - textbox:
+                  - /placeholder: Suche nach Kundennummer oder Name...
+              - generic:
+                - combobox:
+                  - generic: Name
+                  - img
+                - button:
+                  - img
+            - generic:
+              - generic: 0 von 0 Kunden
+              - generic:
+                - img
+                - generic: Suche...
+            - generic:
+              - generic:
+                - img
+                - paragraph: Lade Kunden...
+    - region "Notifications alt+T"
+  - menu "0 ungelesene Benachrichtigungen" [active] [ref=e1]:
+    - generic [ref=e3]: Benachrichtigungen
+    - separator [ref=e4]
+    - img [ref=e6]
+```

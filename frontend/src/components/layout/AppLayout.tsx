@@ -3,6 +3,7 @@ import { Toaster } from '@/components/ui/toaster'
 import { Breadcrumbs } from '@/components/ui/breadcrumb'
 import { SessionTimeoutWarning } from '@/components/SessionTimeoutWarning'
 import { MobileSidebarProvider, useMobileSidebar } from '@/context/MobileSidebarContext'
+import { GlobalAIAssistant } from '@/features/ai-assistant'
 import { Menu } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -58,6 +59,8 @@ function AppLayoutInner({ children, id }: { children: React.ReactNode; id?: stri
             <Toaster />
             {/* Session Timeout Warning - Zeigt Warnung wenn Session bald ablaeuft */}
             <SessionTimeoutWarning />
+            {/* Global AI Assistant - Floating Widget auf jeder Seite */}
+            <GlobalAIAssistant />
         </div>
     )
 }

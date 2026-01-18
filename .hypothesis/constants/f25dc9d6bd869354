@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\text\datasets\imikolov.py
+# hypothesis_version: 6.148.7
+
+['<e>', '<s>', '<unk>', 'Invalid gram length', 'NGRAM', 'SEQ', 'Unknown data type', 'imikolov', 'test', 'train']

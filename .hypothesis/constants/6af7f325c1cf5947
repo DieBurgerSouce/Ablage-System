@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\shipments.py
+# hypothesis_version: 6.148.7
+
+[100, 365, 400, '/carriers/list', '/detect-carrier', '/refresh-all', '/shipments', '/statistics', '/summary', '/track', '/{shipment_id}', 'Carrier (optional)', 'DHL', 'DPD', 'Deutsche Post', 'Eintraege pro Seite', 'FedEx', 'Filter nach Carrier', 'Filter nach Entity', 'Filter nach Richtung', 'Filter nach Status', 'GLS', 'Hermes', 'Notizen', 'Seite', 'Sendungen', 'Sendungsnummer', 'UPS', 'Versandkosten', 'Zeitraum in Tagen', 'actual_delivery', 'carrier', 'country_code', 'current_status', 'description', 'destination', 'deutsche_post', 'dhl', 'direction', 'dpd', 'estimated_delivery', 'events', 'failed', 'fedex', 'gls', 'hermes', 'high', 'id', 'inbound', 'last_updated', 'location', 'low', 'name', 'origin', 'outbound', 'postal_code', 'return', 'service_type', 'status', 'status_description', 'timestamp', 'tracking_number', 'tracking_url_pattern', 'updated', 'ups', 'weight_kg']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\.claude\orchestration\learning_feedback.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.2, 0.5, 0.75, 0.8, 0.85, 0.9, '.claude/cache', 'action', 'avg_quality_score', 'confidence', 'downgrade_to_haiku', 'downgrade_to_sonnet', 'escalation_rate', 'executions', 'haiku', 'keep_haiku', 'last_updated', 'opus', 'pattern', 'patterns_tracked', 'reasoning', 'sonnet', 'tier_distribution', 'total_executions', 'upgrade_tier', 'utf-8']

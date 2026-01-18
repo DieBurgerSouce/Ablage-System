@@ -1793,6 +1793,8 @@ class AuditLogView(BaseModel):
     user_agent: Optional[str] = None
     request_method: Optional[str] = None
     request_path: Optional[str] = None
+    success: bool = True
+    error_message: Optional[str] = None
     metadata: Dict[str, Any] = {}
     created_at: datetime
 
@@ -1804,7 +1806,9 @@ class AuditLogFilters(BaseModel):
     user_id: Optional[uuid.UUID] = None
     action: Optional[str] = None
     resource_type: Optional[str] = None
+    resource_id: Optional[uuid.UUID] = None
     ip_address: Optional[str] = None
+    success: Optional[bool] = None
     date_from: Optional[datetime] = None
     date_to: Optional[datetime] = None
     search: Optional[str] = Field(None, max_length=100)
@@ -7251,8 +7255,8 @@ class BatchAssignRequest(BaseModel):
     editor_id: UUID
 
 
-class BatchOperationResult(BaseModel):
-    """Ergebnis einer Batch-Operation."""
+class ValidationBatchOperationResult(BaseModel):
+    """Ergebnis einer Batch-Operation fuer Validation Queue."""
     success_count: int
     failed_count: int
     failed_items: List[Dict[str, Any]] = []
@@ -7471,10 +7475,17 @@ class CommentCreate(BaseModel):
     Validation:
     - content: Nicht leer, nicht nur Whitespace, max 10000 Zeichen
     - mentions: Optional, mit validen UUIDs
+    - fieldReference: Optional, max 100 Zeichen, nur alphanumerisch + underscore
     """
     content: str = Field(..., min_length=1, max_length=10000)
     mentions: Optional[List[MentionSchema]] = None
     parentId: Optional[UUID] = None
+    fieldReference: Optional[str] = Field(
+        None,
+        max_length=100,
+        pattern=r'^[a-zA-Z_][a-zA-Z0-9_]*$',
+        description="Feldname fuer Inline-Kommentare (z.B. 'invoice_number', 'total_amount')"
+    )
 
     @field_validator('content')
     @classmethod
@@ -7494,7 +7505,13 @@ class CommentUpdate(BaseModel):
 
 
 class CommentResponse(BaseModel):
-    """Kommentar-Antwort."""
+    """Kommentar-Antwort.
+
+    Erweitert um:
+    - companyId: Multi-Tenant Isolation
+    - fieldReference: Feld-Referenz fuer Inline-Kommentare
+    - deletedAt: Soft-Delete Timestamp
+    """
     model_config = ConfigDict(from_attributes=True)
 
     id: str
@@ -7502,12 +7519,15 @@ class CommentResponse(BaseModel):
     userId: str
     userName: str
     userAvatar: Optional[str] = None
+    companyId: Optional[str] = None  # Multi-Tenant (Migration 103)
+    fieldReference: Optional[str] = None  # Inline-Kommentar Feld
     content: str
     mentions: List[MentionSchema] = []
     parentId: Optional[str] = None
     createdAt: str
     updatedAt: Optional[str] = None
     isEdited: bool
+    deletedAt: Optional[str] = None  # Soft-Delete Timestamp
     reactions: List[ReactionSchema] = []
 
 
@@ -7516,6 +7536,20 @@ class CommentsListResponse(BaseModel):
     comments: List[CommentResponse]
     total: int
     hasMore: bool
+
+
+class CommentStatistics(BaseModel):
+    """Statistiken fuer Dokument-Kommentare.
+
+    Liefert aggregierte Metriken zu Kommentaren eines Dokuments.
+    """
+    totalComments: int = Field(..., ge=0, description="Gesamtanzahl der Kommentare")
+    totalReplies: int = Field(..., ge=0, description="Anzahl der Antworten")
+    uniqueCommenters: int = Field(..., ge=0, description="Anzahl verschiedener Kommentatoren")
+    totalMentions: int = Field(..., ge=0, description="Gesamtanzahl der @Mentions")
+    commentsLast7Days: int = Field(..., ge=0, description="Kommentare der letzten 7 Tage")
+    commentsLast30Days: int = Field(..., ge=0, description="Kommentare der letzten 30 Tage")
+    fieldComments: int = Field(..., ge=0, description="Anzahl der Feld-Kommentare")
 
 
 class ActivityTypeEnum(str, Enum):
@@ -7694,6 +7728,311 @@ class ReactionAdd(BaseModel):
             raise ValueError("Emoji darf nicht nur aus Variation Selectors bestehen")
 
         return v
+
+
+# =============================================================================
+# TASK SCHEMAS - Aufgaben-Zuweisung fuer Collaboration
+# =============================================================================
+
+
+class TaskStatusEnum(str, Enum):
+    """Status einer Aufgabe."""
+    OPEN = "open"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+    BLOCKED = "blocked"
+
+
+class TaskPriorityEnum(str, Enum):
+    """Prioritaet einer Aufgabe."""
+    LOW = "low"
+    NORMAL = "normal"
+    HIGH = "high"
+    URGENT = "urgent"
+
+
+class TaskTypeEnum(str, Enum):
+    """Vordefinierte Aufgabentypen."""
+    REVIEW = "review"       # Dokument pruefen
+    APPROVE = "approve"     # Genehmigung erteilen
+    PROCESS = "process"     # Verarbeiten
+    CLASSIFY = "classify"   # Klassifizieren
+    VERIFY = "verify"       # Verifizieren
+    OTHER = "other"         # Sonstiges
+
+
+class TaskCreate(BaseModel):
+    """Aufgabe erstellen.
+
+    Validation:
+    - title: Pflichtfeld, 1-200 Zeichen
+    - documentId: Muss valide UUID sein
+    - assignedToId: Optional, muss valide UUID sein
+    - dueDate: Optional, muss in der Zukunft liegen
+    """
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    documentId: uuid.UUID = Field(..., description="ID des zugehoerigen Dokuments")
+    title: str = Field(..., min_length=1, max_length=200, description="Titel der Aufgabe")
+    description: Optional[str] = Field(None, max_length=5000, description="Ausfuehrliche Beschreibung")
+    taskType: TaskTypeEnum = Field(TaskTypeEnum.REVIEW, description="Art der Aufgabe")
+    assignedToId: Optional[uuid.UUID] = Field(None, description="ID des zugewiesenen Benutzers")
+    priority: TaskPriorityEnum = Field(TaskPriorityEnum.NORMAL, description="Prioritaet")
+    dueDate: Optional[datetime] = Field(None, description="Faelligkeitsdatum")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Zusaetzliche Metadaten")
+
+    @field_validator('title')
+    @classmethod
+    def title_not_whitespace(cls, v: str) -> str:
+        """Titel darf nicht nur aus Whitespace bestehen."""
+        if not v.strip():
+            raise ValueError("Titel darf nicht leer sein")
+        return v.strip()
+
+    @field_validator('dueDate')
+    @classmethod
+    def due_date_in_future(cls, v: Optional[datetime]) -> Optional[datetime]:
+        """Due Date muss in der Zukunft liegen."""
+        if v is not None:
+            # Erlaube Daten die mindestens jetzt sind (nicht strikt in Zukunft)
+            # Dies ermoeglicht "heute faellig"
+            from datetime import timezone
+            now = datetime.now(timezone.utc) if v.tzinfo else datetime.utcnow()
+            if v < now - timedelta(minutes=5):  # 5 Minuten Toleranz
+                raise ValueError("Faelligkeitsdatum muss in der Zukunft liegen")
+        return v
+
+
+class TaskUpdate(BaseModel):
+    """Aufgabe aktualisieren.
+
+    Alle Felder sind optional - nur uebergebene Felder werden aktualisiert.
+    """
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=5000)
+    taskType: Optional[TaskTypeEnum] = None
+    assignedToId: Optional[uuid.UUID] = None
+    priority: Optional[TaskPriorityEnum] = None
+    status: Optional[TaskStatusEnum] = None
+    dueDate: Optional[datetime] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+    @field_validator('title')
+    @classmethod
+    def title_not_whitespace(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError("Titel darf nicht leer sein")
+        return v.strip() if v else v
+
+
+class TaskCompleteRequest(BaseModel):
+    """Aufgabe als erledigt markieren."""
+    completionNotes: Optional[str] = Field(None, max_length=2000, description="Notizen zur Erledigung")
+
+
+class TaskAssignRequest(BaseModel):
+    """Aufgabe einem Benutzer zuweisen."""
+    assignedToId: uuid.UUID = Field(..., description="ID des neuen Bearbeiters")
+    notifyAssignee: bool = Field(True, description="Benachrichtigung an neuen Bearbeiter senden")
+
+
+class TaskResponse(BaseModel):
+    """Aufgaben-Antwort mit allen Details."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    documentId: uuid.UUID
+    documentName: Optional[str] = None
+    companyId: uuid.UUID
+
+    title: str
+    description: Optional[str] = None
+    taskType: str
+
+    # Benutzer-Informationen
+    createdById: Optional[uuid.UUID] = None
+    createdByName: Optional[str] = None
+    assignedToId: Optional[uuid.UUID] = None
+    assignedToName: Optional[str] = None
+
+    # Status
+    status: str
+    priority: str
+
+    # Deadlines
+    dueDate: Optional[datetime] = None
+    isOverdue: bool = False
+    reminderSent: bool = False
+    escalated: bool = False
+    escalatedAt: Optional[datetime] = None
+    escalatedToId: Optional[uuid.UUID] = None
+    escalatedToName: Optional[str] = None
+
+    # Completion
+    completedAt: Optional[datetime] = None
+    completedById: Optional[uuid.UUID] = None
+    completedByName: Optional[str] = None
+    completionNotes: Optional[str] = None
+
+    # Metadaten
+    metadata: Optional[Dict[str, Any]] = None
+    createdAt: datetime
+    updatedAt: datetime
+
+
+class TasksListResponse(BaseModel):
+    """Liste von Aufgaben mit Pagination."""
+    tasks: List[TaskResponse]
+    total: int
+    hasMore: bool
+
+
+class TaskStatistics(BaseModel):
+    """Statistiken ueber Aufgaben."""
+    totalTasks: int = 0
+    openTasks: int = 0
+    inProgressTasks: int = 0
+    completedTasks: int = 0
+    overdueTasks: int = 0
+    averageCompletionTimeHours: Optional[float] = None
+
+
+# =============================================================================
+# NOTIFICATION PREFERENCE SCHEMAS
+# =============================================================================
+
+
+class NotificationChannelEnum(str, Enum):
+    """Verfuegbare Benachrichtigungskanaele."""
+    IN_APP = "in_app"
+    EMAIL = "email"
+    WEBSOCKET = "websocket"
+    SLACK = "slack"
+    SMS = "sms"
+
+
+class DigestFrequencyEnum(str, Enum):
+    """Haeufigkeit fuer Email-Digest."""
+    IMMEDIATE = "immediate"
+    HOURLY = "hourly"
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    DISABLED = "disabled"
+
+
+class NotificationPreferenceCreate(BaseModel):
+    """Benachrichtigungs-Praeferenz erstellen."""
+    notificationType: str = Field(..., min_length=1, max_length=50)
+    enabledChannels: Dict[str, bool] = Field(
+        default_factory=lambda: {
+            "in_app": True,
+            "email": True,
+            "websocket": True,
+            "slack": False,
+            "sms": False
+        }
+    )
+    digestFrequency: DigestFrequencyEnum = DigestFrequencyEnum.IMMEDIATE
+
+
+class NotificationPreferenceUpdate(BaseModel):
+    """Benachrichtigungs-Praeferenz aktualisieren."""
+    enabledChannels: Optional[Dict[str, bool]] = None
+    digestFrequency: Optional[DigestFrequencyEnum] = None
+
+
+class NotificationPreferenceResponse(BaseModel):
+    """Benachrichtigungs-Praeferenz Antwort."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    userId: uuid.UUID
+    notificationType: str
+    enabledChannels: Dict[str, bool]
+    digestFrequency: str
+    createdAt: datetime
+    updatedAt: datetime
+
+
+class NotificationPreferencesListResponse(BaseModel):
+    """Liste aller Praeferenzen eines Benutzers."""
+    preferences: List[NotificationPreferenceResponse]
+
+
+class NotificationPreferencesBulkUpdate(BaseModel):
+    """Mehrere Praeferenzen gleichzeitig aktualisieren."""
+    preferences: List[NotificationPreferenceCreate]
+
+
+# =============================================================================
+# ESCALATION RULE SCHEMAS
+# =============================================================================
+
+
+class EscalationRuleCreate(BaseModel):
+    """Eskalationsregel erstellen."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    name: str = Field(..., min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=1000)
+    taskType: Optional[TaskTypeEnum] = Field(None, description="Gilt fuer diesen Aufgabentyp (null = alle)")
+    priority: Optional[TaskPriorityEnum] = Field(None, description="Gilt fuer diese Prioritaet (null = alle)")
+    timeoutHours: int = Field(24, ge=1, le=720, description="Stunden bis zur Eskalation")
+    escalateToUserId: Optional[uuid.UUID] = Field(None, description="Eskalation an bestimmten Benutzer")
+    escalateToRole: Optional[str] = Field(None, max_length=50, description="Eskalation an Rolle (z.B. 'manager')")
+    notifyOriginalAssignee: bool = Field(True)
+    notifyEscalationTarget: bool = Field(True)
+    notifyTaskCreator: bool = Field(False)
+    isActive: bool = Field(True)
+    rulePriority: int = Field(100, ge=1, le=1000, description="Niedrigere Zahl = hoehere Prioritaet")
+
+
+class EscalationRuleUpdate(BaseModel):
+    """Eskalationsregel aktualisieren."""
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=1000)
+    taskType: Optional[TaskTypeEnum] = None
+    priority: Optional[TaskPriorityEnum] = None
+    timeoutHours: Optional[int] = Field(None, ge=1, le=720)
+    escalateToUserId: Optional[uuid.UUID] = None
+    escalateToRole: Optional[str] = Field(None, max_length=50)
+    notifyOriginalAssignee: Optional[bool] = None
+    notifyEscalationTarget: Optional[bool] = None
+    notifyTaskCreator: Optional[bool] = None
+    isActive: Optional[bool] = None
+    rulePriority: Optional[int] = Field(None, ge=1, le=1000)
+
+
+class EscalationRuleResponse(BaseModel):
+    """Eskalationsregel Antwort."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    companyId: uuid.UUID
+    name: str
+    description: Optional[str] = None
+    taskType: Optional[str] = None
+    priority: Optional[str] = None
+    timeoutHours: int
+    escalateToUserId: Optional[uuid.UUID] = None
+    escalateToUserName: Optional[str] = None
+    escalateToRole: Optional[str] = None
+    notifyOriginalAssignee: bool
+    notifyEscalationTarget: bool
+    notifyTaskCreator: bool
+    isActive: bool
+    rulePriority: int
+    createdAt: datetime
+    updatedAt: datetime
+
+
+class EscalationRulesListResponse(BaseModel):
+    """Liste von Eskalationsregeln."""
+    rules: List[EscalationRuleResponse]
+    total: int
 
 
 # =============================================================================

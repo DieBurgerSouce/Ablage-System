@@ -190,11 +190,4 @@ Dashboard alerting thresholds should trigger on: invoice overdue (grace period p
 - Pydantic models with strict validation for all Mahnung operations
 - Append-only audit tables with database triggers
 
-**Key API endpoints**:
-- `GET /api/mahnungen` - List with status, stufe, customer, date filters
-- `PATCH /api/invoices/{id}/mahn-status` - Update dunning stage
-- `POST /api/mahnungen/bulk-action` - Generate documents, escalate, mark sent
-- `POST /api/tasks/{id}/snooze` - Postpone with reason tracking
-- `POST /api/invoices/{id}/phone-calls` - Log contact attempts
-
-The system should create tasks rather than auto-sending communications, matching the client's requirement for manual execution in external ERP. Each Mahnung action creates a task with due date, assigned user, and action type, appearing in the Mahnungen dashboard for batch processing or individual handling.
+    **Key API endpoints**:b

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_optimizers\sharding\gradient_clip_helper.py
+# hypothesis_version: 6.148.7
+
+[0.0, '/gradient_clip', '@GRAD', '@MERGED', 'Out', 'X', 'all_reduce', 'dtype', 'fill_constant', 'is_distributed', 'op_namescope', 'out', 'reduce_type', 'ring_id', 'shape', 'sum', 'value', 'x']

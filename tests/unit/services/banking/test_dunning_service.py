@@ -758,7 +758,8 @@ class TestAsyncDunningStats:
         mock_empty_result = MagicMock()
         mock_empty_result.scalars.return_value.all.return_value = []
         mock_empty_result.scalar.return_value = 0
-        mock_empty_result.one.return_value = (0, Decimal("0.00"))
+        # Service erwartet 3 Werte: count, gross_amount, reminder_fee
+        mock_empty_result.one.return_value = (0, Decimal("0.00"), Decimal("0.00"))
 
         mock_db.execute = AsyncMock(return_value=mock_empty_result)
 
@@ -767,8 +768,9 @@ class TestAsyncDunningStats:
             user_id=sample_user_id,
         )
 
-        assert "overdue" in stats
-        assert "active_dunnings" in stats
+        # Service gibt Frontend-kompatibles Format zurueck (siehe get_dunning_stats docstring)
+        assert "total_amount_overdue" in stats
+        assert "total_active" in stats
         assert "by_level" in stats
 
 

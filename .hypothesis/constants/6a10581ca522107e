@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\workers\tasks\report_tasks.py
+# hypothesis_version: 6.148.7
+
+[900.0, 3600.0, 120, 300, '%Y%m%d_%H%M%S', '._- ', 'Report', 'application/json', 'application/pdf', 'cancelled', 'completed', 'content', 'content_type', 'csv', 'data', 'default', 'deleted_db', 'deleted_files', 'error', 'errors', 'excel', 'exception_type', 'execution_cancelled', 'execution_id', 'expired_cleaned', 'failed', 'file_path', 'file_size', 'filename', 'format', 'hour', 'json', 'minute', 'name', 'options', 'pdf', 'pending', 'queue', 'rb', 'recipient', 'recipients', 'report_emails_sent', 'report_generated', 'reports', 'reports.send_email', 'reports_checked', 'reports_executed', 'reports_failed', 'retention_days', 'row_count', 'running', 'schedule', 'scheduled', 'sent', 'success', 'task', 'template_id', 'text/csv', 'utf-8', 'w', 'wb', 'xlsx']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\passes\auto_parallel_recompute.py
+# hypothesis_version: 6.148.7
+
+['.', '@GRAD', 'Out', 'Seed', '_exclude_rc', 'dist_context', 'dropout', 'fix_seed', 'force_cpu', 'fused_dropout_add', 'grad', 'int32', 'loss', 'main_ops', 'no_grad_set', 'nop', 'num', 'op_namescope', 'pre_ops', 'rc_seed', 'refined_ops_patterns', 'seed', 'seed_tensor', 'sr', 'suf_ops', 'sum', 'tmp', 'var_as_input_ops', 'var_as_output_ops']

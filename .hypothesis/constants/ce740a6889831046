@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\optimizer\rprop.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-05, 0.001, 0.5, 1.0, 1.2, 'etas', 'grad', 'learning_rate', 'learning_rate_out', 'learning_rate_range', 'learning_rates', 'master_param', 'master_param_out', 'multi_precision', 'param', 'param_out', 'params', 'prev', 'prev_out', 'prevs', 'rprop']

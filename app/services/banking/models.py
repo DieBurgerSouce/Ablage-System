@@ -263,7 +263,7 @@ class BankAccountResponse(BankAccountBase):
     last_sync_at: Optional[datetime] = None
     auto_sync_enabled: bool
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
 
 
 class BankAccountWithStats(BankAccountResponse):

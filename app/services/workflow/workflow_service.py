@@ -117,13 +117,18 @@ class WorkflowService:
         self,
         workflow_id: UUID,
         user_id: Optional[UUID] = None,
+        company_id: Optional[UUID] = None,
         include_steps: bool = True,
     ) -> Optional[Workflow]:
         """Holt einen Workflow nach ID.
 
+        SECURITY: Wenn company_id angegeben wird, MUSS der Workflow zu dieser
+        Company gehoeren (Multi-Tenant Isolation).
+
         Args:
             workflow_id: Workflow-ID
             user_id: Optionale User-ID fuer Berechtigungspruefung
+            company_id: Company-ID fuer Multi-Tenant Isolation
             include_steps: Steps mit laden
 
         Returns:
@@ -142,8 +147,29 @@ class WorkflowService:
                 )
             )
 
+        # SECURITY: company_id Filter fuer Multi-Tenant Isolation
+        if company_id:
+            query = query.where(Workflow.company_id == company_id)
+
         result = await self.db.execute(query)
-        return result.scalar_one_or_none()
+        workflow = result.scalar_one_or_none()
+
+        # SECURITY: Cross-Tenant Zugriff loggen
+        if workflow is None and company_id:
+            check_query = select(Workflow.id, Workflow.company_id).where(
+                Workflow.id == workflow_id
+            )
+            check_result = await self.db.execute(check_query)
+            row = check_result.first()
+            if row and row.company_id and row.company_id != company_id:
+                logger.warning(
+                    "cross_tenant_workflow_access_blocked",
+                    workflow_id=str(workflow_id),
+                    requested_company_id=str(company_id),
+                    user_id=str(user_id) if user_id else None,
+                )
+
+        return workflow
 
     async def list_workflows(
         self,
@@ -225,19 +251,26 @@ class WorkflowService:
         self,
         workflow_id: UUID,
         user_id: UUID,
+        company_id: Optional[UUID] = None,
         **updates: Any,
     ) -> Optional[Workflow]:
         """Aktualisiert einen Workflow.
 
+        SECURITY: Wenn company_id angegeben wird, MUSS der Workflow zu dieser
+        Company gehoeren (Multi-Tenant Isolation).
+
         Args:
             workflow_id: Workflow-ID
             user_id: User-ID fuer Berechtigungspruefung
+            company_id: Company-ID fuer Multi-Tenant Isolation
             **updates: Zu aktualisierende Felder
 
         Returns:
             Aktualisierter Workflow oder None
         """
-        workflow = await self.get_workflow(workflow_id, user_id, include_steps=False)
+        workflow = await self.get_workflow(
+            workflow_id, user_id, company_id=company_id, include_steps=False
+        )
         if not workflow:
             return None
 
@@ -286,17 +319,24 @@ class WorkflowService:
         self,
         workflow_id: UUID,
         user_id: UUID,
+        company_id: Optional[UUID] = None,
     ) -> bool:
         """Loescht einen Workflow.
+
+        SECURITY: Wenn company_id angegeben wird, MUSS der Workflow zu dieser
+        Company gehoeren (Multi-Tenant Isolation).
 
         Args:
             workflow_id: Workflow-ID
             user_id: User-ID fuer Berechtigungspruefung
+            company_id: Company-ID fuer Multi-Tenant Isolation
 
         Returns:
             True wenn erfolgreich geloescht
         """
-        workflow = await self.get_workflow(workflow_id, user_id, include_steps=False)
+        workflow = await self.get_workflow(
+            workflow_id, user_id, company_id=company_id, include_steps=False
+        )
         if not workflow or workflow.user_id != user_id:
             return False
 
@@ -316,19 +356,26 @@ class WorkflowService:
         self,
         workflow_id: UUID,
         user_id: UUID,
+        company_id: Optional[UUID] = None,
         new_name: Optional[str] = None,
     ) -> Optional[Workflow]:
         """Dupliziert einen Workflow.
 
+        SECURITY: Wenn company_id angegeben wird, MUSS der Workflow zu dieser
+        Company gehoeren (Multi-Tenant Isolation).
+
         Args:
             workflow_id: Original Workflow-ID
             user_id: User-ID des neuen Besitzers
+            company_id: Company-ID fuer Multi-Tenant Isolation
             new_name: Optionaler neuer Name
 
         Returns:
             Duplizierter Workflow oder None
         """
-        original = await self.get_workflow(workflow_id, user_id, include_steps=True)
+        original = await self.get_workflow(
+            workflow_id, user_id, company_id=company_id, include_steps=True
+        )
         if not original:
             return None
 
@@ -376,17 +423,24 @@ class WorkflowService:
         self,
         workflow_id: UUID,
         user_id: UUID,
+        company_id: Optional[UUID] = None,
     ) -> Optional[Workflow]:
         """Aktiviert/Deaktiviert einen Workflow.
+
+        SECURITY: Wenn company_id angegeben wird, MUSS der Workflow zu dieser
+        Company gehoeren (Multi-Tenant Isolation).
 
         Args:
             workflow_id: Workflow-ID
             user_id: User-ID
+            company_id: Company-ID fuer Multi-Tenant Isolation
 
         Returns:
             Aktualisierter Workflow oder None
         """
-        workflow = await self.get_workflow(workflow_id, user_id, include_steps=False)
+        workflow = await self.get_workflow(
+            workflow_id, user_id, company_id=company_id, include_steps=False
+        )
         if not workflow or workflow.user_id != user_id:
             return None
 
@@ -413,19 +467,26 @@ class WorkflowService:
         workflow_id: UUID,
         step_order: int,
         step_type: str,
+        user_id: Optional[UUID] = None,
+        company_id: Optional[UUID] = None,
         step_name: Optional[str] = None,
         config: Optional[Dict[str, Any]] = None,
         retry_on_failure: bool = True,
         max_retries: int = 3,
         position_x: float = 0.0,
         position_y: float = 0.0,
-    ) -> WorkflowStep:
+    ) -> Optional[WorkflowStep]:
         """Erstellt einen Workflow-Step.
+
+        SECURITY: Wenn company_id angegeben wird, MUSS der Workflow zu dieser
+        Company gehoeren (Multi-Tenant Isolation).
 
         Args:
             workflow_id: Workflow-ID
             step_order: Reihenfolge
             step_type: Step-Typ (condition, action, branch, delay, parallel)
+            user_id: User-ID fuer Berechtigungspruefung (empfohlen)
+            company_id: Company-ID fuer Multi-Tenant Isolation (empfohlen)
             step_name: Optionaler Name
             config: Step-Konfiguration
             retry_on_failure: Bei Fehler wiederholen
@@ -434,8 +495,22 @@ class WorkflowService:
             position_y: Y-Position in ReactFlow
 
         Returns:
-            Erstellter Step
+            Erstellter Step oder None wenn Workflow nicht zugreifbar
         """
+        # SECURITY: Workflow-Zugriff validieren (Multi-Tenant Isolation)
+        if user_id or company_id:
+            workflow = await self.get_workflow(
+                workflow_id, user_id=user_id, company_id=company_id, include_steps=False
+            )
+            if not workflow:
+                logger.warning(
+                    "create_step_blocked_workflow_not_accessible",
+                    workflow_id=str(workflow_id),
+                    user_id=str(user_id) if user_id else None,
+                    company_id=str(company_id) if company_id else None,
+                )
+                return None
+
         step = WorkflowStep(
             id=uuid4(),
             workflow_id=workflow_id,
@@ -465,15 +540,36 @@ class WorkflowService:
     async def get_steps(
         self,
         workflow_id: UUID,
+        user_id: Optional[UUID] = None,
+        company_id: Optional[UUID] = None,
     ) -> List[WorkflowStep]:
         """Holt alle Steps eines Workflows.
 
+        SECURITY: Wenn company_id angegeben wird, MUSS der Workflow zu dieser
+        Company gehoeren (Multi-Tenant Isolation).
+
         Args:
             workflow_id: Workflow-ID
+            user_id: User-ID fuer Berechtigungspruefung (empfohlen)
+            company_id: Company-ID fuer Multi-Tenant Isolation (empfohlen)
 
         Returns:
-            Liste der Steps
+            Liste der Steps (leer wenn Workflow nicht zugreifbar)
         """
+        # SECURITY: Workflow-Zugriff validieren (Multi-Tenant Isolation)
+        if user_id or company_id:
+            workflow = await self.get_workflow(
+                workflow_id, user_id=user_id, company_id=company_id, include_steps=False
+            )
+            if not workflow:
+                logger.warning(
+                    "get_steps_blocked_workflow_not_accessible",
+                    workflow_id=str(workflow_id),
+                    user_id=str(user_id) if user_id else None,
+                    company_id=str(company_id) if company_id else None,
+                )
+                return []
+
         query = (
             select(WorkflowStep)
             .where(WorkflowStep.workflow_id == workflow_id)
@@ -486,12 +582,19 @@ class WorkflowService:
     async def update_step(
         self,
         step_id: UUID,
+        user_id: Optional[UUID] = None,
+        company_id: Optional[UUID] = None,
         **updates: Any,
     ) -> Optional[WorkflowStep]:
         """Aktualisiert einen Step.
 
+        SECURITY: Wenn company_id angegeben wird, MUSS der zugehoerige Workflow
+        zu dieser Company gehoeren (Multi-Tenant Isolation).
+
         Args:
             step_id: Step-ID
+            user_id: User-ID fuer Berechtigungspruefung (empfohlen)
+            company_id: Company-ID fuer Multi-Tenant Isolation (empfohlen)
             **updates: Zu aktualisierende Felder
 
         Returns:
@@ -503,6 +606,21 @@ class WorkflowService:
 
         if not step:
             return None
+
+        # SECURITY: Workflow-Zugriff validieren (Multi-Tenant Isolation)
+        if user_id or company_id:
+            workflow = await self.get_workflow(
+                step.workflow_id, user_id=user_id, company_id=company_id, include_steps=False
+            )
+            if not workflow:
+                logger.warning(
+                    "update_step_blocked_workflow_not_accessible",
+                    step_id=str(step_id),
+                    workflow_id=str(step.workflow_id),
+                    user_id=str(user_id) if user_id else None,
+                    company_id=str(company_id) if company_id else None,
+                )
+                return None
 
         allowed_fields = {
             "step_order",
@@ -529,15 +647,44 @@ class WorkflowService:
     async def delete_step(
         self,
         step_id: UUID,
+        user_id: Optional[UUID] = None,
+        company_id: Optional[UUID] = None,
     ) -> bool:
         """Loescht einen Step.
 
+        SECURITY: Wenn company_id angegeben wird, MUSS der zugehoerige Workflow
+        zu dieser Company gehoeren (Multi-Tenant Isolation).
+
         Args:
             step_id: Step-ID
+            user_id: User-ID fuer Berechtigungspruefung (empfohlen)
+            company_id: Company-ID fuer Multi-Tenant Isolation (empfohlen)
 
         Returns:
             True wenn erfolgreich
         """
+        # SECURITY: Step laden und Workflow-Zugriff validieren
+        if user_id or company_id:
+            query = select(WorkflowStep).where(WorkflowStep.id == step_id)
+            result = await self.db.execute(query)
+            step = result.scalar_one_or_none()
+
+            if not step:
+                return False
+
+            workflow = await self.get_workflow(
+                step.workflow_id, user_id=user_id, company_id=company_id, include_steps=False
+            )
+            if not workflow:
+                logger.warning(
+                    "delete_step_blocked_workflow_not_accessible",
+                    step_id=str(step_id),
+                    workflow_id=str(step.workflow_id),
+                    user_id=str(user_id) if user_id else None,
+                    company_id=str(company_id) if company_id else None,
+                )
+                return False
+
         stmt = delete(WorkflowStep).where(WorkflowStep.id == step_id)
         result = await self.db.execute(stmt)
         await self.db.commit()
@@ -548,16 +695,37 @@ class WorkflowService:
         self,
         workflow_id: UUID,
         step_orders: List[Dict[str, Any]],
+        user_id: Optional[UUID] = None,
+        company_id: Optional[UUID] = None,
     ) -> bool:
         """Ordnet Steps neu an.
+
+        SECURITY: Wenn company_id angegeben wird, MUSS der Workflow zu dieser
+        Company gehoeren (Multi-Tenant Isolation).
 
         Args:
             workflow_id: Workflow-ID
             step_orders: Liste mit {step_id, step_order}
+            user_id: User-ID fuer Berechtigungspruefung (empfohlen)
+            company_id: Company-ID fuer Multi-Tenant Isolation (empfohlen)
 
         Returns:
             True wenn erfolgreich
         """
+        # SECURITY: Workflow-Zugriff validieren (Multi-Tenant Isolation)
+        if user_id or company_id:
+            workflow = await self.get_workflow(
+                workflow_id, user_id=user_id, company_id=company_id, include_steps=False
+            )
+            if not workflow:
+                logger.warning(
+                    "reorder_steps_blocked_workflow_not_accessible",
+                    workflow_id=str(workflow_id),
+                    user_id=str(user_id) if user_id else None,
+                    company_id=str(company_id) if company_id else None,
+                )
+                return False
+
         for item in step_orders:
             step_id = item.get("step_id")
             new_order = item.get("step_order")
@@ -589,28 +757,49 @@ class WorkflowService:
         self,
         workflow_id: UUID,
         steps_data: List[Dict[str, Any]],
+        user_id: Optional[UUID] = None,
+        company_id: Optional[UUID] = None,
     ) -> List[WorkflowStep]:
         """Aktualisiert mehrere Steps (ReactFlow Bulk-Update).
+
+        SECURITY: Wenn company_id angegeben wird, MUSS der Workflow zu dieser
+        Company gehoeren (Multi-Tenant Isolation).
 
         Args:
             workflow_id: Workflow-ID
             steps_data: Liste mit Step-Daten
+            user_id: User-ID fuer Berechtigungspruefung (empfohlen)
+            company_id: Company-ID fuer Multi-Tenant Isolation (empfohlen)
 
         Returns:
-            Aktualisierte Steps
+            Aktualisierte Steps (leer wenn Workflow nicht zugreifbar)
         """
+        # SECURITY: Workflow-Zugriff validieren (Multi-Tenant Isolation)
+        if user_id or company_id:
+            workflow = await self.get_workflow(
+                workflow_id, user_id=user_id, company_id=company_id, include_steps=False
+            )
+            if not workflow:
+                logger.warning(
+                    "batch_update_steps_blocked_workflow_not_accessible",
+                    workflow_id=str(workflow_id),
+                    user_id=str(user_id) if user_id else None,
+                    company_id=str(company_id) if company_id else None,
+                )
+                return []
+
         updated_steps = []
 
         for step_data in steps_data:
             step_id = step_data.pop("id", None)
 
             if step_id:
-                # Update existierenden Step
+                # Update existierenden Step (ohne erneute Validierung, da bereits geprueft)
                 step = await self.update_step(UUID(str(step_id)), **step_data)
                 if step:
                     updated_steps.append(step)
             else:
-                # Neuen Step erstellen
+                # Neuen Step erstellen (ohne erneute Validierung, da bereits geprueft)
                 step = await self.create_step(
                     workflow_id=workflow_id,
                     step_order=step_data.get("step_order", 0),
@@ -620,7 +809,8 @@ class WorkflowService:
                     position_x=step_data.get("position_x", 0.0),
                     position_y=step_data.get("position_y", 0.0),
                 )
-                updated_steps.append(step)
+                if step:
+                    updated_steps.append(step)
 
         return updated_steps
 
@@ -630,17 +820,31 @@ class WorkflowService:
 
     async def list_templates(
         self,
+        company_id: Optional[UUID] = None,
         category: Optional[str] = None,
     ) -> List[Workflow]:
         """Listet verfuegbare Workflow-Templates.
 
+        SECURITY: Wenn company_id angegeben wird, werden nur Templates dieser
+        Company oder globale System-Templates (company_id=NULL) zurueckgegeben.
+
         Args:
+            company_id: Company-ID fuer Multi-Tenant Isolation (empfohlen)
             category: Optionale Kategorie
 
         Returns:
             Liste der Templates
         """
         conditions = [Workflow.is_template == True]  # noqa: E712
+
+        # SECURITY: company_id Filter fuer Multi-Tenant Isolation
+        if company_id:
+            conditions.append(
+                or_(
+                    Workflow.company_id == company_id,
+                    Workflow.company_id.is_(None),  # System-Templates ohne Company
+                )
+            )
 
         if category:
             conditions.append(
@@ -660,22 +864,50 @@ class WorkflowService:
         self,
         template_id: UUID,
         user_id: UUID,
+        company_id: UUID,
         name: Optional[str] = None,
-        company_id: Optional[UUID] = None,
     ) -> Optional[Workflow]:
         """Erstellt Workflow aus Template.
+
+        SECURITY: company_id ist PFLICHT. Der neue Workflow wird dieser Company
+        zugewiesen. Das Template muss entweder zur gleichen Company gehoeren
+        oder ein System-Template (company_id=NULL) sein.
 
         Args:
             template_id: Template-ID
             user_id: User-ID
+            company_id: Company-ID fuer den neuen Workflow (PFLICHT)
             name: Optionaler Name
-            company_id: Optionale Firmen-ID
 
         Returns:
             Erstellter Workflow oder None
         """
-        template = await self.get_workflow(template_id, include_steps=True)
-        if not template or not template.is_template:
+        # SECURITY: Template laden mit company_id Filter
+        # Templates sind entweder Company-spezifisch oder System-Templates (NULL)
+        query = (
+            select(Workflow)
+            .where(
+                and_(
+                    Workflow.id == template_id,
+                    Workflow.is_template == True,  # noqa: E712
+                    or_(
+                        Workflow.company_id == company_id,
+                        Workflow.company_id.is_(None),  # System-Templates
+                    ),
+                )
+            )
+            .options(selectinload(Workflow.steps))
+        )
+        result = await self.db.execute(query)
+        template = result.scalar_one_or_none()
+
+        if not template:
+            logger.warning(
+                "instantiate_template_blocked_template_not_accessible",
+                template_id=str(template_id),
+                company_id=str(company_id),
+                user_id=str(user_id),
+            )
             return None
 
         # Workflow erstellen
@@ -725,16 +957,25 @@ class WorkflowService:
     async def validate_workflow(
         self,
         workflow_id: UUID,
+        user_id: Optional[UUID] = None,
+        company_id: Optional[UUID] = None,
     ) -> Dict[str, Any]:
         """Validiert einen Workflow.
 
+        SECURITY: Wenn company_id angegeben wird, MUSS der Workflow zu dieser
+        Company gehoeren (Multi-Tenant Isolation).
+
         Args:
             workflow_id: Workflow-ID
+            user_id: User-ID fuer Berechtigungspruefung
+            company_id: Company-ID fuer Multi-Tenant Isolation
 
         Returns:
             Validierungsergebnis mit errors und warnings
         """
-        workflow = await self.get_workflow(workflow_id, include_steps=True)
+        workflow = await self.get_workflow(
+            workflow_id, user_id=user_id, company_id=company_id, include_steps=True
+        )
         if not workflow:
             return {"valid": False, "errors": ["Workflow nicht gefunden"], "warnings": []}
 
@@ -836,10 +1077,76 @@ class WorkflowService:
             if target not in node_ids:
                 errors.append(f"Kante referenziert unbekannten Ziel-Knoten: {target}")
 
-        # Zyklen erkennen (einfache Pruefung)
-        # TODO: Vollstaendige Zyklenerkennung implementieren
+        # Zyklen erkennen mit DFS (Depth-First Search)
+        cycle_errors = self._detect_cycles(nodes, edges)
+        errors.extend(cycle_errors)
 
         return errors
+
+    def _detect_cycles(
+        self,
+        nodes: List[Dict[str, Any]],
+        edges: List[Dict[str, Any]],
+    ) -> List[str]:
+        """Erkennt Zyklen im Workflow-Graphen mit DFS.
+
+        Verwendet drei Zustaende: UNVISITED (0), VISITING (1), VISITED (2)
+        Ein Zyklus wird erkannt, wenn ein Knoten im VISITING-Zustand
+        erneut besucht wird.
+
+        Args:
+            nodes: Liste der Knoten
+            edges: Liste der Kanten
+
+        Returns:
+            Liste der Fehler (leer wenn keine Zyklen)
+        """
+        # Adjazenzliste erstellen
+        node_ids = {node.get("id") for node in nodes}
+        adjacency: Dict[str, List[str]] = {nid: [] for nid in node_ids}
+
+        for edge in edges:
+            source = edge.get("source")
+            target = edge.get("target")
+            if source in adjacency and target in node_ids:
+                adjacency[source].append(target)
+
+        # DFS mit Zustaenden
+        UNVISITED, VISITING, VISITED = 0, 1, 2
+        state: Dict[str, int] = {nid: UNVISITED for nid in node_ids}
+        cycle_errors: List[str] = []
+        cycle_path: List[str] = []
+
+        def dfs(node_id: str) -> bool:
+            """DFS-Traversierung. Gibt True zurueck wenn Zyklus gefunden."""
+            if state[node_id] == VISITING:
+                # Zyklus gefunden - extrahiere Zykluspfad
+                cycle_start = cycle_path.index(node_id) if node_id in cycle_path else 0
+                cycle = cycle_path[cycle_start:] + [node_id]
+                cycle_str = " -> ".join(cycle)
+                cycle_errors.append(f"Zyklus erkannt: {cycle_str}")
+                return True
+
+            if state[node_id] == VISITED:
+                return False
+
+            state[node_id] = VISITING
+            cycle_path.append(node_id)
+
+            for neighbor in adjacency.get(node_id, []):
+                if dfs(neighbor):
+                    return True
+
+            cycle_path.pop()
+            state[node_id] = VISITED
+            return False
+
+        # Von allen Knoten starten (um unverbundene Komponenten zu erfassen)
+        for node_id in node_ids:
+            if state[node_id] == UNVISITED:
+                dfs(node_id)
+
+        return cycle_errors
 
     # =========================================================================
     # Statistics
@@ -848,16 +1155,25 @@ class WorkflowService:
     async def get_workflow_stats(
         self,
         workflow_id: UUID,
+        user_id: Optional[UUID] = None,
+        company_id: Optional[UUID] = None,
     ) -> Dict[str, Any]:
         """Holt Statistiken fuer einen Workflow.
 
+        SECURITY: Wenn company_id angegeben wird, MUSS der Workflow zu dieser
+        Company gehoeren (Multi-Tenant Isolation).
+
         Args:
             workflow_id: Workflow-ID
+            user_id: User-ID fuer Berechtigungspruefung
+            company_id: Company-ID fuer Multi-Tenant Isolation
 
         Returns:
             Statistik-Dictionary
         """
-        workflow = await self.get_workflow(workflow_id, include_steps=False)
+        workflow = await self.get_workflow(
+            workflow_id, user_id=user_id, company_id=company_id, include_steps=False
+        )
         if not workflow:
             return {}
 

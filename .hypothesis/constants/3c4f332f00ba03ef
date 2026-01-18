@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\augmentations\dropout\coarse_dropout.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.02, 0.1, 0.2, 0.3, 0.33, 0.5, 1.0, 3.3, 'CoarseDropout', 'Erasing', 'bboxes', 'holes', 'image', 'inpaint_ns', 'inpaint_telea', 'mask', 'random', 'random_uniform', 'seed', 'shape']

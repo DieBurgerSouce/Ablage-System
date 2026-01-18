@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\static\amp\fp16_utils.py
+# hypothesis_version: 6.148.7
+
+['.cast_', 'ConvX', 'ConvZ', 'FFNLnBias', 'FFNLnScale', 'FilterX', 'FilterZ', 'Ln1Bias', 'Ln1Mean', 'Ln1Scale', 'Ln1Variance', 'Ln2Bias', 'Ln2Mean', 'Ln2Scale', 'Ln2Variance', 'LnBias', 'LnMean', 'LnScale', 'LnVariance', 'O1', 'O2', 'OD', 'Out', 'X', 'Y', 'Z', '__use_fp16__', 'all', 'batch_norm', 'cast', 'create_py_reader', 'dtype', 'float16', 'fp16', 'fp32', 'fused_attention', 'fused_feedforward', 'in_dtype', 'instance_norm', 'layer_norm', 'learning_rate', 'master_grad_cast', 'op_device', 'op_namescope', 'op_role', 'op_role_var', 'out_dtype', 'read', 'resnet_unit', 'set_value', 'sub_block']

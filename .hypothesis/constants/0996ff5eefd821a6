@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\functional\flash_attention.py
+# hypothesis_version: 6.148.7
+
+[-10000.0, -0.5, 0.0, 1.0, 192, 224, 256, 'False', 'attn_mask', 'causal', 'cu_seqlens_k', 'cu_seqlens_q', 'dropout', 'fixed_seed_offset', 'flash_attn', 'flash_attn_qkvpacked', 'flash_attn_unpadded', 'gpu', 'iluvatar_gpu', 'inf', 'int32', 'is_test', 'k', 'math', 'max_seqlen_k', 'max_seqlen_q', 'mem_efficient', 'metax_gpu', 'out', 'p2p', 'q', 'qkv', 'reduced_scores', 'return_softmax', 'rng_name', 'scale', 'seed_offset', 'softmax', 'softmax_lse', 'upscale_in_train', 'v', 'xpu']

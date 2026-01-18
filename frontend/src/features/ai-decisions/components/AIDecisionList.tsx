@@ -16,6 +16,7 @@ import {
   Eye,
   MoreHorizontal,
   Filter,
+  HelpCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -43,7 +44,9 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { useAIDecisions, useReviewAIDecision } from '../hooks/useAIDecisions';
+import { useAIDecisions, useReviewAIDecision, useDecisionExplanation } from '../hooks/useAIDecisions';
+import { ExplainabilityPanel, WarumButton } from '@/components/ui/ExplainabilityPanel';
+import type { DecisionExplanation } from '@/components/ui/ExplainabilityPanel';
 import type { AIDecision, AIDecisionFilters, ConfidenceLevel, QualityDecision } from '../types/ai-types';
 
 const listVariants = {
@@ -62,9 +65,17 @@ export function AIDecisionList() {
   const [selectedDecision, setSelectedDecision] = useState<AIDecision | null>(null);
   const [reviewOutcome, setReviewOutcome] = useState<'approved' | 'corrected' | 'rejected' | null>(null);
   const [correction, setCorrection] = useState('');
+  const [explanationDecision, setExplanationDecision] = useState<AIDecision | null>(null);
 
   const { data, isLoading, refetch } = useAIDecisions(filters);
   const reviewMutation = useReviewAIDecision();
+
+  // Fetch explanation when dialog opens
+  const {
+    data: explanation,
+    isLoading: explanationLoading,
+    error: explanationError,
+  } = useDecisionExplanation(explanationDecision?.id ?? '', !!explanationDecision);
 
   const handleReview = async () => {
     if (!selectedDecision || !reviewOutcome) return;
@@ -174,6 +185,7 @@ export function AIDecisionList() {
                   key={decision.id}
                   decision={decision}
                   onReview={() => setSelectedDecision(decision)}
+                  onShowExplanation={(d) => setExplanationDecision(d)}
                 />
               ))}
             </motion.div>
@@ -217,6 +229,18 @@ export function AIDecisionList() {
                     {(selectedDecision.calibrated_confidence * 100).toFixed(1)}%
                   </p>
                 </div>
+              </div>
+
+              {/* Warum Button in Review Dialog */}
+              <div className="border-t pt-3">
+                <WarumButton
+                  onClick={() => {
+                    setExplanationDecision(selectedDecision);
+                    setSelectedDecision(null);
+                  }}
+                  hasExplanation={!!selectedDecision.explanation}
+                  size="default"
+                />
               </div>
 
               <div className="flex gap-2">
@@ -278,6 +302,63 @@ export function AIDecisionList() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Explanation Dialog */}
+      <Dialog
+        open={!!explanationDecision}
+        onOpenChange={(open) => !open && setExplanationDecision(null)}
+      >
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <HelpCircle className="w-5 h-5 text-blue-600" />
+              Warum diese Entscheidung?
+            </DialogTitle>
+            <DialogDescription>
+              Erklaerung der KI-Entscheidung fuer "{explanationDecision?.document_name}"
+            </DialogDescription>
+          </DialogHeader>
+
+          {explanationLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <span className="ml-2 text-muted-foreground">Erklaerung wird geladen...</span>
+            </div>
+          ) : explanationError ? (
+            <div className="text-center py-8 text-red-600">
+              <AlertCircle className="w-8 h-8 mx-auto mb-2" />
+              <p>Erklaerung konnte nicht geladen werden</p>
+            </div>
+          ) : explanation ? (
+            <ExplainabilityPanel
+              explanation={explanation as DecisionExplanation}
+              hasExplanation={true}
+              compact={false}
+            />
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              Keine Erklaerung verfuegbar
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExplanationDecision(null)}>
+              Schliessen
+            </Button>
+            {explanationDecision && (
+              <Button
+                onClick={() => {
+                  setSelectedDecision(explanationDecision);
+                  setExplanationDecision(null);
+                }}
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                Prüfen
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -285,9 +366,10 @@ export function AIDecisionList() {
 interface DecisionItemProps {
   decision: AIDecision;
   onReview: () => void;
+  onShowExplanation: (decision: AIDecision) => void;
 }
 
-function DecisionItem({ decision, onReview }: DecisionItemProps) {
+function DecisionItem({ decision, onReview, onShowExplanation }: DecisionItemProps) {
   const confidenceLevelColors: Record<ConfidenceLevel, string> = {
     very_high: 'bg-green-500',
     high: 'bg-emerald-500',
@@ -360,6 +442,10 @@ function DecisionItem({ decision, onReview }: DecisionItemProps) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onShowExplanation(decision)}>
+              <HelpCircle className="w-4 h-4 mr-2" />
+              Warum?
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={onReview}>
               <Eye className="w-4 h-4 mr-2" />
               Prüfen

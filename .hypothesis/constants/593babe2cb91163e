@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\launch_utils.py
+# hypothesis_version: 6.148.7
+
+[400, 6170, '    +', '+', ',', '-', '--', '--branch', '-m', '-p', '-u', '... ', '0', '1', '127.0.0.1:', '3', ':', ';', '=', 'COORDINATOR', 'CUDA_VISIBLE_DEVICES', 'Distributed Envs', 'FLAGS_START_PORT', 'FLAGS_selected_gpus', 'FLAGS_selected_xpus', 'HETER_DEVICE_TYPE', 'HETER_TRAINER', 'OFF', 'ON', 'PADDLE_GLOO_FS_PATH', 'PADDLE_PORT', 'PADDLE_RANK_IN_NODE', 'PADDLE_TRAINERS_NUM', 'PADDLE_TRAINER_ID', 'PADDLE_WITH_GLOO', 'POD_IP', 'PSERVER', 'STAGE_ID', 'STAGE_NUM', 'TRAINER', 'TRAINING_ROLE', 'Value', 'WITH_COVERAGE', 'XPU_VISIBLE_DEVICES', 'a', 'addr', 'auto', 'bkcl', 'coordinator', 'coverage', 'cpu', 'darwin', 'flagcx', 'gloo', 'heter', 'heter_worker', 'http_proxy', 'https_proxy', 'ii', 'machines', 'nccl', 'nt', 'paddle_cpuonly', 'r', 'ranks', 'root', 'run', 'server', 'true', 'w', 'worker', 'xccl', '{}']

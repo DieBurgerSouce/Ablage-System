@@ -15,10 +15,14 @@
 // Components
 export {
   WorkflowBuilder,
+  WorkflowBuilderEnhanced,
   WorkflowsList,
   WorkflowExecutionHistory,
   WorkflowTemplates,
   WorkflowStats,
+  NodePalette,
+  NodeConfigPanel,
+  nodeTemplates,
   nodeTypes,
   TriggerNode,
   ConditionNode,
@@ -28,6 +32,9 @@ export {
   ParallelNode,
   LoopNode,
 } from './components';
+
+// Component Types
+export type { NodeTemplate } from './components';
 
 // Hooks
 export {

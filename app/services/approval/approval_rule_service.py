@@ -121,17 +121,27 @@ class ApprovalRuleService:
 
         return rule
 
-    async def get_rule(self, rule_id: UUID) -> Optional[ApprovalRule]:
+    async def get_rule(
+        self,
+        rule_id: UUID,
+        company_id: UUID,
+    ) -> Optional[ApprovalRule]:
         """Holt eine Regel anhand der ID.
+
+        SECURITY: company_id MUSS fuer Multi-Tenant Isolation uebergeben werden.
 
         Args:
             rule_id: ID der Regel
+            company_id: ID der Firma (REQUIRED fuer Multi-Tenant Isolation)
 
         Returns:
             ApprovalRule oder None
         """
         result = await self.db.execute(
-            select(ApprovalRule).where(ApprovalRule.id == rule_id)
+            select(ApprovalRule).where(
+                ApprovalRule.id == rule_id,
+                ApprovalRule.company_id == company_id,
+            )
         )
         return result.scalar_one_or_none()
 
@@ -162,18 +172,22 @@ class ApprovalRuleService:
     async def update_rule(
         self,
         rule_id: UUID,
+        company_id: UUID,
         **updates: Any,
     ) -> Optional[ApprovalRule]:
         """Aktualisiert eine Regel.
 
+        SECURITY: company_id MUSS fuer Multi-Tenant Isolation uebergeben werden.
+
         Args:
             rule_id: ID der Regel
+            company_id: ID der Firma (REQUIRED fuer Multi-Tenant Isolation)
             **updates: Felder zum Aktualisieren
 
         Returns:
             Aktualisierte ApprovalRule oder None
         """
-        rule = await self.get_rule(rule_id)
+        rule = await self.get_rule(rule_id, company_id=company_id)
         if not rule:
             return None
 
@@ -194,17 +208,30 @@ class ApprovalRuleService:
 
         return rule
 
-    async def delete_rule(self, rule_id: UUID) -> bool:
+    async def delete_rule(
+        self,
+        rule_id: UUID,
+        company_id: UUID,
+    ) -> bool:
         """Loescht eine Regel.
+
+        SECURITY: company_id MUSS fuer Multi-Tenant Isolation uebergeben werden.
 
         Args:
             rule_id: ID der Regel
+            company_id: ID der Firma (REQUIRED fuer Multi-Tenant Isolation)
 
         Returns:
             True wenn erfolgreich geloescht
         """
-        rule = await self.get_rule(rule_id)
+        rule = await self.get_rule(rule_id, company_id=company_id)
         if not rule:
+            logger.warning(
+                "approval_rule_delete_failed",
+                rule_id=str(rule_id),
+                company_id=str(company_id),
+                reason="not_found_or_wrong_company",
+            )
             return False
 
         await self.db.delete(rule)

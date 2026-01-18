@@ -6,6 +6,9 @@ Tests the profiling middleware including:
 - Memory tracking (optional)
 - Integration with ProfilingService
 
+Note: This middleware uses pure ASGI pattern (__call__ with scope/receive/send),
+not BaseHTTPMiddleware pattern (dispatch with request/call_next).
+
 Created: 2024-12-02
 """
 
@@ -14,6 +17,35 @@ import time
 from unittest.mock import AsyncMock, MagicMock, patch
 from starlette.requests import Request
 from starlette.responses import Response
+
+
+def create_asgi_scope(path: str = "/api/v1/test", method: str = "GET") -> dict:
+    """Create a mock ASGI scope for testing."""
+    return {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": method,
+        "path": path,
+        "query_string": b"",
+        "headers": [],
+        "state": {},
+    }
+
+
+async def create_receive() -> dict:
+    """Create a mock receive callable."""
+    return {"type": "http.request", "body": b""}
+
+
+class MockSend:
+    """Mock send callable that captures messages."""
+
+    def __init__(self):
+        self.messages = []
+
+    async def __call__(self, message: dict) -> None:
+        self.messages.append(message)
 
 
 class TestProfilingMiddlewareInit:
@@ -61,28 +93,42 @@ class TestProfilingMiddlewareInit:
 
 
 class TestProfilingMiddlewareDispatch:
-    """Tests for ProfilingMiddleware dispatch method."""
+    """Tests for ProfilingMiddleware ASGI __call__ method."""
 
     @pytest.mark.asyncio
     async def test_excluded_path_bypasses_profiling(self):
         """Requests to excluded paths should bypass profiling."""
         from app.middleware.profiling import ProfilingMiddleware
 
-        mock_app = MagicMock()
+        # Track if inner app was called
+        app_called = False
+
+        async def mock_app(scope, receive, send):
+            nonlocal app_called
+            app_called = True
+            # Send a simple response
+            await send({"type": "http.response.start", "status": 200, "headers": []})
+            await send({"type": "http.response.body", "body": b"OK"})
+
         middleware = ProfilingMiddleware(mock_app)
 
-        # Create mock request for excluded path
-        mock_request = MagicMock(spec=Request)
-        mock_request.url.path = "/health"
+        # Create scope for excluded path
+        scope = create_asgi_scope(path="/health")
+        receive = AsyncMock(return_value={"type": "http.request", "body": b""})
+        send = MockSend()
 
-        mock_response = Response(content=b"OK", status_code=200)
-        mock_call_next = AsyncMock(return_value=mock_response)
+        # Mock profiling service to verify it's not called
+        with patch('app.middleware.profiling.get_profiling_service') as mock_get_service:
+            mock_service = MagicMock()
+            mock_service.record_request = MagicMock()
+            mock_get_service.return_value = mock_service
 
-        result = await middleware.dispatch(mock_request, mock_call_next)
+            await middleware(scope, receive, send)
 
-        # Should call next without profiling
-        mock_call_next.assert_called_once_with(mock_request)
-        assert result == mock_response
+            # App should be called
+            assert app_called is True
+            # Profiling service record_request should NOT be called for excluded paths
+            mock_service.record_request.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_regular_path_is_profiled(self):
@@ -90,33 +136,27 @@ class TestProfilingMiddlewareDispatch:
         from app.middleware.profiling import ProfilingMiddleware
         from app.services.profiling_service import ProfilingLevel
 
-        mock_app = MagicMock()
+        async def mock_app(scope, receive, send):
+            await send({"type": "http.response.start", "status": 200, "headers": []})
+            await send({"type": "http.response.body", "body": b"OK"})
+
         middleware = ProfilingMiddleware(mock_app)
 
-        # Create mock request for regular path
-        mock_request = MagicMock(spec=Request)
-        mock_request.url.path = "/api/v1/documents"
-        mock_request.method = "GET"
-        mock_request.state = MagicMock()
-        mock_request.state.request_id = "test-123"
-        mock_request.state.user = None
+        # Create scope for regular path
+        scope = create_asgi_scope(path="/api/v1/documents", method="GET")
+        receive = AsyncMock(return_value={"type": "http.request", "body": b""})
+        send = MockSend()
 
-        mock_response = Response(content=b"OK", status_code=200)
-        mock_call_next = AsyncMock(return_value=mock_response)
-
-        # Mock the profiling service
         with patch('app.middleware.profiling.get_profiling_service') as mock_get_service:
             mock_service = MagicMock()
             mock_service.profiling_level = ProfilingLevel.BASIC
-            mock_service.start_request = MagicMock(return_value="ctx-123")
-            mock_service.end_request = MagicMock()
+            mock_service.record_request = MagicMock()
             mock_get_service.return_value = mock_service
 
-            result = await middleware.dispatch(mock_request, mock_call_next)
+            await middleware(scope, receive, send)
 
-            # Should call next and return response
-            mock_call_next.assert_called_once()
-            assert result.status_code == 200
+            # record_request should be called for regular paths
+            mock_service.record_request.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_profiling_disabled_bypasses_tracking(self):
@@ -124,24 +164,32 @@ class TestProfilingMiddlewareDispatch:
         from app.middleware.profiling import ProfilingMiddleware
         from app.services.profiling_service import ProfilingLevel
 
-        mock_app = MagicMock()
+        app_called = False
+
+        async def mock_app(scope, receive, send):
+            nonlocal app_called
+            app_called = True
+            await send({"type": "http.response.start", "status": 200, "headers": []})
+            await send({"type": "http.response.body", "body": b"OK"})
+
         middleware = ProfilingMiddleware(mock_app)
 
-        mock_request = MagicMock(spec=Request)
-        mock_request.url.path = "/api/v1/documents"
-
-        mock_response = Response(content=b"OK", status_code=200)
-        mock_call_next = AsyncMock(return_value=mock_response)
+        scope = create_asgi_scope(path="/api/v1/documents")
+        receive = AsyncMock(return_value={"type": "http.request", "body": b""})
+        send = MockSend()
 
         with patch('app.middleware.profiling.get_profiling_service') as mock_get_service:
             mock_service = MagicMock()
             mock_service.profiling_level = ProfilingLevel.OFF
+            mock_service.record_request = MagicMock()
             mock_get_service.return_value = mock_service
 
-            result = await middleware.dispatch(mock_request, mock_call_next)
+            await middleware(scope, receive, send)
 
-            # Should just call next without additional tracking
-            mock_call_next.assert_called_once()
+            # App should be called
+            assert app_called is True
+            # record_request should NOT be called when profiling is OFF
+            mock_service.record_request.assert_not_called()
 
 
 class TestProfilingMiddlewareHeaders:
@@ -149,34 +197,36 @@ class TestProfilingMiddlewareHeaders:
 
     @pytest.mark.asyncio
     async def test_timing_header_added(self):
-        """X-Request-Duration header should be added to response."""
+        """X-Response-Time header should be added to response."""
         from app.middleware.profiling import ProfilingMiddleware
         from app.services.profiling_service import ProfilingLevel
 
-        mock_app = MagicMock()
+        async def mock_app(scope, receive, send):
+            await send({"type": "http.response.start", "status": 200, "headers": []})
+            await send({"type": "http.response.body", "body": b"OK"})
+
         middleware = ProfilingMiddleware(mock_app)
 
-        mock_request = MagicMock(spec=Request)
-        mock_request.url.path = "/api/v1/test"
-        mock_request.method = "GET"
-        mock_request.state = MagicMock()
-        mock_request.state.request_id = None
-        mock_request.state.user = None
-
-        mock_response = Response(content=b"OK", status_code=200)
-        mock_call_next = AsyncMock(return_value=mock_response)
+        scope = create_asgi_scope(path="/api/v1/test", method="GET")
+        receive = AsyncMock(return_value={"type": "http.request", "body": b""})
+        send = MockSend()
 
         with patch('app.middleware.profiling.get_profiling_service') as mock_get_service:
             mock_service = MagicMock()
             mock_service.profiling_level = ProfilingLevel.BASIC
-            mock_service.start_request = MagicMock(return_value="ctx")
-            mock_service.end_request = MagicMock()
+            mock_service.record_request = MagicMock()
             mock_get_service.return_value = mock_service
 
-            result = await middleware.dispatch(mock_request, mock_call_next)
+            await middleware(scope, receive, send)
 
-            # Response should be returned
-            assert result is not None
+            # Check that response start message has x-response-time header
+            response_start = next(
+                (m for m in send.messages if m.get("type") == "http.response.start"),
+                None
+            )
+            assert response_start is not None
+            headers = dict(response_start.get("headers", []))
+            assert b"x-response-time" in headers
 
 
 class TestProfilingMiddlewareErrorHandling:
@@ -188,31 +238,29 @@ class TestProfilingMiddlewareErrorHandling:
         from app.middleware.profiling import ProfilingMiddleware
         from app.services.profiling_service import ProfilingLevel
 
-        mock_app = MagicMock()
+        async def mock_app(scope, receive, send):
+            raise ValueError("Test error")
+
         middleware = ProfilingMiddleware(mock_app)
 
-        mock_request = MagicMock(spec=Request)
-        mock_request.url.path = "/api/v1/test"
-        mock_request.method = "POST"
-        mock_request.state = MagicMock()
-        mock_request.state.request_id = "test-err"
-        mock_request.state.user = None
-
-        # Handler raises exception
-        mock_call_next = AsyncMock(side_effect=ValueError("Test error"))
+        scope = create_asgi_scope(path="/api/v1/test", method="POST")
+        receive = AsyncMock(return_value={"type": "http.request", "body": b""})
+        send = MockSend()
 
         with patch('app.middleware.profiling.get_profiling_service') as mock_get_service:
             mock_service = MagicMock()
             mock_service.profiling_level = ProfilingLevel.BASIC
-            mock_service.start_request = MagicMock(return_value="ctx")
-            mock_service.end_request = MagicMock()
+            mock_service.record_request = MagicMock()
             mock_get_service.return_value = mock_service
 
             with pytest.raises(ValueError):
-                await middleware.dispatch(mock_request, mock_call_next)
+                await middleware(scope, receive, send)
 
-            # end_request should still be called for error tracking
-            # (depending on implementation)
+            # record_request should still be called for error tracking
+            mock_service.record_request.assert_called_once()
+            # Verify status_code was 500 (error)
+            call_kwargs = mock_service.record_request.call_args[1]
+            assert call_kwargs["status_code"] == 500
 
 
 class TestExcludedPathMatching:

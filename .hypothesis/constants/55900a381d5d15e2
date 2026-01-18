@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppstructure\table\matcher.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, '</b>', '</td>', '<b>', '<b>{}</b>', '<td>', '<td></td>', '<td>{}</td>', '{}</td>']

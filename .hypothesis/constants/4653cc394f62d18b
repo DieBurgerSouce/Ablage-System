@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\quantization\imperative\ptq.py
+# hypothesis_version: 6.148.7
+
+['.', '.pdiparams', '.pdmodel', 'Out', 'OutScale', 'Output', 'Quantized', 'X', '_fake_quant_input', '_fake_quant_weight', '_quant_config', '_scale', '_threshold', 'abs_max', 'activation_bits', 'channel_wise_abs_max', 'conv2d', 'elementwise_add', 'matmul', 'model', 'out_threshold', 'quantize_dequantize', 'skip_quant', 'weight_bits', 'weight_quantize_type', 'with_quant_attr']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\models\qwen3_vl\modeling_qwen3_vl.py
+# hypothesis_version: 6.148.7
+
+[-0.5, 0.0, 1e-06, 0.5, 1.0, 10000.0, '4.58', 'Qwen3VLModel', 'Qwen3VLTextModel', 'Qwen3VLVisionBlock', 'Qwen3VLVisionModel', 'RMSNorm', 'attentions', 'cache_position', 'cos', 'cpu', 'default', 'eager', 'encoder_outputs', 'flash_attention_2', 'full_attention', 'head_dim', 'hidden_states', 'image_grid_thw', 'inputs_embeds', 'inv_freq', 'lm_head.weight', 'model', 'mps', 'mrope_section', 'past_key_value', 'past_key_values', 'pixel_values', 'pixel_values_videos', 'position_ids', 'rope_scaling', 'rope_type', 'sdpa', 'second_per_grid_ts', 'sin', 'video_grid_thw']

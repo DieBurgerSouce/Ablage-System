@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\quant\quantized_linear.py
+# hypothesis_version: 6.148.7
+
+[6.0, 128, 'False', 'algo', 'arch', 'bias', 'float', 'float16', 'group_size', 'int4', 'int8', 'llm.int8', 'llm_int8_linear', 'out', 'scale', 'scales', 'threshold', 'weight', 'weight_dequantize', 'weight_dtype', 'weight_only_int4', 'weight_only_int8', 'weight_only_linear', 'weight_quantize', 'weight_scale', 'x']

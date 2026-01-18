@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\surya\recognition\postprocessing.py
+# hypothesis_version: 6.148.7
+
+['/', '<[^>]+>', '[\\\\\\_]', 'br', 'formatting', 'math_external']

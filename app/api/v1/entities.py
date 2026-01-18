@@ -43,6 +43,7 @@ from app.services.entity_extraction_service import (
     EntityExtractionService,
     EntityExtractionResult,
 )
+from app.services.company_service import get_company_service
 
 
 logger = structlog.get_logger(__name__)
@@ -241,9 +242,11 @@ async def list_customers_for_frontend(
         if not company_presence and entity.lexware_ids:
             company_presence = list(entity.lexware_ids.keys())
 
-        # Fallback: Beide Firmen wenn nichts gesetzt
+        # Fallback: Alle aktiven Firmen wenn nichts gesetzt
+        # MULTI-TENANT: Dynamisch statt hardcoded "folie"/"messer"
         if not company_presence:
-            company_presence = ["folie", "messer"]
+            company_service = get_company_service()
+            company_presence = await company_service.get_company_short_names(db)
 
         customers.append({
             "id": str(entity.id),
@@ -351,9 +354,11 @@ async def list_suppliers_for_frontend(
         if not company_presence and entity.lexware_ids:
             company_presence = list(entity.lexware_ids.keys())
 
-        # Fallback: Beide Firmen wenn nichts gesetzt
+        # Fallback: Alle aktiven Firmen wenn nichts gesetzt
+        # MULTI-TENANT: Dynamisch statt hardcoded "folie"/"messer"
         if not company_presence:
-            company_presence = ["folie", "messer"]
+            company_service = get_company_service()
+            company_presence = await company_service.get_company_short_names(db)
 
         suppliers.append({
             "id": str(entity.id),
@@ -560,9 +565,11 @@ async def get_cross_company_entities(
             for row in activity_result
         }
 
-        # Baue Firmendaten auf
+        # Baue Firmendaten auf - MULTI-TENANT: Dynamisch statt hardcoded
+        company_service = get_company_service()
+        all_companies = await company_service.get_company_short_names(db)
         company_stats = {}
-        for company in ["folie", "messer"]:
+        for company in all_companies:
             company_data = lexware_ids.get(company, {})
             # Finde passende Category-IDs fuer diese Firma (basierend auf Name-Pattern)
             company_doc_count = 0
@@ -593,7 +600,7 @@ async def get_cross_company_entities(
             "primarySupplierNumber": entity.primary_supplier_number,
         })
 
-    # Aggregierte Statistiken
+    # Aggregierte Statistiken - MULTI-TENANT: Dynamisch pro Firma
     multi_company_count_query = select(func.count()).where(
         BusinessEntity.deleted_at.is_(None),
         func.jsonb_array_length(BusinessEntity.company_presence) > 1
@@ -601,19 +608,15 @@ async def get_cross_company_entities(
     multi_company_result = await db.execute(multi_company_count_query)
     multi_company_count = multi_company_result.scalar() or 0
 
-    folie_only_query = select(func.count()).where(
-        BusinessEntity.deleted_at.is_(None),
-        BusinessEntity.company_presence == ["folie"]
-    )
-    folie_only_result = await db.execute(folie_only_query)
-    folie_only_count = folie_only_result.scalar() or 0
-
-    messer_only_query = select(func.count()).where(
-        BusinessEntity.deleted_at.is_(None),
-        BusinessEntity.company_presence == ["messer"]
-    )
-    messer_only_result = await db.execute(messer_only_query)
-    messer_only_count = messer_only_result.scalar() or 0
+    # Zaehle Entities pro einzelner Firma (dynamisch)
+    company_only_counts: dict = {}
+    for company_short in all_companies:
+        single_company_query = select(func.count()).where(
+            BusinessEntity.deleted_at.is_(None),
+            BusinessEntity.company_presence == [company_short]
+        )
+        single_result = await db.execute(single_company_query)
+        company_only_counts[f"{company_short}OnlyCount"] = single_result.scalar() or 0
 
     return {
         "items": items,
@@ -623,9 +626,8 @@ async def get_cross_company_entities(
         "totalPages": (total + per_page - 1) // per_page,
         "summary": {
             "multiCompanyCount": multi_company_count,
-            "folieOnlyCount": folie_only_count,
-            "messerOnlyCount": messer_only_count,
-            "totalEntities": multi_company_count + folie_only_count + messer_only_count,
+            **company_only_counts,  # Dynamisch: folieOnlyCount, messerOnlyCount, etc.
+            "totalEntities": multi_company_count + sum(company_only_counts.values()),
         }
     }
 
@@ -1782,22 +1784,21 @@ async def get_entity_folders_view(
     if not company_presence and entity.lexware_ids:
         company_presence = list(entity.lexware_ids.keys())
 
-    # Falls leer, default beide Firmen
+    # Lade Company Service fuer dynamische Namen
+    company_service = get_company_service()
+
+    # Falls leer, default alle aktiven Firmen (MULTI-TENANT)
     if not company_presence:
-        company_presence = ["folie", "messer"]
+        company_presence = await company_service.get_company_short_names(db)
+
+    # Lade Display-Namen dynamisch aus DB
+    folder_names = await company_service.get_company_display_map(db)
 
     folders = []
-    folder_names = {
-        "folie": "Folie",
-        "messer": "Spargelmesser",
-        "spargelmesser": "Spargelmesser",
-    }
 
     for company_id in company_presence:
-        # Normalize ID
-        normalized_id = company_id.lower()
-        if normalized_id == "spargelmesser":
-            normalized_id = "messer"
+        # Normalize ID via Company Service (Legacy-Alias-Support)
+        normalized_id = company_service.normalize_company_short_name(company_id)
 
         # Dokumente fuer diese Entity + Firma zaehlen
         doc_counts = await _count_documents_by_category(db, entity_id, normalized_id)
@@ -1809,7 +1810,7 @@ async def get_entity_folders_view(
 
         folders.append({
             "id": normalized_id,
-            "name": folder_names.get(normalized_id, company_id.title()),
+            "name": folder_names.get(normalized_id, company_service.get_legacy_display_name(company_id)),
             "documentCounts": doc_counts,
             "totalDocuments": total_docs,
             "openInvoices": doc_counts.get("offene_rechnungen", 0),

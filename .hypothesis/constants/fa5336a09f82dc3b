@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\cc\compiler.py
+# hypothesis_version: 6.148.7
+
+['/tmp/paddle/ap', '; ', 'AP_PATH', 'AP_WORKSPACE_DIR', 'CINN', 'FLAGS_enable_ap', 'PCC', 'compile', 'cuda', 'paddle']

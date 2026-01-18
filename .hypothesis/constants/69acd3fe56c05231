@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\workers\tasks\notification_tasks.py
+# hypothesis_version: 6.148.7
+
+[100, 300, 600, '%d.%m.%Y', '< 5 Sekunden', 'Zahlungserinnerung', 'attempt', 'benutzer_insgesamt', 'checked', 'completed', 'cutoff_datum', 'daily', 'dunning_email_failed', 'dunning_email_sent', 'dunning_letter', 'dunning_notification', 'email_digest', 'error', 'errors', 'failed', 'fehlgeschlagen', 'final_failure', 'geloescht', 'gesendet', 'notifications', 'payment_reminder', 'recipient', 'recipient_email', 'retried', 'skipped_max_retries', 'success', 'success_rate', 'successful', 'total', 'uebersprungen', 'user_has_no_email', 'weekly', '📬', '📭']

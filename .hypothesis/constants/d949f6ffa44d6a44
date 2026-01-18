@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\extraction\patterns\payment_patterns.py
+# hypothesis_version: 6.148.7
+
+[0.1, 0.2, 0.75, 0.8, 0.85, 0.9, 0.99, 100, 2000, ',', '.', '0', '\\d+', 'apr', 'april', 'arbeits', 'aug', 'august', 'bearbeit', 'day', 'days', 'dez', 'dezember', 'discount_days', 'feb', 'februar', 'fällig', 'jan', 'januar', 'jul', 'juli', 'jun', 'juni', 'lieferzeit', 'maerz', 'mai', 'mar', 'month', 'multi_tier_discount', 'mär', 'märz', 'net_days', 'netto', 'nov', 'november', 'okt', 'oktober', 'payment_days_alt', 'payment_days_basic', 'payment_days_net', 'percent', 'rechnung', 'sep', 'september', 'skonto_german', 'skonto_german_alt', 'stepped_discount', 'year', 'zahlung']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\lexware.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.75, 0.85, 0.95, 1.0, 100, 255, 1000, '.xls', '.xlsx', '/import/customers', '/import/suppliers', '/lexware', '/link-documents', '/linking-statistics', '/search', 'Art des Matches', 'Dokumente ohne Match', 'Fehler beim Import', 'Grund fuer Konflikt', 'Lexware Integration', '^(folie|messer)$', 'company_presence', 'confidence', 'conflicts', 'count', 'display_name', 'entities', 'entity_linking', 'entity_search_failed', 'entity_type', 'excellent (>=95%)', 'fair (75-84%)', 'folie', 'good (85-94%)', 'id', 'lexware_ids', 'low (<75%)', 'match_type', 'messer', 'name']

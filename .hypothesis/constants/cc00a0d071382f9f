@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pptx\oxml\ns.py
+# hypothesis_version: 6.148.7
+
+['%s:%s', ':', 'a', 'c', 'cp', 'ct', 'dc', 'dcmitype', 'dcterms', 'ep', 'i', 'm', 'mo', 'mv', 'o', 'p', 'pd', 'pic', 'pr', 'r', 'sl', 'v', 've', 'w', 'w10', 'wne', 'wp', 'xmlns:%s="%s"', 'xsi', '{%s}%s', '}']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\jit\api.py
+# hypothesis_version: 6.148.7
+
+['.', 'CINN', '_', '_InputT', '_LayerT', '_RetT', '__module__', 'clip_extra', 'combine_params', 'forward', 'full_graph', 'model_filename', 'name', 'output_spec', 'params_filename', 'pd_op.data', 'persistable', 'property', 'separate_parameters', 'skip_forward', 'skip_prune_program', 'stop_gradient', 'structured_name', 'to_static', 'trainable', 'wb', 'with_hook']

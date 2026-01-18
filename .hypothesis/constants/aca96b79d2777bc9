@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\middleware\db_metrics.py
+# hypothesis_version: 6.148.7
+
+[0.1, 200, 1000, '^\\s*DELETE', '^\\s*INSERT', '^\\s*SELECT', '^\\s*UPDATE', 'after_cursor_execute', 'db_query_error', 'delete', 'error', 'handle_error', 'insert', 'other', 'select', 'slow_db_query', 'success', 'unknown', 'update']

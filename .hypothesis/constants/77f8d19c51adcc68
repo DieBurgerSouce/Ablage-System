@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\surya\common\surya\schema.py
+# hypothesis_version: 6.148.7
+
+['block_without_boxes', 'layout', 'ocr_with_boxes', 'ocr_without_boxes', 'table_structure']

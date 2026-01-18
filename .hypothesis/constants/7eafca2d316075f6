@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\admin\audit_service.py
+# hypothesis_version: 6.148.7
+
+[100, 10000, 'Aktion', 'Benutzer-Email', 'Benutzer-ID', 'Erfolgreich', 'Fehlermeldung', 'ID', 'IP-Adresse', 'Ja', 'Nein', 'Ressourcen-ID', 'Ressourcen-Typ', 'Zeitstempel', 'action', 'actions', 'admin_action', 'admin_action_count', 'admin_email', 'admin_id', 'by_action', 'by_resource_type', 'count', 'created_at', 'csv', 'details', 'email', 'entries', 'error_message', 'failure_count', 'id', 'ip_address', 'metadata', 'most_active_users', 'page', 'per_page', 'period_days', 'resource_id', 'resource_type', 'success', 'success_count', 'timestamp', 'total', 'total_entries', 'total_pages', 'type', 'user_action', 'user_action_count', 'user_agent', 'user_email', 'user_id', 'utf-8', 'utf-8-sig']

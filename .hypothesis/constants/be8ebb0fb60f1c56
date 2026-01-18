@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\privat\kpi_orchestrator.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, '0.01', 'annual_premium_total', 'annual_return', 'assets', 'batch', 'completed', 'coverage_score', 'current_value', 'depreciation_rate', 'dimensions', 'diversification', 'entity_type', 'estimated_value', 'failed', 'gross_yield', 'health_score', 'insurance', 'investment', 'investments', 'liabilities', 'liquidity', 'loan', 'loans', 'monthly_tco', 'months_remaining', 'net_yield', 'operation_type', 'overall_score', 'properties', 'property', 'remaining_balance', 'savings', 'single', 'space', 'space_id', 'started', 'status', 'total_calculated', 'total_errors', 'total_return', 'urgent_deadlines', 'vehicle', 'vehicles']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\docling_core\types\base.py
+# hypothesis_version: 6.148.7
+
+[8191, 'A task category.', 'API', 'CollectionNameTypeT', 'CollectionTypeT', 'DescriptionAdvancedT', 'Document', 'Download', 'FTP', 'Generic', 'IdentifierTypeT', 'LanguageT', 'Link', 'Other', 'PredicateKeyNameT', 'PredicateKeyTypeT', 'PredicateValueTypeT', 'ProvenanceTypeT', 'Record', 'SubjectNameTypeT', 'SubjectTypeT', 'T', 'The collection type.', '^.+#.+$', '_Name', '_name', 'document-hash', 'filename-prov', 'forbid', 'geo_point', 'keyword', 'long', 'name', 'type', 'type_', 'uniqueItems', 'value']

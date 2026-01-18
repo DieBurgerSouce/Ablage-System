@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\tax_advisor.py
+# hypothesis_version: 6.148.7
+
+[100, 128, 255, 365, 500, 1000, '/', '/accept', '/invites', '/invites/{invite_id}', '/logs', '/tax-advisor', '/users', '/validate/{token}', 'Einladung widerrufen', 'Einladungs-Token', 'End-Datum', 'Gewaehltes Passwort', 'Max. Ergebnisse', 'Nach Aktion filtern', 'Optionaler Grund', 'Start-Datum', 'Steuerberater-Zugang', 'Token validieren', 'Zugang verlaengern', 'Zugang widerrufen', 'Zugriffslogs abrufen', 'user-agent']

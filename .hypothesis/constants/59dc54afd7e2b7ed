@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\asp\utils.py
+# hypothesis_version: 6.148.7
+
+[1.0, 'check_mask_1d', 'check_mask_2d', 'get_mask_1d', 'get_mask_2d_best', 'get_mask_2d_greedy']

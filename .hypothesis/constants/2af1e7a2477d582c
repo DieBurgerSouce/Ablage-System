@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\autograd\primreg.py
+# hypothesis_version: 6.148.7
+
+['composite', 'name', 'orig2prim', 'prim2orig', 'primop_fn', 'primop_jvp', 'primop_transpose', 'tab']

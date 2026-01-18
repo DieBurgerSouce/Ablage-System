@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\dist_context.py
+# hypothesis_version: 6.148.7
+
+['_cur_src_op', '_dist_main_programs', '_dst_main_program', '_dst_startup_program', '_main_block', '_pass_context', '_serial_feed_vars', '_serial_fetch_vars', '_serial_graph', '_serial_loss', '_serial_main_program', '_serial_optimizer', '_startup_block', '_work_block', 'auto_parallel/rc_', 'default', 'dropout', "index doesn't match", 'metrics', 'op_namescope', 'to_backup', 'to_default', 'to_original']

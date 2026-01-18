@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\init.py
+# hypothesis_version: 6.148.7
+
+[-2.0, 0.0, 1.0, 2.0, 'fan_in', 'leaky_relu']

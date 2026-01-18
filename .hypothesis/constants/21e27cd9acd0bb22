@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\static\amp\debugging.py
+# hypothesis_version: 6.148.7
+
+[' op list of block ', '<{:-^120}>', 'Param', 'X', '_grad', 'batch_norm', 'cast', 'create_py_reader', 'input', 'instance_norm', 'layer_norm', 'output', 'read']

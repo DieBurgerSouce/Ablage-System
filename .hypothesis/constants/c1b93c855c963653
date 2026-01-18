@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\approval\approval_rule_service.py
+# hypothesis_version: 6.148.7
+
+[1.0, 100, 1000, 5000, 25000, '<', '==', '>', 'Neue Vertraege', '_equals', '_greater_than', '_in', '_less_than', '_not_in', 'amount_greater_than', 'approval_chain', 'category_in', 'cfo', 'conditions', 'contract', 'description', 'dienstreise', 'document', 'document_type_in', 'entity_types', 'escalation_to_role', 'expense', 'invoice', 'is_active', 'legal', 'manager', 'matched', 'matches', 'name', 'priority', 'reise', 'required', 'role', 'rule_type', 'score', 'sla_hours', 'step', 'travel', 'type', 'value', 'vertrag']

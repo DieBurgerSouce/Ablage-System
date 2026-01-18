@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\utils\fs.py
+# hypothesis_version: 6.148.7
+
+[1000.0, 134, 1000, '/', '_HDFSClientConfig', '_InputT', '_RetT', 'a', 'd', 'fs', 'fs.default.name', 'hadoop.job.ugi', 'ls ', 'path', 'raise exception: ', 'size']

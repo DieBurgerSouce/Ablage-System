@@ -50,6 +50,7 @@ from app.core.idempotency import check_idempotency, get_idempotency_service
 from app.services.ocr_cache_service import get_ocr_cache_service, get_cached_ocr_result, cache_ocr_result
 from app.core.exception_handlers import register_exception_handlers
 from app.services.model_preloader import get_model_preloader, preload_ocr_models
+from app.api.v1.websocket import startup_realtime_services, shutdown_realtime_services
 from app.core.backpressure import (
     backpressure_dependency,
     get_backpressure_info,
@@ -292,12 +293,26 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("model_preload_disabled_by_config")
 
+    # Initialize Realtime WebSocket Services
+    try:
+        await startup_realtime_services()
+        logger.info("realtime_services_started")
+    except Exception as e:
+        logger.warning("realtime_services_startup_failed", error=str(e))
+
     logger.info("api_started")
 
     yield
 
     # Shutdown
     logger.info("api_shutting_down")
+
+    # Shutdown Realtime WebSocket Services
+    try:
+        await shutdown_realtime_services()
+        logger.info("realtime_services_stopped")
+    except Exception as e:
+        logger.warning("realtime_services_shutdown_failed", error=str(e))
 
     # P1: Cleanup Model Preloader
     if model_preloader:
@@ -496,6 +511,14 @@ OPENAPI_TAGS = [
     {
         "name": "Spesen - Rechner",
         "description": "Berechnungen fuer Kilometergeld und Verpflegungspauschalen.",
+    },
+    {
+        "name": "Contracts",
+        "description": "Vertragsmanagement. Vertragslaufzeiten, Kuendigungsfristen, Verlaengerungsoptionen, Meilensteine und Nachtraege.",
+    },
+    {
+        "name": "Dokumentvorlagen",
+        "description": "Dokumentvorlagen-System. Templates mit Jinja2-Syntax, Variablen-Platzhalter, Ein-Klick Dokumentenerstellung, Textbausteine.",
     },
 ]
 
@@ -735,6 +758,7 @@ from app.api.v1.personal import router as personal_router
 from app.api.v1.validation import router as validation_router
 from app.api.v1.comments import router as comments_router
 from app.api.v1.notifications import router as notifications_router
+from app.api.v1.document_tasks import router as document_tasks_router
 from app.api.v1.activity import router as activity_router
 from app.api.v1.archive import router as archive_router
 from app.api.v1.tax_advisor import router as tax_advisor_router
@@ -749,6 +773,24 @@ from app.api.v1.orchestration import router as orchestration_router
 from app.api.v1.ai import router as ai_router
 from app.api.v1.lexware import router as lexware_router
 from app.api.v1.invoices import router as invoices_router
+from app.api.v1.approvals import router as approvals_router
+from app.api.v1.oneclick import router as oneclick_router
+from app.api.v1.document_chains import router as document_chains_router
+from app.api.v1.hygiene import router as hygiene_router
+from app.api.v1.tax_advisor_packages import router as tax_advisor_packages_router
+from app.api.v1.accounting import router as accounting_router
+from app.api.v1.calendar import router as calendar_router
+from app.api.v1.magic_buttons import router as magic_buttons_router
+from app.api.v1.contracts import router as contracts_router
+from app.api.v1.document_templates import router as document_templates_router
+from app.api.v1.supplier_ranking import router as supplier_ranking_router
+from app.api.v1.payment_behavior import router as payment_behavior_router
+from app.api.v1.knowledge import router as knowledge_router
+from app.api.v1.slack import router as slack_router
+from app.api.v1.shipments import router as shipments_router
+from app.api.v1.websocket import router as websocket_router
+from app.api.v1.predictive_actions import router as predictive_actions_router
+from app.api.v1.smart_escalation import router as smart_escalation_router
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -799,6 +841,7 @@ app.include_router(personal_router, prefix="/api/v1")
 app.include_router(validation_router, prefix="/api/v1")
 app.include_router(comments_router, prefix="/api/v1")
 app.include_router(notifications_router, prefix="/api/v1")
+app.include_router(document_tasks_router, prefix="/api/v1")
 app.include_router(activity_router, prefix="/api/v1")
 app.include_router(archive_router, prefix="/api/v1")
 app.include_router(tax_advisor_router, prefix="/api/v1")
@@ -813,6 +856,24 @@ app.include_router(orchestration_router, prefix="/api/v1")
 app.include_router(ai_router, prefix="/api/v1")
 app.include_router(lexware_router, prefix="/api/v1")
 app.include_router(invoices_router, prefix="/api/v1")
+app.include_router(approvals_router, prefix="/api/v1")
+app.include_router(oneclick_router, prefix="/api/v1")
+app.include_router(document_chains_router, prefix="/api/v1")
+app.include_router(hygiene_router, prefix="/api/v1")
+app.include_router(tax_advisor_packages_router, prefix="/api/v1")
+app.include_router(accounting_router, prefix="/api/v1")
+app.include_router(calendar_router, prefix="/api/v1")
+app.include_router(magic_buttons_router, prefix="/api/v1")
+app.include_router(contracts_router, prefix="/api/v1")
+app.include_router(document_templates_router, prefix="/api/v1")
+app.include_router(supplier_ranking_router, prefix="/api/v1")
+app.include_router(payment_behavior_router, prefix="/api/v1")
+app.include_router(knowledge_router, prefix="/api/v1")
+app.include_router(slack_router, prefix="/api/v1")
+app.include_router(shipments_router, prefix="/api/v1")
+app.include_router(websocket_router, prefix="/api/v1", tags=["websocket"])
+app.include_router(predictive_actions_router, prefix="/api/v1")
+app.include_router(smart_escalation_router, prefix="/api/v1")
 
 
 # ==================== Health & Status Endpoints ====================

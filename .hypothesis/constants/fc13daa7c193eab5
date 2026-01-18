@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\.claude\orchestration\decision_cache.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.7, 1.0, 100, 1000, 1024, '.decisions_', '.stats_', '.tmp', ':', 'affected_files', 'avg_confidence', 'by_model', 'cache', 'cache_load_failed', 'cache_save_failed', 'cache_size_mb', 'cache_stats.json', 'decisions.json', 'hit_rate', 'last_cleanup', 'oldest_entry', 'opus', 'r', 'stats_save_failed', 'total_entries', 'total_hits', 'total_misses', 'total_stores', 'utf-8', 'w']

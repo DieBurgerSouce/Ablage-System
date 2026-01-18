@@ -334,5 +334,5 @@ class TestMigration071:
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
-        assert module.revision == '071_add_company_id_to_documents'
-        assert module.down_revision == '070_add_collaboration'
+        assert module.revision == '071'
+        assert module.down_revision == '070'

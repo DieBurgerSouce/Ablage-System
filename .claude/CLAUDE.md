@@ -237,6 +237,16 @@ Ablage_System/
 | Lexware Import | `lexware_import_service.py` |
 | Entity Linking | `document_entity_linker_service.py` |
 | Entity Search | `entity_search_service.py` |
+| **Risk Scoring** | `risk_scoring_service.py` |
+| **Invoice Tracking** | API: `api/v1/invoices.py` |
+| **Skonto-Tracking** | `banking/skonto_service.py` |
+| **Teilzahlungen** | `banking/partial_payment_service.py` |
+| **Document Chains** | `document_chain_service.py` |
+| **Slack Integration** | `slack_service.py` |
+| **Shipment Tracking** | `shipping/carrier_service.py` |
+| **Email Import** | `imports/email_import_service.py` |
+| **Folder Import** | `imports/folder_import_service.py` |
+| **Import Rules** | `imports/import_rule_service.py` |
 
 ---
 
@@ -255,6 +265,320 @@ Ablage_System/
 **API Endpoints**: `/api/v1/lexware/*`, `/api/v1/entities/*`
 
 **Frontend**: KundenPage, LieferantenPage mit Infinite Scroll (100 Items/Page)
+
+---
+
+## Entity Risk Scoring (NEU: Januar 2026)
+
+**Status**: ✅ Production-Ready
+**Migration**: 092 (entity_risk_scoring), 093 (invoice_tracking)
+
+**Core Services**:
+- `RiskScoringService` - Score-Berechnung (0-100) basierend auf 5 Faktoren
+- `InvoiceTracking` - Rechnungsverfolgung mit Mahnstufen
+
+**Risk Faktoren (Gewichtung)**:
+| Faktor | Gewicht | Beschreibung |
+|--------|---------|--------------|
+| payment_delay | 35% | Durchschnittliche Zahlungsverzögerung |
+| default_rate | 25% | Ausfallrate (überfällige/gesamt) |
+| invoice_volume | 15% | Gesamtvolumen (höher = weniger Risiko) |
+| document_frequency | 10% | Dokumente/Monat (regelmäßig = weniger Risiko) |
+| relationship_age | 15% | Beziehungsdauer (länger = weniger Risiko) |
+
+**Celery Tasks (automatisch)**:
+- `risk_scoring.calculate_all` - Täglich 02:00 (maintenance queue)
+- `risk_scoring.calculate_single` - Nach Invoice-Updates (metadata queue)
+- `risk_scoring.check_high_risk_entities` - Nach Batch (threshold: 75)
+- `risk_scoring.generate_statistics` - Wöchentlich (Reporting)
+
+**API Endpoints**: `/api/v1/invoices/*` (CRUD + mark-paid + increase-dunning)
+
+**SECURITY**: NIEMALS Entity-Namen in Logs oder Responses (PII)!
+
+---
+
+## Skonto-Tracking (NEU: Januar 2026)
+
+**Status**: ✅ Production-Ready
+**Migration**: 094 (skonto_and_partial_payments)
+
+**Core Services**:
+- `SkontoService` - Skonto-Berechnung, Deadline-Tracking, Auto-Detection
+- `PartialPaymentService` - Teilzahlungs-Verwaltung, Bank-Reconciliation
+
+**Features**:
+| Feature | Beschreibung |
+|---------|--------------|
+| Skonto-Berechnung | Automatische Berechnung von Skonto-Betrag und Deadline |
+| Deadline-Alerts | Warnungen vor ablaufenden Skonto-Fristen |
+| Auto-Detection | Erkennung von Skonto-Bedingungen aus OCR-Text |
+| Teilzahlungen | Mehrere Zahlungen pro Rechnung, Status-Updates |
+| Bank-Reconciliation | Verknuepfung mit Bank-Transaktionen |
+
+**API Endpoints**:
+- `GET /api/v1/invoices/{id}/skonto` - Skonto-Informationen abrufen
+- `PATCH /api/v1/invoices/{id}/skonto` - Skonto-Bedingungen aktualisieren
+- `POST /api/v1/invoices/{id}/apply-skonto` - Skonto anwenden
+- `GET /api/v1/invoices/skonto/upcoming` - Bevorstehende Skonto-Fristen
+- `POST /api/v1/invoices/{id}/payments` - Teilzahlung erfassen
+- `GET /api/v1/invoices/{id}/payments` - Zahlungsuebersicht
+
+**Datenmodell (InvoiceTracking erweitert)**:
+```
+skonto_percentage: Float    # z.B. 2.0 fuer 2%
+skonto_days: Integer        # Tage fuer Skonto-Frist
+skonto_deadline: DateTime   # Berechnete Frist
+skonto_amount: Float        # Berechneter Betrag
+skonto_used: Boolean        # True wenn genutzt
+outstanding_amount: Float   # Ausstehender Betrag
+is_partial_payment: Boolean # True bei Teilzahlungen
+```
+
+---
+
+## Document Chain Tracking (NEU: Januar 2026)
+
+**Status**: ✅ Production-Ready
+**Migration**: 095 (document_chain_tracking)
+
+**Core Service**: `DocumentChainService`
+
+**Features**:
+| Feature | Beschreibung |
+|---------|--------------|
+| Auftragsketten | Angebot → Auftrag → Lieferschein → Rechnung |
+| Auto-Matching | Automatische Erkennung zusammengehoeriger Dokumente |
+| Abweichungserkennung | Warnung bei Differenzen (Betraege, Mengen) |
+| Chain-Status | Uebersicht ueber Kettenfortschritt |
+
+**Relationship Types**:
+- `QUOTE_TO_ORDER` - Angebot zu Auftrag
+- `ORDER_TO_DELIVERY` - Auftrag zu Lieferschein
+- `DELIVERY_TO_INVOICE` - Lieferschein zu Rechnung
+- `QUOTE_TO_INVOICE` - Direktverknuepfung Angebot zu Rechnung
+
+**API Endpoints**:
+- `POST /api/v1/document-chains` - Neue Kette erstellen
+- `GET /api/v1/document-chains` - Ketten auflisten
+- `GET /api/v1/document-chains/{chain_id}` - Ketten-Details
+- `POST /api/v1/document-chains/link` - Dokumente verknuepfen
+- `GET /api/v1/document-chains/auto-match/{document_id}` - Auto-Match
+- `GET /api/v1/document-chains/{chain_id}/discrepancies` - Abweichungen
+
+**Matching-Kriterien (Confidence)**:
+- Referenznummer identisch: 95%+ Confidence
+- Kundennummer + Betrag: 85%+ Confidence
+- Nur Betrag aehnlich: 70%+ Confidence
+
+---
+
+## Slack Integration (NEU: Januar 2026)
+
+**Status**: ✅ Production-Ready
+**Migration**: 100 (add_slack_integration)
+
+**Core Service**: `SlackService` (`app/services/slack_service.py`)
+
+**Features**:
+| Feature | Beschreibung |
+|---------|--------------|
+| Webhook Support | Incoming Webhooks fuer einfache Nachrichten |
+| Bot Token | Full Bot API mit erweiterten Funktionen |
+| Rate Limiting | Sliding Window (30/min default) |
+| Block Kit | Rich Message Formatting |
+| Multi-Tenant | Company-spezifische Kanaele |
+
+**Notification Types**:
+- `document_processed` - Dokument verarbeitet
+- `approval_required` - Genehmigung erforderlich
+- `workflow_completed` - Workflow abgeschlossen
+- `system_alert` - System-Benachrichtigung
+- `payment_reminder` - Zahlungserinnerung
+- `error_notification` - Fehlermeldung
+
+**API Endpoints**: `/api/v1/slack/*`
+
+**Frontend**: Admin-Seite unter `/admin/slack`
+
+**Konfiguration**:
+```python
+SLACK_WEBHOOK_URL: SecretStr   # Incoming Webhook URL
+SLACK_BOT_TOKEN: SecretStr     # Bot OAuth Token (xoxb-...)
+SLACK_DEFAULT_CHANNEL: str     # Standard-Kanal
+SLACK_ENABLED: bool            # Integration aktiviert
+```
+
+---
+
+## Shipment Tracking (NEU: Januar 2026)
+
+**Status**: ✅ Production-Ready
+**Migration**: 100 (add_shipment_tracking)
+
+**Core Service**: `CarrierService` (`app/services/shipping/carrier_service.py`)
+
+**Unterstuetzte Carrier**:
+| Carrier | Pattern | API |
+|---------|---------|-----|
+| DHL | `00340...`, `JJD...` | DHL Geschaeftskundenportal |
+| DPD | 14-stellig, `01...` | DPD myDPD Business |
+| Hermes | `H...` Prefix | Hermes ProfiPaketService |
+| UPS | `1Z...` (18 Zeichen) | UPS Developer Kit (OAuth2) |
+| GLS | 11-stellig | GLS Web API |
+| FedEx | 12/15/20-stellig | FedEx Web Services (OAuth2) |
+| Deutsche Post | `RR...DE`, `LX...` | Brief-API via DHL |
+
+**Features**:
+| Feature | Beschreibung |
+|---------|--------------|
+| Auto-Detection | Automatische Carrier-Erkennung via Tracking-Nummer-Pattern |
+| Status-Normalisierung | Einheitliche Status ueber alle Carrier |
+| Benachrichtigungen | Bei Zustellung, Problemen, Ruecksendung |
+| Celery Tasks | Stuendlich aktive Sendungen, taeglich Verspaetungen |
+| Multi-Tenant | Company-Isolation via RLS |
+
+**API Endpoints**: `/api/v1/shipments/*`
+
+**SECURITY**: Tracking-Nummern werden validiert (CWE-20) und URL-encoded (CWE-116).
+
+**Celery Tasks**:
+- `shipment_tracking.refresh_active` - Stuendlich um :15
+- `shipment_tracking.check_delayed` - Taeglich um 09:00
+
+**Konfiguration** (optional, Mock wenn nicht gesetzt):
+```python
+DHL_API_KEY: SecretStr          # DHL Geschaeftskundenportal
+DPD_API_USER: str               # DPD myDPD User
+DPD_API_PASSWORD: SecretStr     # DPD myDPD Password
+UPS_CLIENT_ID: str              # UPS OAuth Client ID
+UPS_CLIENT_SECRET: SecretStr    # UPS OAuth Secret
+GLS_API_USER: str               # GLS API User
+GLS_API_PASSWORD: SecretStr     # GLS API Password
+FEDEX_CLIENT_ID: str            # FedEx OAuth Client ID
+FEDEX_CLIENT_SECRET: SecretStr  # FedEx OAuth Secret
+HERMES_API_KEY: SecretStr       # Hermes ProfiPaket Key
+```
+
+---
+
+## Email & Folder Import (NEU: Januar 2026)
+
+**Status**: ⚠️ Backend Ready (95%), Frontend Pending
+**Migration**: Via IMPORT_BEAT_SCHEDULE in Celery
+
+**Core Services**:
+- `EmailImportService` - IMAP/SMTP Email-Abruf, Attachment-Extraktion
+- `FolderImportService` - Dateisystem-Ueberwachung, Datei-Import
+- `ImportRuleService` - Regelbasierte Verarbeitung (Bedingungen + Aktionen)
+- `EmailSenderMatcherService` - Absender → Entity Zuordnung
+
+**Features**:
+| Feature | Beschreibung |
+|---------|--------------|
+| IMAP Support | Verschluesselte Email-Verbindung (SSL/TLS) |
+| Absender-Matching | Automatische Entity-Zuordnung via Absender-Adresse |
+| Folder-Watching | Verzeichnis-Ueberwachung mit konfigurierbarem Polling |
+| Import Rules | Bedingungsbasierte Aktionen (Tags, Ordner, Auto-OCR) |
+| Fehler-Retry | Automatische Wiederholung fehlgeschlagener Imports |
+
+**API Endpoints - Email Configs**:
+- `GET /api/v1/imports/email/configs` - Alle Email-Konfigurationen
+- `POST /api/v1/imports/email/configs` - Neue Konfiguration erstellen
+- `GET /api/v1/imports/email/configs/{id}` - Konfiguration abrufen
+- `PATCH /api/v1/imports/email/configs/{id}` - Konfiguration aktualisieren
+- `DELETE /api/v1/imports/email/configs/{id}` - Konfiguration loeschen
+- `POST /api/v1/imports/email/configs/{id}/test` - IMAP-Verbindung testen
+- `POST /api/v1/imports/email/configs/{id}/sync` - Manueller Email-Sync
+
+**API Endpoints - Folder Configs**:
+- `GET /api/v1/imports/folder/configs` - Alle Folder-Konfigurationen
+- `POST /api/v1/imports/folder/configs` - Neue Konfiguration erstellen
+- `PATCH /api/v1/imports/folder/configs/{id}` - Konfiguration aktualisieren
+- `DELETE /api/v1/imports/folder/configs/{id}` - Konfiguration loeschen
+- `POST /api/v1/imports/folder/configs/{id}/start` - Watcher starten
+- `POST /api/v1/imports/folder/configs/{id}/stop` - Watcher stoppen
+- `POST /api/v1/imports/folder/configs/{id}/poll` - Manueller Folder-Scan
+
+**API Endpoints - Import Rules**:
+- `GET /api/v1/imports/rules` - Alle Regeln auflisten
+- `POST /api/v1/imports/rules` - Neue Regel erstellen
+- `GET /api/v1/imports/rules/{id}` - Regel abrufen
+- `PATCH /api/v1/imports/rules/{id}` - Regel aktualisieren
+- `DELETE /api/v1/imports/rules/{id}` - Regel loeschen
+- `POST /api/v1/imports/rules/{id}/test` - Regel testen
+- `POST /api/v1/imports/rules/reorder` - Regelreihenfolge aendern
+- `GET /api/v1/imports/rules/schema` - Verfuegbare Bedingungen/Aktionen
+
+**API Endpoints - Import Logs**:
+- `GET /api/v1/imports/logs` - Import-Logs mit Filterung
+- `GET /api/v1/imports/logs/{id}` - Log-Details
+- `POST /api/v1/imports/logs/{id}/retry` - Import wiederholen
+- `GET /api/v1/imports/logs/stats` - Import-Statistiken
+
+**Celery Tasks (IMPORT_BEAT_SCHEDULE)**:
+- `import.sync_all_email_configs` - Alle 15 Min
+- `import.poll_all_folder_configs` - Alle 5 Min
+- `import.retry_failed_imports` - Alle 30 Min
+- `import.cleanup_old_logs` - Taeglich 03:00
+- `import.check_connection_health` - Alle 30 Min
+
+**Datenmodell (EmailImportConfig)**:
+```python
+name: str                    # Anzeigename
+email_address: str           # IMAP-Adresse
+imap_server: str             # z.B. imap.gmail.com
+imap_port: int               # 993 (SSL) oder 143 (STARTTLS)
+use_ssl: bool                # True fuer Port 993
+folder_filter: str           # INBOX, Rechnungen, etc.
+subject_filter: Optional[str] # Regex-Filter fuer Betreff
+sender_filter: Optional[str]  # Regex-Filter fuer Absender
+auto_archive: bool           # Email nach Import archivieren
+enabled: bool                # Konfiguration aktiv
+last_sync_at: DateTime       # Letzter Sync-Zeitpunkt
+```
+
+**Datenmodell (FolderImportConfig)**:
+```python
+name: str                    # Anzeigename
+folder_path: str             # Absoluter Pfad
+file_patterns: List[str]     # ["*.pdf", "*.jpg", "*.png"]
+recursive: bool              # Unterordner einbeziehen
+delete_after_import: bool    # Datei nach Import loeschen
+polling_interval: int        # Sekunden zwischen Scans
+enabled: bool                # Konfiguration aktiv
+watcher_active: bool         # Watcher laeuft aktuell
+```
+
+**Datenmodell (ImportRule)**:
+```python
+name: str                    # Regelname
+description: Optional[str]   # Beschreibung
+priority: int                # Ausfuehrungsreihenfolge (niedrig = zuerst)
+conditions: List[dict]       # Bedingungen (AND-verknuepft)
+actions: List[dict]          # Auszufuehrende Aktionen
+enabled: bool                # Regel aktiv
+apply_to_email: bool         # Auf Email-Imports anwenden
+apply_to_folder: bool        # Auf Folder-Imports anwenden
+```
+
+**Rule Conditions (Beispiele)**:
+- `{"field": "sender", "operator": "contains", "value": "@amazon.de"}`
+- `{"field": "subject", "operator": "matches", "value": "Rechnung.*"}`
+- `{"field": "filename", "operator": "ends_with", "value": ".pdf"}`
+- `{"field": "file_size", "operator": "greater_than", "value": 1048576}`
+
+**Rule Actions (Beispiele)**:
+- `{"type": "set_folder", "folder_id": "uuid-..."}`
+- `{"type": "add_tags", "tags": ["rechnung", "amazon"]}`
+- `{"type": "set_entity", "entity_id": "uuid-..."}`
+- `{"type": "trigger_ocr", "ocr_backend": "auto"}`
+- `{"type": "send_notification", "channel": "slack"}`
+
+**SECURITY**:
+- Email-Passwoerter werden verschluesselt gespeichert (AES-256-GCM)
+- Folder-Paths werden gegen Path-Traversal validiert
+- NIEMALS Email-Inhalte in Logs
 
 ---
 

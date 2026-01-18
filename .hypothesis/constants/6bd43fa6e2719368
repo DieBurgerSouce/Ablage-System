@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\extraction\config.py
+# hypothesis_version: 6.148.7
+
+[0.5, 180, 500, '0', '0.01', '0.10', '1.0', '10', '1000000', '10000000', '100000000', '13', '19', '2.6', '20', '3.8', '5', '7', '8.1', 'brutto', 'endbetrag', 'gesamt', 'mehrwertsteuer', 'mwst', 'netto', 'rechnungsbetrag', 'saldo', 'subtotal', 'summe', 'total', 'uebertrag', 'ust', 'zwischensumme']

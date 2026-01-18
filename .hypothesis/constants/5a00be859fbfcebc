@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\nn\functional\moe_gate_dispatch_and_quant.py
+# hypothesis_version: 6.148.7
+
+['1x128', 'npu']

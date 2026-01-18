@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\docling\datamodel\pipeline_options.py
+# hypothesis_version: 6.148.7
+
+[0.05, 0.5, 1.0, 100, 200, '--', '/', 'accurate', 'api', 'asr', 'auto', 'chinese', 'de', 'de-DE', 'deu', 'dlparse_v1', 'dlparse_v2', 'dlparse_v4', 'easyocr', 'en', 'en-US', 'eng', 'english', 'es', 'es-ES', 'fast', 'forbid', 'fr', 'fr-FR', 'fra', 'legacy', 'ocrmac', 'onnxruntime', 'openvino', 'paddle', 'pypdfium2', 'rapidocr', 'spa', 'standard', 'tesseract', 'tesseract_cli', 'tesserocr', 'torch', 'vision', 'vlm']

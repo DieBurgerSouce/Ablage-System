@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\core\keypoints_utils.py
+# hypothesis_version: 6.148.7
+
+['KeypointParams', 'KeypointsProcessor', 'angle_in_degrees', 'angle_to_2pi_range', 'check_each_transform', 'check_keypoints', 'depth', 'filter_keypoints', 'height', 'keypoints', 'remove_invisible', 'width', 'xy', 'xya', 'xyas', 'xys', 'xysa', 'xyz', 'yx']

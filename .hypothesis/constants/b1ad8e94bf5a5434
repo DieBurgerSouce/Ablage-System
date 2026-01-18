@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\risk_scoring_service.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.1, 0.15, 0.2, 0.25, 0.35, 0.4, 0.6, 30.0, 60.0, 70.0, 80.0, 100.0, 100, 1000, 100000, 'default_rate', 'document_frequency', 'dunning', 'invoice_volume', 'open', 'open_invoices', 'overdue', 'overdue_invoices', 'paid', 'paid_invoices', 'payment_delay', 'payment_delay_days', 'relationship_age', 'relationship_months', 'risk_score_updated', 'sent', 'total_invoices']

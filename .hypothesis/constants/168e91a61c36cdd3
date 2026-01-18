@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\vision\models\googlenet.py
+# hypothesis_version: 6.148.7
+
+[0.4, 0.5, 0.7, 3.0, 112, 128, 144, 160, 192, 208, 224, 256, 288, 320, 384, 480, 512, 528, 832, 1000, 1024, 1152, 2048, 'downscale_in_infer', 'googlenet']

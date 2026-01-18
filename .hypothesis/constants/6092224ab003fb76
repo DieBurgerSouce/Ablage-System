@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\models\qwen3_vl\video_processing_qwen3_vl.py
+# hypothesis_version: 6.148.7
+
+[0.5, 255.0, 128, 200, 768, 6144, 'longest_edge', 'pixel_values_videos', 'shortest_edge', 'video_grid_thw']

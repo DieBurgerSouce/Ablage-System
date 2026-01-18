@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\postprocess\picodet_postprocess.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-05, 0.4, 0.5, 100, 200, 1000, 'bbox', 'boxes', 'boxes_num', 'float32', 'label', 'r', 'score', 'table', 'utf-8']

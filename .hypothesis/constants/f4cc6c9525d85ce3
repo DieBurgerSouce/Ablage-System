@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\ai\__init__.py
+# hypothesis_version: 6.148.7
+
+['AIDecisionService', 'AILearningPipeline', 'ContractAnalysis', 'ExtractedEntities', 'OllamaConfig', 'OllamaService', 'SmartMatchingService', 'get_ollama_service']

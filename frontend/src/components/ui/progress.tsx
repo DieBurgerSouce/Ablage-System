@@ -7,12 +7,14 @@ interface ProgressProps
     extends React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root> {
     /** Accessible label for screen readers (defaults to "Fortschritt") */
     "aria-label"?: string;
+    /** Custom class for the indicator (colored bar) */
+    indicatorClassName?: string;
 }
 
 const Progress = React.forwardRef<
     React.ElementRef<typeof ProgressPrimitive.Root>,
     ProgressProps
->(({ className, value, "aria-label": ariaLabel, ...props }, ref) => (
+>(({ className, value, "aria-label": ariaLabel, indicatorClassName, ...props }, ref) => (
     <ProgressPrimitive.Root
         ref={ref}
         aria-label={ariaLabel || "Fortschritt"}
@@ -26,7 +28,7 @@ const Progress = React.forwardRef<
         {...props}
     >
         <ProgressPrimitive.Indicator
-            className="h-full w-full flex-1 bg-primary transition-all"
+            className={cn("h-full w-full flex-1 bg-primary transition-all", indicatorClassName)}
             style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
         />
     </ProgressPrimitive.Root>

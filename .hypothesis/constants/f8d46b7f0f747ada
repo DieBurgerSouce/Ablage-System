@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\sharing.py
+# hypothesis_version: 6.148.7
+
+[365, 400, 403, 404, 409, 500, '/shared-with-me', '/sharing', 'Neue Zugriffsebene', 'Neuer Ablauf', 'Optionale Notiz', 'Unbekannt', 'Weitergabe erlauben?', 'document_shared', 'granted_by_username', 'message', 'shared_by_username', 'sharing', 'view']

@@ -1,16 +1,19 @@
 /**
  * Admin/Prokurist Dashboard-Ansicht
  *
- * Vollständiges Dashboard mit:
- * - Dynamischem Grid-Layout (Draggable & Persistable via @dnd-kit)
- * - Widget-Registry System
+ * Vollstaendiges Dashboard mit:
+ * - CSS Grid-Layout mit Resizable Widgets
+ * - Widget-Registry System mit Presets
+ * - Rolle-basierte Layout-Vorlagen
  * - Globalem Header
+ *
+ * Phase 3.3 der Feature-Roadmap (Januar 2026)
  */
 
 import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Calendar, Upload } from 'lucide-react'
-import { DashboardGrid } from '@/features/dashboard/components/DashboardGrid'
+import { DashboardGridEnhanced } from '@/features/dashboard/components/DashboardGridEnhanced'
 
 interface AdminDashboardViewProps {
     userName?: string
@@ -48,8 +51,8 @@ export function AdminDashboardView({ userName }: AdminDashboardViewProps) {
                     </Button>
                 </header>
 
-                {/* Dynamic Content */}
-                <DashboardGrid />
+                {/* Dynamic Content - Enhanced Grid with Presets */}
+                <DashboardGridEnhanced />
             </div>
         </div>
     )

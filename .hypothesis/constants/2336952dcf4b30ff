@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\nn\functional\moe_combine.py
+# hypothesis_version: 6.148.7
+
+['combine_weights', 'moe_combine', 'scatter_index', 'x', 'y']

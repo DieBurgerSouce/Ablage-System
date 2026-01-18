@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\ai.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.7, 1.0, 2.0, 1000, 5000, 10000, 20000, 30000, 50000, '/ai', '/contracts/analyze', '/entities/extract', '/generate', '/health', '/text/answer', '/text/extract-pairs', '/text/summarize', 'AI/LLM', 'Frage-Antwort', 'Textzusammenfassung', 'Vertragsanalyse', '^(de|en)$', 'de']

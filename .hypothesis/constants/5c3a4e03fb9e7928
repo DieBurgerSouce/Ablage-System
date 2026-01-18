@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\optimizer\adamw.py
+# hypothesis_version: 6.148.7
+
+[1e-08, 0.001, 0.01, 0.9, 0.999, 1.0, 1000, ',', ':', 'Beta1Pow', 'Beta1PowOut', 'Beta1Tensor', 'Beta2Pow', 'Beta2PowOut', 'Beta2Tensor', 'EpsilonTensor', 'Grad', 'LR_Scheduler', 'LearningRate', 'MasterParam', 'MasterParamOut', 'Moment1', 'Moment1Out', 'Moment2', 'Moment2Max', 'Moment2MaxOut', 'Moment2Out', 'Param', 'ParamOut', 'SkipUpdate', '_', '_is_sparse', 'adamw', 'amsgrad', 'beta1', 'beta1_pow_acc', 'beta1_pow_acc_0', 'beta2', 'beta2_pow_acc', 'beta2_pow_acc_0', 'coeff', 'cpu', 'epsilon', 'found_inf', 'fp16', 'fp32', 'fp32_master_0', 'grad_clip', 'is_selected_rows', 'lazy_mode', 'learning_rate', 'lr_ratio', 'master_weights', 'moment', 'moment1', 'moment1_0', 'moment2', 'moment2_0', 'moment2_max', 'multi_precision', 'params', 'velocity_0', 'weight_decay', 'with_decay']

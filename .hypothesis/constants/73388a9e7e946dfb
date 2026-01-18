@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\banking\skonto_service.py
+# hypothesis_version: 6.148.7
+
+[0.0, 2.0, 100, ',', '.', '0.00', '0.01', '0.05', '100', 'Skonto angewendet', 'Unbekannt', 'critical', 'info', 'open', 'paid', 'sent', 'skonto', 'warning']

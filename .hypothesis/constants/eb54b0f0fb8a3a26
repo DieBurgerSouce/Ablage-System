@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\utils\decorator_utils.py
+# hypothesis_version: 6.148.7
+
+[', ', '_InputT', '_RetT', 'always', 'axis', 'axis0', 'axis1', 'dim', 'dim0', 'dim1', 'dtype', 'index', 'input', 'keepdim', 'perm', 's', 'shape', 'shape_or_dtype', 'size', 'var must be a string', 'x']

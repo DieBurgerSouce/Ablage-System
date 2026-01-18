@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\data\imaug\table_ops.py
+# hypothesis_version: 6.148.7
+
+[0.1, 1.0, 200, 255, 'bbox', 'bboxes', 'cells', 'image', 'mask_img', 'max_len', 'shape', 'src_img']

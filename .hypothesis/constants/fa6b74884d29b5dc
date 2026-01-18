@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\postprocess\locality_aware_nms.py
+# hypothesis_version: 6.148.7
+
+[-1.0, 0.0, 0.3, 0.5, 0.8, 135, 143, 343, 350, 359, 369, 448, 474, '__main__', 'p_area is very small']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\model.py
+# hypothesis_version: 6.148.7
+
+['O1', 'O2', 'accumulate_steps', 'bfloat16', 'decr_ratio', 'float16', 'incr_every_n_steps', 'incr_ratio', 'init_loss_scaling', 'pp_configs', 'use_pure_bf16', 'use_pure_fp16']

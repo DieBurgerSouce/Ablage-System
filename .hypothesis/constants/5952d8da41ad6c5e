@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\collaboration\escalation_service.py
+# hypothesis_version: 6.148.7
+
+[100, 3600, 'Aufgabe eskaliert', 'active_rules', 'admin', 'companies_processed', 'description', 'epoch', 'escalate_to_role', 'escalate_to_user_id', 'escalated_tasks', 'escalation_no_target', 'escalation_rate', 'escalation_reason', 'is_active', 'manager', 'name', 'notify_task_creator', 'owner', 'period_days', 'priority', 'rule_id', 'rule_priority', 'rules_applied', 'task_escalated', 'task_id', 'task_type', 'tasks_checked', 'tasks_escalated', 'timeout_hours', 'total_tasks', 'total_tasks_checked']

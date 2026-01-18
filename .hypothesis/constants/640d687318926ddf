@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\audio\datasets\esc50.py
+# hypothesis_version: 6.148.7
+
+[',', 'Airplane', 'Breathing', 'Brushing teeth', 'Can opening', 'Car horn', 'Cat', 'Chainsaw', 'Chirping birds', 'Church bells', 'Clapping', 'Clock alarm', 'Clock tick', 'Coughing', 'Cow', 'Crackling fire', 'Crickets', 'Crow', 'Crying baby', 'Dog', 'Door knock', 'Door, wood creaks', 'Drinking, sipping', 'ESC-50-master', 'Engine', 'Fireworks', 'Footsteps', 'Frog', 'Glass breaking', 'Hand saw', 'Helicopter', 'Hen', 'Insects (flying)', 'Keyboard typing', 'Laughing', 'Mouse click', 'Pig', 'Pouring water', 'Rain', 'Rooster', 'Sea waves', 'Sheep', 'Siren', 'Sneezing', 'Snoring', 'Thunderstorm', 'Toilet flush', 'Train', 'Vacuum cleaner', 'Washing machine', 'Water drops', 'Wind', 'audio', 'dev', 'esc50.csv', 'logmelspectrogram', 'md5', 'melspectrogram', 'meta', 'mfcc', 'r', 'raw', 'spectrogram', 'train', 'url']

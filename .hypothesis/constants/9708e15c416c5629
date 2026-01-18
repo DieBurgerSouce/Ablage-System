@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\passes\fuse_all_reduce.py
+# hypothesis_version: 6.148.7
+
+['FusedOutput', 'Input', 'Out', 'Output', 'X', 'all_gather', 'all_reduce', 'attrs', 'broadcast', 'c_allreduce_sum', 'c_broadcast', 'c_sync_calc_stream', 'c_sync_comm_stream', 'coalesce_tensor', 'concated_ranks', 'concated_shapes', 'copy_data', 'dtype', 'fuse_all_reduce', 'inputs', 'max_memory_size', 'out', 'outputs', 'reduce_type', 'ring_id', 'type', 'use_align', 'use_calc_stream', 'use_model_parallel', 'x']

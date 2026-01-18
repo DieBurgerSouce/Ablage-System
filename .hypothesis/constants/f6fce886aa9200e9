@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\utils\sequence_parallel_utils.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, 512, '0', 'bias', 'fused_gemm_epilogue', 'main_grad', 'mp_configs', 'sequence_parallel', 'weight']

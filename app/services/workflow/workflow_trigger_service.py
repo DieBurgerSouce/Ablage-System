@@ -90,18 +90,34 @@ class WorkflowTriggerService:
             document_id=str(document_id),
         )
 
-        # Matching Workflows finden
+        # Dokument-Daten ZUERST laden fuer company_id (Multi-Tenant Isolation)
+        document = await self._load_document(document_id)
+        if not document:
+            logger.warning(
+                "document_not_found_for_event",
+                document_id=str(document_id),
+                event_type=event_type,
+            )
+            return []
+
+        # SECURITY: company_id aus Document fuer Multi-Tenant Isolation
+        if not document.company_id:
+            logger.error(
+                "document_missing_company_id",
+                document_id=str(document_id),
+            )
+            return []
+
+        # Matching Workflows finden MIT company_id Filter
         workflows = await self._find_matching_workflows(
             trigger_type="document_event",
             user_id=user_id,
+            company_id=document.company_id,
             event_type=event_type,
         )
 
         if not workflows:
             return []
-
-        # Dokument-Daten laden
-        document = await self._load_document(document_id)
 
         execution_ids = []
 
@@ -113,9 +129,11 @@ class WorkflowTriggerService:
             # Workflow ausfuehren
             try:
                 if self.execution_service:
+                    # SECURITY: company_id MUSS an ExecutionService weitergegeben werden
                     execution = await self.execution_service.start_execution(
                         workflow_id=workflow.id,
                         user_id=user_id,
+                        company_id=document.company_id,  # SECURITY: Multi-Tenant Isolation
                         document_id=document_id,
                         trigger_data={
                             "type": "document_event",
@@ -247,16 +265,22 @@ class WorkflowTriggerService:
 
         Wird regelmaessig von Celery Beat aufgerufen.
 
+        SECURITY: Jeder Workflow wird mit seiner eigenen company_id ausgefuehrt,
+        um Multi-Tenant Isolation sicherzustellen. Workflows OHNE company_id
+        werden uebersprungen (Sicherheitsmassnahme).
+
         Returns:
             Liste gestarteter Execution-IDs
         """
         now = datetime.now(timezone.utc)
 
-        # Aktive Schedule-Workflows finden
+        # SECURITY: Nur aktive Schedule-Workflows MIT company_id laden
+        # Workflows ohne company_id werden uebersprungen (potentielles Sicherheitsrisiko)
         query = select(Workflow).where(
             and_(
                 Workflow.trigger_type == "schedule",
                 Workflow.is_active == True,  # noqa: E712
+                Workflow.company_id.isnot(None),  # SECURITY: company_id PFLICHT
             )
         )
 
@@ -267,11 +291,22 @@ class WorkflowTriggerService:
 
         for workflow in workflows:
             try:
+                # SECURITY: Nochmal validieren dass company_id vorhanden ist
+                if not workflow.company_id:
+                    logger.warning(
+                        "scheduled_workflow_missing_company_id",
+                        workflow_id=str(workflow.id),
+                        workflow_name=workflow.name,
+                    )
+                    continue
+
                 if self._should_run_scheduled_workflow(workflow, now):
                     if self.execution_service:
+                        # SECURITY: company_id an ExecutionService weitergeben
                         execution = await self.execution_service.start_execution(
                             workflow_id=workflow.id,
                             user_id=workflow.user_id,
+                            company_id=workflow.company_id,  # Multi-Tenant Isolation
                             trigger_data={
                                 "type": "schedule",
                                 "scheduled_at": now.isoformat(),
@@ -385,21 +420,26 @@ class WorkflowTriggerService:
         self,
         workflow_id: UUID,
         user_id: UUID,
+        company_id: Optional[UUID] = None,
         document_id: Optional[UUID] = None,
         variables: Optional[Dict[str, Any]] = None,
     ) -> Optional[UUID]:
         """Loest einen Workflow manuell aus.
 
+        SECURITY: Wenn company_id angegeben wird, MUSS der Workflow zu dieser
+        Company gehoeren (Multi-Tenant Isolation).
+
         Args:
             workflow_id: Workflow-ID
             user_id: User-ID
+            company_id: Company-ID fuer Multi-Tenant Validierung (empfohlen)
             document_id: Optionale Dokument-ID
             variables: Optionale Variablen
 
         Returns:
             Execution-ID oder None
         """
-        workflow = await self._get_workflow(workflow_id, user_id)
+        workflow = await self._get_workflow(workflow_id, user_id, company_id)
         if not workflow:
             return None
 
@@ -416,9 +456,11 @@ class WorkflowTriggerService:
         if not self.execution_service:
             return None
 
+        # SECURITY: company_id an ExecutionService weitergeben
         execution = await self.execution_service.start_execution(
             workflow_id=workflow_id,
             user_id=user_id,
+            company_id=company_id,
             document_id=document_id,
             trigger_data={
                 "type": "manual",
@@ -446,22 +488,36 @@ class WorkflowTriggerService:
         webhook_path: str,
         payload: Dict[str, Any],
         headers: Dict[str, str],
+        company_id: Optional[UUID] = None,
     ) -> Optional[UUID]:
         """Verarbeitet einen eingehenden Webhook.
+
+        SECURITY: Webhook-Paths sind global unique. Wenn company_id angegeben wird,
+        muss der gefundene Workflow zu dieser Company gehoeren.
 
         Args:
             webhook_path: Webhook-Pfad
             payload: Webhook-Payload
             headers: HTTP-Headers
+            company_id: Optional Company-ID fuer Multi-Tenant Validierung
 
         Returns:
             Execution-ID oder None
         """
         # Workflow anhand des Pfads finden
-        workflow = await self._find_workflow_by_webhook_path(webhook_path)
+        workflow = await self._find_workflow_by_webhook_path(webhook_path, company_id)
         if not workflow:
             logger.warning(
                 "webhook_workflow_not_found",
+                path=webhook_path,
+            )
+            return None
+
+        # SECURITY: Workflow MUSS company_id haben fuer Ausfuehrung
+        if not workflow.company_id:
+            logger.error(
+                "webhook_workflow_missing_company_id",
+                workflow_id=str(workflow.id),
                 path=webhook_path,
             )
             return None
@@ -480,9 +536,11 @@ class WorkflowTriggerService:
         if not self.execution_service:
             return None
 
+        # SECURITY: company_id MUSS an ExecutionService weitergegeben werden
         execution = await self.execution_service.start_execution(
             workflow_id=workflow.id,
             user_id=workflow.user_id,
+            company_id=workflow.company_id,  # SECURITY: Multi-Tenant Isolation
             trigger_data={
                 "type": "webhook",
                 "path": webhook_path,
@@ -504,17 +562,22 @@ class WorkflowTriggerService:
         self,
         workflow_id: UUID,
         user_id: UUID,
+        company_id: Optional[UUID] = None,
     ) -> Optional[Dict[str, Any]]:
         """Holt Webhook-Konfiguration fuer einen Workflow.
+
+        SECURITY: Wenn company_id angegeben wird, MUSS der Workflow zu dieser
+        Company gehoeren (Multi-Tenant Isolation).
 
         Args:
             workflow_id: Workflow-ID
             user_id: User-ID
+            company_id: Company-ID fuer Multi-Tenant Validierung (empfohlen)
 
         Returns:
             Webhook-Config oder None
         """
-        workflow = await self._get_workflow(workflow_id, user_id)
+        workflow = await self._get_workflow(workflow_id, user_id, company_id)
         if not workflow or workflow.trigger_type != "webhook":
             return None
 
@@ -535,17 +598,22 @@ class WorkflowTriggerService:
         self,
         workflow_id: UUID,
         user_id: UUID,
+        company_id: Optional[UUID] = None,
     ) -> Optional[str]:
         """Generiert ein neues Webhook-Secret.
+
+        SECURITY: Wenn company_id angegeben wird, MUSS der Workflow zu dieser
+        Company gehoeren (Multi-Tenant Isolation).
 
         Args:
             workflow_id: Workflow-ID
             user_id: User-ID
+            company_id: Company-ID fuer Multi-Tenant Isolation
 
         Returns:
             Neues Secret oder None
         """
-        workflow = await self._get_workflow(workflow_id, user_id)
+        workflow = await self._get_workflow(workflow_id, user_id, company_id)
         if not workflow or workflow.user_id != user_id:
             return None
 
@@ -623,10 +691,20 @@ class WorkflowTriggerService:
         if not changed_fields:
             return []
 
-        # Matching Workflows finden
+        # SECURITY: Dokument laden fuer company_id (Multi-Tenant Isolation)
+        document = await self._load_document(document_id)
+        if not document or not document.company_id:
+            logger.warning(
+                "document_not_found_or_missing_company",
+                document_id=str(document_id),
+            )
+            return []
+
+        # Matching Workflows finden MIT company_id Filter
         workflows = await self._find_matching_workflows(
             trigger_type="condition",
             user_id=user_id,
+            company_id=document.company_id,
         )
 
         if not workflows:
@@ -681,24 +759,43 @@ class WorkflowTriggerService:
         self,
         trigger_type: str,
         user_id: UUID,
+        company_id: UUID,
         event_type: Optional[str] = None,
     ) -> List[Workflow]:
-        """Findet passende Workflows.
+        """Findet passende Workflows mit Multi-Tenant Isolation.
+
+        SECURITY: Filtert IMMER nach company_id fuer Multi-Tenant Isolation.
+        Workflows ohne company_id (Templates) werden nur bei scope="global" beruecksichtigt.
 
         Args:
             trigger_type: Trigger-Typ
             user_id: User-ID
+            company_id: Company-ID (PFLICHT fuer Multi-Tenant Isolation)
             event_type: Optional Event-Typ fuer document_event
 
         Returns:
             Liste passender Workflows
         """
+        # SECURITY: company_id ist Pflicht fuer Multi-Tenant Isolation
         conditions = [
             Workflow.trigger_type == trigger_type,
             Workflow.is_active == True,  # noqa: E712
             or_(
-                Workflow.user_id == user_id,
-                Workflow.trigger_config["scope"].astext == "global",
+                # Benutzer-spezifische Workflows der eigenen Company
+                and_(
+                    Workflow.user_id == user_id,
+                    Workflow.company_id == company_id,
+                ),
+                # Globale Workflows der eigenen Company
+                and_(
+                    Workflow.trigger_config["scope"].astext == "global",
+                    Workflow.company_id == company_id,
+                ),
+                # Company-weite Workflows (Templates, aber company_id muss matchen)
+                and_(
+                    Workflow.is_template == True,  # noqa: E712
+                    Workflow.company_id == company_id,
+                ),
             ),
         ]
 
@@ -735,9 +832,7 @@ class WorkflowTriggerService:
         if not conditions:
             return True
 
-        # TODO: Condition Evaluator integrieren
-        # Fuer jetzt: einfache Filter
-
+        # Einfache Filter (Legacy-Kompatibilitaet)
         # Document-Type Filter
         doc_types = conditions.get("document_types", [])
         if doc_types and document:
@@ -756,18 +851,59 @@ class WorkflowTriggerService:
             if str(document.folder_id) not in folder_ids:
                 return False
 
+        # Erweiterte Bedingungen mit ConditionEvaluator
+        advanced_conditions = conditions.get("rules")
+        if advanced_conditions and document:
+            from app.services.workflow.condition_evaluator import ConditionEvaluator
+            from dataclasses import dataclass, field as dataclass_field
+            from typing import Optional as Opt
+            from uuid import UUID as UUIDType
+
+            # Minimaler Trigger-Kontext fuer ConditionEvaluator
+            @dataclass
+            class TriggerContext:
+                """Minimaler Kontext fuer Trigger-Bedingungsevaluierung."""
+                document: Document
+                event_data: Dict[str, Any] = dataclass_field(default_factory=dict)
+                variables: Dict[str, Any] = dataclass_field(default_factory=dict)
+                step_outputs: Dict[str, Any] = dataclass_field(default_factory=dict)
+                document_id: Opt[UUIDType] = None
+                execution_id: Opt[UUIDType] = None
+                is_paused: bool = False
+
+            trigger_context = TriggerContext(
+                document=document,
+                event_data=event_data or {},
+                document_id=document.id,
+            )
+
+            evaluator = ConditionEvaluator()
+            if not evaluator.evaluate(conditions, trigger_context):
+                logger.debug(
+                    "trigger_conditions_not_met",
+                    workflow_id=str(workflow.id),
+                    document_id=str(document.id) if document else None,
+                )
+                return False
+
         return True
 
     async def _get_workflow(
         self,
         workflow_id: UUID,
         user_id: Optional[UUID] = None,
+        company_id: Optional[UUID] = None,
     ) -> Optional[Workflow]:
-        """Laedt einen Workflow.
+        """Laedt einen Workflow mit Multi-Tenant Isolation.
+
+        SECURITY: Wenn company_id angegeben wird, MUSS der Workflow zu dieser
+        Company gehoeren. Templates werden nur zurueckgegeben wenn sie zur
+        gleichen Company gehoeren.
 
         Args:
             workflow_id: Workflow-ID
             user_id: Optionale User-ID
+            company_id: Company-ID fuer Multi-Tenant Validierung (empfohlen)
 
         Returns:
             Workflow oder None
@@ -782,28 +918,59 @@ class WorkflowTriggerService:
                 )
             )
 
+        # SECURITY: company_id Filter fuer Multi-Tenant Isolation
+        if company_id:
+            query = query.where(Workflow.company_id == company_id)
+
         result = await self.db.execute(query)
-        return result.scalar_one_or_none()
+        workflow = result.scalar_one_or_none()
+
+        # SECURITY: Cross-Tenant Zugriff loggen
+        if workflow is None and company_id:
+            # Pruefen ob Workflow existiert aber andere Company hat
+            check_query = select(Workflow.id, Workflow.company_id).where(
+                Workflow.id == workflow_id
+            )
+            check_result = await self.db.execute(check_query)
+            row = check_result.first()
+            if row and row.company_id != company_id:
+                logger.warning(
+                    "cross_tenant_workflow_access_blocked",
+                    workflow_id=str(workflow_id),
+                    requested_company_id=str(company_id),
+                    user_id=str(user_id) if user_id else None,
+                )
+
+        return workflow
 
     async def _find_workflow_by_webhook_path(
         self,
         webhook_path: str,
+        company_id: Optional[UUID] = None,
     ) -> Optional[Workflow]:
-        """Findet Workflow anhand Webhook-Pfad.
+        """Findet Workflow anhand Webhook-Pfad mit optionaler Multi-Tenant Isolation.
+
+        SECURITY: Wenn company_id angegeben wird, MUSS der Workflow zu dieser Company gehoeren.
+        Webhook-Paths sind global unique, aber die company_id Validierung schuetzt vor
+        Cross-Tenant Zugriff wenn die API den company_id Parameter uebergibt.
 
         Args:
             webhook_path: Webhook-Pfad
+            company_id: Optional Company-ID fuer Multi-Tenant Validierung
 
         Returns:
             Workflow oder None
         """
-        query = select(Workflow).where(
-            and_(
-                Workflow.trigger_type == "webhook",
-                Workflow.is_active == True,  # noqa: E712
-            )
-        )
+        conditions = [
+            Workflow.trigger_type == "webhook",
+            Workflow.is_active == True,  # noqa: E712
+        ]
 
+        # SECURITY: company_id Filter wenn angegeben
+        if company_id:
+            conditions.append(Workflow.company_id == company_id)
+
+        query = select(Workflow).where(and_(*conditions))
         result = await self.db.execute(query)
         workflows = list(result.scalars().all())
 

@@ -12,7 +12,7 @@
  */
 
 import { useState, useMemo } from 'react';
-import { LayoutGrid, Info, Zap, Database } from 'lucide-react';
+import { LayoutGrid, Info, Zap, Database, Wallet } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -20,10 +20,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { WIDGET_REGISTRY } from '../registry';
+import { WIDGET_REGISTRY, getWidgetDefinition } from '../registry';
 import { useDashboardStore } from '../stores/useDashboardStore';
+import { normalizeWidgetType } from '../registry';
 import { WidgetPreviewCard } from './WidgetPreviewCard';
 import { toast } from 'sonner';
 
@@ -32,34 +33,43 @@ interface WidgetCatalogDrawerProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type CategoryFilter = 'all' | 'info' | 'action' | 'data';
+type CategoryFilter = 'all' | 'info' | 'action' | 'data' | 'finance';
 
 const CATEGORY_TABS: { value: CategoryFilter; label: string; icon: React.ElementType }[] = [
   { value: 'all', label: 'Alle', icon: LayoutGrid },
-  { value: 'info', label: 'Information', icon: Info },
+  { value: 'info', label: 'Info', icon: Info },
   { value: 'action', label: 'Aktion', icon: Zap },
   { value: 'data', label: 'Daten', icon: Database },
+  { value: 'finance', label: 'Finanzen', icon: Wallet },
 ];
 
 export function WidgetCatalogDrawer({ open, onOpenChange }: WidgetCatalogDrawerProps) {
   const { widgets, addWidget } = useDashboardStore();
   const [category, setCategory] = useState<CategoryFilter>('all');
 
-  // Get list of currently active widget types
-  const activeTypes = useMemo(() => new Set(widgets.map((w) => w.type)), [widgets]);
+  // Get list of currently active widget types (normalized)
+  const activeTypes = useMemo(() => {
+    return new Set(widgets.map((w) => normalizeWidgetType(w.type)));
+  }, [widgets]);
 
   // Filter widgets by category
   const filteredWidgets = useMemo(() => {
-    return Object.entries(WIDGET_REGISTRY).filter(([_, def]) => {
+    return Object.entries(WIDGET_REGISTRY).filter(([key, def]) => {
+      // Skip legacy uppercase keys
+      if (key === key.toUpperCase()) return false;
       if (category === 'all') return true;
-      return def.category === category;
+      return def?.category === category;
     });
   }, [category]);
 
   const handleAddWidget = (type: string) => {
-    addWidget(type);
-    toast.success('Widget hinzugefügt', {
-      description: `${WIDGET_REGISTRY[type]?.label || type} wurde zum Dashboard hinzugefügt.`,
+    const normalizedType = normalizeWidgetType(type);
+    const widgetDef = getWidgetDefinition(normalizedType);
+    const size = widgetDef?.defaultSize ?? { w: 4, h: 3 };
+
+    addWidget(normalizedType, size);
+    toast.success('Widget hinzugefuegt', {
+      description: `${widgetDef?.label || type} wurde zum Dashboard hinzugefuegt.`,
     });
   };
 
@@ -83,7 +93,7 @@ export function WidgetCatalogDrawer({ open, onOpenChange }: WidgetCatalogDrawerP
           onValueChange={(v) => setCategory(v as CategoryFilter)}
           className="flex-1 flex flex-col mt-4"
         >
-          <TabsList className="grid grid-cols-4 w-full">
+          <TabsList className="grid grid-cols-5 w-full">
             {CATEGORY_TABS.map((tab) => (
               <TabsTrigger
                 key={tab.value}

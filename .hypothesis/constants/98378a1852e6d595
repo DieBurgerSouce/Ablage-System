@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\gobd_compliance_service.py
+# hypothesis_version: 6.148.7
+
+[0.8, 0.9, 0.95, 1.0, 100.0, 100, '100%', 'Archivierungsrate', 'archive', 'archive_metrics', 'audit_metrics', 'audit_trail', 'audit_trail_gaps', 'checked_at', 'company_id', 'compliant', 'count', 'description', 'details', 'earliest_expiry', 'failed_verifications', 'generated_at', 'integrity', 'integrity_metrics', 'law', 'legal_basis', 'metric', 'name', 'non_compliant', 'overall_score', 'overall_status', 'priority', 'recommendation', 'recommendations', 'report_date', 'report_id', 'retention', 'retention_metrics', 'score_description', 'severity', 'status', 'summary', 'threshold', 'total', 'unknown', 'value', 'warning', '§ 147 AO', '§ 14b UStG', '§ 257 HGB']

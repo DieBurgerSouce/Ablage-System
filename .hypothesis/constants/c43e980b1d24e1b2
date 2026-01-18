@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\httpcore\_sync\__init__.py
+# hypothesis_version: 6.148.7
+
+['ConnectionInterface', 'ConnectionPool', 'HTTP11Connection', 'HTTP2Connection', 'HTTPConnection', 'HTTPProxy', 'SOCKSProxy']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\tensor\array.py
+# hypothesis_version: 6.148.7
+
+['I', 'Out', 'T', 'X', 'array', 'array_length', 'array_read', 'array_write', 'i', 'int64', 'lod_array_length', 'read_from_array', 'write_to_array', 'x']

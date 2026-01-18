@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\validation_sample_service.py
+# hypothesis_version: 6.148.7
+
+[0.85, 100, 'ae', 'confidence_below', 'document_type', 'document_types', 'empty_or_invalid', 'error_type', 'field', 'oe', 'pattern', 'ue', 'umlaut_error', 'unknown']

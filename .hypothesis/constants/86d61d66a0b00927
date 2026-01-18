@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\marko\inline.py
+# hypothesis_version: 6.148.7
+
+['( *|\\\\)\\n(?!\\Z)', '<', '>', 'AutoLink', 'CodeSpan', 'Emphasis', 'Image', 'InlineHTML', 'LineBreak', 'Link', 'Literal', 'RawText', 'StrongEmphasis', '\\', '\\1', 'mailto:']

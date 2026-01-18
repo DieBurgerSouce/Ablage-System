@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\extraction\base.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.33, 0.5, 0.66, 0.8, '$', ',', '-', '.', '0.10', '1.0', 'CHF', 'EUR', 'EUR|USD|CHF', 'T', 'UNKNOWN', 'USD', '[€$CHF\\s]', 'center', 'chf', 'discount', 'error', 'eur', 'gross', 'info', 'left', 'net', 'pattern_registered', 'right', 'sfr', 'subtotal', 'total', 'unknown', 'usd', 'vat', 'warning', '€']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_optimizers\tensor_parallel_optimizer.py
+# hypothesis_version: 6.148.7
+
+[1.0, 'AMPOptimizer', 'LambOptimizer', 'LarsOptimizer', 'Out', 'RecomputeOptimizer', 'X', 'all_reduce', 'broadcast', 'c_sync_calc_stream', 'c_sync_comm_stream', 'out', 'reduce_type', 'ring_id', 'root', 'scale', 'x']

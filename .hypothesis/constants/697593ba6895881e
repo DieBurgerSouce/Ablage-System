@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\marko\inline_parser.py
+# hypothesis_version: 6.148.7
+
+[127, 999, '![', '"', "'", '(', '(?:!?\\[|\\*+|_+)', ')', '*', '<', '<\n', '>', 'Emphasis', 'Image', 'Link', 'MatchObj', 'StrongEmphasis', '[', '[]', '\\', '\\s', ']', '_', 'can_close', 'can_open']

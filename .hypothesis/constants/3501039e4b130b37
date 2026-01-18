@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\base\runtime_factory.py
+# hypothesis_version: 6.148.7
+
+['k_steps', 'role_maker', 'use_fleet_ps', 'valid_strategy']

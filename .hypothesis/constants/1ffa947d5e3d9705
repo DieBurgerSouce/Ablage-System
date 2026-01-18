@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\base\dygraph\generated_tensor_methods_patch.py
+# hypothesis_version: 6.148.7
+
+['all', 'amax', 'amin', 'any', 'bmm', 'cos', 'expand_as', 'floor', 'greater_than', 'isfinite', 'isinf', 'isnan', 'log', 'logical_and', 'logical_not', 'logical_or', 'logical_xor', 'logsumexp', 'matmul', 'maximum', 'minimum', 'multiply', 'roll', 'rsqrt', 'sigmoid', 'sign', 'sin', 'sqrt', 'tril', 'triu']

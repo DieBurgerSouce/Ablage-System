@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\.claude\orchestration\metrics.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.05, 0.08, 0.2, 0.3, 0.7, 0.88, 0.92, 0.95, 0.98, 1.0, -100, 100, 1000, 3000, 8000, 20000, '.metrics_', '.tmp', '=', '__main__', 'avg_quality_score', 'cache', 'cache_hit_rate', 'cache_hit_rate_raw', 'cache_hits', 'cache_misses', 'escalation_rate', 'escalation_rate_raw', 'escalations_by_tier', 'escalations_total', 'haiku', 'haiku->sonnet', 'last_updated', 'opus', 'quality_scores', 'r', 'snapshots', 'sonnet', 'sonnet->opus', 'tasks_by_tier', 'tier_distribution', 'tokens_saved', 'tokens_saved_raw', 'tokens_saved_vs_opus', 'total_tasks', 'total_tokens_used', 'utf-8', 'w', '⚙️', '✨', '🤖', '🧠']

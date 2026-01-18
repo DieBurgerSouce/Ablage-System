@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\data\imaug\make_border_map.py
+# hypothesis_version: 6.148.7
+
+[0.2, 0.3, 0.4, 0.7, 1.0, 4096.0, 'MakeBorderMap', 'None', 'epoch', 'ignore', 'ignore_tags', 'image', 'polys', 'threshold_map', 'threshold_mask', 'total_epoch']

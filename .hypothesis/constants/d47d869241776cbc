@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\admin\extraction.py
+# hypothesis_version: 6.148.7
+
+[100, 202, 500, '/extraction', '/reprocess-all', '/stats', 'Admin - Extraktion', 'Dokumente pro Batch', 'FAILURE', 'PROGRESS', 'QUEUED', 'SUCCESS', 'Unbekannter Fehler', 'avg_confidence', 'by_type', 'extraction_rate', 'generated_at', 'invoice_stats', 'message', 'needs_review_count', 'success', 'task_id', 'total_documents', 'with_extraction', 'with_line_items']

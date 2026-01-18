@@ -303,3 +303,260 @@ class TestRunAsyncHelper:
         assert result["processed"] == 10
         assert result["matched"] == 5
         assert result["unmatched"] == 5
+
+
+# =============================================================================
+# PHASE 1: Automatische Zahlungserinnerungen - Neue Tasks (Januar 2026)
+# =============================================================================
+
+
+class TestPreDueRemindersTask:
+    """Tests fuer send_pre_due_reminders Task (Task 1.2)."""
+
+    def test_send_pre_due_reminders_is_registered(self):
+        """Sollte send_pre_due_reminders Task registriert haben."""
+        from app.workers.tasks.banking_tasks import send_pre_due_reminders
+
+        assert send_pre_due_reminders is not None
+        assert hasattr(send_pre_due_reminders, 'name')
+        assert send_pre_due_reminders.name == "app.workers.tasks.banking_tasks.send_pre_due_reminders"
+
+    def test_send_pre_due_reminders_uses_cpu_base(self):
+        """Sollte CPUTask Base verwenden."""
+        from app.workers.tasks.banking_tasks import send_pre_due_reminders
+        from app.workers.celery_app import CPUTask
+
+        assert isinstance(send_pre_due_reminders, CPUTask)
+
+    def test_send_pre_due_reminders_has_retry_config(self):
+        """Sollte retry Konfiguration haben."""
+        from app.workers.tasks.banking_tasks import send_pre_due_reminders
+
+        assert hasattr(send_pre_due_reminders, 'max_retries')
+        assert send_pre_due_reminders.max_retries >= 2
+
+    def test_beat_schedule_contains_pre_due_reminders(self):
+        """Sollte pre-due reminders Task im Beat Schedule haben."""
+        from app.workers.tasks.banking_tasks import BANKING_BEAT_SCHEDULE
+
+        assert "banking-pre-due-reminders-morning" in BANKING_BEAT_SCHEDULE
+
+        config = BANKING_BEAT_SCHEDULE["banking-pre-due-reminders-morning"]
+        assert config["task"] == "app.workers.tasks.banking_tasks.send_pre_due_reminders"
+        assert "kwargs" in config
+        assert config["kwargs"]["days_before"] == 3
+
+
+class TestDunningDailyReportTask:
+    """Tests fuer generate_dunning_daily_report Task (Task 1.5)."""
+
+    def test_generate_dunning_daily_report_is_registered(self):
+        """Sollte generate_dunning_daily_report Task registriert haben."""
+        from app.workers.tasks.banking_tasks import generate_dunning_daily_report
+
+        assert generate_dunning_daily_report is not None
+        assert hasattr(generate_dunning_daily_report, 'name')
+        assert generate_dunning_daily_report.name == "app.workers.tasks.banking_tasks.generate_dunning_daily_report"
+
+    def test_generate_dunning_daily_report_uses_cpu_base(self):
+        """Sollte CPUTask Base verwenden."""
+        from app.workers.tasks.banking_tasks import generate_dunning_daily_report
+        from app.workers.celery_app import CPUTask
+
+        assert isinstance(generate_dunning_daily_report, CPUTask)
+
+    def test_generate_dunning_daily_report_has_retry_config(self):
+        """Sollte retry Konfiguration haben."""
+        from app.workers.tasks.banking_tasks import generate_dunning_daily_report
+
+        assert hasattr(generate_dunning_daily_report, 'max_retries')
+        assert generate_dunning_daily_report.max_retries >= 2
+
+    def test_beat_schedule_contains_dunning_daily_report(self):
+        """Sollte dunning daily report Task im Beat Schedule haben."""
+        from app.workers.tasks.banking_tasks import BANKING_BEAT_SCHEDULE
+
+        assert "banking-dunning-daily-report" in BANKING_BEAT_SCHEDULE
+
+        config = BANKING_BEAT_SCHEDULE["banking-dunning-daily-report"]
+        assert config["task"] == "app.workers.tasks.banking_tasks.generate_dunning_daily_report"
+
+
+class TestNewBeatScheduleEntries:
+    """Tests fuer alle neuen Beat Schedule Eintraege."""
+
+    def test_all_dunning_related_tasks_in_schedule(self):
+        """Sollte alle mahnungsbezogenen Tasks im Schedule haben."""
+        from app.workers.tasks.banking_tasks import BANKING_BEAT_SCHEDULE
+
+        required_dunning_tasks = [
+            "banking-process-dunning-daily",  # Bestehendes Mahnverfahren
+            "banking-pre-due-reminders-morning",  # Neu: Vorab-Erinnerungen
+            "banking-dunning-daily-report",  # Neu: Tagesbericht
+        ]
+
+        for task_name in required_dunning_tasks:
+            assert task_name in BANKING_BEAT_SCHEDULE, \
+                f"Task {task_name} fehlt im Beat Schedule"
+
+    def test_dunning_tasks_have_correct_queues(self):
+        """Sollte korrekte Queues fuer Dunning Tasks haben."""
+        from app.workers.tasks.banking_tasks import BANKING_BEAT_SCHEDULE
+
+        dunning_tasks = [
+            "banking-process-dunning-daily",
+            "banking-pre-due-reminders-morning",
+            "banking-dunning-daily-report",
+        ]
+
+        for task_name in dunning_tasks:
+            config = BANKING_BEAT_SCHEDULE[task_name]
+            options = config.get("options", {})
+            queue = options.get("queue")
+
+            # Dunning Tasks sollten in der banking oder notification Queue sein
+            assert queue is not None, f"Task {task_name} hat keine queue"
+
+    def test_dunning_tasks_have_appropriate_schedules(self):
+        """Sollte passende Zeitplaene fuer Dunning Tasks haben."""
+        from app.workers.tasks.banking_tasks import BANKING_BEAT_SCHEDULE
+        from celery.schedules import crontab
+
+        # Pre-Due Reminders sollten morgens laufen
+        pre_due_config = BANKING_BEAT_SCHEDULE["banking-pre-due-reminders-morning"]
+        assert "schedule" in pre_due_config
+
+        # Daily Report sollte abends laufen
+        report_config = BANKING_BEAT_SCHEDULE["banking-dunning-daily-report"]
+        assert "schedule" in report_config
+
+
+class TestDailyMahnlaufTask:
+    """Tests fuer daily_mahnlauf Task (BGB §286 Compliance)."""
+
+    def test_daily_mahnlauf_is_registered(self):
+        """Sollte daily_mahnlauf Task registriert haben."""
+        from app.workers.tasks.banking_tasks import daily_mahnlauf
+
+        assert daily_mahnlauf is not None
+        assert hasattr(daily_mahnlauf, 'name')
+        assert daily_mahnlauf.name == "app.workers.tasks.banking_tasks.daily_mahnlauf"
+
+    def test_daily_mahnlauf_uses_cpu_base(self):
+        """Sollte daily_mahnlauf mit CPUTask Base konfigurieren."""
+        from app.workers.tasks.banking_tasks import daily_mahnlauf
+        from app.workers.celery_app import CPUTask
+
+        assert isinstance(daily_mahnlauf, CPUTask)
+
+    def test_daily_mahnlauf_in_beat_schedule(self):
+        """Sollte daily_mahnlauf im Beat Schedule haben."""
+        from app.workers.tasks.banking_tasks import BANKING_BEAT_SCHEDULE
+
+        assert "banking-daily-mahnlauf" in BANKING_BEAT_SCHEDULE
+        config = BANKING_BEAT_SCHEDULE["banking-daily-mahnlauf"]
+        assert config["task"] == "app.workers.tasks.banking_tasks.daily_mahnlauf"
+
+
+class TestReactivateSnoozedTasksTask:
+    """Tests fuer reactivate_snoozed_tasks Task."""
+
+    def test_reactivate_snoozed_tasks_is_registered(self):
+        """Sollte reactivate_snoozed_tasks Task registriert haben."""
+        from app.workers.tasks.banking_tasks import reactivate_snoozed_tasks
+
+        assert reactivate_snoozed_tasks is not None
+        assert hasattr(reactivate_snoozed_tasks, 'name')
+        assert reactivate_snoozed_tasks.name == "app.workers.tasks.banking_tasks.reactivate_snoozed_tasks"
+
+    def test_reactivate_snoozed_tasks_uses_cpu_base(self):
+        """Sollte reactivate_snoozed_tasks mit CPUTask Base konfigurieren."""
+        from app.workers.tasks.banking_tasks import reactivate_snoozed_tasks
+        from app.workers.celery_app import CPUTask
+
+        assert isinstance(reactivate_snoozed_tasks, CPUTask)
+
+    def test_reactivate_snoozed_tasks_in_beat_schedule(self):
+        """Sollte reactivate_snoozed_tasks im Beat Schedule haben."""
+        from app.workers.tasks.banking_tasks import BANKING_BEAT_SCHEDULE
+
+        assert "banking-reactivate-snoozed-tasks" in BANKING_BEAT_SCHEDULE
+        config = BANKING_BEAT_SCHEDULE["banking-reactivate-snoozed-tasks"]
+        assert config["task"] == "app.workers.tasks.banking_tasks.reactivate_snoozed_tasks"
+
+
+class TestCheckExpiredMahnstoppTask:
+    """Tests fuer check_expired_mahnstopp Task."""
+
+    def test_check_expired_mahnstopp_is_registered(self):
+        """Sollte check_expired_mahnstopp Task registriert haben."""
+        from app.workers.tasks.banking_tasks import check_expired_mahnstopp
+
+        assert check_expired_mahnstopp is not None
+        assert hasattr(check_expired_mahnstopp, 'name')
+        assert check_expired_mahnstopp.name == "app.workers.tasks.banking_tasks.check_expired_mahnstopp"
+
+    def test_check_expired_mahnstopp_uses_cpu_base(self):
+        """Sollte check_expired_mahnstopp mit CPUTask Base konfigurieren."""
+        from app.workers.tasks.banking_tasks import check_expired_mahnstopp
+        from app.workers.celery_app import CPUTask
+
+        assert isinstance(check_expired_mahnstopp, CPUTask)
+
+    def test_check_expired_mahnstopp_in_beat_schedule(self):
+        """Sollte check_expired_mahnstopp im Beat Schedule haben."""
+        from app.workers.tasks.banking_tasks import BANKING_BEAT_SCHEDULE
+
+        assert "banking-check-expired-mahnstopp" in BANKING_BEAT_SCHEDULE
+        config = BANKING_BEAT_SCHEDULE["banking-check-expired-mahnstopp"]
+        assert config["task"] == "app.workers.tasks.banking_tasks.check_expired_mahnstopp"
+
+
+class TestCeleryAppBeatScheduleIntegration:
+    """Tests fuer celery_app.py Beat Schedule Integration."""
+
+    def test_banking_tasks_in_main_beat_schedule(self):
+        """Sollte Banking Tasks im Haupt-Beat-Schedule von celery_app.py haben."""
+        from app.workers.celery_app import celery_app
+
+        beat_schedule = celery_app.conf.beat_schedule
+
+        required_banking_tasks = [
+            "banking-process-dunning-daily",
+            "banking-daily-mahnlauf",
+            "banking-reactivate-snoozed-tasks",
+            "banking-check-expired-mahnstopp",
+            "banking-pre-due-reminders-morning",
+            "banking-skonto-alerts-morning",
+            "banking-dunning-daily-report",
+            "banking-update-cash-flow-4h",
+            "banking-tan-cleanup-hourly",
+        ]
+
+        for task_name in required_banking_tasks:
+            assert task_name in beat_schedule, \
+                f"Task {task_name} fehlt im Haupt-Beat-Schedule von celery_app.py"
+
+    def test_banking_tasks_have_correct_task_names(self):
+        """Sollte korrekte Task-Namen in celery_app.py Beat-Schedule haben."""
+        from app.workers.celery_app import celery_app
+
+        beat_schedule = celery_app.conf.beat_schedule
+
+        expected_task_mappings = {
+            "banking-process-dunning-daily": "app.workers.tasks.banking_tasks.process_automatic_dunning",
+            "banking-daily-mahnlauf": "app.workers.tasks.banking_tasks.daily_mahnlauf",
+            "banking-reactivate-snoozed-tasks": "app.workers.tasks.banking_tasks.reactivate_snoozed_tasks",
+            "banking-check-expired-mahnstopp": "app.workers.tasks.banking_tasks.check_expired_mahnstopp",
+            "banking-pre-due-reminders-morning": "app.workers.tasks.banking_tasks.send_pre_due_reminders",
+            "banking-skonto-alerts-morning": "app.workers.tasks.banking_tasks.send_skonto_alerts",
+            "banking-dunning-daily-report": "app.workers.tasks.banking_tasks.generate_dunning_daily_report",
+            "banking-update-cash-flow-4h": "app.workers.tasks.banking_tasks.update_cash_flow_forecasts",
+            "banking-tan-cleanup-hourly": "app.workers.tasks.banking_tasks.cleanup_tan_challenges",
+        }
+
+        for schedule_name, expected_task in expected_task_mappings.items():
+            assert schedule_name in beat_schedule, f"Schedule {schedule_name} fehlt"
+            actual_task = beat_schedule[schedule_name]["task"]
+            assert actual_task == expected_task, \
+                f"Schedule {schedule_name} hat falschen Task: {actual_task} != {expected_task}"

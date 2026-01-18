@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_parallel\sharding\group_sharded_stage3.py
+# hypothesis_version: 6.148.7
+
+[1.0, 256, 4096, ':', '_optim', 'all', 'cpu', 'extra_parameters', 'fw_storage', 'gpu', 'grad_clip', 'last_layer', 'layer', 'learning_rate', 'main_grad', 'order', 'params', 'part', 'slice@', 'unslice', 'xpu']

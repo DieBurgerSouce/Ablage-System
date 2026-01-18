@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\models\got_ocr2\configuration_got_ocr2.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-10, 1e-06, 0.02, 1000000.0, 256, 576, 768, 1024, 2816, 3072, 4096, 32768, 151859, 151860, 'GotOcr2Config', 'GotOcr2VisionConfig', 'gelu', 'got_ocr2', 'image_token_id', 'image_token_index', 'model_type', 'qwen2', 'silu', 'text_config', 'vision_config']

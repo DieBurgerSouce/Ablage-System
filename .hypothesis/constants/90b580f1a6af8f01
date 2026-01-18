@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\passes\pipeline_scheduler_pass\__init__.py
+# hypothesis_version: 6.148.7
+
+['1F1B', 'Eager1F1B', 'FThenB', 'VPP', 'ZBH1', 'ZBVPP', 'pipeline_scheduler_', 'plan']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\static\amp\bf16\decorator.py
+# hypothesis_version: 6.148.7
+
+['float32', 'learning_rate', 'minimize']

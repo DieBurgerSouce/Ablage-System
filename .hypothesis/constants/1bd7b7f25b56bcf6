@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\passes\ps_server_pass.py
+# hypothesis_version: 6.148.7
+
+[1.0, '@LR_DECAY_COUNTER@', 'ExponentialDecay', 'Fanin', 'GlobalStepTable', 'InverseTimeDecay', 'NaturalExpDecay', 'NoamDecay', 'X', 'add_optimizer_pass', 'distributed_mode', 'endpoint', 'feed_var_name', 'fetch_var_name', 'grad_to_block_id', 'listen_and_serv', 'lr_decay_block_id', 'lr_decay_steps', 'lr_scheduler', 'main_program', 'must be LRScheduler', 'origin_main_program', 'ps_mode', 'pserver_id', 'role_maker', 'rpc_get_thread_num', 'rpc_send_thread_num', 'sparse_grad_to_param', 'startup_program', 'tensor_table', 'tensor_table_class']

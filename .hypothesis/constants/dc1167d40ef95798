@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\middleware\company_context.py
+# hypothesis_version: 6.148.7
+
+[400, 401, 403, 'ValueError', 'X-Company-ID', 'admin', 'cid', 'company_switched', 'current_company_id', 'owner', 'rls_context_set', 'rls_context_skip', 'user']

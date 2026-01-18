@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\io\dataloader\dataset.py
+# hypothesis_version: 6.148.7
+
+['Tensor', '_T', '_Ts', '__getitem__', '__iter__', '__len__']

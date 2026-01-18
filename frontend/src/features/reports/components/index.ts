@@ -18,3 +18,6 @@ export { TemplatePreviewCard } from './TemplatePreviewCard';
 // Report Sharing
 export { ShareReportDialog } from './ShareReportDialog';
 export { SharedReportsList } from './SharedReportsList';
+
+// Scheduling
+export { ScheduleConfig } from './ScheduleConfig';

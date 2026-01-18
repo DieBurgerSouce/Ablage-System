@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\shipping\__init__.py
+# hypothesis_version: 6.148.7
+
+['BaseCarrierProvider', 'Carrier', 'CarrierService', 'DHLProvider', 'DPDProvider', 'DeutschePostProvider', 'FedExProvider', 'GLSProvider', 'HermesProvider', 'ShipmentStatus', 'TrackingEvent', 'TrackingResult', 'UPSProvider']

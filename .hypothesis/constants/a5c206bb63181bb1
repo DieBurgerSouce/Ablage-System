@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\parallel.py
+# hypothesis_version: 6.148.7
+
+[128, 1024, 3600, 9999999, ',', '0', '1', '1800000', '2.0.0', '900', ':', 'FLAGS', 'FLAGS_nccl_nrings', 'FLAGS_selected_gpus', 'FLAGS_selected_xpus', 'MASTER_ADDR', 'MASTER_PORT', 'Out', 'PADDLE_MASTER', 'PADDLE_PG_TIMEOUT', 'PADDLE_TRAINERS_NUM', 'PADDLE_TRAINER_ID', 'PADDLE_WITH_GLOO', 'PADDLE_XCCL_BACKEND', 'X', 'XShape', '_data_parallel', '_worker', 'auto', 'axis', 'bkcl', 'current_value', 'default', 'default_value', 'expert', 'flagcx', 'heter', 'int64', 'is_distributed', 'name', 'nccl', 'no_sync', 'reshape2', 'running', 'sections', 'shape', 'split', 'xccl']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\autograd\__init__.py
+# hypothesis_version: 6.148.7
+
+['Hessian', 'Jacobian', 'disable_prim', 'enable_prim', 'forward_grad', 'grad', 'jvp', 'vjp']

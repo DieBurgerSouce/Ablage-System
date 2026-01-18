@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\audio\datasets\tess.py
+# hypothesis_version: 6.148.7
+
+['.wav', '_', 'angry', 'disgust', 'fear', 'happy', 'md5', 'neutral', 'ps', 'raw', 'sad', 'train', 'url']

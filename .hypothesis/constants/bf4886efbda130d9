@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\admin\users.py
+# hypothesis_version: 6.148.7
+
+[100, 200, 1000, 10000, '/lockout-status', '/unlock-account', '/users', '/{user_id}', '/{user_id}/activate', '/{user_id}/activity', '/{user_id}/quotas', 'Account entsperren', 'Benutzer abrufen', 'Benutzer aktivieren', 'Benutzer auflisten', 'Benutzer erstellen', 'Benutzer loeschen', 'E-Mail des Benutzers', 'Eintraege pro Seite', 'IP-Adresse', 'Nach Rolle filtern', 'Nach Status filtern', 'Nach Tier filtern', 'Rolle aendern', 'Seitennummer', 'Sortierfeld', 'Sortierrichtung', 'api_per_minute', 'batch_hourly', 'created_at', 'daily_documents', 'daily_quota', 'failed_attempts', 'free', 'is_locked', 'ocr_daily', 'ocr_hourly', 'override_updates', 'rate_limit_daily', 'rate_limit_hourly', 'reason', 'status', 'user.quotas.updated', 'user_updates', 'valid_until']

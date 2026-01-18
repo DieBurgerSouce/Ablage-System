@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\rag\customers.py
+# hypothesis_version: 6.148.7
+
+[100, 255, 500, '/customers', '/search', '/sync', '/{customer_id}', 'Card neu generieren', 'Eintraege pro Seite', 'Kunden suchen', 'Max Ergebnisse', 'Seite', 'Suchanfrage', 'customer_id', 'job_id', 'message', 'normal', 'pending', 'rag-customers', 'success']

@@ -18,6 +18,98 @@ export type InvoiceStatus =
 
 export type DunningLevel = 0 | 1 | 2 | 3 | 4;
 
+// ==================== Skonto Types ====================
+
+/**
+ * Skonto-Informationen fuer eine Rechnung
+ */
+export interface SkontoInfo {
+  percentage: number | null;      // z.B. 2.0 fuer 2%
+  days: number | null;            // Tage fuer Skonto-Frist
+  deadline: string | null;        // ISO Date der Frist
+  amount: number | null;          // Berechneter Skonto-Betrag
+  used: boolean;                  // True wenn Skonto genutzt wurde
+  netAmount: number | null;       // Betrag nach Skonto-Abzug
+}
+
+/**
+ * Skonto-Update Payload
+ */
+export interface SkontoUpdate {
+  percentage?: number;
+  days?: number;
+}
+
+/**
+ * Bevorstehende Skonto-Frist
+ */
+export interface UpcomingSkontoDeadline {
+  invoiceId: string;
+  invoiceNumber: string | null;
+  deadline: string;
+  daysUntilDeadline: number;
+  skontoAmount: number;
+  skontoPercentage: number;
+  totalAmount: number;
+  businessEntityName?: string;
+}
+
+// ==================== Teilzahlung Types ====================
+
+/**
+ * Einzelne Zahlung (Teilzahlung)
+ */
+export interface PaymentTransaction {
+  id: string;
+  invoiceTrackingId: string;
+  amount: number;
+  paidAt: string;
+  paymentMethod: string | null;
+  reference: string | null;
+  bankTransactionId: string | null;
+  reconciliationStatus: 'pending' | 'matched' | 'unmatched';
+  notes: string | null;
+  createdAt: string;
+}
+
+/**
+ * Backend Response fuer PaymentTransaction
+ */
+export interface PaymentTransactionBackend {
+  id: string;
+  invoice_tracking_id: string;
+  amount: number;
+  paid_at: string;
+  payment_method: string | null;
+  reference: string | null;
+  bank_transaction_id: string | null;
+  reconciliation_status: 'pending' | 'matched' | 'unmatched';
+  notes: string | null;
+  created_at: string;
+}
+
+/**
+ * Payload zum Erfassen einer Teilzahlung
+ */
+export interface PaymentCreate {
+  amount: number;
+  paidAt?: string;
+  paymentMethod?: string;
+  reference?: string;
+  notes?: string;
+}
+
+/**
+ * Zahlungsuebersicht fuer eine Rechnung
+ */
+export interface PaymentSummary {
+  totalPaid: number;
+  outstandingAmount: number;
+  paymentCount: number;
+  payments: PaymentTransaction[];
+  isFullyPaid: boolean;
+}
+
 // ==================== API Response Types ====================
 
 /**
@@ -42,6 +134,15 @@ export interface InvoiceTrackingResponse {
   // Computed fields (from API)
   isOverdue: boolean;
   daysOverdue: number;
+  // Skonto-Felder (NEU)
+  skontoPercentage: number | null;
+  skontoDays: number | null;
+  skontoDeadline: string | null;
+  skontoAmount: number | null;
+  skontoUsed: boolean;
+  // Teilzahlung-Felder (NEU)
+  outstandingAmount: number | null;
+  isPartialPayment: boolean;
 }
 
 /**
@@ -65,6 +166,15 @@ export interface InvoiceTrackingBackend {
   updated_at: string;
   is_overdue?: boolean;
   days_overdue?: number;
+  // Skonto-Felder (NEU)
+  skonto_percentage?: number | null;
+  skonto_days?: number | null;
+  skonto_deadline?: string | null;
+  skonto_amount?: number | null;
+  skonto_used?: boolean;
+  // Teilzahlung-Felder (NEU)
+  outstanding_amount?: number | null;
+  is_partial_payment?: boolean;
 }
 
 /**
@@ -208,6 +318,49 @@ export const UI_LABELS = {
   filterDateRange: 'Zeitraum',
   filterOverdueOnly: 'Nur überfällige',
   filterReset: 'Filter zurücksetzen',
+
+  // Skonto Labels (NEU)
+  skontoTitle: 'Skonto',
+  skontoPercentage: 'Skonto-Prozent',
+  skontoDays: 'Skonto-Tage',
+  skontoDeadline: 'Skonto-Frist',
+  skontoAmount: 'Skonto-Betrag',
+  skontoSavings: 'Ersparnis',
+  skontoExpiring: 'Skonto laeuft ab',
+  skontoExpired: 'Skonto abgelaufen',
+  skontoAvailable: 'Skonto verfuegbar',
+  skontoUsed: 'Skonto genutzt',
+  skontoNotConfigured: 'Kein Skonto',
+  skontoApply: 'Skonto anwenden',
+  skontoEdit: 'Skonto bearbeiten',
+  skontoUpcoming: 'Bevorstehende Skonto-Fristen',
+  actionApplySkonto: 'Mit Skonto bezahlen',
+
+  // Teilzahlung Labels (NEU)
+  partialPaymentTitle: 'Teilzahlungen',
+  partialPaymentAdd: 'Zahlung erfassen',
+  partialPaymentHistory: 'Zahlungsverlauf',
+  partialPaymentAmount: 'Zahlungsbetrag',
+  partialPaymentDate: 'Zahlungsdatum',
+  partialPaymentMethod: 'Zahlungsart',
+  partialPaymentReference: 'Referenz',
+  partialPaymentOutstanding: 'Ausstehend',
+  partialPaymentTotal: 'Gesamt bezahlt',
+  partialPaymentDelete: 'Zahlung loeschen',
+  partialPaymentReconciled: 'Abgeglichen',
+  partialPaymentPending: 'Offen',
+  partialPaymentUnmatched: 'Nicht zugeordnet',
+
+  // Toasts (NEU)
+  successApplySkonto: 'Skonto angewendet',
+  successUpdateSkonto: 'Skonto aktualisiert',
+  successAddPayment: 'Zahlung erfasst',
+  successDeletePayment: 'Zahlung geloescht',
+  errorApplySkonto: 'Fehler beim Anwenden des Skontos',
+  errorUpdateSkonto: 'Fehler beim Aktualisieren des Skontos',
+  errorAddPayment: 'Fehler beim Erfassen der Zahlung',
+  errorDeletePayment: 'Fehler beim Loeschen der Zahlung',
+  errorLoadPayments: 'Fehler beim Laden der Zahlungen',
 } as const;
 
 /**

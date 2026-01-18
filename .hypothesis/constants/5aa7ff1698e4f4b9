@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\security.py
+# hypothesis_version: 6.148.7
+
+['/audit', '/checklist', '/findings/critical', '/recommendations', '/score', '/security', 'A', 'B', 'C', 'D', 'F', 'action_required', 'bestanden', 'category', 'checklist', 'empfehlung', 'empfehlungen', 'failed_count', 'findings', 'id', 'naechste_aktion', 'nicht_bestanden', 'passed_count', 'prioritaet', 'schweregrad', 'security', 'severity', 'status', 'titel', 'title', 'total', 'total_critical_high', 'total_empfehlungen']

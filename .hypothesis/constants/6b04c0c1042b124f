@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\base\backward.py
+# hypothesis_version: 6.148.7
+
+[1.0, '.', '1', '@', '@ADD@', '@GRAD', '@RENAME@block', 'False', 'Out', 'Seed', 'True', 'Unexpected branch', 'X', 'Y', '__current_op_desc__', '_input', '_op', '_output', 'ascii', 'callbacks', 'cast', 'conditional_block', 'dropout', 'dtype', 'fill_any_like', 'fill_constant', 'fix_seed', 'force_cpu', 'grad/', 'grad_add', 'in_ops', 'inputs', 'int32', 'loss', 'no_grad_set', 'op_device', 'optimizer', 'out_ops', 'parameter_list', 'program', 'read', 'seed', 'shape', 'sub_block', 'sum', 'target_gradients', 'targets', 'tmp', 'true', 'value', 'var_as_input_ops', 'var_as_output_ops', 'while', 'with_sub_block']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_optimizers\sharding\prune.py
+# hypothesis_version: 6.148.7
+
+['all_reduce', 'c_calc_comm_stream', 'c_sync_comm_stream', 'conditional_block', 'sub_block']

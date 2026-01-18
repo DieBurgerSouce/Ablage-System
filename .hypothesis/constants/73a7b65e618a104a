@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\framework\io.py
+# hypothesis_version: 6.148.7
+
+['.info', '.pdopt', '.pdparams', '/', '0.6.2', '3.2.0', 'Out', '\\', '__model__', 'cpu', 'darwin', 'data', 'file_path', 'keep_name_table', 'latin1', 'load', 'model_filename', 'name', 'npu', 'paddle', 'params_filename', 'pd_op.feed', 'pickle_protocol', 'rb', 'return_numpy', 'safetensors', 'structured_name', 'use_binary_format', 'wb']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\surya\recognition\__init__.py
+# hypothesis_version: 6.148.7
+
+[128, 256, '<SCRIPT-\\w+>', 'Recognizing Text', 'cpu', 'cuda', 'input_text', 'mps', 'needs_bboxes', 'ocr', 'ocr_without_boxes', 'polygons', 'res_scales', 'slice_map', 'slices', 'special', 'task_names', 'xla']

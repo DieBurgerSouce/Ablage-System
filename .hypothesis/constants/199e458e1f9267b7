@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\augmentations\crops\functional.py
+# hypothesis_version: 6.148.7
+
+['constant', 'constant_values', 'crop', 'crop_and_pad', 'crop_and_pad_bboxes', 'edge', 'get_crop_coords', 'keypoints', 'mode', 'pad_along_axes', 'reflect', 'symmetric', 'volume_crop_yx', 'volumes_crop_yx', 'wrap']

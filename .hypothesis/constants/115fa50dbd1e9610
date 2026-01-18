@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\process_mesh.py
+# hypothesis_version: 6.148.7
+
+['_hcg', 'd', 'dp', 'mp', 'pp', 'process_mesh', 'sep', 'sharding']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\data\imaug\vqa\token\vqa_re_convert.py
+# hypothesis_version: 6.148.7
+
+[512, 'end', 'entities', 'head', 'int64', 'label', 'relations', 'start', 'tail']

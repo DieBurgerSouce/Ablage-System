@@ -154,18 +154,30 @@ class FinancialGoalsService:
 
         return goal
 
-    async def get_goal(self, goal_id: UUID) -> Optional[FinancialGoal]:
+    async def get_goal(
+        self,
+        goal_id: UUID,
+        space_id: Optional[UUID] = None,
+    ) -> Optional[FinancialGoal]:
         """Holt ein Finanzziel nach ID.
+
+        SECURITY: space_id SOLLTE fuer Multi-Tenant Isolation uebergeben werden.
+        Wenn space_id gegeben, wird zusaetzlich validiert.
 
         Args:
             goal_id: ID des Ziels
+            space_id: Optional: ID des Privat-Space fuer Multi-Tenant Validierung
 
         Returns:
             FinancialGoal oder None
         """
-        result = await self.db.execute(
-            select(FinancialGoal).where(FinancialGoal.id == goal_id)
-        )
+        query = select(FinancialGoal).where(FinancialGoal.id == goal_id)
+
+        # SECURITY: space_id Filter fuer Multi-Tenant Isolation
+        if space_id is not None:
+            query = query.where(FinancialGoal.space_id == space_id)
+
+        result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
     async def get_goals_for_space(
@@ -204,18 +216,22 @@ class FinancialGoalsService:
     async def update_goal(
         self,
         goal_id: UUID,
+        space_id: Optional[UUID] = None,
         **kwargs: Any,
     ) -> Optional[FinancialGoal]:
         """Aktualisiert ein Finanzziel.
 
+        SECURITY: space_id SOLLTE fuer Multi-Tenant Isolation uebergeben werden.
+
         Args:
             goal_id: ID des Ziels
+            space_id: Optional: ID des Privat-Space fuer Multi-Tenant Validierung
             **kwargs: Zu aktualisierende Felder
 
         Returns:
             Aktualisiertes FinancialGoal oder None
         """
-        goal = await self.get_goal(goal_id)
+        goal = await self.get_goal(goal_id, space_id=space_id)
         if not goal:
             return None
 
@@ -234,17 +250,30 @@ class FinancialGoalsService:
 
         return goal
 
-    async def delete_goal(self, goal_id: UUID) -> bool:
+    async def delete_goal(
+        self,
+        goal_id: UUID,
+        space_id: Optional[UUID] = None,
+    ) -> bool:
         """Loescht ein Finanzziel.
+
+        SECURITY: space_id SOLLTE fuer Multi-Tenant Isolation uebergeben werden.
 
         Args:
             goal_id: ID des Ziels
+            space_id: Optional: ID des Privat-Space fuer Multi-Tenant Validierung
 
         Returns:
             True wenn erfolgreich
         """
-        goal = await self.get_goal(goal_id)
+        goal = await self.get_goal(goal_id, space_id=space_id)
         if not goal:
+            logger.warning(
+                "financial_goal_delete_failed",
+                goal_id=str(goal_id),
+                space_id=str(space_id) if space_id else "not_provided",
+                reason="not_found_or_wrong_space",
+            )
             return False
 
         await self.db.delete(goal)
@@ -261,17 +290,21 @@ class FinancialGoalsService:
         self,
         goal_id: UUID,
         amount: Decimal,
+        space_id: Optional[UUID] = None,
         contribution_date: Optional[date] = None,
         source_type: str = "manual",
         source_description: Optional[str] = None,
         note: Optional[str] = None,
         created_by_id: Optional[UUID] = None,
-    ) -> FinancialGoalContribution:
+    ) -> Optional[FinancialGoalContribution]:
         """Fuegt einen Beitrag zu einem Finanzziel hinzu.
+
+        SECURITY: space_id SOLLTE fuer Multi-Tenant Isolation uebergeben werden.
 
         Args:
             goal_id: ID des Ziels
             amount: Beitragsbetrag
+            space_id: Optional: ID des Privat-Space fuer Multi-Tenant Validierung
             contribution_date: Datum (Standard: heute)
             source_type: Quelle (manual, automatic, transfer)
             source_description: Beschreibung der Quelle
@@ -279,8 +312,19 @@ class FinancialGoalsService:
             created_by_id: ID des erstellenden Users
 
         Returns:
-            Erstellter Beitrag
+            Erstellter Beitrag oder None wenn Ziel nicht gefunden
         """
+        # SECURITY: Validiere dass Goal zum Space gehoert
+        goal = await self.get_goal(goal_id, space_id=space_id)
+        if not goal:
+            logger.warning(
+                "add_contribution_failed",
+                goal_id=str(goal_id),
+                space_id=str(space_id) if space_id else "not_provided",
+                reason="goal_not_found_or_wrong_space",
+            )
+            return None
+
         if contribution_date is None:
             contribution_date = date.today()
 
@@ -297,7 +341,6 @@ class FinancialGoalsService:
         self.db.add(contribution)
 
         # Ziel aktualisieren
-        goal = await self.get_goal(goal_id)
         if goal:
             goal.current_value = (goal.current_value or Decimal("0")) + amount
             await self._recalculate_progress(goal)
@@ -318,17 +361,33 @@ class FinancialGoalsService:
     async def get_contributions(
         self,
         goal_id: UUID,
+        space_id: Optional[UUID] = None,
         limit: int = 100,
     ) -> Sequence[FinancialGoalContribution]:
         """Holt alle Beitraege zu einem Finanzziel.
 
+        SECURITY: space_id SOLLTE fuer Multi-Tenant Isolation uebergeben werden.
+
         Args:
             goal_id: ID des Ziels
+            space_id: Optional: ID des Privat-Space fuer Multi-Tenant Validierung
             limit: Max Anzahl
 
         Returns:
-            Liste von Contributions
+            Liste von Contributions (leer wenn Goal nicht gefunden/falsche Space)
         """
+        # SECURITY: Validiere dass Goal zum Space gehoert (wenn space_id gegeben)
+        if space_id is not None:
+            goal = await self.get_goal(goal_id, space_id=space_id)
+            if not goal:
+                logger.warning(
+                    "get_contributions_unauthorized",
+                    goal_id=str(goal_id),
+                    space_id=str(space_id),
+                    reason="goal_not_found_or_wrong_space",
+                )
+                return []
+
         result = await self.db.execute(
             select(FinancialGoalContribution)
             .where(FinancialGoalContribution.goal_id == goal_id)
@@ -414,17 +473,33 @@ class FinancialGoalsService:
         # Durch 6 Monate teilen
         return Decimal(str(total)) / 6
 
-    async def calculate_goal_progress(self, goal_id: UUID) -> GoalProgress:
+    async def calculate_goal_progress(
+        self,
+        goal_id: UUID,
+        space_id: Optional[UUID] = None,
+    ) -> GoalProgress:
         """Berechnet detaillierten Fortschritt fuer ein Ziel.
+
+        SECURITY: space_id SOLLTE fuer Multi-Tenant Isolation uebergeben werden.
 
         Args:
             goal_id: ID des Ziels
+            space_id: Optional: ID des Privat-Space fuer Multi-Tenant Validierung
 
         Returns:
             GoalProgress mit allen Details
+
+        Raises:
+            ValueError: Wenn Ziel nicht gefunden oder falscher Space
         """
-        goal = await self.get_goal(goal_id)
+        goal = await self.get_goal(goal_id, space_id=space_id)
         if not goal:
+            logger.warning(
+                "calculate_goal_progress_failed",
+                goal_id=str(goal_id),
+                space_id=str(space_id) if space_id else "not_provided",
+                reason="goal_not_found_or_wrong_space",
+            )
             raise ValueError(f"Ziel {goal_id} nicht gefunden")
 
         avg_monthly = await self._calculate_average_monthly_contribution(goal_id)

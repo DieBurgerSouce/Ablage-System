@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\datev\mapping\invoice_mapper.py
+# hypothesis_version: 6.148.7
+
+[100, '0.01', '100', 'DATEVBuchung', 'EUR', 'OHNE-NR', 'Rechnung', 'Rechnungsdatum fehlt', 'S', 'o.Nr.', 'waren', '{invoice_number}']

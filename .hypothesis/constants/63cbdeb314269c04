@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\static\io.py
+# hypothesis_version: 6.148.7
+
+[' MUST in var list.', '.json', '.pdiparams', '.pdmodel', '.pdopt', '.pdparams', '/', ':', 'MUST in var list', 'Out', 'Param', 'X', 'Y', '\\', '__model__', 'auc', 'blocks', "can't not find var: ", 'clip_extra', 'col', 'darwin', 'feed', 'feed_vars', 'fetch', 'fetch_vars', 'file_path', 'latin1', 'legacy_format', 'load', 'load_combine', 'model_filename', 'model_from_memory', 'name', 'out_var', 'params_filename', 'pd_op.feed', 'pd_op.fetch', 'pickle_protocol', 'program', 'pserver_endpoints', 'pylayer', 'rb', 'save', 'save_combine', 'save_to_memory', 'saved_params', 'separate_parameters', 'skip_prune_program', 'wb']

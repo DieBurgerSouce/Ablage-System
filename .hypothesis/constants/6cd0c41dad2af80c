@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\docling\utils\accelerator_utils.py
+# hypothesis_version: 6.148.7
+
+[':', 'cpu', 'cuda', 'cuda:0', 'mps']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\jit\dy2static\convert_operators.py
+# hypothesis_version: 6.148.7
+
+['O1', '__getitem__', '__iter__', '__len__', 'bool', 'complex', 'complex64', 'float', 'float16', 'float32', 'float64', 'int', 'int32', 'int64', 'size', 'uint8']

@@ -37,6 +37,11 @@ from app.middleware.company_context import (
     switch_company,
     set_company_context,
 )
+from app.services.company_metrics_service import (
+    company_metrics_service,
+    CompanyMetrics,
+    DashboardSummary,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -428,6 +433,273 @@ async def delete_company(
     )
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ==================== Dashboard Endpoints ====================
+
+@router.get(
+    "/dashboard",
+    summary="Multi-Firma Dashboard abrufen",
+    description="Gibt eine Uebersicht aller Firmen-Metriken zurueck, auf die der Benutzer Zugriff hat."
+)
+async def get_dashboard(
+    include_inactive: bool = False,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> dict:
+    """
+    Holt das Multi-Firma Dashboard.
+
+    Zeigt:
+    - Zusammenfassung aller Firmen
+    - Metriken pro Firma (sortiert nach Health Score)
+    - KPIs und Trends
+
+    Args:
+        include_inactive: Auch inaktive Firmen einbeziehen
+
+    Returns:
+        Dashboard-Daten mit Summary und Company-Metrics
+    """
+    # Pruefe welche Firmen der Benutzer sehen darf
+    user_companies_query = (
+        select(UserCompany.company_id)
+        .where(UserCompany.user_id == current_user.id)
+    )
+    user_companies_result = await db.execute(user_companies_query)
+    allowed_company_ids = [row[0] for row in user_companies_result.fetchall()]
+
+    if not allowed_company_ids:
+        return {
+            "summary": DashboardSummary().to_dict(),
+            "companies": [],
+            "alerts": [],
+        }
+
+    # Hole Summary (nur fuer erlaubte Firmen)
+    summary = await company_metrics_service.get_dashboard_summary(db)
+
+    # Hole Metriken fuer alle Firmen
+    all_metrics = await company_metrics_service.get_all_company_metrics(
+        db, include_inactive=include_inactive
+    )
+
+    # Filtere auf erlaubte Firmen
+    allowed_metrics = [
+        m for m in all_metrics if m.company_id in allowed_company_ids
+    ]
+
+    # Generiere Alerts
+    alerts = _generate_dashboard_alerts(allowed_metrics)
+
+    logger.info(
+        "dashboard_accessed",
+        user_id=str(current_user.id),
+        company_count=len(allowed_metrics),
+    )
+
+    return {
+        "summary": summary.to_dict(),
+        "companies": [m.to_dict() for m in allowed_metrics],
+        "alerts": alerts,
+    }
+
+
+@router.get(
+    "/comparison",
+    summary="Firmen-Vergleich abrufen",
+    description="Vergleicht ausgewaehlte Metriken zwischen Firmen."
+)
+async def get_comparison(
+    metric: str = "invoices",
+    company_ids: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> dict:
+    """
+    Vergleicht Metriken zwischen Firmen.
+
+    Args:
+        metric: Zu vergleichende Metrik (invoices, documents, entities, dunning, outstanding, overdue, health)
+        company_ids: Komma-separierte Liste von Company-IDs (optional)
+
+    Returns:
+        Vergleichsdaten fuer Charts
+    """
+    # Validiere Metrik
+    valid_metrics = ["invoices", "documents", "entities", "dunning", "outstanding", "overdue", "health"]
+    if metric not in valid_metrics:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ungueltige Metrik. Erlaubt: {', '.join(valid_metrics)}"
+        )
+
+    # Parse Company-IDs
+    parsed_company_ids: Optional[List[UUID]] = None
+    if company_ids:
+        try:
+            parsed_company_ids = [UUID(cid.strip()) for cid in company_ids.split(",")]
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ungueltige Company-ID im Format"
+            )
+
+    # Pruefe Zugriff
+    user_companies_query = (
+        select(UserCompany.company_id)
+        .where(UserCompany.user_id == current_user.id)
+    )
+    user_companies_result = await db.execute(user_companies_query)
+    allowed_company_ids = {row[0] for row in user_companies_result.fetchall()}
+
+    # Filtere auf erlaubte Firmen
+    if parsed_company_ids:
+        filtered_ids = [cid for cid in parsed_company_ids if cid in allowed_company_ids]
+        if not filtered_ids:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Keine Berechtigung fuer die angegebenen Firmen"
+            )
+        parsed_company_ids = filtered_ids
+    else:
+        parsed_company_ids = list(allowed_company_ids)
+
+    # Hole Vergleichsdaten
+    comparison_data = await company_metrics_service.get_company_comparison(
+        db,
+        company_ids=parsed_company_ids,
+        metric=metric,
+    )
+
+    logger.info(
+        "comparison_accessed",
+        user_id=str(current_user.id),
+        metric=metric,
+        company_count=len(comparison_data),
+    )
+
+    return {
+        "metric": metric,
+        "metric_label": _get_metric_label(metric),
+        "data": comparison_data,
+    }
+
+
+@router.get(
+    "/{company_id}/metrics",
+    summary="Einzelne Firmen-Metriken abrufen",
+    description="Gibt detaillierte Metriken fuer eine spezifische Firma zurueck."
+)
+async def get_company_metrics(
+    company_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> dict:
+    """
+    Holt detaillierte Metriken fuer eine Firma.
+
+    Args:
+        company_id: ID der Firma
+
+    Returns:
+        CompanyMetrics-Daten
+    """
+    # Pruefe Zugriff
+    access_result = await db.execute(
+        select(UserCompany)
+        .where(UserCompany.user_id == current_user.id)
+        .where(UserCompany.company_id == company_id)
+    )
+    if not access_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Sie haben keinen Zugriff auf diese Firma."
+        )
+
+    try:
+        metrics = await company_metrics_service.get_company_metrics(db, company_id)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Firma nicht gefunden."
+        )
+
+    return metrics.to_dict()
+
+
+def _generate_dashboard_alerts(metrics_list: List[CompanyMetrics]) -> List[dict]:
+    """Generiert Alerts basierend auf Metriken."""
+    alerts = []
+
+    for m in metrics_list:
+        # Low Health Score
+        if m.health_score < 50:
+            alerts.append({
+                "type": "critical",
+                "company_id": str(m.company_id),
+                "company_name": m.company_name,
+                "message": f"Niedriger Health Score ({m.health_score}/100)",
+                "action": "company_review",
+            })
+        elif m.health_score < 70:
+            alerts.append({
+                "type": "warning",
+                "company_id": str(m.company_id),
+                "company_name": m.company_name,
+                "message": f"Health Score unter Zielwert ({m.health_score}/100)",
+                "action": "company_review",
+            })
+
+        # Hohe ueberfaellige Betraege
+        if m.invoices.overdue_amount > 10000:
+            alerts.append({
+                "type": "critical",
+                "company_id": str(m.company_id),
+                "company_name": m.company_name,
+                "message": f"Ueberfaellige Rechnungen: {float(m.invoices.overdue_amount):,.2f} EUR",
+                "action": "dunning_review",
+            })
+
+        # Viele Level 3/4 Mahnungen
+        serious_dunnings = m.dunning.level_3_count + m.dunning.level_4_count
+        if serious_dunnings >= 5:
+            alerts.append({
+                "type": "warning",
+                "company_id": str(m.company_id),
+                "company_name": m.company_name,
+                "message": f"{serious_dunnings} kritische Mahnungen (Stufe 3/4)",
+                "action": "dunning_review",
+            })
+
+        # High-Risk Entities
+        if m.entities.high_risk_entities >= 3:
+            alerts.append({
+                "type": "warning",
+                "company_id": str(m.company_id),
+                "company_name": m.company_name,
+                "message": f"{m.entities.high_risk_entities} High-Risk Geschaeftspartner",
+                "action": "entity_review",
+            })
+
+    # Sortiere: critical zuerst
+    alerts.sort(key=lambda a: (0 if a["type"] == "critical" else 1, a["company_name"]))
+
+    return alerts
+
+
+def _get_metric_label(metric: str) -> str:
+    """Gibt das deutsche Label fuer eine Metrik zurueck."""
+    labels = {
+        "invoices": "Rechnungsvolumen",
+        "documents": "Dokumente",
+        "entities": "Geschaeftspartner",
+        "dunning": "Mahnbetraege",
+        "outstanding": "Offene Forderungen",
+        "overdue": "Ueberfaellige Forderungen",
+        "health": "Health Score",
+    }
+    return labels.get(metric, metric)
 
 
 # ==================== User-Company Management ====================

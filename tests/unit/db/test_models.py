@@ -68,7 +68,10 @@ class TestEnums:
 
     def test_document_type_values(self):
         """DocumentType sollte alle Dokumenttypen haben."""
-        expected_types = {"invoice", "contract", "receipt", "form", "letter", "report", "other"}
+        expected_types = {
+            "invoice", "order", "contract", "delivery_note",
+            "receipt", "form", "letter", "report", "other", "unknown"
+        }
         actual_types = {dt.value for dt in DocumentType}
         assert actual_types == expected_types
 

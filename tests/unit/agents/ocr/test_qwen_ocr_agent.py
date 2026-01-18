@@ -58,12 +58,16 @@ def mock_torch_cuda():
         mock_torch.backends.cudnn.allow_tf32 = True
         mock_torch.backends.cudnn.benchmark = True
 
-        # no_grad context manager
-        mock_torch.no_grad.return_value.__enter__ = Mock()
-        mock_torch.no_grad.return_value.__exit__ = Mock()
+        # no_grad context manager - muss als richtiger context manager funktionieren
+        mock_no_grad = MagicMock()
+        mock_no_grad.__enter__ = Mock(return_value=None)
+        mock_no_grad.__exit__ = Mock(return_value=False)
+        mock_torch.no_grad.return_value = mock_no_grad
 
-        # OOM Exception
-        mock_torch.cuda.OutOfMemoryError = type('OutOfMemoryError', (Exception,), {})
+        # OOM Exception als richtige Exception-Klasse
+        class MockOutOfMemoryError(RuntimeError):
+            pass
+        mock_torch.cuda.OutOfMemoryError = MockOutOfMemoryError
 
         yield mock_torch
 
@@ -81,24 +85,26 @@ def mock_torch_cuda_unavailable():
 @pytest.fixture
 def mock_transformers():
     """Mock HuggingFace transformers fuer Model Loading."""
-    with patch('app.agents.ocr.qwen_ocr_agent.Qwen2_5_VLForConditionalGeneration') as mock_model_class:
-        with patch('app.agents.ocr.qwen_ocr_agent.AutoProcessor') as mock_processor_class:
+    # Patch at transformers module level since imports happen inside _load_model()
+    with patch('transformers.Qwen2_5_VLForConditionalGeneration') as mock_model_class:
+        with patch('transformers.AutoProcessor') as mock_processor_class:
             # Mock Model
-            mock_model = Mock()
+            mock_model = MagicMock()
             mock_model.eval = Mock()
             mock_model.generate = Mock(return_value=[[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]])
             mock_model_class.from_pretrained = Mock(return_value=mock_model)
 
             # Mock Processor
-            mock_processor = Mock()
+            mock_processor = MagicMock()
             mock_processor.apply_chat_template = Mock(return_value="test prompt with image")
             mock_processor.batch_decode = Mock(return_value=["Extrahierter Text: Müller AG"])
             mock_processor.tokenizer = Mock(pad_token_id=0)
 
-            # Mock __call__ fuer processor
-            mock_inputs = Mock()
+            # Mock __call__ fuer processor - inputs muss als kwargs entpackbar sein
+            mock_inputs = MagicMock()
             mock_inputs.to = Mock(return_value=mock_inputs)
             mock_inputs.input_ids = [[1, 2, 3, 4]]
+            mock_inputs.keys.return_value = ['input_ids', 'attention_mask']
             mock_processor.return_value = mock_inputs
 
             mock_processor_class.from_pretrained = Mock(return_value=mock_processor)
@@ -449,7 +455,8 @@ class TestQwenOCRBatchProcessing:
                 result = await agent.process("/test/multi_page.pdf")
 
         assert result["success"] is True
-        assert result["page_count"] == 3
+        # page_count ist in metadata
+        assert result["metadata"]["page_count"] == 3
         assert "pages" in result
         assert len(result["pages"]) == 3
 

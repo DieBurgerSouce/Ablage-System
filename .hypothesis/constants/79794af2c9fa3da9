@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\utils\hybrid_parallel_util.py
+# hypothesis_version: 6.148.7
+
+[1.0, 128, 1024, ':', 'Out', 'X', 'Y', '_param_groups', 'axis', 'custom', 'elementwise_div', 'gpu', 'int32', 'main_grad', 'params', 'xpu']

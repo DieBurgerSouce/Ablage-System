@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\core\partial_results.py
+# hypothesis_version: 6.148.7
+
+[0.0, 100, 'PartialResult', 'complete', 'created_at', 'document_id', 'error', 'failed', 'failed_items', 'incomplete', 'item_id', 'metadata', 'partial_result', 'partial_result_saved', 'pending', 'pending_items', 'phase', 'processed_at', 'progress_percent', 'result', 'resuming', 'status', 'success', 'success_rate', 'successful_items', 'total_items', 'updated_at']

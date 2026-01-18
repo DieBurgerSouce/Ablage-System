@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\surya\detection\model\encoderdecoder.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-05, 1.0, 'bilinear', 'constant', 'default', 'efficientvit', 'fused', 'in_conv', 'large', 'pixel_values']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\db\repositories\document_repository.py
+# hypothesis_version: 6.148.7
+
+[100, 'completed', 'count', 'document_restored', 'failed', 'pending', 'processing', 'total', 'value']

@@ -170,15 +170,38 @@ class BulkProcessingJob:
         }
 
 
-# FAANG-AUDIT: In-Memory Job Storage mit Thread-Safety
-# Diese Modul-Level Dicts sind beabsichtigt fuer Worker-lokales Job-Tracking.
-# Jobs sind nur fuer die Laufzeit eines Workers gueltig.
-# TODO: Fuer Multi-Worker Production auf DB-Tabelle migrieren (OCRBulkProcessingJob Model existiert bereits!)
-# HINWEIS: _job_cancel_flags.get() Aufrufe in Verarbeitungsschleifen (Zeilen 450, 489, 541)
+# DB-Migration: Jobs werden in OCRBulkProcessingJob Tabelle persistiert (Multi-Worker Ready)
+# In-Memory Cache nur fuer:
+# - Cancel-Flags (Worker-lokal, schneller Zugriff)
+# - Lokaler Job-Cache fuer aktiv laufende Jobs (Performance-Optimierung)
+# HINWEIS: _job_cancel_flags.get() Aufrufe in Verarbeitungsschleifen
 # sind absichtlich ohne Lock, da nur Bool-Reads (atomic) und Lock-Overhead vermieden wird.
-_active_jobs: Dict[str, BulkProcessingJob] = {}
+_active_jobs_cache: Dict[str, BulkProcessingJob] = {}  # Lokaler Cache fuer laufende Jobs
 _job_cancel_flags: Dict[str, bool] = {}
 _job_storage_lock: asyncio.Lock = asyncio.Lock()  # Thread-Safety fuer concurrent access
+
+
+def _db_job_to_dataclass(db_job) -> BulkProcessingJob:
+    """Konvertiert DB-Model zu Dataclass."""
+    return BulkProcessingJob(
+        id=str(db_job.id),
+        name=db_job.name,
+        status=BulkJobStatus(db_job.status),
+        backends=db_job.backends or [],
+        total_documents=db_job.total_documents or 0,
+        processed_documents=db_job.processed_documents or 0,
+        failed_documents=db_job.failed_documents or 0,
+        current_backend=db_job.current_backend,
+        current_backend_index=db_job.current_backend_index or 0,
+        current_document_index=db_job.current_document_index or 0,
+        documents_per_backend=db_job.documents_per_backend or {},
+        started_at=db_job.started_at,
+        completed_at=db_job.completed_at,
+        paused_at=db_job.paused_at,
+        last_checkpoint_at=db_job.last_checkpoint_at,
+        configuration=db_job.configuration or {},
+        error_log=db_job.error_log or [],
+    )
 
 
 class BulkOCRProcessingService:
@@ -231,10 +254,14 @@ class BulkOCRProcessingService:
         # Zähle verfügbare Dokumente
         total_docs = await self._count_pending_documents(db, sample_limit)
 
-        job = BulkProcessingJob(
-            id=job_id,
+        # Erstelle DB-Model (persistiert in OCRBulkProcessingJob Tabelle)
+        from app.db.models import OCRBulkProcessingJob
+        from uuid import UUID as UUIDType
+
+        db_job = OCRBulkProcessingJob(
+            id=UUIDType(job_id),
             name=name,
-            status=BulkJobStatus.PENDING,
+            status=BulkJobStatus.PENDING.value,
             backends=backends,
             total_documents=total_docs,
             processed_documents=0,
@@ -243,20 +270,23 @@ class BulkOCRProcessingService:
             current_backend_index=0,
             current_document_index=0,
             documents_per_backend={b: 0 for b in backends},
-            started_at=None,
-            completed_at=None,
-            paused_at=None,
-            last_checkpoint_at=None,
             configuration={
                 "source_directory": source_directory,
                 "sample_limit": sample_limit,
                 "checkpoint_interval": CHECKPOINT_INTERVAL,
             },
+            error_log=[],
         )
+        db.add(db_job)
+        await db.commit()
+        await db.refresh(db_job)
 
-        # FAANG-AUDIT FIX: Thread-Safe Job Storage
+        # Erstelle Dataclass fuer Rueckgabe
+        job = _db_job_to_dataclass(db_job)
+
+        # Cache und Cancel-Flag fuer laufende Verarbeitung
         async with _job_storage_lock:
-            _active_jobs[job_id] = job
+            _active_jobs_cache[job_id] = job
             _job_cancel_flags[job_id] = False
 
         logger.info(
@@ -265,6 +295,7 @@ class BulkOCRProcessingService:
             name=name,
             total_documents=total_docs,
             backends=backends,
+            persisted_to_db=True,
         )
 
         return job
@@ -286,17 +317,32 @@ class BulkOCRProcessingService:
         Returns:
             Aktualisierter Job
         """
-        # FAANG-AUDIT FIX: Thread-Safe Job Access
+        from app.db.models import OCRBulkProcessingJob
+        from uuid import UUID as UUIDType
+        from sqlalchemy import select
+
+        # Lade Job aus DB
+        result = await db.execute(
+            select(OCRBulkProcessingJob).where(OCRBulkProcessingJob.id == UUIDType(job_id))
+        )
+        db_job = result.scalar_one_or_none()
+
+        if not db_job:
+            raise ValueError(f"Job {job_id} nicht gefunden")
+
+        if db_job.status == BulkJobStatus.RUNNING.value:
+            raise ValueError(f"Job {job_id} läuft bereits")
+
+        # Update DB
+        db_job.status = BulkJobStatus.RUNNING.value
+        db_job.started_at = db_job.started_at or datetime.now(timezone.utc)
+        await db.commit()
+
+        job = _db_job_to_dataclass(db_job)
+
+        # Update Cache
         async with _job_storage_lock:
-            job = _active_jobs.get(job_id)
-            if not job:
-                raise ValueError(f"Job {job_id} nicht gefunden")
-
-            if job.status == BulkJobStatus.RUNNING:
-                raise ValueError(f"Job {job_id} läuft bereits")
-
-            job.status = BulkJobStatus.RUNNING
-            job.started_at = job.started_at or datetime.now(timezone.utc)
+            _active_jobs_cache[job_id] = job
             _job_cancel_flags[job_id] = False
 
         logger.info(
@@ -307,20 +353,34 @@ class BulkOCRProcessingService:
 
         return job
 
-    async def pause_job(self, job_id: str) -> BulkProcessingJob:
+    async def pause_job(self, db: AsyncSession, job_id: str) -> BulkProcessingJob:
         """Pausiert einen laufenden Job."""
-        # FAANG-AUDIT FIX: Thread-Safe Job Access
+        from app.db.models import OCRBulkProcessingJob
+        from uuid import UUID as UUIDType
+        from sqlalchemy import select
+
+        result = await db.execute(
+            select(OCRBulkProcessingJob).where(OCRBulkProcessingJob.id == UUIDType(job_id))
+        )
+        db_job = result.scalar_one_or_none()
+
+        if not db_job:
+            raise ValueError(f"Job {job_id} nicht gefunden")
+
+        if db_job.status != BulkJobStatus.RUNNING.value:
+            raise ValueError(f"Job {job_id} läuft nicht")
+
+        # Update DB
+        db_job.status = BulkJobStatus.PAUSED.value
+        db_job.paused_at = datetime.now(timezone.utc)
+        await db.commit()
+
+        job = _db_job_to_dataclass(db_job)
+
+        # Update Cache und setze Cancel-Flag
         async with _job_storage_lock:
-            job = _active_jobs.get(job_id)
-            if not job:
-                raise ValueError(f"Job {job_id} nicht gefunden")
-
-            if job.status != BulkJobStatus.RUNNING:
-                raise ValueError(f"Job {job_id} läuft nicht")
-
             _job_cancel_flags[job_id] = True
-            job.status = BulkJobStatus.PAUSED
-            job.paused_at = datetime.now(timezone.utc)
+            _active_jobs_cache[job_id] = job
 
         logger.info(
             "bulk_processing_job_paused",
@@ -330,17 +390,31 @@ class BulkOCRProcessingService:
 
         return job
 
-    async def cancel_job(self, job_id: str) -> BulkProcessingJob:
+    async def cancel_job(self, db: AsyncSession, job_id: str) -> BulkProcessingJob:
         """Bricht einen Job ab."""
-        # FAANG-AUDIT FIX: Thread-Safe Job Access
-        async with _job_storage_lock:
-            job = _active_jobs.get(job_id)
-            if not job:
-                raise ValueError(f"Job {job_id} nicht gefunden")
+        from app.db.models import OCRBulkProcessingJob
+        from uuid import UUID as UUIDType
+        from sqlalchemy import select
 
+        result = await db.execute(
+            select(OCRBulkProcessingJob).where(OCRBulkProcessingJob.id == UUIDType(job_id))
+        )
+        db_job = result.scalar_one_or_none()
+
+        if not db_job:
+            raise ValueError(f"Job {job_id} nicht gefunden")
+
+        # Update DB
+        db_job.status = BulkJobStatus.CANCELLED.value
+        db_job.completed_at = datetime.now(timezone.utc)
+        await db.commit()
+
+        job = _db_job_to_dataclass(db_job)
+
+        # Update Cache und setze Cancel-Flag
+        async with _job_storage_lock:
             _job_cancel_flags[job_id] = True
-            job.status = BulkJobStatus.CANCELLED
-            job.completed_at = datetime.now(timezone.utc)
+            _active_jobs_cache[job_id] = job
 
         logger.info(
             "bulk_processing_job_cancelled",
@@ -350,19 +424,33 @@ class BulkOCRProcessingService:
 
         return job
 
-    async def get_job(self, job_id: str) -> Optional[BulkProcessingJob]:
+    async def get_job(self, db: AsyncSession, job_id: str) -> Optional[BulkProcessingJob]:
         """Gibt einen Job zurück."""
-        # FAANG-AUDIT FIX: Thread-Safe Job Access
-        async with _job_storage_lock:
-            return _active_jobs.get(job_id)
+        from app.db.models import OCRBulkProcessingJob
+        from uuid import UUID as UUIDType
+        from sqlalchemy import select
 
-    async def get_job_progress(self, job_id: str) -> Optional[BulkProcessingProgress]:
-        """Berechnet detaillierte Fortschrittsinformationen."""
-        # FAANG-AUDIT FIX: Thread-Safe Job Access
+        # Erst Cache pruefen (fuer laufende Jobs)
         async with _job_storage_lock:
-            job = _active_jobs.get(job_id)
-            if not job:
-                return None
+            if job_id in _active_jobs_cache:
+                return _active_jobs_cache[job_id]
+
+        # Dann aus DB laden
+        result = await db.execute(
+            select(OCRBulkProcessingJob).where(OCRBulkProcessingJob.id == UUIDType(job_id))
+        )
+        db_job = result.scalar_one_or_none()
+
+        if not db_job:
+            return None
+
+        return _db_job_to_dataclass(db_job)
+
+    async def get_job_progress(self, db: AsyncSession, job_id: str) -> Optional[BulkProcessingProgress]:
+        """Berechnet detaillierte Fortschrittsinformationen."""
+        job = await self.get_job(db, job_id)
+        if not job:
+            return None
 
         elapsed = 0.0
         docs_per_second = 0.0
@@ -396,11 +484,17 @@ class BulkOCRProcessingService:
             last_checkpoint_at=job.last_checkpoint_at,
         )
 
-    async def list_jobs(self) -> List[BulkProcessingJob]:
+    async def list_jobs(self, db: AsyncSession) -> List[BulkProcessingJob]:
         """Gibt alle Jobs zurück."""
-        # FAANG-AUDIT FIX: Thread-Safe Job Access
-        async with _job_storage_lock:
-            return list(_active_jobs.values())
+        from app.db.models import OCRBulkProcessingJob
+        from sqlalchemy import select
+
+        result = await db.execute(
+            select(OCRBulkProcessingJob).order_by(OCRBulkProcessingJob.created_at.desc())
+        )
+        db_jobs = result.scalars().all()
+
+        return [_db_job_to_dataclass(job) for job in db_jobs]
 
     # =========================================================================
     # BULK PROCESSING EXECUTION
@@ -772,15 +866,45 @@ class BulkOCRProcessingService:
         db: AsyncSession,
         job: BulkProcessingJob,
     ) -> None:
-        """Speichert einen Checkpoint des Jobs."""
-        # FAANG-AUDIT FIX: Thread-Safe Job Storage
-        # In-Memory Update (später durch DB-Speicherung ersetzen)
+        """Speichert einen Checkpoint des Jobs in der Datenbank."""
+        now = datetime.now(timezone.utc)
+        job.last_checkpoint_at = now
+
+        # DB-Update mit allen relevanten Feldern
+        try:
+            await db.execute(
+                update(DBBulkProcessingJob)
+                .where(DBBulkProcessingJob.id == UUID(job.id))
+                .values(
+                    status=job.status.value,
+                    processed_documents=job.processed_documents,
+                    failed_documents=job.failed_documents,
+                    current_backend=job.current_backend,
+                    current_backend_index=job.current_backend_index,
+                    current_document_index=job.current_document_index,
+                    documents_per_backend=job.documents_per_backend,
+                    error_log=job.error_log[-100:],  # Begrenzt auf 100 Eintraege
+                    last_checkpoint_at=now,
+                )
+            )
+            await db.commit()
+        except Exception as e:
+            logger.warning(
+                "checkpoint_db_save_failed",
+                job_id=job.id[:8],
+                error=str(e),
+            )
+            await db.rollback()
+
+        # Lokaler Cache-Update fuer schnellen Zugriff
         async with _job_storage_lock:
-            _active_jobs[job.id] = job
+            _active_jobs_cache[job.id] = job
+
         logger.debug(
             "checkpoint_saved",
             job_id=job.id[:8],
             processed=job.processed_documents,
+            backend=job.current_backend,
         )
 
     # =========================================================================

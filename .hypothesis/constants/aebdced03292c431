@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\unified_search.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.5, 1.0, 100, 500, '/modes', '/unified-search', 'Chunk-Suche', 'Dokument-Suche', 'Ergebnisse pro Seite', 'Filter: Dokumenttyp', 'Filter: Status', 'Hybrid', 'Kombinierte Suche', 'Min. Chunk-Score', 'Reranking aktivieren', 'Seitennummer', 'Semantisch', 'Suchbegriff', 'Synonyme verwenden', 'Unified Search', 'Verfuegbare Suchmodi', 'Volltext', 'description', 'id', 'modes', 'name', 'search_types', 'supports_filters', 'supports_pagination']

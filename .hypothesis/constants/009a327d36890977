@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\postprocess\vqa_token_ser_layoutlm_postprocess.py
+# hypothesis_version: 6.148.7
+
+[-100, 'B', 'B-', 'I-', 'O', 'Student', 'pred', 'pred_id']

@@ -215,17 +215,18 @@ class TestAccountServiceWithMockedDB:
 
     @pytest.mark.asyncio
     async def test_create_account_validates_iban(self, service: AccountService, mock_db):
-        """Sollte ungueltige IBAN bei Erstellung ablehnen."""
-        user_id = uuid4()
-        invalid_data = BankAccountCreate(
-            account_name="Test",
-            iban="INVALID_IBAN",
-        )
+        """Sollte ungueltige IBAN bei Erstellung ablehnen (Pydantic-Validierung)."""
+        from pydantic import ValidationError
 
-        with pytest.raises(ValueError) as exc_info:
-            await service.create_account(mock_db, user_id, invalid_data)
+        # Die IBAN-Validierung geschieht bereits beim Erstellen des Schemas
+        with pytest.raises(ValidationError) as exc_info:
+            BankAccountCreate(
+                account_name="Test",
+                iban="INVALID_IBAN",  # Zu kurz und ungueltige Struktur
+            )
 
-        assert "Ungueltige IBAN" in str(exc_info.value)
+        # Pydantic wirft ValidationError, nicht ValueError
+        assert "iban" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     async def test_create_account_checks_duplicate(self, service: AccountService, mock_db):

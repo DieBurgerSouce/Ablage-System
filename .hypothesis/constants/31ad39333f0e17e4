@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distribution\categorical.py
+# hypothesis_version: 6.148.7
+
+[-1.0, 'Categorical', '_entropy', '_kl_divergence', '_log_prob', '_probs', '_sample', 'float32', 'float64', 'kl_divergence', 'logits', 'other', 'sample', 'shape']

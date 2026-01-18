@@ -23,6 +23,13 @@ import type {
   InvoiceTrackingUpdate,
   DunningLevel,
   InvoiceStatus,
+  SkontoInfo,
+  SkontoUpdate,
+  UpcomingSkontoDeadline,
+  PaymentTransaction,
+  PaymentTransactionBackend,
+  PaymentCreate,
+  PaymentSummary,
 } from '../types/invoice-types';
 
 // ==================== Error Classes ====================
@@ -64,6 +71,30 @@ function transformInvoice(inv: InvoiceTrackingBackend): InvoiceTrackingResponse 
     updatedAt: inv.updated_at,
     isOverdue: inv.is_overdue ?? false,
     daysOverdue: inv.days_overdue ?? 0,
+    // Skonto-Felder (NEU)
+    skontoPercentage: inv.skonto_percentage ?? null,
+    skontoDays: inv.skonto_days ?? null,
+    skontoDeadline: inv.skonto_deadline ?? null,
+    skontoAmount: inv.skonto_amount ?? null,
+    skontoUsed: inv.skonto_used ?? false,
+    // Teilzahlung-Felder (NEU)
+    outstandingAmount: inv.outstanding_amount ?? null,
+    isPartialPayment: inv.is_partial_payment ?? false,
+  };
+}
+
+function transformPayment(payment: PaymentTransactionBackend): PaymentTransaction {
+  return {
+    id: payment.id,
+    invoiceTrackingId: payment.invoice_tracking_id,
+    amount: payment.amount,
+    paidAt: payment.paid_at,
+    paymentMethod: payment.payment_method,
+    reference: payment.reference,
+    bankTransactionId: payment.bank_transaction_id,
+    reconciliationStatus: payment.reconciliation_status,
+    notes: payment.notes,
+    createdAt: payment.created_at,
   };
 }
 
@@ -315,6 +346,176 @@ export const invoiceService = {
       await apiClient.delete(`/invoices/${invoiceId}`);
     } catch (error) {
       handleApiError(error, 'Rechnungsverfolgung löschen');
+    }
+  },
+
+  // ==================== Skonto ====================
+
+  /**
+   * Ruft Skonto-Informationen einer Rechnung ab
+   */
+  getSkonto: async (invoiceId: string): Promise<SkontoInfo> => {
+    try {
+      const response = await apiClient.get<{
+        percentage: number | null;
+        days: number | null;
+        deadline: string | null;
+        amount: number | null;
+        used: boolean;
+        net_amount: number | null;
+      }>(`/invoices/${invoiceId}/skonto`);
+
+      return {
+        percentage: response.data.percentage,
+        days: response.data.days,
+        deadline: response.data.deadline,
+        amount: response.data.amount,
+        used: response.data.used,
+        netAmount: response.data.net_amount,
+      };
+    } catch (error) {
+      handleApiError(error, 'Skonto-Informationen laden');
+    }
+  },
+
+  /**
+   * Aktualisiert Skonto-Bedingungen einer Rechnung
+   */
+  updateSkonto: async (
+    invoiceId: string,
+    data: SkontoUpdate
+  ): Promise<InvoiceTrackingResponse> => {
+    try {
+      const response = await apiClient.patch<InvoiceTrackingBackend>(
+        `/invoices/${invoiceId}/skonto`,
+        {
+          skonto_percentage: data.percentage,
+          skonto_days: data.days,
+        }
+      );
+
+      return transformInvoice(response.data);
+    } catch (error) {
+      handleApiError(error, 'Skonto aktualisieren');
+    }
+  },
+
+  /**
+   * Wendet Skonto auf eine Rechnung an (markiert als bezahlt mit Skonto)
+   */
+  applySkonto: async (invoiceId: string): Promise<InvoiceTrackingResponse> => {
+    try {
+      const response = await apiClient.post<InvoiceTrackingBackend>(
+        `/invoices/${invoiceId}/apply-skonto`
+      );
+
+      return transformInvoice(response.data);
+    } catch (error) {
+      handleApiError(error, 'Skonto anwenden');
+    }
+  },
+
+  /**
+   * Ruft bevorstehende Skonto-Fristen ab
+   */
+  getUpcomingSkontoDeadlines: async (
+    daysAhead: number = 7
+  ): Promise<UpcomingSkontoDeadline[]> => {
+    try {
+      const response = await apiClient.get<Array<{
+        invoice_id: string;
+        invoice_number: string | null;
+        deadline: string;
+        days_until_deadline: number;
+        skonto_amount: number;
+        skonto_percentage: number;
+        total_amount: number;
+        business_entity_name?: string;
+      }>>('/invoices/skonto/upcoming', {
+        params: { days_ahead: daysAhead },
+      });
+
+      return response.data.map((item) => ({
+        invoiceId: item.invoice_id,
+        invoiceNumber: item.invoice_number,
+        deadline: item.deadline,
+        daysUntilDeadline: item.days_until_deadline,
+        skontoAmount: item.skonto_amount,
+        skontoPercentage: item.skonto_percentage,
+        totalAmount: item.total_amount,
+        businessEntityName: item.business_entity_name,
+      }));
+    } catch (error) {
+      if (error instanceof AxiosError && error.response?.status === 404) {
+        return [];
+      }
+      handleApiError(error, 'Bevorstehende Skonto-Fristen laden');
+    }
+  },
+
+  // ==================== Teilzahlungen ====================
+
+  /**
+   * Listet alle Zahlungen einer Rechnung auf
+   */
+  listPayments: async (invoiceId: string): Promise<PaymentSummary> => {
+    try {
+      const response = await apiClient.get<{
+        total_paid: number;
+        outstanding_amount: number;
+        payment_count: number;
+        payments: PaymentTransactionBackend[];
+        is_fully_paid: boolean;
+      }>(`/invoices/${invoiceId}/payments`);
+
+      return {
+        totalPaid: response.data.total_paid,
+        outstandingAmount: response.data.outstanding_amount,
+        paymentCount: response.data.payment_count,
+        payments: response.data.payments.map(transformPayment),
+        isFullyPaid: response.data.is_fully_paid,
+      };
+    } catch (error) {
+      handleApiError(error, 'Zahlungen laden');
+    }
+  },
+
+  /**
+   * Erfasst eine Teilzahlung
+   */
+  addPayment: async (
+    invoiceId: string,
+    data: PaymentCreate
+  ): Promise<PaymentTransaction> => {
+    try {
+      const response = await apiClient.post<PaymentTransactionBackend>(
+        `/invoices/${invoiceId}/payments`,
+        {
+          amount: data.amount,
+          paid_at: data.paidAt ?? new Date().toISOString(),
+          payment_method: data.paymentMethod,
+          reference: data.reference,
+          notes: data.notes,
+        }
+      );
+
+      return transformPayment(response.data);
+    } catch (error) {
+      handleApiError(error, 'Zahlung erfassen');
+    }
+  },
+
+  /**
+   * Löscht eine Teilzahlung
+   */
+  deletePayment: async (
+    invoiceId: string,
+    paymentId: string
+  ): Promise<void> => {
+    try {
+      await apiClient.delete(`/invoices/${invoiceId}/payments/${paymentId}`);
+    } catch (error) {
+      handleApiError(error, 'Zahlung loeschen');
     }
   },
 };

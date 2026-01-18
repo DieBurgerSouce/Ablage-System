@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\docling_ibm_models\reading_order\reading_order_rb.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.001, 0.1, 0.15, 0.8, 1.0, '#', '(\\s*[a-z])(.+)', '.+([a-z,\\-])(\\s*)', 'inf', 'something went wrong']

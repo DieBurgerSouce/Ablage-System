@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pptx\oxml\table.py
+# hypothesis_version: 6.148.7
+
+[45720, 91440, '%s', 'a', 'a:blipFill', 'a:extLst', 'a:gradFill', 'a:gridCol', 'a:grpFill', 'a:headers', 'a:noFill', 'a:pattFill', 'a:solidFill', 'a:tblGrid', 'a:tblPr', 'a:tc', 'a:tcPr', 'a:tr', 'a:txBody', 'ancestor::a:tbl', 'anchor', 'bandCol', 'bandRow', 'firstCol', 'firstRow', 'gridSpan', 'h', 'hMerge', 'lastCol', 'lastRow', 'marB', 'marL', 'marR', 'marT', 'rowSpan', 'vMerge', 'w']

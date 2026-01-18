@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\passes\auto_parallel_master_grad.py
+# hypothesis_version: 6.148.7
+
+['@master_grad_bf16', '@master_grad_fp16', 'MasterGradPass', 'Out', 'Param', 'SkipUpdate', 'X', 'adam', 'adamax', 'adamw', 'cast', 'completer', 'decayed_adagrad', 'dgc_momentum', 'dist_context', 'in_dtype', 'lamb', 'lars_momentum', 'merged_momentum', 'momentum', 'opt_', 'out_dtype', 'params_grads', 'sgd']

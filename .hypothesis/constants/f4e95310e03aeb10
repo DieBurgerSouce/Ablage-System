@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\models\qwen2_5_vl\configuration_qwen2_5_vl.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-05, 0.02, 1000000.0, 112, 3420, 3584, 4096, 8192, 29568, 32768, 151652, 151653, 151655, 151656, 152064, 'Qwen2_5_VLConfig', 'Qwen2_5_VLTextConfig', '__dict__', 'attention_mask', 'attn_implementation', 'colwise', 'default', 'dtype', 'embed_tokens', 'full_attention', 'hidden_states', 'input_ids', 'inputs_embeds', 'layers', 'layers.*.mlp.up_proj', 'mrope', 'mrope_section', 'norm', 'past_key_values', 'qwen2_5_vl', 'qwen2_5_vl_text', 'rope_type', 'rowwise', 'silu', 'sliding_attention', 'text_config', 'type', 'vision_config']

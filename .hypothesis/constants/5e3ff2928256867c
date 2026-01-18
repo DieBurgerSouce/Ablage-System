@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\data\imaug\ssl_img_aug.py
+# hypothesis_version: 6.148.7
+
+['image', 'image_r180', 'image_r270', 'image_r90', 'label', 'test', 'train']

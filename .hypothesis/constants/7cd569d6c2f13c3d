@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\docling_core\types\legacy_doc\document.py
+# hypothesis_version: 6.148.7
+
+[0.0, 100, 8191, '#-pages', '$ref', '/', '<!-- image -->', 'Alternate Names', 'Citation Count', 'Citation Count Date', 'Document', 'Publication volume.', 'Reference Count', '__ref', '_name', '_s3_data', 'abstract', 'affiliations', 'authors', 'before', 'caption', 'collection', 'collection-name', 'description', 'document', 'equation', 'figure', 'file-info', 'footnote', 'forbid', 'github', 'ignore_above', 'integer', 'json', 'keyword', 'license', 'logs', 'lower', 'main-text', 'normalizer', 'page-dimensions', 'page-footers', 'page-hashes', 'page-headers', 'paragraph', 'pdf-document', 'subtitle-level-1', 'table', 'text', 'title', 'type']

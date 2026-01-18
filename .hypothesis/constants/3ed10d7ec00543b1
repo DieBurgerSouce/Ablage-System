@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\Cython\Distutils\build_ext.py
+# hypothesis_version: 6.148.7
+
+['_du_build_ext', 'build_dir', 'build_ext', 'c++', 'c_line_in_traceback', 'compile_time_env', 'compiler_directives', 'cython-c-in-temp', 'cython-cplus', 'cython-directives=', 'cython-gdb', 'cython-gen-pxi', 'cython-include-dirs=', 'cython_c_in_temp', 'cython_cplus', 'cython_directives', 'cython_gdb', 'cython_gen_pxi', 'cython_include_dirs', 'emit_linenums', 'gdb_debug', 'generate_pxi', 'include_path', 'no_c_in_traceback', 'use_listing_file']

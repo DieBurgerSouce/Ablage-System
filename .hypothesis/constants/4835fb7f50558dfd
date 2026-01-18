@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\vision\models\inceptionv3.py
+# hypothesis_version: 6.148.7
+
+[0.2, 1.0, 128, 160, 192, 256, 288, 320, 384, 448, 768, 1000, 1280, 2048, 'downscale_in_infer', 'inception_a', 'inception_b', 'inception_c', 'inception_d', 'inception_e', 'inception_v3']

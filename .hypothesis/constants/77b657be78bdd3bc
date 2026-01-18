@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\text\viterbi_decode.py
+# hypothesis_version: 6.148.7
+
+['Input', 'Length', 'Path', 'Scores', 'Transition', 'ViterbiDecoder', 'float32', 'float64', 'include_bos_eos_tag', 'include_tag', 'input', 'int64', 'length', 'transitions', 'viterbi_decode']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\passes\pipeline_scheduler_pass\pipeline_vpp.py
+# hypothesis_version: 6.148.7
+
+['_b', '_reduce', '_w', 'backward', 'backward_b', 'backward_w', 'builtin.parameter', 'forward', 'num_micro_batches', 'optimizer', 'output_name', 'pd_op.data', 'pd_op.matmul_grad', 'pd_op.recv_v2', 'pd_op.send_v2', 'pp_degree', 'pp_stage', 'recv_forward', 'send_backward', 'split_backward', 'trans_x', 'trans_y', 'var_', 'vpp_degree']

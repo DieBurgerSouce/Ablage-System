@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\augmentations\geometric\pad.py
+# hypothesis_version: 6.148.7
+
+[1.0, 1024, 'Pad', 'PadIfNeeded', 'after', 'bottom_left', 'bottom_right', 'center', 'pad_bottom', 'pad_left', 'pad_right', 'pad_top', 'random', 'shape', 'top_left', 'top_right']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\intermediate\tensor_parallel.py
+# hypothesis_version: 6.148.7
+
+['.', 'NCHW', 'NHWC', 'bias', 'dp', 'mp', 'parallelize_plan', 'pipeline_stage_index', 'sp', 'weight']

@@ -125,6 +125,8 @@ class TestDatabaseConfig:
     def test_database_url_format(self):
         """DATABASE_URL hat korrektes Format."""
         with patch('app.db.database.settings') as mock_settings:
+            # DATABASE_URL auf None setzen damit Fallback-Logik greift
+            mock_settings.DATABASE_URL = None
             mock_settings.DB_HOST = "testhost"
             mock_settings.DB_PORT = "5433"
             mock_settings.DB_NAME = "testdb"
@@ -145,6 +147,8 @@ class TestDatabaseConfig:
     def test_sync_database_url_format(self):
         """SYNC_DATABASE_URL verwendet psycopg2."""
         with patch('app.db.database.settings') as mock_settings:
+            # DATABASE_URL auf None setzen damit Fallback-Logik greift
+            mock_settings.DATABASE_URL = None
             mock_settings.DB_HOST = "testhost"
             mock_settings.DB_PORT = "5433"
             mock_settings.DB_NAME = "testdb"

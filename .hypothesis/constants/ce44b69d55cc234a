@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\streckengeschaeft\exceptions.py
+# hypothesis_version: 6.148.7
+
+['ACCESS_DENIED', 'DATEV_EXPORT_FAILED', 'DOCUMENT_NOT_FOUND', 'DROPSHIP_ERROR', 'INVALID_VAT_ID', 'PROOF_DOCUMENT_ERROR', 'RATE_LIMIT_EXCEEDED', 'Zugriff verweigert', 'classification_id', 'details', 'document_id', 'error_code', 'errors', 'failed', 'limit', 'message', 'original_error', 'proof_id', 'reason', 'resource', 'resource_id', 'resource_type', 'retry_after', 'successful', 'total', 'vat_id', 'window_seconds']

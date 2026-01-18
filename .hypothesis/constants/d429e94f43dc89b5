@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\admin\system_status_service.py
+# hypothesis_version: 6.148.7
+
+[100.0, 100, 1000, 'Celery', 'MinIO', 'PostgreSQL', 'Redis', 'allocated_gb', 'available', 'count', 'current_allocations', 'degraded', 'epoch', 'free_gb', 'gpu_cache_cleared', 'gpu_name', 'gpu_status_failed', 'healthy', 'hour', 'pending', 'processing', 'queued', 'temperature_celsius', 'total_gb', 'unhealthy', 'unknown', 'unspecified', 'utilization_percent']

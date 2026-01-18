@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\core\webhook_signature.py
+# hypothesis_version: 6.148.7
+
+[300, 3600, '***', ',', '=', 'Ablage-Webhook/1.0', 'Content-Type', 'Stripe-Signature', 'User-Agent', 'X-Hub-Signature-256', 'X-Webhook-Event', 'X-Webhook-Signature', 'X-Webhook-Timestamp', 'application/json', 't', 'utf-8', 'v', 'v1', 'whsec_']

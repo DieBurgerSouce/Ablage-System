@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distribution\cauchy.py
+# hypothesis_version: 6.148.7
+
+[0.5, 'Cauchy', '_cdf', '_entropy', '_kl_divergence', '_log_prob', '_prob', '_rsample', '_sample']

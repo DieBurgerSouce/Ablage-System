@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\distributed\utils\io\save_for_auto.py
+# hypothesis_version: 6.148.7
+
+['LR_Scheduler', '^\\w+_\\d+(?=\\.)', '_', 'dims_mapping', 'is_firstly_shared', 'master_weights', 'process_group', 'process_shape', 'saved_parameters', 'split_axis', 'wb']

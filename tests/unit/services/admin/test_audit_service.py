@@ -64,7 +64,7 @@ def sample_audit_log():
     log.user_id = uuid4()
     log.action = "document.read"
     log.resource_type = "document"
-    log.resource_id = "doc-123"
+    log.resource_id = str(uuid4())  # UUID als String, nicht "doc-123"
     log.ip_address = "192.168.1.100"
     log.user_agent = "Mozilla/5.0"
     log.success = True
@@ -417,13 +417,14 @@ class TestExportAuditLogs:
         from app.services.admin.audit_service import AuditService
         from app.db.schemas import AuditLogView
 
+        resource_uuid = uuid4()
         log_view = AuditLogView(
             id=sample_audit_log.id,
             user_id=sample_user.id,
             user_email=sample_user.email,
             action="document.read",
             resource_type="document",
-            resource_id="doc-123",
+            resource_id=resource_uuid,
             ip_address="192.168.1.100",
             user_agent="Mozilla/5.0",
             success=True,
@@ -452,13 +453,14 @@ class TestExportAuditLogs:
         from app.services.admin.audit_service import AuditService
         from app.db.schemas import AuditLogView
 
+        resource_uuid = uuid4()
         log_view = AuditLogView(
             id=sample_audit_log.id,
             user_id=sample_user.id,
             user_email=sample_user.email,
             action="document.delete",
             resource_type="document",
-            resource_id="doc-123",
+            resource_id=resource_uuid,
             ip_address="192.168.1.100",
             user_agent="Mozilla/5.0",
             success=False,
@@ -480,13 +482,14 @@ class TestExportAuditLogs:
         from app.services.admin.audit_service import AuditService
         from app.db.schemas import AuditLogView
 
+        resource_uuid = uuid4()
         log_view = AuditLogView(
             id=sample_audit_log.id,
             user_id=sample_user.id,
             user_email=sample_user.email,
             action="document.read",
             resource_type="document",
-            resource_id="doc-123",
+            resource_id=resource_uuid,
             ip_address="192.168.1.100",
             user_agent="Mozilla/5.0",
             success=True,

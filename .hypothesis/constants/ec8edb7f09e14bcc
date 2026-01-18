@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\optimizer\lbfgs.py
+# hypothesis_version: 6.148.7
+
+[1e-10, 1e-09, 1e-07, 0.0001, 0.01, 0.1, 0.9, 1.0, 2.0, 100, '0', 'H_diag', 'NVIDIA_TF32_OVERRIDE', 'al', 'alpha', 'd', 'func_evals', 'n_iter', 'old_sk', 'old_yk', 'params', 'prev_flat_grad', 'prev_loss', 'ro', 'state', 'strong_wolfe']

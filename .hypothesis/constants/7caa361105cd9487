@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\nn\functional\__init__.py
+# hypothesis_version: 6.148.7
+
+['blha_get_max_len', 'cal_aux_loss', 'fp8_gemm_blockwise', 'fp8_quant_blockwise', 'fused_act_dequant', 'fused_bias_act', 'fused_dropout_add', 'fused_feedforward', 'fused_layer_norm', 'fused_linear', 'fused_matmul_bias', 'fused_rms_norm', 'fused_rms_norm_ext', 'int_bincount', 'moe_combine', 'moe_gate_dispatch', 'swiglu']

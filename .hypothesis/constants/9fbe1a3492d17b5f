@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\layers\mpu\random.py
+# hypothesis_version: 6.148.7
+
+[0.5, 10000, 'Mask', 'Out', 'Seed', 'X', 'downgrade_in_infer', 'downscale_in_infer', 'dropout', 'dropout_prob', 'fix_seed', 'float16', 'float32', 'float64', 'is_test', 'model_parallel_rng', 'seed', 'upscale_in_train', 'x']

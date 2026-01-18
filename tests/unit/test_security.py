@@ -239,17 +239,18 @@ class TestTokenBlacklistRedis:
             _token_blacklist_fallback
         )
 
-        # Simuliere Redis nicht verfügbar
+        # Simuliere Redis nicht verfügbar und fail-closed deaktiviert
         with patch('app.core.security._redis_available', False):
-            jti = secrets.token_urlsafe(32)
-            expires = datetime.now(timezone.utc) + timedelta(hours=1)
+            with patch('app.core.security.TOKEN_BLACKLIST_FAIL_CLOSED', False):
+                jti = secrets.token_urlsafe(32)
+                expires = datetime.now(timezone.utc) + timedelta(hours=1)
 
-            result = await blacklist_token_redis(jti, expires)
+                result = await blacklist_token_redis(jti, expires)
 
-            # Sollte False zurückgeben (Fallback verwendet)
-            assert result is False
-            # Token sollte im Fallback sein
-            assert jti in _token_blacklist_fallback
+                # Sollte False zurückgeben (Fallback verwendet)
+                assert result is False
+                # Token sollte im Fallback sein
+                assert jti in _token_blacklist_fallback
 
     async def test_blacklist_check_fallback(self):
         """Test: Blacklist-Check funktioniert mit Fallback."""
@@ -264,9 +265,11 @@ class TestTokenBlacklistRedis:
         # Manuell zum Fallback hinzufügen
         _token_blacklist_fallback[jti] = expires
 
+        # Simuliere Redis nicht verfügbar und fail-closed deaktiviert
         with patch('app.core.security._redis_available', False):
-            result = await is_token_blacklisted_redis(jti)
-            assert result is True
+            with patch('app.core.security.TOKEN_BLACKLIST_FAIL_CLOSED', False):
+                result = await is_token_blacklisted_redis(jti)
+                assert result is True
 
     async def test_get_blacklist_stats(self):
         """Test: Blacklist-Statistiken werden korrekt zurückgegeben."""
@@ -293,10 +296,11 @@ class TestAsyncTokenOperations:
         expires = datetime.now(timezone.utc) + timedelta(hours=1)
 
         with patch('app.core.security._redis_available', False):
-            await blacklist_token(jti, expires)
-            result = await is_token_blacklisted(jti)
+            with patch('app.core.security.TOKEN_BLACKLIST_FAIL_CLOSED', False):
+                await blacklist_token(jti, expires)
+                result = await is_token_blacklisted(jti)
 
-            assert result is True
+                assert result is True
 
     async def test_decode_token_async(self):
         """Test: Async decode_token funktioniert."""
@@ -306,10 +310,11 @@ class TestAsyncTokenOperations:
         token = create_access_token(user_data)
 
         with patch('app.core.security._redis_available', False):
-            payload = await decode_token(token)
+            with patch('app.core.security.TOKEN_BLACKLIST_FAIL_CLOSED', False):
+                payload = await decode_token(token)
 
-            assert payload["sub"] == "user-123"
-            assert payload["email"] == "test@example.com"
+                assert payload["sub"] == "user-123"
+                assert payload["email"] == "test@example.com"
 
     async def test_decode_blacklisted_token_raises(self):
         """Test: Blacklisteter Token wird abgelehnt."""
@@ -330,13 +335,14 @@ class TestAsyncTokenOperations:
         exp = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
 
         with patch('app.core.security._redis_available', False):
-            await blacklist_token(jti, exp)
+            with patch('app.core.security.TOKEN_BLACKLIST_FAIL_CLOSED', False):
+                await blacklist_token(jti, exp)
 
-            with pytest.raises(HTTPException) as exc_info:
-                await decode_token(token)
+                with pytest.raises(HTTPException) as exc_info:
+                    await decode_token(token)
 
-            assert exc_info.value.status_code == 401
-            assert "widerrufen" in exc_info.value.detail
+                assert exc_info.value.status_code == 401
+                assert "widerrufen" in exc_info.value.detail
 
     async def test_extract_user_id_async(self):
         """Test: Async User-ID Extraktion funktioniert."""
@@ -346,9 +352,10 @@ class TestAsyncTokenOperations:
         token = create_access_token({"sub": user_id})
 
         with patch('app.core.security._redis_available', False):
-            extracted_id = await extract_user_id_from_token(token)
+            with patch('app.core.security.TOKEN_BLACKLIST_FAIL_CLOSED', False):
+                extracted_id = await extract_user_id_from_token(token)
 
-            assert extracted_id == user_id
+                assert extracted_id == user_id
 
 
 class TestTokenTypeVerification:

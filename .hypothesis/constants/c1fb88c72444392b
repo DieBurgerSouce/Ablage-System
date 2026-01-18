@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\core\cache.py
+# hypothesis_version: 6.148.7
+
+[100, 120, 300, 1800, ':', 'CACHE_DEFAULT_TTL', 'CACHE_LONG_TTL', 'CACHE_MEDIUM_TTL', 'CACHE_SHORT_TTL', 'CACHE_STATS_TTL', 'T', '__datetime__', 'cache', 'cache:doc', 'cache:doc:*', 'cache:facets', 'cache:facets:*', 'cache:search', 'cache:search:*', 'cache:stats', 'cache:stats:*', 'cache:user', 'cache:user:*', 'cache_hit', 'cache_invalidated', 'cache_miss', 'cache_read_failed', 'cache_set', 'cache_stats_failed', 'cache_write_failed', 'current_user', 'datetime_value', 'db', 'document', 'documents', 'error', 'extra', 'facets', 'forbid', 'hit', 'id', 'memory', 'miss', 'populate_by_name', 'prefix_counts', 'read', 'request', 'search', 'stats', 'total', 'total_cached_keys', 'unknown', 'update', 'used_memory_human', 'user', 'write']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\llm_ocr_review_service.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.3, 0.5, 0.8, 1.0, 5.0, 10.0, 300, 1000, 8000, '-', 'UNCHANGED', 'accept', 'accepted', 'avg_quality_score', 'by_recommendation', 'circuit_state', 'closed', 'confidence', 'correction_rate', 'failure_count', 'failure_threshold', 'half_open', 'issues_count', 'issues_found', 'last_failure_time', 'last_review_at', 'llm_corrected', 'llm_ocr_review_error', 'needs_human', 'open', 'pending', 'pending_review', 'quality_score', 'reasoning', 'recommendation', 'reject', 'rejected', 'reviewed', 'sample_id', 'success_count', 'success_threshold', 'system', 'total_reviewed', 'total_samples', 'unknown', 'user']

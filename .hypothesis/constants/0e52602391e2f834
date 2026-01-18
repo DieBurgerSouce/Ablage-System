@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\sparse\nn\functional\pooling.py
+# hypothesis_version: 6.148.7
+
+['NDHWC', 'pool_size', 'pool_stride']

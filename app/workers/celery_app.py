@@ -272,6 +272,8 @@ celery_app = Celery(
         "app.workers.tasks.entity_linking_tasks",  # Entity Linking (Lexware Integration - Document-Entity Matching)
         "app.workers.tasks.workflow_tasks",  # Document Workflow Triggers (on_document_created)
         "app.workers.tasks.notification_tasks",  # Notification Tasks (Daily Digest, Cleanup)
+        "app.workers.tasks.approval_tasks",  # Approval Workflow Tasks (Escalation, Reminders, Stats)
+        "app.workers.tasks.collaboration_tasks",  # Collaboration Tasks (Digest, Task Reminders, Escalation)
     ]
 )
 
@@ -467,6 +469,43 @@ celery_app.conf.update(
                 "x-dead-letter-routing-key": "dlq",
             },
         },
+        # =================================================================
+        # Approval Workflow Queue (Enterprise Approval Management)
+        # =================================================================
+        "approval": {
+            "exchange": "approval",
+            "routing_key": "approval",
+            "queue_arguments": {
+                "x-max-priority": 10,
+                "x-dead-letter-exchange": "dlq",
+                "x-dead-letter-routing-key": "dlq",
+            },
+        },
+        # =================================================================
+        # Workflow Execution Queue (Document Workflow Processing)
+        # =================================================================
+        "workflow": {
+            "exchange": "workflow",
+            "routing_key": "workflow",
+            "queue_arguments": {
+                "x-max-priority": 10,
+                "x-dead-letter-exchange": "dlq",
+                "x-dead-letter-routing-key": "dlq",
+            },
+        },
+        # =================================================================
+        # Shipment Tracking Queue (Paketdienst-Integration)
+        # DHL, DPD, Hermes, UPS, GLS, FedEx, Deutsche Post
+        # =================================================================
+        "tracking": {
+            "exchange": "tracking",
+            "routing_key": "tracking",
+            "queue_arguments": {
+                "x-max-priority": 10,
+                "x-dead-letter-exchange": "dlq",
+                "x-dead-letter-routing-key": "dlq",
+            },
+        },
     },
 
     # Beat schedule (for periodic tasks)
@@ -482,7 +521,7 @@ celery_app.conf.update(
         },
         "refresh-search-analytics": {
             "task": "app.workers.tasks.embedding_tasks.refresh_search_analytics",
-            "schedule": crontab(hour=2, minute=0),  # Daily at 2:00 AM
+            "schedule": crontab(hour=2, minute=5),  # Daily at 2:05 AM (staggered from 02:00)
         },
         # Backup Tasks
         "backup-full-daily": {
@@ -491,7 +530,7 @@ celery_app.conf.update(
         },
         "backup-retention-weekly": {
             "task": "app.workers.tasks.backup_tasks.apply_retention_task",
-            "schedule": crontab(day_of_week=0, hour=3, minute=0),  # Sonntag 03:00
+            "schedule": crontab(day_of_week=0, hour=3, minute=25),  # Sonntag 03:25 (staggered)
         },
         "backup-remote-sync-daily": {
             "task": "app.workers.tasks.backup_tasks.sync_to_remote_task",
@@ -598,7 +637,7 @@ celery_app.conf.update(
         # =================================================================
         "risk-scoring-daily-batch": {
             "task": "risk_scoring.calculate_all",
-            "schedule": crontab(hour=2, minute=0),  # Taeglich um 02:00 Uhr
+            "schedule": crontab(hour=2, minute=0),  # Taeglich um 02:00 Uhr (Basis-Task)
             "kwargs": {"limit": 1000, "recalculate_all": False},
         },
         "risk-scoring-check-high-risk": {
@@ -615,7 +654,7 @@ celery_app.conf.update(
         # =================================================================
         "document-intelligence-pipeline": {
             "task": "app.workers.tasks.document_intelligence_tasks.run_document_intelligence_pipeline",
-            "schedule": crontab(hour=3, minute=0),  # Taeglich um 03:00 Uhr
+            "schedule": crontab(hour=3, minute=0),  # Taeglich um 03:00 Uhr (Basis-Task)
         },
         "document-intelligence-metrics": {
             "task": "app.workers.tasks.document_intelligence_tasks.update_intelligence_metrics",
@@ -634,11 +673,11 @@ celery_app.conf.update(
         },
         "training-learned-weights": {
             "task": "app.workers.tasks.training_tasks.update_learned_weights",
-            "schedule": crontab(hour=2, minute=0),  # Taeglich um 02:00 Uhr
+            "schedule": crontab(hour=2, minute=10),  # Taeglich um 02:10 Uhr (staggered from 02:00)
         },
         "training-weekly-benchmarks": {
             "task": "app.workers.tasks.training_tasks.run_scheduled_benchmarks",
-            "schedule": crontab(day_of_week=0, hour=3, minute=0),  # Sonntag 03:00 Uhr
+            "schedule": crontab(day_of_week=0, hour=3, minute=5),  # Sonntag 03:05 Uhr (staggered)
         },
         "training-weekly-report": {
             "task": "app.workers.tasks.training_tasks.generate_training_report",
@@ -674,7 +713,7 @@ celery_app.conf.update(
         # =================================================================
         "qdrant-sync-pending-daily": {
             "task": "app.workers.tasks.embedding_tasks.sync_pending_to_qdrant",
-            "schedule": crontab(hour=3, minute=0),  # Taeglich um 03:00 Uhr
+            "schedule": crontab(hour=3, minute=10),  # Taeglich um 03:10 Uhr (staggered from 03:00)
             "kwargs": {"limit": 500},
         },
         "vector-ab-test-analysis-daily": {
@@ -688,12 +727,12 @@ celery_app.conf.update(
         # Taeglich: Pruefe ob Retraining-Bedingungen erfuellt sind
         "surya-check-retraining-daily": {
             "task": "app.workers.tasks.surya_improvement_tasks.check_surya_retraining_conditions",
-            "schedule": crontab(hour=2, minute=0),  # Taeglich um 02:00 Uhr
+            "schedule": crontab(hour=2, minute=20),  # Taeglich um 02:20 Uhr (staggered from 02:00)
         },
         # Woechentlich: Benchmark gegen Ground Truth Fixtures
         "surya-weekly-benchmark": {
             "task": "app.workers.tasks.surya_improvement_tasks.run_surya_benchmark",
-            "schedule": crontab(day_of_week=0, hour=3, minute=0),  # Sonntag 03:00 Uhr
+            "schedule": crontab(day_of_week=0, hour=3, minute=15),  # Sonntag 03:15 Uhr (staggered)
         },
         # Taeglich: Verarbeite Surya-Korrekturen zu Training Samples
         "surya-process-corrections": {
@@ -731,6 +770,11 @@ celery_app.conf.update(
             "schedule": crontab(day_of_week=0, hour=4, minute=0),  # Sonntag 04:00 Uhr
             "kwargs": {"days": 90},
         },
+        # Dunning Email Retry - Stuendlich fehlgeschlagene Mahnungen wiederholen
+        "notification-retry-failed-dunning-emails": {
+            "task": "app.workers.tasks.notification_tasks.retry_failed_dunning_emails",
+            "schedule": 3600.0,  # Stuendlich (jede Stunde)
+        },
         # =================================================================
         # GoBD Retention Tasks (Aufbewahrungsfristen-Management)
         # =================================================================
@@ -756,10 +800,10 @@ celery_app.conf.update(
             "task": "app.workers.tasks.privat_tasks.send_deadline_reminders",
             "schedule": crontab(hour=8, minute=0),  # Taeglich um 08:00 Uhr
         },
-        # Property KPIs - Taeglich um 02:00 Uhr (niedrige Last)
+        # Property KPIs - Taeglich um 02:25 Uhr (staggered from 02:00)
         "privat-property-kpis": {
             "task": "app.workers.tasks.privat_tasks.calculate_property_kpis",
-            "schedule": crontab(hour=2, minute=0),  # Taeglich um 02:00 Uhr
+            "schedule": crontab(hour=2, minute=25),  # Taeglich um 02:25 Uhr (staggered from 02:00)
         },
         # Vehicle TCO - Taeglich um 02:15 Uhr
         "privat-vehicle-tco": {
@@ -786,10 +830,10 @@ celery_app.conf.update(
             "task": "app.workers.tasks.privat_tasks.generate_all_recommendations",
             "schedule": crontab(day_of_week=1, hour=6, minute=0),  # Montag 06:00 Uhr
         },
-        # Daily Intelligence Recalculation - Taeglich um 03:00 Uhr
+        # Daily Intelligence Recalculation - Taeglich um 03:20 Uhr (staggered from 03:00)
         "privat-intelligence-daily": {
             "task": "app.workers.tasks.privat_tasks.daily_intelligence_recalculation",
-            "schedule": crontab(hour=3, minute=0),  # Taeglich um 03:00 Uhr
+            "schedule": crontab(hour=3, minute=20),  # Taeglich um 03:20 Uhr (staggered from 03:00)
         },
         # Privat Metrics Update - Alle 15 Minuten
         "privat-metrics-update": {
@@ -913,6 +957,178 @@ celery_app.conf.update(
             "schedule": crontab(day_of_week=0, hour=4, minute=0),  # Sonntag 04:00 Uhr
             "kwargs": {"min_confidence": 0.75, "max_confidence": 0.85, "limit": 500},
         },
+        # =================================================================
+        # Shipment Tracking Tasks (Paketdienst-Integration)
+        # DHL, DPD, Hermes, UPS, GLS, FedEx, Deutsche Post
+        # =================================================================
+        # Stuendlich: Aktive Sendungen aktualisieren
+        "shipment-refresh-active-hourly": {
+            "task": "shipment_tracking.refresh_active",
+            "schedule": crontab(minute=15),  # Stuendlich um :15
+        },
+        # Taeglich: Verspaetete Sendungen pruefen (>5 Tage Transit)
+        "shipment-check-delayed-daily": {
+            "task": "shipment_tracking.check_delayed",
+            "schedule": crontab(hour=9, minute=0),  # Taeglich um 09:00 Uhr
+        },
+        # =================================================================
+        # Email/Folder Import Tasks (Auto-Import Vollautomatisierung)
+        # =================================================================
+        # Email-Sync alle 15 Minuten
+        "import-sync-all-email-configs": {
+            "task": "import.sync_all_email_configs",
+            "schedule": 900.0,  # 15 Minuten
+        },
+        # Folder-Polling alle 5 Minuten
+        "import-poll-all-folder-configs": {
+            "task": "import.poll_all_folder_configs",
+            "schedule": 300.0,  # 5 Minuten
+        },
+        # Retry fehlgeschlagene Imports alle 30 Minuten
+        "import-retry-failed-imports": {
+            "task": "import.retry_failed_imports",
+            "schedule": 1800.0,  # 30 Minuten
+        },
+        # Cleanup alte Logs taeglich um 03:00
+        "import-cleanup-old-logs": {
+            "task": "import.cleanup_old_logs",
+            "schedule": crontab(hour=3, minute=0),
+        },
+        # Reset taegliche Stats um 00:00
+        "import-reset-daily-folder-stats": {
+            "task": "import.reset_daily_stats",
+            "schedule": crontab(hour=0, minute=0),
+        },
+        # Health-Check alle 30 Minuten
+        "import-check-connection-health": {
+            "task": "import.check_connection_health",
+            "schedule": 1800.0,  # 30 Minuten
+        },
+        # =================================================================
+        # Contract Management Tasks (Vertragsmanagement)
+        # Automatische Erinnerungen, Status-Updates, Verlaengerungen
+        # =================================================================
+        # Taeglich: Kuendigungsfrist-Erinnerungen um 08:00 Uhr
+        "contract-deadline-reminders-daily": {
+            "task": "contracts.send_deadline_reminders",
+            "schedule": crontab(hour=8, minute=0),  # Taeglich um 08:00 Uhr
+            "kwargs": {"days_ahead": 90},
+        },
+        # Taeglich: Ablaufende Vertraege pruefen um 08:30 Uhr
+        "contract-check-expiring-daily": {
+            "task": "contracts.check_expiring",
+            "schedule": crontab(hour=8, minute=30),  # Taeglich um 08:30 Uhr
+        },
+        # Taeglich: Automatische Verlaengerung um 09:00 Uhr
+        "contract-auto-renew-daily": {
+            "task": "contracts.auto_renew",
+            "schedule": crontab(hour=9, minute=0),  # Taeglich um 09:00 Uhr
+        },
+        # Woechentlich: Vertragsreport generieren (Montag 07:00 Uhr)
+        "contract-weekly-report": {
+            "task": "contracts.generate_weekly_report",
+            "schedule": crontab(day_of_week=1, hour=7, minute=0),  # Montag 07:00 Uhr
+        },
+        # Taeglich: Abgelaufene Renewal Options pruefen um 00:30 Uhr
+        "contract-renewal-option-expiry-daily": {
+            "task": "contracts.check_renewal_option_expiry",
+            "schedule": crontab(hour=0, minute=30),  # Taeglich um 00:30 Uhr
+        },
+        # Taeglich: Ueberfaellige Meilensteine pruefen um 09:30 Uhr
+        "contract-check-overdue-milestones-daily": {
+            "task": "contracts.check_overdue_milestones",
+            "schedule": crontab(hour=9, minute=30),  # Taeglich um 09:30 Uhr
+        },
+        # =================================================================
+        # Collaboration Tasks (Team-Aufgaben, Digest-Emails)
+        # =================================================================
+        # Stuendliche Digests um jede volle Stunde
+        "collaboration-hourly-digests": {
+            "task": "app.workers.tasks.collaboration_tasks.process_hourly_digests",
+            "schedule": 3600.0,  # Stuendlich
+        },
+        # Taegliche Digests um 08:05 Uhr (staggered from other 08:00 tasks)
+        "collaboration-daily-digests": {
+            "task": "app.workers.tasks.collaboration_tasks.process_daily_digests",
+            "schedule": crontab(hour=8, minute=5),  # Taeglich um 08:05 Uhr
+        },
+        # Woechentliche Digests am Montag um 08:10 Uhr
+        "collaboration-weekly-digests": {
+            "task": "app.workers.tasks.collaboration_tasks.process_weekly_digests",
+            "schedule": crontab(day_of_week=1, hour=8, minute=10),  # Montag 08:10 Uhr
+        },
+        # Ueberfaellige Aufgaben-Erinnerungen stuendlich
+        "collaboration-overdue-task-check": {
+            "task": "app.workers.tasks.collaboration_tasks.check_overdue_tasks",
+            "schedule": 3600.0,  # Stuendlich
+        },
+        # "Bald faellig" Erinnerungen alle 4 Stunden
+        "collaboration-due-soon-reminders": {
+            "task": "app.workers.tasks.collaboration_tasks.send_task_due_soon_reminders",
+            "schedule": 14400.0,  # Alle 4 Stunden
+            "kwargs": {"hours_before": 24},
+        },
+        # Eskalation stark ueberfaelliger Aufgaben alle 4 Stunden
+        "collaboration-escalate-tasks": {
+            "task": "app.workers.tasks.collaboration_tasks.escalate_overdue_tasks",
+            "schedule": 14400.0,  # Alle 4 Stunden
+            "kwargs": {"escalation_threshold_hours": 48},
+        },
+        # Cleanup alter Digest-Queue-Eintraege woechentlich
+        "collaboration-cleanup-digests": {
+            "task": "app.workers.tasks.collaboration_tasks.cleanup_old_digest_entries",
+            "schedule": crontab(day_of_week=0, hour=5, minute=0),  # Sonntag 05:00 Uhr
+            "kwargs": {"days_old": 7},
+        },
+        # =================================================================
+        # BANKING & MAHNWESEN Tasks (BGB §286 Compliance)
+        # Automatische Zahlungserinnerungen, Mahnlauf, Cash-Flow
+        # =================================================================
+        # Taeglich: Automatisches Mahnwesen um 09:00 Uhr
+        "banking-process-dunning-daily": {
+            "task": "app.workers.tasks.banking_tasks.process_automatic_dunning",
+            "schedule": crontab(hour=9, minute=0),  # Taeglich um 09:00 Uhr
+        },
+        # Taeglich: Mahnlauf (Daily Dunning Run) um 09:00 Uhr
+        "banking-daily-mahnlauf": {
+            "task": "app.workers.tasks.banking_tasks.daily_mahnlauf",
+            "schedule": crontab(hour=9, minute=0),  # Taeglich um 09:00 Uhr
+        },
+        # Taeglich: Snoozed Tasks reaktivieren um 08:30 Uhr
+        "banking-reactivate-snoozed-tasks": {
+            "task": "app.workers.tasks.banking_tasks.reactivate_snoozed_tasks",
+            "schedule": crontab(hour=8, minute=30),  # Taeglich um 08:30 Uhr
+        },
+        # Taeglich: Abgelaufene Mahnstopp pruefen um 08:45 Uhr
+        "banking-check-expired-mahnstopp": {
+            "task": "app.workers.tasks.banking_tasks.check_expired_mahnstopp",
+            "schedule": crontab(hour=8, minute=45),  # Taeglich um 08:45 Uhr
+        },
+        # Taeglich: Pre-Due-Date Reminders um 07:00 Uhr (3 Tage vor Faelligkeit)
+        "banking-pre-due-reminders-morning": {
+            "task": "app.workers.tasks.banking_tasks.send_pre_due_reminders",
+            "schedule": crontab(hour=7, minute=0),  # Taeglich um 07:00 Uhr
+        },
+        # Taeglich: Skonto-Alerts um 07:30 Uhr (7 Tage voraus)
+        "banking-skonto-alerts-morning": {
+            "task": "app.workers.tasks.banking_tasks.send_skonto_alerts",
+            "schedule": crontab(hour=7, minute=30),  # Taeglich um 07:30 Uhr
+        },
+        # Taeglich: Dunning Daily Report um 18:00 Uhr (Tagesabschluss)
+        "banking-dunning-daily-report": {
+            "task": "app.workers.tasks.banking_tasks.generate_dunning_daily_report",
+            "schedule": crontab(hour=18, minute=0),  # Taeglich um 18:00 Uhr
+        },
+        # Alle 4 Stunden: Cash-Flow Forecasts aktualisieren
+        "banking-update-cash-flow-4h": {
+            "task": "app.workers.tasks.banking_tasks.update_cash_flow_forecasts",
+            "schedule": 14400.0,  # Alle 4 Stunden
+        },
+        # Stuendlich: TAN-Challenges aufraumen
+        "banking-tan-cleanup-hourly": {
+            "task": "app.workers.tasks.banking_tasks.cleanup_tan_challenges",
+            "schedule": 3600.0,  # Stuendlich
+        },
     },
 
     # Queue routing
@@ -960,6 +1176,19 @@ celery_app.conf.update(
         "app.workers.tasks.notification_tasks.send_daily_digest": {"queue": "maintenance", "priority": 2},
         "app.workers.tasks.notification_tasks.send_weekly_digest": {"queue": "maintenance", "priority": 2},
         "app.workers.tasks.notification_tasks.cleanup_old_notifications": {"queue": "maintenance", "priority": 1},
+        # Dunning Email tasks (Task 1.4: Email-Retry-Logik)
+        "app.workers.tasks.notification_tasks.send_dunning_email_with_retry": {"queue": "notification", "priority": 5},
+        "app.workers.tasks.notification_tasks.retry_failed_dunning_emails": {"queue": "maintenance", "priority": 3},
+        # Banking & Dunning tasks (BGB §286 Compliance)
+        "app.workers.tasks.banking_tasks.process_automatic_dunning": {"queue": "default", "priority": 5},
+        "app.workers.tasks.banking_tasks.daily_mahnlauf": {"queue": "default", "priority": 5},
+        "app.workers.tasks.banking_tasks.reactivate_snoozed_tasks": {"queue": "default", "priority": 3},
+        "app.workers.tasks.banking_tasks.check_expired_mahnstopp": {"queue": "default", "priority": 3},
+        "app.workers.tasks.banking_tasks.send_pre_due_reminders": {"queue": "notification", "priority": 5},
+        "app.workers.tasks.banking_tasks.send_skonto_alerts": {"queue": "notification", "priority": 5},
+        "app.workers.tasks.banking_tasks.generate_dunning_daily_report": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.banking_tasks.update_cash_flow_forecasts": {"queue": "default", "priority": 3},
+        "app.workers.tasks.banking_tasks.cleanup_tan_challenges": {"queue": "maintenance", "priority": 1},
         # Monitoring tasks
         "app.workers.tasks.monitoring_tasks.worker_health_check_task": {"queue": "metrics", "priority": 1},
         "app.workers.tasks.monitoring_tasks.cleanup_stuck_tasks": {"queue": "maintenance", "priority": 2},
@@ -1071,6 +1300,62 @@ celery_app.conf.update(
         "entity_linking.on_ocr_completed": {"queue": "metadata", "priority": 6},
         # Event-Handler (Entity Imported)
         "entity_linking.on_entity_imported": {"queue": "metadata", "priority": 5},
+        # =================================================================
+        # Shipment Tracking Tasks (Paketdienst-Integration)
+        # =================================================================
+        # Stuendliches Refresh aller aktiven Sendungen
+        "shipment_tracking.refresh_active": {"queue": "tracking", "priority": 4},
+        # On-Demand Refresh einer einzelnen Sendung
+        "shipment_tracking.refresh_single": {"queue": "tracking", "priority": 6},
+        # Taeglich: Verspaetete Sendungen pruefen
+        "shipment_tracking.check_delayed": {"queue": "maintenance", "priority": 3},
+        # Woechentlich: Statistiken generieren
+        "shipment_tracking.generate_statistics": {"queue": "maintenance", "priority": 2},
+        # =================================================================
+        # Email/Folder Import Tasks (Auto-Import)
+        # =================================================================
+        # Email-Sync und Folder-Polling
+        "import.sync_all_email_configs": {"queue": "default", "priority": 4},
+        "import.poll_all_folder_configs": {"queue": "default", "priority": 4},
+        "import.sync_single_email_config": {"queue": "default", "priority": 5},
+        "import.poll_single_folder_config": {"queue": "default", "priority": 5},
+        # Retry und Cleanup
+        "import.retry_failed_imports": {"queue": "maintenance", "priority": 3},
+        "import.cleanup_old_logs": {"queue": "maintenance", "priority": 1},
+        "import.reset_daily_stats": {"queue": "maintenance", "priority": 1},
+        # Health-Check
+        "import.check_connection_health": {"queue": "maintenance", "priority": 2},
+        # Einzeldokument-Import
+        "import.process_email_attachment": {"queue": "default", "priority": 6},
+        "import.process_folder_file": {"queue": "default", "priority": 6},
+        # =================================================================
+        # Collaboration Tasks (Digest, Tasks, Escalation)
+        # =================================================================
+        # Digest-Verarbeitung (Emails)
+        "app.workers.tasks.collaboration_tasks.process_hourly_digests": {"queue": "notification", "priority": 4},
+        "app.workers.tasks.collaboration_tasks.process_daily_digests": {"queue": "notification", "priority": 4},
+        "app.workers.tasks.collaboration_tasks.process_weekly_digests": {"queue": "notification", "priority": 4},
+        # Task-Erinnerungen
+        "app.workers.tasks.collaboration_tasks.check_overdue_tasks": {"queue": "maintenance", "priority": 5},
+        "app.workers.tasks.collaboration_tasks.escalate_overdue_tasks": {"queue": "maintenance", "priority": 6},  # Hoehere Prioritaet - Eskalation
+        "app.workers.tasks.collaboration_tasks.send_task_due_soon_reminders": {"queue": "maintenance", "priority": 4},
+        # Cleanup
+        "app.workers.tasks.collaboration_tasks.cleanup_old_digest_entries": {"queue": "maintenance", "priority": 1},
+        # =================================================================
+        # Contract Management Tasks (Vertragsmanagement)
+        # =================================================================
+        # Taeglich: Kuendigungsfrist-Erinnerungen
+        "contracts.send_deadline_reminders": {"queue": "maintenance", "priority": 4},
+        # Taeglich: Ablaufende Vertraege pruefen
+        "contracts.check_expiring": {"queue": "maintenance", "priority": 4},
+        # Taeglich: Automatische Verlaengerung
+        "contracts.auto_renew": {"queue": "maintenance", "priority": 5},
+        # Woechentlich: Vertragsreport generieren
+        "contracts.generate_weekly_report": {"queue": "maintenance", "priority": 2},
+        # Taeglich: Renewal Options pruefen
+        "contracts.check_renewal_option_expiry": {"queue": "maintenance", "priority": 3},
+        # Taeglich: Ueberfaellige Meilensteine pruefen
+        "contracts.check_overdue_milestones": {"queue": "maintenance", "priority": 4},
     },
 
     # Priority settings

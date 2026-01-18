@@ -13,11 +13,10 @@ from datetime import date, timedelta
 from uuid import uuid4
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.services.portfolio.financial_goals_service import (
-    FinancialGoalsService,
-    FinancialGoal,
-    GoalProgress,
-)
+# Import directly to avoid portfolio_service.py which has missing model dependency
+from app.services.portfolio.financial_goals_service import FinancialGoalsService
+from app.services.portfolio.financial_goals_service import FinancialGoal
+from app.services.portfolio.financial_goals_service import GoalProgress
 
 
 class TestGoalCreation:

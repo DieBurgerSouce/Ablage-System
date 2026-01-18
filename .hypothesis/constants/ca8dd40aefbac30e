@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\amp\auto_cast.py
+# hypothesis_version: 6.148.7
+
+[1.0, 1000, '.', '0', '1', 'False', 'Layer', 'O0', 'O1', 'O2', 'OD', 'True', '_ModelsT', '_OptimizerLike', '_OptimizersT', '_multi_precision', 'bfloat16', 'float16', 'float32', 'float64', 'ignore', 'iluvatar_gpu', 'intel_hpu', 'main_grad', 'main_grad@', 'metax_gpu', 'npu', 'parameter_name', 'true']

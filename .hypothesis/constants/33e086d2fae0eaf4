@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\utils\tensor_parallel_utils.py
+# hypothesis_version: 6.148.7
+
+[1.0, '%Y-%m-%d %H:%M:%S', '.b_', 'Grad', 'MasterParamOut', 'Moment1Out', 'Moment2Out', 'Out', 'Param', 'ParamOut', 'X', '_layer_norm_bias', '_layer_norm_scale', 'adam', 'adamax', 'adamw', 'all_reduce', 'average', 'broadcast', 'c_identity', 'decayed_adagrad', 'dgc_momentum', 'lamb', 'lars_momentum', 'merged_momentum', 'momentum', 'out', 'pos_embedding', 'reduce_type', 'ring_id', 'root', 'scale', 'section_program', 'sgd', 'x']

@@ -10,7 +10,7 @@ from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import User
@@ -39,8 +39,7 @@ class UnifiedChunkResultSchema(BaseModel):
     score: float
     highlight: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UnifiedDocumentResultSchema(BaseModel):
@@ -60,8 +59,7 @@ class UnifiedDocumentResultSchema(BaseModel):
     semantic_score: Optional[float] = None
     rerank_score: Optional[float] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UnifiedSearchResponseSchema(BaseModel):
@@ -77,8 +75,7 @@ class UnifiedSearchResponseSchema(BaseModel):
     chunk_search_time_ms: Optional[float] = None
     synonyms_used: List[str] = Field(default_factory=list)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UnifiedSearchRequest(BaseModel):

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\operators\dist_reduce_sum_p.py
+# hypothesis_version: 6.148.7
+
+['all_reduce', 'dim', 'keep_dim', 'nop', 'out', 'reduce_sum', 'reduce_sum_p', 'reduce_type', 'ring_id', 'x']

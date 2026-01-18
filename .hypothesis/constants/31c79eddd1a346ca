@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\agents\ocr\surya_gpu_agent.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.7, 600.0, 224, 300, 1000, 1024, '.pdf', 'GPU memory cleared', 'RGB', 'SURYA_OCR_ERROR', 'allocated_vram_gb', 'available', 'cached_vram_gb', 'confidence', 'cpu', 'cuda', 'cuda_version', 'cudnn_benchmark', 'de', 'device_name', 'error', 'german_chars_found', 'gpu_detected', 'gpu_info', 'gpu_memory', 'image_load_failed', 'image_path', 'language', 'loading_surya_models', 'model_version', 'model_warmup_failed', 'models_loaded_vram', 'ocr_completed', 'page_confidence', 'page_number', 'pages_loaded_for_ocr', 'pdf_load_failed', 'pdf_page_loaded', 'processing_complete', 'processing_image', 'processing_page', 'processing_pdf', 'surya-ocr-0.17.0', 'surya_gpu_agent', 'text', 'text_lines', 'text_regions', 'tf32_enabled', 'total_vram_gb', 'vram_available', 'white', 'Ä', 'Ö', 'Ü', 'ß', 'ä', 'äöüÄÖÜß', 'ö', 'ü']

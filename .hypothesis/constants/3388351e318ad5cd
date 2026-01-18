@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\models\qwen2\modeling_qwen2.py
+# hypothesis_version: 6.148.7
+
+[-0.5, 0.0, 1e-06, '4.58', 'Qwen2DecoderLayer', 'Qwen2ForCausalLM', 'Qwen2Model', 'Qwen2PreTrainedModel', 'Qwen2RMSNorm', 'RMSNorm', 'attention_mask', 'attentions', 'cache_position', 'colwise_rep', 'config', 'cos', 'cpu', 'default', 'eager', 'full_attention', 'head_dim', 'hidden_states', 'input_embeds', 'inv_freq', 'lm_head', 'lm_head.weight', 'logits', 'model', 'mps', 'past_key_value', 'past_key_values', 'position_ids', 'rope_scaling', 'rope_type', 'sin', 'sliding_attention', 'transformer', 'type']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\image_preprocessor.py
+# hypothesis_version: 6.148.7
+
+[-0.5, 0.0, 0.1, 0.5, 1.0, 1.1, 1.2, 1.5, 2.0, 3.0, 4.0, 5.0, 10.0, 15.0, 100, 150, 180, 255, 300, 1000, 2000, ':', 'L', 'RGB', 'aggressive', 'contrast_enhanced', 'denoised', 'deskewed', 'dpi', 'dpi_normalized', 'grayscale', 'image_preprocessed', 'info', 'light', 'none', 'opencv_not_available', 'sharpened', 'standard']

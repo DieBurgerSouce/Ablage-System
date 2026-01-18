@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\operators\common.py
+# hypothesis_version: 6.148.7
+
+[1.0, '.cast_bf', '.cast_fp', '.quantized', '.subprog_', '/', '@RESHARD', 'Out', 'X', 'all_reduce', 'assign', 'c_allreduce_avg', 'c_allreduce_sum', 'cast', 'chunk_id', 'default', 'elementwise', 'elementwise_add_grad', 'gelu', 'layer_norm_grad', 'lookup_table_v2_grad', 'matmul_v2_grad', 'nop', 'op_namescope', 'op_type', 'out', 'reduce', 'reduce_type', 'relu', 'reshard_api', 'ring_id', 'scale', 'silu', 'update_loss_scaling', 'x']

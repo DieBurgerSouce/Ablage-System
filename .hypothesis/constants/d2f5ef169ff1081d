@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\nn\functional\block_multihead_attention.py
+# hypothesis_version: 6.148.7
+
+[-127.0, 127.0, 10000.0, 'block_size', 'block_tables', 'cache_k_quant_scales', 'cache_v_quant_scales', 'compute_dtype', 'cu_seqlens_k', 'cu_seqlens_q', 'cum_offsets', 'default', 'fmha_out', 'key_cache', 'key_cache_out', 'mask', 'max_seq_len', 'out_scale', 'out_shift', 'out_smooth', 'padding_offsets', 'pre_key_cache', 'pre_value_cache', 'qkv', 'qkv_bias', 'qkv_out', 'qkv_out_scale', 'quant_max_bound', 'quant_min_bound', 'quant_round_type', 'rope_emb', 'rope_theta', 'seq_lens_decoder', 'seq_lens_encoder', 'seq_lens_this_time', 'tgt_mask', 'use_neox_style', 'value_cache', 'value_cache_out']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\static\nn\sequence_lod.py
+# hypothesis_version: 6.148.7
+
+[0.0, '3.0.0', 'Filter', 'MaxIndex', 'Out', 'X', 'Y', 'contextLength', 'contextStart', 'contextStride', 'first', 'float32', 'float64', 'input', 'int32', 'int64', 'is_test', 'last', 'max', 'pad_value', 'pooltype', 'ref_level', 'sequence_conv', 'sequence_expand', 'sequence_first_step', 'sequence_last_step', 'sequence_pool', 'sequence_softmax', 'use_cudnn', 'x']

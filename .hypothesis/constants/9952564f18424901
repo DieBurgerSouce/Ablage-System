@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\docling\models\page_assemble_model.py
+# hypothesis_version: 6.148.7
+
+['\x02', '"', "'", '-', '/', '\\b[\\w]+\\b', 'page_assemble', '·', '‘', '’', '“', '”', '•', '⁄']

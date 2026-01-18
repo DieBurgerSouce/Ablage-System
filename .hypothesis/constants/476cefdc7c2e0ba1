@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\nn\layer\fused_transformer.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-05, 0.1, 0.5, 1.0, 1.2, 256, 512, 2048, '__class__', 'float32', 'gelu', 'glu', 'layernorm', 'relu', 'self', 'upscale_in_train']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\static\input.py
+# hypothesis_version: 6.148.7
+
+['0', 'data', 'dtype', 'false', 'float32', 'name', 'none', 'off', 'out', 'pd_op.data', 'place', 'shape', 'stop_gradient']

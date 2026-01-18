@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pptx\oxml\chart\series.py
+# hypothesis_version: 6.148.7
+
+['.//c:lvl', './/c:ptCount/@val', './/c:pt[@idx=%d]', 'c:bubble3D', 'c:bubbleSize', 'c:cat', 'c:dLbls', 'c:dPt', 'c:errBars', 'c:explosion', 'c:extLst', 'c:idx', 'c:invertIfNegative', 'c:marker', 'c:multiLvlStrRef', 'c:numRef', 'c:order', 'c:pictureOptions', 'c:pt', 'c:shape', 'c:smooth', 'c:spPr', 'c:trendline', 'c:tx', 'c:v', 'c:val', 'c:xVal', 'c:yVal', 'idx']

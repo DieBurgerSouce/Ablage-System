@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\base\incubate\checkpoint\auto_checkpoint.py
+# hypothesis_version: 6.148.7
+
+['.cache', '/', '0', '900', 'MainThread', 'PADDLE_EDL_FS_CACHE', 'PADDLE_EDL_HDFS_HOME', 'PADDLE_EDL_HDFS_NAME', 'PADDLE_EDL_HDFS_UGI', 'PADDLE_JOB_ID', 'PADDLE_RUNNING_ENV', 'PADDLE_TRAINER_ID', '_range_', 'acp', 'auto_checkpoint', 'checkpoint', 'checkpoint_epoch_no', 'checkpoint_no', 'checkpoint_path', 'dacp', 'epoch_no', 'exe_name', 'exe_status', 'exe_train_status', 'fs.default.name', 'hadoop.job.ugi', 'hash_key', 'key', 'max_epoch_num', 'memory_init', 'name', 'program_name', 'r', 'range_train_status', 'restored_from', 'w']

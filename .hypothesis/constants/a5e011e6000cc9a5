@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\supplier_ranking_service.py
+# hypothesis_version: 6.148.7
+
+[-5.0, 0.0, 0.1, 0.25, 0.3, 5.0, 70.0, 100, 365, '0', 'avg_delivery_score', 'avg_ocr_confidence', 'avg_payment_days', 'bronze', 'communication', 'critical', 'declining', 'delivery_date', 'delivery_scores', 'disputed', 'disputed_invoices', 'documents_analyzed', 'down', 'gold', 'improving', 'invoices_analyzed', 'paid', 'paid_invoices', 'payment_terms', 'platinum', 'price', 'punctuality', 'reliability', 'silver', 'skonto_offers', 'skonto_ratio', 'stable', 'up']

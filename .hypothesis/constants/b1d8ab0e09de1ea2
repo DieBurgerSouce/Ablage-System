@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\ai\duplicate_detection_service.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.01, 0.1, 0.15, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.85, 1.0, 2.0, 5.0, 10.0, 100, 1000, 10000, '[^\\w\\s]', '\\s+', 'auto_flagged', 'candidate_filename', 'checksum', 'date', 'details', 'duplicate_of', 'duplicate_similarity', 'duplicate_type', 'exact', 'hash', 'invoice_date', 'invoice_date_close', 'invoice_number', 'matched_field_count', 'matched_fields', 'near', 'number_match', 'original_filename', 'positions', 'potential_duplicate', 'reasons', 'semantic', 'similarity', 'supplier', 'supplier_name', 'text_similarity', 'total_candidates', 'total_gross', 'total_gross_close', 'utf-8']

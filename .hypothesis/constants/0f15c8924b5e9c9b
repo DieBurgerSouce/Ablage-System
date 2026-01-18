@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\base\dygraph\base.py
+# hypothesis_version: 6.148.7
+
+['_InputT', '_RetT', '__decorated_by__', '__non_persistable', 'allow_unused', 'create_graph', 'func', 'inputs', 'only_inputs', 'orig_func', 'outputs', 'paddle.grad', 'retain_graph']

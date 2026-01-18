@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\geometric\__init__.py
+# hypothesis_version: 6.148.7
+
+['reindex_graph', 'reindex_heter_graph', 'sample_neighbors', 'segment_max', 'segment_mean', 'segment_min', 'segment_sum', 'send_u_recv', 'send_ue_recv', 'send_uv']

@@ -200,23 +200,31 @@ class TestEnumSchemas:
 
         assert schema_values == db_values, "Schema und DB Enums stimmen nicht ueberein"
 
-    def test_ocr_backend_matches_db(self):
-        """Schema OCRBackend sollte mit DB-Enum uebereinstimmen."""
+    def test_ocr_backend_includes_db_values(self):
+        """Schema OCRBackend sollte alle DB-Enum Werte enthalten."""
         from app.db.models import OCRBackend as DBBackend
 
         schema_values = {b.value for b in OCRBackend}
         db_values = {b.value for b in DBBackend}
 
-        assert schema_values == db_values
+        # Schema kann mehr Backends haben (z.B. experimentelle wie hybrid, donut)
+        # aber MUSS alle DB-Backends enthalten
+        assert db_values.issubset(schema_values), (
+            f"DB-Backends nicht in Schema: {db_values - schema_values}"
+        )
 
-    def test_document_type_matches_db(self):
-        """Schema DocumentType sollte mit DB-Enum uebereinstimmen."""
+    def test_document_type_includes_db_values(self):
+        """Schema DocumentType sollte alle DB-Enum Werte enthalten."""
         from app.db.models import DocumentType as DBType
 
         schema_values = {t.value for t in DocumentType}
         db_values = {t.value for t in DBType}
 
-        assert schema_values == db_values
+        # Schema kann mehr Typen haben (z.B. Privat-Dokumente)
+        # aber MUSS alle DB-Typen enthalten
+        assert db_values.issubset(schema_values), (
+            f"DB-Typen nicht in Schema: {db_values - schema_values}"
+        )
 
 
 class TestAuthSchemas:

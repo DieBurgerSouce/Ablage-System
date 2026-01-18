@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\tasks.py
+# hypothesis_version: 6.148.7
+
+[100, 200, 300, 400, 403, 408, 500, 1011, 4001, '/', '/tasks', '/ws/status', '/ws/{task_id}', '/{task_id}', '/{task_id}/result', 'Benutzer deaktiviert', 'FAILURE', 'JWT Access Token', 'PENDING', 'STARTED', 'SUCCESS', 'Ungültiger Token', 'active_tasks', 'cancelled', 'error', 'get_secret_value', 'list_tasks_error', 'message', 'ready', 'require_exp', 'result', 'state', 'sub', 'successful', 'task_id', 'task_result_error', 'task_status_error', 'tasks', 'total', 'total_connections', 'user_id', 'user_tasks_listed', 'verify_exp', 'websocket_auth_error', 'websocket_connected', 'websocket_error', 'websocket_send_error']

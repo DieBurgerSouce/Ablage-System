@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\nn\functional\fused_rotary_position_embedding.py
+# hypothesis_version: 6.148.7
+
+[10000.0, 'cos', 'k', 'out_k', 'out_q', 'out_v', 'position_ids', 'q', 'rotary_emb_base', 'sin', 'time_major', 'v']

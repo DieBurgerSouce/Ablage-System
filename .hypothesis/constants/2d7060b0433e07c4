@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\backup_report_service.py
+# hypothesis_version: 6.148.7
+
+[0.0, 100, 1024, 3600, '## Empfehlungen', '## Konfiguration', '## Zusammenfassung', '## [!] Probleme', '## [~] Warnungen', '*', '---', '.gpg', '.gz', '.rdb', '.tar', '/var/backups/ablage', 'BACKUP_DIR', 'Sicherungsbericht', '__main__', 'config', 'daily', 'encryption_enabled', 'failure_count', 'minio', 'monthly', 'postgres', 'redis', 'report_saved', 'reports', 'storage_stats_error', 'success_count', 'unknown_report_type', 'utf-8', 'weekly']

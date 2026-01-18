@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\nn\functional\moe_gate_dispatch_permute.py
+# hypothesis_version: 6.148.7
+
+['capacity', 'combine_weights', 'corr_bias', 'expert_id', 'expert_offset', 'float', 'gate_logits', 'int32', 'k', 'scatter_index', 'world_size', 'x', 'y']

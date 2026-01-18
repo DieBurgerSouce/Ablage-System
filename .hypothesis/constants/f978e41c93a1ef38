@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\data\simple_dataset.py
+# hypothesis_version: 6.148.7
+
+[0.5, 1.0, 255, 'Global', '[', 'data_dir', 'dataset', 'delimiter', 'ds_width', 'ext_data', 'ext_data_num', 'ext_op_transform_idx', 'filename', 'float32', 'image', 'img_path', 'label', 'label_file_list', 'loader', 'polys', 'ratio_list', 'rb', 'shuffle', 'train', 'transforms', 'utf-8', 'valid_ratio', '{} does not exist!']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\utils\download.py
+# hypothesis_version: 6.148.7
+
+[200, 1023, 1024, 4096, '../', '/', ':', 'GET', '\\', '_tmp', 'content-length', 'get', 'http://', 'https://', 'r', 'r:*', 'rb', 'wb', 'wget']

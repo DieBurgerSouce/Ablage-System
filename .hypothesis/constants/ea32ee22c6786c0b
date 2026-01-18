@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\log_analytics.py
+# hypothesis_version: 6.148.7
+
+[400, 1440, '/alerts', '/dashboard', '/health', '/log-analytics', '/metrics', '/record', '/snapshot', '/sources', '/timeline', '/top-errors', '/trends', 'Anzahl der Perioden', 'Intervall in Minuten', 'Log-Nachricht', 'Log-Quelle', 'alerts', 'anomaly', 'by_level', 'count', 'critical', 'critical_count', 'data', 'error_count', 'error_rate_percent', 'has_anomalies', 'interval_minutes', 'last_occurrence', 'level', 'log-analytics', 'manual', 'message', 'period_minutes', 'periods', 'recommendations', 'recorded_by', 'severity', 'source', 'source_stats', 'success', 'summary', 'timestamp', 'top_errors', 'total', 'total_alerts', 'trends', 'type', 'volume_timeline', 'warning', 'warning_count']

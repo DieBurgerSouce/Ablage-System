@@ -71,10 +71,10 @@ class AuditService:
                 conditions.append(AuditLog.resource_id == filters.resource_id)
             if filters.ip_address:
                 conditions.append(AuditLog.ip_address == filters.ip_address)
-            if filters.from_date:
-                conditions.append(AuditLog.created_at >= filters.from_date)
-            if filters.to_date:
-                conditions.append(AuditLog.created_at <= filters.to_date)
+            if filters.date_from:
+                conditions.append(AuditLog.created_at >= filters.date_from)
+            if filters.date_to:
+                conditions.append(AuditLog.created_at <= filters.date_to)
             if filters.success is not None:
                 conditions.append(AuditLog.success == filters.success)
 
@@ -459,7 +459,7 @@ class AuditService:
                 "user_email": log.user_email,
                 "action": log.action,
                 "resource_type": log.resource_type,
-                "resource_id": log.resource_id,
+                "resource_id": str(log.resource_id) if log.resource_id else None,
                 "ip_address": log.ip_address,
                 "user_agent": log.user_agent,
                 "success": log.success,

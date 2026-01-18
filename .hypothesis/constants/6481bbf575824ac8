@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\document_template_service.py
+# hypothesis_version: 6.148.7
+
+[0.0, '%Y%m%d_%H%M%S', '%d.%m.%Y', ',', '.', '11in', '210mm', '297mm', '8.5in', 'A4', 'EUR', 'X', '[^\\w\\s-]', '_', 'address', 'bottom', 'category', 'content', 'count', 'created_by_id', 'css_styles', 'currency', 'date', 'default_template_id', 'description', 'email', 'firma', 'footer_content', 'general', 'header_content', 'heute', 'id', 'label', 'landscape', 'left', 'margins', 'name', 'number', 'options', 'orientation', 'output_format', 'page_size', 'phone', 'portrait', 'required', 'right', 'tags', 'tax_id', 'template_metadata', 'top', 'type', 'utf-8', 'variables', 'vat_id', 'website']

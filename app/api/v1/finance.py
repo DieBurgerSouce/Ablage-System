@@ -1587,6 +1587,32 @@ async def get_anomaly_dashboard(
         result = await db.execute(base_query)
         documents = result.scalars().all()
 
+        # Sammle alle Document-IDs fuer AIDecision Pre-Fetch
+        doc_ids_with_anomalies: list[UUID] = []
+        for doc in documents:
+            if doc.extracted_data:
+                anomalies = doc.extracted_data.get("anomalies")
+                if anomalies and anomalies.get("is_suspicious"):
+                    doc_ids_with_anomalies.append(doc.id)
+
+        # Pre-Fetch AIDecisions fuer alle verdaechtigen Dokumente
+        ai_decision_status_map: dict[UUID, str] = {}
+        if doc_ids_with_anomalies:
+            try:
+                ai_decisions_result = await db.execute(
+                    select(AIDecision.document_id, AIDecision.status).where(
+                        and_(
+                            AIDecision.document_id.in_(doc_ids_with_anomalies),
+                            AIDecision.decision_type == "anomaly_review",
+                        )
+                    )
+                )
+                for row in ai_decisions_result:
+                    ai_decision_status_map[row.document_id] = row.status
+            except Exception:
+                # AIDecision Tabelle existiert moeglicherweise nicht
+                pass
+
         # Statistiken berechnen
         total_checked = 0
         suspicious_docs = 0
@@ -1615,6 +1641,9 @@ async def get_anomaly_dashboard(
                     category = (doc.document_metadata or {}).get("finance_category", "sonstige")
                     doc_year = (doc.extracted_data or {}).get("finance_year", doc.year or datetime.now().year)
 
+                    # AIDecision Status abrufen (default: pending falls keine Entscheidung)
+                    doc_status = ai_decision_status_map.get(doc.id, "pending")
+
                     recent_anomalies.append(AnomalyDocumentSummary(
                         document_id=doc.id,
                         document_name=doc.original_filename or str(doc.id),
@@ -1624,7 +1653,7 @@ async def get_anomaly_dashboard(
                         anomaly_count=anomalies_data.get("anomaly_count", 0),
                         anomaly_types=anomalies_data.get("types", []),
                         detected_at=doc.updated_at or doc.created_at,
-                        status="pending",  # TODO: AIDecision status abfragen
+                        status=doc_status,
                     ))
 
         # Nach Risikoscore sortieren (hoechstes Risiko zuerst)
@@ -1692,4 +1721,532 @@ async def get_anomaly_dashboard(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler beim Laden des Anomalie-Dashboards"
+        )
+
+
+# =============================================================================
+# LIQUIDITY FORECAST ENDPOINTS (Enterprise Feature - Januar 2026)
+# =============================================================================
+
+
+class ConfidenceIntervalSchema(BaseModel):
+    """Konfidenzintervall Schema."""
+    lower_bound: float = Field(..., description="Untere Grenze")
+    expected: float = Field(..., description="Erwarteter Wert")
+    upper_bound: float = Field(..., description="Obere Grenze")
+    confidence_level: float = Field(default=0.95, description="Konfidenzniveau (0-1)")
+
+
+class LiquidityBottleneckSchema(BaseModel):
+    """Liquiditaetsengpass Schema."""
+    date: str = Field(..., description="Datum des Engpasses (ISO)")
+    expected_balance: float = Field(..., description="Erwarteter Saldo")
+    shortfall: float = Field(..., description="Fehlbetrag (negativ)")
+    severity: str = Field(..., description="Schweregrad")
+    contributing_factors: List[str] = Field(default_factory=list, description="Beitragende Faktoren")
+    recommendations: List[str] = Field(default_factory=list, description="Empfehlungen")
+
+
+class PaymentAnomalySchema(BaseModel):
+    """Zahlungsanomalie Schema."""
+    anomaly_type: str = Field(..., description="Anomalie-Typ")
+    date: str = Field(..., description="Datum (ISO)")
+    amount: float = Field(..., description="Betrag")
+    expected_amount: Optional[float] = Field(None, description="Erwarteter Betrag")
+    description: str = Field("", description="Beschreibung")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Konfidenz")
+    related_entity_id: Optional[str] = Field(None, description="Verknuepfte Entity-ID")
+    related_document_id: Optional[str] = Field(None, description="Verknuepftes Dokument-ID")
+
+
+class WaterfallChartDataSchema(BaseModel):
+    """Wasserfall-Chart Datenpunkt."""
+    label: str = Field(..., description="Beschriftung")
+    value: float = Field(..., description="Wert")
+    cumulative: float = Field(..., description="Kumulativer Wert")
+    is_total: bool = Field(default=False, description="Ist Summenspalte")
+    category: str = Field(..., description="Kategorie (starting/inflow/outflow/ending)")
+
+
+class RollingForecastSchema(BaseModel):
+    """Rolling-Window Prognose Schema."""
+    period_days: int = Field(..., description="Prognosezeitraum in Tagen")
+    start_date: str = Field(..., description="Startdatum (ISO)")
+    end_date: str = Field(..., description="Enddatum (ISO)")
+
+    # Erwartete Werte
+    expected_inflow: float = Field(..., description="Erwartete Eingaenge")
+    expected_outflow: float = Field(..., description="Erwartete Ausgaben")
+    expected_net_flow: float = Field(..., description="Erwarteter Netto-Cashflow")
+    expected_ending_balance: float = Field(..., description="Erwarteter Endsaldo")
+
+    # Konfidenzintervalle
+    inflow_confidence: Optional[ConfidenceIntervalSchema] = Field(None)
+    outflow_confidence: Optional[ConfidenceIntervalSchema] = Field(None)
+    balance_confidence: Optional[ConfidenceIntervalSchema] = Field(None)
+
+    # Risiko-Indikatoren
+    risk_level: str = Field(..., description="Risikostufe")
+    days_until_critical: Optional[int] = Field(None, description="Tage bis kritisch")
+    probability_of_shortfall: float = Field(..., description="Engpass-Wahrscheinlichkeit")
+
+    # Details
+    bottlenecks: List[LiquidityBottleneckSchema] = Field(default_factory=list)
+    major_inflows: List[dict] = Field(default_factory=list, description="Groesste Eingaenge")
+    major_outflows: List[dict] = Field(default_factory=list, description="Groesste Ausgaben")
+
+    # Vertrauensniveau
+    forecast_confidence: str = Field(..., description="Prognose-Vertrauen (high/medium/low)")
+    data_quality_score: float = Field(..., description="Datenqualitaet (0-1)")
+
+
+class LiquidityForecastResponse(BaseModel):
+    """Liquiditaetsprognose Response."""
+    generated_at: datetime = Field(..., description="Generierungszeitpunkt")
+    starting_balance: float = Field(..., description="Anfangssaldo")
+
+    # Rolling Forecasts
+    forecast_30_days: RollingForecastSchema = Field(..., description="30-Tage Prognose")
+    forecast_60_days: RollingForecastSchema = Field(..., description="60-Tage Prognose")
+    forecast_90_days: RollingForecastSchema = Field(..., description="90-Tage Prognose")
+
+    # Anomalien
+    detected_anomalies: List[PaymentAnomalySchema] = Field(default_factory=list)
+
+    # Waterfall-Daten
+    waterfall_data: List[WaterfallChartDataSchema] = Field(default_factory=list)
+
+    # Empfehlungen und Alerts
+    recommendations: List[str] = Field(default_factory=list)
+    alerts: List[dict] = Field(default_factory=list)
+
+
+class BottleneckPredictionResponse(BaseModel):
+    """Engpass-Vorhersage Response."""
+    bottlenecks: List[LiquidityBottleneckSchema]
+    total_count: int
+    critical_count: int
+    warning_count: int
+    message: str
+
+
+class WaterfallChartResponse(BaseModel):
+    """Wasserfall-Chart Response."""
+    data: List[WaterfallChartDataSchema]
+    period_days: int
+    starting_balance: float
+    ending_balance: float
+
+
+class AnomalyDetectionResponse(BaseModel):
+    """Anomalie-Erkennung Response."""
+    anomalies: List[PaymentAnomalySchema]
+    total_count: int
+    high_confidence_count: int
+    message: str
+
+
+@router.get(
+    "/liquidity/forecast",
+    response_model=LiquidityForecastResponse,
+    summary="Liquiditaetsprognose abrufen",
+    description="Erstellt umfassende Liquiditaetsprognose mit 30/60/90 Tage Rolling-Forecasts"
+)
+async def get_liquidity_forecast(
+    bank_account_id: Optional[UUID] = Query(None, description="Bankkonto-ID (optional)"),
+    starting_balance: Optional[float] = Query(None, description="Anfangssaldo (optional)"),
+    current_user: User = Depends(require_finance_read),
+    db: AsyncSession = Depends(get_db),
+) -> LiquidityForecastResponse:
+    """
+    Erstellt eine umfassende Liquiditaetsprognose.
+
+    **Features:**
+    - Rolling-Window Forecasts (30/60/90 Tage)
+    - Konfidenzintervalle fuer alle Prognosen
+    - Risiko-Bewertung und Engpass-Vorhersage
+    - Anomalie-Erkennung in Zahlungsmustern
+    - Wasserfall-Chart Daten fuer Visualisierung
+    - Handlungsempfehlungen
+
+    **Risikostufen:**
+    - healthy: Mehr als 2 Monate Liquiditaet
+    - adequate: 1-2 Monate Liquiditaet
+    - caution: 2-4 Wochen kritisch
+    - warning: 1-2 Wochen kritisch
+    - critical: Weniger als 1 Woche
+    """
+    from app.services.banking.liquidity_forecast_service import get_liquidity_forecast_service
+    from decimal import Decimal
+
+    service = get_liquidity_forecast_service()
+
+    try:
+        start_bal = Decimal(str(starting_balance)) if starting_balance is not None else None
+
+        result = await service.get_liquidity_forecast(
+            db=db,
+            user_id=current_user.id,
+            bank_account_id=bank_account_id,
+            starting_balance=start_bal,
+            company_id=getattr(current_user, 'company_id', None),
+        )
+
+        # Konvertiere zu Response-Schema
+        def forecast_to_schema(f) -> RollingForecastSchema:
+            return RollingForecastSchema(
+                period_days=f.period_days,
+                start_date=f.start_date.isoformat(),
+                end_date=f.end_date.isoformat(),
+                expected_inflow=float(f.expected_inflow),
+                expected_outflow=float(f.expected_outflow),
+                expected_net_flow=float(f.expected_net_flow),
+                expected_ending_balance=float(f.expected_ending_balance),
+                inflow_confidence=ConfidenceIntervalSchema(
+                    lower_bound=float(f.inflow_confidence.lower_bound),
+                    expected=float(f.inflow_confidence.expected),
+                    upper_bound=float(f.inflow_confidence.upper_bound),
+                ) if f.inflow_confidence else None,
+                outflow_confidence=ConfidenceIntervalSchema(
+                    lower_bound=float(f.outflow_confidence.lower_bound),
+                    expected=float(f.outflow_confidence.expected),
+                    upper_bound=float(f.outflow_confidence.upper_bound),
+                ) if f.outflow_confidence else None,
+                balance_confidence=ConfidenceIntervalSchema(
+                    lower_bound=float(f.balance_confidence.lower_bound),
+                    expected=float(f.balance_confidence.expected),
+                    upper_bound=float(f.balance_confidence.upper_bound),
+                ) if f.balance_confidence else None,
+                risk_level=f.risk_level.value,
+                days_until_critical=f.days_until_critical,
+                probability_of_shortfall=f.probability_of_shortfall,
+                bottlenecks=[
+                    LiquidityBottleneckSchema(
+                        date=b.date.isoformat(),
+                        expected_balance=float(b.expected_balance),
+                        shortfall=float(b.shortfall),
+                        severity=b.severity.value,
+                        contributing_factors=b.contributing_factors,
+                        recommendations=b.recommendations,
+                    ) for b in f.bottlenecks
+                ],
+                major_inflows=f.major_inflows,
+                major_outflows=f.major_outflows,
+                forecast_confidence=f.forecast_confidence.value,
+                data_quality_score=f.data_quality_score,
+            )
+
+        anomalies_schema = [
+            PaymentAnomalySchema(
+                anomaly_type=a.anomaly_type.value,
+                date=a.date.isoformat(),
+                amount=float(a.amount),
+                expected_amount=float(a.expected_amount) if a.expected_amount else None,
+                description=a.description,
+                confidence=a.confidence,
+                related_entity_id=str(a.related_entity_id) if a.related_entity_id else None,
+                related_document_id=str(a.related_document_id) if a.related_document_id else None,
+            ) for a in result.detected_anomalies
+        ]
+
+        waterfall_schema = [
+            WaterfallChartDataSchema(
+                label=w.label,
+                value=float(w.value),
+                cumulative=float(w.cumulative),
+                is_total=w.is_total,
+                category=w.category,
+            ) for w in result.waterfall_data
+        ]
+
+        logger.info(
+            "liquidity_forecast_retrieved",
+            user_id=str(current_user.id),
+            starting_balance=float(result.starting_balance),
+            risk_30d=result.forecast_30_days.risk_level.value,
+        )
+
+        return LiquidityForecastResponse(
+            generated_at=result.generated_at,
+            starting_balance=float(result.starting_balance),
+            forecast_30_days=forecast_to_schema(result.forecast_30_days),
+            forecast_60_days=forecast_to_schema(result.forecast_60_days),
+            forecast_90_days=forecast_to_schema(result.forecast_90_days),
+            detected_anomalies=anomalies_schema,
+            waterfall_data=waterfall_schema,
+            recommendations=result.recommendations,
+            alerts=result.alerts,
+        )
+
+    except Exception as e:
+        logger.exception(
+            "liquidity_forecast_failed",
+            user_id=str(current_user.id),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fehler beim Erstellen der Liquiditaetsprognose"
+        )
+
+
+@router.get(
+    "/liquidity/bottlenecks",
+    response_model=BottleneckPredictionResponse,
+    summary="Liquiditaetsengpaesse vorhersagen",
+    description="Identifiziert potenzielle Liquiditaetsengpaesse"
+)
+async def predict_bottlenecks(
+    bank_account_id: Optional[UUID] = Query(None, description="Bankkonto-ID (optional)"),
+    days_ahead: int = Query(90, ge=7, le=365, description="Prognosezeitraum in Tagen"),
+    starting_balance: Optional[float] = Query(None, description="Anfangssaldo (optional)"),
+    current_user: User = Depends(require_finance_read),
+    db: AsyncSession = Depends(get_db),
+) -> BottleneckPredictionResponse:
+    """
+    Identifiziert potenzielle Liquiditaetsengpaesse.
+
+    **Engpass-Erkennung:**
+    - Basiert auf pessimistischem Szenario
+    - Konsolidiert aufeinanderfolgende Engpaesse
+    - Berechnet Schweregrad und gibt Empfehlungen
+
+    **Schweregrade:**
+    - critical: Fehlbetrag > 10.000 EUR
+    - warning: Fehlbetrag > 5.000 EUR
+    - caution: Fehlbetrag > 1.000 EUR
+    - adequate: Geringerer Fehlbetrag
+    """
+    from app.services.banking.liquidity_forecast_service import get_liquidity_forecast_service
+    from decimal import Decimal
+
+    service = get_liquidity_forecast_service()
+
+    try:
+        start_bal = Decimal(str(starting_balance)) if starting_balance is not None else None
+
+        bottlenecks = await service.get_bottleneck_prediction(
+            db=db,
+            user_id=current_user.id,
+            bank_account_id=bank_account_id,
+            days_ahead=days_ahead,
+            starting_balance=start_bal,
+        )
+
+        bottleneck_schemas = [
+            LiquidityBottleneckSchema(
+                date=b.date.isoformat(),
+                expected_balance=float(b.expected_balance),
+                shortfall=float(b.shortfall),
+                severity=b.severity.value,
+                contributing_factors=b.contributing_factors,
+                recommendations=b.recommendations,
+            ) for b in bottlenecks
+        ]
+
+        critical_count = sum(1 for b in bottlenecks if b.severity.value == "critical")
+        warning_count = sum(1 for b in bottlenecks if b.severity.value == "warning")
+
+        logger.info(
+            "bottleneck_prediction_retrieved",
+            user_id=str(current_user.id),
+            days_ahead=days_ahead,
+            total_bottlenecks=len(bottlenecks),
+            critical=critical_count,
+        )
+
+        if not bottlenecks:
+            message = f"Keine Liquiditaetsengpaesse in den naechsten {days_ahead} Tagen erwartet"
+        elif critical_count > 0:
+            message = f"ACHTUNG: {critical_count} kritische Engpaesse erkannt!"
+        else:
+            message = f"{len(bottlenecks)} potenzielle Engpaesse identifiziert"
+
+        return BottleneckPredictionResponse(
+            bottlenecks=bottleneck_schemas,
+            total_count=len(bottlenecks),
+            critical_count=critical_count,
+            warning_count=warning_count,
+            message=message,
+        )
+
+    except Exception as e:
+        logger.exception(
+            "bottleneck_prediction_failed",
+            user_id=str(current_user.id),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fehler bei der Engpass-Vorhersage"
+        )
+
+
+@router.get(
+    "/liquidity/waterfall",
+    response_model=WaterfallChartResponse,
+    summary="Wasserfall-Chart Daten abrufen",
+    description="Daten fuer Cashflow-Wasserfall-Visualisierung"
+)
+async def get_waterfall_data(
+    bank_account_id: Optional[UUID] = Query(None, description="Bankkonto-ID (optional)"),
+    period_days: int = Query(30, ge=7, le=90, description="Prognosezeitraum"),
+    starting_balance: Optional[float] = Query(None, description="Anfangssaldo (optional)"),
+    current_user: User = Depends(require_finance_read),
+    db: AsyncSession = Depends(get_db),
+) -> WaterfallChartResponse:
+    """
+    Erstellt Daten fuer Wasserfall-Chart Visualisierung.
+
+    **Chart-Struktur:**
+    - Anfangssaldo (starting)
+    - Eingaenge gruppiert nach Quelle (inflow)
+    - Ausgaben gruppiert nach Quelle (outflow)
+    - Endsaldo (ending)
+
+    **Kategorien:**
+    - starting: Anfangssaldo
+    - inflow: Erwartete Eingaenge
+    - outflow: Erwartete Ausgaben
+    - ending: Erwarteter Endsaldo
+    """
+    from app.services.banking.liquidity_forecast_service import get_liquidity_forecast_service
+    from decimal import Decimal
+
+    service = get_liquidity_forecast_service()
+
+    try:
+        start_bal = Decimal(str(starting_balance)) if starting_balance is not None else None
+
+        waterfall_data = await service.get_waterfall_chart_data(
+            db=db,
+            user_id=current_user.id,
+            bank_account_id=bank_account_id,
+            period_days=period_days,
+            starting_balance=start_bal,
+        )
+
+        waterfall_schema = [
+            WaterfallChartDataSchema(
+                label=w.label,
+                value=float(w.value),
+                cumulative=float(w.cumulative),
+                is_total=w.is_total,
+                category=w.category,
+            ) for w in waterfall_data
+        ]
+
+        # Start- und Endsaldo extrahieren
+        starting = waterfall_data[0].value if waterfall_data else Decimal("0")
+        ending = waterfall_data[-1].cumulative if waterfall_data else Decimal("0")
+
+        logger.info(
+            "waterfall_data_retrieved",
+            user_id=str(current_user.id),
+            period_days=period_days,
+            data_points=len(waterfall_data),
+        )
+
+        return WaterfallChartResponse(
+            data=waterfall_schema,
+            period_days=period_days,
+            starting_balance=float(starting),
+            ending_balance=float(ending),
+        )
+
+    except Exception as e:
+        logger.exception(
+            "waterfall_data_failed",
+            user_id=str(current_user.id),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fehler beim Erstellen der Wasserfall-Daten"
+        )
+
+
+@router.get(
+    "/liquidity/anomalies",
+    response_model=AnomalyDetectionResponse,
+    summary="Zahlungsanomalien erkennen",
+    description="Erkennt ungewoehnliche Muster in Zahlungsstroemen"
+)
+async def detect_payment_anomalies(
+    bank_account_id: Optional[UUID] = Query(None, description="Bankkonto-ID (optional)"),
+    lookback_days: int = Query(90, ge=30, le=365, description="Analysezeitraum"),
+    current_user: User = Depends(require_finance_read),
+    db: AsyncSession = Depends(get_db),
+) -> AnomalyDetectionResponse:
+    """
+    Erkennt Anomalien in Zahlungsmustern.
+
+    **Erkannte Anomalie-Typen:**
+    - unusual_amount: Ungewoehnlich hoher/niedriger Betrag
+    - unexpected_timing: Transaktion zu ungewoehnlicher Zeit
+    - missing_recurring: Fehlende wiederkehrende Zahlung
+    - duplicate_payment: Potenzielle Doppelzahlung
+    - large_outflow: Grosser Geldabfluss
+    - pattern_break: Musterbruch im Zahlungsverhalten
+
+    **Konfidenz:**
+    - > 0.8: Hohe Konfidenz - sollte geprueft werden
+    - 0.5-0.8: Mittlere Konfidenz
+    - < 0.5: Niedrige Konfidenz
+    """
+    from app.services.banking.liquidity_forecast_service import get_liquidity_forecast_service
+
+    service = get_liquidity_forecast_service()
+
+    try:
+        anomalies = await service.detect_anomalies(
+            db=db,
+            user_id=current_user.id,
+            bank_account_id=bank_account_id,
+            company_id=getattr(current_user, 'company_id', None),
+            lookback_days=lookback_days,
+        )
+
+        anomaly_schemas = [
+            PaymentAnomalySchema(
+                anomaly_type=a.anomaly_type.value,
+                date=a.date.isoformat(),
+                amount=float(a.amount),
+                expected_amount=float(a.expected_amount) if a.expected_amount else None,
+                description=a.description,
+                confidence=a.confidence,
+                related_entity_id=str(a.related_entity_id) if a.related_entity_id else None,
+                related_document_id=str(a.related_document_id) if a.related_document_id else None,
+            ) for a in anomalies
+        ]
+
+        high_confidence_count = sum(1 for a in anomalies if a.confidence > 0.8)
+
+        logger.info(
+            "anomaly_detection_completed",
+            user_id=str(current_user.id),
+            lookback_days=lookback_days,
+            total_anomalies=len(anomalies),
+            high_confidence=high_confidence_count,
+        )
+
+        if not anomalies:
+            message = "Keine Zahlungsanomalien erkannt"
+        elif high_confidence_count > 0:
+            message = f"{high_confidence_count} Anomalien mit hoher Konfidenz gefunden"
+        else:
+            message = f"{len(anomalies)} potenzielle Anomalien zur Pruefung"
+
+        return AnomalyDetectionResponse(
+            anomalies=anomaly_schemas,
+            total_count=len(anomalies),
+            high_confidence_count=high_confidence_count,
+            message=message,
+        )
+
+    except Exception as e:
+        logger.exception(
+            "anomaly_detection_failed",
+            user_id=str(current_user.id),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fehler bei der Anomalie-Erkennung"
         )

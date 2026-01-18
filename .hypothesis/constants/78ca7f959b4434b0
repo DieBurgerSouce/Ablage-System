@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\collaboration\digest_service.py
+# hypothesis_version: 6.148.7
+
+[1000, '<!DOCTYPE html>', '</body>', '</div>', '</head>', '</html>', '</style>', '<body>', "<div class='footer'>", '<head>', "<html lang='de'>", '<style>', 'Abgelehnte Dokumente', 'Benutzer', 'Erwähnungen', 'Eskalierte Aufgaben', 'Genehmigte Dokumente', 'Geteilte Dokumente', 'Stündliche', 'Tägliche', 'Wöchentliche', 'Zugewiesene Aufgaben', 'action_url', 'comment_reply', 'compiled_at', 'created_at', 'digests_marked_sent', 'document_approved', 'document_id', 'document_rejected', 'document_shared', 'email', 'from_user_id', 'id', 'in_app', 'mention', 'message', 'notification_count', 'slack', 'sms', 'task_assigned', 'task_completed', 'task_escalated', 'task_reminder', 'title', 'user_email', 'user_id', 'user_name', 'websocket']

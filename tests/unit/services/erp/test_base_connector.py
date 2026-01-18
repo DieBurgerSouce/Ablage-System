@@ -5,9 +5,11 @@ fuer alle ERP-Connectoren.
 """
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
+
+from app.core.datetime_utils import utc_now
 
 from app.services.erp.base_connector import (
     ERPConnector,
@@ -402,7 +404,7 @@ class TestRateLimiting:
         """Test rate limit check when blocked."""
         # Simulate max requests
         connector._request_count = connector.config.max_requests_per_minute
-        connector._rate_limit_reset = datetime.utcnow() + timedelta(minutes=1)
+        connector._rate_limit_reset = utc_now() + timedelta(minutes=1)
 
         assert connector._check_rate_limit() is False
         assert connector.status == ERPConnectionStatus.RATE_LIMITED
@@ -411,7 +413,7 @@ class TestRateLimiting:
         """Test rate limit reset after timeout."""
         # Set request count
         connector._request_count = 50
-        connector._rate_limit_reset = datetime.utcnow() - timedelta(seconds=1)
+        connector._rate_limit_reset = utc_now() - timedelta(seconds=1)
 
         # Should reset
         assert connector._check_rate_limit() is True

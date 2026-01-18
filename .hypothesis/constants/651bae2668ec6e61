@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\core\celery_idempotency.py
+# hypothesis_version: 6.148.7
+
+[5.0, 600, 86400, ':', '_from_cache', 'already_executed', 'celery:idempotent:', 'executed_at', 'key', 'name', 'result', 'status', 'task_in_progress']

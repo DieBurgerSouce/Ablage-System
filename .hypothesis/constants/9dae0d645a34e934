@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\augmentations\dropout\channel_dropout.py
+# hypothesis_version: 6.148.7
+
+[0.5, 'ChannelDropout', 'channels_to_drop', 'image', 'images']

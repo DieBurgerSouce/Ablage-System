@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\workflow\workflow_execution_service.py
+# hypothesis_version: 6.148.7
+
+[100, 300, 'StepResult', 'WorkflowStepExecutor', 'branch', 'cancelled', 'completed', 'created_at', 'current_step_id', 'document_type', 'extracted_data', 'failed', 'file_extension', 'file_size', 'filename', 'folder_id', 'id', 'manual', 'mime_type', 'paused', 'pending', 'processed_at', 'progress_percent', 'running', 'status', 'target_step_id', 'target_step_name', 'target_step_order', 'timeout', 'workflow_step_retry']

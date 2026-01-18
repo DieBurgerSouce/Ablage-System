@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\ensemble_voting.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-10, 0.5, 0.7, 0.9, 1.0, 1.2, -100, 100, 10000, '-', '.,;:!?()[]{}"\'-', 'agreement_score', 'alignment_scores', 'backend', 'bayesian', 'character_level', 'confidence', 'correct_samples', 'deepseek', 'dynamic', 'dynamic_weight', 'effective_weight', 'effective_weights', 'empty', 'feedback_recorded', 'got_ocr', 'historical_accuracy', 'majority', 'metadata', 'method', 'num_backends', 'single', 'static_weight', 'surya_cpu', 'surya_gpu', 'text', 'token_agreement', 'token_confidences', 'token_level', 'tokens', 'total_samples', 'unknown', 'weighted']

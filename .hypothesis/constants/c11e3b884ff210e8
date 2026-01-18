@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\passes\auto_parallel_supplement_explicit_dependencies.py
+# hypothesis_version: 6.148.7
+
+['Out', 'Param', 'ParamOut', 'Scale', 'X', 'amp_flag_sync_dep', 'check_finite_dep', 'dist_context', 'flags_sync_stream', 'global_norm_sync_dep', 'optimizer_order_dep']

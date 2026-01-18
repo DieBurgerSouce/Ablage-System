@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\erp\field_mapping.py
+# hypothesis_version: 6.148.7
+
+['%Y-%m-%d', '%Y-%m-%d %H:%M:%S', '+00:00', ',', '.', 'T', 'Z', 'address', 'address.city', 'address.street', 'address.street2', 'address.zip', 'amount_residual', 'amount_total', 'bidirectional', 'boolean', 'city', 'country_id', 'create_date', 'created_at', 'currency', 'customer', 'date', 'direction', 'due_date', 'email', 'invoice', 'invoice_date', 'invoice_date_due', 'is_company', 'local_field', 'lookup', 'lookup_table', 'max_length', 'mobile', 'name', 'number', 'partner_id', 'passthrough', 'payment_state', 'phone', 'pull', 'push', 'ref', 'reference', 'remote_field', 'required', 'residual_amount', 'reverse_lookup', 'state', 'state_id', 'street', 'street2', 'string', 'supplier', 'total_amount', 'transformer', 'updated_at', 'vat', 'vat_id', 'website', 'write_date', 'zip']

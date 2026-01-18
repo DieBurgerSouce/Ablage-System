@@ -23,7 +23,7 @@ from datetime import datetime, date, timedelta
 from decimal import Decimal
 
 from app.core.datetime_utils import utc_now
-from typing import Optional, List, Dict, Any, Tuple, TYPE_CHECKING
+from typing import Optional, List, Dict, Any, Tuple, Union, TYPE_CHECKING
 from uuid import UUID, uuid4
 import structlog
 import re
@@ -167,21 +167,19 @@ class PaymentService:
         # Erstelle Zahlungsauftrag
         payment = PaymentOrder(
             id=uuid4(),
+            user_id=user_id,
             bank_account_id=bank_account_id,
             batch_id=None,
             payment_type=data.payment_type.value if data.payment_type else PaymentType.TRANSFER.value,
             status=PaymentStatus.DRAFT.value,
-            creditor_name=data.creditor_name,
-            creditor_iban=self._normalize_iban(data.creditor_iban),
-            creditor_bic=data.creditor_bic,
+            beneficiary_name=data.beneficiary_name,
+            beneficiary_iban=self._normalize_iban(data.beneficiary_iban),
+            beneficiary_bic=data.beneficiary_bic,
             amount=data.amount,
             currency=data.currency or "EUR",
             reference=data.reference,
             end_to_end_id=end_to_end_id,
             execution_date=data.execution_date or date.today(),
-            urgent=data.urgent or False,
-            linked_document_id=data.linked_document_id,
-            linked_transaction_id=data.linked_transaction_id,
             created_at=utc_now(),
         )
 
@@ -193,7 +191,7 @@ class PaymentService:
             "payment_created",
             payment_id=str(payment.id),
             amount=str(data.amount),
-            creditor=data.creditor_name,
+            beneficiary=data.beneficiary_name,
         )
 
         return self._to_response(payment)
@@ -722,8 +720,10 @@ class PaymentService:
         # Erstelle Batch
         batch = PaymentBatch(
             id=uuid4(),
+            user_id=user_id,
             bank_account_id=bank_account_id,
-            name=name,
+            batch_name=name,
+            batch_type="SEPA_CT",  # SEPA Credit Transfer als Default
             status=PaymentStatus.DRAFT.value,
             payment_count=len(payments),
             total_amount=total_amount,
@@ -737,17 +737,18 @@ class PaymentService:
         for payment_data in payments:
             payment = PaymentOrder(
                 id=uuid4(),
+                user_id=user_id,
                 bank_account_id=bank_account_id,
                 batch_id=batch.id,
                 payment_type=payment_data.payment_type.value if payment_data.payment_type else PaymentType.TRANSFER.value,
                 status=PaymentStatus.DRAFT.value,
-                creditor_name=payment_data.creditor_name,
-                creditor_iban=self._normalize_iban(payment_data.creditor_iban),
-                creditor_bic=payment_data.creditor_bic,
+                beneficiary_name=payment_data.beneficiary_name,
+                beneficiary_iban=self._normalize_iban(payment_data.beneficiary_iban),
+                beneficiary_bic=payment_data.beneficiary_bic,
                 amount=payment_data.amount,
                 currency=payment_data.currency or "EUR",
                 reference=payment_data.reference,
-                end_to_end_id=payment_data.end_to_end_id or self._generate_end_to_end_id(),
+                end_to_end_id=self._generate_end_to_end_id(),
                 execution_date=payment_data.execution_date or date.today(),
                 created_at=utc_now(),
             )
@@ -836,6 +837,18 @@ class PaymentService:
         """Normalisiere IBAN (entferne Leerzeichen, uppercase)."""
         return iban.replace(" ", "").upper()
 
+    @staticmethod
+    def _to_date(value: Optional[Union[date, datetime]]) -> Optional[date]:
+        """Konvertiere datetime oder date zu date.
+
+        Defensive Methode die sowohl date als auch datetime akzeptiert.
+        """
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value.date()
+        return value  # Bereits ein date
+
     def _validate_iban_checksum(self, iban: str) -> bool:
         """Validiere IBAN-Pruefziffer (MOD-97)."""
         try:
@@ -881,26 +894,27 @@ class PaymentService:
         """Konvertiere DB-Model zu Response."""
         return PaymentOrderResponse(
             id=payment.id,
+            user_id=payment.user_id,
             bank_account_id=payment.bank_account_id,
-            batch_id=payment.batch_id,
-            payment_type=PaymentType(payment.payment_type) if payment.payment_type else None,
+            document_id=payment.document_id,
+            invoice_number=payment.invoice_number,
+            payment_type=PaymentType(payment.payment_type) if payment.payment_type else PaymentType.SINGLE_PAYMENT,
+            sepa_type=payment.sepa_type,
             status=PaymentStatus(payment.status),
-            creditor_name=payment.creditor_name,
-            creditor_iban=payment.creditor_iban,
-            creditor_bic=payment.creditor_bic,
+            beneficiary_name=payment.beneficiary_name,
+            beneficiary_iban=payment.beneficiary_iban,
+            beneficiary_bic=payment.beneficiary_bic,
             amount=payment.amount,
             currency=payment.currency or "EUR",
             reference=payment.reference,
-            end_to_end_id=payment.end_to_end_id,
-            execution_date=payment.execution_date,
-            urgent=payment.urgent or False,
-            linked_document_id=payment.linked_document_id,
-            linked_transaction_id=payment.linked_transaction_id,
-            bank_reference=payment.bank_reference,
-            error_message=payment.error_message,
-            created_at=payment.created_at,
+            execution_date=self._to_date(payment.execution_date),
+            tan_required=payment.tan_required or False,
+            uses_skonto=payment.uses_skonto or False,
+            skonto_amount=payment.skonto_amount,
+            original_amount=payment.original_amount,
+            skonto_deadline=self._to_date(payment.skonto_deadline),
             approved_at=payment.approved_at,
             submitted_at=payment.submitted_at,
-            confirmed_at=payment.confirmed_at,
+            created_at=payment.created_at,
             updated_at=payment.updated_at,
         )

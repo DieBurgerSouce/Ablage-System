@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\company_matching_service.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.5, 0.7, 0.8, 0.85, 0.9, 0.95, 0.99, 1.0, '-', '.', 'IBAN stimmt ueberein', '\\s*b\\.?\\s*v\\.?\\s*$', '\\s*e\\.?\\s*v\\.?\\s*$', '\\s*gbr\\s*$', '\\s*gmbh\\s*$', '\\s*inc\\.?\\s*$', '\\s*llc\\.?\\s*$', '\\s*ltd\\.?\\s*$', '\\s*mbh\\s*$', '\\s*n\\.?\\s*v\\.?\\s*$', '\\s*s\\.?\\s*a\\.?\\s*$', '\\s+', '\\s+ag\\s*$', '\\s+eg\\s*$', '\\s+kg\\s*$', '\\s+ohg\\s*$', '\\s+se\\s*$', 'incoming', 'no_company_settings', 'outgoing']

@@ -527,3 +527,183 @@ class TestTaskConfiguration:
         assert hasattr(send_daily_digest, 'bind')
         assert hasattr(send_weekly_digest, 'bind')
         assert hasattr(cleanup_old_notifications, 'bind')
+
+
+# =============================================================================
+# PHASE 1: Automatische Zahlungserinnerungen - Dunning Email Tasks (Januar 2026)
+# =============================================================================
+
+
+class TestDunningEmailWithRetryTask:
+    """Tests fuer send_dunning_email_with_retry Task (Task 1.4)."""
+
+    def test_send_dunning_email_with_retry_exists(self):
+        """send_dunning_email_with_retry sollte existieren."""
+        from app.workers.tasks.notification_tasks import send_dunning_email_with_retry
+
+        assert send_dunning_email_with_retry is not None
+
+    def test_send_dunning_email_with_retry_is_registered(self):
+        """Sollte send_dunning_email_with_retry Task registriert haben."""
+        from app.workers.tasks.notification_tasks import send_dunning_email_with_retry
+
+        assert hasattr(send_dunning_email_with_retry, 'name')
+        assert send_dunning_email_with_retry.name == "app.workers.tasks.notification_tasks.send_dunning_email_with_retry"
+
+    def test_send_dunning_email_with_retry_has_retry_config(self):
+        """Sollte retry Konfiguration mit exponential backoff haben."""
+        from app.workers.tasks.notification_tasks import send_dunning_email_with_retry
+
+        assert hasattr(send_dunning_email_with_retry, 'max_retries')
+        assert send_dunning_email_with_retry.max_retries == 5
+
+    def test_send_dunning_email_with_retry_has_backoff(self):
+        """Sollte exponential backoff konfiguriert haben."""
+        from app.workers.tasks.notification_tasks import send_dunning_email_with_retry
+
+        # Check retry_backoff is True (exponential backoff)
+        assert hasattr(send_dunning_email_with_retry, 'retry_backoff')
+        assert send_dunning_email_with_retry.retry_backoff is True
+
+    def test_send_dunning_email_with_retry_has_jitter(self):
+        """Sollte retry jitter konfiguriert haben."""
+        from app.workers.tasks.notification_tasks import send_dunning_email_with_retry
+
+        assert hasattr(send_dunning_email_with_retry, 'retry_jitter')
+        assert send_dunning_email_with_retry.retry_jitter is True
+
+    def test_send_dunning_email_with_retry_has_max_backoff(self):
+        """Sollte maximale Backoff-Zeit konfiguriert haben."""
+        from app.workers.tasks.notification_tasks import send_dunning_email_with_retry
+
+        assert hasattr(send_dunning_email_with_retry, 'retry_backoff_max')
+        assert send_dunning_email_with_retry.retry_backoff_max == 600  # 10 Minuten
+
+    def test_send_dunning_email_with_retry_uses_cpu_base(self):
+        """Sollte CPUTask Base verwenden."""
+        from app.workers.tasks.notification_tasks import send_dunning_email_with_retry
+        from app.workers.celery_app import CPUTask
+
+        assert isinstance(send_dunning_email_with_retry, CPUTask)
+
+
+class TestRetryFailedDunningEmailsTask:
+    """Tests fuer retry_failed_dunning_emails Task (Task 1.4)."""
+
+    def test_retry_failed_dunning_emails_exists(self):
+        """retry_failed_dunning_emails sollte existieren."""
+        from app.workers.tasks.notification_tasks import retry_failed_dunning_emails
+
+        assert retry_failed_dunning_emails is not None
+
+    def test_retry_failed_dunning_emails_is_registered(self):
+        """Sollte retry_failed_dunning_emails Task registriert haben."""
+        from app.workers.tasks.notification_tasks import retry_failed_dunning_emails
+
+        assert hasattr(retry_failed_dunning_emails, 'name')
+        assert retry_failed_dunning_emails.name == "app.workers.tasks.notification_tasks.retry_failed_dunning_emails"
+
+    def test_retry_failed_dunning_emails_uses_cpu_base(self):
+        """Sollte CPUTask Base verwenden."""
+        from app.workers.tasks.notification_tasks import retry_failed_dunning_emails
+        from app.workers.celery_app import CPUTask
+
+        assert isinstance(retry_failed_dunning_emails, CPUTask)
+
+    def test_retry_failed_dunning_emails_has_retry_config(self):
+        """Sollte retry Konfiguration haben."""
+        from app.workers.tasks.notification_tasks import retry_failed_dunning_emails
+
+        assert hasattr(retry_failed_dunning_emails, 'max_retries')
+        # Batch-Retry-Task braucht selbst nicht viele Retries
+        assert retry_failed_dunning_emails.max_retries >= 1
+
+    def test_retry_failed_dunning_emails_in_beat_schedule(self):
+        """Sollte im Beat Schedule sein (stuendlich)."""
+        from app.workers.celery_app import celery_app
+
+        beat_schedule = celery_app.conf.beat_schedule
+
+        assert "notification-retry-failed-dunning-emails" in beat_schedule
+        config = beat_schedule["notification-retry-failed-dunning-emails"]
+        assert config["task"] == "app.workers.tasks.notification_tasks.retry_failed_dunning_emails"
+
+    def test_retry_failed_dunning_emails_hourly_schedule(self):
+        """Sollte stuendlich laufen (3600 Sekunden)."""
+        from app.workers.celery_app import celery_app
+
+        beat_schedule = celery_app.conf.beat_schedule
+        config = beat_schedule["notification-retry-failed-dunning-emails"]
+        schedule = config["schedule"]
+
+        # Should be 3600 seconds (hourly)
+        assert schedule == 3600.0
+
+
+class TestDunningEmailTaskRoutes:
+    """Tests fuer Dunning Email Task Routing."""
+
+    def test_dunning_email_tasks_routed_correctly(self):
+        """Dunning Email Tasks sollten zur korrekten Queue geroutet werden."""
+        from app.workers.celery_app import celery_app
+
+        routes = celery_app.conf.task_routes
+
+        # send_dunning_email_with_retry should be routed to notification queue
+        assert "app.workers.tasks.notification_tasks.send_dunning_email_with_retry" in routes
+        route = routes["app.workers.tasks.notification_tasks.send_dunning_email_with_retry"]
+        assert route["queue"] in ["notification", "maintenance", "banking"]
+
+
+class TestDunningEmailTaskIntegration:
+    """Integration Tests fuer Dunning Email Tasks."""
+
+    @pytest.fixture
+    def sample_notification_data(self):
+        """Sample Notification Daten fuer Tests."""
+        return {
+            "notification_id": str(uuid4()),
+            "recipient_email": "kunde@example.com",
+            "subject": "1. Mahnung - Rechnung RE-2024-001",
+            "body": "Sehr geehrte Damen und Herren...",
+            "pdf_attachment": b"%PDF-1.4 test content",
+            "attachment_filename": "Mahnung_RE-2024-001.pdf",
+        }
+
+    def test_dunning_email_task_params(self, sample_notification_data):
+        """Sollte korrekte Parameter akzeptieren."""
+        from app.workers.tasks.notification_tasks import send_dunning_email_with_retry
+
+        # Verify task accepts required parameters
+        # This is a static check - doesn't actually call the task
+        import inspect
+        sig = inspect.signature(send_dunning_email_with_retry.run)
+        params = list(sig.parameters.keys())
+
+        # Should have these parameters (self is implicit for bound tasks)
+        expected_params = [
+            "notification_id",
+            "recipient_email",
+            "subject",
+            "body",
+        ]
+
+        for param in expected_params:
+            assert param in params, f"Missing parameter: {param}"
+
+    def test_dunning_email_task_optional_params(self, sample_notification_data):
+        """Sollte optionale Parameter fuer PDF-Anhang haben."""
+        from app.workers.tasks.notification_tasks import send_dunning_email_with_retry
+        import inspect
+
+        sig = inspect.signature(send_dunning_email_with_retry.run)
+        params = sig.parameters
+
+        # Optional attachment parameters
+        optional_params = ["pdf_attachment", "attachment_filename"]
+
+        for param in optional_params:
+            if param in params:
+                # Should have a default value (optional)
+                assert params[param].default is not inspect.Parameter.empty or \
+                       params[param].default is None

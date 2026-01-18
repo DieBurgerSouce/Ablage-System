@@ -30,10 +30,11 @@ from app.db.models import (
     RAGChatMessage,
     RAGBatchJob,
     RAGLLMModel,
+    Company,
 )
 from app.api.dependencies import get_current_user, get_current_superuser
 # S.3-S.5 SECURITY FIX: Company Context fuer Multi-Tenancy IDOR Protection
-from app.middleware.company_context import require_company, CompanyContext
+from app.middleware.company_context import require_company
 from app.api.schemas.rag import (
     # Enums
     RAGSearchType,
@@ -65,6 +66,13 @@ from app.api.schemas.rag import (
     RAGBulkChunkRequest,
     # LLM Models
     RAGLLMModelResponse,
+    # Business Intelligence
+    BIQueryType,
+    BITimeRange,
+    BIQueryRequest,
+    BIQueryResponse,
+    BIChatRequest,
+    BIChatResponse,
 )
 from app.services.rag import (
     RAGSearchService,
@@ -801,7 +809,7 @@ async def list_customer_cards(
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
     # S.4 SECURITY FIX: Company Context fuer Multi-Tenancy IDOR Protection
-    company_ctx: CompanyContext = Depends(require_company),
+    company_ctx: Company = Depends(require_company),
 ) -> List[RAGCustomerCardSummary]:
     """Listet Customer Cards auf, optional mit Suche.
 
@@ -838,7 +846,7 @@ async def get_customer_card(
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
     # S.3 SECURITY FIX: Company Context fuer Multi-Tenancy IDOR Protection
-    company_ctx: CompanyContext = Depends(require_company),
+    company_ctx: Company = Depends(require_company),
 ) -> RAGCustomerCardResponse:
     """Laedt eine einzelne Customer Card.
 
@@ -865,7 +873,7 @@ async def refresh_customer_card(
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
     # S.5 SECURITY FIX: Company Context fuer Multi-Tenancy IDOR Protection
-    company_ctx: CompanyContext = Depends(require_company),
+    company_ctx: Company = Depends(require_company),
 ) -> dict:
     """Aktualisiert eine Customer Card asynchron.
 
@@ -1163,3 +1171,578 @@ async def rag_health_check(
         health["status"] = "degraded"
 
     return health
+
+
+# ============================================================================
+# BUSINESS INTELLIGENCE ENDPOINTS
+# ============================================================================
+
+@router.post("/bi/query", response_model=None)
+async def business_intelligence_query(
+    request: "BIQueryRequest",
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+    company: Company = Depends(require_company),
+):
+    """
+    Fuehrt eine Business Intelligence Abfrage durch.
+
+    Unterstuetzt natuerlichsprachige Anfragen wie:
+    - "Finde alle Rechnungen von Mueller GmbH aus Q3"
+    - "Wie haben sich die Marketing-Ausgaben entwickelt?"
+    - "Wann zahlt Kunde X?"
+    - "Zeige offene Posten"
+
+    Der Endpoint erkennt automatisch den Query-Typ und routet
+    zur passenden Analyse-Funktion.
+    """
+    from app.api.schemas.rag import BIQueryRequest, BIQueryResponse, BITimeRange
+    from app.services.business_intelligence_service import (
+        get_bi_service,
+        TimeRange,
+    )
+
+    bi_service = get_bi_service()
+
+    # Map BITimeRange to internal TimeRange
+    time_range_map = {
+        BITimeRange.LAST_7_DAYS: TimeRange.LAST_7_DAYS,
+        BITimeRange.LAST_30_DAYS: TimeRange.LAST_30_DAYS,
+        BITimeRange.LAST_QUARTER: TimeRange.LAST_QUARTER,
+        BITimeRange.LAST_YEAR: TimeRange.LAST_YEAR,
+        BITimeRange.THIS_MONTH: TimeRange.THIS_MONTH,
+        BITimeRange.THIS_QUARTER: TimeRange.THIS_QUARTER,
+        BITimeRange.THIS_YEAR: TimeRange.THIS_YEAR,
+        BITimeRange.ALL_TIME: TimeRange.ALL_TIME,
+        BITimeRange.CUSTOM: TimeRange.CUSTOM,
+    }
+
+    try:
+        result = await bi_service.process_query(
+            db=db,
+            user_id=current_user.id,
+            company_id=company.id,
+            query=request.query,
+        )
+
+        from app.api.schemas.rag import BIQueryType
+
+        return BIQueryResponse(
+            query_type=BIQueryType(result.query_type.value),
+            summary=result.summary,
+            data=result.data,
+            suggestions=result.suggestions if request.include_suggestions else [],
+            query_time_ms=result.query_time_ms,
+        )
+
+    except Exception as e:
+        logger.error("bi_query_failed", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail="Analyse fehlgeschlagen. Bitte versuchen Sie es erneut."
+        )
+
+
+@router.post("/bi/invoices", response_model=None)
+async def analyze_invoices(
+    time_range: Optional[str] = Query("this_year", description="Zeitraum fuer Analyse"),
+    entity_id: Optional[UUID] = Query(None, description="Filter auf Entitaet"),
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+    company: Company = Depends(require_company),
+):
+    """
+    Analysiert Rechnungen mit Aggregationen.
+
+    Liefert:
+    - Gesamtanzahl und -betrag
+    - Bezahlte vs. offene Rechnungen
+    - Ueberfaellige Rechnungen
+    - Aufschluesselung nach Monat
+    - Top-Entitaeten nach Umsatz
+    """
+    from app.services.business_intelligence_service import get_bi_service, TimeRange
+    from app.api.schemas.rag import BIQueryResponse, BIQueryType
+
+    bi_service = get_bi_service()
+
+    time_range_enum = TimeRange(time_range) if time_range else TimeRange.THIS_YEAR
+
+    result = await bi_service.analyze_invoices(
+        db=db,
+        user_id=current_user.id,
+        company_id=company.id,
+        entity_id=entity_id,
+        time_range=time_range_enum,
+    )
+
+    return BIQueryResponse(
+        query_type=BIQueryType.INVOICE_ANALYSIS,
+        summary=result.summary,
+        data=result.data,
+        suggestions=result.suggestions,
+        query_time_ms=result.query_time_ms,
+    )
+
+
+@router.get("/bi/entity/{entity_id}", response_model=None)
+async def get_entity_statistics(
+    entity_id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+    company: Company = Depends(require_company),
+):
+    """
+    Holt Statistiken fuer eine spezifische Geschaeftsentitaet.
+
+    Liefert:
+    - Dokumenten-Anzahl
+    - Rechnungs-Statistiken
+    - Gesamtumsatz
+    - Offene Posten
+    - Risiko-Score
+    - Letzte Aktivitaet
+    """
+    from app.services.business_intelligence_service import get_bi_service
+    from app.api.schemas.rag import BIQueryResponse, BIQueryType
+
+    bi_service = get_bi_service()
+
+    result = await bi_service.get_entity_statistics(
+        db=db,
+        user_id=current_user.id,
+        company_id=company.id,
+        entity_id=entity_id,
+    )
+
+    return BIQueryResponse(
+        query_type=BIQueryType.ENTITY_STATISTICS,
+        summary=result.summary,
+        data=result.data,
+        suggestions=result.suggestions,
+        query_time_ms=result.query_time_ms,
+    )
+
+
+@router.get("/bi/entity/search/{name}", response_model=None)
+async def search_entity_statistics(
+    name: str,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+    company: Company = Depends(require_company),
+):
+    """
+    Sucht Entitaet nach Name und liefert Statistiken.
+
+    Unterstuetzt Teilsuche (z.B. "Mueller" findet "Mueller GmbH").
+    """
+    from app.services.business_intelligence_service import get_bi_service
+    from app.api.schemas.rag import BIQueryResponse, BIQueryType
+
+    bi_service = get_bi_service()
+
+    result = await bi_service.get_entity_statistics(
+        db=db,
+        user_id=current_user.id,
+        company_id=company.id,
+        entity_name=name,
+    )
+
+    return BIQueryResponse(
+        query_type=BIQueryType.ENTITY_STATISTICS,
+        summary=result.summary,
+        data=result.data,
+        suggestions=result.suggestions,
+        query_time_ms=result.query_time_ms,
+    )
+
+
+@router.get("/bi/payment-prediction/{entity_id}", response_model=None)
+async def predict_payment(
+    entity_id: UUID,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+    company: Company = Depends(require_company),
+):
+    """
+    Prognostiziert Zahlungsverhalten einer Entitaet.
+
+    Analysiert historische Zahlungen und liefert:
+    - Erwartete Zahlungsdauer in Tagen
+    - Konfidenz der Prognose
+    - Trend (verbessert sich, stabil, verschlechtert sich)
+    - Erklaerende Faktoren
+    """
+    from app.services.business_intelligence_service import get_bi_service
+    from app.api.schemas.rag import BIQueryResponse, BIQueryType
+
+    bi_service = get_bi_service()
+
+    result = await bi_service.predict_payment(
+        db=db,
+        user_id=current_user.id,
+        company_id=company.id,
+        entity_id=entity_id,
+    )
+
+    return BIQueryResponse(
+        query_type=BIQueryType.PAYMENT_PREDICTION,
+        summary=result.summary,
+        data=result.data,
+        suggestions=result.suggestions,
+        query_time_ms=result.query_time_ms,
+    )
+
+
+@router.post("/bi/trends", response_model=None)
+async def analyze_trends(
+    metric: str = Query("revenue", description="Metrik: revenue, invoice_count"),
+    time_range: str = Query("last_year", description="Zeitraum"),
+    group_by: str = Query("month", description="Gruppierung: month, quarter, year"),
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+    company: Company = Depends(require_company),
+):
+    """
+    Analysiert Trends fuer eine gegebene Metrik.
+
+    Unterstuetzte Metriken:
+    - revenue: Umsatzentwicklung
+    - invoice_count: Anzahl Rechnungen
+
+    Gruppierungen:
+    - month: Monatlich
+    - quarter: Quartalweise
+    - year: Jaehrlich
+    """
+    from app.services.business_intelligence_service import get_bi_service, TimeRange
+    from app.api.schemas.rag import BIQueryResponse, BIQueryType
+
+    bi_service = get_bi_service()
+
+    time_range_enum = TimeRange(time_range) if time_range else TimeRange.LAST_YEAR
+
+    result = await bi_service.analyze_trends(
+        db=db,
+        user_id=current_user.id,
+        company_id=company.id,
+        metric=metric,
+        time_range=time_range_enum,
+        group_by=group_by,
+    )
+
+    return BIQueryResponse(
+        query_type=BIQueryType.TREND_ANALYSIS,
+        summary=result.summary,
+        data=result.data,
+        suggestions=result.suggestions,
+        query_time_ms=result.query_time_ms,
+    )
+
+
+@router.post("/bi/chat", response_model=None)
+async def bi_enhanced_chat(
+    request: "BIChatRequest",
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+    company: Company = Depends(require_company),
+):
+    """
+    Chat mit kombiniertem RAG- und Business Intelligence-Kontext.
+
+    Dieser Endpoint:
+    1. Erkennt ob die Anfrage eine BI-Frage ist
+    2. Fuehrt ggf. BI-Analyse durch
+    3. Kombiniert BI-Ergebnisse mit RAG-Dokumentkontext
+    4. Generiert eine umfassende Antwort
+
+    Beispiele:
+    - "Finde alle Rechnungen von Mueller GmbH" -> BI + Dokument-Suche
+    - "Wie entwickelt sich der Umsatz?" -> BI Trend-Analyse
+    - "Was steht im Vertrag mit X?" -> RAG Dokument-Suche
+    """
+    import secrets
+    from app.api.schemas.rag import BIChatRequest, BIChatResponse, BIQueryResponse, BIQueryType
+    from app.services.business_intelligence_service import get_bi_service, QueryType
+
+    search_service = get_rag_search_service()
+    llm_service = get_llm_service()
+    bi_service = get_bi_service()
+
+    bi_insights = None
+    bi_context = ""
+
+    try:
+        # 1. BI-Analyse wenn aktiviert
+        if request.enable_bi:
+            query_type = bi_service.detect_query_type(request.message)
+
+            # Nur BI-relevante Anfragen verarbeiten
+            if query_type != QueryType.SUMMARY:
+                bi_result = await bi_service.process_query(
+                    db=db,
+                    user_id=current_user.id,
+                    company_id=company.id,
+                    query=request.message,
+                )
+
+                bi_insights = BIQueryResponse(
+                    query_type=BIQueryType(bi_result.query_type.value),
+                    summary=bi_result.summary,
+                    data=bi_result.data,
+                    suggestions=bi_result.suggestions,
+                    query_time_ms=bi_result.query_time_ms,
+                )
+
+                # BI-Kontext fuer LLM aufbauen
+                bi_context = f"""
+BUSINESS INTELLIGENCE ERGEBNISSE:
+{bi_result.summary}
+
+STRUKTURIERTE DATEN:
+{bi_result.data}
+"""
+
+        # 2. RAG-Suche durchfuehren
+        document_ids = None
+        search_threshold = settings.RAG_SEMANTIC_THRESHOLD
+
+        if request.context_type == "document" and request.context_id:
+            try:
+                document_ids = [UUID(request.context_id)]
+                search_threshold = 0.0
+            except ValueError:
+                pass
+
+        search_response = await search_service.semantic_search(
+            db=db,
+            query=request.message,
+            limit=settings.RAG_CHAT_CONTEXT_CHUNKS,
+            threshold=search_threshold,
+            document_ids=document_ids,
+            rerank=settings.RAG_RERANK_ENABLED,
+            user_id=current_user.id,
+        )
+
+        # 3. Chat Session verwalten
+        if request.session_id:
+            session = await db.get(RAGChatSession, request.session_id)
+            if not session or session.user_id != current_user.id:
+                raise HTTPException(status_code=404, detail="Chat-Session nicht gefunden")
+        else:
+            session = RAGChatSession(
+                user_id=current_user.id,
+                session_token=secrets.token_urlsafe(32),
+                context_type=request.context_type.value if request.context_type else None,
+                context_id=request.context_id,
+                status="active",
+            )
+            db.add(session)
+            await db.flush()
+
+        # 4. User Message speichern
+        user_message = RAGChatMessage(
+            session_id=session.id,
+            role="user",
+            content=request.message,
+        )
+        db.add(user_message)
+
+        session_id = session.id
+        await db.commit()
+
+        # 5. Kontext aufbauen (RAG + BI)
+        context_chunks = []
+        if search_response.results:
+            context_chunks = [
+                f"[Quelle: Dokument {r.document_id}]\n{r.chunk_text}"
+                for r in search_response.results
+            ]
+
+        rag_context = "\n\n---\n\n".join(context_chunks) if context_chunks else ""
+
+        # 6. System-Prompt mit beiden Kontexten
+        system_content = f"""Du bist ein intelligenter Geschaeftsassistent fuer ein Dokumentenmanagementsystem.
+Du hast Zugriff auf:
+1. Strukturierte Geschaeftsdaten (Rechnungen, Kunden, Statistiken)
+2. Dokumenteninhalte (Vertraege, Korrespondenz, etc.)
+
+Beantworte Fragen praezise und hilfreich.
+Nutze die verfuegbaren Daten um fundierte Antworten zu geben.
+Antworte immer auf Deutsch.
+
+{bi_context}
+
+DOKUMENTKONTEXT:
+{rag_context if rag_context else "(Keine relevanten Dokumente gefunden)"}
+"""
+
+        # 7. LLM Anfrage
+        messages = [
+            LLMMessage(role="system", content=system_content),
+            LLMMessage(role="user", content=request.message),
+        ]
+
+        llm_context = LLMContextType.REALTIME if request.realtime else LLMContextType.GENERAL
+        llm_response = await llm_service.generate(
+            messages=messages,
+            context_type=llm_context,
+        )
+
+        # 8. Session aktualisieren
+        session = await db.get(RAGChatSession, session_id)
+        if session:
+            assistant_message = RAGChatMessage(
+                session_id=session.id,
+                role="assistant",
+                content=llm_response.content,
+                thinking_content=llm_response.thinking_content,
+                model_used=llm_response.model,
+                tokens_input=llm_response.tokens_input,
+                tokens_output=llm_response.tokens_output,
+                generation_time_ms=llm_response.generation_time_ms,
+            )
+            db.add(assistant_message)
+
+            session.message_count = (session.message_count or 0) + 2
+            session.last_message_at = datetime.now(timezone.utc)
+            await db.commit()
+
+        logger.info(
+            "bi_chat_completed",
+            user_id=str(current_user.id),
+            session_id=str(session_id),
+            has_bi_insights=bi_insights is not None,
+            rag_chunks=len(search_response.results),
+            model=llm_response.model,
+        )
+
+        return BIChatResponse(
+            session_id=session_id,
+            message=llm_response.content,
+            thinking_content=llm_response.thinking_content,
+            sources=[
+                RAGChunkSearchResult(
+                    chunk_id=r.chunk_id,
+                    document_id=r.document_id,
+                    chunk_text=r.chunk_text[:200] + "..." if len(r.chunk_text) > 200 else r.chunk_text,
+                    chunk_index=r.chunk_index,
+                    page_number=r.page_number,
+                    section_type=r.section_type,
+                    similarity=r.similarity,
+                    rerank_score=r.rerank_score,
+                )
+                for r in search_response.results
+            ],
+            bi_insights=bi_insights,
+            model_used=llm_response.model,
+            tokens_input=llm_response.tokens_input,
+            tokens_output=llm_response.tokens_output,
+            generation_time_ms=llm_response.generation_time_ms,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("bi_chat_failed", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail="Chat fehlgeschlagen. Bitte versuchen Sie es erneut."
+        )
+
+
+# ============================================================================
+# AI ASSISTANT ACTIONS ENDPOINTS
+# ============================================================================
+
+@router.get("/ai/actions")
+async def list_ai_actions(
+    context_type: Optional[str] = Query(None, description="Kontext-Typ (document, entity)"),
+    current_user: User = Depends(get_current_user),
+) -> "AIActionListResponse":
+    """Listet verfuegbare AI-Aktionen basierend auf Benutzerrolle auf.
+
+    Autonomie-Level:
+    - Viewer: Nur Lese-Aktionen (Suche, Analyse, Berichte)
+    - Editor: Supervised Actions (Vorschlag + Bestaetigung erforderlich)
+    - Admin: Autonome Aktionen (selbststaendig ausfuehrbar)
+    """
+    from app.api.schemas.rag import AIActionListResponse
+    from app.services.rag.ai_action_service import get_ai_action_service
+
+    action_service = get_ai_action_service()
+    return action_service.get_available_actions(user=current_user, context_type=context_type)
+
+
+@router.post("/ai/actions/execute")
+async def execute_ai_action(
+    request: "AIActionRequest",
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+) -> "AIActionResult":
+    """Fuehrt eine AI-Aktion aus.
+
+    Bei Aktionen die Bestaetigung erfordern (Editor-Level):
+    - Status wird auf 'suggested' gesetzt
+    - User muss ueber /ai/actions/confirm bestaetigen
+
+    Bei Admin-Level oder auto_execute=True:
+    - Aktion wird direkt ausgefuehrt
+    """
+    from app.api.schemas.rag import AIActionRequest, AIActionResult
+    from app.services.rag.ai_action_service import get_ai_action_service
+
+    action_service = get_ai_action_service()
+    return await action_service.execute_action(db=db, user=current_user, request=request)
+
+
+@router.post("/ai/actions/confirm")
+async def confirm_ai_action(
+    request: "AIActionConfirmRequest",
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+) -> "AIActionResult":
+    """Bestaetigt oder lehnt eine vorgeschlagene AI-Aktion ab.
+
+    Args:
+        request.action_id: ID der vorgeschlagenen Aktion
+        request.confirmed: True = ausfuehren, False = ablehnen
+        request.modified_parameters: Optional geaenderte Parameter
+    """
+    from app.api.schemas.rag import AIActionConfirmRequest, AIActionResult
+    from app.services.rag.ai_action_service import get_ai_action_service
+
+    action_service = get_ai_action_service()
+    return await action_service.confirm_action(
+        db=db,
+        user=current_user,
+        action_id=request.action_id,
+        confirmed=request.confirmed,
+        modified_parameters=request.modified_parameters,
+    )
+
+
+@router.get("/ai/context")
+async def get_ai_context(
+    page_type: str = Query(..., description="Aktueller Seitentyp (dashboard, documents, etc.)"),
+    document_id: Optional[UUID] = Query(None, description="Aktuelle Dokument-ID"),
+    entity_id: Optional[UUID] = Query(None, description="Aktuelle Entity-ID"),
+    current_user: User = Depends(get_current_user),
+) -> "AIContextInfo":
+    """Gibt kontextspezifische Informationen fuer den AI-Assistenten zurueck.
+
+    Liefert:
+    - Verfuegbare Aktionen fuer den aktuellen Kontext
+    - Vorgeschlagene Fragen/Befehle
+    - Autonomie-Level des Benutzers
+    """
+    from app.api.schemas.rag import AIContextInfo
+    from app.services.rag.ai_action_service import get_ai_action_service
+
+    action_service = get_ai_action_service()
+    return action_service.get_context_info(
+        user=current_user,
+        page_type=page_type,
+        document_id=document_id,
+        entity_id=entity_id,
+    )

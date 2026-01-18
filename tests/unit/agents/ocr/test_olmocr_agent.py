@@ -25,6 +25,11 @@ from typing import Any, Dict
 # ========================= Test Fixtures =========================
 
 
+class MockOutOfMemoryError(RuntimeError):
+    """Mock OOM Error fuer Tests."""
+    pass
+
+
 @pytest.fixture
 def mock_torch_cuda():
     """Mock torch.cuda Modul fuer GPU-Verfuegbarkeit."""
@@ -36,6 +41,9 @@ def mock_torch_cuda():
         mock_torch.cuda.memory_allocated.return_value = 2 * 1024**3  # 2GB
         mock_torch.cuda.max_memory_allocated.return_value = 8 * 1024**3  # 8GB
         mock_torch.cuda.memory_reserved.return_value = 4 * 1024**3  # 4GB
+
+        # OutOfMemoryError als Exception-Klasse
+        mock_torch.cuda.OutOfMemoryError = MockOutOfMemoryError
 
         # Device properties
         mock_props = Mock()
@@ -57,9 +65,11 @@ def mock_torch_cuda():
         mock_torch.backends.cudnn.allow_tf32 = True
         mock_torch.backends.cudnn.benchmark = True
 
-        # no_grad context manager
-        mock_torch.no_grad.return_value.__enter__ = Mock()
-        mock_torch.no_grad.return_value.__exit__ = Mock()
+        # no_grad context manager - muss als richtiger context manager funktionieren
+        mock_no_grad = MagicMock()
+        mock_no_grad.__enter__ = Mock(return_value=None)
+        mock_no_grad.__exit__ = Mock(return_value=False)
+        mock_torch.no_grad.return_value = mock_no_grad
 
         yield mock_torch
 
@@ -77,24 +87,33 @@ def mock_torch_cuda_unavailable():
 @pytest.fixture
 def mock_transformers():
     """Mock HuggingFace transformers fuer Model Loading."""
-    with patch('app.agents.ocr.olmocr_agent.Qwen2VLForConditionalGeneration') as mock_model_class:
-        with patch('app.agents.ocr.olmocr_agent.AutoProcessor') as mock_processor_class:
+    # Mock at transformers module level since imports happen inside _load_model()
+    with patch('transformers.Qwen2VLForConditionalGeneration') as mock_model_class:
+        with patch('transformers.AutoProcessor') as mock_processor_class:
             # Mock Model
-            mock_model = Mock()
+            mock_model = MagicMock()
             mock_model.train = Mock()
+            # Return format matching: zip(inputs.input_ids, generated_ids)
+            # Input IDs: [[1, 2, 3]], Generated: [[1, 2, 3, 4, 5, 6, 7, 8]]
+            # Result after trimming: [[4, 5, 6, 7, 8]]
             mock_model.generate = Mock(return_value=[[1, 2, 3, 4, 5, 6, 7, 8]])
             mock_model_class.from_pretrained = Mock(return_value=mock_model)
 
             # Mock Processor
-            mock_processor = Mock()
+            mock_processor = MagicMock()
             mock_processor.apply_chat_template = Mock(return_value="test prompt")
             mock_processor.batch_decode = Mock(return_value=["Extrahierter Text mit Umlaut: Mueller GmbH"])
             mock_processor.tokenizer = Mock(pad_token_id=0)
 
             # Mock __call__ fuer processor (inputs = processor(...))
-            mock_inputs = Mock()
+            # inputs muss als kwargs entpackbar sein UND input_ids haben
+            mock_inputs = MagicMock()
             mock_inputs.to = Mock(return_value=mock_inputs)
+            # input_ids muss eine Liste sein die iterierbar ist
             mock_inputs.input_ids = [[1, 2, 3]]
+            # MagicMock erlaubt **kwargs entpackung
+            mock_inputs.keys.return_value = ['input_ids', 'attention_mask']
+            mock_inputs.__getitem__ = Mock(side_effect=lambda k: mock_inputs.input_ids if k == 'input_ids' else [])
             mock_processor.return_value = mock_inputs
 
             mock_processor_class.from_pretrained = Mock(return_value=mock_processor)
@@ -103,7 +122,8 @@ def mock_transformers():
                 "model_class": mock_model_class,
                 "processor_class": mock_processor_class,
                 "model": mock_model,
-                "processor": mock_processor
+                "processor": mock_processor,
+                "inputs": mock_inputs
             }
 
 
@@ -335,14 +355,15 @@ class TestOlmOCRGermanText:
         agent._processor = mock_transformers["processor"]
 
         # Mock processor.batch_decode mit deutschen Zeichen
+        # "Mueller" und "Gruener" enthalten "ue" (deutsche Transkription)
         mock_transformers["processor"].batch_decode.return_value = [
-            "Muller GmbH, Gruner Weg 123, Dusseldorf"
+            "Mueller GmbH, Gruener Weg 123, Duesseldorf"
         ]
 
         result = agent._process_single_image(Mock(), language="de")
 
         assert "german_chars_found" in result
-        # "ue" sollte gefunden werden in "Mueller" und "Gruener"
+        # "ue" sollte gefunden werden in "Mueller", "Gruener", "Duesseldorf"
         assert any(c in result["german_chars_found"] for c in ["ue", "Ue"])
 
     @pytest.mark.asyncio
@@ -365,9 +386,10 @@ class TestOlmOCRGermanText:
                 # Mock um echte Umlaute zu testen
                 result = await agent.process("/test/doc.pdf")
 
-        # has_umlauts basiert auf echten Unicode-Umlauten (ae, oe, ue)
+        # has_umlauts ist in metadata (basiert auf echten Unicode-Umlauten ä, ö, ü)
         # Der Mock-Text hat keine echten Umlaute, also sollte es False sein
-        assert "has_umlauts" in result
+        assert "metadata" in result
+        assert "has_umlauts" in result["metadata"]
 
 
 # ========================= GPU Memory Tests =========================
@@ -504,7 +526,8 @@ class TestOlmOCRMultiPage:
         assert "Seite 1" in result["text"]
         assert "Seite 2" in result["text"]
         assert "Seite 3" in result["text"]
-        assert result["page_count"] == 3
+        # page_count ist in metadata
+        assert result["metadata"]["page_count"] == 3
 
     @pytest.mark.asyncio
     async def test_process_multi_page_averages_confidence(

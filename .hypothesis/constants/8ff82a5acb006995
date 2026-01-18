@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\docling\datamodel\accelerator_options.py
+# hypothesis_version: 6.148.7
+
+['DOCLING_', 'DOCLING_NUM_THREADS', 'OMP_NUM_THREADS', '^cuda(:\\d+)?$', '_', 'auto', 'before', 'cpu', 'cuda', 'device', 'mps', 'num_threads']

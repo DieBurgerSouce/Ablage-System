@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\privat\loan_scenario_service.py
+# hypothesis_version: 6.148.7
+
+[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 600, 9999, '-999999999', '0', '0.005', '0.01', '0.015', '1', '100', '1000', '12', 'LoanScenarioService', 'amortization', 'baseline', 'bearbeitungsgebuehr', 'comparison', 'description', 'extra_payment', 'grundbuch', 'name', 'net_savings', 'new_rate', 'notar', 'payment_change', 'refinancing', 'remaining_months', 'scenario_type', 'total_interest', 'upfront_costs']

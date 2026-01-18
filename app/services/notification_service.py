@@ -104,6 +104,10 @@ class NotificationType:
     APPROVAL_ESCALATED = "approval_escalated"
     APPROVAL_REMINDER = "approval_reminder"
     APPROVAL_ACTION_REQUIRED = "approval_action_required"
+    # Banking-spezifische Typen
+    SKONTO_EXPIRING = "skonto_expiring"
+    ERP_CONFLICT_PENDING = "erp_conflict_pending"
+    DUNNING_NOTIFICATION = "dunning_notification"
 
 
 class NotificationChannel:
@@ -426,6 +430,64 @@ Beschreibung:
 Bitte prüfen und genehmigen oder ablehnen Sie diese Anfrage im Dashboard.
 
 Mit freundlichen Grüßen,
+Ablage-System
+            """.strip(),
+        },
+        NotificationType.SKONTO_EXPIRING: {
+            "subject": "Skonto-Frist laeuft ab - Handlungsbedarf",
+            "body": """
+Sehr geehrter Benutzer,
+
+Folgende Rechnungen haben bald ablaufende Skonto-Fristen:
+
+{opportunities_list}
+
+Gesamtersparnis bei rechtzeitiger Zahlung: {total_savings} EUR
+
+Bitte pruefen Sie die Zahlungsmoeglichkeiten.
+
+Mit freundlichen Gruessen,
+Ablage-System
+            """.strip(),
+        },
+        NotificationType.ERP_CONFLICT_PENDING: {
+            "subject": "ERP-Synchronisationskonflikte erfordern Aufmerksamkeit",
+            "body": """
+Sehr geehrter Administrator,
+
+Es wurden Konflikte bei der ERP-Synchronisation festgestellt, die Ihre Aufmerksamkeit erfordern.
+
+Konflikt-Zusammenfassung:
+- Anzahl offener Konflikte: {total_conflicts}
+- Betroffene Verbindungen: {connection_count}
+
+Details nach Verbindung:
+{conflicts_by_connection_list}
+
+Bitte loesen Sie diese Konflikte im Admin-Bereich unter ERP-Sync > Konflikte.
+
+Mit freundlichen Gruessen,
+Ablage-System
+            """.strip(),
+        },
+        NotificationType.DUNNING_NOTIFICATION: {
+            "subject": "Mahnung Stufe {dunning_level} - {customer_name}",
+            "body": """
+Sehr geehrter Benutzer,
+
+Eine neue Mahnaufgabe wurde erstellt.
+
+Details:
+- Kunde: {customer_name}
+- Rechnungsnummer: {invoice_number}
+- Betrag: {amount} EUR
+- Faellig seit: {days_overdue} Tagen
+- Mahnstufe: {dunning_level}
+- Empfohlene Aktion: {recommended_action}
+
+Bitte bearbeiten Sie diese Aufgabe zeitnah.
+
+Mit freundlichen Gruessen,
 Ablage-System
             """.strip(),
         },

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\optimizer\__init__.py
+# hypothesis_version: 6.148.7
+
+['ASGD', 'Adadelta', 'Adagrad', 'Adam', 'AdamW', 'Adamax', 'LBFGS', 'Lamb', 'Momentum', 'NAdam', 'Optimizer', 'RAdam', 'RMSProp', 'Rprop', 'SGD']

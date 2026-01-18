@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\communication\stream\all_reduce.py
+# hypothesis_version: 6.148.7
+
+['Out', 'X', 'all_reduce', 'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'ring_id', 'tensor', 'uint16', 'uint8', 'use_calc_stream']

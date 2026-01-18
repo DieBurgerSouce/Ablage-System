@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\autograd\primx.py
+# hypothesis_version: 6.148.7
+
+['_TensorOrTensorsT', 'bar must be not None', 'composite_ops_record', 'dot2var', 'name', 'tab', 'var2dot', 'varset']

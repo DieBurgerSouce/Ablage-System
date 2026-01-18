@@ -2790,7 +2790,7 @@ async def get_early_warnings(
     request: Request,
     space_id: uuid.UUID,
     include_resolved: bool = Query(default=False),
-    severity: Optional[str] = Query(default=None, regex="^(WARNING|CRITICAL)$"),
+    severity: Optional[str] = Query(default=None, pattern="^(WARNING|CRITICAL)$"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[EarlyWarningResponse]:

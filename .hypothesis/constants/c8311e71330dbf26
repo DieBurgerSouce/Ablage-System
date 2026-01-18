@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\passes\auto_parallel_sync_shared_params.py
+# hypothesis_version: 6.148.7
+
+['concrete_program', 'dist_op.reshard', 'dst_dist_attr', 'dst_mesh', 'param_name', 'parameter_name', 'pd_op.all_reduce', 'pipeline_strategy', 'shared_', 'src_dist_attr', 'src_mesh']

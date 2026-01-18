@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\autograd\composite_rules.py
+# hypothesis_version: 6.148.7
+
+[-0.5, 0.0, 0.044715, 0.5, 0.7071067811865476, 1.0, 1.1283791670955126, 3.0, 6.0, 'NC', 'NCHW', 'NCHWD', 'NCL', 'NHWC', 'batch_norm', 'dropout', 'expand_as_v2', 'expand_v2', 'fill_any_like', 'float16', 'float32', 'gelu', 'group_norm', 'hard_swish', 'index_select', 'instance_norm', 'layer_norm', 'leaky_relu', 'meshgrid', 'pow', 'reduce_mean', 'relu', 'sigmoid', 'silu', 'softmax', 'sqrt', 'squeeze2', 'stack', 'sum', 'uint16', 'unsqueeze2', 'upscale_in_train']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\utils\log_util.py
+# hypothesis_version: 6.148.7
+
+[1024.0, 1024, '(', ')', ', ', '-h', '0', 'FLAGS_selected_gpus', 'INFO', '_rotate', 'cpu', 'free', 'hybrid_parallel', 'max_memory_allocated', 'memory_reserved_size', 'root']

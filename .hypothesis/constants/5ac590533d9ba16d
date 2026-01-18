@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\augmentations\dropout\functional.py
+# hypothesis_version: 6.148.7
+
+[255, 'bboxes', 'channel_dropout', 'cutout', 'generate_grid_holes', 'generate_random_fill', 'inpaint_ns', 'inpaint_telea', 'keypoints', 'random', 'random_uniform']

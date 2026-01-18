@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\banking\tan_handler_service.py
+# hypothesis_version: 6.148.7
+
+[300, 3600, 1000000, ' | ', '123456', 'Challenge abgelaufen', 'TAN per Banking-App', 'TAN per SMS', 'Ungueltige TAN', 'Zahlung bestaetigen:', 'Zugriff verweigert', 'amount', 'appTAN', 'cancelled', 'challenge_not_found', 'chipTAN', 'creditor', 'description', 'expired', 'failed', 'false', 'iban', 'icon', 'method', 'name', 'payment_id', 'pending', 'photoTAN', 'preferred', 'pushTAN', 'qr_code', 'smartphone', 'sms', 'smsTAN', 'tan_challenge_locked', 'tan_dev_bypass_used', 'timestamp', 'true', 'type', 'user_locked_out', 'user_mismatch', 'user_tan_lockout', 'verified']

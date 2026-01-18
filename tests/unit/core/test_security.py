@@ -24,18 +24,10 @@ class TestSecretKeyValidation:
 
     def test_empty_secret_key_in_production_raises_error(self):
         """Leerer SECRET_KEY in Production muss ValueError auslösen."""
-        from pydantic import ValidationError
+        from pydantic import ValidationError, model_validator
 
         # Use environment isolation
         with patch.dict(os.environ, {"SECRET_KEY": "", "DEBUG": "false"}, clear=True):
-            # Force reimport of Settings to get fresh validation
-            import importlib
-            import app.core.config as config_module
-
-            # Clear module cache to force fresh import
-            if "app.core.config" in importlib.import_module.__globals__:
-                del importlib.import_module.__globals__["app.core.config"]
-
             with pytest.raises((ValueError, ValidationError)) as exc_info:
                 # Create Settings without .env file influence
                 from pydantic_settings import BaseSettings
@@ -47,7 +39,7 @@ class TestSecretKeyValidation:
                     class Config:
                         env_file = None  # Disable .env loading
 
-                    @config_module.model_validator(mode='after')
+                    @model_validator(mode='after')
                     def validate_settings(self):
                         # Re-implement validation logic
                         if not self.SECRET_KEY:

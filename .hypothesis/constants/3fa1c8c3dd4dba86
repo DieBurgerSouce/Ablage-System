@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\data\imaug\rec_img_aug.py
+# hypothesis_version: 6.148.7
+
+[-1000000000.0, -1.0, 0.0, 0.001, 0.01, 0.1, 0.224, 0.225, 0.229, 0.25, 0.4, 0.406, 0.456, 0.485, 0.5, 0.5000001, 1.0, 1.5, 2.0, 127.5, 128.0, 255.0, 112, 180, 255, 320, 'OpenCV', 'PIL', 'encoder_word_pos', 'ext_data', 'float32', 'gsrm_slf_attn_bias1', 'gsrm_slf_attn_bias2', 'gsrm_word_pos', 'image', 'int64', 'label', 'pad_shape', 'resized_shape', 'valid_ratio', 'word_positons']

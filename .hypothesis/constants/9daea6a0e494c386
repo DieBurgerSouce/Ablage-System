@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\initializer\orthogonal.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, '.', 'Orthogonal', 'Out', 'Q', 'R', 'X', 'XShape', 'Y', 'axis', 'bias', 'diag', 'diag_v2', 'dtype', 'elementwise_mul', 'float32', 'float64', 'gaussian_random', 'mean', 'mode', 'offset', 'padding_value', 'q', 'qr', 'r', 'reduced', 'reshape2', 'scale', 'seed', 'shape', 'sign', 'std', 'tmp', 'transpose', 'transpose2']

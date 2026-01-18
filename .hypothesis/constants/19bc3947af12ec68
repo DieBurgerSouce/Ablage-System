@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_parallel\sharding\group_sharded_optimizer_stage2.py
+# hypothesis_version: 6.148.7
+
+[256, 4096, '.', ':', 'LR_Scheduler', '_', '_hcg', '_master_weights', 'beta1_pow_acc_0', 'beta2_pow_acc_0', 'cpu', 'fp32_master_0', 'gpu', 'grad_clip', 'main_grad', 'master_weights', 'moment', 'moment1_0', 'moment2_0', 'offload_buffer', 'params', 'velocity_0', 'xpu', 'xpu:']

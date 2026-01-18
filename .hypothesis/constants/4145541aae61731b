@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\document_intelligence\llm_ner_service.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.1, 0.8, 200, 1000, 8000, '! ', '. ', '? ', 'DEFAULT_LLM_ANALYSIS', '\\{[\\s\\S]*\\}', 'address', 'addresses', 'amount', 'amounts', 'chunk_processed', 'companies', 'company', 'confidence', 'context', 'contract_number', 'contract_numbers', 'date', 'deadline', 'deadlines', 'document_id', 'email', 'emails', 'entities', 'iban', 'ibans', 'inf', 'json_parse_error', 'metadata', 'model_used', 'ner_extraction_error', 'ner_extraction_start', 'no_json_in_response', 'normalized_value', 'person', 'persons', 'phone', 'phones', 'processing_time_ms', 'qwen3:14b', 'reference', 'summary', 'system', 'text_chunked', 'text_length', 'total_entities', 'type', 'unknown_entity_type', 'user', 'value']

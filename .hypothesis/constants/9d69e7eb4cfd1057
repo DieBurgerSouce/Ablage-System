@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\data\pubtab_dataset.py
+# hypothesis_version: 6.148.7
+
+[1.0, 'Global', 'cells', 'data_dir', 'dataset', 'file_name', 'filename', 'html', 'image', 'img_path', 'label_file_list', 'loader', 'ratio_list', 'rb', 'shuffle', 'structure', 'tokens', 'train', 'transforms', 'utf-8', '{} does not exist!']

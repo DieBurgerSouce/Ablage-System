@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\erp\__init__.py
+# hypothesis_version: 6.148.7
+
+['ERPConflict', 'ERPConnectionConfig', 'ERPConnectionStatus', 'ERPConnector', 'ERPEntity', 'ERPSyncDirection', 'ERPSyncResult', 'EntityMappingService', 'FieldTransformer', 'OdooConnector', 'SyncBatch', 'SyncEngine', 'SyncRecord', 'SyncStrategy', 'SyncType', 'create_sync_engine', 'get_mapping_service']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\amp\accuracy_compare.py
+# hypothesis_version: 6.148.7
+
+[1e-05, 0.01, 0.95, 1.0, 1.05, '#', '#6495ED', '#F5F5F5', ',', '--', '.cast_fp16', '.cast_fp32', '/', '/.cast_fp16/', '0', '1', ':', '=', 'A', 'E1:H1', 'E1:J1', 'GRAD', 'I1:J1', 'I1:N1', 'O1:Q1', '[', '[PRECISION]', ']', 'align', 'bg_color', 'black', 'bold', 'border', 'center', 'device', 'dtype', 'font_color', 'fp16', 'fp16 / fp32', 'fp32', 'infinite', 'is not found', 'max', 'max_value', 'mean', 'mean_value', 'min', 'min_value', 'num_inf', 'num_nan', 'num_zero', 'numel', 'op', 'op_type', 'orange', 'r', 'red', 'tensor', 'tensor_name', 'the file ', 'worker_', 'yellow']

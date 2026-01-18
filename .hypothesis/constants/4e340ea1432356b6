@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\db\repositories\base.py
+# hypothesis_version: 6.148.7
+
+[100, 'ModelType', 'id', 'repository_create', 'repository_delete', 'repository_update', 'unknown']

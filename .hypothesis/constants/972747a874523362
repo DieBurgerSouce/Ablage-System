@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\utils\flops.py
+# hypothesis_version: 6.148.7
+
+['Bias', 'Filter', 'Input', 'X', 'Y', 'c_embedding', 'conv2d', 'dilations', 'dropout', 'elementwise_add', 'elementwise_div', 'elementwise_mul', 'elu', 'epsilon', 'gelu', 'groups', 'layer_norm', 'leaky_relu', 'matmul', 'matmul_v2', 'paddings', 'pool', 'prelu', 'relu', 'relu6', 'reshape2', 'silu', 'softmax', 'strides', 'trans_x', 'trans_y', 'transpose2', 'transpose_X', 'transpose_Y', 'transpose_x', 'transpose_y', 'x', 'y']

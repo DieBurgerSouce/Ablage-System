@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\jit\dy2static\error.py
+# hypothesis_version: 6.148.7
+
+[' <--- HERE', 'File ', 'Hint:', 'In transformed code:', 'IsInitialized', 'Revise suggestion: ', 'is not initialized.', 'np', 'np.', 'numpy', 'numpy.', '~']

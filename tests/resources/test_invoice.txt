@@ -1,0 +1,43 @@
+RECHNUNG
+
+Müller GmbH & Co. KG
+Hauptstraße 123
+80331 München
+Deutschland
+
+USt-IdNr.: DE123456789
+HRB München 98765
+
+Rechnungsnummer: 2024-001
+Datum: 26.11.2024
+
+An:
+Schmidt AG
+Bahnhofstraße 45
+10115 Berlin
+
+Leistungsbeschreibung:
+
+1. Softwareentwicklung für Ablage-System
+   - OCR-Integration mit GPU-Beschleunigung
+   - Deutsche Texterkennung (inkl. Umlaute: ä, ö, ü, ß)
+   - Frakturschrift-Unterstützung
+   Einzelpreis: 15.000,00 €
+
+2. Beratungsleistungen
+   - Architektur-Design
+   - Implementierungsberatung
+   Einzelpreis: 3.500,00 €
+
+Zwischensumme: 18.500,00 €
+MwSt. 19%: 3.515,00 €
+
+GESAMTBETRAG: 22.015,00 €
+
+Zahlbar innerhalb von 30 Tagen ohne Abzug.
+Bankverbindung:
+IBAN: DE89 3704 0044 0532 0130 00
+BIC: COBADEFFXXX
+
+Mit freundlichen Grüßen
+Müller GmbH & Co. KG

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\layer\distance.py
+# hypothesis_version: 6.148.7
+
+[1e-06, 2.0, ', epsilon={epsilon}', ', keepdim={keepdim}', ', name={name}', 'p={p}']

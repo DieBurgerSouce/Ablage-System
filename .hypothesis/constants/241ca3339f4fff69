@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\agents\preprocessing\image_enhancement_agent.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.1, 0.3, 0.4, 0.5, 0.7, 0.8, 1.0, 2.0, 100, 150, 180, 255, '.enhanced.png', '.png', 'binarization_failed', 'binarize', 'contrast', 'denoise', 'denoise_failed', 'deskew_failed', 'enhanced_', 'enhanced_image_path', 'enhanced_shape', 'enhancement_count', 'enhancements_applied', 'error', 'file_path', 'image_load_failed', 'metadata', 'opencv_available', 'options', 'original_path', 'original_shape', 'quality_improvement', 'quality_score', 'save_enhanced_failed', 'skip_binarize', 'skip_contrast', 'skip_denoise', 'skip_deskew']

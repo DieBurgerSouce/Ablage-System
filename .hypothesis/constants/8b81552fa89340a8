@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\initializer\bilinear.py
+# hypothesis_version: 6.148.7
+
+[2.0, 1024, '.', 'Out', 'X', 'assign_value', 'bilinear_init', 'cast', 'dtype', 'float32', 'in_dtype', 'out_dtype', 'shape', 'tmp', 'values']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\cost\op_runtime_cost.py
+# hypothesis_version: 6.148.7
+
+[0.0, ', ', 'Out', 'X', 'col', 'default', 'feed', 'fetch', 'int', 'paddle.bool', 'paddle.float16', 'paddle.float32', 'paddle.float64', 'paddle.int16', 'paddle.int32', 'paddle.int64', 'paddle.int8']

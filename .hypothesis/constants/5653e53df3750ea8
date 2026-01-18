@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\passes\pipeline_scheduler_pass\pipeline_fthenb.py
+# hypothesis_version: 6.148.7
+
+['num_micro_batches']

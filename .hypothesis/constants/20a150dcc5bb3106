@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\profiler\__init__.py
+# hypothesis_version: 6.148.7
+
+['Profiler', 'ProfilerState', 'ProfilerTarget', 'RecordEvent', 'SortedKeys', 'SummaryView', 'export_protobuf', 'load_profiler_result', 'make_scheduler']

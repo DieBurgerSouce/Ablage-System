@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\core\type_definitions.py
+# hypothesis_version: 6.148.7
+
+[360, 'BBoxes', 'Image', 'Keypoints', 'Mask', 'Mask3D', 'Number', 'Volume', 'e', 'h', 'hvt', 'r180', 'r270', 'r90', 't', 'v']

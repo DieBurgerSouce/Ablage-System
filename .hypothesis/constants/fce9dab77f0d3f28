@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pptx\opc\package.py
+# hypothesis_version: 6.148.7
+
+['/', '//@r:id', '42', 'BaseOxmlElement', 'CT_Types', 'Package', 'PresentationPart', '_Relationship', 'list[str]', 'rId', 'rId%d', 'rb', 'seek']

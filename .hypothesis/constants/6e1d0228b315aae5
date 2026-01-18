@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\tuner\recorder.py
+# hypothesis_version: 6.148.7
+
+['direction', 'max', 'mean', 'median', 'metrics', 'min', 'records', 'std', 'step', 'value', 'var']

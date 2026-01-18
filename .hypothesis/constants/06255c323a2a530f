@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\ps\utils\ps_program_builder.py
+# hypothesis_version: 6.148.7
+
+['DistMultiTrainer', 'DownpourLite', 'Hogwild', 'MultiTrainer', '_main_server', '_startup_server', 'adam', 'append_send_ops_pass', 'cloned_main', 'cloned_startup', 'dense_table_config', 'device_worker', 'distributed_ops_pass', 'fake_init_ops_pass', 'is_heter_ps_mode', 'is_heter_worker', 'is_server', 'is_worker', 'launch_barrier', 'launch_barrier_flag', 'local_sparse', 'loss', 'origin_main_program', 'origin_main_programs', 'part_a_main_program', 'part_b_main_program', 'program_configs', 'ps_gpu_pass', 'ps_mode', 'ps_transpile_pass', 'pull_dense', 'pull_sparse', 'push_dense', 'push_sparse', 'role_maker', 'section_program', 'sgd', 'sharding', 'split_fl_ops_pass', 'trainer', 'use_ps_gpu']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\marko\block.py
+# hypothesis_version: 6.148.7
+
+[' {,3}<!', ' {,3}<!--', ' {,3}<!\\[CDATA\\[', ' {,3}<\\?', ' {,3}>', ' {,3}>[^\\n\\S]?', ' {4}', '(?:{})', '*-+', '-->', '1', ':', '=', '>', 'BlankLine', 'CodeBlock', 'Document', 'FencedCode', 'HTMLBlock', 'Heading', 'LinkRefDef', 'List', 'ListItem', 'Paragraph', 'Quote', 'SetextHeading', 'ThematicBreak', '[^\\n]+$\\n?', '\\?>', '\\]\\]>', '\\s+', '`', 'attr', 'tag', 'type[ListItem]', 'type[SetextHeading]', '|']

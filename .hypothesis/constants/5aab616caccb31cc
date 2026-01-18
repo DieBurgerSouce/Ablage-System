@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\augmentations\blur\transforms.py
+# hypothesis_version: 6.148.7
+
+[-1.0, -0.5, 0.01, 0.03, 0.1, 0.2, 0.5, 0.7, 0.9, 1.0, 1.1, 1.31, 3.0, 8.0, 360, 'AdvancedBlur', 'Blur', 'Defocus', 'GaussianBlur', 'GlassBlur', 'MedianBlur', 'MotionBlur', 'ZoomBlur', 'after', 'alias_blur', 'beta_limit', 'blur_limit', 'dxy', 'exact', 'fast', 'kernel', 'radius', 'shape', 'tuple[float, float]', 'tuple[int, int]', 'zoom_factors']

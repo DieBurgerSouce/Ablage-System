@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\sparse\nn\layer\norm.py
+# hypothesis_version: 6.148.7
+
+[1e-05, 0.9, 'C', 'NCHW', 'NDHWC', 'NHWC', '_sync', 'bias', 'data_layout', 'epsilon', 'fuse_with_relu', 'is_test', 'mean', 'mean_out', 'momentum', 'out', 'reserve_space', 'saved_mean', 'saved_variance', 'scale', 'sparse_batch_norm', 'trainable_statistics', 'use_global_stats', 'variance', 'variance_out', 'x']

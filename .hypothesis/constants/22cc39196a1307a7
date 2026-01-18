@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\surya\settings.py
+# hypothesis_version: 6.148.7
+
+[0.05, 0.35, 0.6, 0.9, 100, 150, 192, 255, 256, 768, 1200, 1400, 1500, 'GoNotoCJKCore.ttf', 'INFO', 'all', 'cpu', 'cuda', 'data', 'datalab', 'fonts', 'height', 'ignore', 'ja', 'ko', 'local.env', 'models', 'mps', 'results', 'static', 'vikp/doclaynet_bench', 'vikp/order_bench', 'vikp/publaynet_bench', 'vikp/rec_bench', 'width', 'xla', 'zh']

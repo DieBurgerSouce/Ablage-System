@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\banking\parsers\bank_csv\volksbank.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.6, 0.85, 0.9, 'amount', 'betrag', 'bic', 'booking_date', 'booking_text', 'buchungstag', 'buchungstext', 'counterparty_bic', 'counterparty_iban', 'counterparty_name', 'currency', 'empfaenger', 'empfänger', 'iban', 'kontonummer', 'kundenreferenz', 'reference_text', 'umsatz', 'umsatzart', 'value_date', 'valuta', 'verwendungszweck', 'volksbank', 'waehrung', 'wertstellung', 'währung']

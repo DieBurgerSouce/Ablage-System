@@ -1571,26 +1571,22 @@ def check_retraining_conditions(self) -> Dict[str, Any]:
     logger.info("check_retraining_conditions_starting", task_id=task_id)
 
     try:
-        from app.services.feedback_learning_service import get_feedback_learning_service
         from app.db.session import get_async_session_context
+        from app.services.quality_monitoring_service import QualityMonitoringService
 
         async def check_conditions():
             async with get_async_session_context() as session:
-                # TODO: Vollständigen QualityMonitoringService implementieren
-                # Vorerst nutzen wir FeedbackLearningService für Basis-Empfehlung
-                feedback_service = get_feedback_learning_service()
+                # Vollständiger QualityMonitoringService fuer Retraining-Empfehlung
 
-                # Hole Surya-spezifische Retraining-Empfehlung
-                recommendation = await feedback_service.get_surya_retraining_recommendation(
-                    db=session
-                )
+                monitoring_service = QualityMonitoringService(db=session)
+                recommendation = await monitoring_service.get_retraining_recommendation()
 
                 return {
                     "should_retrain": recommendation.should_retrain,
-                    "urgency": recommendation.urgency.value if hasattr(recommendation.urgency, 'value') else str(recommendation.urgency),
+                    "urgency": recommendation.urgency,
                     "reasons": recommendation.reasons,
-                    "focus_areas": recommendation.focus_areas if hasattr(recommendation, 'focus_areas') else [],
-                    "estimated_samples_needed": recommendation.estimated_samples if hasattr(recommendation, 'estimated_samples') else 0,
+                    "focus_areas": recommendation.focus_areas,
+                    "estimated_samples_needed": recommendation.estimated_samples_needed,
                 }
 
         # asyncio.run() für sauberes Event-Loop Cleanup
@@ -1639,52 +1635,30 @@ def run_quality_monitoring(self) -> Dict[str, Any]:
     logger.info("run_quality_monitoring_starting", task_id=task_id)
 
     try:
-        from app.services.feedback_learning_service import get_feedback_learning_service
         from app.db.session import get_async_session_context
-        from app.db.models import OCRBackendBenchmark, OCRValidationCorrection
-        from sqlalchemy import select, func
-        from datetime import timedelta
+        from app.services.quality_monitoring_service import QualityMonitoringService
 
         async def run_monitoring():
             async with get_async_session_context() as session:
-                # TODO: Vollständigen QualityMonitoringService implementieren
-                # Vorerst einfache Qualitätsprüfung basierend auf letzten Benchmarks
-                alerts = []
-                now = datetime.now(timezone.utc)
-                one_hour_ago = now - timedelta(hours=1)
+                # Vollständiger QualityMonitoringService fuer Qualitaetspruefung
 
-                # Prüfe durchschnittliche CER pro Backend
-                backends = ["deepseek-janus-pro", "got-ocr-2.0", "surya-gpu", "surya"]
-                for backend in backends:
-                    result = await session.execute(
-                        select(func.avg(OCRBackendBenchmark.cer))
-                        .where(OCRBackendBenchmark.backend_name == backend)
-                        .where(OCRBackendBenchmark.processed_at >= one_hour_ago)
-                    )
-                    avg_cer = result.scalar()
+                monitoring_service = QualityMonitoringService(db=session)
+                quality_alerts = await monitoring_service.run_quality_check()
 
-                    if avg_cer and avg_cer > 0.10:
-                        alerts.append({
-                            "type": "high_cer",
-                            "severity": "warning",
-                            "message": f"CER für {backend} zu hoch: {avg_cer:.2%}",
-                            "affected_backend": backend,
-                        })
-
-                # Prüfe Anzahl unverarbeiteter Korrekturen
-                result = await session.execute(
-                    select(func.count(OCRValidationCorrection.id))
-                    .where(OCRValidationCorrection.learning_processed == False)
-                )
-                unprocessed = result.scalar() or 0
-
-                if unprocessed > 100:
-                    alerts.append({
-                        "type": "backlog",
-                        "severity": "warning",
-                        "message": f"{unprocessed} Korrekturen warten auf Verarbeitung",
-                        "affected_backend": None,
-                    })
+                # Konvertiere QualityAlert Objekte zu Dict-Format fuer Celery-Response
+                alerts = [
+                    {
+                        "type": alert.alert_type.value,
+                        "severity": alert.severity.value,
+                        "message": alert.message,
+                        "affected_backend": alert.affected_backend,
+                        "metric_name": alert.metric_name,
+                        "current_value": alert.current_value,
+                        "threshold_value": alert.threshold_value,
+                        "recommended_action": alert.recommended_action,
+                    }
+                    for alert in quality_alerts
+                ]
 
                 return {
                     "alerts_count": len(alerts),

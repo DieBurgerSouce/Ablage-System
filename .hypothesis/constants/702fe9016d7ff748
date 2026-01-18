@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\banking\dunning_stage_service.py
+# hypothesis_version: 6.148.7
+
+['0.00', '1. Mahnung', '10.00', '15.00', '2.27', '40.00', '5.00', '9.00', 'Inkasso-Uebergabe', 'Letzte Mahnung', 'Zahlungserinnerung', 'action_type', 'business_entity_id', 'created_at', 'dunning_stages_reset', 'email', 'escalation', 'exclusion_reason', 'fee_amount', 'id', 'is_active', 'letter', 'max_mahn_stufe', 'notes', 'phone', 'sort_order', 'stage_name', 'stage_number', 'template_id', 'updated_at', 'user_id']

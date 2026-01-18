@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\extraction\patterns\__init__.py
+# hypothesis_version: 6.148.7
+
+['AmountPatterns', 'DatePatterns', 'PaymentPatterns', 'ReferencePatterns', 'get_amount_patterns', 'get_date_patterns', 'get_payment_patterns']

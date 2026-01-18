@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\intermediate\parallelize.py
+# hypothesis_version: 6.148.7
+
+['cp_config', 'dp', 'dp_config', 'mp_config', 'parallelize_plan', 'params', 'pp_config', 'sharding_level', 'sharding_mesh_dim']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\base\compiler.py
+# hypothesis_version: 6.148.7
+
+[0.0, '__getitem__', '_grad', '_is_distributed', 'accumulation_factor', 'avg_shard_pass', 'batches_per_step', 'cumsum', 'custom.ops', 'custom_op', 'custom_ops', 'delete_scale_op_pass', 'domain', 'enable_fp16', 'enable_manual_shard', 'enable_pipelining', 'feed', 'feed_list', 'fetch', 'fetch_list', 'float16', 'infer_shape_pass', 'ipu_inplace_pass', 'is_distributed', 'is_dynamic', 'is_training', 'location_optimizer', 'lr', 'lr_scheduler', 'micro_batch_size', 'num_ipus', 'on_chip', 'org_program', 'paddle_op', 'popart_op', 'program', 'step', 'value', 'version']

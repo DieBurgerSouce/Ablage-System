@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\reports\report_template_service.py
+# hypothesis_version: 6.148.7
+
+[100, 300, 'AND', 'aggregation', 'bottom', 'chart_type', 'colors', 'conditional_format', 'data_source', 'data_type', 'default_format', 'description', 'display_name', 'dynamic_source', 'excel', 'field_path', 'format_pattern', 'group_by_config', 'group_by_field', 'group_id', 'height_px', 'id', 'is_dynamic', 'is_public', 'is_scheduled', 'is_visible', 'layout_config', 'logic_operator', 'name', 'operator', 'position', 'report_share_revoked', 'report_type', 'schedule_config', 'show_labels', 'show_legend', 'sort_config', 'sort_order', 'title', 'value', 'width', 'width_percent', 'x_axis_field', 'y_axis_fields']

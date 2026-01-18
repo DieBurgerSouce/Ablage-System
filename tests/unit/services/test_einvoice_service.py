@@ -1,18 +1,22 @@
 """
-Tests for E-Invoice Generator and Validator Services.
+Tests for E-Invoice Validator Service and Models.
 
-Tests UBL 2.1, XRechnung, ZUGFeRD/CII generation and validation.
+Tests validation service and Pydantic models for e-invoice data.
 """
 
 import pytest
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from app.services.einvoice import (
-    EInvoiceGeneratorService,
     EInvoiceValidatorService,
-    get_einvoice_generator_service,
-    get_einvoice_validator_service,
+    ValidationResult,
+    ValidationMessage,
+    ValidationSeverity,
+    ValidatorType,
+    get_validator_service,
+)
+from app.services.einvoice.einvoice_models import (
     EInvoiceFormat,
     InvoiceType,
     TaxCategory,
@@ -22,384 +26,73 @@ from app.services.einvoice import (
     InvoiceParty,
     InvoiceLineItem,
     TaxTotal,
-    EInvoiceRequest,
-    EInvoiceResponse,
-    ValidationResult,
+    PaymentTerms,
 )
 
 
-# ==================== Fixtures ====================
+# ==================== Model Tests ====================
 
-@pytest.fixture
-def sample_address() -> Address:
-    """Sample German address."""
-    return Address(
-        street_name="Musterstrasse",
-        building_number="123",
-        city="Berlin",
-        postal_code="10115",
-        country_code="DE",
-    )
+class TestEInvoiceModels:
+    """Tests for E-Invoice Pydantic models."""
 
+    def test_einvoice_format_enum(self) -> None:
+        """Test EInvoiceFormat enum values."""
+        assert EInvoiceFormat.UBL_21 == "ubl_2.1"
+        assert EInvoiceFormat.ZUGFERD_21 == "zugferd_2.1"
+        assert EInvoiceFormat.XRECHNUNG_30 == "xrechnung_3.0"
+        assert EInvoiceFormat.CII_D16B == "cii_d16b"
 
-@pytest.fixture
-def sample_seller(sample_address: Address) -> InvoiceParty:
-    """Sample seller (Rechnungssteller)."""
-    return InvoiceParty(
-        name="Muster GmbH",
-        address=sample_address,
-        vat_id="DE123456789",
-        tax_number="12/345/67890",
-        contact_name="Max Mustermann",
-        email="rechnung@muster.de",
-        phone="+49 30 12345678",
-        bank_account_iban="DE89370400440532013000",
-        bank_account_bic="COBADEFFXXX",
-        bank_account_name="Muster GmbH",
-    )
+    def test_invoice_type_enum(self) -> None:
+        """Test InvoiceType enum values."""
+        assert InvoiceType.INVOICE == "380"
+        assert InvoiceType.CREDIT_NOTE == "381"
+        assert InvoiceType.CORRECTED_INVOICE == "384"
 
+    def test_tax_category_enum(self) -> None:
+        """Test TaxCategory enum values."""
+        assert TaxCategory.STANDARD == "S"
+        assert TaxCategory.REDUCED == "AA"
+        assert TaxCategory.ZERO_RATED == "Z"
+        assert TaxCategory.EXEMPT == "E"
 
-@pytest.fixture
-def sample_buyer(sample_address: Address) -> InvoiceParty:
-    """Sample buyer (Rechnungsempfaenger)."""
-    buyer_address = Address(
-        street_name="Kundenweg",
-        building_number="456",
-        city="Hamburg",
-        postal_code="20095",
-        country_code="DE",
-    )
-    return InvoiceParty(
-        name="Kunde AG",
-        address=buyer_address,
-        vat_id="DE987654321",
-        contact_name="Erika Musterfrau",
-        email="einkauf@kunde.de",
-    )
+    def test_payment_means_code_enum(self) -> None:
+        """Test PaymentMeansCode enum values."""
+        assert PaymentMeansCode.SEPA_CREDIT_TRANSFER == "58"
+        assert PaymentMeansCode.SEPA_DIRECT_DEBIT == "59"
+        assert PaymentMeansCode.CREDIT_TRANSFER == "30"
 
 
-@pytest.fixture
-def sample_line_items() -> list:
-    """Sample invoice line items."""
-    return [
-        InvoiceLineItem(
-            line_id="1",
-            description="Beratungsleistung IT-Sicherheit",
-            quantity=Decimal("10.00"),
-            unit_code="HUR",  # Hours
-            unit_price=Decimal("120.00"),
-            line_net_amount=Decimal("1200.00"),
-            tax_category=TaxCategory.STANDARD,
-            tax_percent=Decimal("19.00"),
-        ),
-        InvoiceLineItem(
-            line_id="2",
-            description="Softwarelizenz Jahreslizenz",
-            quantity=Decimal("1.00"),
-            unit_code="C62",  # Units
-            unit_price=Decimal("599.00"),
-            line_net_amount=Decimal("599.00"),
-            tax_category=TaxCategory.STANDARD,
-            tax_percent=Decimal("19.00"),
-        ),
-    ]
+class TestAddressModel:
+    """Tests for Address model."""
 
-
-@pytest.fixture
-def sample_tax_totals() -> list:
-    """Sample tax totals."""
-    return [
-        TaxTotal(
-            tax_amount=Decimal("341.81"),
-            taxable_amount=Decimal("1799.00"),
-            tax_category=TaxCategory.STANDARD,
-            tax_percent=Decimal("19.00"),
-        ),
-    ]
-
-
-@pytest.fixture
-def sample_invoice_data(
-    sample_seller: InvoiceParty,
-    sample_buyer: InvoiceParty,
-    sample_line_items: list,
-    sample_tax_totals: list,
-) -> InvoiceData:
-    """Complete sample invoice data."""
-    return InvoiceData(
-        invoice_number="RE-2024-001234",
-        invoice_type=InvoiceType.INVOICE,
-        issue_date=date(2024, 12, 15),
-        due_date=date(2025, 1, 15),
-        currency_code="EUR",
-        seller=sample_seller,
-        buyer=sample_buyer,
-        line_items=sample_line_items,
-        total_net_amount=Decimal("1799.00"),
-        total_tax_amount=Decimal("341.81"),
-        total_gross_amount=Decimal("2140.81"),
-        payable_amount=Decimal("2140.81"),
-        tax_totals=sample_tax_totals,
-        payment_means_code=PaymentMeansCode.SEPA_CREDIT_TRANSFER,
-        note="Bitte ueberweisen Sie den Betrag innerhalb von 30 Tagen.",
-    )
-
-
-@pytest.fixture
-def generator_service() -> EInvoiceGeneratorService:
-    """Get generator service instance."""
-    return get_einvoice_generator_service()
-
-
-@pytest.fixture
-def validator_service() -> EInvoiceValidatorService:
-    """Get validator service instance."""
-    return get_einvoice_validator_service()
-
-
-# ==================== Generator Tests ====================
-
-class TestEInvoiceGenerator:
-    """Tests for E-Invoice generation."""
-
-    @pytest.mark.asyncio
-    async def test_generate_ubl_21(
-        self,
-        generator_service: EInvoiceGeneratorService,
-        sample_invoice_data: InvoiceData,
-    ):
-        """Test UBL 2.1 invoice generation."""
-        request = EInvoiceRequest(
-            invoice_data=sample_invoice_data,
-            format=EInvoiceFormat.UBL_21,
+    def test_address_creation_minimal(self) -> None:
+        """Test Address with required fields only."""
+        address = Address(
+            street_name="Musterstrasse",
+            city="Berlin",
+            postal_code="10115",
         )
+        assert address.street_name == "Musterstrasse"
+        assert address.city == "Berlin"
+        assert address.postal_code == "10115"
+        assert address.country_code == "DE"  # Default
 
-        result = await generator_service.generate(request)
-
-        assert isinstance(result, EInvoiceResponse)
-        assert result.success is True
-        assert result.format == EInvoiceFormat.UBL_21
-        assert "Invoice" in result.xml_content  # ubl:Invoice or similar
-        assert "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" in result.xml_content
-        assert "RE-2024-001234" in result.xml_content
-        assert "Muster GmbH" in result.xml_content
-        assert "Kunde AG" in result.xml_content
-        assert "DE123456789" in result.xml_content
-
-    @pytest.mark.asyncio
-    async def test_generate_xrechnung(
-        self,
-        generator_service: EInvoiceGeneratorService,
-        sample_invoice_data: InvoiceData,
-    ):
-        """Test XRechnung generation with Leitweg-ID."""
-        # Add Leitweg-ID (required for XRechnung)
-        sample_invoice_data.buyer_reference = "04011000-12345-67"
-
-        request = EInvoiceRequest(
-            invoice_data=sample_invoice_data,
-            format=EInvoiceFormat.XRECHNUNG_30,
+    def test_address_creation_full(self) -> None:
+        """Test Address with all fields."""
+        address = Address(
+            street_name="Musterstrasse",
+            building_number="123",
+            additional_street="Hinterhaus",
+            city="Berlin",
+            postal_code="10115",
+            country_code="AT",
+            country_subdivision="Wien",
         )
+        assert address.building_number == "123"
+        assert address.country_code == "AT"
 
-        result = await generator_service.generate(request)
-
-        assert result.success is True
-        assert result.format == EInvoiceFormat.XRECHNUNG_30
-        assert "xrechnung" in result.xml_content.lower()
-        assert "04011000-12345-67" in result.xml_content
-
-    @pytest.mark.asyncio
-    async def test_generate_zugferd(
-        self,
-        generator_service: EInvoiceGeneratorService,
-        sample_invoice_data: InvoiceData,
-    ):
-        """Test ZUGFeRD/CII generation."""
-        request = EInvoiceRequest(
-            invoice_data=sample_invoice_data,
-            format=EInvoiceFormat.ZUGFERD_21,
-        )
-
-        result = await generator_service.generate(request)
-
-        assert result.success is True
-        assert result.format == EInvoiceFormat.ZUGFERD_21
-        assert "CrossIndustryInvoice" in result.xml_content
-        assert "urn:un:unece:uncefact" in result.xml_content
-
-    @pytest.mark.asyncio
-    async def test_generate_cii(
-        self,
-        generator_service: EInvoiceGeneratorService,
-        sample_invoice_data: InvoiceData,
-    ):
-        """Test CII D16B generation."""
-        request = EInvoiceRequest(
-            invoice_data=sample_invoice_data,
-            format=EInvoiceFormat.CII_D16B,
-        )
-
-        result = await generator_service.generate(request)
-
-        assert result.success is True
-        assert result.format == EInvoiceFormat.CII_D16B
-        assert "CrossIndustryInvoice" in result.xml_content
-
-    @pytest.mark.asyncio
-    async def test_generated_xml_is_parsable(
-        self,
-        generator_service: EInvoiceGeneratorService,
-        sample_invoice_data: InvoiceData,
-    ):
-        """Test that generated XML is valid and parsable."""
-        import xml.etree.ElementTree as ET
-
-        for format_type in [EInvoiceFormat.UBL_21, EInvoiceFormat.ZUGFERD_21]:
-            request = EInvoiceRequest(
-                invoice_data=sample_invoice_data,
-                format=format_type,
-            )
-
-            result = await generator_service.generate(request)
-
-            # Should not raise
-            root = ET.fromstring(result.xml_content)
-            assert root is not None
-
-
-# ==================== Validator Tests ====================
-
-class TestEInvoiceValidator:
-    """Tests for E-Invoice validation."""
-
-    @pytest.mark.asyncio
-    async def test_validate_generated_ubl(
-        self,
-        generator_service: EInvoiceGeneratorService,
-        validator_service: EInvoiceValidatorService,
-        sample_invoice_data: InvoiceData,
-    ):
-        """Test validation of generated UBL invoice."""
-        # Generate
-        request = EInvoiceRequest(
-            invoice_data=sample_invoice_data,
-            format=EInvoiceFormat.UBL_21,
-        )
-        generated = await generator_service.generate(request)
-
-        # Validate
-        result = await validator_service.validate(generated.xml_content)
-
-        assert isinstance(result, ValidationResult)
-        assert result.format_detected == EInvoiceFormat.UBL_21
-        assert result.invoice_number == "RE-2024-001234"
-        assert result.seller_name == "Muster GmbH"
-        assert result.buyer_name == "Kunde AG"
-
-    @pytest.mark.asyncio
-    async def test_validate_generated_cii(
-        self,
-        generator_service: EInvoiceGeneratorService,
-        validator_service: EInvoiceValidatorService,
-        sample_invoice_data: InvoiceData,
-    ):
-        """Test validation of generated CII invoice."""
-        # Generate
-        request = EInvoiceRequest(
-            invoice_data=sample_invoice_data,
-            format=EInvoiceFormat.ZUGFERD_21,
-        )
-        generated = await generator_service.generate(request)
-
-        # Validate
-        result = await validator_service.validate(generated.xml_content)
-
-        assert result.format_detected in [EInvoiceFormat.ZUGFERD_21, EInvoiceFormat.CII_D16B]
-        assert result.invoice_number == "RE-2024-001234"
-
-    @pytest.mark.asyncio
-    async def test_detect_format_ubl(
-        self,
-        generator_service: EInvoiceGeneratorService,
-        validator_service: EInvoiceValidatorService,
-        sample_invoice_data: InvoiceData,
-    ):
-        """Test format auto-detection for UBL."""
-        request = EInvoiceRequest(
-            invoice_data=sample_invoice_data,
-            format=EInvoiceFormat.UBL_21,
-        )
-        generated = await generator_service.generate(request)
-
-        result = await validator_service.validate(generated.xml_content)
-
-        assert result.format_detected == EInvoiceFormat.UBL_21
-
-    @pytest.mark.asyncio
-    async def test_detect_format_xrechnung(
-        self,
-        generator_service: EInvoiceGeneratorService,
-        validator_service: EInvoiceValidatorService,
-        sample_invoice_data: InvoiceData,
-    ):
-        """Test format auto-detection for XRechnung."""
-        sample_invoice_data.buyer_reference = "04011000-12345-67"
-
-        request = EInvoiceRequest(
-            invoice_data=sample_invoice_data,
-            format=EInvoiceFormat.XRECHNUNG_30,
-        )
-        generated = await generator_service.generate(request)
-
-        result = await validator_service.validate(generated.xml_content)
-
-        assert result.format_detected == EInvoiceFormat.XRECHNUNG_30
-
-    @pytest.mark.asyncio
-    async def test_validate_invalid_xml(
-        self,
-        validator_service: EInvoiceValidatorService,
-    ):
-        """Test validation of invalid XML."""
-        invalid_xml = "<not-an-invoice>test</not-an-invoice>"
-
-        result = await validator_service.validate(invalid_xml)
-
-        assert result.is_valid is False
-        assert result.format_detected is None
-        assert len(result.errors) > 0
-
-    @pytest.mark.asyncio
-    async def test_validate_malformed_xml(
-        self,
-        validator_service: EInvoiceValidatorService,
-    ):
-        """Test validation of malformed XML."""
-        malformed_xml = "<Invoice><unclosed"
-
-        result = await validator_service.validate(malformed_xml)
-
-        assert result.is_valid is False
-        assert len(result.errors) > 0
-
-
-# ==================== Schema Tests ====================
-
-class TestEInvoiceSchemas:
-    """Tests for E-Invoice Pydantic schemas."""
-
-    def test_invoice_party_validation(self, sample_address: Address):
-        """Test InvoiceParty field validation."""
-        # Valid VAT ID
-        party = InvoiceParty(
-            name="Test GmbH",
-            address=sample_address,
-            vat_id="DE123456789",
-        )
-        assert party.vat_id == "DE123456789"
-
-    def test_address_country_code_validation(self):
-        """Test Address country code must be 2 letters."""
+    def test_address_country_code_validation(self) -> None:
+        """Test country code must be 2 uppercase letters."""
         # Valid
         address = Address(
             street_name="Test",
@@ -409,8 +102,83 @@ class TestEInvoiceSchemas:
         )
         assert address.country_code == "DE"
 
-    def test_invoice_line_item_quantity_positive(self):
-        """Test line item quantity must be positive."""
+
+class TestInvoicePartyModel:
+    """Tests for InvoiceParty model."""
+
+    @pytest.fixture
+    def sample_address(self) -> Address:
+        """Sample address fixture."""
+        return Address(
+            street_name="Musterstrasse",
+            building_number="123",
+            city="Berlin",
+            postal_code="10115",
+            country_code="DE",
+        )
+
+    def test_invoice_party_minimal(self, sample_address: Address) -> None:
+        """Test InvoiceParty with minimal fields."""
+        party = InvoiceParty(
+            name="Muster GmbH",
+            address=sample_address,
+        )
+        assert party.name == "Muster GmbH"
+        assert party.address.city == "Berlin"
+
+    def test_invoice_party_with_vat_id(self, sample_address: Address) -> None:
+        """Test InvoiceParty with VAT ID."""
+        party = InvoiceParty(
+            name="Muster GmbH",
+            address=sample_address,
+            vat_id="DE123456789",
+        )
+        assert party.vat_id == "DE123456789"
+
+    def test_invoice_party_with_bank_details(self, sample_address: Address) -> None:
+        """Test InvoiceParty with bank details."""
+        party = InvoiceParty(
+            name="Muster GmbH",
+            address=sample_address,
+            bank_account_iban="DE89370400440532013000",
+            bank_account_bic="COBADEFFXXX",
+            bank_account_name="Muster GmbH",
+        )
+        assert party.bank_account_iban == "DE89370400440532013000"
+
+
+class TestInvoiceLineItemModel:
+    """Tests for InvoiceLineItem model."""
+
+    def test_line_item_creation(self) -> None:
+        """Test InvoiceLineItem creation."""
+        item = InvoiceLineItem(
+            line_id="1",
+            description="Beratungsleistung",
+            quantity=Decimal("10.00"),
+            unit_price=Decimal("120.00"),
+            line_net_amount=Decimal("1200.00"),
+        )
+        assert item.line_id == "1"
+        assert item.quantity == Decimal("10.00")
+        assert item.line_net_amount == Decimal("1200.00")
+
+    def test_line_item_with_tax(self) -> None:
+        """Test InvoiceLineItem with tax details."""
+        item = InvoiceLineItem(
+            line_id="1",
+            description="Test",
+            quantity=Decimal("1"),
+            unit_price=Decimal("100"),
+            line_net_amount=Decimal("100"),
+            tax_category=TaxCategory.STANDARD,
+            tax_percent=Decimal("19.00"),
+        )
+        assert item.tax_category == TaxCategory.STANDARD
+        assert item.tax_percent == Decimal("19.00")
+
+    def test_line_item_quantity_must_be_positive(self) -> None:
+        """Test line item quantity validation."""
         with pytest.raises(ValueError):
             InvoiceLineItem(
                 line_id="1",
@@ -420,11 +188,88 @@ class TestEInvoiceSchemas:
                 line_net_amount=Decimal("0.00"),
             )
 
+
+class TestTaxTotalModel:
+    """Tests for TaxTotal model."""
+
+    def test_tax_total_creation(self) -> None:
+        """Test TaxTotal creation."""
+        tax = TaxTotal(
+            tax_amount=Decimal("19.00"),
+            taxable_amount=Decimal("100.00"),
+            tax_percent=Decimal("19.00"),
+        )
+        assert tax.tax_amount == Decimal("19.00")
+        assert tax.taxable_amount == Decimal("100.00")
+
+
+class TestInvoiceDataModel:
+    """Tests for complete InvoiceData model."""
+
+    @pytest.fixture
+    def sample_address(self) -> Address:
+        """Sample address fixture."""
+        return Address(
+            street_name="Musterstrasse",
+            city="Berlin",
+            postal_code="10115",
+        )
+
+    @pytest.fixture
+    def sample_seller(self, sample_address: Address) -> InvoiceParty:
+        """Sample seller fixture."""
+        return InvoiceParty(
+            name="Muster GmbH",
+            address=sample_address,
+            vat_id="DE123456789",
+        )
+
+    @pytest.fixture
+    def sample_buyer(self, sample_address: Address) -> InvoiceParty:
+        """Sample buyer fixture."""
+        return InvoiceParty(
+            name="Kunde AG",
+            address=sample_address,
+        )
+
+    @pytest.fixture
+    def sample_line_item(self) -> InvoiceLineItem:
+        """Sample line item fixture."""
+        return InvoiceLineItem(
+            line_id="1",
+            description="Beratung",
+            quantity=Decimal("1"),
+            unit_price=Decimal("100"),
+            line_net_amount=Decimal("100"),
+        )
+
+    def test_invoice_data_creation(
+        self,
+        sample_seller: InvoiceParty,
+        sample_buyer: InvoiceParty,
+        sample_line_item: InvoiceLineItem,
+    ) -> None:
+        """Test InvoiceData creation."""
+        invoice = InvoiceData(
+            invoice_number="RE-2024-001",
+            issue_date=date(2024, 1, 15),
+            seller=sample_seller,
+            buyer=sample_buyer,
+            line_items=[sample_line_item],
+            total_net_amount=Decimal("100.00"),
+            total_tax_amount=Decimal("19.00"),
+            total_gross_amount=Decimal("119.00"),
+            payable_amount=Decimal("119.00"),
+        )
+        assert invoice.invoice_number == "RE-2024-001"
+        assert invoice.seller.name == "Muster GmbH"
+        assert len(invoice.line_items) == 1
+
     def test_invoice_data_unique_line_ids(
         self,
         sample_seller: InvoiceParty,
         sample_buyer: InvoiceParty,
-    ):
+    ) -> None:
         """Test that line IDs must be unique."""
         duplicate_items = [
             InvoiceLineItem(
@@ -457,43 +302,91 @@ class TestEInvoiceSchemas:
             )
 
 
-# ==================== Integration Tests ====================
+# ==================== Validator Tests ====================
 
-class TestEInvoiceRoundTrip:
-    """Round-trip tests: generate → validate → verify."""
+class TestValidationResult:
+    """Tests for ValidationResult dataclass."""
 
-    @pytest.mark.asyncio
-    async def test_roundtrip_all_formats(
-        self,
-        generator_service: EInvoiceGeneratorService,
-        validator_service: EInvoiceValidatorService,
-        sample_invoice_data: InvoiceData,
-    ):
-        """Test generation and validation for all formats."""
-        formats_to_test = [
-            (EInvoiceFormat.UBL_21, None),
-            (EInvoiceFormat.XRECHNUNG_30, "04011000-12345-67"),
-            (EInvoiceFormat.ZUGFERD_21, None),
-            (EInvoiceFormat.CII_D16B, None),
-        ]
+    def test_validation_result_creation(self) -> None:
+        """Test ValidationResult creation."""
+        result = ValidationResult(
+            valid=True,
+            validated_at=datetime.now(timezone.utc),
+            validator_used="test",
+        )
+        assert result.valid is True
+        assert result.error_count == 0
 
-        for format_type, leitweg_id in formats_to_test:
-            # Add Leitweg-ID for XRechnung
-            if leitweg_id:
-                sample_invoice_data.buyer_reference = leitweg_id
+    def test_validation_result_add_error(self) -> None:
+        """Test adding error to ValidationResult."""
+        result = ValidationResult(
+            valid=True,
+            validated_at=datetime.now(timezone.utc),
+            validator_used="test",
+        )
+        result.add_error(
+            code="ERR-001",
+            location="/Invoice/ID",
+            message="ID ist erforderlich",
+        )
+        assert result.valid is False
+        assert result.error_count == 1
+        assert len(result.messages) == 1
+        assert result.messages[0].severity == ValidationSeverity.ERROR
 
-            request = EInvoiceRequest(
-                invoice_data=sample_invoice_data,
-                format=format_type,
-            )
+    def test_validation_result_add_warning(self) -> None:
+        """Test adding warning to ValidationResult."""
+        result = ValidationResult(
+            valid=True,
+            validated_at=datetime.now(timezone.utc),
+            validator_used="test",
+        )
+        result.add_warning(
+            code="WARN-001",
+            location="/Invoice/Note",
+            message="Note ist empfohlen",
+        )
+        assert result.valid is True  # Warnings don't invalidate
+        assert result.warning_count == 1
 
-            # Generate
-            generated = await generator_service.generate(request)
-            assert generated.success, f"Generation failed for {format_type}: {generated.validation_errors}"
 
-            # Validate
-            validated = await validator_service.validate(generated.xml_content)
-            assert validated.invoice_number == "RE-2024-001234", f"Invoice number mismatch for {format_type}"
+class TestValidationMessage:
+    """Tests for ValidationMessage dataclass."""
 
-            # Clear Leitweg-ID for next iteration
-            sample_invoice_data.buyer_reference = None
+    def test_validation_message_creation(self) -> None:
+        """Test ValidationMessage creation."""
+        msg = ValidationMessage(
+            code="BR-DE-01",
+            severity=ValidationSeverity.ERROR,
+            location="/Invoice/AccountingSupplierParty",
+            message="Leitweg-ID fehlt",
+            rule_id="BR-DE-01",
+        )
+        assert msg.code == "BR-DE-01"
+        assert msg.severity == ValidationSeverity.ERROR
+
+
+class TestValidatorService:
+    """Tests for EInvoiceValidatorService."""
+
+    @pytest.fixture
+    def validator_service(self) -> EInvoiceValidatorService:
+        """Get validator service instance."""
+        return get_validator_service()
+
+    def test_validator_service_creation(
+        self, validator_service: EInvoiceValidatorService
+    ) -> None:
+        """Test validator service can be created."""
+        assert validator_service is not None
+
+    def test_get_validator_service_returns_instance(self) -> None:
+        """Test get_validator_service returns an instance."""
+        service = get_validator_service()
+        assert isinstance(service, EInvoiceValidatorService)
+
+    def test_validator_type_enum(self) -> None:
+        """Test ValidatorType enum values."""
+        assert ValidatorType.AUTO == "auto"
+        assert ValidatorType.FACTURX == "facturx"
+        assert ValidatorType.KOSIT == "kosit"

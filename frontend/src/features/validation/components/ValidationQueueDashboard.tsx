@@ -11,9 +11,10 @@
  * - Batch-Actions-Bar unten bei Selektion
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { logger } from '@/lib/logger';
+import { useValidationShortcuts, ShortcutHelpText } from '../hooks/use-validation-shortcuts';
 import {
   CheckCircle,
   Clock,
@@ -36,6 +37,10 @@ import {
   Trash2,
   WifiOff,
   RotateCcw,
+  Keyboard,
+  Smartphone,
+  Monitor,
+  HelpCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -69,6 +74,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { usePermissions } from '@/lib/auth/hooks/use-permissions';
 import {
   useValidationQueue,
@@ -98,6 +109,18 @@ import { AssignEditorDialog } from './AssignEditorDialog';
 import type { RejectionCategory } from '../types/validation-queue.types';
 import { RulesManager } from './RulesManager';
 import { AnalyticsDashboard } from './AnalyticsDashboard';
+import { QuickValidationList } from './QuickValidationCard';
+import { useDocumentExplanation } from '@/features/ai-decisions/hooks/useAIDecisions';
+import { ExplainabilityPanel, WarumButton } from '@/components/ui/ExplainabilityPanel';
+import type { DecisionExplanation } from '@/components/ui/ExplainabilityPanel';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const PAGE_SIZE = 20;
 
@@ -168,6 +191,17 @@ function ValidationQueueDashboardInner() {
   const [rejectDialogItem, setRejectDialogItem] = useState<string | null>(null);
   const [bulkApproveDialogOpen, setBulkApproveDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [explanationDocId, setExplanationDocId] = useState<string | null>(null);
+  const [explanationDocName, setExplanationDocName] = useState<string>('');
+
+  // Keyboard Navigation State
+  const [focusedItemIndex, setFocusedItemIndex] = useState(-1);
+  const [showShortcutHelp, setShowShortcutHelp] = useState(false);
+
+  // Mobile View Mode (for swipe support)
+  const [useMobileView, setUseMobileView] = useState(false);
+  const [approvingItemId, setApprovingItemId] = useState<string | null>(null);
+  const [rejectingItemId, setRejectingItemId] = useState<string | null>(null);
 
   // Parse sort option
   const [sortBy, sortOrder] = sortOption.split(':') as [string, 'asc' | 'desc'];
@@ -204,6 +238,13 @@ function ValidationQueueDashboardInner() {
     activeTab === 'my-items' // Nur laden wenn Tab aktiv
   );
 
+  // XAI Explanation Query - Lazy Loading
+  const {
+    data: explanation,
+    isLoading: explanationLoading,
+    error: explanationError,
+  } = useDocumentExplanation(explanationDocId ?? '', !!explanationDocId);
+
   // Mutations
   const approveItem = useApproveQueueItem();
   const rejectItem = useRejectQueueItem();
@@ -239,11 +280,14 @@ function ValidationQueueDashboardInner() {
   }, [navigate]);
 
   const handleApprove = useCallback(async (itemId: string) => {
+    setApprovingItemId(itemId);
     try {
       await approveItem.mutateAsync({ itemId });
       toast.success('Dokument genehmigt');
     } catch {
       toast.error('Fehler beim Genehmigen');
+    } finally {
+      setApprovingItemId(null);
     }
   }, [approveItem]);
 
@@ -349,6 +393,12 @@ function ValidationQueueDashboardInner() {
     }
   }, [batchAssign, selectedItems]);
 
+  // XAI Explanation Handler
+  const handleShowExplanation = useCallback((documentId: string, documentName: string) => {
+    setExplanationDocId(documentId);
+    setExplanationDocName(documentName);
+  }, []);
+
   const handleSelectAll = useCallback((checked: boolean) => {
     if (checked && queueData?.items) {
       setSelectedItems(queueData.items.map((item) => item.id));
@@ -364,6 +414,79 @@ function ValidationQueueDashboardInner() {
       setSelectedItems((prev) => prev.filter((id) => id !== itemId));
     }
   }, []);
+
+  // Keyboard Navigation Handlers
+  const handleKeyboardNext = useCallback(() => {
+    if (!queueData?.items.length) return;
+    setFocusedItemIndex((prev) => {
+      const newIndex = Math.min(prev + 1, queueData.items.length - 1);
+      return newIndex;
+    });
+  }, [queueData?.items.length]);
+
+  const handleKeyboardPrev = useCallback(() => {
+    if (!queueData?.items.length) return;
+    setFocusedItemIndex((prev) => Math.max(prev - 1, 0));
+  }, [queueData?.items.length]);
+
+  const handleKeyboardApprove = useCallback(() => {
+    if (focusedItemIndex >= 0 && queueData?.items[focusedItemIndex]) {
+      const item = queueData.items[focusedItemIndex];
+      if (item.status === ValidationStatus.PENDING || item.status === ValidationStatus.IN_PROGRESS) {
+        handleApprove(item.id);
+      }
+    } else if (selectedItems.length > 0) {
+      handleBatchApproveClick();
+    }
+  }, [focusedItemIndex, queueData?.items, selectedItems.length, handleApprove, handleBatchApproveClick]);
+
+  const handleKeyboardReject = useCallback(() => {
+    if (focusedItemIndex >= 0 && queueData?.items[focusedItemIndex]) {
+      const item = queueData.items[focusedItemIndex];
+      if (item.status === ValidationStatus.PENDING || item.status === ValidationStatus.IN_PROGRESS) {
+        handleReject(item.id);
+      }
+    } else if (selectedItems.length > 0) {
+      handleBatchRejectClick();
+    }
+  }, [focusedItemIndex, queueData?.items, selectedItems.length, handleReject, handleBatchRejectClick]);
+
+  const handleKeyboardOpen = useCallback(() => {
+    if (focusedItemIndex >= 0 && queueData?.items[focusedItemIndex]) {
+      handleOpenItem(queueData.items[focusedItemIndex].id);
+    }
+  }, [focusedItemIndex, queueData?.items, handleOpenItem]);
+
+  const handleKeyboardClear = useCallback(() => {
+    setSelectedItems([]);
+    setFocusedItemIndex(-1);
+  }, []);
+
+  const handleKeyboardSelectAll = useCallback(() => {
+    if (queueData?.items) {
+      setSelectedItems(queueData.items.map((item) => item.id));
+    }
+  }, [queueData?.items]);
+
+  // Keyboard Shortcuts Integration
+  const dialogOpen = rejectDialogOpen || bulkApproveDialogOpen || assignDialogOpen;
+  useValidationShortcuts(
+    {
+      onApprove: handleKeyboardApprove,
+      onReject: handleKeyboardReject,
+      onNext: handleKeyboardNext,
+      onPrev: handleKeyboardPrev,
+      onOpen: handleKeyboardOpen,
+      onClear: handleKeyboardClear,
+      onSelectAll: handleKeyboardSelectAll,
+    },
+    { enabled: activeTab === 'queue' && !dialogOpen }
+  );
+
+  // Reset focused index when data changes
+  useEffect(() => {
+    setFocusedItemIndex(-1);
+  }, [queueData?.items]);
 
   // Pagination
   const totalPages = queueData ? Math.ceil(queueData.total / PAGE_SIZE) : 0;
@@ -441,19 +564,81 @@ function ValidationQueueDashboardInner() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Validierung</h1>
           <p className="text-muted-foreground">
-            OCR-Ergebnisse prüfen und Datenextraktion validieren
+            OCR-Ergebnisse pruefen und Datenextraktion validieren
           </p>
         </div>
-        <Button
-          onClick={() => refetch()}
-          disabled={isLoading}
-          variant="outline"
-          aria-label="Warteschlange aktualisieren"
-        >
-          <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
-          Aktualisieren
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Mobile/Desktop View Toggle */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={useMobileView ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setUseMobileView(!useMobileView)}
+                  aria-label={useMobileView ? 'Desktop-Ansicht' : 'Mobile-Ansicht mit Swipe'}
+                  aria-pressed={useMobileView}
+                >
+                  {useMobileView ? (
+                    <Monitor className="w-4 h-4" aria-hidden="true" />
+                  ) : (
+                    <Smartphone className="w-4 h-4" aria-hidden="true" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{useMobileView ? 'Desktop-Ansicht' : 'Mobile-Ansicht (Swipe-Gesten)'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={showShortcutHelp ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setShowShortcutHelp(!showShortcutHelp)}
+                  aria-label="Tastaturkuerzel anzeigen"
+                  aria-pressed={showShortcutHelp}
+                >
+                  <Keyboard className="w-4 h-4" aria-hidden="true" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Tastaturkuerzel {showShortcutHelp ? 'ausblenden' : 'anzeigen'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <Button
+            onClick={() => refetch()}
+            disabled={isLoading}
+            variant="outline"
+            aria-label="Warteschlange aktualisieren"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
+            Aktualisieren
+          </Button>
+        </div>
       </div>
+
+      {/* Keyboard Shortcuts Help */}
+      {showShortcutHelp && (
+        <div className="bg-muted/50 rounded-lg p-4 border">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-medium">Tastaturkuerzel</h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowShortcutHelp(false)}
+              className="h-6 w-6 p-0"
+              aria-label="Hilfe schliessen"
+            >
+              &times;
+            </Button>
+          </div>
+          <ShortcutHelpText />
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -752,44 +937,73 @@ function ValidationQueueDashboardInner() {
             </div>
           )}
 
-          {/* Queue Table */}
+          {/* Queue Table / Mobile View */}
           {!isLoading && !error && queueData && queueData.items.length > 0 && (
             <>
-              <div id="validation-table" className="rounded-md border" role="region" aria-label="Validierungs-Warteschlange">
-                <Table aria-label={`Validierungs-Warteschlange mit ${queueData.total} Dokumenten. ${currentFilterDescription}`}>
-                  <caption className="sr-only">
-                    Validierungs-Warteschlange: {queueData.total} Dokumente.
-                    {statusFilter !== 'all' && ` Gefiltert nach: ${VALIDATION_STATUS_LABELS[statusFilter as ValidationStatus]}.`}
-                    Seite {page + 1} von {totalPages || 1}.
-                  </caption>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[40px]">
-                        <Checkbox
-                          checked={
-                            selectedItems.length === queueData.items.length &&
-                            queueData.items.length > 0
-                          }
-                          onCheckedChange={handleSelectAll}
-                          aria-label={selectAllLabel}
-                        />
-                      </TableHead>
-                      <TableHead>Dokument</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Quelle</TableHead>
-                      <TableHead>Konfidenz</TableHead>
-                      <TableHead>Priorität</TableHead>
-                      <TableHead>Erstellt</TableHead>
-                      <TableHead className="w-[80px]">Aktionen</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {queueData.items.map((item) => (
-                      <TableRow
-                        key={item.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => handleOpenItem(item.id)}
-                      >
+              {/* Mobile View mit Swipe-Gesten */}
+              {useMobileView ? (
+                <div id="validation-mobile-list" role="region" aria-label="Validierungs-Warteschlange (Mobile)">
+                  <div className="mb-4 p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
+                    <p className="flex items-center gap-2">
+                      <Smartphone className="w-4 h-4" />
+                      <span>Wischen Sie nach rechts zum Genehmigen oder nach links zum Ablehnen</span>
+                    </p>
+                  </div>
+                  <QuickValidationList
+                    items={queueData.items}
+                    focusedIndex={focusedItemIndex}
+                    onApprove={handleApprove}
+                    onReject={handleReject}
+                    onOpen={handleOpenItem}
+                    onSelect={(itemId) => {
+                      handleSelectItem(itemId, !selectedItems.includes(itemId));
+                    }}
+                    selectedItems={selectedItems}
+                    approvingId={approvingItemId ?? undefined}
+                    rejectingId={rejectingItemId ?? undefined}
+                  />
+                </div>
+              ) : (
+                /* Desktop Table View */
+                <div id="validation-table" className="rounded-md border" role="region" aria-label="Validierungs-Warteschlange">
+                  <Table aria-label={`Validierungs-Warteschlange mit ${queueData.total} Dokumenten. ${currentFilterDescription}`}>
+                    <caption className="sr-only">
+                      Validierungs-Warteschlange: {queueData.total} Dokumente.
+                      {statusFilter !== 'all' && ` Gefiltert nach: ${VALIDATION_STATUS_LABELS[statusFilter as ValidationStatus]}.`}
+                      Seite {page + 1} von {totalPages || 1}.
+                    </caption>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[40px]">
+                          <Checkbox
+                            checked={
+                              selectedItems.length === queueData.items.length &&
+                              queueData.items.length > 0
+                            }
+                            onCheckedChange={handleSelectAll}
+                            aria-label={selectAllLabel}
+                          />
+                        </TableHead>
+                        <TableHead>Dokument</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Quelle</TableHead>
+                        <TableHead>Konfidenz</TableHead>
+                        <TableHead>Priorität</TableHead>
+                        <TableHead>Erstellt</TableHead>
+                        <TableHead className="w-[130px]">Aktionen</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {queueData.items.map((item, index) => (
+                        <TableRow
+                          key={item.id}
+                          className={`cursor-pointer hover:bg-muted/50 ${
+                            focusedItemIndex === index ? 'ring-2 ring-primary ring-inset bg-primary/5' : ''
+                          }`}
+                          onClick={() => handleOpenItem(item.id)}
+                          tabIndex={focusedItemIndex === index ? 0 : -1}
+                          aria-selected={focusedItemIndex === index}
+                        >
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <Checkbox
                             checked={selectedItems.includes(item.id)}
@@ -841,50 +1055,95 @@ function ValidationQueueDashboardInner() {
                           </span>
                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                aria-label={`Aktionen für ${item.document_name || `Dokument ${item.document_id.slice(0, 8)}`}`}
-                              >
-                                <MoreHorizontal className="w-4 h-4" aria-hidden="true" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleOpenItem(item.id)}>
-                                <Eye className="w-4 h-4 mr-2" />
-                                Öffnen
-                              </DropdownMenuItem>
-                              {item.status === ValidationStatus.PENDING && (
-                                <>
-                                  <DropdownMenuItem onClick={() => handleApprove(item.id)}>
-                                    <CheckCircle className="w-4 h-4 mr-2" />
-                                    Genehmigen
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleReject(item.id)}>
-                                    <XCircle className="w-4 h-4 mr-2" />
-                                    Ablehnen
-                                  </DropdownMenuItem>
-                                </>
-                              )}
-                              {canAccess.validationManage && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => handleDelete(item.id)}>
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    Löschen
-                                  </DropdownMenuItem>
-                                </>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <div className="flex items-center gap-1">
+                            {/* Quick Approve Button - nur bei ausstehenden Items */}
+                            {(item.status === ValidationStatus.PENDING || item.status === ValidationStatus.IN_PROGRESS) && (
+                              <>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-100 dark:hover:bg-green-900/30"
+                                        onClick={() => handleApprove(item.id)}
+                                        disabled={approveItem.isPending}
+                                        aria-label={`${item.document_name || 'Dokument'} genehmigen`}
+                                      >
+                                        <CheckCircle className="w-4 h-4" aria-hidden="true" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Genehmigen <kbd className="ml-1 px-1 bg-muted rounded text-xs">A</kbd></p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/30"
+                                        onClick={() => handleReject(item.id)}
+                                        disabled={rejectItem.isPending}
+                                        aria-label={`${item.document_name || 'Dokument'} ablehnen`}
+                                      >
+                                        <XCircle className="w-4 h-4" aria-hidden="true" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Ablehnen <kbd className="ml-1 px-1 bg-muted rounded text-xs">R</kbd></p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </>
+                            )}
+                            {/* More Actions Dropdown */}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  aria-label={`Weitere Aktionen fuer ${item.document_name || `Dokument ${item.document_id.slice(0, 8)}`}`}
+                                >
+                                  <MoreHorizontal className="w-4 h-4" aria-hidden="true" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleOpenItem(item.id)}>
+                                  <Eye className="w-4 h-4 mr-2" />
+                                  Details anzeigen
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleShowExplanation(item.document_id, item.document_name || 'Dokument')}
+                                >
+                                  <HelpCircle className="w-4 h-4 mr-2" />
+                                  Warum?
+                                </DropdownMenuItem>
+                                {canAccess.validationManage && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={() => handleDelete(item.id)}
+                                      className="text-destructive"
+                                    >
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      Loeschen
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
 
               {/* Pagination */}
               {totalPages > 1 && (
@@ -1152,6 +1411,59 @@ function ValidationQueueDashboardInner() {
         isLoading={batchAssign.isPending}
         itemCount={selectedItems.length}
       />
+
+      {/* XAI Explanation Dialog */}
+      <Dialog
+        open={!!explanationDocId}
+        onOpenChange={(open) => !open && setExplanationDocId(null)}
+      >
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <HelpCircle className="w-5 h-5 text-blue-600" />
+              Warum diese Validierung?
+            </DialogTitle>
+            <DialogDescription>
+              KI-Erklaerung fuer "{explanationDocName}"
+            </DialogDescription>
+          </DialogHeader>
+
+          {explanationLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <span className="ml-2 text-muted-foreground">Erklaerung wird geladen...</span>
+            </div>
+          ) : explanationError ? (
+            <div className="text-center py-8 text-red-600">
+              <AlertTriangle className="w-8 h-8 mx-auto mb-2" />
+              <p>Erklaerung konnte nicht geladen werden</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Moeglicherweise wurde keine KI-Entscheidung fuer dieses Dokument getroffen.
+              </p>
+            </div>
+          ) : explanation ? (
+            <ExplainabilityPanel
+              explanation={explanation as DecisionExplanation}
+              hasExplanation={true}
+              compact={false}
+            />
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <HelpCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <p>Keine KI-Erklaerung verfuegbar</p>
+              <p className="text-sm mt-1">
+                Dieses Dokument wurde noch nicht durch die KI bewertet.
+              </p>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExplanationDocId(null)}>
+              Schliessen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Offline Banner */}
       {!isOnline && (

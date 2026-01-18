@@ -117,7 +117,7 @@ def _validate_cached_value(data: Any) -> CacheValueType:
     # Spezialfall: datetime-Objekte
     if isinstance(data, dict) and "__datetime__" in data and len(data) == 1:
         validated = DatetimeCacheValue.model_validate(data)
-        return {"__datetime__": validated.__datetime__}
+        return {"__datetime__": validated.datetime_value}
 
     # Normale Cache-Werte
     CacheValueSchema(value=data)

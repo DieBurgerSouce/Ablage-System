@@ -94,6 +94,17 @@ export const bankingQueryKeys = {
     skonto: () => [...bankingQueryKeys.all, 'skonto'] as const,
     skontoOpportunities: (daysAhead?: number) =>
         [...bankingQueryKeys.skonto(), 'opportunities', daysAhead] as const,
+
+    // Liquidity Forecast
+    liquidity: () => [...bankingQueryKeys.all, 'liquidity'] as const,
+    liquidityForecast: (bankAccountId?: string) =>
+        [...bankingQueryKeys.liquidity(), 'forecast', bankAccountId] as const,
+    liquidityBottlenecks: (params?: { bankAccountId?: string; daysAhead?: number }) =>
+        [...bankingQueryKeys.liquidity(), 'bottlenecks', params?.bankAccountId, params?.daysAhead] as const,
+    liquidityWaterfall: (params?: { bankAccountId?: string; days?: number; granularity?: string }) =>
+        [...bankingQueryKeys.liquidity(), 'waterfall', params?.bankAccountId, params?.days, params?.granularity] as const,
+    liquidityAnomalies: (params?: { bankAccountId?: string; daysBack?: number }) =>
+        [...bankingQueryKeys.liquidity(), 'anomalies', params?.bankAccountId, params?.daysBack] as const,
 };
 
 // ==================== Cash-Flow Hooks ====================
@@ -1298,5 +1309,76 @@ export function useUpdateDunningStageConfig() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: mahnungswesenQueryKeys.dunningStages() });
         },
+    });
+}
+
+// ==================== Liquidity Forecast Hooks ====================
+
+/**
+ * Liquiditätsprognose abrufen (30/60/90 Tage)
+ */
+export function useLiquidityForecast(params?: {
+    bank_account_id?: string;
+    starting_balance?: number;
+}) {
+    return useQuery({
+        queryKey: bankingQueryKeys.liquidityForecast(params?.bank_account_id),
+        queryFn: () => bankingService.getLiquidityForecast(params),
+        staleTime: STALE_TIMES.cashflow,
+    });
+}
+
+/**
+ * Engpass-Vorhersage abrufen
+ */
+export function useLiquidityBottlenecks(params?: {
+    bank_account_id?: string;
+    days_ahead?: number;
+    min_severity?: 'healthy' | 'adequate' | 'caution' | 'warning' | 'critical';
+}) {
+    return useQuery({
+        queryKey: bankingQueryKeys.liquidityBottlenecks({
+            bankAccountId: params?.bank_account_id,
+            daysAhead: params?.days_ahead,
+        }),
+        queryFn: () => bankingService.getLiquidityBottlenecks(params),
+        staleTime: STALE_TIMES.cashflow,
+    });
+}
+
+/**
+ * Wasserfall-Chart-Daten abrufen
+ */
+export function useWaterfallChart(params?: {
+    bank_account_id?: string;
+    days?: number;
+    granularity?: 'daily' | 'weekly' | 'monthly';
+}) {
+    return useQuery({
+        queryKey: bankingQueryKeys.liquidityWaterfall({
+            bankAccountId: params?.bank_account_id,
+            days: params?.days,
+            granularity: params?.granularity,
+        }),
+        queryFn: () => bankingService.getWaterfallChart(params),
+        staleTime: STALE_TIMES.cashflow,
+    });
+}
+
+/**
+ * Zahlungsanomalien erkennen
+ */
+export function usePaymentAnomalies(params?: {
+    bank_account_id?: string;
+    days_back?: number;
+    min_confidence?: number;
+}) {
+    return useQuery({
+        queryKey: bankingQueryKeys.liquidityAnomalies({
+            bankAccountId: params?.bank_account_id,
+            daysBack: params?.days_back,
+        }),
+        queryFn: () => bankingService.detectPaymentAnomalies(params),
+        staleTime: STALE_TIMES.cashflow,
     });
 }

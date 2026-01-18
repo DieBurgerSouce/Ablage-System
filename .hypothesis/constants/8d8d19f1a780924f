@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\kpi\__init__.py
+# hypothesis_version: 6.148.7
+
+['AmortizationSchedule', 'ExtraPaymentImpact', 'InsuranceGapResult', 'InsuranceKPIService', 'LoanKPIService', 'PropertyKPIResult', 'PropertyKPIService', 'VehicleKPIResult', 'VehicleKPIService']

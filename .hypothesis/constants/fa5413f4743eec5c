@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\optimizer\momentum.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.001, 0.9, 1.0, 'FP16_DenseTensor', 'FP32_DenseTensor', 'Grad', 'LearningRate', 'MasterParam', 'MasterParamOut', 'Param', 'ParamOut', 'Velocity', 'VelocityOut', 'found_inf', 'l2_decay', 'merged_momentum', 'momentum', 'momentum is not set', 'mu', 'multi_precision', 'params', 'regularization_coeff', 'regularizer', 'rescale_grad', 'use_nesterov', 'velocity', 'weight_decay']

@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import {
   BarChart3,
+  Calendar,
   Columns,
   FileText,
   Filter,
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react';
 import { FilterBuilder } from './FilterBuilder';
 import { ChartBuilder } from './ChartBuilder';
+import { ScheduleConfig } from './ScheduleConfig';
 import {
   Sheet,
   SheetContent,
@@ -233,7 +235,7 @@ export function ReportBuilder({ template, open, onClose }: ReportBuilderProps) {
         </SheetHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="basics" className="gap-2">
               <Settings className="h-4 w-4" />
               <span className="hidden sm:inline">Basics</span>
@@ -249,6 +251,10 @@ export function ReportBuilder({ template, open, onClose }: ReportBuilderProps) {
             <TabsTrigger value="charts" className="gap-2" disabled={!isEditing}>
               <PieChart className="h-4 w-4" />
               <span className="hidden sm:inline">Charts</span>
+            </TabsTrigger>
+            <TabsTrigger value="schedule" className="gap-2" disabled={!isEditing}>
+              <Calendar className="h-4 w-4" />
+              <span className="hidden sm:inline">Zeitplan</span>
             </TabsTrigger>
             <TabsTrigger value="preview" className="gap-2" disabled={!isEditing}>
               <FileText className="h-4 w-4" />
@@ -492,6 +498,20 @@ export function ReportBuilder({ template, open, onClose }: ReportBuilderProps) {
             <TabsContent value="charts" className="space-y-4 pr-4">
               {template ? (
                 <ChartBuilder template={template} />
+              ) : (
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center text-muted-foreground py-8">
+                      <p>Bitte speichern Sie zuerst das Template.</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value="schedule" className="space-y-4 pr-4">
+              {template ? (
+                <ScheduleConfig template={template} />
               ) : (
                 <Card>
                   <CardContent className="pt-6">

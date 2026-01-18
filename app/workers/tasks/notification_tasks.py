@@ -476,6 +476,295 @@ def send_weekly_digest(self) -> Dict[str, Any]:
 @celery_app.task(
     bind=True,
     base=CPUTask,
+    name="app.workers.tasks.notification_tasks.send_dunning_email_with_retry",
+    max_retries=5,
+    default_retry_delay=30,  # Base delay, wird exponentiell erhoeht
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_backoff_max=600,  # Max 10 Minuten zwischen Retries
+    retry_jitter=True,  # Zufaellige Variation um Thundering Herd zu vermeiden
+)
+def send_dunning_email_with_retry(
+    self,
+    notification_id: str,
+    recipient_email: str,
+    subject: str,
+    body: str,
+    pdf_attachment: Optional[bytes] = None,
+    attachment_filename: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Sendet Mahnungs-E-Mails mit exponential backoff Retry-Logik.
+
+    Retry-Intervalle (mit Jitter):
+    - Versuch 1: sofort
+    - Versuch 2: ~30s
+    - Versuch 3: ~60s
+    - Versuch 4: ~120s
+    - Versuch 5: ~240s
+    - Versuch 6: ~480s
+
+    Args:
+        notification_id: ID der zugehoerigen Notification
+        recipient_email: Empfaenger-E-Mail
+        subject: E-Mail-Betreff
+        body: E-Mail-Text (Plain Text oder HTML)
+        pdf_attachment: Optional PDF als Bytes
+        attachment_filename: Dateiname fuer Anhang
+
+    Returns:
+        Dict mit Sendestatus und Versuchszaehler
+    """
+    attempt = self.request.retries + 1
+    logger.info(
+        "dunning_email_attempt",
+        task_id=self.request.id,
+        notification_id=notification_id,
+        attempt=attempt,
+        max_retries=self.max_retries,
+    )
+
+    async def do_send():
+        from app.services.notification_service import EmailNotifier
+        from app.db.session import get_async_session_context
+        from app.db.models import Notification, NotificationStatus
+
+        notifier = EmailNotifier()
+
+        if not notifier.is_configured:
+            logger.error(
+                "dunning_email_not_configured",
+                notification_id=notification_id,
+            )
+            return {
+                "success": False,
+                "error": "E-Mail-Server nicht konfiguriert",
+                "attempt": attempt,
+            }
+
+        try:
+            # Sende E-Mail mit oder ohne Anhang
+            if pdf_attachment and attachment_filename:
+                success = await notifier.send_with_attachment(
+                    to_email=recipient_email,
+                    subject=subject,
+                    body=body,
+                    attachment=pdf_attachment,
+                    attachment_filename=attachment_filename,
+                )
+            else:
+                success = await notifier.send(
+                    to_email=recipient_email,
+                    subject=subject,
+                    body=body,
+                )
+
+            # Aktualisiere Notification-Status in DB
+            async with get_async_session_context() as db:
+                from uuid import UUID
+                from sqlalchemy import update
+
+                new_status = NotificationStatus.SENT if success else NotificationStatus.FAILED
+
+                await db.execute(
+                    update(Notification)
+                    .where(Notification.id == UUID(notification_id))
+                    .values(
+                        status=new_status,
+                        retry_count=attempt,
+                        last_attempt_at=datetime.now(timezone.utc),
+                        error_message=None if success else "Zustellung fehlgeschlagen",
+                    )
+                )
+                await db.commit()
+
+            if success:
+                logger.info(
+                    "dunning_email_sent",
+                    notification_id=notification_id,
+                    attempt=attempt,
+                )
+                return {
+                    "success": True,
+                    "attempt": attempt,
+                    "recipient": recipient_email,
+                }
+            else:
+                raise Exception("E-Mail-Zustellung fehlgeschlagen")
+
+        except Exception as e:
+            logger.warning(
+                "dunning_email_failed",
+                notification_id=notification_id,
+                attempt=attempt,
+                error=str(e),
+            )
+            raise
+
+    try:
+        return run_async(do_send())
+
+    except Exception as e:
+        # Letzter Versuch fehlgeschlagen?
+        if attempt >= self.max_retries + 1:
+            logger.error(
+                "dunning_email_final_failure",
+                notification_id=notification_id,
+                total_attempts=attempt,
+                error=str(e),
+            )
+            # Markiere als endgueltig fehlgeschlagen
+            async def mark_failed():
+                async with get_async_session_context() as db:
+                    from uuid import UUID
+                    from sqlalchemy import update
+                    from app.db.models import Notification, NotificationStatus
+
+                    await db.execute(
+                        update(Notification)
+                        .where(Notification.id == UUID(notification_id))
+                        .values(
+                            status=NotificationStatus.FAILED,
+                            retry_count=attempt,
+                            error_message=f"Max Retries erreicht: {str(e)[:200]}",
+                        )
+                    )
+                    await db.commit()
+
+            run_async(mark_failed())
+
+            return {
+                "success": False,
+                "error": str(e),
+                "attempt": attempt,
+                "final_failure": True,
+            }
+
+        # Retry mit exponential backoff
+        raise self.retry(exc=e)
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.notification_tasks.retry_failed_dunning_emails",
+    max_retries=1,
+)
+def retry_failed_dunning_emails(self) -> Dict[str, Any]:
+    """
+    Retry-Task fuer fehlgeschlagene Dunning-E-Mails.
+
+    Sucht Notifications mit Status FAILED und retry_count < max_retries,
+    die aelter als 1 Stunde sind, und startet neue Zustellversuche.
+
+    Wird stuendlich ausgefuehrt (siehe Beat Schedule).
+
+    Returns:
+        Dict mit Anzahl der gestarteten Retry-Tasks
+    """
+    logger.info(
+        "retry_failed_dunning_emails_started",
+        task_id=self.request.id,
+    )
+
+    async def do_retry():
+        from app.db.session import get_async_session_context
+        from app.db.models import Notification, NotificationStatus
+        from uuid import UUID
+
+        stats = {
+            "checked": 0,
+            "retried": 0,
+            "skipped_max_retries": 0,
+            "errors": 0,
+        }
+
+        async with get_async_session_context() as db:
+            # Finde fehlgeschlagene Dunning-Notifications
+            one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+            max_retry_attempts = 5
+
+            result = await db.execute(
+                select(Notification).where(
+                    and_(
+                        Notification.notification_type.in_([
+                            "dunning_notification",
+                            "payment_reminder",
+                            "dunning_letter",
+                        ]),
+                        Notification.status == NotificationStatus.FAILED,
+                        Notification.retry_count < max_retry_attempts,
+                        Notification.last_attempt_at < one_hour_ago,
+                    )
+                ).limit(50)  # Batch-Groesse
+            )
+            failed_notifications = result.scalars().all()
+            stats["checked"] = len(failed_notifications)
+
+            for notif in failed_notifications:
+                try:
+                    if notif.retry_count >= max_retry_attempts:
+                        stats["skipped_max_retries"] += 1
+                        continue
+
+                    # Hole zugehoerige Daten
+                    recipient_email = notif.metadata.get("recipient_email") if notif.metadata else None
+                    if not recipient_email:
+                        # Versuche User-Email zu laden
+                        if notif.user_id:
+                            from app.db.models import User
+                            user_result = await db.execute(
+                                select(User).where(User.id == notif.user_id)
+                            )
+                            user = user_result.scalar_one_or_none()
+                            if user and user.email:
+                                recipient_email = user.email
+
+                    if not recipient_email:
+                        stats["errors"] += 1
+                        continue
+
+                    # Starte neuen Zustellversuch
+                    send_dunning_email_with_retry.delay(
+                        notification_id=str(notif.id),
+                        recipient_email=recipient_email,
+                        subject=notif.title or "Zahlungserinnerung",
+                        body=notif.message or "",
+                    )
+
+                    stats["retried"] += 1
+
+                except Exception as e:
+                    stats["errors"] += 1
+                    logger.warning(
+                        "retry_dunning_email_error",
+                        notification_id=str(notif.id),
+                        error=str(e),
+                    )
+
+        return stats
+
+    try:
+        result = run_async(do_retry())
+        logger.info(
+            "retry_failed_dunning_emails_completed",
+            task_id=self.request.id,
+            **result,
+        )
+        return result
+
+    except Exception as e:
+        logger.error(
+            "retry_failed_dunning_emails_failed",
+            task_id=self.request.id,
+            error=str(e),
+        )
+        raise
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
     name="app.workers.tasks.notification_tasks.cleanup_old_notifications",
     max_retries=2,
     default_retry_delay=60,

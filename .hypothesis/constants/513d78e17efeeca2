@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\banking\mahn_task_service.py
+# hypothesis_version: 6.148.7
+
+['assigned_user_id', 'by_type', 'callback_requested', 'called_at', 'called_by_id', 'called_by_name', 'cancelled', 'collection', 'completed', 'completed_at', 'completed_by_id', 'completion_notes', 'contact_name', 'created_at', 'dispute_raised', 'due_date', 'due_today', 'dunning_record_id', 'error', 'escalate', 'failed', 'follow_up_date', 'follow_up_notes', 'follow_up_required', 'id', 'in_progress', 'mahn_task_assigned', 'mahn_task_cancelled', 'mahn_task_completed', 'mahn_task_created', 'mahn_task_snoozed', 'not_reached', 'notes', 'outcome', 'overdue', 'payment_promised', 'pending', 'phone_call', 'phone_call_logged', 'phone_number', 'priority', 'reached', 'reminder', 'review', 'snooze_count', 'snooze_reason', 'snoozed', 'snoozed_until', 'status', 'successful', 'task_type', 'total_pending', 'total_processed', 'updated_at', 'voicemail']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\nn\functional\fused_dot_product_attention.py
+# hypothesis_version: 6.148.7
+
+[-0.5, 0.0, 1.0, 'bias', 'bias_type_str', 'causal', 'cu_seqlen_k', 'cu_seqlen_q', 'dropout_probability', 'float', 'int64', 'is_training', 'k', 'mask_type_str', 'none', 'out', 'padding', 'paddle_causal', 'post_scale_bias', 'pre_scale_bias', 'q', 'rng_state', 'scaling_factor', 'softmax_out', 'v']

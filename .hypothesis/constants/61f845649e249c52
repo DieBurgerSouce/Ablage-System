@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\communication\stream\broadcast.py
+# hypothesis_version: 6.148.7
+
+['bool', 'broadcast', 'default', 'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'out', 'ring_id', 'root', 'tensor', 'uint8', 'x']

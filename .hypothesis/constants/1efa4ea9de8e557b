@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\audio\backends\wave_backend.py
+# hypothesis_version: 6.148.7
+
+['<h', 'Expected 2D tensor', 'PCM_S', 'paddleaudio', 'rb', 'read', 'w']

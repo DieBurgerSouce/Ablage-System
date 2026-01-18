@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\text\__init__.py
+# hypothesis_version: 6.148.7
+
+['Conll05st', 'Imdb', 'Imikolov', 'Movielens', 'UCIHousing', 'ViterbiDecoder', 'WMT14', 'WMT16', 'viterbi_decode']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\surya\common\surya\processor\tokenizer.py
+# hypothesis_version: 6.148.7
+
+[255, 65536, '(', ')', '-', '</S>', '</math>', '<PAD>', '<SCRIPT-.*?>', '<U+', '<UNK_MATH>', '<UNK_SPECIAL>', '<math', '>', '^(', 'all', 'attention_mask', 'bos_token', 'child', 'eos_token', 'formatting', 'id', 'ignore', 'input_ids', 'layout', 'leaf', 'little', 'math_external', 'pad_token', 'r', 'reasoning', 'reserved', 'script', 'specials.json', 'specials_dict.json', 'specials_dict_file', 'specials_file', 'system', 'table_structure', 'tolist', 'unk_token', 'utf-16le', 'utf-8', 'vocab_file', 'vocab_math.json', 'w', '|']

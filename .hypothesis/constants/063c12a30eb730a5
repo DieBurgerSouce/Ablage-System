@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\docling_core\types\doc\page.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.001, 0.5, 0.8, 1.0, 2.0, 3.0, 4.0, 180, 255, 'BoundingRectangle', 'ParsedPdfDocument', 'PdfTableOfContents', 'RGBA', 'SegmentedPage', 'SegmentedPdfPage', 'after', 'art_box', 'before', 'black', 'bleed_box', 'char', 'confidence', 'crop_box', 'cyan', 'green', 'json', 'left_to_right', 'line', 'media_box', 'r', 'r_x0', 'r_x1', 'r_x2', 'r_x3', 'r_y0', 'r_y1', 'r_y2', 'r_y3', 'red', 'right_to_left', 'text_direction', 'trim_box', 'unspecified', 'utf-8', 'w', 'white', 'word', 'yellow']

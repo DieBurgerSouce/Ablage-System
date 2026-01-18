@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\static\nn\metric.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, 'AUC', 'Accuracy', 'Correct', 'Indices', 'Input', 'K', 'Label', 'Out', 'Predict', 'ROC', 'StatNeg', 'StatNegOut', 'StatPos', 'StatPosOut', 'Total', 'X', 'Y', 'accuracy', 'auc', 'axes', 'axis', 'ctr_metric_bundle', 'curve', 'dtype', 'elementwise_add', 'elementwise_mul', 'elementwise_sub', 'ends', 'float16', 'float32', 'float64', 'input', 'ins_tag_weight', 'int32', 'int64', 'k', 'l1_norm', 'label', 'num_thresholds', 'reduce_sum', 'shape', 'sigmoid', 'slice', 'slide_steps', 'sorted', 'squared_l2_norm', 'starts', 'top_k_v2', 'uint16', 'value']

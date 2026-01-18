@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_optimizers\lars_optimizer.py
+# hypothesis_version: 6.148.7
+
+[0.0005, 0.01, 'epsilon', 'lars_coeff', 'lars_weight_decay']

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\communication\stream\reduce.py
+# hypothesis_version: 6.148.7
+
+['bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'out', 'reduce', 'reduce_type', 'ring_id', 'root_id', 'tensor', 'uint8', 'x']

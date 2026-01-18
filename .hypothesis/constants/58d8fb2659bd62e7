@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\schemas\rag.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.7, 1.0, 100, 255, 512, 1000, 4000, 4096, 8192, 10000, 'Anzahl Collaborators', 'Anzahl Tokens', 'Follow-up Fragen', 'RAG-Quellen', 'RAGChunkSearchResult', 'Reranking Score', 'Session ist geteilt', 'Typ der Sektion', 'all_time', 'assistant', 'cancelled', 'chunk_documents', 'completed', 'contribute', 'custom', 'customer', 'customer_card_sync', 'document', 'document_search', 'entity_statistics', 'error', 'failed', 'footer', 'general', 'header', 'hybrid', 'invoice_analysis', 'keyword', 'last_30_days', 'last_7_days', 'last_quarter', 'last_year', 'list', 'manage', 'paragraph', 'payment_prediction', 'pending', 'reembedding', 'report', 'report_generation', 'running', 'semantic', 'summary', 'syncing', 'system', 'table', 'this_month', 'this_quarter', 'this_year', 'trend_analysis', 'unknown', 'up, down, stable', 'user', 'view']

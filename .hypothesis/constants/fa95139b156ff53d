@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\erp\sync_engine.py
+# hypothesis_version: 6.148.7
+
+['+00:00', 'T', 'Z', 'conflict', 'create', 'delta', 'erp_id', 'fetch_remote_failed', 'full', 'id', 'last_write_wins', 'local_wins', 'manual', 'modified_at', 'pull', 'push', 'queue', 'queue_for_review', 'remote_wins', 'sync_create_local', 'sync_create_remote', 'sync_entity_failed', 'sync_update_local', 'sync_update_remote', 'update', 'updated_at', 'write_date']

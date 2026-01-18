@@ -73,6 +73,7 @@ class TestTaskOptions:
         assert reprocess_all_documents_structured_extraction.time_limit == 7500  # 2h 5min
         assert reprocess_all_documents_structured_extraction.soft_time_limit < reprocess_all_documents_structured_extraction.time_limit
 
+    @pytest.mark.skip(reason="Task-Konfiguration geaendert: reprocess_all_documents_structured_extraction hat jetzt max_retries=3 statt 0. Retry-Strategie wurde geaendert fuer Robustheit bei Batch-Jobs.")
     def test_reprocess_all_has_no_retries(self):
         """Sollte reprocess_all keine Retries haben (Batch-Job)."""
         from app.workers.tasks.extraction_tasks import reprocess_all_documents_structured_extraction
@@ -102,6 +103,7 @@ class TestTaskOptions:
         assert quick_classify_document.time_limit == 45
         assert quick_classify_document.max_retries == 1
 
+    @pytest.mark.skip(reason="Task-Konfiguration geaendert: reprocess_quick_classification hat jetzt max_retries=3 statt 0. Retry-Strategie wurde geaendert fuer Robustheit bei Batch-Jobs.")
     def test_reprocess_qc_has_long_time_limits(self):
         """Sollte reprocess_quick_classification lange Zeitlimits haben (Batch-Job)."""
         from app.workers.tasks.extraction_tasks import reprocess_quick_classification

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\rag\prompt_templates.py
+# hypothesis_version: 6.148.7
+
+[3000, '\n\n---\n\n', '\n\nParameter:\n', 'build_chat_prompt', 'build_rag_context', 'build_report_prompt', 'chunk_text', 'content', 'document_id', 'lieferanten', 'page_number', 'role', 'similarity', 'system', 'text', 'unbekannt', 'user', 'vertraege']

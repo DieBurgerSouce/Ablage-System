@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albucore\decorators.py
+# hypothesis_version: 6.148.7
+
+['C_CONTIGUOUS', 'DHW', 'DHWC', 'F', 'NDHW', 'NDHWC', 'NHW', 'NHWC', 'channel', 'full', 'spatial']

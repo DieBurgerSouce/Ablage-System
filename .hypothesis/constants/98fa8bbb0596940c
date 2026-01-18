@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\tensor\layer_function_generator.py
+# hypothesis_version: 6.148.7
+
+['(.)([A-Z][a-z]+)', '([a-z0-9])([A-Z])', 'Out', 'X', '\\1_\\2', 'abs', 'complex128', 'complex64', 'dtype', 'exp', 'float16', 'float32', 'float64', 'int32', 'int64', 'square', 'uint16', 'x']

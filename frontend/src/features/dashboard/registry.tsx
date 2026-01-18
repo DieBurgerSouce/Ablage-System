@@ -8,6 +8,7 @@ import { CashFlowWidget } from './components/widgets/CashFlowWidget'
 import { AgingReportWidget } from './components/widgets/AgingReportWidget'
 import { DunningWidget } from './components/widgets/DunningWidget'
 import { OCRPerformanceWidget } from './components/widgets/OCRPerformanceWidget'
+import { ActivityFeedWidget } from './components/ActivityFeed'
 import type { LucideIcon } from 'lucide-react'
 import {
     Calendar,
@@ -24,6 +25,7 @@ import {
     Home,
     ShieldCheck,
     CheckCircle2,
+    Bell,
 } from 'lucide-react'
 
 export interface WidgetRegistryEntry {
@@ -167,6 +169,16 @@ const WIDGET_DEFINITIONS: WidgetRegistryEntry[] = [
         icon: CheckCircle2,
         category: 'action',
         defaultSize: { w: 4, h: 3 },
+    },
+    {
+        type: 'activity-feed',
+        component: ActivityFeedWidget,
+        label: 'Live-Aktivitäten',
+        description: 'Echtzeit-Feed aller Systemereignisse (Dokumente, OCR, Validierung).',
+        icon: Bell,
+        category: 'info',
+        defaultSize: { w: 4, h: 5 },
+        minSize: { w: 3, h: 3 },
     },
 ]
 

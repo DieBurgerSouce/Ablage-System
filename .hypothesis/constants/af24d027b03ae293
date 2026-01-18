@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\operators\dist_fill_constant_batch_size_like.py
+# hypothesis_version: 6.148.7
+
+['Input', 'Out', 'fill_by_shape', 'shape']

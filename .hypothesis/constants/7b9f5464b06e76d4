@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\utils\network.py
+# hypothesis_version: 6.148.7
+
+[200, 1023, 1024, '.pdiparams', '.pdiparams.info', '.pdmodel', '.tar', '.tmp', '/', 'PADDLE_OCR_BASE_DIR', 'content-length', 'download {} to {}', 'http', 'inference', 'inference.pdiparams', 'inference.pdmodel', 'models', 'r', 'wb', '~/.paddleocr/']

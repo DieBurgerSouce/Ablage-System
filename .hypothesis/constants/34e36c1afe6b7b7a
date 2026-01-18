@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\initializer\__init__.py
+# hypothesis_version: 6.148.7
+
+['Assign', 'Bilinear', 'Constant', 'Dirac', 'KaimingNormal', 'KaimingUniform', 'Normal', 'Orthogonal', 'TruncatedNormal', 'Uniform', 'XavierNormal', 'XavierUniform', 'calculate_gain']

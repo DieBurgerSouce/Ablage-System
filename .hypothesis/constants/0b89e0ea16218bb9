@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\engine.py
+# hypothesis_version: 6.148.7
+
+['1', '1F1B', 'CUDA_MODULE_LOADING', 'FLAGS_enable_pir_api', 'LAZY', 'PADDLE_AUTO_CLUSTER', 'Please set mode.', 'Receive None input.', 'True', 'VPP', '_dist_attr', '_dp_ranks', '_dp_world_sizes', '_state_dict', 'all', 'backward', 'batch_sampler', 'bfloat16', 'concrete_program', 'create_py_reader', 'dims_mapping', 'eliminate_transpose', 'epoch', 'eval', 'fetches', 'forward', 'full', 'full_random', 'input', 'inputs', 'label', 'labels', 'learning_rate', 'loss', 'lr', 'metrics', 'metrics_', 'name', 'op_role', 'optimize', 'output_name', 'outputs', 'parameter_name', 'params_grads', 'pattern-based', 'pd_op.data', 'pipeline_strategy', 'predice', 'predict', 'process_mesh', 'r', 'random', 'read', 'semi', 'semi-auto', 'set_epoch', 'step', 'steps', 'train', 'true', 'val_']

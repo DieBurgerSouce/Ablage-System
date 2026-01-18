@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\base\trainer_desc.py
+# hypothesis_version: 6.148.7
+
+[0.0, 100, '/proto', 'DistMultiTrainer', 'HeterPipelineTrainer', 'HeterXpuTrainer', 'MultiTrainer', 'None Program', 'PSGPUTrainer', 'PipelineTrainer', 'batch_num', 'dependency_map', 'dest_dense_tables', 'dest_sparse_tables', 'dest_var_list', 'enable_dependency', 'ins_weight_slot', 'need_adjust', 'need_copy', 'nid_adjw_ratio', 'nid_adjw_threshold', 'nid_slot', 'src_dense_tables', 'src_sparse_tables', 'src_var_list']

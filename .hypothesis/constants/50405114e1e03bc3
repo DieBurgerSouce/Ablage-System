@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\operators\dist_pnorm.py
+# hypothesis_version: 6.148.7
+
+['.', 'Input', 'Out', 'X', 'X@GRAD', 'all_gather', 'asvector', 'axes', 'axis', 'data_parallel', 'dtype', 'ends', 'float16', 'float32', 'float64', 'infer_flags', 'keepdim', 'nop', 'norm', 'nranks', 'op_role', 'out', 'p_norm', 'ring_id', 'slice', 'starts', 'use_calc_stream', 'x']

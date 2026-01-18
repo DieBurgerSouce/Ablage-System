@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\extraction\integration.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.1, 0.2, 0.5, 0.7, 0.99, '_enhanced_validation', 'amount', 'article', 'article_number', 'artikel', 'beschreibung', 'betrag', 'description', 'discount_days', 'discount_percent', 'due_date', 'einheit', 'error', 'extraction_warnings', 'field', 'gross_amount', 'is_immediate_payment', 'is_prepayment', 'is_valid', 'item', 'line_items', 'menge', 'message', 'needs_review', 'net_amount', 'no.', 'nr.', 'payment_days', 'pos.', 'position', 'preis', 'price', 'quantity', 'severity', 'summe', 'total', 'total_price', 'true', 'type', 'unit', 'unit_price', 'vat_amount', 'vat_rate']

@@ -532,8 +532,87 @@ class WorkflowEngineService:
             company_id=str(company_id),
         )
 
-        # TODO: Benachrichtigung an Eskalations-Ziel senden
+        # Benachrichtigung an Eskalations-Ziel senden
+        await self._send_escalation_notification(request)
         return True
+
+    async def _send_escalation_notification(
+        self,
+        request: ApprovalRequest,
+    ) -> None:
+        """Sendet Eskalations-Benachrichtigung an zustaendige Personen.
+
+        Args:
+            request: Die eskalierte ApprovalRequest
+        """
+        from app.services.notification_service import (
+            NotificationService,
+            NotificationType,
+            NotificationPriority,
+        )
+        from app.db.models import Role, user_roles
+
+        try:
+            notification_service = NotificationService()
+
+            # Finde Eskalations-Rolle aus aktueller Approval Chain Step
+            escalation_role: Optional[str] = None
+            if request.approval_chain and request.current_step > 0:
+                # approval_chain ist eine Liste von Step-Konfigurationen
+                step_index = request.current_step - 1
+                if step_index < len(request.approval_chain):
+                    current_chain_step = request.approval_chain[step_index]
+                    escalation_role = current_chain_step.get("escalation_to_role")
+
+            # Fallback: Finde Admins wenn keine spezifische Rolle
+            target_role = escalation_role or "admin"
+
+            # Finde User mit der Ziel-Rolle
+            role_query = select(User).join(
+                user_roles, User.id == user_roles.c.user_id
+            ).join(
+                Role, Role.id == user_roles.c.role_id
+            ).where(
+                Role.name == target_role,
+                Role.is_active == True,
+                User.is_active == True,
+            )
+            result = await self.db.execute(role_query)
+            target_users = result.scalars().all()
+
+            # Sende Benachrichtigung an alle Ziel-User
+            for user in target_users:
+                if user.email:
+                    await notification_service.notify(
+                        notification_type=NotificationType.APPROVAL_ESCALATED,
+                        context={
+                            "request_id": str(request.id),
+                            "request_title": request.title,
+                            "entity_type": request.entity_type,
+                            "entity_id": str(request.entity_id),
+                            "amount": str(request.amount) if request.amount else None,
+                            "currency": request.currency,
+                            "original_priority": "NORMAL",
+                            "escalated_to_role": target_role,
+                        },
+                        user_id=str(user.id),
+                        email=user.email,
+                        priority=NotificationPriority.URGENT,
+                    )
+
+            logger.info(
+                "escalation_notification_sent",
+                request_id=str(request.id),
+                target_role=target_role,
+                notified_users=len(target_users),
+            )
+
+        except Exception as e:
+            logger.error(
+                "escalation_notification_failed",
+                request_id=str(request.id),
+                error=str(e),
+            )
 
     async def _on_request_approved(self, request: ApprovalRequest) -> None:
         """Callback nach erfolgreicher Genehmigung.

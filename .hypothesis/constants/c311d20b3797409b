@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\base\executor.py
+# hypothesis_version: 6.148.7
+
+[100, ',', '1', 'Cannot find ', 'FileInstantDataset', 'HeterCpuWorker', 'HeterXpuTrainer', 'InMemoryDataset', 'None', 'Out', 'True', 'X', '_train_desc.prototxt', 'col', 'concurrency_list', 'cpu', 'default', 'dtype', 'dump_fields_path', 'eliminate_transpose', 'feed', 'fetch', 'fetch_v2', 'fleet_desc', 'fleet_desc.prototxt', 'heter_place', 'is_fl_mode', 'lr_scheduler', 'must be LRScheduler', 'name', 'num_micro_batches', 'op_device', 'op_role', 'pass_list', 'pd_op.data', 'pd_op.feed', 'pd_op.fetch', 'pipeline_stage', 'schedule_mode', 'section_program', 'shape', 'standalone_opt', 'startup_program', 'trainer', 'true', 'use_ps_gpu', 'w', 'worker_class', 'worker_places']

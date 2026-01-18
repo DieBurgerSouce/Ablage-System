@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\utils\launch_utils.py
+# hypothesis_version: 6.148.7
+
+[100, 6070, ',', '--', '-u', 'CUDA_VISIBLE_DEVICES', 'FLAGS_selected_gpus', 'FLAGS_selected_xpus', 'INFO', 'PADDLE_TRAINERS_NUM', 'PADDLE_TRAINER_ID', 'a', 'bkcl', 'gloo', 'http_proxy', 'https_proxy', 'nccl', 'r', 'root', 'xccl', '{}']

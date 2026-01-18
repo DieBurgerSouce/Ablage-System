@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\db\repositories\user_repository.py
+# hypothesis_version: 6.148.7
+
+[100, 'active', 'inactive', 'new_last_30_days', 'superusers', 'total', 'user_activated', 'user_deactivated']

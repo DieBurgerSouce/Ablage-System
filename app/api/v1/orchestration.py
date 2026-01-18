@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, status
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 import re
 
 from app.api.dependencies import get_current_active_user
@@ -54,17 +54,16 @@ class ImpactScoreResponse(BaseModel):
     convenience_gain: float = Field(..., description="Komfortgewinn (0-100)")
     total_score: float = Field(..., description="Gewichteter Gesamt-Score")
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "financial_impact": 500.0,
-                "risk_reduction": 30.0,
-                "compliance_urgency": 80.0,
-                "opportunity_value": 200.0,
-                "convenience_gain": 10.0,
-                "total_score": 52.5,
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "financial_impact": 500.0,
+            "risk_reduction": 30.0,
+            "compliance_urgency": 80.0,
+            "opportunity_value": 200.0,
+            "convenience_gain": 10.0,
+            "total_score": 52.5,
         }
+    })
 
 
 class DecisionResponse(BaseModel):

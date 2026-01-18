@@ -15,11 +15,13 @@ export default defineConfig({
     VitePWA({
       registerType: 'prompt',
       injectRegister: 'auto',
-      includeAssets: ['vite.svg', 'icons/*.png', 'icons/*.svg'],
+      includeAssets: ['vite.svg', 'icons/*.png', 'icons/*.svg', 'screenshots/*.png'],
       manifest: false, // We use our own manifest.json
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MiB to accommodate large bundles
+        // Enable navigation preload for faster page loads
+        navigationPreload: true,
         runtimeCaching: [
           {
             // Cache API responses (NetworkFirst for fresh data)

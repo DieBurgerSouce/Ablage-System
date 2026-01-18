@@ -11,7 +11,7 @@ REST API fuer Lexware-Integration:
 Feinpoliert und durchdacht - Deutsche Geschaeftsdokumente.
 """
 
-from typing import Optional, List
+from typing import Optional, List, Dict
 from uuid import UUID
 from datetime import datetime, timezone
 from pathlib import Path
@@ -718,14 +718,78 @@ async def get_linking_statistics(
     unlinked_count = total_count - linked_count
     linked_percentage = (linked_count / total_count * 100) if total_count > 0 else 0
 
+    # Aggregate by entity type
+    from app.db.models import BusinessEntity
+    entity_type_stmt = (
+        select(
+            BusinessEntity.entity_type,
+            func.count(Document.id).label("count")
+        )
+        .select_from(Document)
+        .join(BusinessEntity, Document.business_entity_id == BusinessEntity.id)
+        .where(
+            Document.extracted_text.isnot(None),
+            Document.deleted_at.is_(None),
+        )
+        .group_by(BusinessEntity.entity_type)
+    )
+    entity_type_results = await db.execute(entity_type_stmt)
+    by_entity_type = {
+        row.entity_type: row.count
+        for row in entity_type_results
+    }
+
+    # Extract match type statistics from extracted_data if available
+    # Format: extracted_data.entity_linking.match_type
+    by_match_type: Dict[str, int] = {}
+    by_confidence: Dict[str, int] = {}
+
+    try:
+        # Query documents with entity_linking data
+        linked_docs_stmt = (
+            select(Document.extracted_data)
+            .where(
+                Document.business_entity_id.isnot(None),
+                Document.extracted_data.isnot(None),
+                Document.deleted_at.is_(None),
+            )
+            .limit(1000)  # Limit fuer Performance
+        )
+        linked_docs_result = await db.execute(linked_docs_stmt)
+
+        for row in linked_docs_result:
+            data = row[0] or {}
+            entity_link_info = data.get("entity_linking", {})
+
+            # Match type aggregation
+            match_type = entity_link_info.get("match_type")
+            if match_type:
+                by_match_type[match_type] = by_match_type.get(match_type, 0) + 1
+
+            # Confidence bucketing
+            confidence = entity_link_info.get("confidence")
+            if confidence is not None:
+                if confidence >= 0.95:
+                    bucket = "excellent (>=95%)"
+                elif confidence >= 0.85:
+                    bucket = "good (85-94%)"
+                elif confidence >= 0.75:
+                    bucket = "fair (75-84%)"
+                else:
+                    bucket = "low (<75%)"
+                by_confidence[bucket] = by_confidence.get(bucket, 0) + 1
+
+    except Exception as e:
+        logger.warning("linking_statistics_extended_error", error=str(e))
+
     return LinkingStatistics(
         total_documents=total_count,
         linked_documents=linked_count,
         unlinked_documents=unlinked_count,
         linked_percentage=round(linked_percentage, 1),
-        by_match_type={},  # TODO: Track match type in document
-        by_confidence={},  # TODO: Track confidence in document
-        by_entity_type={},  # TODO: Aggregate by entity type
+        by_match_type=by_match_type,
+        by_confidence=by_confidence,
+        by_entity_type=by_entity_type,
     )
 
 

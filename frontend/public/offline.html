@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1a1a1a">
+  <title>Offline - Ablage-System</title>
+  <style>
+    :root {
+      --bg-color: #0a0a0a;
+      --text-color: #fafafa;
+      --text-muted: #a1a1aa;
+      --primary: #8b5cf6;
+      --border: #27272a;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg-color);
+      color: var(--text-color);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .container {
+      text-align: center;
+      max-width: 400px;
+    }
+
+    .icon {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 24px;
+      opacity: 0.8;
+    }
+
+    .icon svg {
+      width: 100%;
+      height: 100%;
+      stroke: var(--text-muted);
+      fill: none;
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    p {
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    button {
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .primary {
+      background: var(--primary);
+      color: white;
+      border: none;
+    }
+
+    .primary:hover {
+      opacity: 0.9;
+    }
+
+    .secondary {
+      background: transparent;
+      color: var(--text-color);
+      border: 1px solid var(--border);
+    }
+
+    .secondary:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .status {
+      margin-top: 32px;
+      padding: 12px 16px;
+      background: rgba(139, 92, 246, 0.1);
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .status.online {
+      background: rgba(34, 197, 94, 0.1);
+      border-color: rgba(34, 197, 94, 0.2);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .loading {
+      animation: pulse 2s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 20h.01" />
+        <path d="M7 20v-4" />
+        <path d="M12 20v-8" />
+        <path d="M17 20V8" />
+        <path d="M22 4v16" />
+        <line x1="2" y1="2" x2="22" y2="22" stroke-width="2" />
+      </svg>
+    </div>
+
+    <h1>Sie sind offline</h1>
+    <p>
+      Keine Internetverbindung verfuegbar. Einige Funktionen sind moeglicherweise
+      eingeschraenkt, aber Sie koennen bereits heruntergeladene Dokumente weiterhin ansehen.
+    </p>
+
+    <div class="actions">
+      <button class="primary" onclick="tryReconnect()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+          <path d="M3 3v5h5"/>
+          <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+          <path d="M16 16h5v5"/>
+        </svg>
+        Erneut verbinden
+      </button>
+
+      <button class="secondary" onclick="goBack()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m12 19-7-7 7-7"/>
+          <path d="M19 12H5"/>
+        </svg>
+        Zurueck
+      </button>
+    </div>
+
+    <div class="status" id="status">
+      <span class="loading">Verbindung wird geprueft...</span>
+    </div>
+  </div>
+
+  <script>
+    function updateStatus() {
+      const statusEl = document.getElementById('status');
+      if (navigator.onLine) {
+        statusEl.className = 'status online';
+        statusEl.innerHTML = 'Verbindung wiederhergestellt - Seite wird neu geladen...';
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        statusEl.className = 'status';
+        statusEl.innerHTML = '<span class="loading">Offline - Warte auf Verbindung...</span>';
+      }
+    }
+
+    function tryReconnect() {
+      const statusEl = document.getElementById('status');
+      statusEl.innerHTML = '<span class="loading">Verbindung wird geprueft...</span>';
+
+      fetch('/', { method: 'HEAD', cache: 'no-store' })
+        .then(() => {
+          statusEl.className = 'status online';
+          statusEl.innerHTML = 'Verbindung wiederhergestellt!';
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 500);
+        })
+        .catch(() => {
+          statusEl.className = 'status';
+          statusEl.innerHTML = 'Noch keine Verbindung verfuegbar';
+        });
+    }
+
+    function goBack() {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = '/';
+      }
+    }
+
+    // Listen for online/offline events
+    window.addEventListener('online', updateStatus);
+    window.addEventListener('offline', updateStatus);
+
+    // Initial check
+    updateStatus();
+  </script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\banking\parsers\base.py
+# hypothesis_version: 6.148.7
+
+[',', '.', '0', 'EUR', '[€$£CHF\\s]', 'amount', 'atm', 'auszahlung', 'bargeld', 'booking_date', 'booking_text', 'card', 'cash', 'counterparty_bic', 'counterparty_iban', 'counterparty_name', 'creditor_id', 'creditor_ids', 'currency', 'customer_number', 'customer_numbers', 'dd', 'direct debit', 'ec', 'einzahlung', 'einzug', 'end_to_end_id', 'end_to_end_ids', 'entgelt', 'fee', 'gaa', 'gebuehr', 'gebühr', 'giro', 'gutschr', 'interest', 'invoice_number', 'invoice_numbers', 'karte', 'lastschrift', 'mandate_id', 'mandate_ids', 'master', 'order_number', 'order_numbers', 'parsed_references', 'prima_nota', 'provision', 'raw_data', 'reference_text', 'transaction_id', 'transaction_type', 'transfer', 'ueberweisung', 'value_date', 'visa', 'zins', 'überweisung']

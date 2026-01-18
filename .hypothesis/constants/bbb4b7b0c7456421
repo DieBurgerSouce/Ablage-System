@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\quant\__init__.py
+# hypothesis_version: 6.148.7
+
+['Stub', 'llm_int8_linear', 'weight_dequantize', 'weight_only_linear', 'weight_quantize']

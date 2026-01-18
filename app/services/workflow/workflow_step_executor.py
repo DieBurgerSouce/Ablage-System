@@ -256,12 +256,80 @@ class WorkflowStepExecutor:
         if not parallel_steps:
             return StepResult(success=True, output={"results": []})
 
-        # TODO: Parallele Ausfuehrung implementieren
-        # Erfordert Zugriff auf Workflow-Steps
+        # Parallele Ausfuehrung mit asyncio.gather()
+        async def execute_parallel_action(action_config: Dict[str, Any]) -> Dict[str, Any]:
+            """Fuehrt eine einzelne Action aus und gibt das Ergebnis zurueck."""
+            action_type = action_config.get("action_type")
+            action_name = action_config.get("name", action_type)
+
+            if not action_type:
+                return {
+                    "name": action_name,
+                    "success": False,
+                    "error": "Kein Action-Typ definiert",
+                }
+
+            handler = self._action_handlers.get(action_type)
+            if not handler:
+                return {
+                    "name": action_name,
+                    "success": False,
+                    "error": f"Unbekannter Action-Typ: {action_type}",
+                }
+
+            try:
+                result = await handler(action_config, context)
+                return {
+                    "name": action_name,
+                    "success": result.success,
+                    "output": result.output,
+                    "error": result.error,
+                }
+            except Exception as e:
+                logger.exception(
+                    "parallel_step_failed",
+                    action_type=action_type,
+                    error=str(e),
+                )
+                return {
+                    "name": action_name,
+                    "success": False,
+                    "error": str(e),
+                }
+
+        # Alle Actions parallel ausfuehren
+        logger.info(
+            "executing_parallel_steps",
+            step_id=str(step.id),
+            parallel_count=len(parallel_steps),
+        )
+
+        results = await asyncio.gather(
+            *[execute_parallel_action(action_config) for action_config in parallel_steps],
+            return_exceptions=True,
+        )
+
+        # Ergebnisse verarbeiten
+        processed_results: List[Dict[str, Any]] = []
+        all_success = True
+
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                processed_results.append({
+                    "name": parallel_steps[i].get("name", f"step_{i}"),
+                    "success": False,
+                    "error": str(result),
+                })
+                all_success = False
+            else:
+                processed_results.append(result)
+                if not result.get("success", False):
+                    all_success = False
 
         return StepResult(
-            success=True,
-            output={"message": "Parallel execution not yet implemented"},
+            success=all_success,
+            output={"results": processed_results},
+            error=None if all_success else "Ein oder mehrere parallele Schritte fehlgeschlagen",
         )
 
     async def _execute_loop(
@@ -348,6 +416,8 @@ class WorkflowStepExecutor:
     ) -> StepResult:
         """Verschiebt Dokument in anderen Ordner.
 
+        SECURITY: Validiert company_id vor Aenderung (Multi-Tenant Isolation).
+
         Args:
             config: Action-Konfiguration
             context: ExecutionContext
@@ -356,15 +426,16 @@ class WorkflowStepExecutor:
             StepResult
         """
         from app.db.models import Document
+        from sqlalchemy import update
 
-        if not context.document_id:
-            return StepResult(success=False, error="Kein Dokument im Kontext")
+        # SECURITY: Multi-Tenant Validierung
+        is_valid, error_result = await self._validate_document_company(context, "move_folder")
+        if not is_valid:
+            return error_result  # type: ignore
 
         target_folder_id = config.get("folder_id")
         if not target_folder_id:
             return StepResult(success=False, error="Kein Zielordner angegeben")
-
-        from sqlalchemy import update
 
         stmt = (
             update(Document)
@@ -393,6 +464,8 @@ class WorkflowStepExecutor:
     ) -> StepResult:
         """Weist Dokument Tags zu.
 
+        SECURITY: Validiert company_id vor Aenderung (Multi-Tenant Isolation).
+
         Args:
             config: Action-Konfiguration
             context: ExecutionContext
@@ -400,11 +473,13 @@ class WorkflowStepExecutor:
         Returns:
             StepResult
         """
-        from app.db.models import Document, Tag, document_tags
+        from app.db.models import Tag, document_tags
         from sqlalchemy import select, insert
 
-        if not context.document_id:
-            return StepResult(success=False, error="Kein Dokument im Kontext")
+        # SECURITY: Multi-Tenant Validierung
+        is_valid, error_result = await self._validate_document_company(context, "assign_tags")
+        if not is_valid:
+            return error_result  # type: ignore
 
         tag_ids = config.get("tag_ids", [])
         tag_names = config.get("tag_names", [])
@@ -420,8 +495,25 @@ class WorkflowStepExecutor:
 
             if tag:
                 tag_ids.append(str(tag.id))
-            # Neue Tags erstellen falls nicht vorhanden
-            # TODO: Tag-Erstellung implementieren
+            else:
+                # Tag erstellen falls nicht vorhanden
+                auto_create = config.get("auto_create_tags", True)
+                if auto_create:
+                    new_tag = Tag(
+                        name=tag_name[:50],  # Max 50 Zeichen
+                        description=f"Automatisch erstellt durch Workflow",
+                        color=config.get("default_tag_color", "bg-gray-500"),
+                        is_system=False,
+                        is_active=True,
+                    )
+                    self.db.add(new_tag)
+                    await self.db.flush()  # ID generieren
+                    tag_ids.append(str(new_tag.id))
+                    logger.info(
+                        "workflow_tag_created",
+                        tag_name=tag_name,
+                        tag_id=str(new_tag.id),
+                    )
 
         # Bestehende Tags entfernen falls append=False
         if not append_mode:
@@ -458,6 +550,8 @@ class WorkflowStepExecutor:
     ) -> StepResult:
         """Weist Dokumenttyp zu.
 
+        SECURITY: Validiert company_id vor Aenderung (Multi-Tenant Isolation).
+
         Args:
             config: Action-Konfiguration
             context: ExecutionContext
@@ -468,8 +562,10 @@ class WorkflowStepExecutor:
         from app.db.models import Document
         from sqlalchemy import update
 
-        if not context.document_id:
-            return StepResult(success=False, error="Kein Dokument im Kontext")
+        # SECURITY: Multi-Tenant Validierung
+        is_valid, error_result = await self._validate_document_company(context, "assign_document_type")
+        if not is_valid:
+            return error_result  # type: ignore
 
         document_type = config.get("document_type")
         if not document_type:
@@ -496,6 +592,8 @@ class WorkflowStepExecutor:
     ) -> StepResult:
         """Aktualisiert Dokument-Status.
 
+        SECURITY: Validiert company_id vor Aenderung (Multi-Tenant Isolation).
+
         Args:
             config: Action-Konfiguration
             context: ExecutionContext
@@ -506,8 +604,10 @@ class WorkflowStepExecutor:
         from app.db.models import Document
         from sqlalchemy import update
 
-        if not context.document_id:
-            return StepResult(success=False, error="Kein Dokument im Kontext")
+        # SECURITY: Multi-Tenant Validierung
+        is_valid, error_result = await self._validate_document_company(context, "update_status")
+        if not is_valid:
+            return error_result  # type: ignore
 
         status = config.get("status")
         if not status:
@@ -534,6 +634,9 @@ class WorkflowStepExecutor:
     ) -> StepResult:
         """Loescht ein Dokument (Soft-Delete).
 
+        SECURITY: Validiert company_id vor Aenderung (Multi-Tenant Isolation).
+        KRITISCH: Ohne Validierung koennte Cross-Tenant Deletion moeglich sein!
+
         Args:
             config: Action-Konfiguration
             context: ExecutionContext
@@ -544,8 +647,10 @@ class WorkflowStepExecutor:
         from app.db.models import Document
         from sqlalchemy import update
 
-        if not context.document_id:
-            return StepResult(success=False, error="Kein Dokument im Kontext")
+        # SECURITY: Multi-Tenant Validierung - KRITISCH bei Delete!
+        is_valid, error_result = await self._validate_document_company(context, "delete_document")
+        if not is_valid:
+            return error_result  # type: ignore
 
         soft_delete = config.get("soft_delete", True)
 
@@ -770,6 +875,8 @@ class WorkflowStepExecutor:
     ) -> StepResult:
         """Startet OCR-Verarbeitung.
 
+        SECURITY: Validiert company_id vor Verarbeitung (Multi-Tenant Isolation).
+
         Args:
             config: Action-Konfiguration
             context: ExecutionContext
@@ -777,8 +884,10 @@ class WorkflowStepExecutor:
         Returns:
             StepResult
         """
-        if not context.document_id:
-            return StepResult(success=False, error="Kein Dokument im Kontext")
+        # SECURITY: Multi-Tenant Validierung
+        is_valid, error_result = await self._validate_document_company(context, "start_ocr")
+        if not is_valid:
+            return error_result  # type: ignore
 
         backend = config.get("backend", "auto")
         priority = config.get("priority", "normal")
@@ -811,6 +920,8 @@ class WorkflowStepExecutor:
     ) -> StepResult:
         """Fuehrt KI-Kategorisierung durch.
 
+        SECURITY: Validiert company_id vor Verarbeitung (Multi-Tenant Isolation).
+
         Args:
             config: Action-Konfiguration
             context: ExecutionContext
@@ -818,8 +929,10 @@ class WorkflowStepExecutor:
         Returns:
             StepResult
         """
-        if not context.document_id:
-            return StepResult(success=False, error="Kein Dokument im Kontext")
+        # SECURITY: Multi-Tenant Validierung
+        is_valid, error_result = await self._validate_document_company(context, "ai_categorization")
+        if not is_valid:
+            return error_result  # type: ignore
 
         try:
             from app.services.ai.auto_categorization_service import AutoCategorizationService
@@ -849,6 +962,8 @@ class WorkflowStepExecutor:
     ) -> StepResult:
         """Exportiert ein Dokument.
 
+        SECURITY: Validiert company_id vor Export (Multi-Tenant Isolation).
+
         Args:
             config: Action-Konfiguration
             context: ExecutionContext
@@ -856,8 +971,10 @@ class WorkflowStepExecutor:
         Returns:
             StepResult
         """
-        if not context.document_id:
-            return StepResult(success=False, error="Kein Dokument im Kontext")
+        # SECURITY: Multi-Tenant Validierung
+        is_valid, error_result = await self._validate_document_company(context, "export_document")
+        if not is_valid:
+            return error_result  # type: ignore
 
         export_format = config.get("format", "pdf")
         destination = config.get("destination")
@@ -891,6 +1008,8 @@ class WorkflowStepExecutor:
     ) -> StepResult:
         """Prueft auf Duplikate.
 
+        SECURITY: Validiert company_id vor Check (Multi-Tenant Isolation).
+
         Args:
             config: Action-Konfiguration
             context: ExecutionContext
@@ -898,8 +1017,10 @@ class WorkflowStepExecutor:
         Returns:
             StepResult
         """
-        if not context.document_id:
-            return StepResult(success=False, error="Kein Dokument im Kontext")
+        # SECURITY: Multi-Tenant Validierung
+        is_valid, error_result = await self._validate_document_company(context, "duplicate_check")
+        if not is_valid:
+            return error_result  # type: ignore
 
         try:
             from app.services.ai.duplicate_detection_service import DuplicateDetectionService
@@ -1020,6 +1141,8 @@ class WorkflowStepExecutor:
     ) -> StepResult:
         """Weist Dokument einem User zu.
 
+        SECURITY: Validiert company_id vor Aenderung (Multi-Tenant Isolation).
+
         Args:
             config: Action-Konfiguration
             context: ExecutionContext
@@ -1030,8 +1153,10 @@ class WorkflowStepExecutor:
         from app.db.models import Document
         from sqlalchemy import update
 
-        if not context.document_id:
-            return StepResult(success=False, error="Kein Dokument im Kontext")
+        # SECURITY: Multi-Tenant Validierung
+        is_valid, error_result = await self._validate_document_company(context, "assign_user")
+        if not is_valid:
+            return error_result  # type: ignore
 
         user_id = config.get("user_id")
         if not user_id:
@@ -1142,6 +1267,60 @@ class WorkflowStepExecutor:
     # =========================================================================
     # Helper Methods
     # =========================================================================
+
+    async def _validate_document_company(
+        self,
+        context: "ExecutionContext",
+        action_name: str,
+    ) -> tuple[bool, Optional[StepResult]]:
+        """Validiert dass Dokument zur gleichen Company gehoert wie der Workflow.
+
+        SECURITY: Multi-Tenant Isolation - verhindert Cross-Tenant Zugriffe.
+
+        Args:
+            context: ExecutionContext mit document_id und company_id
+            action_name: Name der Action fuer Logging
+
+        Returns:
+            Tuple (is_valid, error_result):
+                - (True, None) wenn valid
+                - (False, StepResult) wenn invalid (StepResult enthaelt Fehler)
+        """
+        if not context.document_id:
+            return False, StepResult(success=False, error="Kein Dokument im Kontext")
+
+        if not context.company_id:
+            # Keine company_id im Context = kein Multi-Tenant Check moeglich
+            # Dies ist ein Legacy-Fall oder System-Workflow
+            return True, None
+
+        from app.db.models import Document
+        from sqlalchemy import select
+
+        doc_query = select(Document.company_id).where(Document.id == context.document_id)
+        doc_result = await self.db.execute(doc_query)
+        doc_company_id = doc_result.scalar_one_or_none()
+
+        if doc_company_id is None:
+            # Dokument nicht gefunden
+            logger.warning(
+                "workflow_document_not_found",
+                action=action_name,
+                document_id=str(context.document_id),
+            )
+            return False, StepResult(success=False, error="Dokument nicht gefunden")
+
+        if doc_company_id != context.company_id:
+            logger.warning(
+                "cross_tenant_document_action_blocked",
+                action=action_name,
+                document_id=str(context.document_id),
+                workflow_company_id=str(context.company_id),
+                document_company_id=str(doc_company_id),
+            )
+            return False, StepResult(success=False, error="Dokument nicht gefunden")
+
+        return True, None
 
     def _interpolate_variables(
         self,

@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\reports\report_scheduler_service.py
+# hypothesis_version: 6.148.7
+
+[100, 1000, '+00:00', '0 16 * * 5', '0 18 * * *', '0 18 L * *', '0 8 * * *', '0 8 * * 1', '0 8 1 * *', '0 8 1 1,4,7,10 *', 'Europe/Berlin', 'Quartalsweise 1. Tag', 'Taeglich 08:00', 'Taeglich 18:00', 'Z', 'completed', 'cron', 'cron_expression', 'daily_evening', 'daily_morning', 'enabled', 'excel', 'failed', 'format', 'id', 'last_run', 'manual', 'monthly_first', 'monthly_last_workday', 'name', 'next_run', 'pending', 'quarterly', 'recipients', 'running', 'timezone', 'weekly_friday', 'weekly_monday']

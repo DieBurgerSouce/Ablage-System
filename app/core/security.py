@@ -1058,6 +1058,8 @@ def sanitize_filename_for_header(filename: str) -> str:
     Security:
         - Strips CR (\\r), LF (\\n), and NULL (\\x00) characters
         - Removes other control characters (ASCII 0-31 except tab)
+        - Removes dangerous characters (<, >, ", \\, /) that can cause XSS or header issues
+        - Removes path traversal attempts (..)
         - Limits filename length to 255 characters
     """
     if not filename:
@@ -1068,6 +1070,16 @@ def sanitize_filename_for_header(filename: str) -> str:
 
     # Remove any other control characters (ASCII 0-31 except tab)
     safe_name = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', safe_name)
+
+    # SECURITY: Remove dangerous characters that can break headers or cause XSS
+    # - Angle brackets: potential XSS vectors
+    # - Double quotes: can break Content-Disposition format
+    # - Backslash/forward slash: path traversal
+    # - Pipe, ampersand, semicolon: command injection patterns
+    safe_name = re.sub(r'[<>"\\/|&;]', '', safe_name)
+
+    # SECURITY: Remove path traversal patterns
+    safe_name = safe_name.replace('..', '')
 
     # Limit filename length to prevent buffer overflow attacks
     if len(safe_name) > 255:

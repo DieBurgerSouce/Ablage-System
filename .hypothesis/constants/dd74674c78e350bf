@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\static\nn\static_pylayer.py
+# hypothesis_version: 6.148.7
+
+['Input', 'Out', 'Scope', 'args', 'block', 'blocks', 'name', 'pylayer', 'static_pylayer', 'static_pylayer_block', 'sub_block']

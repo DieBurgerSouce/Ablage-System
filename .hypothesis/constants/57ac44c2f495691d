@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\push_notification_service.py
+# hypothesis_version: 6.148.7
+
+[404, 410, 'actions', 'active', 'auth', 'badge', 'body', 'by_device_type', 'clicked', 'data', 'delivered', 'endpoint', 'failed', 'icon', 'image', 'inactive', 'keys', 'p256dh', 'pending', 'requireInteraction', 'sent', 'silent', 'sub', 'tag', 'title', 'total', 'unknown']

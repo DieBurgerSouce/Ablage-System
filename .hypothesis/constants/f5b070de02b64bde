@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\document_services\gdpr_service.py
+# hypothesis_version: 6.148.7
+
+['can_restore', 'delete', 'deleted_at', 'deletion_reason', 'document_id', 'document_restored', 'is_deleted', 'soft_delete']

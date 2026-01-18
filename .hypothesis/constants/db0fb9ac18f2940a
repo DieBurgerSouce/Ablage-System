@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\nn\functional\fused_layer_norm.py
+# hypothesis_version: 6.148.7
+
+[1.0, 'begin_norm_axis', 'bias', 'epsilon', 'fused_layernorm', 'mean', 'norm_bias', 'norm_weight', 'out', 'quant_max_bound', 'quant_min_bound', 'quant_round_type', 'quant_scale', 'residual', 'residual_alpha', 'residual_out', 'variance', 'x']

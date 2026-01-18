@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\high_level_api.py
+# hypothesis_version: 6.148.7
+
+[1024, 'attention', 'current_mesh', 'decoder_layer', 'dp', 'embedding', 'float32', 'input_seq', 'mlp_3_with_swiglu', 'mp', 'next_mesh', 'pp', 'rmsnorm']

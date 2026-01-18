@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\models\got_ocr2\processing_got_ocr2.py
+# hypothesis_version: 6.148.7
+
+[256, 1000, '</img>', '<img>', '<imgpad>', '<|im_end|>', '<|im_start|>', 'AutoImageProcessor', 'GotOcr2Processor', 'assistant\n', 'box', 'color', 'crop_to_patches', 'format', 'image', 'image_processor', 'images_kwargs', 'max_patches', 'min_patches', 'multi_page', 'num_image_tokens', 'num_patches', 'padding', 'return_tensors', 'text_kwargs', 'tokenizer', 'user\n']

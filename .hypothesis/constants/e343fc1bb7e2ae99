@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\geometric\math.py
+# hypothesis_version: 6.148.7
+
+['MAX', 'MEAN', 'MIN', 'Out', 'SUM', 'SegmentIds', 'SummedIds', 'X', 'float16', 'float32', 'float64', 'int32', 'int64', 'pooltype', 'segment_max', 'segment_mean', 'segment_min', 'segment_pool', 'segment_sum', 'uint16']

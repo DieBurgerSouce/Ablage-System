@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_parallel\pp_utils\p2p_communication.py
+# hypothesis_version: 6.148.7
+
+['0', '1', 'PADDLE_P2P_SYNC_SEND', 'int64', 'key', 'recv_backward', 'recv_forward', 'send_backward', 'send_forward', 'true', 'uint8']

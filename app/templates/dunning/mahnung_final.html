@@ -1,0 +1,42 @@
+{% extends "base_dunning.html" %}
+
+{% block intro_text %}
+<p>Sehr geehrte Damen und Herren,</p>
+
+<p>
+    obwohl wir Sie wiederholt zur Zahlung aufgefordert haben, ist der
+    geschuldete Betrag immer noch nicht auf unserem Konto eingegangen.
+</p>
+
+<p>
+    <strong>Dies ist unsere letzte Mahnung vor Einleitung des
+    gerichtlichen Mahnverfahrens.</strong>
+</p>
+
+<p>
+    Sollte der untenstehende Gesamtbetrag nicht bis zum angegebenen
+    Termin bei uns eingehen, werden wir <strong>ohne weitere
+    Ankuendigung</strong> folgende Schritte einleiten:
+</p>
+
+<ul style="margin: 10px 0 10px 20px;">
+    <li>Beantragung eines gerichtlichen Mahnbescheids</li>
+    <li>Gegebenenfalls Vollstreckungsverfahren</li>
+    <li>Eintragung im Schuldnerverzeichnis</li>
+</ul>
+
+<p>
+    Die dadurch entstehenden zusaetzlichen Kosten (Gerichtskosten,
+    Anwaltsgebuehren, Zwangsvollstreckungskosten) gehen vollstaendig
+    zu Ihren Lasten.
+</p>
+{% endblock %}
+
+{% block closing_text %}
+<p>
+    Letzte Gelegenheit zur aussergerichtlichen Beilegung:
+    Zahlung oder Kontaktaufnahme bis zum <strong>{{ data.payment_deadline | date }}</strong>.
+</p>
+
+<p>Mit freundlichen Gruessen</p>
+{% endblock %}

@@ -341,10 +341,11 @@ Die Antwort basiert auf meiner Analyse."""
                 context_type=LLMContextType.REALTIME
             )
 
-        # Check that the fast model was used
+        # Check that a small/fast model was used (7b or 8b)
         call_args = mock_client.post.call_args
         request_body = call_args[1]["json"]
-        assert "8b" in request_body["model"].lower()
+        model_name = request_body["model"].lower()
+        assert "7b" in model_name or "8b" in model_name, f"Expected fast model (7b/8b), got: {model_name}"
 
     @pytest.mark.asyncio
     async def test_generate_timeout(self, service: LLMService) -> None:

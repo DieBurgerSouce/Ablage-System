@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\sentence_transformers\sparse_encoder\models\SparseStaticEmbedding.py
+# hypothesis_version: 6.148.7
+
+['.json', 'attention_mask', 'frozen', 'idf.json', 'input_ids', 'path', 'pt', 'sentence_embedding']

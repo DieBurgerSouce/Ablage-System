@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\passes\pipeline_scheduler_pass\pipeline_1f1b.py
+# hypothesis_version: 6.148.7
+
+['all_reduce', 'builtin.parameter', 'bwd', 'dynamic_shape', 'fwd', 'num_micro_batches', 'opt', 'output_name', 'pd_op.data', 'pd_op.recv_v2', 'pd_op.send_v2', 'pp_degree', 'pp_stage', 'reduce_type', 'ring_id', 'send_recv_stream', 'use_calc_stream']

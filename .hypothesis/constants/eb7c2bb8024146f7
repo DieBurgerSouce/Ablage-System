@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\meta_parallel\sharding\group_sharded_storage.py
+# hypothesis_version: 6.148.7
+
+[':', 'cpu', 'gpu', 'main_grad', 'xpu']

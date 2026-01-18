@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\dataset\wmt16.py
+# hypothesis_version: 6.148.7
+
+[b'\n', 11250, 19220, '2.0.0', '<e>', '<s>', '<unk>', 'de', 'en', 'r', 'rb', 'wb', 'wmt16', 'wmt16.tar.gz', 'wmt16/test', 'wmt16/train', 'wmt16/val']

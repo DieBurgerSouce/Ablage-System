@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\vision\models\resnet.py
+# hypothesis_version: 6.148.7
+
+[64.0, 101, 128, 152, 256, 512, 1000, 'groups', 'resnet101', 'resnet152', 'resnet18', 'resnet34', 'resnet50', 'resnext101_32x4d', 'resnext101_64x4d', 'resnext152_32x4d', 'resnext152_64x4d', 'resnext50_32x4d', 'resnext50_64x4d', 'wide_resnet101_2', 'wide_resnet50_2', 'width']

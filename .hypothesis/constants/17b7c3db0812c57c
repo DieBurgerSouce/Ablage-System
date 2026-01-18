@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\sharding.py
+# hypothesis_version: 6.148.7
+
+[0.0, 256, 1024, '-', '.dist', '_inner_opt', '_master', '_moment', '_pow_acc', '_rank', 'align_size', 'dp', 'fused@', 'idx', 'mp', 'no_fusion', 'op', 'padded_size', 'param_end', 'param_start', 'parameter_name', 'placements', 'pp', 'process_mesh', 'shape', 'shard@', 'slice@']

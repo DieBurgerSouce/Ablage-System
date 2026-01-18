@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\amp\__init__.py
+# hypothesis_version: 6.148.7
+
+['GradScaler', 'auto_cast', 'decorate', 'get_autocast_dtype', 'is_autocast_enabled', 'is_float16_supported']

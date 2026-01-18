@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\device\cuda\__init__.py
+# hypothesis_version: 6.148.7
+
+['2.5.0', ':', 'Allocated', 'Event', 'Reserved', 'Stream', 'current_stream', 'device_count', 'empty_cache', 'get_device_name', 'gpu', 'gpu:', 'max_memory_allocated', 'max_memory_reserved', 'memory_allocated', 'memory_reserved', 'stream_guard', 'synchronize']

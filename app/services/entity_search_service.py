@@ -466,25 +466,29 @@ class EntitySearchService:
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
-    async def find_in_both_companies(
+    async def find_in_multiple_companies(
         self,
         entity_type: Optional[EntityType] = None,
         limit: int = 100,
+        min_companies: int = 2,
     ) -> list[BusinessEntity]:
         """
-        Findet Entities die in beiden Firmen existieren.
+        Findet Entities die in mehreren Firmen existieren.
+
+        Ersetzt die hardcoded 'find_in_both_companies' Methode mit dynamischer
+        Abfrage basierend auf der Anzahl der Firmen im company_presence Array.
 
         Args:
             entity_type: Optional CUSTOMER oder SUPPLIER
             limit: Maximale Ergebnisse
+            min_companies: Minimale Anzahl an Firmen (default: 2)
 
         Returns:
             Liste von BusinessEntity
         """
         stmt = select(BusinessEntity).where(
             and_(
-                BusinessEntity.company_presence.contains(["folie"]),
-                BusinessEntity.company_presence.contains(["messer"]),
+                func.jsonb_array_length(BusinessEntity.company_presence) >= min_companies,
                 BusinessEntity.deleted_at.is_(None),
             )
         )
@@ -495,6 +499,23 @@ class EntitySearchService:
         stmt = stmt.limit(limit)
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
+
+    # Legacy alias for backwards compatibility
+    async def find_in_both_companies(
+        self,
+        entity_type: Optional[EntityType] = None,
+        limit: int = 100,
+    ) -> list[BusinessEntity]:
+        """
+        Legacy-Methode: Findet Entities die in mehreren Firmen existieren.
+
+        DEPRECATED: Bitte find_in_multiple_companies verwenden.
+        """
+        return await self.find_in_multiple_companies(
+            entity_type=entity_type,
+            limit=limit,
+            min_companies=2,
+        )
 
 
 # ============================================================================

@@ -4,9 +4,9 @@ FROM node:22.12-alpine3.21 AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-# SECURITY FIX: npm ci statt npm install --force für konsistente Builds
 # --legacy-peer-deps: react-split-pane@0.1.92 ist noch nicht mit React 19 kompatibel
-RUN npm ci --prefer-offline --no-audit --legacy-peer-deps
+# npm install statt npm ci fuer flexibleres Dependency-Management
+RUN npm install --legacy-peer-deps --no-audit
 
 COPY . .
 RUN npm run build

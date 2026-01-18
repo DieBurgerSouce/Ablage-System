@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\incubate\operators\softmax_mask_fuse.py
+# hypothesis_version: 6.148.7
+
+['Mask', 'Out', 'X', 'fused_softmax_mask']

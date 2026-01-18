@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\nn\layer\common.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1e-08, 0.5, 2.0, ', name={_name}', ', sparse={_sparse}', 'NCDHW', 'NCHW', 'NCL', 'NCW', '_T_Padding', 'bilinear', 'constant', 'dilation', 'input', 'kernel_size', 'nearest', 'nn/torch.nn.Unfold', 'padding', 'paddle.compat.Unfold', 'paddle.nn.Unfold', 'stride', 'upscale_in_train', 'x']

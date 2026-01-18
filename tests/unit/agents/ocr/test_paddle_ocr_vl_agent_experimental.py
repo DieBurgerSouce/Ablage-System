@@ -7,7 +7,7 @@ Tests correctness properties for PaddleOCR-VL experimental agent.
 """
 
 import pytest
-from hypothesis import given, strategies as st, settings
+from hypothesis import given, strategies as st, settings, HealthCheck
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, Any
 
@@ -20,7 +20,7 @@ from app.agents.ocr.paddle_ocr_vl_agent_experimental import (
 # Property 3: VRAM Threshold Warning
 # =============================================================================
 
-@settings(max_examples=100, deadline=10000)
+@settings(max_examples=100, deadline=10000, suppress_health_check=[HealthCheck.too_slow])
 @given(
     # Generate VRAM values in GB (0.0 to 20.0 GB range)
     vram_reserved_gb=st.floats(min_value=0.0, max_value=20.0, allow_nan=False, allow_infinity=False),

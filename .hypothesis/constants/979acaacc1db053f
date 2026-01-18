@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\data\__init__.py
+# hypothesis_version: 6.148.7
+
+['../..', 'Eval', 'KieDataset', 'LMDBDataSet', 'LMDBDataSetSR', 'LaTeXOCRDataSet', 'MSTextRecDataset', 'MultiScaleDataSet', 'PGDataSet', 'PubTabDataSet', 'SimpleDataSet', 'Test', 'TextDetDataset', 'TextRecDataset', 'Train', 'batch_size_per_card', 'build_dataloader', 'collate_fn', 'create_operators', 'dataset', 'drop_last', 'loader', 'name', 'num_workers', 'sampler', 'set_signal_handlers', 'shuffle', 'transform', 'use_shared_memory']

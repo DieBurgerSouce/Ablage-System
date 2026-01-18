@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\api\v1\exports.py
+# hypothesis_version: 6.148.7
+
+[100, 202, 400, 404, 1000, 4001, 4004, '/exports', '/jobs', '/jobs/{job_id}', '/jobs/{job_id}/pause', '/jobs/{job_id}/ws', '10/hour', 'Benutzer deaktiviert', 'Filter nach Status', 'JWT Access Token', 'Job fortgesetzt', 'Job pausiert', 'Ungültiger Token', 'cancelled', 'celery_task_revoked', 'data', 'export', 'export.progress', 'export_job_cancelled', 'export_job_created', 'export_job_paused', 'export_job_resumed', 'export_progress:', 'exports', 'format', 'get_secret_value', 'include_metadata', 'include_text', 'job_id', 'json', 'queued', 'require_exp', 'sub', 'type', 'verify_exp', 'websocket_auth_error']

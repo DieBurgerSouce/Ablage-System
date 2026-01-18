@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\Cython\Compiler\Errors.py
+# hypothesis_version: 6.148.7
+
+['%s\n', '%s: %s', '%s:%d:%d: ', '-', '...\n%s\n%s^', 'ASCII', 'Abort error: %s', '[unprintable code]', 'ascii', 'fatal errors', 'message_only', 'note: %s\n', 'position', 'replace', 'warning: %s\n']

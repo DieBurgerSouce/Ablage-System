@@ -427,15 +427,23 @@ EREF+END2END-001
             mock_statement.opening_balance.amount = MagicMock(amount=Decimal("10000.00"))
             mock_statement.opening_balance.date = date(2024, 12, 15)
 
+            # mt940 Bibliothek speichert Daten in tx.data Dictionary
+            mock_amount = MagicMock()
+            mock_amount.amount = Decimal("1500.00")
+            mock_amount.currency = "EUR"
+
             mock_tx = MagicMock()
-            mock_tx.amount = MagicMock(amount=Decimal("1500.00"))
-            mock_tx.date = date(2024, 12, 15)
-            mock_tx.entry_date = date(2024, 12, 15)
-            mock_tx.transaction_details = "ÜBERWEISUNG Miete Dezember 2024"
-            mock_tx.extra_details = {}
-            mock_tx.id = "NTRF"
-            mock_tx.customer_reference = "CUST001"
-            mock_tx.bank_reference = "REF12345"
+            mock_tx.data = {
+                "amount": mock_amount,
+                "date": date(2024, 12, 15),
+                "entry_date": date(2024, 12, 15),
+                "transaction_details": "ÜBERWEISUNG Miete Dezember 2024",
+                "extra_details": {},
+                "id": "NTRF",
+                "customer_reference": "CUST001",
+                "bank_reference": "REF12345",
+                "currency": "EUR",
+            }
 
             mock_statement.transactions = [mock_tx]
             mock_statement.final_closing_balance = MagicMock()

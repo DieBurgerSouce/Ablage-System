@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\pptx\oxml\shapes\graphfrm.py
+# hypothesis_version: 6.148.7
+
+['.//p:oleObj', './p:embed', 'a:graphic', 'a:graphicData', 'a:tbl', 'c:chart', 'list[CT_OleObject]', 'p:cNvPr', 'p:nvGraphicFramePr', 'p:nvPr', 'p:xfrm', 'progId', 'r:id', 'showAsIcon', 'uri']

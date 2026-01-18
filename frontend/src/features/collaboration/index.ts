@@ -36,8 +36,37 @@ export {
   useDeleteNotification,
 } from './hooks/use-notifications';
 
+// Smart Escalation Hooks (Phase 2.3)
+export {
+  useAssignmentRecommendation,
+  useAssignmentRecommendationQuery,
+  useTeamWorkload,
+  useUserScores,
+  useEscalationFactors,
+  useInvalidateSmartEscalationQueries,
+  usePrefetchTeamWorkload,
+  usePrefetchFactors,
+  smartEscalationQueryKeys,
+} from './hooks/use-smart-escalation';
+
+// Smart Escalation Types (Phase 2.3)
+export type {
+  AssignmentRequest,
+  UserScoresFilter,
+  AssignmentRecommendation,
+  TeamWorkload,
+  CandidateScore,
+  FactorsResponse,
+  FactorWeights,
+  TeamMemberWorkload,
+  FactorInfo,
+  AssignmentFactor,
+} from './hooks/use-smart-escalation';
+
 // Components
 export { CommentItem } from './components/CommentItem';
 export { MentionInput } from './components/MentionInput';
 export { CommentsPanel } from './components/CommentsPanel';
 export { ActivityStream } from './components/ActivityStream';
+export { SmartEscalationPanel } from './components/SmartEscalationPanel';
+export type { SmartEscalationPanelProps } from './components/SmartEscalationPanel';

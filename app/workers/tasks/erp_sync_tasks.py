@@ -56,8 +56,30 @@ async def get_connection_config(db: AsyncSession, connection_id: UUID) -> Option
     if not connection:
         return None
 
-    # Decrypt API key (in production, use proper encryption)
-    api_key = connection.encrypted_api_key  # TODO: Decrypt
+    # Decrypt API key mit AES-256-GCM (Connection-ID als AAD)
+    api_key: Optional[str] = None
+    if connection.encrypted_api_key:
+        try:
+            from app.core.encryption import decrypt_api_key, DecryptionError
+            api_key = decrypt_api_key(
+                connection.encrypted_api_key,
+                str(connection.id)
+            )
+        except DecryptionError as e:
+            logger.warning(
+                "erp_api_key_decryption_failed",
+                connection_id=str(connection.id),
+                error=str(e)
+            )
+            # Bei Entschluesselungsfehler: Key ist nicht verfuegbar
+            api_key = None
+        except Exception as e:
+            # Fallback: Wenn Key nicht verschluesselt ist (Legacy-Daten)
+            logger.debug(
+                "erp_api_key_plaintext_fallback",
+                connection_id=str(connection.id)
+            )
+            api_key = connection.encrypted_api_key
 
     return ERPConnectionConfig(
         id=connection.id,
@@ -491,17 +513,64 @@ def notify_conflicts() -> Dict[str, Any]:
                 conn_id = str(conflict.connection_id)
                 conflicts_by_connection[conn_id] = conflicts_by_connection.get(conn_id, 0) + 1
 
-            # TODO: Send notifications via NotificationService
             logger.warning(
                 "erp_conflicts_pending",
                 total=len(pending_conflicts),
                 by_connection=conflicts_by_connection,
             )
 
+            # Send notifications via NotificationService to all admins
+            from app.services.notification_service import (
+                NotificationService,
+                NotificationType,
+                NotificationPriority,
+            )
+            from app.db.models import User
+
+            # Hole alle Admin-User
+            admin_result = await db.execute(
+                select(User).where(
+                    and_(User.is_superuser == True, User.is_active == True)
+                )
+            )
+            admins = admin_result.scalars().all()
+
+            # Formatiere Konflikte nach Verbindung
+            conflicts_list = "\n".join([
+                f"- Verbindung {conn_id}: {count} Konflikte"
+                for conn_id, count in conflicts_by_connection.items()
+            ])
+
+            notification_service = NotificationService()
+            notifications_sent = 0
+
+            for admin in admins:
+                if admin.email:
+                    try:
+                        await notification_service.notify(
+                            notification_type=NotificationType.ERP_CONFLICT_PENDING,
+                            context={
+                                "total_conflicts": len(pending_conflicts),
+                                "connection_count": len(conflicts_by_connection),
+                                "conflicts_by_connection_list": conflicts_list,
+                            },
+                            user_id=str(admin.id),
+                            email=admin.email,
+                            priority=NotificationPriority.HIGH,
+                        )
+                        notifications_sent += 1
+                    except Exception as e:
+                        logger.warning(
+                            "erp_conflict_notification_failed",
+                            admin_id=str(admin.id),
+                            error=str(e),
+                        )
+
             return {
                 "success": True,
                 "conflicts_pending": len(pending_conflicts),
                 "by_connection": conflicts_by_connection,
+                "notifications_sent": notifications_sent,
             }
 
     return asyncio.get_event_loop().run_until_complete(_notify())

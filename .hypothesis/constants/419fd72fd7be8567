@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\quantization\imperative\utils.py
+# hypothesis_version: 6.148.7
+
+[' in the scope.', '.', 'AdaptiveAvgPool2D', 'AdaptiveMaxPool2D', 'AvgPool2D', 'BatchNorm', 'Can not find ', 'Conv2D', 'Conv2DTranspose', 'GroupNorm', 'Hardswish', 'LayerNorm', 'LeakyReLU', 'Linear', 'MaxPool2D', 'PReLU', 'ReLU', 'ReLU6', 'Sigmoid', 'Softmax', 'Swish', 'Tanh', 'conv2d', 'conv2d_transpose', 'depthwise_conv2d', 'matmul']

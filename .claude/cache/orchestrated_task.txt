@@ -1,0 +1,23 @@
+Task(
+    subagent_type="opus-task",
+    prompt='''ORCHESTRATED TASK (OPUS):
+
+document and commit
+
+ROUTING-INFO:
+- Klassifizierung: Kritischer Pfad betroffen: app/core/
+- Confidence: 100%
+- Betroffene Dateien: 211
+
+KONTEXT:
+- Workspace: C:\Users\benfi\Ablage_System
+- Git Branch: feature/ocr-performance
+- Task Type: user_prompt
+
+QUALITY-REQUIREMENTS:
+- Deutsche Fehlermeldungen
+- Vollständige Type-Hints
+- GPU-Memory <85% (RTX 4080)
+- Multi-Tenant RLS beachten
+'''
+)

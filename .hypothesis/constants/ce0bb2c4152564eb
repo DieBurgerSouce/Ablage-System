@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddleocr\ppocr\utils\utility.py
+# hypothesis_version: 6.148.7
+
+[255, 1024, 2000, '-m', 'B-', 'I-', 'IGNORE', 'O', 'OTHER', 'OTHERS', 'RGB', 'bmp', 'character_type', 'fitz', 'gif', 'image_shape', 'install', 'jpeg', 'jpg', 'loss_type', 'max_text_length', 'pdf', 'pip', 'png', 'ppocr', 'r', 'rgb', 'test', 'tif', 'tiff', 'train_eval', 'use_gpu', 'utf-8', '{}{} : ', '{}{} : {}']

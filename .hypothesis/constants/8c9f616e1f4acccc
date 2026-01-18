@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\albumentations\augmentations\geometric\rotate.py
+# hypothesis_version: 6.148.7
+
+[1e-10, 0.5, 1.0, 2.0, 'RandomRotate90', 'Rotate', 'SafeRotate', 'bbox_matrix', 'ellipse', 'factor', 'largest_box', 'matrix', 'output_shape', 'rotate', 'scale', 'shape', 'tuple[float, float]', 'x', 'x_max', 'x_min', 'y', 'y_max', 'y_min']

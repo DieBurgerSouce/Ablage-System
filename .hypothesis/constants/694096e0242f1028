@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\Ablage_System\app\services\document_services\export_service.py
+# hypothesis_version: 6.148.7
+
+[0.5, 1000, 10000, '%d.%m.%Y %H:%M', '&', '&amp;', '&gt;', '&lt;', ',', ', ', '-', '...', '... [Text gekuerzt]', '<', '<br/>', '>', 'ALIGN', 'BACKGROUND', 'BOTTOMPADDING', 'CustomHeading', 'CustomText', 'CustomTitle', 'Dateiname', 'Erstellt', 'Extrahierter Text:', 'FONTNAME', 'FONTSIZE', 'Feld', 'GRID', 'Groesse', 'Hat Umlaute', 'Heading1', 'Heading2', 'Helvetica-Bold', 'ID', 'Ja', 'LEFT', 'NOT_FOUND', 'Nein', 'Normal', 'OCR-Backend', 'OCR-Konfidenz', 'Seiten', 'Sonstiges', 'Sprache', 'Status', 'TEXTCOLOR', 'TOP', 'TOPPADDING', 'Tags', 'Typ', 'Unbekannt', 'VALIGN', 'Wert', 'application/json', 'application/pdf', 'application/zip', 'created_at', 'detected_language', 'document_type', 'export', 'extracted_text', 'file_size', 'filename', 'has_umlauts', 'id', 'metadata', 'ocr_confidence', 'page_count', 'status', 'tags', 'text/csv', 'utf-8', 'w']

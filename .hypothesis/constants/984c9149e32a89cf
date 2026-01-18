@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\base\device_worker.py
+# hypothesis_version: 6.148.7
+
+['1F1B', 'DownpourLiteWorker', 'DownpourWorker', 'DownpourWorkerOpt', 'F-then-B', 'HeterSectionWorker', 'HogwildWorker', 'SectionWorker', 'async_tables', 'click', 'cond2denseid', 'dense_table_config', 'device worker', 'feed', 'fleet_desc', 'local_tables', 'no_cvm', 'num_microbatches', 'num_pipeline_stages', 'pipeline_stage', 'place', 'place_id', 'program_configs', 'program_id_to_worker', 'pull_dense', 'pull_sparse', 'push_dense', 'push_sparse', 'push_sparse_v2', 'schedule_mode', 'section_program', 'send', 'start_cpu_core_id', 'stat_var_names', 'use_cvm', 'worker_class']

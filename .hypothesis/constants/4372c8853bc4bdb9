@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\docling\models\table_structure_model.py
+# hypothesis_version: 6.148.7
+
+[2.0, 'accurate', 'bbox', 'black', 'blue', 'fast', 'green', 'height', 'id', 'image', 'model', 'num_cols', 'num_rows', 'png', 'predict_details', 'prediction', 'red', 'rs_seq', 'save_dir', 'table_structure', 'text', 'tf_responses', 'token', 'tokens', 'type', 'v2.3.0', 'width']

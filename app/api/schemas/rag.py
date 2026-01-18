@@ -457,3 +457,254 @@ class ChatSessionSharedResponse(RAGChatSessionResponse):
     access_level: str = Field(..., description="Eigenes Zugriffslevel")
     is_shared: bool = Field(default=True, description="Session ist geteilt")
     collaborator_count: int = Field(default=0, description="Anzahl Collaborators")
+
+
+# ============================================================================
+# BUSINESS INTELLIGENCE
+# ============================================================================
+
+class BIQueryType(str, Enum):
+    """Types of business intelligence queries."""
+    DOCUMENT_SEARCH = "document_search"
+    INVOICE_ANALYSIS = "invoice_analysis"
+    ENTITY_STATISTICS = "entity_statistics"
+    PAYMENT_PREDICTION = "payment_prediction"
+    TREND_ANALYSIS = "trend_analysis"
+    SUMMARY = "summary"
+
+
+class BITimeRange(str, Enum):
+    """Predefined time ranges for analysis."""
+    LAST_7_DAYS = "last_7_days"
+    LAST_30_DAYS = "last_30_days"
+    LAST_QUARTER = "last_quarter"
+    LAST_YEAR = "last_year"
+    THIS_MONTH = "this_month"
+    THIS_QUARTER = "this_quarter"
+    THIS_YEAR = "this_year"
+    ALL_TIME = "all_time"
+    CUSTOM = "custom"
+
+
+class BIQueryRequest(BaseModel):
+    """Request fuer eine Business Intelligence Anfrage."""
+    query: str = Field(..., min_length=3, max_length=1000, description="Natuerlichsprachige Anfrage")
+    time_range: Optional[BITimeRange] = Field(default=BITimeRange.THIS_YEAR, description="Zeitraum fuer Analyse")
+    custom_start_date: Optional[datetime] = Field(None, description="Start-Datum bei custom time_range")
+    custom_end_date: Optional[datetime] = Field(None, description="End-Datum bei custom time_range")
+    entity_id: Optional[UUID] = Field(None, description="Optional: Filter auf spezifische Entitaet")
+    entity_name: Optional[str] = Field(None, max_length=255, description="Optional: Entitaetsname fuer Suche")
+    include_suggestions: bool = Field(default=True, description="Follow-up Vorschlaege einschliessen")
+
+
+class BIDocumentResult(BaseModel):
+    """Einzelnes Dokumenten-Suchergebnis."""
+    document_id: UUID
+    filename: str
+    document_type: Optional[str]
+    entity_name: Optional[str]
+    created_at: datetime
+    match_reason: str
+    relevance_score: float = Field(ge=0.0, le=1.0)
+
+
+class BIInvoiceAnalysis(BaseModel):
+    """Ergebnis einer Rechnungsanalyse."""
+    total_count: int = Field(ge=0)
+    total_amount: float
+    paid_count: int = Field(ge=0)
+    paid_amount: float
+    open_count: int = Field(ge=0)
+    open_amount: float
+    overdue_count: int = Field(ge=0)
+    overdue_amount: float
+    average_payment_days: Optional[float]
+    by_month: List[Dict[str, Any]] = Field(default_factory=list)
+    by_entity: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class BIEntityStatistics(BaseModel):
+    """Statistiken fuer eine Geschaeftsentitaet."""
+    entity_id: UUID
+    entity_name: str
+    entity_type: str
+    document_count: int = Field(ge=0)
+    invoice_count: int = Field(ge=0)
+    total_revenue: float
+    total_open: float
+    average_payment_days: Optional[float]
+    risk_score: Optional[int] = Field(None, ge=0, le=100)
+    last_activity: Optional[datetime]
+
+
+class BIPaymentPrediction(BaseModel):
+    """Zahlungsvorhersage fuer eine Entitaet."""
+    entity_id: Optional[UUID]
+    entity_name: Optional[str]
+    predicted_days: int = Field(ge=0)
+    confidence: float = Field(ge=0.0, le=1.0)
+    historical_avg_days: float
+    recent_trend: str = Field(..., description="improving, stable, worsening, unknown")
+    factors: List[str] = Field(default_factory=list)
+
+
+class BITrendDataPoint(BaseModel):
+    """Einzelner Datenpunkt in einer Trend-Analyse."""
+    period: str
+    value: float
+    count: int = Field(ge=0)
+    change_percent: Optional[float]
+
+
+class BITrendAnalysis(BaseModel):
+    """Ergebnis einer Trend-Analyse."""
+    metric: str
+    time_range: str
+    total: float
+    average: float
+    trend_direction: str = Field(..., description="up, down, stable")
+    change_percent: float
+    data_points: List[BITrendDataPoint] = Field(default_factory=list)
+
+
+class BIQueryResponse(BaseModel):
+    """Antwort auf eine Business Intelligence Anfrage."""
+    query_type: BIQueryType
+    summary: str = Field(..., description="Menschenlesbare Zusammenfassung auf Deutsch")
+    data: Optional[Any] = Field(None, description="Strukturierte Daten je nach query_type")
+    suggestions: List[str] = Field(default_factory=list, description="Follow-up Fragen")
+    query_time_ms: int = Field(ge=0)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BIChatRequest(BaseModel):
+    """Chat-Anfrage mit optionalem BI-Kontext."""
+    message: str = Field(..., min_length=1, max_length=4000)
+    session_id: Optional[UUID] = None
+    context_type: Optional[RAGContextType] = None
+    context_id: Optional[str] = None
+    enable_bi: bool = Field(default=True, description="Business Intelligence aktivieren")
+    time_range: Optional[BITimeRange] = Field(default=None, description="Zeitraum fuer BI-Anfragen")
+    realtime: bool = Field(default=False, description="Realtime-Modus verwenden")
+
+
+class BIChatResponse(BaseModel):
+    """Chat-Antwort mit RAG- und BI-Kontext."""
+    session_id: UUID
+    message: str
+    thinking_content: Optional[str] = None
+    sources: List["RAGChunkSearchResult"] = Field(default_factory=list, description="RAG-Quellen")
+    bi_insights: Optional[BIQueryResponse] = Field(None, description="Business Intelligence Ergebnisse")
+    model_used: str
+    tokens_input: int
+    tokens_output: int
+    generation_time_ms: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ============================================================================
+# AI ASSISTANT ACTIONS
+# ============================================================================
+
+class AIActionType(str, Enum):
+    """Typen von AI-Aktionen."""
+    # Read-Only Actions (Viewer+)
+    SEARCH_DOCUMENTS = "search_documents"
+    ANALYZE_ENTITY = "analyze_entity"
+    GENERATE_REPORT = "generate_report"
+    EXPLAIN_DOCUMENT = "explain_document"
+
+    # Supervised Actions (Editor+)
+    CATEGORIZE_DOCUMENT = "categorize_document"
+    TAG_DOCUMENT = "tag_document"
+    LINK_ENTITY = "link_entity"
+    CREATE_REMINDER = "create_reminder"
+
+    # Autonomous Actions (Admin only)
+    APPROVE_VALIDATION = "approve_validation"
+    TRIGGER_OCR = "trigger_ocr"
+    SEND_NOTIFICATION = "send_notification"
+    BULK_CATEGORIZE = "bulk_categorize"
+
+
+class AIActionAutonomyLevel(str, Enum):
+    """Autonomie-Stufen fuer AI-Aktionen."""
+    VIEWER = "viewer"      # Read-Only
+    EDITOR = "editor"      # Supervised (Vorschlag + Bestaetigung)
+    ADMIN = "admin"        # Autonomous (selbststaendig)
+
+
+class AIActionStatus(str, Enum):
+    """Status einer AI-Aktion."""
+    PENDING = "pending"
+    SUGGESTED = "suggested"     # Wartet auf User-Bestaetigung
+    CONFIRMED = "confirmed"     # User hat bestaetigt
+    EXECUTING = "executing"
+    COMPLETED = "completed"
+    REJECTED = "rejected"       # User hat abgelehnt
+    FAILED = "failed"
+
+
+class AIActionParameter(BaseModel):
+    """Parameter einer AI-Aktion."""
+    name: str = Field(..., description="Parameter-Name")
+    value: Any = Field(..., description="Parameter-Wert")
+    label: str = Field(..., description="Anzeige-Label auf Deutsch")
+    editable: bool = Field(default=False, description="Kann vom User geaendert werden")
+
+
+class AIActionRequest(BaseModel):
+    """Request fuer eine AI-Aktion."""
+    action_type: AIActionType
+    context_type: Optional[str] = Field(None, description="Kontext-Typ (document, entity, etc.)")
+    context_id: Optional[UUID] = Field(None, description="Kontext-ID (Document-ID, Entity-ID)")
+    parameters: Dict[str, Any] = Field(default_factory=dict, description="Aktions-Parameter")
+    auto_execute: bool = Field(default=False, description="Direkt ausfuehren ohne Bestaetigung")
+
+
+class AIActionSuggestion(BaseModel):
+    """Vorgeschlagene AI-Aktion (fuer Editor-Level)."""
+    action_id: UUID
+    action_type: AIActionType
+    title: str = Field(..., description="Titel der Aktion auf Deutsch")
+    description: str = Field(..., description="Beschreibung was passiert")
+    parameters: List[AIActionParameter] = Field(default_factory=list)
+    confidence: float = Field(ge=0.0, le=1.0, description="Confidence-Score")
+    requires_confirmation: bool = Field(default=True)
+    estimated_impact: str = Field(..., description="Geschaetzter Einfluss")
+
+
+class AIActionConfirmRequest(BaseModel):
+    """Bestaetigung einer vorgeschlagenen Aktion."""
+    action_id: UUID
+    confirmed: bool = Field(..., description="True = bestaetigen, False = ablehnen")
+    modified_parameters: Optional[Dict[str, Any]] = Field(None, description="Geaenderte Parameter")
+
+
+class AIActionResult(BaseModel):
+    """Ergebnis einer AI-Aktion."""
+    action_id: UUID
+    action_type: AIActionType
+    status: AIActionStatus
+    message: str = Field(..., description="Ergebnis-Nachricht auf Deutsch")
+    details: Optional[Dict[str, Any]] = Field(None, description="Zusaetzliche Details")
+    affected_items: List[UUID] = Field(default_factory=list, description="Betroffene IDs")
+    execution_time_ms: int = Field(ge=0)
+
+
+class AIActionListResponse(BaseModel):
+    """Liste verfuegbarer AI-Aktionen basierend auf Rolle."""
+    available_actions: List[Dict[str, Any]] = Field(default_factory=list)
+    autonomy_level: AIActionAutonomyLevel
+    pending_suggestions: int = Field(ge=0, description="Anzahl wartender Vorschlaege")
+
+
+class AIContextInfo(BaseModel):
+    """Kontext-Information fuer AI-Assistent."""
+    page_type: str = Field(..., description="Aktueller Seitentyp")
+    document_id: Optional[UUID] = Field(None)
+    entity_id: Optional[UUID] = Field(None)
+    suggestions: List[str] = Field(default_factory=list, description="Kontext-spezifische Vorschlaege")
+    available_actions: List[AIActionType] = Field(default_factory=list)

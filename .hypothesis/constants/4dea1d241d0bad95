@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\fleet\utils\tensor_fusion_helper.py
+# hypothesis_version: 6.148.7
+
+[1.0, 128, 256, 1024, '0', 'gpu', 'main_grad', 'main_grad@', 'need_clip', 'not supported', 'npu', 'params', 'unknown', 'xpu']

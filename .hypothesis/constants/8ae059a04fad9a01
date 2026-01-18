@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\transformers\modeling_rope_utils.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.001, 0.1, 1.0, 'attention_factor', 'beta_fast', 'beta_slow', 'default', 'dynamic', 'factor', 'head_dim', 'high_freq_factor', 'inv_freq', 'linear', 'llama3', 'long_factor', 'long_inv_freq', 'longrope', 'low_freq_factor', 'mscale', 'mscale_all_dim', 'rope_scaling', 'rope_type', 'short_factor', 'torch.Tensor', 'torch.device', 'truncate', 'type', 'yarn']

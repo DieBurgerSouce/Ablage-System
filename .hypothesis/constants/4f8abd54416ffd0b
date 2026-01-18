@@ -1,0 +1,4 @@
+# file: C:\Users\benfi\AppData\Roaming\Python\Python312\site-packages\paddle\distributed\auto_parallel\static\pir_pass.py
+# hypothesis_version: 6.148.7
+
+[',', '/', '1F1B', 'Cannot Use Auto VPP', 'FThenB', 'Using Auto VPP', 'VPP', 'all', 'builtin.combine', 'builtin.parameter', 'cf.tuple_push', 'cf.yield', 'chunk_id', 'dist_op.reshard', 'ffn', 'learning_rate', 'name', 'num_micro_batches', 'parameter_name', 'pd_op.add', 'pd_op.all_gather', 'pd_op.all_reduce', 'pd_op.cast', 'pd_op.data', 'pd_op.full', 'pd_op.full_int_array', 'pd_op.matmul', 'pd_op.pylayer', 'pd_op.reduce_scatter', 'pd_op.reshape', 'pd_op.share_data_', 'pd_op.swiglu', 'pd_op.transpose', 'pd_op.transpose_grad', 'perm', 'pipeline_scheduler_', 'plan', 'pp_degree', 'pp_stage', 'qkv', 'reduce_type', 'ring_id', 'split_backward', 'struct_name', 'vpp_degree']
