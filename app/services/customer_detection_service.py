@@ -586,7 +586,8 @@ class CustomerDetectionService:
             )
             existing = result.scalar_one_or_none()
             if existing:
-                logger.info("contact_found_by_vat_id", contact_id=str(existing.id), vat_id=vat_id)
+                # PII-Compliance: NIEMALS VAT-ID loggen (CLAUDE.md Rule 8)
+                logger.info("contact_found_by_vat_id", contact_id=str(existing.id))
                 return existing, False
 
         if tax_id:
@@ -601,7 +602,8 @@ class CustomerDetectionService:
             )
             existing = result.scalar_one_or_none()
             if existing:
-                logger.info("contact_found_by_tax_id", contact_id=str(existing.id), tax_id=tax_id)
+                # PII-Compliance: NIEMALS Tax-ID loggen (CLAUDE.md Rule 8)
+                logger.info("contact_found_by_tax_id", contact_id=str(existing.id))
                 return existing, False
 
         # Name-basierte Suche mit company_id
