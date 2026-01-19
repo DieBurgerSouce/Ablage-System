@@ -114,13 +114,16 @@ async def create_contact(
         contact_type=data.contact_type,
     )
 
-    # Check for existing with same VAT ID
+    # Multi-Tenant: company_id aus User-Context (IDOR Prevention)
+    company_id = current_user.company_id
+
+    # Check for existing with same VAT ID within company
     if data.vat_id:
         existing = await db.execute(
             select(BusinessContact).where(
                 and_(
                     BusinessContact.vat_id == data.vat_id,
-                    BusinessContact.owner_id == current_user.id,
+                    BusinessContact.company_id == company_id,
                     BusinessContact.is_active == True,
                 )
             )
@@ -131,7 +134,7 @@ async def create_contact(
                 detail=f"Kontakt mit USt-IdNr. {data.vat_id} existiert bereits",
             )
 
-    # Create contact
+    # Create contact with company_id for Multi-Tenant isolation
     contact = BusinessContact(
         name=data.name,
         name_normalized=normalize_company_name(data.name),
@@ -161,6 +164,7 @@ async def create_contact(
         tags=data.tags or [],
         custom_fields=data.custom_fields or {},
         owner_id=current_user.id,
+        company_id=company_id,  # Multi-Tenant Isolation
         source="manual",
         auto_detected=False,
         is_active=True,
@@ -195,10 +199,13 @@ async def list_contacts(
     db: AsyncSession = Depends(get_db),
 ) -> BusinessContactListResponse:
     """Listet Geschaeftskontakte mit Filtern und Paginierung."""
-    # Build query
+    # Multi-Tenant: company_id aus User-Context
+    company_id = current_user.company_id
+
+    # Build query with company_id filter for Multi-Tenant isolation
     query = select(BusinessContact).where(
         and_(
-            BusinessContact.owner_id == current_user.id,
+            BusinessContact.company_id == company_id,
             BusinessContact.merged_into_id.is_(None),  # Exclude merged contacts
         )
     )
@@ -283,11 +290,14 @@ async def get_contact_stats(
     db: AsyncSession = Depends(get_db),
 ) -> ContactStatsResponse:
     """Statistiken ueber Geschaeftskontakte."""
+    # Multi-Tenant: company_id aus User-Context
+    company_id = current_user.company_id
+
     # Total contacts
     total_result = await db.execute(
         select(func.count(BusinessContact.id)).where(
             and_(
-                BusinessContact.owner_id == current_user.id,
+                BusinessContact.company_id == company_id,
                 BusinessContact.is_active == True,
                 BusinessContact.merged_into_id.is_(None),
             )
@@ -302,7 +312,7 @@ async def get_contact_stats(
             func.count(BusinessContact.id)
         ).where(
             and_(
-                BusinessContact.owner_id == current_user.id,
+                BusinessContact.company_id == company_id,
                 BusinessContact.is_active == True,
                 BusinessContact.merged_into_id.is_(None),
             )
@@ -314,7 +324,7 @@ async def get_contact_stats(
     verified_result = await db.execute(
         select(func.count(BusinessContact.id)).where(
             and_(
-                BusinessContact.owner_id == current_user.id,
+                BusinessContact.company_id == company_id,
                 BusinessContact.is_active == True,
                 BusinessContact.is_verified == True,
                 BusinessContact.merged_into_id.is_(None),
@@ -327,7 +337,7 @@ async def get_contact_stats(
     auto_result = await db.execute(
         select(func.count(BusinessContact.id)).where(
             and_(
-                BusinessContact.owner_id == current_user.id,
+                BusinessContact.company_id == company_id,
                 BusinessContact.is_active == True,
                 BusinessContact.auto_detected == True,
                 BusinessContact.merged_into_id.is_(None),
@@ -340,7 +350,7 @@ async def get_contact_stats(
     top_result = await db.execute(
         select(BusinessContact).where(
             and_(
-                BusinessContact.owner_id == current_user.id,
+                BusinessContact.company_id == company_id,
                 BusinessContact.is_active == True,
                 BusinessContact.contact_type == ContactType.CUSTOMER.value,
                 BusinessContact.total_invoice_amount > 0,
@@ -361,7 +371,7 @@ async def get_contact_stats(
     recent_result = await db.execute(
         select(BusinessContact).where(
             and_(
-                BusinessContact.owner_id == current_user.id,
+                BusinessContact.company_id == company_id,
                 BusinessContact.is_active == True,
                 BusinessContact.merged_into_id.is_(None),
             )
@@ -373,7 +383,7 @@ async def get_contact_stats(
     avg_result = await db.execute(
         select(func.avg(BusinessContact.document_count)).where(
             and_(
-                BusinessContact.owner_id == current_user.id,
+                BusinessContact.company_id == company_id,
                 BusinessContact.is_active == True,
                 BusinessContact.merged_into_id.is_(None),
             )
@@ -399,11 +409,14 @@ async def get_contact(
     db: AsyncSession = Depends(get_db),
 ) -> BusinessContactResponse:
     """Holt einen einzelnen Geschaeftskontakt."""
+    # Multi-Tenant: company_id aus User-Context (IDOR Prevention)
+    company_id = current_user.company_id
+
     result = await db.execute(
         select(BusinessContact).where(
             and_(
                 BusinessContact.id == contact_id,
-                BusinessContact.owner_id == current_user.id,
+                BusinessContact.company_id == company_id,
             )
         )
     )
@@ -430,11 +443,14 @@ async def update_contact(
     db: AsyncSession = Depends(get_db),
 ) -> BusinessContactResponse:
     """Aktualisiert einen Geschaeftskontakt."""
+    # Multi-Tenant: company_id aus User-Context (IDOR Prevention)
+    company_id = current_user.company_id
+
     result = await db.execute(
         select(BusinessContact).where(
             and_(
                 BusinessContact.id == contact_id,
-                BusinessContact.owner_id == current_user.id,
+                BusinessContact.company_id == company_id,
             )
         )
     )
@@ -483,11 +499,14 @@ async def delete_contact(
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """Loescht oder deaktiviert einen Geschaeftskontakt."""
+    # Multi-Tenant: company_id aus User-Context (IDOR Prevention)
+    company_id = current_user.company_id
+
     result = await db.execute(
         select(BusinessContact).where(
             and_(
                 BusinessContact.id == contact_id,
-                BusinessContact.owner_id == current_user.id,
+                BusinessContact.company_id == company_id,
             )
         )
     )
@@ -528,12 +547,15 @@ async def get_contact_documents(
     db: AsyncSession = Depends(get_db),
 ) -> ContactDocumentsResponse:
     """Listet alle Dokumente eines Kontakts."""
-    # Get contact
+    # Multi-Tenant: company_id aus User-Context (IDOR Prevention)
+    company_id = current_user.company_id
+
+    # Get contact with company_id validation
     contact_result = await db.execute(
         select(BusinessContact).where(
             and_(
                 BusinessContact.id == contact_id,
-                BusinessContact.owner_id == current_user.id,
+                BusinessContact.company_id == company_id,
             )
         )
     )
@@ -604,14 +626,16 @@ async def merge_contacts(
     db: AsyncSession = Depends(get_db),
 ) -> MergeContactsResponse:
     """Fuehrt zwei Kontakte zusammen."""
+    # Multi-Tenant: company_id aus User-Context (IDOR Prevention)
+    company_id = current_user.company_id
     service = get_customer_detection_service()
 
-    # Verify both contacts exist and belong to user
+    # Verify both contacts exist and belong to company
     source_result = await db.execute(
         select(BusinessContact).where(
             and_(
                 BusinessContact.id == request.source_id,
-                BusinessContact.owner_id == current_user.id,
+                BusinessContact.company_id == company_id,
             )
         )
     )
@@ -621,7 +645,7 @@ async def merge_contacts(
         select(BusinessContact).where(
             and_(
                 BusinessContact.id == request.target_id,
-                BusinessContact.owner_id == current_user.id,
+                BusinessContact.company_id == company_id,
             )
         )
     )
@@ -651,12 +675,13 @@ async def merge_contacts(
             detail="Ziel-Kontakt wurde bereits zusammengefuehrt",
         )
 
-    # Merge using service
+    # Merge using service - Multi-Tenant: company_id fuer Defense-in-Depth
     success = await service.merge_contacts(
         db=db,
         source_id=request.source_id,
         target_id=request.target_id,
         user_id=current_user.id,
+        company_id=company_id,
     )
 
     if not success:
@@ -691,12 +716,15 @@ async def detect_contacts(
     db: AsyncSession = Depends(get_db),
 ) -> DetectContactsResponse:
     """Erkennt Kontakte aus einem Dokument."""
-    # Get document
+    # Multi-Tenant: company_id aus User-Context (IDOR Prevention)
+    company_id = current_user.company_id
+
+    # Get document - Multi-Tenant Isolation via company_id
     doc_result = await db.execute(
         select(Document).where(
             and_(
                 Document.id == request.document_id,
-                Document.user_id == current_user.id,
+                Document.company_id == company_id,
             )
         )
     )
@@ -710,10 +738,12 @@ async def detect_contacts(
 
     service = get_customer_detection_service()
 
+    # Multi-Tenant: company_id fuer sichere Isolation
     results = await service.process_document(
         db=db,
         document=document,
         owner_id=current_user.id,
+        company_id=company_id,
         auto_create=request.auto_create,
     )
 
@@ -737,11 +767,14 @@ async def verify_contact(
     db: AsyncSession = Depends(get_db),
 ) -> BusinessContactResponse:
     """Markiert einen Kontakt als manuell verifiziert."""
+    # Multi-Tenant: company_id aus User-Context (IDOR Prevention)
+    company_id = current_user.company_id
+
     result = await db.execute(
         select(BusinessContact).where(
             and_(
                 BusinessContact.id == contact_id,
-                BusinessContact.owner_id == current_user.id,
+                BusinessContact.company_id == company_id,
             )
         )
     )
@@ -772,12 +805,15 @@ async def find_similar_contacts(
     db: AsyncSession = Depends(get_db),
 ) -> List[BusinessContactResponse]:
     """Findet aehnliche Kontakte (potenzielle Duplikate)."""
+    # Multi-Tenant: company_id aus User-Context (IDOR Prevention)
+    company_id = current_user.company_id
+
     # Get source contact
     result = await db.execute(
         select(BusinessContact).where(
             and_(
                 BusinessContact.id == contact_id,
-                BusinessContact.owner_id == current_user.id,
+                BusinessContact.company_id == company_id,
             )
         )
     )
@@ -792,10 +828,11 @@ async def find_similar_contacts(
     service = get_customer_detection_service()
     service.similarity_threshold = threshold
 
+    # Multi-Tenant: company_id fuer sichere Isolation
     similar = await service.find_similar_contacts(
         db=db,
         name=contact.name,
-        owner_id=current_user.id,
+        company_id=company_id,
     )
 
     # Filter out the source contact itself

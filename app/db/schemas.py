@@ -8355,50 +8355,49 @@ class BusinessContactListFilters(BaseModel):
 
 class BusinessContactListResponse(BaseModel):
     """Paginierte Kontaktliste."""
-    items: List[BusinessContactResponse]
+    contacts: List[BusinessContactResponse]
     total: int
     page: int
     page_size: int
-    pages: int
+    has_next: bool
 
 
 class ContactDocumentInfo(BaseModel):
     """Dokument-Info fuer Kontaktansicht."""
     id: UUID
-    title: Optional[str] = None
+    filename: str
     document_type: Optional[str] = None
-    file_name: str
-    created_at: datetime
     role: ContactRoleEnum
     confidence: Optional[float] = None
+    created_at: datetime
 
 
 class ContactDocumentsResponse(BaseModel):
     """Dokumente eines Kontakts."""
     contact_id: UUID
+    contact_name: str
     documents: List[ContactDocumentInfo]
     total: int
 
 
 class MergeContactsRequest(BaseModel):
     """Anfrage zum Zusammenfuehren von Kontakten."""
-    source_contact_ids: List[UUID] = Field(..., min_length=1, description="Kontakte die zusammengefuehrt werden")
-    target_contact_id: UUID = Field(..., description="Zielkontakt der uebrig bleibt")
-    merge_strategy: str = Field("keep_target", pattern="^(keep_target|merge_all|keep_newer)$")
+    source_id: UUID = Field(..., description="Kontakt der zusammengefuehrt wird")
+    target_id: UUID = Field(..., description="Zielkontakt der uebrig bleibt")
 
 
 class MergeContactsResponse(BaseModel):
     """Antwort auf Zusammenfuehrung."""
-    merged_contact: BusinessContactResponse
-    merged_count: int
-    documents_reassigned: int
+    success: bool
+    target_contact: BusinessContactResponse
+    merged_document_links: int
+    message: str
 
 
 class DetectContactsRequest(BaseModel):
     """Anfrage zur Kontakterkennung."""
-    document_ids: Optional[List[UUID]] = Field(None, description="Dokumente zur Analyse")
-    ocr_text: Optional[str] = Field(None, description="OCR-Text zur Analyse")
-    min_confidence: float = Field(0.7, ge=0.0, le=1.0)
+    document_id: UUID = Field(..., description="Dokument zur Analyse")
+    auto_create: bool = Field(False, description="Kontakte automatisch erstellen")
 
 
 class DetectedContactInfo(BaseModel):
@@ -8413,16 +8412,18 @@ class DetectedContactInfo(BaseModel):
 
 class DetectContactsResponse(BaseModel):
     """Antwort auf Kontakterkennung."""
-    detected_contacts: List[DetectedContactInfo]
-    document_id: Optional[UUID] = None
+    document_id: UUID
+    detected_contacts: List[Dict[str, Any]]
+    new_contacts_created: int
+    existing_contacts_matched: int
 
 
 class ContactStatsResponse(BaseModel):
     """Statistiken zu Kontakten."""
     total_contacts: int
-    active_contacts: int
-    verified_contacts: int
-    auto_detected_contacts: int
     by_type: Dict[str, int]
-    documents_linked: int
-    average_documents_per_contact: float
+    verified_count: int
+    auto_detected_count: int
+    top_customers_by_invoice: List[Dict[str, Any]]
+    recent_contacts: List[BusinessContactResponse]
+    avg_documents_per_contact: float

@@ -484,6 +484,7 @@ class CustomerDetectionService:
         db: AsyncSession,
         name: str,
         owner_id: Optional[UUID] = None,
+        company_id: Optional[UUID] = None,
         contact_type: Optional[ContactType] = None,
     ) -> List[Tuple[BusinessContact, float]]:
         """Findet aehnliche Kontakte basierend auf Name.
@@ -491,7 +492,8 @@ class CustomerDetectionService:
         Args:
             db: Database session
             name: Name zum Suchen
-            owner_id: Optional - nur Kontakte dieses Users
+            owner_id: DEPRECATED - nur noch fuer Abwaertskompatibilitaet
+            company_id: Optional - nur Kontakte dieser Company (Multi-Tenant)
             contact_type: Optional - nur bestimmter Kontakttyp
 
         Returns:
@@ -504,7 +506,11 @@ class CustomerDetectionService:
         # Query bauen
         query = select(BusinessContact).where(BusinessContact.is_active == True)
 
-        if owner_id:
+        # Multi-Tenant Isolation via company_id (bevorzugt)
+        if company_id:
+            query = query.where(BusinessContact.company_id == company_id)
+        elif owner_id:
+            # DEPRECATED: Fallback fuer alte Aufrufe
             query = query.where(BusinessContact.owner_id == owner_id)
 
         if contact_type:
@@ -530,6 +536,7 @@ class CustomerDetectionService:
         db: AsyncSession,
         contact_data: Dict[str, Any],
         owner_id: UUID,
+        company_id: Optional[UUID] = None,
         source: str = "auto_invoice",
         document_id: Optional[UUID] = None,
         auto_create: bool = True,
@@ -539,7 +546,8 @@ class CustomerDetectionService:
         Args:
             db: Database session
             contact_data: Extrahierte Kontaktdaten
-            owner_id: User-ID
+            owner_id: User-ID (wird als creator gespeichert)
+            company_id: Company-ID (Multi-Tenant Isolation)
             source: Quelle (manual, auto_invoice, auto_contract)
             document_id: Optional - verknuepftes Dokument
             auto_create: Automatisch erstellen wenn nicht gefunden
@@ -554,6 +562,13 @@ class CustomerDetectionService:
 
         name = name.strip()
 
+        # Multi-Tenant: company_id ist erforderlich fuer sichere Isolation
+        # Falls nicht uebergeben, Fallback auf owner_id (deprecated)
+        isolation_condition = (
+            BusinessContact.company_id == company_id if company_id
+            else BusinessContact.owner_id == owner_id
+        )
+
         # Zuerst nach exakten Identifikatoren suchen
         vat_id = contact_data.get("vat_id")
         tax_id = contact_data.get("tax_id")
@@ -564,7 +579,7 @@ class CustomerDetectionService:
                 select(BusinessContact).where(
                     and_(
                         BusinessContact.vat_id == vat_id,
-                        BusinessContact.owner_id == owner_id,
+                        isolation_condition,
                         BusinessContact.is_active == True,
                     )
                 )
@@ -579,7 +594,7 @@ class CustomerDetectionService:
                 select(BusinessContact).where(
                     and_(
                         BusinessContact.tax_id == tax_id,
-                        BusinessContact.owner_id == owner_id,
+                        isolation_condition,
                         BusinessContact.is_active == True,
                     )
                 )
@@ -589,8 +604,8 @@ class CustomerDetectionService:
                 logger.info("contact_found_by_tax_id", contact_id=str(existing.id), tax_id=tax_id)
                 return existing, False
 
-        # Name-basierte Suche
-        matches = await self.find_similar_contacts(db, name, owner_id)
+        # Name-basierte Suche mit company_id
+        matches = await self.find_similar_contacts(db, name, owner_id=owner_id, company_id=company_id)
 
         if matches:
             best_match, similarity = matches[0]
@@ -628,6 +643,7 @@ class CustomerDetectionService:
             email=contact_data.get("email"),
             phone=contact_data.get("phone"),
             owner_id=owner_id,
+            company_id=company_id,  # Multi-Tenant Isolation
             source=source,
             auto_detected=True,
             auto_detection_confidence=0.8,  # Standard-Confidence
@@ -653,6 +669,7 @@ class CustomerDetectionService:
         db: AsyncSession,
         document: Document,
         owner_id: UUID,
+        company_id: Optional[UUID] = None,
         auto_create: bool = True,
     ) -> List[Dict[str, Any]]:
         """Verarbeitet ein Dokument und extrahiert/verknuepft Kontakte.
@@ -660,7 +677,8 @@ class CustomerDetectionService:
         Args:
             db: Database session
             document: Dokument zum Verarbeiten
-            owner_id: User-ID
+            owner_id: User-ID (creator)
+            company_id: Company-ID (Multi-Tenant Isolation). Falls None, wird document.company_id verwendet.
             auto_create: Automatisch Kontakte erstellen
 
         Returns:
@@ -668,6 +686,9 @@ class CustomerDetectionService:
         """
         results = []
         metadata = document.document_metadata or {}
+
+        # Multi-Tenant: company_id aus Dokument holen falls nicht uebergeben
+        effective_company_id = company_id or document.company_id
 
         # Je nach Dokumenttyp extrahieren
         doc_type = document.document_type
@@ -681,6 +702,7 @@ class CustomerDetectionService:
                         db=db,
                         contact_data=extracted["sender"],
                         owner_id=owner_id,
+                        company_id=effective_company_id,
                         source="auto_invoice",
                         document_id=document.id,
                         auto_create=auto_create,
@@ -704,6 +726,7 @@ class CustomerDetectionService:
                         db=db,
                         contact_data=extracted["recipient"],
                         owner_id=owner_id,
+                        company_id=effective_company_id,
                         source="auto_invoice",
                         document_id=document.id,
                         auto_create=auto_create,
@@ -729,6 +752,7 @@ class CustomerDetectionService:
                             db=db,
                             contact_data=party_data,
                             owner_id=owner_id,
+                            company_id=effective_company_id,
                             source="auto_contract",
                             document_id=document.id,
                             auto_create=auto_create,
@@ -778,10 +802,10 @@ class CustomerDetectionService:
                         db=db,
                         contact_data=contact_data,
                         owner_id=owner_id,
+                        company_id=effective_company_id,
                         source="auto_ner_extraction",
                         document_id=document.id,
                         auto_create=auto_create,
-                        contact_type=contact_type,
                     )
 
                     if contact:
@@ -878,6 +902,7 @@ class CustomerDetectionService:
         source_id: UUID,
         target_id: UUID,
         user_id: UUID,
+        company_id: Optional[UUID] = None,
     ) -> bool:
         """Merged zwei Kontakte (source -> target).
 
@@ -889,22 +914,46 @@ class CustomerDetectionService:
             source_id: Kontakt der gemergt wird
             target_id: Zielkontakt
             user_id: User der die Aktion ausfuehrt
+            company_id: Company-ID fuer Multi-Tenant Isolation (Defense-in-Depth)
 
         Returns:
             True wenn erfolgreich
         """
+        # Multi-Tenant: company_id Filter fuer Defense-in-Depth
+        if company_id:
+            source_condition = and_(
+                BusinessContact.id == source_id,
+                BusinessContact.company_id == company_id,
+            )
+            target_condition = and_(
+                BusinessContact.id == target_id,
+                BusinessContact.company_id == company_id,
+            )
+        else:
+            # DEPRECATED: Fallback ohne company_id (Legacy-Kompatibilitaet)
+            source_condition = BusinessContact.id == source_id
+            target_condition = BusinessContact.id == target_id
+
         # Source und Target laden
         source_result = await db.execute(
-            select(BusinessContact).where(BusinessContact.id == source_id)
+            select(BusinessContact).where(source_condition)
         )
         source = source_result.scalar_one_or_none()
 
         target_result = await db.execute(
-            select(BusinessContact).where(BusinessContact.id == target_id)
+            select(BusinessContact).where(target_condition)
         )
         target = target_result.scalar_one_or_none()
 
         if not source or not target:
+            if company_id:
+                logger.warning(
+                    "merge_contact_security_violation",
+                    source_id=str(source_id),
+                    target_id=str(target_id),
+                    company_id=str(company_id),
+                    reason="Contact not found or company mismatch",
+                )
             logger.error("merge_contact_not_found", source_id=str(source_id), target_id=str(target_id))
             return False
 
