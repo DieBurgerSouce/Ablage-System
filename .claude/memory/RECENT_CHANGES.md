@@ -2,6 +2,37 @@
 
 ## 2026-01-19
 
+### OCR Self-Learning System - Production-Ready
+
+**Status**: ✅ Enterprise-Level implementiert
+**Betroffene Dateien**:
+- `app/services/ocr/self_learning_service.py` - Core Service
+- `app/api/v1/ocr_learning.py` - API Endpoints mit Security
+- `frontend/src/features/ocr-learning/` - Vollstaendiges Frontend
+- `tests/unit/services/ocr/test_self_learning_service.py` - 30 Unit Tests
+- `tests/unit/api/test_ocr_learning_api.py` - 34 Validation Tests (inkl. test_id Security Tests)
+
+**Features**:
+- Confidence-Kalibrierung mit EMA (Exponential Moving Average)
+- A/B Testing fuer Modell-Versionen mit Traffic-Split
+- 3 Learning Modes: aggressive, cautious, batch
+- Automatischer Rollback bei Qualitaetsverschlechterung
+- JSONB-basierte Persistenz (keine Migration erforderlich)
+
+**Security Hardening**:
+- Alle Endpoints erfordern Authentifizierung (Auth-Luecke gefixt)
+- OCR-Backend Whitelist-Validierung
+- Feldname Regex-Pattern gegen Injection
+- Admin-only fuer kritische Operationen
+- **test_id Validierung** (Review Iteration 3): Regex-Pattern + Laengenbegrenzung 3-64 Zeichen gegen Path-Traversal, SQL-Injection, XSS
+
+**Frontend**:
+- Dashboard unter `/admin/ocr-learning`
+- LearningStatsCards, ConfidenceAdjustmentsChart, ABTestCard
+- Toast-Benachrichtigungen, Loading-States, Error-Handling
+
+---
+
 ### Enterprise Feature Release - Phase 3 Complete
 
 **Commit**: `f0d59eae`

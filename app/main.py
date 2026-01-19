@@ -791,6 +791,13 @@ from app.api.v1.shipments import router as shipments_router
 from app.api.v1.websocket import router as websocket_router
 from app.api.v1.predictive_actions import router as predictive_actions_router
 from app.api.v1.smart_escalation import router as smart_escalation_router
+from app.api.v1.tenant_rate_limits import router as tenant_rate_limits_router
+from app.api.v1.subscriptions import router as subscriptions_router
+from app.api.v1.holding import router as holding_router
+from app.api.v1.predictive_cashflow import router as predictive_cashflow_router
+from app.api.v1.fraud_detection import router as fraud_detection_router
+from app.api.v1.risk_intelligence import router as risk_intelligence_router
+from app.api.v1.ocr_learning import router as ocr_learning_router
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -874,6 +881,13 @@ app.include_router(shipments_router, prefix="/api/v1")
 app.include_router(websocket_router, prefix="/api/v1", tags=["websocket"])
 app.include_router(predictive_actions_router, prefix="/api/v1")
 app.include_router(smart_escalation_router, prefix="/api/v1")
+app.include_router(tenant_rate_limits_router, prefix="/api/v1")
+app.include_router(subscriptions_router, prefix="/api/v1")
+app.include_router(holding_router, prefix="/api/v1")
+app.include_router(predictive_cashflow_router, prefix="/api/v1")
+app.include_router(fraud_detection_router, prefix="/api/v1")
+app.include_router(risk_intelligence_router, prefix="/api/v1")
+app.include_router(ocr_learning_router, prefix="/api/v1")
 
 
 # ==================== Health & Status Endpoints ====================

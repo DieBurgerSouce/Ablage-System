@@ -270,6 +270,30 @@ primary_supplier_number: str  # Hauptlieferantennummer
 
 **SECURITY**: Email-Passwoerter verschluesselt (AES-256-GCM), NIEMALS Email-Inhalte in Logs
 
+### OCR Self-Learning System (Januar 2026)
+
+**Status**: Production-Ready | **Migration**: Keine (JSONB-basiert)
+
+| Service | Beschreibung |
+|---------|--------------|
+| `SelfLearningOCRService` | Confidence-Kalibrierung, A/B Testing, Learning Modes |
+
+**Learning Modes:**
+- `aggressive`: Jede User-Korrektur fliesst sofort ein
+- `cautious`: Nur verifizierte Korrekturen
+- `batch`: Taeglich im Batch
+
+**API Endpoints:**
+- `POST /api/v1/ocr-learning/feedback` - Korrektur-Feedback
+- `POST /api/v1/ocr-learning/calibrate` - Kalibrierte Confidence
+- `GET /api/v1/ocr-learning/stats` - Statistiken
+- `POST /api/v1/ocr-learning/ab-test/start` - A/B Test starten (Admin)
+- `POST /api/v1/ocr-learning/mode/{mode}` - Modus setzen (Admin)
+
+**Frontend:** `/admin/ocr-learning` - Dashboard mit Stats, A/B Tests, Mode Selection
+
+**SECURITY**: Input-Whitelist-Validierung fuer Backends, Feldnamen, Korrektur-Typen, Test-IDs (Regex + Laengenbegrenzung)
+
 ### Validation UI (Januar 2026)
 
 **Status**: Production-Ready | **Features**: Keyboard + Swipe

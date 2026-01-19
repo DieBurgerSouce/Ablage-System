@@ -1,5 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package, Landmark, AlertTriangle, Wallet, Receipt, GitBranch, UserCircle, Shield, Lock, Bookmark, Search, Pin, Database, FileSignature, FilePlus, Building2, BookOpen, BarChart3, MessageCircle, FolderInput, Truck, Gauge, Award, CreditCard } from 'lucide-react'
+import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package, Landmark, AlertTriangle, Wallet, Receipt, GitBranch, UserCircle, Shield, Lock, Bookmark, Search, Pin, Database, FileSignature, FilePlus, Building2, BookOpen, BarChart3, MessageCircle, FolderInput, Truck, Gauge, Award, CreditCard, TrendingUp, ShieldAlert, BrainCircuit, Brain } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { usePermissions } from '@/lib/auth/hooks/use-permissions'
@@ -94,6 +94,9 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                 <SidebarLink to="/document-groups" icon={Layers} label="Dokumentgruppen" onNavigate={onNavigate} />
                 <SidebarLink to="/admin/datev" icon={FileSpreadsheet} label="DATEV Export" onNavigate={onNavigate} />
                 <SidebarLink to="/berichte" icon={BarChart3} label="Berichte" onNavigate={onNavigate} />
+                <SidebarLink to="/holding" icon={Building2} label="Holding" onNavigate={onNavigate} />
+                <SidebarLink to="/cashflow" icon={TrendingUp} label="Cash-Flow" onNavigate={onNavigate} />
+                <SidebarLink to="/fraud" icon={ShieldAlert} label="Fraud Detection" onNavigate={onNavigate} />
 
                 {/* Ablage-Struktur Section */}
                 <div className="pt-4">
@@ -227,11 +230,17 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                                 {permissions.canViewOCRBackends && (
                                     <SidebarLink to="/admin/ocr-backends" icon={Cpu} label="OCR Backends" onNavigate={onNavigate} />
                                 )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/ocr-learning" icon={Brain} label="OCR Learning" onNavigate={onNavigate} />
+                                )}
                                 {permissions.canViewMahnwesen && (
                                     <SidebarLink to="/admin/mahnungen" icon={AlertTriangle} label="Mahnwesen" onNavigate={onNavigate} />
                                 )}
                                 {permissions.isAdmin && (
                                     <SidebarLink to="/risk" icon={Gauge} label="Risiko-Scoring" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/risk/intelligence" icon={BrainCircuit} label="Risk Intelligence" onNavigate={onNavigate} />
                                 )}
                                 {permissions.isAdmin && (
                                     <SidebarLink to="/admin/lexware" icon={Database} label="Lexware Import" onNavigate={onNavigate} />
