@@ -6212,6 +6212,25 @@ class Company(Base):
     is_active = Column(Boolean, default=True)
     is_default = Column(Boolean, default=False)
 
+    # ==================== Subscription/Multi-Tenant ====================
+    # Abonnement-Stufe: free, basic, professional, enterprise
+    subscription_tier = Column(String(50), nullable=False, default="free")
+    subscription_started_at = Column(DateTime(timezone=True), nullable=True)
+    subscription_expires_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Billing-Informationen
+    billing_email = Column(String(255), nullable=True)
+    billing_address = Column(CrossDBJSON, default=dict)
+    payment_method = Column(String(50), nullable=True)  # invoice, sepa, card
+
+    # Tenant-Limits (ueberschreibbar pro Tier)
+    max_users = Column(Integer, nullable=False, default=5)
+    max_documents_per_month = Column(Integer, nullable=False, default=100)
+    max_storage_gb = Column(Integer, nullable=False, default=5)
+
+    # Aktivierte Features als JSON-Array
+    features_enabled = Column(CrossDBJSON, default=lambda: ["ocr", "search", "export"])
+
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -6225,6 +6244,10 @@ class Company(Base):
     expense_reports = relationship("ExpenseReport", back_populates="company", cascade="all, delete-orphan")
     # Document Template relationships - imported from app.db.models.document_template
     document_templates = relationship("DocumentTemplate", back_populates="company", cascade="all, delete-orphan")
+    # Tenant Rate Limit relationships
+    rate_limits = relationship("TenantRateLimit", back_populates="company", cascade="all, delete-orphan")
+    usage_metrics = relationship("TenantUsageMetrics", back_populates="company", cascade="all, delete-orphan")
+    rate_limit_violations = relationship("RateLimitViolation", back_populates="company", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("ix_companies_vat_id", "vat_id"),
@@ -15045,7 +15068,7 @@ class TenantRateLimit(Base):
     )
 
     # Relationships
-    company = relationship("Company", backref="rate_limits")
+    company = relationship("Company", back_populates="rate_limits")
     created_by = relationship("User", foreign_keys=[created_by_id])
 
     __table_args__ = (
@@ -15113,7 +15136,7 @@ class TenantUsageMetrics(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
-    company = relationship("Company", backref="usage_metrics")
+    company = relationship("Company", back_populates="usage_metrics")
 
     __table_args__ = (
         UniqueConstraint("company_id", "period_type", "period_start", name="uq_tenant_metrics_period"),
@@ -15166,8 +15189,8 @@ class RateLimitViolation(Base):
     occurred_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
-    company = relationship("Company", backref="rate_limit_violations")
-    user = relationship("User", backref="rate_limit_violations")
+    company = relationship("Company", back_populates="rate_limit_violations")
+    user = relationship("User")
 
     __table_args__ = (
         Index("ix_rate_violations_time", "occurred_at"),
