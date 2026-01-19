@@ -2,6 +2,92 @@
 
 ## 2026-01-19
 
+### Enterprise Feature Release - Phase 4
+
+**Commit**: `626a7380`
+**Status**: ✅ Production-Ready
+
+#### 6 Neue Enterprise Features
+
+| Feature | Beschreibung |
+|---------|--------------|
+| **Fraud Detection System** | Duplikat-Erkennung, Preis-Anomalien, Phantom-Lieferanten, Expense-Abuse |
+| **Holding Dashboard** | Multi-Company Konsolidierung, Intercompany-Tracking, KPI-Vergleich |
+| **Predictive Cash Flow** | ML-basierte Liquiditaets-Prognose (7-90 Tage), What-If Szenarien |
+| **Risk Intelligence** | Umfassende Risk-Profile, Branchen-Benchmark, Netzwerk-Analyse |
+| **Subscription Management** | Tier-System (Free/Basic/Pro/Enterprise), Feature-Gating |
+| **Tenant Rate Limits** | Per-Company API-Limits, Usage-Metrics, Violation-Logging |
+
+#### Fraud Detection Details
+
+| Modul | Funktion |
+|-------|----------|
+| `duplicate_invoice_detection` | Hash + Fuzzy-Matching fuer doppelte Rechnungen |
+| `price_anomaly_detection` | Vergleich mit historischen Preisdaten |
+| `phantom_supplier_detection` | Erkennung fiktiver Lieferanten |
+| `internal_fraud_patterns` | Expense-Abuse Muster |
+| Alert Dashboard | Severity-Levels, Admin-konfigurierbare Schwellwerte |
+
+#### Holding Dashboard Details
+
+- Multi-Company Consolidated View
+- Intercompany Transaction Tracking
+- Cash Flow Aggregation per Company
+- Company Comparison Metrics
+- Real-time KPI Overview
+
+#### Predictive Cash Flow Details
+
+- ML-basierte Prognose (7, 14, 30, 90 Tage)
+- Payment Prediction per Invoice
+- What-If Scenario Analysis
+- Skonto Optimization Recommendations
+- Early Warning System
+
+#### Risk Intelligence Details
+
+- Comprehensive Risk Profiles per Entity
+- Industry Benchmark Comparisons
+- Trend Analysis (quarterly)
+- Network Analysis (IBAN/Address Matching)
+- External Sources: Handelsregister, Insolvenzregister
+
+#### API Endpoints (Auswahl)
+
+```
+# Fraud Detection
+GET/POST /api/v1/fraud/alerts
+POST /api/v1/fraud/scan/{entity_id}
+GET /api/v1/fraud/statistics
+
+# Holding
+GET /api/v1/holding/dashboard
+GET /api/v1/holding/companies/{id}/kpis
+GET /api/v1/holding/intercompany
+
+# Predictive Cash Flow
+GET /api/v1/cashflow/forecast
+POST /api/v1/cashflow/scenario
+GET /api/v1/cashflow/recommendations
+
+# Risk Intelligence
+GET /api/v1/risk/profile/{entity_id}
+GET /api/v1/risk/portfolio
+GET /api/v1/risk/benchmarks
+
+# Subscriptions
+GET/PATCH /api/v1/subscriptions
+GET /api/v1/subscriptions/features
+POST /api/v1/subscriptions/upgrade
+
+# Tenant Rate Limits
+GET /api/v1/admin/rate-limits
+PATCH /api/v1/admin/rate-limits/{company_id}
+GET /api/v1/admin/rate-limits/violations
+```
+
+---
+
 ### OCR Self-Learning System - Production-Ready
 
 **Status**: ✅ Enterprise-Level implementiert

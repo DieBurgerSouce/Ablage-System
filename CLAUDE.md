@@ -311,6 +311,72 @@ primary_supplier_number: str  # Hauptlieferantennummer
 - Links swipen = Ablehnen (roter Hintergrund)
 - Threshold: 100px fuer Trigger
 - Animierte Feedback-Anzeige
+
+### Fraud Detection System (Januar 2026)
+
+**Status**: Production-Ready
+
+| Modul | Beschreibung |
+|-------|--------------|
+| `duplicate_invoice_detection` | Hash + Fuzzy-Matching fuer Duplikate |
+| `price_anomaly_detection` | Historischer Preisvergleich |
+| `phantom_supplier_detection` | Fiktive Lieferanten erkennen |
+| `internal_fraud_patterns` | Expense-Abuse Muster |
+
+**API Endpoints:** `/api/v1/fraud/*`
+
+### Holding Dashboard (Januar 2026)
+
+**Status**: Production-Ready
+
+- Multi-Company Consolidated View
+- Intercompany Transaction Tracking
+- Cash Flow Aggregation per Company
+- Company Comparison Metrics
+
+**API Endpoints:** `/api/v1/holding/*`
+
+### Predictive Cash Flow (Januar 2026)
+
+**Status**: Production-Ready
+
+- ML-basierte Prognose (7-90 Tage)
+- What-If Scenario Analysis
+- Skonto Optimization Recommendations
+- Early Warning System
+
+**API Endpoints:** `/api/v1/cashflow/*`
+
+### Risk Intelligence (Januar 2026)
+
+**Status**: Production-Ready
+
+- Comprehensive Risk Profiles per Entity
+- Industry Benchmark Comparisons
+- Network Analysis (IBAN/Address)
+- External Sources: Handelsregister, Insolvenzregister
+
+**API Endpoints:** `/api/v1/risk/*`
+
+### Subscription Management (Januar 2026)
+
+**Status**: Production-Ready
+
+- Tiers: Free, Basic, Professional, Enterprise
+- Feature-Gating per Tier
+- Upgrade/Downgrade Flows
+
+**API Endpoints:** `/api/v1/subscriptions/*`
+
+### Tenant Rate Limits (Januar 2026)
+
+**Status**: Production-Ready
+
+- Per-Company API Rate Limiting
+- Usage Metrics Tracking
+- Violation Logging
+
+**API Endpoints:** `/api/v1/admin/rate-limits/*`
 <!-- /AUTO-MANAGED: enterprise-features -->
 
 ---
