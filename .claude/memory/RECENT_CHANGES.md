@@ -2,6 +2,33 @@
 
 ## 2026-01-19
 
+### Security Hardening - BusinessContact & CustomerDetection
+
+**Commits**: `63c83318`, `7363ef67`, `91bf95a8`
+**Status**: ✅ Production-Ready
+
+#### Multi-Tenant IDOR Prevention
+
+| Fix | Beschreibung |
+|-----|--------------|
+| **BusinessContact API** | 11 Endpoints auf company_id umgestellt (vorher owner_id) |
+| **CustomerDetectionService** | company_id Parameter zu find_similar_contacts, find_or_create_contact, process_document, merge_contacts |
+| **Schema Alignment** | BusinessContactListResponse, MergeContactsResponse, DetectContactsResponse angepasst |
+| **Defense-in-Depth** | API UND Service validieren company_id |
+
+#### PII-Compliance Fix
+
+| Stelle | Aenderung |
+|--------|-----------|
+| `find_or_create_contact()` | VAT-ID und Tax-ID aus Logger-Aufrufen entfernt |
+| Lines 589, 604 | Nur noch contact_id geloggt (CLAUDE.md Rule 8) |
+
+#### Design-Dokumentation
+
+- CustomerDetection Celery Tasks: Design-Hinweis zu Document-Loading ohne company_id Filter dokumentiert
+
+---
+
 ### Enterprise Feature Release - Phase 4
 
 **Commit**: `626a7380`
