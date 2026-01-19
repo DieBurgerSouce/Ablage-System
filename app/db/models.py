@@ -15237,3 +15237,185 @@ class SubscriptionTierDefaults(Base):
 
     def __repr__(self) -> str:
         return f"<SubscriptionTierDefaults {self.tier}>"
+
+
+# ==================== Business Contacts ====================
+
+
+class ContactType(str, Enum):
+    """Kontakttyp fuer BusinessContact."""
+    CUSTOMER = "customer"      # Kunde
+    SUPPLIER = "supplier"      # Lieferant
+    PARTNER = "partner"        # Partner
+    PROSPECT = "prospect"      # Interessent
+    OTHER = "other"            # Sonstige
+
+
+class ContactRole(str, Enum):
+    """Rolle eines Kontakts bei einem Dokument."""
+    SENDER = "sender"          # Absender
+    RECIPIENT = "recipient"    # Empfaenger
+    MENTIONED = "mentioned"    # Erwaehnt
+    CC = "cc"                  # CC
+
+
+class DocumentContact(Base):
+    """
+    Verknuepfung zwischen Dokumenten und Geschaeftskontakten.
+
+    Ermoeglicht:
+    - Mehrere Kontakte pro Dokument (Sender, Empfaenger, Erwaehnt)
+    - Mehrere Dokumente pro Kontakt
+    - Automatische Erkennung mit Confidence-Score
+    """
+    __tablename__ = "document_contacts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True)
+    contact_id = Column(UUID(as_uuid=True), ForeignKey("business_contacts.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Role and detection
+    role = Column(String(20), nullable=False, default=ContactRole.MENTIONED.value)
+    confidence = Column(Float, nullable=True)  # 0.0-1.0 fuer auto-detected
+    is_auto_detected = Column(Boolean, default=False)
+
+    # Metadata
+    detected_at = Column(DateTime(timezone=True), server_default=func.now())
+    confirmed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    confirmed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    document = relationship("Document", backref="contact_links")
+    contact = relationship("BusinessContact", back_populates="document_links")
+    confirmed_by = relationship("User", foreign_keys=[confirmed_by_id])
+
+    __table_args__ = (
+        UniqueConstraint("document_id", "contact_id", "role", name="uq_doc_contact_role"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<DocumentContact doc={self.document_id} contact={self.contact_id} role={self.role}>"
+
+
+class BusinessContact(Base):
+    """
+    Geschaeftskontakt mit automatischer Erkennung.
+
+    Zentrales Model fuer alle Geschaeftskontakte mit:
+    - Automatischer Erkennung aus Dokumenten (OCR)
+    - Deduplizierung und Zusammenfuehrung
+    - Umfangreichen Kontaktinformationen
+    - Verknuepfung zu Dokumenten
+    """
+    __tablename__ = "business_contacts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Basic identification
+    name = Column(String(255), nullable=False, index=True)
+    name_normalized = Column(String(255), nullable=True, index=True)  # Fuer Fuzzy-Matching
+    contact_type = Column(String(20), nullable=False, default=ContactType.CUSTOMER.value)
+    company_form = Column(String(50), nullable=True)  # GmbH, AG, etc.
+
+    # Tax identifiers
+    tax_id = Column(String(30), nullable=True)  # Steuernummer
+    vat_id = Column(String(20), nullable=True, index=True)  # USt-IdNr
+    registration_number = Column(String(50), nullable=True)  # HRB
+
+    # Business numbers
+    customer_number = Column(String(50), nullable=True, index=True)
+    supplier_number = Column(String(50), nullable=True, index=True)
+
+    # Address
+    street = Column(String(255), nullable=True)
+    house_number = Column(String(20), nullable=True)
+    address_addition = Column(String(100), nullable=True)  # c/o, Gebaeude, etc.
+    postal_code = Column(String(10), nullable=True, index=True)
+    city = Column(String(100), nullable=True)
+    country = Column(String(100), default="Deutschland")
+
+    # Contact details
+    email = Column(String(255), nullable=True, index=True)
+    phone = Column(String(30), nullable=True)
+    fax = Column(String(30), nullable=True)
+    website = Column(String(255), nullable=True)
+
+    # Banking
+    bank_name = Column(String(100), nullable=True)
+    iban = Column(String(34), nullable=True, index=True)
+    bic = Column(String(11), nullable=True)
+
+    # Additional data
+    contact_persons = Column(CrossDBJSON, default=list)  # [{"name": "...", "role": "...", "email": "..."}]
+    parent_company_id = Column(UUID(as_uuid=True), ForeignKey("business_contacts.id"), nullable=True)
+    notes = Column(Text, nullable=True)
+    tags = Column(CrossDBJSON, default=list)
+    custom_fields = Column(CrossDBJSON, default=dict)
+
+    # Ownership and source
+    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"), nullable=True, index=True)
+    source = Column(String(50), default="manual")  # manual, ocr, import, api
+    auto_detected = Column(Boolean, default=False)
+    auto_detection_confidence = Column(Float, nullable=True)
+    first_document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id"), nullable=True)
+
+    # Status
+    is_active = Column(Boolean, default=True)
+    is_verified = Column(Boolean, default=False)
+    merged_into_id = Column(UUID(as_uuid=True), ForeignKey("business_contacts.id"), nullable=True)
+
+    # Statistics (denormalized for performance)
+    document_count = Column(Integer, default=0)
+    total_invoice_amount = Column(Numeric(15, 2), default=0)
+    last_document_date = Column(DateTime(timezone=True), nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    owner = relationship("User", foreign_keys=[owner_id], backref="business_contacts")
+    company = relationship("Company", backref="business_contacts")
+    first_document = relationship("Document", foreign_keys=[first_document_id])
+    parent_company = relationship("BusinessContact", remote_side=[id], foreign_keys=[parent_company_id])
+    merged_into = relationship("BusinessContact", remote_side=[id], foreign_keys=[merged_into_id])
+    document_links = relationship("DocumentContact", back_populates="contact", cascade="all, delete-orphan")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_business_contacts_owner_active", "owner_id", "is_active"),
+        Index("ix_business_contacts_company_active", "company_id", "is_active"),
+        Index("ix_business_contacts_name_normalized", "name_normalized"),
+    )
+
+    @hybrid_property
+    def formatted_address(self) -> Optional[str]:
+        """Formatierte Adresse."""
+        parts = []
+        if self.street:
+            street_full = self.street
+            if self.house_number:
+                street_full += f" {self.house_number}"
+            parts.append(street_full)
+        if self.address_addition:
+            parts.append(self.address_addition)
+        if self.postal_code or self.city:
+            location = f"{self.postal_code or ''} {self.city or ''}".strip()
+            parts.append(location)
+        if self.country and self.country != "Deutschland":
+            parts.append(self.country)
+        return ", ".join(parts) if parts else None
+
+    @hybrid_property
+    def display_name(self) -> str:
+        """Anzeigename mit optionaler Rechtsform."""
+        if self.company_form and self.company_form not in self.name:
+            return f"{self.name} {self.company_form}"
+        return self.name
+
+    def __repr__(self) -> str:
+        return f"<BusinessContact {self.name} ({self.contact_type})>"

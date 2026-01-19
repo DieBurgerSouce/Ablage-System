@@ -2,12 +2,6 @@
 
 ## Active Issues
 
-### MEDIUM: Fehlende Models
-
-| Issue | Beschreibung |
-|-------|--------------|
-| **BusinessContact Model fehlt** | `app/api/v1/business_contacts.py` importiert `BusinessContact` aus `app/db/models`, aber das Model existiert NICHT in `models.py`. API-Start koennte fehlschlagen. |
-
 ### Design-Hinweise (kein Bug)
 
 | Service | Hinweis |
@@ -28,6 +22,7 @@
 
 | Date | Issue | Fix |
 |------|-------|-----|
+| 2026-01-19 | BusinessContact Model fehlt in models.py | Added complete BusinessContact, DocumentContact models and all related Pydantic schemas. Created migration 105 for company_id. |
 | 2026-01-10 | MultiStepForm SessionStorage QuotaExceededError in privacy mode | Added 500KB limit check, auto-cleanup, and synchronous persistKey tracking in MultiStepForm.tsx |
 | 2026-01-10 | N+1 queries in entity list endpoints causing slow page loads | Removed folder stats calculation from list endpoints, load on-demand via `/{entity_id}/folders` |
 | 2026-01-10 | Entity API authentication failing with 401 errors | Added `credentials: "include"` to all fetch calls in ablage-api.ts (commit 25542547) |

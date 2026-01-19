@@ -8152,3 +8152,277 @@ class EntityRiskBatchResponse(BaseModel):
 # - InvoiceTrackingBase, InvoiceTrackingCreate, InvoiceTrackingUpdate, InvoiceTrackingResponse (ca. Zeile 3026-3070)
 # - InvoiceStatisticsResponse (ca. Zeile 3165)
 # Diese duplizierten Definitionen wurden entfernt um Konsistenz zu gewaehrleisten.
+
+
+# ==================== Business Contact Schemas ====================
+
+
+class ContactTypeEnum(str, Enum):
+    """Kontakttyp Enum fuer API."""
+    CUSTOMER = "customer"
+    SUPPLIER = "supplier"
+    PARTNER = "partner"
+    PROSPECT = "prospect"
+    OTHER = "other"
+
+
+class ContactRoleEnum(str, Enum):
+    """Kontaktrolle bei Dokumenten."""
+    SENDER = "sender"
+    RECIPIENT = "recipient"
+    MENTIONED = "mentioned"
+    CC = "cc"
+
+
+class ContactPersonSchema(BaseModel):
+    """Ansprechpartner eines Kontakts."""
+    name: str = Field(..., min_length=1, max_length=100)
+    role: Optional[str] = Field(None, max_length=100)
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, max_length=30)
+    department: Optional[str] = Field(None, max_length=100)
+    is_primary: bool = False
+
+
+class BusinessContactBase(BaseModel):
+    """Basis-Schema fuer BusinessContact."""
+    name: str = Field(..., min_length=1, max_length=255, description="Firmenname")
+    contact_type: Optional[ContactTypeEnum] = ContactTypeEnum.CUSTOMER
+    company_form: Optional[str] = Field(None, max_length=50, description="Rechtsform (GmbH, AG, etc.)")
+
+    # Tax identifiers
+    tax_id: Optional[str] = Field(None, max_length=30, description="Steuernummer")
+    vat_id: Optional[str] = Field(None, max_length=20, description="USt-IdNr")
+    registration_number: Optional[str] = Field(None, max_length=50, description="HRB")
+
+    # Business numbers
+    customer_number: Optional[str] = Field(None, max_length=50, description="Kundennummer")
+    supplier_number: Optional[str] = Field(None, max_length=50, description="Lieferantennummer")
+
+    # Address
+    street: Optional[str] = Field(None, max_length=255)
+    house_number: Optional[str] = Field(None, max_length=20)
+    address_addition: Optional[str] = Field(None, max_length=100, description="c/o, Gebaeude, etc.")
+    postal_code: Optional[str] = Field(None, max_length=10)
+    city: Optional[str] = Field(None, max_length=100)
+    country: Optional[str] = Field("Deutschland", max_length=100)
+
+    # Contact details
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, max_length=30)
+    fax: Optional[str] = Field(None, max_length=30)
+    website: Optional[str] = Field(None, max_length=255)
+
+    # Banking
+    bank_name: Optional[str] = Field(None, max_length=100)
+    iban: Optional[str] = Field(None, max_length=34)
+    bic: Optional[str] = Field(None, max_length=11)
+
+    # Additional data
+    contact_persons: Optional[List[ContactPersonSchema]] = None
+    parent_company_id: Optional[UUID] = None
+    notes: Optional[str] = None
+    tags: Optional[List[str]] = None
+    custom_fields: Optional[Dict[str, Any]] = None
+    is_verified: bool = False
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BusinessContactCreate(BusinessContactBase):
+    """Schema zum Erstellen eines Kontakts."""
+    pass
+
+
+class BusinessContactUpdate(BaseModel):
+    """Schema zum Aktualisieren eines Kontakts."""
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    contact_type: Optional[ContactTypeEnum] = None
+    company_form: Optional[str] = Field(None, max_length=50)
+    tax_id: Optional[str] = Field(None, max_length=30)
+    vat_id: Optional[str] = Field(None, max_length=20)
+    registration_number: Optional[str] = Field(None, max_length=50)
+    customer_number: Optional[str] = Field(None, max_length=50)
+    supplier_number: Optional[str] = Field(None, max_length=50)
+    street: Optional[str] = Field(None, max_length=255)
+    house_number: Optional[str] = Field(None, max_length=20)
+    address_addition: Optional[str] = Field(None, max_length=100)
+    postal_code: Optional[str] = Field(None, max_length=10)
+    city: Optional[str] = Field(None, max_length=100)
+    country: Optional[str] = Field(None, max_length=100)
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, max_length=30)
+    fax: Optional[str] = Field(None, max_length=30)
+    website: Optional[str] = Field(None, max_length=255)
+    bank_name: Optional[str] = Field(None, max_length=100)
+    iban: Optional[str] = Field(None, max_length=34)
+    bic: Optional[str] = Field(None, max_length=11)
+    contact_persons: Optional[List[ContactPersonSchema]] = None
+    parent_company_id: Optional[UUID] = None
+    notes: Optional[str] = None
+    tags: Optional[List[str]] = None
+    custom_fields: Optional[Dict[str, Any]] = None
+    is_active: Optional[bool] = None
+    is_verified: Optional[bool] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BusinessContactResponse(BaseModel):
+    """Vollstaendige Kontakt-Antwort."""
+    id: UUID
+    name: str
+    name_normalized: Optional[str] = None
+    contact_type: ContactTypeEnum
+    company_form: Optional[str] = None
+
+    # Tax identifiers
+    tax_id: Optional[str] = None
+    vat_id: Optional[str] = None
+    registration_number: Optional[str] = None
+
+    # Business numbers
+    customer_number: Optional[str] = None
+    supplier_number: Optional[str] = None
+
+    # Address
+    street: Optional[str] = None
+    house_number: Optional[str] = None
+    address_addition: Optional[str] = None
+    postal_code: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
+
+    # Contact details
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    fax: Optional[str] = None
+    website: Optional[str] = None
+
+    # Banking
+    bank_name: Optional[str] = None
+    iban: Optional[str] = None
+    bic: Optional[str] = None
+
+    # Additional data
+    contact_persons: List[Dict[str, Any]] = []
+    parent_company_id: Optional[UUID] = None
+    notes: Optional[str] = None
+    tags: List[str] = []
+    custom_fields: Dict[str, Any] = {}
+
+    # Ownership
+    owner_id: UUID
+    source: str = "manual"
+    auto_detected: bool = False
+    auto_detection_confidence: Optional[float] = None
+    first_document_id: Optional[UUID] = None
+
+    # Status
+    is_active: bool = True
+    is_verified: bool = False
+    merged_into_id: Optional[UUID] = None
+
+    # Statistics
+    document_count: int = 0
+    total_invoice_amount: float = 0.0
+    last_document_date: Optional[datetime] = None
+
+    # Audit
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    # Computed
+    formatted_address: Optional[str] = None
+    display_name: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BusinessContactListFilters(BaseModel):
+    """Filter fuer Kontaktliste."""
+    search: Optional[str] = None
+    contact_type: Optional[ContactTypeEnum] = None
+    is_verified: Optional[bool] = None
+    is_active: Optional[bool] = True
+    has_documents: Optional[bool] = None
+    city: Optional[str] = None
+    postal_code_prefix: Optional[str] = None
+    tags: Optional[List[str]] = None
+    min_invoice_amount: Optional[float] = None
+    auto_detected: Optional[bool] = None
+
+
+class BusinessContactListResponse(BaseModel):
+    """Paginierte Kontaktliste."""
+    items: List[BusinessContactResponse]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+class ContactDocumentInfo(BaseModel):
+    """Dokument-Info fuer Kontaktansicht."""
+    id: UUID
+    title: Optional[str] = None
+    document_type: Optional[str] = None
+    file_name: str
+    created_at: datetime
+    role: ContactRoleEnum
+    confidence: Optional[float] = None
+
+
+class ContactDocumentsResponse(BaseModel):
+    """Dokumente eines Kontakts."""
+    contact_id: UUID
+    documents: List[ContactDocumentInfo]
+    total: int
+
+
+class MergeContactsRequest(BaseModel):
+    """Anfrage zum Zusammenfuehren von Kontakten."""
+    source_contact_ids: List[UUID] = Field(..., min_length=1, description="Kontakte die zusammengefuehrt werden")
+    target_contact_id: UUID = Field(..., description="Zielkontakt der uebrig bleibt")
+    merge_strategy: str = Field("keep_target", pattern="^(keep_target|merge_all|keep_newer)$")
+
+
+class MergeContactsResponse(BaseModel):
+    """Antwort auf Zusammenfuehrung."""
+    merged_contact: BusinessContactResponse
+    merged_count: int
+    documents_reassigned: int
+
+
+class DetectContactsRequest(BaseModel):
+    """Anfrage zur Kontakterkennung."""
+    document_ids: Optional[List[UUID]] = Field(None, description="Dokumente zur Analyse")
+    ocr_text: Optional[str] = Field(None, description="OCR-Text zur Analyse")
+    min_confidence: float = Field(0.7, ge=0.0, le=1.0)
+
+
+class DetectedContactInfo(BaseModel):
+    """Erkannter Kontakt aus Dokument."""
+    existing_contact_id: Optional[UUID] = None
+    suggested_name: str
+    suggested_type: ContactTypeEnum
+    confidence: float
+    match_reason: str
+    extracted_data: Dict[str, Any] = {}
+
+
+class DetectContactsResponse(BaseModel):
+    """Antwort auf Kontakterkennung."""
+    detected_contacts: List[DetectedContactInfo]
+    document_id: Optional[UUID] = None
+
+
+class ContactStatsResponse(BaseModel):
+    """Statistiken zu Kontakten."""
+    total_contacts: int
+    active_contacts: int
+    verified_contacts: int
+    auto_detected_contacts: int
+    by_type: Dict[str, int]
+    documents_linked: int
+    average_documents_per_contact: float
