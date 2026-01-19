@@ -12,6 +12,7 @@
 | **DunningService Document-Zugriff** | Nutzt `Document.owner_id == user_id` statt `company_id` - limitiert Cross-User-Sichtbarkeit innerhalb derselben Company |
 | **ReconciliationService Document-Zugriff** | `manual_match()` und `split_transaction()` nutzen `Document.owner_id` statt `company_id` |
 | **ValidationRule/ValidationSampleConfig** | Beide Models haben KEIN `company_id` - sind absichtlich System-wide Konfigurationen. Fuer echte Multi-Tenant Deployment waere Migration noetig. |
+| **CustomerDetection Celery Tasks** | `detect_contacts_task` laedt Document ohne `company_id` Filter - aber Tasks sind nur fuer Admin-Operationen, keine externe API. Service nutzt `document.company_id` Fallback. |
 
 ## Notes
 
