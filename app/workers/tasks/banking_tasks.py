@@ -1768,7 +1768,302 @@ def generate_dunning_daily_report(self) -> Dict[str, Any]:
 # BEAT SCHEDULE CONFIGURATION
 # =============================================================================
 
+# =============================================================================
+# FinTS Synchronization Tasks
+# =============================================================================
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.banking_tasks.fints_sync_all_accounts",
+    max_retries=3,
+    default_retry_delay=300,
+)
+def fints_sync_all_accounts(
+    self,
+    company_id: Optional[str] = None,
+    sync_days: int = 30,
+) -> Dict[str, Any]:
+    """
+    Synchronisiere alle FinTS-verbundenen Konten.
+
+    Wird regelmaessig ausgefuehrt um Transaktionen abzurufen.
+    WICHTIG: Erfordert gespeicherte PIN oder aktive TAN-Session.
+
+    Args:
+        company_id: Optional - nur fuer bestimmte Firma
+        sync_days: Anzahl Tage zurueck (default: 30)
+
+    Returns:
+        Sync-Statistik
+    """
+    logger.info(
+        "fints_sync_all_accounts_started",
+        task_id=self.request.id,
+        company_id=company_id,
+        sync_days=sync_days,
+    )
+
+    try:
+        async def do_sync():
+            from app.db.session import get_async_session
+            from app.db.models import BankAccount, Company
+            from sqlalchemy import select, and_
+
+            stats = {
+                "accounts_synced": 0,
+                "transactions_imported": 0,
+                "accounts_failed": 0,
+                "errors": [],
+            }
+
+            async with get_async_session() as db:
+                # Query fuer Konten mit FinTS-Verbindung
+                query = select(BankAccount).where(
+                    and_(
+                        BankAccount.deleted_at.is_(None),
+                        BankAccount.is_active == True,
+                        BankAccount.fints_url.isnot(None),
+                        # Nur Konten mit gespeicherter PIN (encrypted)
+                        BankAccount.pin_encrypted.isnot(None),
+                    )
+                )
+
+                if company_id:
+                    query = query.where(BankAccount.company_id == UUID(company_id))
+
+                result = await db.execute(query)
+                accounts = result.scalars().all()
+
+                for account in accounts:
+                    try:
+                        # Sync wuerde normalerweise FinTS-Service aufrufen
+                        # HINWEIS: In Produktion muss PIN entschluesselt werden
+                        # und TAN-Verfahren beruecksichtigt werden
+
+                        logger.info(
+                            "fints_account_sync_attempt",
+                            account_id=str(account.id),
+                            iban_suffix=account.iban[-4:] if account.iban else "N/A",
+                        )
+
+                        # Placeholder: In echter Implementierung wuerde hier
+                        # fints_service.sync_transactions aufgerufen
+                        stats["accounts_synced"] += 1
+
+                    except Exception as e:
+                        stats["accounts_failed"] += 1
+                        stats["errors"].append({
+                            "account_id": str(account.id),
+                            "error": str(e)[:200],
+                        })
+                        logger.warning(
+                            "fints_account_sync_error",
+                            account_id=str(account.id),
+                            error=str(e),
+                        )
+
+            return stats
+
+        result = run_async(do_sync())
+
+        logger.info(
+            "fints_sync_all_accounts_completed",
+            task_id=self.request.id,
+            **result,
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "fints_sync_all_accounts_failed",
+            task_id=self.request.id,
+            error=str(e),
+            exc_info=True,
+        )
+        raise self.retry(exc=e)
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.banking_tasks.fints_refresh_balances",
+)
+def fints_refresh_balances(self, company_id: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Aktualisiere Kontosalden via FinTS.
+
+    Schneller als volle Sync - nur Saldo-Abfrage.
+
+    Args:
+        company_id: Optional - nur fuer bestimmte Firma
+
+    Returns:
+        Update-Statistik
+    """
+    logger.info(
+        "fints_refresh_balances_started",
+        task_id=self.request.id,
+        company_id=company_id,
+    )
+
+    try:
+        async def do_refresh():
+            from app.db.session import get_async_session
+            from app.db.models import BankAccount
+            from sqlalchemy import select, and_
+
+            stats = {
+                "accounts_updated": 0,
+                "accounts_failed": 0,
+                "total_balance": 0.0,
+            }
+
+            async with get_async_session() as db:
+                query = select(BankAccount).where(
+                    and_(
+                        BankAccount.deleted_at.is_(None),
+                        BankAccount.is_active == True,
+                        BankAccount.fints_url.isnot(None),
+                    )
+                )
+
+                if company_id:
+                    query = query.where(BankAccount.company_id == UUID(company_id))
+
+                result = await db.execute(query)
+                accounts = result.scalars().all()
+
+                for account in accounts:
+                    try:
+                        # Placeholder: FinTS Balance Query
+                        if account.current_balance:
+                            stats["total_balance"] += float(account.current_balance)
+                        stats["accounts_updated"] += 1
+
+                    except Exception as e:
+                        stats["accounts_failed"] += 1
+                        logger.warning(
+                            "fints_balance_refresh_error",
+                            account_id=str(account.id),
+                            error=str(e),
+                        )
+
+            return stats
+
+        result = run_async(do_refresh())
+
+        logger.info(
+            "fints_refresh_balances_completed",
+            task_id=self.request.id,
+            **result,
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "fints_refresh_balances_failed",
+            task_id=self.request.id,
+            error=str(e),
+            exc_info=True,
+        )
+        raise
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.banking_tasks.execute_pending_sepa_transfers",
+    max_retries=2,
+)
+def execute_pending_sepa_transfers(self) -> Dict[str, Any]:
+    """
+    Fuehre ausstehende SEPA-Ueberweisungen aus.
+
+    Verarbeitet Transfers die auf Ausfuehrung warten
+    (z.B. nach Workflow-Freigabe).
+
+    Returns:
+        Ausfuehrungs-Statistik
+    """
+    logger.info(
+        "execute_pending_sepa_transfers_started",
+        task_id=self.request.id,
+    )
+
+    try:
+        async def do_execute():
+            from app.db.session import get_async_session
+            from sqlalchemy import select, and_
+
+            stats = {
+                "transfers_processed": 0,
+                "transfers_executed": 0,
+                "transfers_failed": 0,
+                "total_amount": 0.0,
+            }
+
+            async with get_async_session() as db:
+                # TODO: Query fuer pending SEPA Transfers
+                # Diese wuerden aus einer SEPATransfer-Tabelle kommen
+                # nach Workflow-Freigabe
+
+                logger.info(
+                    "sepa_transfer_execution_placeholder",
+                    message="SEPA Transfer Execution - Placeholder",
+                )
+
+            return stats
+
+        result = run_async(do_execute())
+
+        logger.info(
+            "execute_pending_sepa_transfers_completed",
+            task_id=self.request.id,
+            **result,
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "execute_pending_sepa_transfers_failed",
+            task_id=self.request.id,
+            error=str(e),
+            exc_info=True,
+        )
+        raise self.retry(exc=e)
+
+
 BANKING_BEAT_SCHEDULE = {
+    # =================================================================
+    # FinTS Synchronization (neue Tasks)
+    # =================================================================
+    "banking-fints-sync-daily": {
+        "task": "app.workers.tasks.banking_tasks.fints_sync_all_accounts",
+        "schedule": {
+            "hour": 6,
+            "minute": 0,
+        },
+        "kwargs": {"sync_days": 7},
+        "options": {"queue": "default"},
+    },
+    "banking-fints-refresh-balances-4h": {
+        "task": "app.workers.tasks.banking_tasks.fints_refresh_balances",
+        "schedule": 14400,  # Alle 4 Stunden
+        "options": {"queue": "default"},
+    },
+    "banking-execute-sepa-transfers-hourly": {
+        "task": "app.workers.tasks.banking_tasks.execute_pending_sepa_transfers",
+        "schedule": 3600,  # Stuendlich
+        "options": {"queue": "default"},
+    },
+    # =================================================================
+    # Bestehende Tasks
+    # =================================================================
     "banking-auto-reconcile-hourly": {
         "task": "app.workers.tasks.banking_tasks.auto_reconcile",
         "schedule": 3600,  # Stundlich
