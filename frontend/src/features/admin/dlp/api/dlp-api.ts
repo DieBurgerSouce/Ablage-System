@@ -10,6 +10,10 @@ import apiClient from '@/lib/api/client';
 
 export type DLPAction = 'allow' | 'block' | 'watermark' | 'notify' | 'audit_only';
 
+/**
+ * Typen sensibler Daten die vom DLP-Scanner erkannt werden.
+ * WICHTIG: Diese Werte muessen mit dem Backend (SensitiveDataType in dlp_service.py) synchron sein!
+ */
 export type SensitiveDataType =
   | 'credit_card'
   | 'iban'

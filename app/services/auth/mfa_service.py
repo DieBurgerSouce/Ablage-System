@@ -25,7 +25,7 @@ import base64
 import hashlib
 import io
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Tuple
 from uuid import UUID
 
@@ -359,6 +359,77 @@ class MFAService:
 
         return True
 
+    async def _check_rate_limit(self, user: User) -> None:
+        """
+        Prueft ob User wegen zu vieler fehlgeschlagener Versuche gesperrt ist.
+
+        Raises:
+            RateLimitExceededError: Wenn User gesperrt ist
+        """
+        if user.totp_lockout_until:
+            now = datetime.now(timezone.utc)
+            if now < user.totp_lockout_until:
+                remaining = user.totp_lockout_until - now
+                remaining_minutes = int(remaining.total_seconds() / 60) + 1
+                raise RateLimitExceededError(
+                    f"Zu viele fehlgeschlagene Versuche. "
+                    f"Bitte warten Sie {remaining_minutes} Minute(n)."
+                )
+            else:
+                # Lockout abgelaufen - zuruecksetzen
+                await self.db.execute(
+                    update(User)
+                    .where(User.id == user.id)
+                    .values(
+                        totp_failed_attempts=0,
+                        totp_lockout_until=None
+                    )
+                )
+                await self.db.commit()
+
+    async def _record_failed_attempt(self, user_id: UUID) -> None:
+        """
+        Zaehlt einen fehlgeschlagenen Versuch und setzt ggf. Lockout.
+        """
+        user = await self._get_user(user_id)
+        if not user:
+            return
+
+        # Inkrementiere Zaehler
+        new_count = (user.totp_failed_attempts or 0) + 1
+
+        values = {"totp_failed_attempts": new_count}
+
+        # Lockout setzen wenn Maximum erreicht
+        if new_count >= MAX_FAILED_ATTEMPTS:
+            lockout_until = datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
+            values["totp_lockout_until"] = lockout_until
+            logger.warning(
+                "totp_rate_limit_triggered",
+                user_id=str(user_id),
+                failed_attempts=new_count,
+                lockout_until=lockout_until.isoformat()
+            )
+
+        await self.db.execute(
+            update(User)
+            .where(User.id == user_id)
+            .values(**values)
+        )
+        await self.db.commit()
+
+    async def _reset_failed_attempts(self, user_id: UUID) -> None:
+        """Setzt den Zaehler nach erfolgreichem Login zurueck."""
+        await self.db.execute(
+            update(User)
+            .where(User.id == user_id)
+            .values(
+                totp_failed_attempts=0,
+                totp_lockout_until=None
+            )
+        )
+        await self.db.commit()
+
     async def verify_totp(
         self,
         user_id: UUID,
@@ -366,6 +437,10 @@ class MFAService:
     ) -> bool:
         """
         Verifiziert einen TOTP-Code waehrend des Logins.
+
+        Implementiert Rate Limiting:
+        - Max 5 fehlgeschlagene Versuche
+        - 15 Minuten Sperre nach Ueberschreitung
 
         Args:
             user_id: UUID des Users
@@ -377,6 +452,7 @@ class MFAService:
         Raises:
             MFANotEnabledError: Wenn 2FA nicht aktiviert ist
             InvalidTOTPCodeError: Bei ungueltigem Code
+            RateLimitExceededError: Zu viele fehlgeschlagene Versuche
         """
         user = await self._get_user(user_id)
         if not user:
@@ -390,6 +466,9 @@ class MFAService:
         if not user.totp_secret:
             raise MFAServiceError("TOTP-Secret nicht gefunden")
 
+        # RATE LIMITING: Pruefe ob gesperrt
+        await self._check_rate_limit(user)
+
         # Entschluessele Secret und verifiziere Code
         secret = self._decrypt_secret(user.totp_secret)
         totp = pyotp.TOTP(
@@ -401,11 +480,17 @@ class MFAService:
         is_valid = totp.verify(totp_code, valid_window=TOTP_VALID_WINDOW)
 
         if not is_valid:
+            # RATE LIMITING: Fehlgeschlagenen Versuch zaehlen
+            await self._record_failed_attempt(user_id)
             logger.warning(
                 "totp_verification_failed",
-                user_id=str(user_id)
+                user_id=str(user_id),
+                failed_attempts=(user.totp_failed_attempts or 0) + 1
             )
             raise InvalidTOTPCodeError("Ungueltiger Code")
+
+        # Erfolg: Zaehler zuruecksetzen
+        await self._reset_failed_attempts(user_id)
 
         logger.info(
             "totp_verified",
@@ -424,6 +509,10 @@ class MFAService:
 
         Backup-Codes sind One-Time-Use und werden nach Verwendung entfernt.
 
+        Implementiert Rate Limiting (gleiche Regeln wie TOTP):
+        - Max 5 fehlgeschlagene Versuche
+        - 15 Minuten Sperre nach Ueberschreitung
+
         Args:
             user_id: UUID des Users
             backup_code: Der Backup-Code (Format: XXXX-XXXX)
@@ -434,6 +523,7 @@ class MFAService:
         Raises:
             MFANotEnabledError: Wenn 2FA nicht aktiviert ist
             InvalidTOTPCodeError: Bei ungueltigem Backup-Code
+            RateLimitExceededError: Zu viele fehlgeschlagene Versuche
         """
         user = await self._get_user(user_id)
         if not user:
@@ -446,6 +536,9 @@ class MFAService:
 
         if not user.totp_backup_codes:
             raise InvalidTOTPCodeError("Keine Backup-Codes vorhanden")
+
+        # RATE LIMITING: Pruefe ob gesperrt (gleicher Zaehler wie TOTP)
+        await self._check_rate_limit(user)
 
         # Entferne Formatierung (Bindestriche)
         clean_code = backup_code.replace("-", "").upper()
@@ -462,17 +555,24 @@ class MFAService:
                 break
 
         if not code_used:
+            # RATE LIMITING: Fehlgeschlagenen Versuch zaehlen
+            await self._record_failed_attempt(user_id)
             logger.warning(
                 "backup_code_verification_failed",
-                user_id=str(user_id)
+                user_id=str(user_id),
+                failed_attempts=(user.totp_failed_attempts or 0) + 1
             )
             raise InvalidTOTPCodeError("Ungueltiger Backup-Code")
 
-        # Speichere verbleibende Codes
+        # Erfolg: Zaehler zuruecksetzen UND verbleibende Codes speichern
         await self.db.execute(
             update(User)
             .where(User.id == user_id)
-            .values(totp_backup_codes=remaining_codes)
+            .values(
+                totp_backup_codes=remaining_codes,
+                totp_failed_attempts=0,
+                totp_lockout_until=None
+            )
         )
         await self.db.commit()
 

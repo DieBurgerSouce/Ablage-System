@@ -359,6 +359,11 @@ class User(Base):
     totp_enabled = Column(Boolean, default=False)
     totp_backup_codes = Column(CrossDBJSON, nullable=True)  # Hashed backup codes
     totp_setup_at = Column(DateTime(timezone=True), nullable=True)
+    # MFA Rate Limiting (Brute-Force-Schutz)
+    totp_failed_attempts = Column(Integer, default=0, nullable=False,
+                                  comment="Anzahl fehlgeschlagener TOTP-Versuche")
+    totp_lockout_until = Column(DateTime(timezone=True), nullable=True,
+                               comment="Sperre bis zu diesem Zeitpunkt")
 
     # Admin Console: Tier and Rate Limit Management
     tier = Column(String(20), default=UserTier.FREE)
@@ -15422,6 +15427,193 @@ class BusinessContact(Base):
 
     def __repr__(self) -> str:
         return f"<BusinessContact {self.name} ({self.contact_type})>"
+
+
+# =============================================================================
+# DATA LOSS PREVENTION (DLP) MODELS
+# Enterprise Security: Policies, Audit, Access Control
+# =============================================================================
+
+class DLPActionType(str, Enum):
+    """Moegliche DLP-Aktionen."""
+    ALLOW = "allow"
+    BLOCK = "block"
+    WATERMARK = "watermark"
+    NOTIFY = "notify"
+    AUDIT_ONLY = "audit_only"
+
+
+class SensitiveDataTypeEnum(str, Enum):
+    """Typen sensibler Daten fuer DLP-Erkennung."""
+    CREDIT_CARD = "credit_card"
+    IBAN = "iban"
+    SSN = "ssn"
+    EMAIL = "email"
+    PHONE = "phone"
+    TAX_ID = "tax_id"
+    DATE_OF_BIRTH = "date_of_birth"
+    HEALTH_DATA = "health_data"
+    FINANCIAL_DATA = "financial_data"
+
+
+class DLPPolicyModel(Base):
+    """
+    DLP Policy Datenbank-Modell.
+
+    Persistiert DLP-Policies in der Datenbank statt nur im Memory.
+    Ermoeglicht Multi-Tenant Isolation und Audit-Trail.
+
+    SECURITY:
+    - Policies werden serverseitig validiert
+    - company_id ist Pflichtfeld fuer Multi-Tenant Isolation
+    - Alle Aenderungen werden im Audit-Log protokolliert
+    """
+    __tablename__ = "dlp_policies"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Policy Identification
+    policy_id = Column(String(64), nullable=False, index=True,
+                       comment="Human-readable Policy-ID (z.B. 'confidential-docs')")
+    name = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    enabled = Column(Boolean, default=True, nullable=False, index=True)
+
+    # Multi-Tenant (KRITISCH!)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        comment="Mandanten-Zuordnung - PFLICHT fuer Isolation"
+    )
+
+    # Zugriffsbedingungen
+    allowed_roles = Column(CrossDBJSON, default=["admin"],
+                          comment="Rollen die Zugriff haben")
+    blocked_roles = Column(CrossDBJSON, default=[],
+                          comment="Rollen die explizit blockiert sind")
+
+    # Zeit-basierte Einschraenkungen
+    time_restrictions = Column(CrossDBJSON, nullable=True,
+                              comment="{'start': '09:00', 'end': '18:00', 'weekdays': [0-6]}")
+
+    # Dokument-Filter
+    document_types = Column(CrossDBJSON, default=["all"],
+                           comment="Betroffene Dokumenttypen")
+    tags_required = Column(CrossDBJSON, default=[],
+                          comment="Dokument muss diese Tags haben")
+    tags_blocked = Column(CrossDBJSON, default=[],
+                         comment="Dokument darf diese Tags nicht haben")
+
+    # Aktionen
+    action = Column(String(20), default=DLPActionType.ALLOW.value, nullable=False)
+    require_watermark = Column(Boolean, default=False, nullable=False)
+    watermark_config = Column(CrossDBJSON, nullable=True,
+                             comment="Wasserzeichen-Konfiguration")
+
+    # Benachrichtigungen
+    notify_admin = Column(Boolean, default=False, nullable=False)
+    notify_user = Column(Boolean, default=False, nullable=False)
+    log_access = Column(Boolean, default=True, nullable=False)
+
+    # Prioritaet (niedrigere Zahl = hoehere Prioritaet)
+    priority = Column(Integer, default=100, nullable=False, index=True)
+
+    # Audit
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    company = relationship("Company", backref="dlp_policies")
+    created_by = relationship("User", backref="created_dlp_policies")
+
+    __table_args__ = (
+        UniqueConstraint("company_id", "policy_id", name="uq_dlp_policy_company_id"),
+        Index("ix_dlp_policies_company_enabled", "company_id", "enabled"),
+        Index("ix_dlp_policies_company_priority", "company_id", "priority"),
+        {"comment": "DLP Policies fuer Enterprise Security"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<DLPPolicy {self.policy_id} ({self.action})>"
+
+
+class DLPAuditLog(Base):
+    """
+    DLP-spezifisches Audit-Log.
+
+    Protokolliert alle DLP-relevanten Events:
+    - Zugriffspruefungen (erlaubt/blockiert)
+    - Policy-Aenderungen
+    - Wasserzeichen-Anwendung
+    - Sensible Daten gefunden
+
+    SECURITY:
+    - Keine sensiblen Daten werden geloggt (nur Typen und Counts)
+    - Immutable (nur INSERT erlaubt)
+    - company_id fuer Multi-Tenant Isolation
+    """
+    __tablename__ = "dlp_audit_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Event-Kontext
+    event_type = Column(String(50), nullable=False, index=True,
+                       comment="access_check, policy_change, watermark_applied, sensitive_data_found")
+    action_type = Column(String(20), nullable=True,
+                        comment="download, view, print, export")
+
+    # Ergebnis
+    result = Column(String(20), nullable=False,
+                   comment="allowed, blocked, watermarked, notified")
+    reason = Column(String(500), nullable=True)
+
+    # Betroffene Entities
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"), nullable=True, index=True)
+    policy_id = Column(UUID(as_uuid=True), ForeignKey("dlp_policies.id", ondelete="SET NULL"), nullable=True)
+
+    # Multi-Tenant (KRITISCH!)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        comment="Mandanten-Zuordnung - PFLICHT"
+    )
+
+    # Sensitive Data Info (NUR Typen und Counts, KEINE Werte!)
+    sensitive_data_types = Column(CrossDBJSON, nullable=True,
+                                  comment="{'credit_card': 2, 'iban': 1} - NUR Counts!")
+
+    # Request-Kontext
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(String(255), nullable=True)
+
+    # Metadata
+    metadata = Column(CrossDBJSON, default={})
+
+    # Timestamp (immutable)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # Relationships
+    user = relationship("User", backref="dlp_audit_logs")
+    document = relationship("Document", backref="dlp_audit_logs")
+    policy = relationship("DLPPolicyModel", backref="audit_logs")
+    company = relationship("Company", backref="dlp_audit_logs")
+
+    __table_args__ = (
+        Index("ix_dlp_audit_company_created", "company_id", "created_at"),
+        Index("ix_dlp_audit_company_event", "company_id", "event_type"),
+        Index("ix_dlp_audit_user_created", "user_id", "created_at"),
+        Index("ix_dlp_audit_document", "document_id"),
+        {"comment": "DLP Audit-Log fuer Compliance und Forensik"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<DLPAuditLog {self.event_type} ({self.result}) at {self.created_at}>"
 
 
 # =============================================================================

@@ -12,11 +12,13 @@ SECURITY:
 - Alle Policies werden serverseitig validiert
 - Wasserzeichen sind manipulationssicher
 - Sensitive Data wird NIEMALS geloggt
+- Multi-Tenant Isolation via company_id (KRITISCH!)
 """
 
 import re
 import hashlib
 import io
+import logging
 from datetime import datetime, time
 from enum import Enum
 from typing import Optional, Any
@@ -24,11 +26,13 @@ from uuid import UUID
 
 from PIL import Image, ImageDraw, ImageFont
 from pydantic import BaseModel, Field
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.db.models import Document, User, Company
+from app.db.models import Document, User, Company, DLPPolicyModel, DLPAuditLog
+
+logger = logging.getLogger(__name__)
 
 
 # ==================== Enums ====================
@@ -43,15 +47,16 @@ class DLPAction(str, Enum):
 
 
 class SensitiveDataType(str, Enum):
-    """Typen sensibler Daten."""
+    """Typen sensibler Daten die vom DLP-Scanner erkannt werden."""
     CREDIT_CARD = "credit_card"
     IBAN = "iban"
     SSN = "ssn"  # Sozialversicherungsnummer
     EMAIL = "email"
     PHONE = "phone"
     TAX_ID = "tax_id"  # Steuernummer
-    MEDICAL = "medical"
-    FINANCIAL = "financial"
+    DATE_OF_BIRTH = "date_of_birth"  # Geburtsdatum
+    HEALTH_DATA = "health_data"  # Gesundheitsdaten (GDPR Art. 9)
+    FINANCIAL_DATA = "financial_data"  # Finanzdaten
 
 
 class WatermarkPosition(str, Enum):
@@ -178,6 +183,30 @@ SENSITIVE_PATTERNS: dict[SensitiveDataType, list[re.Pattern[str]]] = {
         re.compile(r'\b\d{2,3}/?\d{3}/?\d{4,5}\b'),  # Format: 123/456/78901
         re.compile(r'\b\d{11}\b'),  # 11-stellige Steuer-ID
     ],
+    SensitiveDataType.DATE_OF_BIRTH: [
+        # Deutsche Datumsformate: DD.MM.YYYY, DD-MM-YYYY, DD/MM/YYYY
+        re.compile(r'\b(?:0?[1-9]|[12]\d|3[01])[.\-/](?:0?[1-9]|1[0-2])[.\-/](?:19|20)\d{2}\b'),
+        # Geburtsdatum Kontext-Patterns
+        re.compile(r'geb(?:oren|\.|\s*:)\s*(?:am\s*)?(?:0?[1-9]|[12]\d|3[01])[.\-/](?:0?[1-9]|1[0-2])[.\-/](?:19|20)\d{2}', re.IGNORECASE),
+    ],
+    SensitiveDataType.HEALTH_DATA: [
+        # ICD-10 Diagnosecodes (z.B. A00-Z99)
+        re.compile(r'\b[A-Z]\d{2}(?:\.\d{1,2})?\b'),
+        # Medizinische Keywords mit Kontext
+        re.compile(r'(?:diagnose|befund|anamnese|therapie|medikament|rezept|krankheit)\s*[:=]?\s*\w+', re.IGNORECASE),
+        # Krankenversicherungsnummer (KVNR)
+        re.compile(r'\b[A-Z]\d{9}\b'),
+    ],
+    SensitiveDataType.FINANCIAL_DATA: [
+        # BIC/SWIFT Codes
+        re.compile(r'\b[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}(?:[A-Z0-9]{3})?\b'),
+        # Kontonummern (8-10 Ziffern)
+        re.compile(r'\bkontonummer\s*[:=]?\s*\d{8,10}\b', re.IGNORECASE),
+        # Bankleitzahl (BLZ)
+        re.compile(r'\bblz\s*[:=]?\s*\d{8}\b', re.IGNORECASE),
+        # Betraege mit Waehrungssymbol
+        re.compile(r'(?:EUR|€|USD|\$)\s*[\d.,]+(?:\s*(?:EUR|€|USD|\$))?', re.IGNORECASE),
+    ],
 }
 
 
@@ -201,17 +230,70 @@ class DLPService:
     - Zugriffskontrolle basierend auf Policies
     - Automatische Wasserzeichen
     - Erkennung sensibler Daten
-    - Audit-Logging
+    - Audit-Logging (in DB persistiert!)
+
+    SECURITY:
+    - Alle Policies werden in der DB persistiert (nicht nur Memory!)
+    - Multi-Tenant Isolation via company_id ist PFLICHT
+    - Alle Events werden im DLP Audit-Log protokolliert
     """
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, company_id: Optional[UUID] = None):
         self.db = db
-        self._policies: list[DLPPolicy] = []
-        self._load_default_policies()
+        self.company_id = company_id
+        self._policies_cache: list[DLPPolicy] = []
+        self._cache_loaded = False
 
-    def _load_default_policies(self) -> None:
-        """Laedt Standard-DLP-Policies."""
-        self._policies = [
+    async def _ensure_policies_loaded(self) -> None:
+        """Laedt Policies aus DB (mit Cache)."""
+        if self._cache_loaded:
+            return
+
+        if self.company_id:
+            # Policies aus Datenbank laden
+            result = await self.db.execute(
+                select(DLPPolicyModel)
+                .where(
+                    and_(
+                        DLPPolicyModel.company_id == self.company_id,
+                        DLPPolicyModel.enabled == True
+                    )
+                )
+                .order_by(DLPPolicyModel.priority)
+            )
+            db_policies = result.scalars().all()
+
+            self._policies_cache = [
+                DLPPolicy(
+                    id=p.policy_id,
+                    name=p.name,
+                    description=p.description,
+                    enabled=p.enabled,
+                    allowed_roles=p.allowed_roles or ["admin"],
+                    blocked_roles=p.blocked_roles or [],
+                    time_restrictions=p.time_restrictions,
+                    document_types=p.document_types or ["all"],
+                    tags_required=p.tags_required or [],
+                    tags_blocked=p.tags_blocked or [],
+                    action=DLPAction(p.action),
+                    require_watermark=p.require_watermark,
+                    watermark_config=p.watermark_config,
+                    notify_admin=p.notify_admin,
+                    notify_user=p.notify_user,
+                    log_access=p.log_access,
+                )
+                for p in db_policies
+            ]
+
+        # Falls keine DB-Policies existieren, lade Default-Policies
+        if not self._policies_cache:
+            self._policies_cache = self._get_default_policies()
+
+        self._cache_loaded = True
+
+    def _get_default_policies(self) -> list[DLPPolicy]:
+        """Gibt Standard-DLP-Policies zurueck (Fallback wenn DB leer)."""
+        return [
             # Policy 1: Vertrauliche Dokumente
             DLPPolicy(
                 id="confidential-docs",
@@ -286,7 +368,13 @@ class DLPService:
 
         Returns:
             DLPCheckResult mit Entscheidung und Details
+
+        SECURITY:
+        - Multi-Tenant: document.company_id wird validiert
         """
+        # Policies aus DB laden
+        await self._ensure_policies_loaded()
+
         # Standard: Erlaubt
         result = DLPCheckResult(
             allowed=True,
@@ -301,7 +389,7 @@ class DLPService:
         user_role = user.role if hasattr(user, 'role') else "viewer"
 
         # Alle aktiven Policies pruefen
-        for policy in self._policies:
+        for policy in self._policies_cache:
             if not policy.enabled:
                 continue
 
@@ -639,42 +727,282 @@ class DLPService:
         action: str,
         result: DLPCheckResult,
         company_id: Optional[UUID] = None,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
     ) -> None:
         """
-        Loggt ein DLP-Event fuer Audit-Zwecke.
+        Loggt ein DLP-Event in der Datenbank fuer Audit-Zwecke.
 
-        SECURITY: Keine sensiblen Daten im Log!
+        SECURITY:
+        - Keine sensiblen Daten werden geloggt!
+        - Nur Typen und Counts fuer sensitive_data
+        - company_id ist PFLICHT fuer Multi-Tenant Isolation
+
+        Args:
+            user_id: ID des Benutzers
+            document_id: ID des Dokuments
+            action: Art der Aktion (download, view, etc.)
+            result: Ergebnis der DLP-Pruefung
+            company_id: Mandanten-ID (PFLICHT!)
+            ip_address: Optional IP-Adresse
+            user_agent: Optional User-Agent
         """
-        # TODO: In Audit-Log-Tabelle speichern
-        # Fuer jetzt nur Placeholder - Integration mit bestehendem Audit-System
-        pass
+        effective_company_id = company_id or self.company_id
 
-    def get_policies(self) -> list[DLPPolicy]:
-        """Gibt alle konfigurierten Policies zurueck."""
-        return self._policies
+        if not effective_company_id:
+            logger.warning(
+                "DLP Audit-Log ohne company_id! user_id=%s, document_id=%s",
+                user_id, document_id
+            )
+            # Trotzdem loggen - aber als Security-Warning
+            return
 
-    def add_policy(self, policy: DLPPolicy) -> None:
-        """Fuegt eine neue Policy hinzu."""
+        # Result-String bestimmen
+        if not result.allowed:
+            result_str = "blocked"
+        elif result.watermark_required:
+            result_str = "watermarked"
+        elif result.notifications:
+            result_str = "notified"
+        else:
+            result_str = "allowed"
+
+        # Sensitive Data: NUR Typen und Counts, KEINE Werte!
+        sensitive_data_info = None
+        if result.sensitive_data_found:
+            sensitive_data_info = {
+                data_type.value: 1  # Nur dass der Typ gefunden wurde
+                for data_type in result.sensitive_data_found
+            }
+
+        # Policy-ID aus DB holen falls vorhanden
+        policy_db_id = None
+        if result.policy_id and effective_company_id:
+            policy_result = await self.db.execute(
+                select(DLPPolicyModel.id).where(
+                    and_(
+                        DLPPolicyModel.policy_id == result.policy_id,
+                        DLPPolicyModel.company_id == effective_company_id
+                    )
+                )
+            )
+            policy_row = policy_result.scalar_one_or_none()
+            if policy_row:
+                policy_db_id = policy_row
+
+        # Audit-Log erstellen
+        audit_entry = DLPAuditLog(
+            event_type="access_check",
+            action_type=action,
+            result=result_str,
+            reason=result.reason,
+            user_id=user_id,
+            document_id=document_id,
+            policy_id=policy_db_id,
+            company_id=effective_company_id,
+            sensitive_data_types=sensitive_data_info,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            metadata={
+                "policy_name": result.policy_name,
+                "watermark_required": result.watermark_required,
+                "notifications": result.notifications,
+            }
+        )
+
+        self.db.add(audit_entry)
+        await self.db.flush()
+
+        logger.info(
+            "DLP Event logged: event_type=access_check, result=%s, action=%s",
+            result_str, action
+        )
+
+    async def get_policies(self) -> list[DLPPolicy]:
+        """Gibt alle konfigurierten Policies zurueck (aus DB)."""
+        await self._ensure_policies_loaded()
+        return self._policies_cache
+
+    async def add_policy(self, policy: DLPPolicy) -> DLPPolicyModel:
+        """
+        Fuegt eine neue Policy hinzu (persistiert in DB).
+
+        SECURITY: company_id ist PFLICHT!
+        """
+        if not self.company_id:
+            raise DLPServiceError("company_id ist erforderlich fuer neue Policies")
+
         # Duplikat-Check
-        if any(p.id == policy.id for p in self._policies):
+        existing = await self.db.execute(
+            select(DLPPolicyModel).where(
+                and_(
+                    DLPPolicyModel.company_id == self.company_id,
+                    DLPPolicyModel.policy_id == policy.id
+                )
+            )
+        )
+        if existing.scalar_one_or_none():
             raise DLPServiceError(f"Policy mit ID '{policy.id}' existiert bereits")
-        self._policies.append(policy)
 
-    def update_policy(self, policy_id: str, updates: dict[str, Any]) -> DLPPolicy:
-        """Aktualisiert eine bestehende Policy."""
-        for i, policy in enumerate(self._policies):
-            if policy.id == policy_id:
-                updated_dict = policy.model_dump()
-                updated_dict.update(updates)
-                self._policies[i] = DLPPolicy(**updated_dict)
-                return self._policies[i]
-        raise DLPServiceError(f"Policy '{policy_id}' nicht gefunden")
+        # In DB speichern
+        db_policy = DLPPolicyModel(
+            policy_id=policy.id,
+            name=policy.name,
+            description=policy.description,
+            enabled=policy.enabled,
+            company_id=self.company_id,
+            allowed_roles=policy.allowed_roles,
+            blocked_roles=policy.blocked_roles,
+            time_restrictions=policy.time_restrictions,
+            document_types=policy.document_types,
+            tags_required=policy.tags_required,
+            tags_blocked=policy.tags_blocked,
+            action=policy.action.value,
+            require_watermark=policy.require_watermark,
+            watermark_config=policy.watermark_config,
+            notify_admin=policy.notify_admin,
+            notify_user=policy.notify_user,
+            log_access=policy.log_access,
+        )
 
-    def delete_policy(self, policy_id: str) -> None:
-        """Loescht eine Policy."""
-        self._policies = [p for p in self._policies if p.id != policy_id]
+        self.db.add(db_policy)
+        await self.db.flush()
+
+        # Cache invalidieren
+        self._cache_loaded = False
+
+        logger.info("DLP Policy created: policy_id=%s", policy.id)
+        return db_policy
+
+    async def update_policy(self, policy_id: str, updates: dict[str, Any]) -> DLPPolicy:
+        """Aktualisiert eine bestehende Policy (in DB)."""
+        if not self.company_id:
+            raise DLPServiceError("company_id ist erforderlich")
+
+        result = await self.db.execute(
+            select(DLPPolicyModel).where(
+                and_(
+                    DLPPolicyModel.company_id == self.company_id,
+                    DLPPolicyModel.policy_id == policy_id
+                )
+            )
+        )
+        db_policy = result.scalar_one_or_none()
+
+        if not db_policy:
+            raise DLPServiceError(f"Policy '{policy_id}' nicht gefunden")
+
+        # Updates anwenden
+        for key, value in updates.items():
+            if key == "action" and isinstance(value, DLPAction):
+                value = value.value
+            if hasattr(db_policy, key):
+                setattr(db_policy, key, value)
+
+        await self.db.flush()
+
+        # Cache invalidieren
+        self._cache_loaded = False
+
+        logger.info("DLP Policy updated: policy_id=%s", policy_id)
+
+        # Pydantic-Objekt zurueckgeben
+        return DLPPolicy(
+            id=db_policy.policy_id,
+            name=db_policy.name,
+            description=db_policy.description,
+            enabled=db_policy.enabled,
+            allowed_roles=db_policy.allowed_roles or ["admin"],
+            blocked_roles=db_policy.blocked_roles or [],
+            time_restrictions=db_policy.time_restrictions,
+            document_types=db_policy.document_types or ["all"],
+            tags_required=db_policy.tags_required or [],
+            tags_blocked=db_policy.tags_blocked or [],
+            action=DLPAction(db_policy.action),
+            require_watermark=db_policy.require_watermark,
+            watermark_config=db_policy.watermark_config,
+            notify_admin=db_policy.notify_admin,
+            notify_user=db_policy.notify_user,
+            log_access=db_policy.log_access,
+        )
+
+    async def delete_policy(self, policy_id: str) -> None:
+        """Loescht eine Policy (aus DB)."""
+        if not self.company_id:
+            raise DLPServiceError("company_id ist erforderlich")
+
+        result = await self.db.execute(
+            select(DLPPolicyModel).where(
+                and_(
+                    DLPPolicyModel.company_id == self.company_id,
+                    DLPPolicyModel.policy_id == policy_id
+                )
+            )
+        )
+        db_policy = result.scalar_one_or_none()
+
+        if db_policy:
+            await self.db.delete(db_policy)
+            await self.db.flush()
+
+            logger.info("DLP Policy deleted: policy_id=%s", policy_id)
+
+        # Cache invalidieren
+        self._cache_loaded = False
+
+    async def seed_default_policies(self) -> int:
+        """
+        Erstellt Standard-Policies in der DB falls keine existieren.
+
+        Returns:
+            Anzahl der erstellten Policies
+        """
+        if not self.company_id:
+            raise DLPServiceError("company_id ist erforderlich")
+
+        # Pruefen ob schon Policies existieren
+        result = await self.db.execute(
+            select(DLPPolicyModel).where(
+                DLPPolicyModel.company_id == self.company_id
+            ).limit(1)
+        )
+        if result.scalar_one_or_none():
+            return 0  # Policies existieren bereits
+
+        # Default-Policies erstellen
+        default_policies = self._get_default_policies()
+        created = 0
+
+        for i, policy in enumerate(default_policies):
+            db_policy = DLPPolicyModel(
+                policy_id=policy.id,
+                name=policy.name,
+                description=policy.description,
+                enabled=policy.enabled,
+                company_id=self.company_id,
+                allowed_roles=policy.allowed_roles,
+                blocked_roles=policy.blocked_roles,
+                time_restrictions=policy.time_restrictions,
+                document_types=policy.document_types,
+                tags_required=policy.tags_required,
+                tags_blocked=policy.tags_blocked,
+                action=policy.action.value,
+                require_watermark=policy.require_watermark,
+                watermark_config=policy.watermark_config,
+                notify_admin=policy.notify_admin,
+                notify_user=policy.notify_user,
+                log_access=policy.log_access,
+                priority=(i + 1) * 10,  # 10, 20, 30, 40
+            )
+            self.db.add(db_policy)
+            created += 1
+
+        await self.db.flush()
+        logger.info("Seeded %d default DLP policies for company %s", created, self.company_id)
+
+        return created
 
 
-def get_dlp_service(db: AsyncSession) -> DLPService:
+def get_dlp_service(db: AsyncSession, company_id: Optional[UUID] = None) -> DLPService:
     """Factory-Funktion fuer DLPService."""
-    return DLPService(db)
+    return DLPService(db, company_id)
