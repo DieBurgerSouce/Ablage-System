@@ -31,6 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.datetime_utils import utc_now
+from app.services.realtime.event_broadcaster import get_event_broadcaster
 from app.db.models import (
     Document,
     DocumentActivity,
@@ -212,6 +213,50 @@ class CommentService:
             mention_count=len(final_mentions),
         )
 
+        # WebSocket Real-Time Broadcast
+        try:
+            broadcaster = get_event_broadcaster()
+            mentioned_user_ids = [m.get("userId") for m in final_mentions if m.get("userId")]
+
+            if parent_id:
+                # Thread-Antwort: Hole alle Teilnehmer des Threads
+                thread_participants = await self._get_thread_participants(parent_id, company_id)
+                await broadcaster.emit_comment_replied(
+                    comment_id=str(comment.id),
+                    parent_id=str(parent_id),
+                    document_id=str(document_id),
+                    user_id=str(user_id),
+                    content_preview=content[:100] if content else "",
+                    thread_participants=thread_participants,
+                    company_id=str(company_id),
+                )
+            else:
+                await broadcaster.emit_comment_created(
+                    comment_id=str(comment.id),
+                    document_id=str(document_id),
+                    user_id=str(user_id),
+                    content_preview=content[:100] if content else "",
+                    parent_id=None,
+                    mentioned_users=mentioned_user_ids,
+                    company_id=str(company_id),
+                )
+
+            # Emit mention events for each mentioned user
+            for mention in final_mentions:
+                mentioned_user_id = mention.get("userId")
+                if mentioned_user_id and mentioned_user_id != str(user_id):
+                    await broadcaster.emit_user_mention(
+                        mentioned_user_id=mentioned_user_id,
+                        mentioner_user_id=str(user_id),
+                        context_type="comment",
+                        context_id=str(comment.id),
+                        content_preview=content[:100] if content else "",
+                        company_id=str(company_id),
+                    )
+        except Exception as e:
+            # WebSocket-Fehler sollen nicht den Kommentar-Flow blockieren
+            logger.warning("websocket_broadcast_failed", error=str(e), comment_id=str(comment.id))
+
         return comment
 
     async def get_comment(
@@ -317,6 +362,18 @@ class CommentService:
             user_id=str(user_id),
         )
 
+        # WebSocket Real-Time Broadcast
+        try:
+            broadcaster = get_event_broadcaster()
+            await broadcaster.emit_comment_updated(
+                comment_id=str(comment_id),
+                document_id=str(comment.document_id),
+                user_id=str(user_id),
+                company_id=str(company_id),
+            )
+        except Exception as e:
+            logger.warning("websocket_broadcast_failed", error=str(e), comment_id=str(comment_id))
+
         return comment
 
     async def delete_comment(
@@ -353,6 +410,9 @@ class CommentService:
         if comment.user_id != user_id and doc_owner_id != user_id:
             raise ValueError("Keine Berechtigung zum Loeschen")
 
+        # Speichere document_id vor möglichem Delete
+        document_id = comment.document_id
+
         if hard_delete:
             await self.db.delete(comment)
         else:
@@ -368,6 +428,18 @@ class CommentService:
             deleted_by=str(user_id),
             hard_delete=hard_delete,
         )
+
+        # WebSocket Real-Time Broadcast
+        try:
+            broadcaster = get_event_broadcaster()
+            await broadcaster.emit_comment_deleted(
+                comment_id=str(comment_id),
+                document_id=str(document_id),
+                user_id=str(user_id),
+                company_id=str(company_id),
+            )
+        except Exception as e:
+            logger.warning("websocket_broadcast_failed", error=str(e), comment_id=str(comment_id))
 
         return True
 
@@ -860,6 +932,20 @@ class CommentService:
         await self.db.commit()
         await self.db.refresh(comment)
 
+        # WebSocket Real-Time Broadcast
+        try:
+            broadcaster = get_event_broadcaster()
+            await broadcaster.emit_comment_reaction(
+                comment_id=str(comment_id),
+                document_id=str(comment.document_id),
+                user_id=str(user_id),
+                reaction=emoji,
+                action="added",
+                company_id=str(company_id),
+            )
+        except Exception as e:
+            logger.warning("websocket_broadcast_failed", error=str(e), comment_id=str(comment_id))
+
         return comment
 
     async def remove_reaction(
@@ -908,11 +994,69 @@ class CommentService:
         await self.db.commit()
         await self.db.refresh(comment)
 
+        # WebSocket Real-Time Broadcast
+        try:
+            broadcaster = get_event_broadcaster()
+            await broadcaster.emit_comment_reaction(
+                comment_id=str(comment_id),
+                document_id=str(comment.document_id),
+                user_id=str(user_id),
+                reaction=emoji,
+                action="removed",
+                company_id=str(company_id),
+            )
+        except Exception as e:
+            logger.warning("websocket_broadcast_failed", error=str(e), comment_id=str(comment_id))
+
         return comment
 
     # =========================================================================
     # Helper Methods
     # =========================================================================
+
+    async def _get_thread_participants(
+        self,
+        parent_id: UUID,
+        company_id: UUID,
+    ) -> List[str]:
+        """Holt alle User-IDs die an einem Thread teilnehmen.
+
+        Args:
+            parent_id: ID des Parent-Kommentars
+            company_id: ID der Firma
+
+        Returns:
+            Liste von User-IDs als Strings
+        """
+        # Hole Parent-Autor
+        parent_result = await self.db.execute(
+            select(DocumentComment.user_id).where(
+                and_(
+                    DocumentComment.id == parent_id,
+                    DocumentComment.company_id == company_id,
+                )
+            )
+        )
+        parent_user_id = parent_result.scalar()
+
+        # Hole alle Reply-Autoren
+        replies_result = await self.db.execute(
+            select(func.distinct(DocumentComment.user_id)).where(
+                and_(
+                    DocumentComment.parent_id == parent_id,
+                    DocumentComment.company_id == company_id,
+                    DocumentComment.deleted_at.is_(None),
+                )
+            )
+        )
+        reply_user_ids = [str(uid) for uid in replies_result.scalars().all()]
+
+        # Kombiniere und dedupliziere
+        participants = set(reply_user_ids)
+        if parent_user_id:
+            participants.add(str(parent_user_id))
+
+        return list(participants)
 
     async def _create_activity(
         self,

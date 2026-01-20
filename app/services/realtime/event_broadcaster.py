@@ -78,6 +78,13 @@ class RealtimeEventType(str, Enum):
     USER_TASK_ASSIGNED = "user.task_assigned"
     USER_MENTION = "user.mention"
 
+    # Comment/Collaboration Events
+    COMMENT_CREATED = "comment.created"
+    COMMENT_UPDATED = "comment.updated"
+    COMMENT_DELETED = "comment.deleted"
+    COMMENT_REPLIED = "comment.replied"
+    COMMENT_REACTION = "comment.reaction"
+
 
 @dataclass
 class RealtimeEvent:
@@ -201,6 +208,9 @@ class EventBroadcaster:
         # System Events
         self._event_bus.subscribe_pattern("system.*", self._handle_system_event)
 
+        # Comment/Collaboration Events
+        self._event_bus.subscribe_pattern("comment.*", self._handle_comment_event)
+
     async def _handle_document_event(self, event: Event) -> None:
         """Verarbeitet Document Events."""
         event_type_mapping = {
@@ -289,6 +299,52 @@ class EventBroadcaster:
             company_id=event.payload.get("company_id"),
             priority=priority,
         )
+
+    async def _handle_comment_event(self, event: Event) -> None:
+        """Verarbeitet Comment/Collaboration Events."""
+        # Map event type to realtime event type
+        event_type_name = event.event_type.value if hasattr(event.event_type, 'value') else str(event.event_type)
+
+        realtime_type_mapping = {
+            "comment.created": RealtimeEventType.COMMENT_CREATED,
+            "comment.updated": RealtimeEventType.COMMENT_UPDATED,
+            "comment.deleted": RealtimeEventType.COMMENT_DELETED,
+            "comment.replied": RealtimeEventType.COMMENT_REPLIED,
+            "comment.reaction": RealtimeEventType.COMMENT_REACTION,
+        }
+
+        realtime_type = realtime_type_mapping.get(event_type_name)
+        if not realtime_type:
+            # Try to match by pattern
+            for pattern, rt_type in realtime_type_mapping.items():
+                if pattern in event_type_name:
+                    realtime_type = rt_type
+                    break
+
+        if realtime_type:
+            # Determine target users - include document owner and thread participants
+            target_users = set()
+            if event.user_id:
+                target_users.add(str(event.user_id))
+
+            # Add mentioned users from payload
+            mentioned_users = event.payload.get("mentioned_users", [])
+            for user_id in mentioned_users:
+                target_users.add(str(user_id))
+
+            # Add thread participants if available
+            thread_participants = event.payload.get("thread_participants", [])
+            for user_id in thread_participants:
+                target_users.add(str(user_id))
+
+            await self._broadcast_event(
+                event_type=realtime_type,
+                payload=event.payload,
+                event_id=str(event.event_id),
+                user_id=str(event.user_id) if event.user_id else None,
+                company_id=event.payload.get("company_id"),
+                priority="high" if realtime_type == RealtimeEventType.COMMENT_REPLIED else "normal",
+            )
 
     async def _broadcast_event(
         self,
@@ -541,6 +597,150 @@ class EventBroadcaster:
             user_id=None,
             company_id=company_id,
             priority="normal" if notification_type != "error" else "high",
+        )
+
+    # Comment Event Convenience Methods
+
+    async def emit_comment_created(
+        self,
+        comment_id: str,
+        document_id: str,
+        user_id: str,
+        content_preview: str,
+        parent_id: Optional[str] = None,
+        mentioned_users: Optional[List[str]] = None,
+        company_id: Optional[str] = None,
+    ) -> None:
+        """Emittiert Comment Created Event."""
+        await self._broadcast_event(
+            event_type=RealtimeEventType.COMMENT_CREATED,
+            payload={
+                "comment_id": comment_id,
+                "document_id": document_id,
+                "content_preview": content_preview[:100] if content_preview else "",
+                "parent_id": parent_id,
+                "mentioned_users": mentioned_users or [],
+                "is_reply": parent_id is not None,
+            },
+            event_id=f"comment-created-{comment_id}",
+            user_id=user_id,
+            company_id=company_id,
+            priority="high" if parent_id else "normal",
+        )
+
+    async def emit_comment_updated(
+        self,
+        comment_id: str,
+        document_id: str,
+        user_id: str,
+        company_id: Optional[str] = None,
+    ) -> None:
+        """Emittiert Comment Updated Event."""
+        await self._broadcast_event(
+            event_type=RealtimeEventType.COMMENT_UPDATED,
+            payload={
+                "comment_id": comment_id,
+                "document_id": document_id,
+            },
+            event_id=f"comment-updated-{comment_id}",
+            user_id=user_id,
+            company_id=company_id,
+            priority="normal",
+        )
+
+    async def emit_comment_deleted(
+        self,
+        comment_id: str,
+        document_id: str,
+        user_id: str,
+        company_id: Optional[str] = None,
+    ) -> None:
+        """Emittiert Comment Deleted Event."""
+        await self._broadcast_event(
+            event_type=RealtimeEventType.COMMENT_DELETED,
+            payload={
+                "comment_id": comment_id,
+                "document_id": document_id,
+            },
+            event_id=f"comment-deleted-{comment_id}",
+            user_id=user_id,
+            company_id=company_id,
+            priority="normal",
+        )
+
+    async def emit_comment_replied(
+        self,
+        comment_id: str,
+        parent_id: str,
+        document_id: str,
+        user_id: str,
+        content_preview: str,
+        thread_participants: Optional[List[str]] = None,
+        company_id: Optional[str] = None,
+    ) -> None:
+        """Emittiert Comment Replied Event (Thread-Antwort)."""
+        await self._broadcast_event(
+            event_type=RealtimeEventType.COMMENT_REPLIED,
+            payload={
+                "comment_id": comment_id,
+                "parent_id": parent_id,
+                "document_id": document_id,
+                "content_preview": content_preview[:100] if content_preview else "",
+                "thread_participants": thread_participants or [],
+            },
+            event_id=f"comment-replied-{comment_id}",
+            user_id=user_id,
+            company_id=company_id,
+            priority="high",  # Replies are high priority for notifications
+        )
+
+    async def emit_comment_reaction(
+        self,
+        comment_id: str,
+        document_id: str,
+        user_id: str,
+        reaction: str,
+        action: str = "added",  # "added" or "removed"
+        company_id: Optional[str] = None,
+    ) -> None:
+        """Emittiert Comment Reaction Event."""
+        await self._broadcast_event(
+            event_type=RealtimeEventType.COMMENT_REACTION,
+            payload={
+                "comment_id": comment_id,
+                "document_id": document_id,
+                "reaction": reaction,
+                "action": action,
+            },
+            event_id=f"comment-reaction-{comment_id}-{reaction}",
+            user_id=user_id,
+            company_id=company_id,
+            priority="low",
+        )
+
+    async def emit_user_mention(
+        self,
+        mentioned_user_id: str,
+        mentioner_user_id: str,
+        context_type: str,  # "comment", "document", etc.
+        context_id: str,
+        content_preview: str,
+        company_id: Optional[str] = None,
+    ) -> None:
+        """Emittiert User Mention Event."""
+        await self._broadcast_event(
+            event_type=RealtimeEventType.USER_MENTION,
+            payload={
+                "mentioned_user_id": mentioned_user_id,
+                "mentioner_user_id": mentioner_user_id,
+                "context_type": context_type,
+                "context_id": context_id,
+                "content_preview": content_preview[:100] if content_preview else "",
+            },
+            event_id=f"mention-{context_type}-{context_id}-{mentioned_user_id}",
+            user_id=mentioned_user_id,  # Target the mentioned user
+            company_id=company_id,
+            priority="high",
         )
 
 

@@ -54,7 +54,14 @@ export type RealtimeEventType =
   | 'system.maintenance'
   // User Events
   | 'user.task_assigned'
-  | 'user.mention';
+  | 'user.mention'
+  // Comment Events (Collaboration)
+  | 'comment.created'
+  | 'comment.updated'
+  | 'comment.deleted'
+  | 'comment.replied'
+  | 'comment.reaction_added'
+  | 'comment.reaction_removed';
 
 export interface RealtimeEvent {
   event_type: RealtimeEventType;
@@ -491,6 +498,13 @@ export function useRealtimeDashboard(): void {
       'transaction.imported': [['transactions'], ['banking'], ['cashflow']],
       'cashflow.updated': [['cashflow'], ['finance']],
       'budget.alert': [['budgets'], ['finance']],
+      // Comment Events
+      'comment.created': [['comments'], ['documents']],
+      'comment.updated': [['comments']],
+      'comment.deleted': [['comments']],
+      'comment.replied': [['comments']],
+      'comment.reaction_added': [['comments']],
+      'comment.reaction_removed': [['comments']],
     };
 
     const queryKeysToInvalidate = invalidationMap[event.event_type];
@@ -554,6 +568,124 @@ export function useOCRProgress(
   });
 
   return { progress, stage };
+}
+
+/**
+ * Hook fuer Kommentar-Echtzeit-Updates auf einer Dokument-Seite.
+ *
+ * Abonniert alle Comment-Events fuer ein bestimmtes Dokument und
+ * invalidiert automatisch die relevanten Query-Caches.
+ *
+ * @param documentId - Document ID fuer das Kommentare ueberwacht werden
+ * @param onNewComment - Optional: Callback bei neuen Kommentaren (z.B. fuer Toast)
+ * @param onReply - Optional: Callback bei Antworten auf Threads
+ *
+ * @example
+ * useCommentRealtime(documentId, {
+ *   onNewComment: (event) => toast.info('Neuer Kommentar von ' + event.payload.user_name),
+ *   onReply: (event) => toast.info('Neue Antwort im Thread'),
+ * });
+ */
+export function useCommentRealtime(
+  documentId: string,
+  options?: {
+    onNewComment?: (event: RealtimeEvent) => void;
+    onReply?: (event: RealtimeEvent) => void;
+    onUpdate?: (event: RealtimeEvent) => void;
+    onDelete?: (event: RealtimeEvent) => void;
+    onReaction?: (event: RealtimeEvent) => void;
+  }
+): void {
+  const queryClient = useQueryClient();
+  const optionsRef = useRef(options);
+
+  // Update options ref
+  useEffect(() => {
+    optionsRef.current = options;
+  }, [options]);
+
+  // Comment Created
+  useRealtimeEvent('comment.created', (event) => {
+    if (event.payload.document_id === documentId) {
+      queryClient.invalidateQueries({ queryKey: ['comments', documentId] });
+      optionsRef.current?.onNewComment?.(event);
+    }
+  });
+
+  // Comment Replied (Thread)
+  useRealtimeEvent('comment.replied', (event) => {
+    if (event.payload.document_id === documentId) {
+      queryClient.invalidateQueries({ queryKey: ['comments', documentId] });
+      // Auch den spezifischen Thread invalidieren
+      if (event.payload.parent_id) {
+        queryClient.invalidateQueries({
+          queryKey: ['comments', 'thread', event.payload.parent_id],
+        });
+      }
+      optionsRef.current?.onReply?.(event);
+    }
+  });
+
+  // Comment Updated
+  useRealtimeEvent('comment.updated', (event) => {
+    if (event.payload.document_id === documentId) {
+      queryClient.invalidateQueries({ queryKey: ['comments', documentId] });
+      optionsRef.current?.onUpdate?.(event);
+    }
+  });
+
+  // Comment Deleted
+  useRealtimeEvent('comment.deleted', (event) => {
+    if (event.payload.document_id === documentId) {
+      queryClient.invalidateQueries({ queryKey: ['comments', documentId] });
+      optionsRef.current?.onDelete?.(event);
+    }
+  });
+
+  // Reactions
+  useRealtimeEvent('comment.reaction_added', (event) => {
+    if (event.payload.document_id === documentId) {
+      queryClient.invalidateQueries({ queryKey: ['comments', documentId] });
+      optionsRef.current?.onReaction?.(event);
+    }
+  });
+
+  useRealtimeEvent('comment.reaction_removed', (event) => {
+    if (event.payload.document_id === documentId) {
+      queryClient.invalidateQueries({ queryKey: ['comments', documentId] });
+      optionsRef.current?.onReaction?.(event);
+    }
+  });
+}
+
+/**
+ * Hook fuer User-Mentions Benachrichtigungen.
+ *
+ * Wird ausgeloest wenn der aktuelle User in einem Kommentar erwaehnt wird.
+ *
+ * @param userId - User ID des aktuellen Benutzers
+ * @param onMention - Callback bei Erwaehnung
+ *
+ * @example
+ * useMentionNotifications(currentUser.id, (event) => {
+ *   toast.info(`${event.payload.mentioned_by_name} hat Sie erwaehnt`);
+ * });
+ */
+export function useMentionNotifications(
+  userId: string,
+  onMention: (event: RealtimeEvent) => void
+): void {
+  const onMentionRef = useRef(onMention);
+
+  useEffect(() => {
+    onMentionRef.current = onMention;
+  }, [onMention]);
+
+  useRealtimeEvent('user.mention', (event) => {
+    if (event.payload.mentioned_user_id === userId) {
+      onMentionRef.current(event);
+    }
+  });
 }
 
 export default RealtimeWebSocketClient;

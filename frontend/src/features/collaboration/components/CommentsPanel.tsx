@@ -6,14 +6,17 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import { MessageSquare, Loader2 } from 'lucide-react';
+import { MessageSquare, Loader2, Wifi, WifiOff } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { useComments, useCreateComment, useDeleteComment } from '../hooks/use-comments';
 import { CommentItem } from './CommentItem';
 import { MentionInput } from './MentionInput';
 import type { Comment } from '../types/collaboration.types';
 import { toast } from 'sonner';
+import { useCommentRealtime, useWebSocket } from '@/lib/websocket';
+import { useAuth } from '@/lib/auth/AuthContext';
 
 interface CommentsPanelProps {
   documentId: string;
@@ -23,11 +26,33 @@ interface CommentsPanelProps {
 export function CommentsPanel({ documentId, className }: CommentsPanelProps) {
   const { data, isLoading, error, isError } = useComments(documentId);
   const createMutation = useCreateComment();
-  const deleteMutation = useDeleteComment();
+  const deleteMutation = useDeleteComment(documentId);
+  const { user } = useAuth();
+  const { state: wsState } = useWebSocket();
 
   const [newComment, setNewComment] = useState('');
   const [mentions, setMentions] = useState<{ userId: string; userName: string }[]>([]);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
+
+  // WebSocket Real-Time Updates
+  useCommentRealtime(documentId, {
+    onNewComment: (event) => {
+      // Nur Toast anzeigen wenn es nicht der eigene Kommentar ist
+      if (event.payload.user_id !== user?.id) {
+        toast.info(`Neuer Kommentar von ${event.payload.user_name || 'Unbekannt'}`, {
+          description: String(event.payload.content || '').substring(0, 50) + '...',
+        });
+      }
+    },
+    onReply: (event) => {
+      if (event.payload.user_id !== user?.id) {
+        toast.info(`${event.payload.user_name || 'Jemand'} hat auf einen Kommentar geantwortet`);
+      }
+    },
+    onDelete: () => {
+      // Cache wird automatisch invalidiert, keine Aktion noetig
+    },
+  });
 
   // Organize comments into threads
   const { rootComments, repliesMap } = useMemo(() => {
@@ -141,14 +166,33 @@ export function CommentsPanel({ documentId, className }: CommentsPanelProps) {
   return (
     <Card className={className}>
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <MessageSquare className="h-5 w-5" />
-          Kommentare
-          {data?.total ? (
-            <span className="text-sm font-normal text-muted-foreground">
-              ({data.total})
-            </span>
-          ) : null}
+        <CardTitle className="flex items-center justify-between text-lg">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5" />
+            Kommentare
+            {data?.total ? (
+              <span className="text-sm font-normal text-muted-foreground">
+                ({data.total})
+              </span>
+            ) : null}
+          </div>
+          {/* WebSocket Status Indicator */}
+          <Badge
+            variant={wsState === 'connected' ? 'default' : 'secondary'}
+            className="gap-1 text-xs"
+          >
+            {wsState === 'connected' ? (
+              <>
+                <Wifi className="h-3 w-3" />
+                Live
+              </>
+            ) : (
+              <>
+                <WifiOff className="h-3 w-3" />
+                Offline
+              </>
+            )}
+          </Badge>
         </CardTitle>
       </CardHeader>
 
@@ -204,7 +248,7 @@ export function CommentsPanel({ documentId, className }: CommentsPanelProps) {
                 replies={repliesMap.get(comment.id) || []}
                 onReply={handleReply}
                 onDelete={handleDelete}
-                currentUserId="current-user" // TODO: Get from auth context
+                currentUserId={user?.id || ''}
               />
             ))}
           </div>
