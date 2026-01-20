@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, Link, useLocation } from '@tanstack/react-router'
 import { cn } from '@/lib/utils'
-import { Users, Music, Settings, LayoutDashboard, Landmark, Brain, Eye, AlertTriangle, ListTodo, Receipt, Gauge } from 'lucide-react'
+import { Users, Music, Settings, LayoutDashboard, Landmark, Brain, Eye, AlertTriangle, ListTodo, Receipt, Gauge, Shield } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { useActiveJobsCount } from '@/features/job-queue/hooks'
 
@@ -24,6 +24,7 @@ function AdminLayout() {
         { href: '/admin/ocr-review', label: 'OCR Review', icon: Eye },
         { href: '/admin/tunes', label: 'Tunes & Kontext', icon: Music },
         { href: '/admin/tenant-limits', label: 'Tenant-Metriken', icon: Gauge },
+        { href: '/admin/dlp', label: 'DLP Policies', icon: Shield },
         { href: '/admin/settings', label: 'Einstellungen', icon: Settings },
     ]
 

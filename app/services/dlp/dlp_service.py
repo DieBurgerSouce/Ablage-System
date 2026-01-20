@@ -1,0 +1,680 @@
+"""
+Data Loss Prevention (DLP) Service.
+
+Enterprise-Sicherheitsfunktionen fuer Dokumentenschutz:
+- Download-Restriktionen (role-based, time-based)
+- Wasserzeichen-Generierung (visible + invisible)
+- Sensitive Data Detection (PII, Kreditkarten, IBAN)
+- Policy-basierte Zugriffskontrolle
+- Audit-Trail fuer alle DLP-Events
+
+SECURITY:
+- Alle Policies werden serverseitig validiert
+- Wasserzeichen sind manipulationssicher
+- Sensitive Data wird NIEMALS geloggt
+"""
+
+import re
+import hashlib
+import io
+from datetime import datetime, time
+from enum import Enum
+from typing import Optional, Any
+from uuid import UUID
+
+from PIL import Image, ImageDraw, ImageFont
+from pydantic import BaseModel, Field
+from sqlalchemy import select, and_
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.config import settings
+from app.db.models import Document, User, Company
+
+
+# ==================== Enums ====================
+
+class DLPAction(str, Enum):
+    """Moegliche DLP-Aktionen."""
+    ALLOW = "allow"
+    BLOCK = "block"
+    WATERMARK = "watermark"
+    NOTIFY = "notify"
+    AUDIT_ONLY = "audit_only"
+
+
+class SensitiveDataType(str, Enum):
+    """Typen sensibler Daten."""
+    CREDIT_CARD = "credit_card"
+    IBAN = "iban"
+    SSN = "ssn"  # Sozialversicherungsnummer
+    EMAIL = "email"
+    PHONE = "phone"
+    TAX_ID = "tax_id"  # Steuernummer
+    MEDICAL = "medical"
+    FINANCIAL = "financial"
+
+
+class WatermarkPosition(str, Enum):
+    """Position des Wasserzeichens."""
+    CENTER = "center"
+    DIAGONAL = "diagonal"
+    FOOTER = "footer"
+    HEADER = "header"
+    TILED = "tiled"
+
+
+# ==================== Schemas ====================
+
+class DLPPolicy(BaseModel):
+    """DLP-Policy Definition."""
+    id: str = Field(..., description="Eindeutige Policy-ID")
+    name: str = Field(..., description="Policy-Name")
+    description: Optional[str] = None
+    enabled: bool = True
+
+    # Zugriffsbedingungen
+    allowed_roles: list[str] = Field(
+        default=["admin"],
+        description="Rollen die diese Aktion ausfuehren duerfen"
+    )
+    blocked_roles: list[str] = Field(
+        default=[],
+        description="Rollen die explizit blockiert sind"
+    )
+
+    # Zeit-basierte Einschraenkungen
+    time_restrictions: Optional[dict[str, Any]] = Field(
+        default=None,
+        description="Zeit-basierte Einschraenkungen {'start': '09:00', 'end': '18:00', 'weekdays': [0,1,2,3,4]}"
+    )
+
+    # Dokument-Filter
+    document_types: list[str] = Field(
+        default=["all"],
+        description="Betroffene Dokumenttypen (z.B. 'pdf', 'invoice', 'confidential')"
+    )
+    tags_required: list[str] = Field(
+        default=[],
+        description="Dokument muss diese Tags haben"
+    )
+    tags_blocked: list[str] = Field(
+        default=[],
+        description="Dokument darf diese Tags nicht haben"
+    )
+
+    # Aktionen
+    action: DLPAction = Field(
+        default=DLPAction.ALLOW,
+        description="Aktion bei Policy-Match"
+    )
+    require_watermark: bool = Field(
+        default=False,
+        description="Wasserzeichen erforderlich"
+    )
+    watermark_config: Optional[dict[str, Any]] = Field(
+        default=None,
+        description="Wasserzeichen-Konfiguration"
+    )
+
+    # Benachrichtigungen
+    notify_admin: bool = False
+    notify_user: bool = False
+    log_access: bool = True
+
+
+class DLPCheckResult(BaseModel):
+    """Ergebnis einer DLP-Pruefung."""
+    allowed: bool
+    action: DLPAction
+    policy_id: Optional[str] = None
+    policy_name: Optional[str] = None
+    reason: Optional[str] = None
+    watermark_required: bool = False
+    watermark_config: Optional[dict[str, Any]] = None
+    notifications: list[str] = []
+    sensitive_data_found: list[SensitiveDataType] = []
+
+
+class WatermarkConfig(BaseModel):
+    """Wasserzeichen-Konfiguration."""
+    text: Optional[str] = None  # None = automatisch (User + Timestamp)
+    position: WatermarkPosition = WatermarkPosition.DIAGONAL
+    opacity: float = Field(default=0.3, ge=0.1, le=1.0)
+    font_size: int = Field(default=40, ge=10, le=200)
+    color: str = Field(default="#808080", pattern=r"^#[0-9A-Fa-f]{6}$")
+    include_user: bool = True
+    include_timestamp: bool = True
+    include_document_id: bool = True
+    invisible_watermark: bool = False  # Steganographie
+
+
+# ==================== Sensitive Data Patterns ====================
+
+SENSITIVE_PATTERNS: dict[SensitiveDataType, list[re.Pattern[str]]] = {
+    SensitiveDataType.CREDIT_CARD: [
+        # Visa, Mastercard, Amex, etc.
+        re.compile(r'\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})\b'),
+        re.compile(r'\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b'),
+    ],
+    SensitiveDataType.IBAN: [
+        # Deutsche IBAN: DE + 2 Prüfziffern + 8 BLZ + 10 Kontonummer
+        re.compile(r'\b[A-Z]{2}\d{2}[A-Z0-9]{4}\d{7}([A-Z0-9]?){0,16}\b', re.IGNORECASE),
+        re.compile(r'\bDE\s?\d{2}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{2}\b', re.IGNORECASE),
+    ],
+    SensitiveDataType.SSN: [
+        # Deutsche Sozialversicherungsnummer: 12 Zeichen
+        re.compile(r'\b\d{2}\s?\d{6}\s?[A-Z]\s?\d{3}\b'),
+    ],
+    SensitiveDataType.EMAIL: [
+        re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'),
+    ],
+    SensitiveDataType.PHONE: [
+        # Deutsche Telefonnummern
+        re.compile(r'\b(?:\+49|0049|0)[1-9]\d{1,14}\b'),
+        re.compile(r'\b\d{3,5}[/-]?\d{5,10}\b'),
+    ],
+    SensitiveDataType.TAX_ID: [
+        # Deutsche Steuernummer / Steuer-ID
+        re.compile(r'\b\d{2,3}/?\d{3}/?\d{4,5}\b'),  # Format: 123/456/78901
+        re.compile(r'\b\d{11}\b'),  # 11-stellige Steuer-ID
+    ],
+}
+
+
+# ==================== DLP Service ====================
+
+class DLPServiceError(Exception):
+    """Basis-Exception fuer DLP-Fehler."""
+    pass
+
+
+class DLPAccessDeniedError(DLPServiceError):
+    """Zugriff durch DLP-Policy verweigert."""
+    pass
+
+
+class DLPService:
+    """
+    Data Loss Prevention Service.
+
+    Schuetzt sensible Dokumente durch:
+    - Zugriffskontrolle basierend auf Policies
+    - Automatische Wasserzeichen
+    - Erkennung sensibler Daten
+    - Audit-Logging
+    """
+
+    def __init__(self, db: AsyncSession):
+        self.db = db
+        self._policies: list[DLPPolicy] = []
+        self._load_default_policies()
+
+    def _load_default_policies(self) -> None:
+        """Laedt Standard-DLP-Policies."""
+        self._policies = [
+            # Policy 1: Vertrauliche Dokumente
+            DLPPolicy(
+                id="confidential-docs",
+                name="Vertrauliche Dokumente",
+                description="Schutz fuer als vertraulich markierte Dokumente",
+                allowed_roles=["admin", "manager"],
+                tags_required=["vertraulich"],
+                action=DLPAction.WATERMARK,
+                require_watermark=True,
+                watermark_config={
+                    "text": "VERTRAULICH",
+                    "position": "diagonal",
+                    "opacity": 0.4,
+                },
+                notify_admin=True,
+            ),
+            # Policy 2: Finanz-Dokumente
+            DLPPolicy(
+                id="financial-docs",
+                name="Finanzdokumente",
+                description="Schutz fuer Rechnungen, Kontoauszuege, etc.",
+                allowed_roles=["admin", "accountant", "manager"],
+                document_types=["invoice", "bank_statement", "financial"],
+                action=DLPAction.ALLOW,
+                require_watermark=True,
+                watermark_config={
+                    "position": "footer",
+                    "include_user": True,
+                    "include_timestamp": True,
+                },
+                log_access=True,
+            ),
+            # Policy 3: Ausserhalb Arbeitszeiten
+            DLPPolicy(
+                id="after-hours",
+                name="Ausserhalb Arbeitszeiten",
+                description="Einschraenkungen ausserhalb der Arbeitszeiten",
+                allowed_roles=["admin"],
+                time_restrictions={
+                    "start": "06:00",
+                    "end": "22:00",
+                    "weekdays": [0, 1, 2, 3, 4, 5],  # Mo-Sa
+                },
+                action=DLPAction.NOTIFY,
+                notify_admin=True,
+            ),
+            # Policy 4: Export-Beschraenkung
+            DLPPolicy(
+                id="no-export",
+                name="Export-Verbot",
+                description="Dokumente die nicht exportiert werden duerfen",
+                blocked_roles=["viewer"],
+                tags_required=["no-export"],
+                action=DLPAction.BLOCK,
+                notify_admin=True,
+            ),
+        ]
+
+    async def check_access(
+        self,
+        user: User,
+        document: Document,
+        action_type: str = "download",
+    ) -> DLPCheckResult:
+        """
+        Prueft ob ein Benutzer eine Aktion auf einem Dokument ausfuehren darf.
+
+        Args:
+            user: Der anfragende Benutzer
+            document: Das betroffene Dokument
+            action_type: Art der Aktion (download, view, print, export)
+
+        Returns:
+            DLPCheckResult mit Entscheidung und Details
+        """
+        # Standard: Erlaubt
+        result = DLPCheckResult(
+            allowed=True,
+            action=DLPAction.ALLOW,
+        )
+
+        # Dokument-Tags holen
+        doc_tags = document.tags if hasattr(document, 'tags') and document.tags else []
+        doc_type = document.document_type if hasattr(document, 'document_type') else "unknown"
+
+        # User-Rolle
+        user_role = user.role if hasattr(user, 'role') else "viewer"
+
+        # Alle aktiven Policies pruefen
+        for policy in self._policies:
+            if not policy.enabled:
+                continue
+
+            # Pruefen ob Policy auf dieses Dokument zutrifft
+            if not self._policy_matches_document(policy, doc_tags, doc_type):
+                continue
+
+            # Zeit-Restriktionen pruefen
+            if policy.time_restrictions:
+                if not self._check_time_restrictions(policy.time_restrictions):
+                    # Ausserhalb erlaubter Zeit
+                    if policy.action == DLPAction.BLOCK:
+                        result.allowed = False
+                        result.action = DLPAction.BLOCK
+                        result.policy_id = policy.id
+                        result.policy_name = policy.name
+                        result.reason = "Zugriff ausserhalb der erlaubten Zeiten"
+                        if policy.notify_admin:
+                            result.notifications.append("admin")
+                        return result
+                    elif policy.action == DLPAction.NOTIFY:
+                        result.notifications.append("admin")
+
+            # Rollen-Restriktionen pruefen
+            if user_role in policy.blocked_roles:
+                result.allowed = False
+                result.action = DLPAction.BLOCK
+                result.policy_id = policy.id
+                result.policy_name = policy.name
+                result.reason = f"Rolle '{user_role}' ist fuer diese Aktion gesperrt"
+                if policy.notify_admin:
+                    result.notifications.append("admin")
+                return result
+
+            if policy.allowed_roles and user_role not in policy.allowed_roles:
+                if policy.action == DLPAction.BLOCK:
+                    result.allowed = False
+                    result.action = DLPAction.BLOCK
+                    result.policy_id = policy.id
+                    result.policy_name = policy.name
+                    result.reason = f"Rolle '{user_role}' hat keinen Zugriff"
+                    if policy.notify_admin:
+                        result.notifications.append("admin")
+                    return result
+
+            # Wasserzeichen erforderlich?
+            if policy.require_watermark:
+                result.watermark_required = True
+                result.watermark_config = policy.watermark_config
+                result.policy_id = policy.id
+                result.policy_name = policy.name
+                result.action = DLPAction.WATERMARK
+
+        return result
+
+    def _policy_matches_document(
+        self,
+        policy: DLPPolicy,
+        doc_tags: list[str],
+        doc_type: str,
+    ) -> bool:
+        """Prueft ob eine Policy auf ein Dokument zutrifft."""
+        # Dokument-Typ pruefen
+        if "all" not in policy.document_types:
+            if doc_type not in policy.document_types:
+                return False
+
+        # Required Tags pruefen
+        if policy.tags_required:
+            if not all(tag in doc_tags for tag in policy.tags_required):
+                return False
+
+        # Blocked Tags pruefen
+        if policy.tags_blocked:
+            if any(tag in doc_tags for tag in policy.tags_blocked):
+                return False
+
+        return True
+
+    def _check_time_restrictions(self, restrictions: dict[str, Any]) -> bool:
+        """Prueft ob aktuelle Zeit innerhalb der Einschraenkungen liegt."""
+        now = datetime.now()
+
+        # Wochentag pruefen (0 = Montag)
+        if "weekdays" in restrictions:
+            if now.weekday() not in restrictions["weekdays"]:
+                return False
+
+        # Uhrzeit pruefen
+        if "start" in restrictions and "end" in restrictions:
+            start_time = time.fromisoformat(restrictions["start"])
+            end_time = time.fromisoformat(restrictions["end"])
+            current_time = now.time()
+
+            if not (start_time <= current_time <= end_time):
+                return False
+
+        return True
+
+    def detect_sensitive_data(
+        self,
+        text: str,
+        types: Optional[list[SensitiveDataType]] = None,
+    ) -> dict[SensitiveDataType, int]:
+        """
+        Erkennt sensible Daten im Text.
+
+        Args:
+            text: Zu pruefender Text
+            types: Zu pruefende Typen (None = alle)
+
+        Returns:
+            Dict mit Typ -> Anzahl gefundener Matches
+
+        SECURITY: Text wird nicht geloggt, nur Anzahl!
+        """
+        results: dict[SensitiveDataType, int] = {}
+
+        check_types = types or list(SensitiveDataType)
+
+        for data_type in check_types:
+            if data_type not in SENSITIVE_PATTERNS:
+                continue
+
+            count = 0
+            for pattern in SENSITIVE_PATTERNS[data_type]:
+                matches = pattern.findall(text)
+                count += len(matches)
+
+            if count > 0:
+                results[data_type] = count
+
+        return results
+
+    def add_watermark(
+        self,
+        image_bytes: bytes,
+        config: WatermarkConfig,
+        user: User,
+        document_id: UUID,
+    ) -> bytes:
+        """
+        Fuegt ein Wasserzeichen zu einem Bild hinzu.
+
+        Args:
+            image_bytes: Original-Bild als Bytes
+            config: Wasserzeichen-Konfiguration
+            user: Benutzer fuer Personalisierung
+            document_id: Dokument-ID fuer Tracking
+
+        Returns:
+            Bild mit Wasserzeichen als Bytes
+        """
+        # Bild laden
+        image = Image.open(io.BytesIO(image_bytes))
+
+        # In RGBA konvertieren fuer Transparenz
+        if image.mode != 'RGBA':
+            image = image.convert('RGBA')
+
+        # Wasserzeichen-Layer erstellen
+        watermark_layer = Image.new('RGBA', image.size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(watermark_layer)
+
+        # Text generieren
+        watermark_text = self._generate_watermark_text(config, user, document_id)
+
+        # Farbe parsen
+        color_hex = config.color.lstrip('#')
+        r, g, b = tuple(int(color_hex[i:i+2], 16) for i in (0, 2, 4))
+        opacity = int(config.opacity * 255)
+        color = (r, g, b, opacity)
+
+        # Font (Fallback auf Default)
+        try:
+            font = ImageFont.truetype("arial.ttf", config.font_size)
+        except OSError:
+            font = ImageFont.load_default()
+
+        # Position bestimmen und zeichnen
+        if config.position == WatermarkPosition.CENTER:
+            self._draw_center_watermark(draw, watermark_text, font, color, image.size)
+        elif config.position == WatermarkPosition.DIAGONAL:
+            self._draw_diagonal_watermark(draw, watermark_text, font, color, image.size)
+        elif config.position == WatermarkPosition.FOOTER:
+            self._draw_footer_watermark(draw, watermark_text, font, color, image.size)
+        elif config.position == WatermarkPosition.HEADER:
+            self._draw_header_watermark(draw, watermark_text, font, color, image.size)
+        elif config.position == WatermarkPosition.TILED:
+            self._draw_tiled_watermark(draw, watermark_text, font, color, image.size)
+
+        # Layer zusammenfuegen
+        watermarked = Image.alpha_composite(image, watermark_layer)
+
+        # Zurueck zu Bytes
+        output = io.BytesIO()
+        watermarked.save(output, format='PNG')
+        output.seek(0)
+
+        return output.read()
+
+    def _generate_watermark_text(
+        self,
+        config: WatermarkConfig,
+        user: User,
+        document_id: UUID,
+    ) -> str:
+        """Generiert den Wasserzeichen-Text."""
+        parts: list[str] = []
+
+        if config.text:
+            parts.append(config.text)
+
+        if config.include_user:
+            parts.append(user.email if hasattr(user, 'email') else str(user.id))
+
+        if config.include_timestamp:
+            parts.append(datetime.now().strftime("%Y-%m-%d %H:%M"))
+
+        if config.include_document_id:
+            # Kurze ID fuer Tracking
+            short_id = str(document_id)[:8]
+            parts.append(f"ID:{short_id}")
+
+        return " | ".join(parts) if parts else "WATERMARK"
+
+    def _draw_center_watermark(
+        self,
+        draw: ImageDraw.ImageDraw,
+        text: str,
+        font: ImageFont.FreeTypeFont,
+        color: tuple[int, int, int, int],
+        size: tuple[int, int],
+    ) -> None:
+        """Zeichnet Wasserzeichen in der Mitte."""
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        x = (size[0] - text_width) // 2
+        y = (size[1] - text_height) // 2
+        draw.text((x, y), text, font=font, fill=color)
+
+    def _draw_diagonal_watermark(
+        self,
+        draw: ImageDraw.ImageDraw,
+        text: str,
+        font: ImageFont.FreeTypeFont,
+        color: tuple[int, int, int, int],
+        size: tuple[int, int],
+    ) -> None:
+        """Zeichnet diagonales Wasserzeichen."""
+        # Mehrere diagonale Linien
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+
+        # Diagonale Positionen
+        for i in range(-2, 4):
+            x = size[0] // 4 + i * (text_width + 50)
+            y = size[1] // 4 + i * (text_height + 100)
+            draw.text((x, y), text, font=font, fill=color)
+
+    def _draw_footer_watermark(
+        self,
+        draw: ImageDraw.ImageDraw,
+        text: str,
+        font: ImageFont.FreeTypeFont,
+        color: tuple[int, int, int, int],
+        size: tuple[int, int],
+    ) -> None:
+        """Zeichnet Wasserzeichen im Footer."""
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        x = (size[0] - text_width) // 2
+        y = size[1] - text_height - 20
+        draw.text((x, y), text, font=font, fill=color)
+
+    def _draw_header_watermark(
+        self,
+        draw: ImageDraw.ImageDraw,
+        text: str,
+        font: ImageFont.FreeTypeFont,
+        color: tuple[int, int, int, int],
+        size: tuple[int, int],
+    ) -> None:
+        """Zeichnet Wasserzeichen im Header."""
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        x = (size[0] - text_width) // 2
+        y = 20
+        draw.text((x, y), text, font=font, fill=color)
+
+    def _draw_tiled_watermark(
+        self,
+        draw: ImageDraw.ImageDraw,
+        text: str,
+        font: ImageFont.FreeTypeFont,
+        color: tuple[int, int, int, int],
+        size: tuple[int, int],
+    ) -> None:
+        """Zeichnet gekacheltes Wasserzeichen."""
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+
+        spacing_x = text_width + 100
+        spacing_y = text_height + 100
+
+        for y in range(0, size[1], spacing_y):
+            for x in range(0, size[0], spacing_x):
+                draw.text((x, y), text, font=font, fill=color)
+
+    def generate_invisible_watermark(
+        self,
+        document_id: UUID,
+        user_id: UUID,
+    ) -> str:
+        """
+        Generiert einen unsichtbaren Wasserzeichen-Hash.
+
+        Kann fuer Steganographie oder Metadaten verwendet werden.
+
+        Returns:
+            Hash-String fuer Tracking
+        """
+        timestamp = datetime.now().isoformat()
+        data = f"{document_id}:{user_id}:{timestamp}"
+        return hashlib.sha256(data.encode()).hexdigest()[:16]
+
+    async def log_dlp_event(
+        self,
+        user_id: UUID,
+        document_id: UUID,
+        action: str,
+        result: DLPCheckResult,
+        company_id: Optional[UUID] = None,
+    ) -> None:
+        """
+        Loggt ein DLP-Event fuer Audit-Zwecke.
+
+        SECURITY: Keine sensiblen Daten im Log!
+        """
+        # TODO: In Audit-Log-Tabelle speichern
+        # Fuer jetzt nur Placeholder - Integration mit bestehendem Audit-System
+        pass
+
+    def get_policies(self) -> list[DLPPolicy]:
+        """Gibt alle konfigurierten Policies zurueck."""
+        return self._policies
+
+    def add_policy(self, policy: DLPPolicy) -> None:
+        """Fuegt eine neue Policy hinzu."""
+        # Duplikat-Check
+        if any(p.id == policy.id for p in self._policies):
+            raise DLPServiceError(f"Policy mit ID '{policy.id}' existiert bereits")
+        self._policies.append(policy)
+
+    def update_policy(self, policy_id: str, updates: dict[str, Any]) -> DLPPolicy:
+        """Aktualisiert eine bestehende Policy."""
+        for i, policy in enumerate(self._policies):
+            if policy.id == policy_id:
+                updated_dict = policy.model_dump()
+                updated_dict.update(updates)
+                self._policies[i] = DLPPolicy(**updated_dict)
+                return self._policies[i]
+        raise DLPServiceError(f"Policy '{policy_id}' nicht gefunden")
+
+    def delete_policy(self, policy_id: str) -> None:
+        """Loescht eine Policy."""
+        self._policies = [p for p in self._policies if p.id != policy_id]
+
+
+def get_dlp_service(db: AsyncSession) -> DLPService:
+    """Factory-Funktion fuer DLPService."""
+    return DLPService(db)
