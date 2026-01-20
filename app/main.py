@@ -802,6 +802,7 @@ from app.api.v1.ocr_learning import router as ocr_learning_router
 from app.api.v1.bpmn import router as bpmn_router
 from app.api.v1.compliance import router as compliance_router
 from app.api.v1.help import router as help_router
+from app.api.v1.mfa import router as mfa_router
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -898,6 +899,7 @@ app.include_router(ocr_learning_router, prefix="/api/v1")
 app.include_router(bpmn_router, prefix="/api/v1")
 app.include_router(compliance_router, prefix="/api/v1")
 app.include_router(help_router, prefix="/api/v1")
+app.include_router(mfa_router, prefix="/api/v1")
 
 
 # ==================== Health & Status Endpoints ====================

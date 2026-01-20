@@ -30,17 +30,17 @@ export interface TwoFactorRequiredResponse {
 
 export interface TwoFactorStatus {
     enabled: boolean;
-    available: boolean;
+    available?: boolean;
     setup_at: string | null;
     backup_codes_remaining: number;
+    has_pending_setup: boolean;
 }
 
 export interface TwoFactorSetupResponse {
     message: string;
     qr_code: string;
-    provisioning_uri: string;
+    secret: string;
     backup_codes: string[];
-    warning: string;
 }
 
 interface UserResponse {
@@ -141,28 +141,38 @@ export const authService = {
         throw new Error('2FA-Verifizierung fehlgeschlagen');
     },
 
-    // 2FA Status and Management Methods
+    // MFA (Multi-Factor Authentication) Methods - verwendet /mfa/* Endpoints
     get2FAStatus: async (): Promise<TwoFactorStatus> => {
-        const response = await apiClient.get<TwoFactorStatus>('/auth/2fa/status');
+        const response = await apiClient.get<TwoFactorStatus>('/mfa/status');
         return response.data;
     },
 
     setup2FA: async (): Promise<TwoFactorSetupResponse> => {
-        const response = await apiClient.post<TwoFactorSetupResponse>('/auth/2fa/setup');
+        const response = await apiClient.post<TwoFactorSetupResponse>('/mfa/setup');
         return response.data;
     },
 
     verify2FASetup: async (code: string): Promise<void> => {
-        await apiClient.post('/auth/2fa/verify', { code });
+        await apiClient.post('/mfa/verify', { code });
     },
 
     disable2FA: async (code: string): Promise<void> => {
-        await apiClient.post('/auth/2fa/disable', { code });
+        await apiClient.post('/mfa/disable', { code });
     },
 
     regenerateBackupCodes: async (code: string): Promise<string[]> => {
-        const response = await apiClient.post<{ backup_codes: string[] }>('/auth/2fa/regenerate-backup-codes', { code });
+        const response = await apiClient.post<{ backup_codes: string[] }>('/mfa/regenerate', { code });
         return response.data.backup_codes;
+    },
+
+    // Validate TOTP code (used during login)
+    validateTOTP: async (code: string): Promise<void> => {
+        await apiClient.post('/mfa/validate', { code });
+    },
+
+    // Use backup code (alternative to TOTP)
+    useBackupCode: async (code: string): Promise<void> => {
+        await apiClient.post('/mfa/backup', { code });
     },
 
     logout: () => {
