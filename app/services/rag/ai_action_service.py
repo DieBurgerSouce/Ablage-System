@@ -5,18 +5,20 @@ Handles AI-driven actions with role-based autonomy levels:
 - Viewer: Read-only actions (search, analyze, report)
 - Editor: Supervised actions (requires confirmation)
 - Admin: Autonomous actions (self-executing)
+
+ENTERPRISE: Alle Aktionen fuehren echte DB-Operationen durch.
 """
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, Optional, List, Dict
 from uuid import UUID, uuid4
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
 
-from app.db.models import User, Document, BusinessEntity
+from app.db.models import User, Document, BusinessEntity, DocumentTag, ProcessingStatus
 from app.api.schemas.rag import (
     AIActionType,
     AIActionAutonomyLevel,
@@ -445,65 +447,285 @@ class AIActionService:
         elif request.action_type == AIActionType.CATEGORIZE_DOCUMENT:
             doc_id = request.context_id or request.parameters.get("document_id")
             category = request.parameters.get("category", "Unbekannt")
-            message = f"Dokument als '{category}' kategorisiert."
             if doc_id:
-                affected_items.append(doc_id)
-                # TODO: Actually update the document category in DB
+                doc_uuid = UUID(doc_id) if isinstance(doc_id, str) else doc_id
+                # Echte DB-Operation: Dokument-Kategorie aktualisieren
+                await db.execute(
+                    update(Document)
+                    .where(
+                        Document.id == doc_uuid,
+                        Document.company_id == user.company_id,
+                    )
+                    .values(
+                        document_type=category,
+                        updated_at=datetime.now(timezone.utc),
+                    )
+                )
+                await db.commit()
+                affected_items.append(doc_uuid)
+                message = f"Dokument als '{category}' kategorisiert."
+                logger.info(
+                    "document_categorized_by_ai",
+                    document_id=str(doc_uuid),
+                    category=category,
+                    user_id=str(user.id),
+                )
+            else:
+                message = "Fehler: Keine Dokument-ID angegeben."
 
         elif request.action_type == AIActionType.TAG_DOCUMENT:
             doc_id = request.context_id or request.parameters.get("document_id")
             tags = request.parameters.get("tags", [])
-            message = f"Tags hinzugefuegt: {', '.join(tags) if tags else 'keine'}"
-            if doc_id:
-                affected_items.append(doc_id)
-                # TODO: Actually add tags to document
+            if doc_id and tags:
+                doc_uuid = UUID(doc_id) if isinstance(doc_id, str) else doc_id
+                # Echte DB-Operation: Tags zum Dokument hinzufuegen
+                for tag_name in tags:
+                    # Pruefe ob Tag bereits existiert
+                    existing_tag = await db.execute(
+                        select(DocumentTag).where(
+                            DocumentTag.document_id == doc_uuid,
+                            DocumentTag.tag == tag_name,
+                        )
+                    )
+                    if not existing_tag.scalar_one_or_none():
+                        new_tag = DocumentTag(
+                            document_id=doc_uuid,
+                            tag=tag_name,
+                            created_at=datetime.now(timezone.utc),
+                        )
+                        db.add(new_tag)
+                await db.commit()
+                affected_items.append(doc_uuid)
+                message = f"Tags hinzugefuegt: {', '.join(tags)}"
+                logger.info(
+                    "document_tagged_by_ai",
+                    document_id=str(doc_uuid),
+                    tags=tags,
+                    user_id=str(user.id),
+                )
+            else:
+                message = f"Tags hinzugefuegt: {', '.join(tags) if tags else 'keine'}"
 
         elif request.action_type == AIActionType.LINK_ENTITY:
             doc_id = request.context_id
             entity_id = request.parameters.get("entity_id")
-            message = "Dokument mit Geschaeftspartner verknuepft."
-            if doc_id:
-                affected_items.append(doc_id)
-            if entity_id:
-                affected_items.append(entity_id)
-            # TODO: Actually create the link
+            if doc_id and entity_id:
+                doc_uuid = UUID(doc_id) if isinstance(doc_id, str) else doc_id
+                entity_uuid = UUID(entity_id) if isinstance(entity_id, str) else entity_id
+                # Echte DB-Operation: Entity mit Dokument verknuepfen
+                await db.execute(
+                    update(Document)
+                    .where(
+                        Document.id == doc_uuid,
+                        Document.company_id == user.company_id,
+                    )
+                    .values(
+                        business_entity_id=entity_uuid,
+                        updated_at=datetime.now(timezone.utc),
+                    )
+                )
+                await db.commit()
+                affected_items.append(doc_uuid)
+                affected_items.append(entity_uuid)
+                message = "Dokument mit Geschaeftspartner verknuepft."
+                logger.info(
+                    "document_linked_to_entity_by_ai",
+                    document_id=str(doc_uuid),
+                    entity_id=str(entity_uuid),
+                    user_id=str(user.id),
+                )
+            else:
+                message = "Fehler: Dokument-ID oder Entity-ID fehlt."
 
         elif request.action_type == AIActionType.CREATE_REMINDER:
-            message = "Erinnerung erstellt."
+            from app.db.models import Reminder
+            due_date_str = request.parameters.get("due_date")
+            title = request.parameters.get("title", "AI-Erinnerung")
+            description = request.parameters.get("description", "")
+            doc_id = request.context_id
+
+            # Parse due_date
+            if due_date_str:
+                try:
+                    due_date = datetime.fromisoformat(due_date_str.replace("Z", "+00:00"))
+                except ValueError:
+                    due_date = datetime.now(timezone.utc) + timedelta(days=7)
+            else:
+                due_date = datetime.now(timezone.utc) + timedelta(days=7)
+
+            # Echte DB-Operation: Erinnerung erstellen
+            reminder = Reminder(
+                id=uuid4(),
+                user_id=user.id,
+                company_id=user.company_id,
+                title=title,
+                description=description,
+                due_date=due_date,
+                document_id=UUID(doc_id) if doc_id and isinstance(doc_id, str) else doc_id,
+                created_at=datetime.now(timezone.utc),
+                is_completed=False,
+            )
+            db.add(reminder)
+            await db.commit()
+            affected_items.append(reminder.id)
+            message = f"Erinnerung '{title}' erstellt fuer {due_date.strftime('%d.%m.%Y')}."
             details = {
-                "due_date": request.parameters.get("due_date"),
-                "title": request.parameters.get("title"),
+                "reminder_id": str(reminder.id),
+                "due_date": due_date.isoformat(),
+                "title": title,
             }
-            # TODO: Actually create reminder
+            logger.info(
+                "reminder_created_by_ai",
+                reminder_id=str(reminder.id),
+                due_date=due_date.isoformat(),
+                user_id=str(user.id),
+            )
 
         elif request.action_type == AIActionType.APPROVE_VALIDATION:
             doc_id = request.context_id or request.parameters.get("document_id")
-            message = "Validierung genehmigt."
             if doc_id:
-                affected_items.append(doc_id)
-            # TODO: Actually approve validation
+                doc_uuid = UUID(doc_id) if isinstance(doc_id, str) else doc_id
+                # Echte DB-Operation: Validierung genehmigen (Status auf COMPLETED)
+                await db.execute(
+                    update(Document)
+                    .where(
+                        Document.id == doc_uuid,
+                        Document.company_id == user.company_id,
+                    )
+                    .values(
+                        status=ProcessingStatus.COMPLETED.value,
+                        processed_date=datetime.now(timezone.utc),
+                        updated_at=datetime.now(timezone.utc),
+                    )
+                )
+                await db.commit()
+                affected_items.append(doc_uuid)
+                message = "Validierung genehmigt - Dokument als abgeschlossen markiert."
+                logger.info(
+                    "validation_approved_by_ai",
+                    document_id=str(doc_uuid),
+                    user_id=str(user.id),
+                )
+            else:
+                message = "Fehler: Keine Dokument-ID angegeben."
 
         elif request.action_type == AIActionType.TRIGGER_OCR:
             doc_id = request.context_id or request.parameters.get("document_id")
-            message = "OCR-Verarbeitung gestartet."
             if doc_id:
-                affected_items.append(doc_id)
-            # TODO: Actually trigger OCR task
+                doc_uuid = UUID(doc_id) if isinstance(doc_id, str) else doc_id
+                # Echte Operation: OCR-Task via Celery ausloesen
+                from app.workers.tasks import ocr_tasks
+                try:
+                    # Setze Status auf PROCESSING
+                    await db.execute(
+                        update(Document)
+                        .where(
+                            Document.id == doc_uuid,
+                            Document.company_id == user.company_id,
+                        )
+                        .values(
+                            status=ProcessingStatus.PROCESSING.value,
+                            updated_at=datetime.now(timezone.utc),
+                        )
+                    )
+                    await db.commit()
+
+                    # Trigger Celery Task
+                    ocr_tasks.process_document_ocr.delay(str(doc_uuid))
+                    affected_items.append(doc_uuid)
+                    message = "OCR-Verarbeitung gestartet."
+                    logger.info(
+                        "ocr_triggered_by_ai",
+                        document_id=str(doc_uuid),
+                        user_id=str(user.id),
+                    )
+                except Exception as e:
+                    message = f"OCR konnte nicht gestartet werden: {str(e)}"
+                    logger.error(
+                        "ocr_trigger_failed",
+                        document_id=str(doc_uuid),
+                        error=str(e),
+                    )
+            else:
+                message = "Fehler: Keine Dokument-ID angegeben."
 
         elif request.action_type == AIActionType.SEND_NOTIFICATION:
-            message = "Benachrichtigung gesendet."
+            recipient = request.parameters.get("recipient")
+            channel = request.parameters.get("channel", "email")
+            notification_message = request.parameters.get("message", "")
+            subject = request.parameters.get("subject", "Benachrichtigung")
+
+            # Echte Operation: Notification senden
+            if channel == "slack":
+                from app.services.slack_service import SlackService
+                slack_service = SlackService()
+                if slack_service.is_configured():
+                    await slack_service.send_message(
+                        channel=recipient or "#general",
+                        text=notification_message,
+                        blocks=None,
+                    )
+                    message = f"Slack-Nachricht an {recipient or '#general'} gesendet."
+                else:
+                    message = "Slack ist nicht konfiguriert."
+            else:
+                # Email-Benachrichtigung (via NotificationService)
+                from app.db.models import Notification
+                notification = Notification(
+                    id=uuid4(),
+                    user_id=user.id,
+                    company_id=user.company_id,
+                    title=subject,
+                    message=notification_message,
+                    notification_type="ai_action",
+                    channel=channel,
+                    is_read=False,
+                    created_at=datetime.now(timezone.utc),
+                )
+                db.add(notification)
+                await db.commit()
+                affected_items.append(notification.id)
+                message = "Benachrichtigung erstellt."
+
             details = {
-                "recipient": request.parameters.get("recipient"),
-                "channel": request.parameters.get("channel", "email"),
+                "recipient": recipient,
+                "channel": channel,
             }
-            # TODO: Actually send notification
+            logger.info(
+                "notification_sent_by_ai",
+                channel=channel,
+                recipient=recipient,
+                user_id=str(user.id),
+            )
 
         elif request.action_type == AIActionType.BULK_CATEGORIZE:
             doc_ids = request.parameters.get("document_ids", [])
             category = request.parameters.get("category", "Unbekannt")
-            message = f"{len(doc_ids)} Dokumente als '{category}' kategorisiert."
-            affected_items.extend([UUID(d) if isinstance(d, str) else d for d in doc_ids])
-            # TODO: Actually bulk categorize
+            if doc_ids:
+                doc_uuids = [UUID(d) if isinstance(d, str) else d for d in doc_ids]
+                # Echte DB-Operation: Bulk-Kategorisierung
+                await db.execute(
+                    update(Document)
+                    .where(
+                        Document.id.in_(doc_uuids),
+                        Document.company_id == user.company_id,
+                    )
+                    .values(
+                        document_type=category,
+                        updated_at=datetime.now(timezone.utc),
+                    )
+                )
+                await db.commit()
+                affected_items.extend(doc_uuids)
+                message = f"{len(doc_uuids)} Dokumente als '{category}' kategorisiert."
+                logger.info(
+                    "bulk_categorize_by_ai",
+                    document_count=len(doc_uuids),
+                    category=category,
+                    user_id=str(user.id),
+                )
+            else:
+                message = "Keine Dokumente zur Kategorisierung angegeben."
 
         else:
             message = "Unbekannte Aktion."

@@ -27,6 +27,14 @@ if config.config_file_name is not None:
 # Import all models here for autogenerate to work
 try:
     from app.db.models import Base
+    # Import GoBD compliance models so Alembic detects them
+    from app.db.models.gobd import (
+        AuditChainEntry,
+        RetentionPolicy,
+        ArchiveIntegrityCheck,
+        TimestampAuthorityConfig,
+        RetentionDeletionRequest,
+    )
     target_metadata = Base.metadata
 except ImportError as e:
     # Fallback to None if models not yet available

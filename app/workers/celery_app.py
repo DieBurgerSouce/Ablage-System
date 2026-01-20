@@ -1129,6 +1129,26 @@ celery_app.conf.update(
             "task": "app.workers.tasks.banking_tasks.cleanup_tan_challenges",
             "schedule": 3600.0,  # Stuendlich
         },
+
+        # =============================================================
+        # GoBD Compliance Tasks (Revisionssichere Archivierung)
+        # =============================================================
+        # Woechentlich: Audit-Chain Integritaet verifizieren (Sonntag 04:30)
+        "gobd-audit-chain-weekly": {
+            "task": "gobd.verify_audit_chain",
+            "schedule": crontab(day_of_week=0, hour=4, minute=30),
+        },
+        # Taeglich: Batch-Integritaetspruefung der Archive (03:45)
+        "gobd-batch-integrity-daily": {
+            "task": "gobd.batch_integrity_check",
+            "schedule": crontab(hour=3, minute=45),
+            "kwargs": {"batch_size": 100},
+        },
+        # Taeglich: Aufbewahrungsfristen-Warnungen pruefen (09:15)
+        "gobd-retention-warnings-daily": {
+            "task": "gobd.check_retention_warnings",
+            "schedule": crontab(hour=9, minute=15),
+        },
     },
 
     # Queue routing
@@ -1341,6 +1361,17 @@ celery_app.conf.update(
         "app.workers.tasks.collaboration_tasks.send_task_due_soon_reminders": {"queue": "maintenance", "priority": 4},
         # Cleanup
         "app.workers.tasks.collaboration_tasks.cleanup_old_digest_entries": {"queue": "maintenance", "priority": 1},
+        # =================================================================
+        # GoBD Compliance Tasks (Revisionssichere Archivierung)
+        # =================================================================
+        # Audit-Chain Verifikation (CPU, niedrige Prioritaet)
+        "gobd.verify_audit_chain": {"queue": "maintenance", "priority": 2},
+        # Batch-Integritaetspruefung (CPU, mittlere Prioritaet)
+        "gobd.batch_integrity_check": {"queue": "maintenance", "priority": 3},
+        # Retention-Warnungen (CPU, normale Prioritaet)
+        "gobd.check_retention_warnings": {"queue": "maintenance", "priority": 4},
+        # Chain-Statistiken (CPU, niedrige Prioritaet)
+        "gobd.generate_chain_statistics": {"queue": "maintenance", "priority": 2},
         # =================================================================
         # Contract Management Tasks (Vertragsmanagement)
         # =================================================================

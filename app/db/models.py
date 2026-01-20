@@ -6248,6 +6248,9 @@ class Company(Base):
     rate_limits = relationship("TenantRateLimit", back_populates="company", cascade="all, delete-orphan")
     usage_metrics = relationship("TenantUsageMetrics", back_populates="company", cascade="all, delete-orphan")
     rate_limit_violations = relationship("RateLimitViolation", back_populates="company", cascade="all, delete-orphan")
+    # BPMN Process Engine relationships
+    bpmn_process_definitions = relationship("ProcessDefinition", back_populates="company", cascade="all, delete-orphan")
+    bpmn_process_instances = relationship("ProcessInstance", back_populates="company", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("ix_companies_vat_id", "vat_id"),
@@ -15419,3 +15422,23 @@ class BusinessContact(Base):
 
     def __repr__(self) -> str:
         return f"<BusinessContact {self.name} ({self.contact_type})>"
+
+
+# =============================================================================
+# BPMN Process Engine Models (from app.db.models.bpmn)
+# =============================================================================
+
+from app.db.models.bpmn import (
+    ProcessDefinition,
+    ProcessInstance,
+    ProcessTask,
+    ProcessHistory,
+    ProcessTimerJob,
+    ProcessVariableHistory,
+    ProcessStatus,
+    TaskStatus,
+    TaskType,
+    GatewayType,
+    EventType,
+    EventTrigger,
+)

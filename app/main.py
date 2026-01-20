@@ -744,6 +744,7 @@ from app.api.v1.extracted_data import router as extracted_data_router
 from app.api.v1.rag import router as rag_router
 from app.api.v1.einvoice import router as einvoice_router
 from app.api.v1.banking import router as banking_router
+from app.api.v1.banking_fints import fints_router, sepa_router, dashboard_router as banking_dashboard_router
 from app.api.v1.datev import router as datev_router
 from app.api.v1.finance import router as finance_router
 from app.api.v1.exports import router as exports_router
@@ -762,7 +763,7 @@ from app.api.v1.document_tasks import router as document_tasks_router
 from app.api.v1.activity import router as activity_router
 from app.api.v1.archive import router as archive_router
 from app.api.v1.tax_advisor import router as tax_advisor_router
-from app.api.v1.dashboard import router as dashboard_router
+from app.api.v1.dashboards import router as dashboards_router  # Enterprise Dashboard API
 from app.api.v1.imports import router as imports_router
 from app.api.v1.ai_autonomy import router as ai_autonomy_router
 from app.api.v1.reports import router as reports_router
@@ -798,6 +799,9 @@ from app.api.v1.predictive_cashflow import router as predictive_cashflow_router
 from app.api.v1.fraud_detection import router as fraud_detection_router
 from app.api.v1.risk_intelligence import router as risk_intelligence_router
 from app.api.v1.ocr_learning import router as ocr_learning_router
+from app.api.v1.bpmn import router as bpmn_router
+from app.api.v1.compliance import router as compliance_router
+from app.api.v1.help import router as help_router
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -834,6 +838,9 @@ app.include_router(extracted_data_router, prefix="/api/v1")
 app.include_router(rag_router, prefix="/api/v1")
 app.include_router(einvoice_router, prefix="/api/v1")
 app.include_router(banking_router, prefix="/api/v1")
+app.include_router(fints_router, prefix="/api/v1")
+app.include_router(sepa_router, prefix="/api/v1")
+app.include_router(banking_dashboard_router, prefix="/api/v1")
 app.include_router(datev_router, prefix="/api/v1")
 app.include_router(finance_router, prefix="/api/v1")
 app.include_router(exports_router, prefix="/api/v1")
@@ -852,7 +859,7 @@ app.include_router(document_tasks_router, prefix="/api/v1")
 app.include_router(activity_router, prefix="/api/v1")
 app.include_router(archive_router, prefix="/api/v1")
 app.include_router(tax_advisor_router, prefix="/api/v1")
-app.include_router(dashboard_router, prefix="/api/v1")
+app.include_router(dashboards_router, prefix="/api/v1")
 app.include_router(imports_router, prefix="/api/v1")
 app.include_router(ai_autonomy_router, prefix="/api/v1")
 app.include_router(reports_router, prefix="/api/v1")
@@ -888,6 +895,9 @@ app.include_router(predictive_cashflow_router, prefix="/api/v1")
 app.include_router(fraud_detection_router, prefix="/api/v1")
 app.include_router(risk_intelligence_router, prefix="/api/v1")
 app.include_router(ocr_learning_router, prefix="/api/v1")
+app.include_router(bpmn_router, prefix="/api/v1")
+app.include_router(compliance_router, prefix="/api/v1")
+app.include_router(help_router, prefix="/api/v1")
 
 
 # ==================== Health & Status Endpoints ====================
