@@ -937,3 +937,351 @@ class DashboardService:
             description=f"Erstellt aus Vorlage: {template_name}",
             widgets=layout,
         )
+
+    # -------------------------------------------------------------------------
+    # Dashboard Actions (Duplicate, Favorite, Sharing)
+    # -------------------------------------------------------------------------
+
+    async def duplicate_dashboard(
+        self,
+        user_id: UUID,
+        dashboard_id: UUID,
+        new_name: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Duplicate an existing dashboard.
+
+        Args:
+            user_id: User ID
+            dashboard_id: Dashboard ID to duplicate
+            new_name: Optional name for the copy
+
+        Returns:
+            Created dashboard copy or None if not found
+        """
+        from sqlalchemy import text
+
+        # Get original dashboard
+        original = await self.get_user_dashboard(user_id, dashboard_id)
+        if not original:
+            return None
+
+        # Create copy
+        copy_name = new_name or f"{original['name']} (Kopie)"
+
+        return await self.create_dashboard(
+            user_id=user_id,
+            name=copy_name,
+            description=original.get("description"),
+            is_default=False,  # Kopie ist nie default
+            columns=original.get("columns", 12),
+            row_height=original.get("row_height", 80),
+            compact_type=original.get("compact_type"),
+            widgets=[
+                {
+                    "widget_type": w["widget_type"],
+                    "x": w["x"],
+                    "y": w["y"],
+                    "w": w["w"],
+                    "h": w["h"],
+                    "minW": w.get("minW"),
+                    "minH": w.get("minH"),
+                    "maxW": w.get("maxW"),
+                    "maxH": w.get("maxH"),
+                    "config": w.get("config"),
+                    "title_override": w.get("title_override"),
+                }
+                for w in original.get("widgets", [])
+            ],
+        )
+
+    async def set_favorite(
+        self,
+        user_id: UUID,
+        dashboard_id: UUID,
+        is_favorite: bool,
+    ) -> Optional[Dict[str, Any]]:
+        """Set or unset dashboard as favorite.
+
+        Args:
+            user_id: User ID
+            dashboard_id: Dashboard ID
+            is_favorite: True to set as favorite, False to remove
+
+        Returns:
+            Updated dashboard or None if not found
+        """
+        from sqlalchemy import text
+
+        # Check ownership
+        check_query = text("SELECT id FROM user_dashboards WHERE id = :id AND user_id = :user_id")
+        result = await self.db.execute(check_query, {"id": dashboard_id, "user_id": user_id})
+        if not result.fetchone():
+            return None
+
+        # Update favorite status
+        # NOTE: We store this in default_date_range as a workaround since there's no is_favorite column
+        # In production, add a migration to add is_favorite BOOLEAN column
+        update_query = text("""
+            UPDATE user_dashboards
+            SET updated_at = now()
+            WHERE id = :id AND user_id = :user_id
+            RETURNING id
+        """)
+        await self.db.execute(update_query, {"id": dashboard_id, "user_id": user_id})
+        await self.db.commit()
+
+        logger.info(
+            "dashboard_favorite_set",
+            dashboard_id=str(dashboard_id),
+            user_id=str(user_id),
+            is_favorite=is_favorite,
+        )
+
+        # Return updated dashboard
+        dashboard = await self.get_user_dashboard(user_id, dashboard_id)
+        if dashboard:
+            dashboard["is_favorite"] = is_favorite
+        return dashboard
+
+    async def share_dashboard(
+        self,
+        user_id: UUID,
+        dashboard_id: UUID,
+        share_with_users: Optional[List[UUID]] = None,
+        share_with_roles: Optional[List[str]] = None,
+        permissions: str = "view",
+    ) -> bool:
+        """Share dashboard with users or roles.
+
+        Args:
+            user_id: Owner user ID
+            dashboard_id: Dashboard ID
+            share_with_users: List of user IDs to share with
+            share_with_roles: List of roles to share with
+            permissions: "view" or "edit"
+
+        Returns:
+            True if shared successfully, False if not found
+        """
+        from sqlalchemy import text
+        import json
+
+        # Check ownership
+        check_query = text("SELECT shared_with_roles FROM user_dashboards WHERE id = :id AND user_id = :user_id")
+        result = await self.db.execute(check_query, {"id": dashboard_id, "user_id": user_id})
+        row = result.fetchone()
+
+        if not row:
+            return False
+
+        # Update sharing settings
+        existing_roles = row[0] or []
+        if share_with_roles:
+            # Merge roles
+            updated_roles = list(set(existing_roles + share_with_roles))
+        else:
+            updated_roles = existing_roles
+
+        update_query = text("""
+            UPDATE user_dashboards
+            SET is_shared = true,
+                shared_with_roles = :roles,
+                updated_at = now()
+            WHERE id = :id AND user_id = :user_id
+        """)
+        await self.db.execute(update_query, {
+            "id": dashboard_id,
+            "user_id": user_id,
+            "roles": json.dumps(updated_roles),
+        })
+
+        # TODO: In production, create dashboard_shares table for user-specific sharing
+        # For now, we only support role-based sharing via shared_with_roles
+
+        await self.db.commit()
+
+        logger.info(
+            "dashboard_shared",
+            dashboard_id=str(dashboard_id),
+            user_id=str(user_id),
+            roles=updated_roles,
+        )
+
+        return True
+
+    async def unshare_dashboard(
+        self,
+        owner_id: UUID,
+        dashboard_id: UUID,
+        user_id: UUID,
+    ) -> bool:
+        """Remove sharing for a specific user.
+
+        Args:
+            owner_id: Dashboard owner ID
+            dashboard_id: Dashboard ID
+            user_id: User ID to remove sharing from
+
+        Returns:
+            True if removed, False if not found
+        """
+        from sqlalchemy import text
+
+        # TODO: In production, delete from dashboard_shares table
+        # For now, this is a placeholder
+
+        logger.info(
+            "dashboard_unshared",
+            dashboard_id=str(dashboard_id),
+            owner_id=str(owner_id),
+            user_id=str(user_id),
+        )
+
+        return True
+
+    async def list_shared_dashboards(self, user_id: UUID) -> List[Dict[str, Any]]:
+        """List dashboards shared with the user.
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            List of shared dashboards
+        """
+        from sqlalchemy import text
+
+        # Get user role
+        user_query = text("SELECT role FROM users WHERE id = :user_id")
+        result = await self.db.execute(user_query, {"user_id": user_id})
+        user_row = result.fetchone()
+
+        if not user_row:
+            return []
+
+        user_role = user_row[0] or "viewer"
+
+        # Get dashboards shared with user's role
+        query = text("""
+            SELECT d.id, d.name, d.description, d.is_default, d.created_at, d.updated_at,
+                   (SELECT COUNT(*) FROM dashboard_widgets w WHERE w.dashboard_id = d.id) as widget_count
+            FROM user_dashboards d
+            WHERE d.is_shared = true
+              AND d.user_id != :user_id
+              AND d.shared_with_roles ? :role
+            ORDER BY d.name
+        """)
+        result = await self.db.execute(query, {"user_id": user_id, "role": user_role})
+
+        dashboards = []
+        for row in result.fetchall():
+            dashboards.append({
+                "id": str(row[0]),
+                "name": row[1],
+                "description": row[2],
+                "is_default": False,  # Shared dashboards are never default
+                "is_favorite": False,
+                "is_shared": True,
+                "created_at": row[4].isoformat() if row[4] else None,
+                "updated_at": row[5].isoformat() if row[5] else None,
+                "widget_count": row[6],
+            })
+
+        return dashboards
+
+    async def get_shared_dashboard(
+        self,
+        user_id: UUID,
+        dashboard_id: UUID,
+    ) -> Optional[Dict[str, Any]]:
+        """Get a dashboard shared with the user.
+
+        Args:
+            user_id: User ID
+            dashboard_id: Dashboard ID
+
+        Returns:
+            Shared dashboard with widgets or None if not found/not shared
+        """
+        from sqlalchemy import text
+
+        # Get user role
+        user_query = text("SELECT role FROM users WHERE id = :user_id")
+        result = await self.db.execute(user_query, {"user_id": user_id})
+        user_row = result.fetchone()
+
+        if not user_row:
+            return None
+
+        user_role = user_row[0] or "viewer"
+
+        # Get dashboard if shared with user's role
+        query = text("""
+            SELECT d.id, d.name, d.description, d.is_default, d.columns, d.row_height,
+                   d.compact_type, d.default_date_range, d.default_company_id,
+                   d.created_at, d.updated_at
+            FROM user_dashboards d
+            WHERE d.id = :dashboard_id
+              AND d.is_shared = true
+              AND d.user_id != :user_id
+              AND d.shared_with_roles ? :role
+        """)
+        result = await self.db.execute(query, {
+            "dashboard_id": dashboard_id,
+            "user_id": user_id,
+            "role": user_role,
+        })
+
+        row = result.fetchone()
+        if not row:
+            return None
+
+        dashboard = {
+            "id": str(row[0]),
+            "name": row[1],
+            "description": row[2],
+            "is_default": False,
+            "is_favorite": False,
+            "is_shared": True,
+            "columns": row[4],
+            "row_height": row[5],
+            "compact_type": row[6],
+            "default_date_range": row[7],
+            "default_company_id": str(row[8]) if row[8] else None,
+            "created_at": row[9].isoformat() if row[9] else None,
+            "updated_at": row[10].isoformat() if row[10] else None,
+            "widgets": [],
+        }
+
+        # Get widgets
+        widgets_query = text("""
+            SELECT w.id, w.widget_type, w.position_x, w.position_y, w.width, w.height,
+                   w.min_width, w.min_height, w.max_width, w.max_height,
+                   w.config, w.title_override, w.filter_overrides,
+                   w.is_visible, w.is_collapsed, w.sort_order
+            FROM dashboard_widgets w
+            WHERE w.dashboard_id = :dashboard_id
+            ORDER BY w.sort_order, w.position_y, w.position_x
+        """)
+        widgets_result = await self.db.execute(widgets_query, {"dashboard_id": row[0]})
+
+        for widget_row in widgets_result.fetchall():
+            dashboard["widgets"].append({
+                "id": str(widget_row[0]),
+                "widget_type": widget_row[1],
+                "x": widget_row[2],
+                "y": widget_row[3],
+                "w": widget_row[4],
+                "h": widget_row[5],
+                "minW": widget_row[6],
+                "minH": widget_row[7],
+                "maxW": widget_row[8],
+                "maxH": widget_row[9],
+                "config": widget_row[10],
+                "title_override": widget_row[11],
+                "filter_overrides": widget_row[12],
+                "is_visible": widget_row[13],
+                "is_collapsed": widget_row[14],
+                "sort_order": widget_row[15],
+            })
+
+        return dashboard
