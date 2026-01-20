@@ -263,14 +263,9 @@ export function InlineMetadataEditor({
 
   // Mutation zum Speichern von Metadaten
   const updateMutation = useMutation({
-    mutationFn: async ({ path, value }: { path: string; value: string }) => {
-      // TODO: Implementiere Backend-API für extracted-data updates
-      // Vorerst simulieren wir eine Verzögerung
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // In Zukunft: API-Call
-      // return documentsService.updateExtractedData(documentId, { [path]: value });
-      return { success: true };
+    mutationFn: async ({ path, value }: { path: string; value: string | number | boolean }) => {
+      // API-Call zum Backend
+      return documentsService.updateExtractedData(documentId, { [path]: value });
     },
     onMutate: async ({ path, value }) => {
       setSavingField(path);

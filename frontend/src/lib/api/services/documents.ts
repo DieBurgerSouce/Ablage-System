@@ -312,6 +312,33 @@ export const documentsService = {
         );
         return response.data.map(transformSimilarDocument);
     },
+
+    /**
+     * Aktualisiert extrahierte Daten eines Dokuments (JSONB).
+     *
+     * Ermoeglicht die Korrektur von OCR-Ergebnissen.
+     * Nur vordefinierte Feldpfade sind erlaubt (Backend-Whitelist).
+     *
+     * @param documentId - UUID des Dokuments
+     * @param updates - Object mit Pfad->Wert Paaren (z.B. {"invoice.invoice_number": "RG-001"})
+     * @returns Das aktualisierte extracted_data Objekt
+     *
+     * @example
+     * await documentsService.updateExtractedData(docId, {
+     *   "invoice.invoice_number": "RG-2024-001",
+     *   "invoice.total_gross": 1234.56
+     * });
+     */
+    updateExtractedData: async (
+        documentId: string,
+        updates: Record<string, unknown>
+    ): Promise<Record<string, unknown>> => {
+        const response = await apiClient.patch<Record<string, unknown>>(
+            `/documents/${documentId}/extracted-data`,
+            { updates }
+        );
+        return response.data;
+    },
 };
 
 // Backend response for similar documents

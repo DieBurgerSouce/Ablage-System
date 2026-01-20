@@ -1906,6 +1906,224 @@ async def partial_update_document(
     return document
 
 
+# =============================================================================
+# EXTRACTED DATA UPDATE ENDPOINT (Phase 11: InlineMetadataEditor Backend)
+# =============================================================================
+
+# Whitelist fuer erlaubte extracted_data Pfade
+# SECURITY: Verhindert SQL/NoSQL Injection und unbeabsichtigte Datenmanipulation
+ALLOWED_EXTRACTED_DATA_PATHS: set[str] = {
+    # Invoice Daten
+    "invoice.invoice_number",
+    "invoice.invoice_date",
+    "invoice.due_date",
+    "invoice.total_gross",
+    "invoice.total_net",
+    "invoice.vat_amount",
+    "invoice.vat_rate",
+    "invoice.currency",
+    "invoice.payment_reference",
+    "invoice.invoice_direction",
+    "invoice.needs_review",
+    # Vendor (Lieferant)
+    "invoice.vendor.name",
+    "invoice.vendor.street",
+    "invoice.vendor.city",
+    "invoice.vendor.postal_code",
+    "invoice.vendor.country",
+    "invoice.vendor.vat_id",
+    # Customer (Kunde)
+    "invoice.customer.name",
+    "invoice.customer.street",
+    "invoice.customer.city",
+    "invoice.customer.postal_code",
+    "invoice.customer.country",
+    # Klassifikation
+    "classification.document_type",
+    "classification.confidence",
+    # Extrahierte Daten
+    "ibans",
+    "vat_ids",
+    "companies",
+}
+
+
+def _set_nested_value(obj: Dict[str, Any], path: str, value: Any) -> None:
+    """Setzt einen verschachtelten Wert in einem Dict.
+
+    Args:
+        obj: Das zu modifizierende Dictionary
+        path: Punkt-separierter Pfad (z.B. 'invoice.vendor.name')
+        value: Der zu setzende Wert
+
+    Security:
+        - Pfad wird NICHT validiert - muss vorher gegen Whitelist geprueft werden!
+    """
+    parts = path.split('.')
+    current = obj
+
+    for part in parts[:-1]:
+        if part not in current:
+            current[part] = {}
+        elif not isinstance(current[part], dict):
+            # Wenn der aktuelle Wert kein Dict ist, ersetzen
+            current[part] = {}
+        current = current[part]
+
+    current[parts[-1]] = value
+
+
+class ExtractedDataUpdateRequest(BaseModel):
+    """Request-Schema fuer extracted_data Updates.
+
+    SECURITY:
+    - Alle Pfade werden gegen ALLOWED_EXTRACTED_DATA_PATHS validiert
+    - Werte werden typgeprueft (keine Code-Injection)
+    """
+    updates: Dict[str, Any] = Field(
+        ...,
+        description="JSONB-Pfade mit neuen Werten",
+        json_schema_extra={
+            "example": {
+                "invoice.invoice_number": "RG-2024-001",
+                "invoice.total_gross": 1234.56,
+                "invoice.vendor.name": "Lieferant GmbH"
+            }
+        }
+    )
+
+    class Config:
+        extra = "forbid"  # Keine zusaetzlichen Felder erlaubt
+
+
+from pydantic import BaseModel
+
+
+@router.patch(
+    "/{document_id}/extracted-data",
+    response_model=Dict[str, Any],
+    summary="Extrahierte Daten aktualisieren",
+    responses={
+        200: {"description": "Aktualisierte extracted_data"},
+        400: {"description": "Ungueltige Feldpfade oder Werte"},
+        403: {"description": "Archiviertes Dokument (GoBD)"},
+        404: {"description": "Dokument nicht gefunden"},
+    }
+)
+async def update_extracted_data(
+    document_id: UUID,
+    request: ExtractedDataUpdateRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+) -> Dict[str, Any]:
+    """Aktualisiert einzelne Felder in extracted_data (JSONB).
+
+    Ermoeglicht die Korrektur von OCR-Ergebnissen durch den Benutzer.
+    Nur vordefinierte Feldpfade sind erlaubt (Whitelist-Validierung).
+
+    **Erlaubte Pfade:**
+    - `invoice.*`: Rechnungsdaten (invoice_number, total_gross, etc.)
+    - `invoice.vendor.*`: Lieferanten-Informationen
+    - `invoice.customer.*`: Kunden-Informationen
+    - `classification.*`: Dokumenttyp und Confidence
+    - `ibans`, `vat_ids`, `companies`: Arrays
+
+    **Security:**
+    - Multi-Tenant RLS: owner_id == current_user.id
+    - Whitelist-Validierung aller Feldpfade
+    - GoBD: Archivierte Dokumente sind unveraenderbar
+
+    **Beispiel:**
+    ```json
+    {
+      "updates": {
+        "invoice.invoice_number": "RG-2024-001",
+        "invoice.total_gross": 1234.56,
+        "invoice.vendor.name": "Neue Firma GmbH"
+      }
+    }
+    ```
+
+    Returns:
+        Das aktualisierte extracted_data Objekt
+    """
+    from sqlalchemy import select, and_
+    from app.db.models import Document
+
+    # 1. GoBD: Unveraenderbarkeit pruefen
+    try:
+        await archive_service.validate_modification_allowed(db, document_id)
+    except ImmutabilityViolationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=e.user_message_de
+        )
+
+    # 2. Dokument laden mit Ownership-Check (Multi-Tenant RLS)
+    result = await db.execute(
+        select(Document).where(
+            and_(
+                Document.id == document_id,
+                Document.owner_id == current_user.id,
+                Document.deleted_at.is_(None),
+            )
+        )
+    )
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dokument nicht gefunden oder keine Berechtigung"
+        )
+
+    if not document.extracted_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Keine extrahierten Daten vorhanden"
+        )
+
+    # 3. Validiere alle Pfade gegen Whitelist (SECURITY!)
+    invalid_paths: List[str] = []
+    for path in request.updates.keys():
+        if path not in ALLOWED_EXTRACTED_DATA_PATHS:
+            invalid_paths.append(path)
+
+    if invalid_paths:
+        logger.warning(
+            "extracted_data_invalid_paths",
+            document_id=str(document_id),
+            user_id=str(current_user.id),
+            invalid_paths=invalid_paths,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ungueltige Feldpfade: {', '.join(invalid_paths)}"
+        )
+
+    # 4. Update mit Typ-Sicherheit
+    updated_data = dict(document.extracted_data)  # Kopie erstellen
+    for path, value in request.updates.items():
+        _set_nested_value(updated_data, path, value)
+
+    # 5. Speichern
+    document.extracted_data = updated_data
+    document.updated_at = datetime.now(timezone.utc)
+
+    await db.commit()
+    await db.refresh(document)
+
+    logger.info(
+        "extracted_data_updated",
+        document_id=str(document_id),
+        user_id=str(current_user.id),
+        fields_updated=len(request.updates),
+        # SECURITY: Keine Feldwerte loggen!
+    )
+
+    return document.extracted_data
+
+
 @router.delete("/{document_id}", status_code=204)
 async def delete_document(
     document_id: UUID,
