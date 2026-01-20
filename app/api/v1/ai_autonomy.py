@@ -799,3 +799,316 @@ async def get_pending_review_count(
     )
 
     return {dt.value: count for dt, count in counts.items()}
+
+
+# =============================================================================
+# Natural Language Query (NLQ) Endpoints
+# =============================================================================
+
+
+class NLQQueryRequest(BaseModel):
+    """NLQ-Abfrage-Request."""
+    query: str = Field(..., min_length=3, max_length=500, description="Die Abfrage in natuerlicher Sprache")
+    limit: int = Field(50, ge=1, le=200, description="Maximale Anzahl Ergebnisse")
+
+
+class NLQEntityResponse(BaseModel):
+    """Extrahierte Entity aus der Abfrage."""
+    entity_type: str
+    value: Any
+    original_text: str
+    confidence: float
+
+
+class NLQResultResponse(BaseModel):
+    """NLQ-Abfrage-Ergebnis."""
+    success: bool
+    intent: str
+    extracted_entities: List[NLQEntityResponse]
+    results: Optional[List[Dict[str, Any]]] = None
+    result_count: int = 0
+    aggregation_value: Optional[float] = None
+    natural_response: str
+    confidence: float
+    processing_time_ms: int
+
+
+@router.post("/nlq/query", response_model=NLQResultResponse)
+async def process_nlq_query(
+    request: NLQQueryRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> NLQResultResponse:
+    """
+    Verarbeitet eine natuerlichsprachliche Abfrage.
+
+    Beispiele:
+    - "Zeige alle Rechnungen von Mueller GmbH ueber 1000 EUR"
+    - "Wie viel haben wir letzten Monat fuer Bueroartikel ausgegeben?"
+    - "Welche Rechnungen sind seit mehr als 30 Tagen offen?"
+
+    Der Service erkennt automatisch:
+    - Firmennamen (validiert gegen DB)
+    - Geldbetraege (mit Operatoren: ueber, unter, etc.)
+    - Zeitraeume (letzter Monat, diese Woche, etc.)
+    - Dokumenttypen (Rechnung, Angebot, etc.)
+    - Status (offen, bezahlt, ueberfaellig)
+    """
+    from app.services.ai.nlq_service import get_nlq_service
+
+    company_id = await get_user_company_id(db, current_user)
+
+    nlq_service = await get_nlq_service(db)
+    result = await nlq_service.process_query(
+        query=request.query,
+        company_id=company_id,
+        user_id=current_user.id,
+        limit=request.limit,
+    )
+
+    return NLQResultResponse(
+        success=result.success,
+        intent=result.intent.value,
+        extracted_entities=[
+            NLQEntityResponse(
+                entity_type=e.entity_type.value,
+                value=e.value if not isinstance(e.value, dict) or "id" not in e.value else {**e.value, "id": str(e.value["id"])},
+                original_text=e.original_text,
+                confidence=e.confidence,
+            )
+            for e in result.extracted_entities
+        ],
+        results=result.results,
+        result_count=result.result_count,
+        aggregation_value=float(result.aggregation_value) if result.aggregation_value is not None else None,
+        natural_response=result.natural_response,
+        confidence=result.confidence,
+        processing_time_ms=result.processing_time_ms,
+    )
+
+
+@router.get("/nlq/examples")
+async def get_nlq_examples(
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """
+    Gibt Beispiel-Abfragen fuer NLQ zurueck.
+
+    Hilft Benutzern, die Syntax zu verstehen.
+    """
+    return {
+        "examples": [
+            {
+                "category": "Suche",
+                "queries": [
+                    "Zeige alle Rechnungen von letzter Woche",
+                    "Finde Dokumente von Mueller GmbH",
+                    "Alle offenen Rechnungen ueber 500 EUR",
+                ]
+            },
+            {
+                "category": "Aggregation",
+                "queries": [
+                    "Summe aller Rechnungen diesen Monat",
+                    "Durchschnittlicher Rechnungsbetrag letztes Jahr",
+                    "Wie viele Lieferscheine wurden erstellt?",
+                ]
+            },
+            {
+                "category": "Vergleich",
+                "queries": [
+                    "Vergleiche Ausgaben Januar mit Februar",
+                    "Mehr als letzten Monat?",
+                ]
+            },
+            {
+                "category": "Status",
+                "queries": [
+                    "Ueberfaellige Rechnungen",
+                    "Bezahlte Rechnungen diesen Monat",
+                    "Offene Betraege von Lieferanten",
+                ]
+            },
+        ],
+        "tips": [
+            "Verwenden Sie deutsche Begriffe fuer Dokumenttypen (Rechnung, Angebot, etc.)",
+            "Betraege koennen mit 'ueber', 'unter', 'mindestens' eingeschraenkt werden",
+            "Zeitraeume: 'heute', 'gestern', 'letzte Woche', 'dieser Monat', 'letztes Jahr'",
+            "Firmennamen werden automatisch mit der Datenbank abgeglichen",
+        ]
+    }
+
+
+# =============================================================================
+# Routing Intelligence Endpoints
+# =============================================================================
+
+
+class RoutingRequest(BaseModel):
+    """Request fuer Dokument-Routing."""
+
+    document_id: uuid.UUID = Field(..., description="ID des zu routenden Dokuments")
+
+
+class RoutingDecisionResponse(BaseModel):
+    """Response fuer Routing-Entscheidung."""
+
+    document_id: str
+    target_type: str  # workflow, department, user, queue
+    target_id: Optional[str]
+    target_name: str
+    priority: str  # critical, high, medium, low
+    confidence: float
+    reasons: List[str]
+    explanation: str
+    requires_approval: bool
+    suggested_deadline: Optional[datetime] = None
+    metadata: Dict[str, Any] = {}
+
+
+class RoutingStatisticsResponse(BaseModel):
+    """Response fuer Routing-Statistiken."""
+
+    period_days: int
+    folder_distribution: List[Dict[str, Any]]
+    type_distribution: List[Dict[str, Any]]
+    custom_rules_count: int
+    routing_enabled: bool
+    min_confidence: float
+
+
+@router.post("/routing/route", response_model=RoutingDecisionResponse)
+async def route_document(
+    request: RoutingRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> RoutingDecisionResponse:
+    """
+    Bestimmt das Routing fuer ein Dokument.
+
+    Analysiert:
+    - Dokumenttyp
+    - Erkannte Entity (Kunde/Lieferant)
+    - Betrag
+    - Keywords im Text
+    - Historische Muster
+
+    Gibt Ziel-Abteilung/Workflow und Prioritaet zurueck.
+    """
+    from app.services.ai.routing_intelligence_service import get_routing_intelligence_service
+
+    company_id = await get_user_company_id(db, current_user)
+
+    service = get_routing_intelligence_service(db)
+    decision = await service.route_document(
+        document_id=request.document_id,
+        company_id=company_id,
+    )
+
+    return RoutingDecisionResponse(
+        document_id=str(decision.document_id),
+        target_type=decision.target_type.value,
+        target_id=decision.target_id,
+        target_name=decision.target_name,
+        priority=decision.priority.value,
+        confidence=decision.confidence,
+        reasons=[r.value for r in decision.reasons],
+        explanation=decision.explanation,
+        requires_approval=decision.requires_approval,
+        suggested_deadline=decision.suggested_deadline,
+        metadata=decision.metadata,
+    )
+
+
+@router.get("/routing/statistics", response_model=RoutingStatisticsResponse)
+async def get_routing_statistics(
+    days: int = Query(30, ge=1, le=365, description="Anzahl Tage fuer Statistik"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> RoutingStatisticsResponse:
+    """
+    Gibt Routing-Statistiken zurueck.
+
+    Zeigt:
+    - Verteilung nach Ordner
+    - Verteilung nach Dokumenttyp
+    - Anzahl benutzerdefinierter Regeln
+    - Routing-Konfiguration
+    """
+    from app.services.ai.routing_intelligence_service import get_routing_intelligence_service
+
+    company_id = await get_user_company_id(db, current_user)
+
+    if not company_id and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Keine Company-Zuordnung gefunden",
+        )
+
+    service = get_routing_intelligence_service(db)
+    stats = await service.get_routing_statistics(
+        company_id=company_id or uuid.UUID("00000000-0000-0000-0000-000000000000"),
+        days=days,
+    )
+
+    return RoutingStatisticsResponse(**stats)
+
+
+# =============================================================================
+# Autonomy Configuration Endpoint
+# =============================================================================
+
+
+class AutonomyThresholdsResponse(BaseModel):
+    """Response fuer Autonomie-Thresholds."""
+
+    document_classification: float
+    entity_linking: float
+    invoice_approval: float
+    payment_matching: float
+    ocr_correction: float
+    auto_approval_max_amount: float
+    auto_approval_enabled: bool
+    routing_enabled: bool
+    routing_min_confidence: float
+    anomaly_detection_enabled: bool
+    anomaly_alert_threshold: float
+    suggestions_enabled: bool
+    max_suggestions_per_document: int
+    nlq_enabled: bool
+    nlq_max_results: int
+    audit_logging_enabled: bool
+
+
+@router.get("/autonomy/thresholds", response_model=AutonomyThresholdsResponse)
+async def get_autonomy_thresholds(
+    current_user: User = Depends(get_current_user),
+) -> AutonomyThresholdsResponse:
+    """
+    Gibt die aktuellen Autonomie-Thresholds zurueck.
+
+    Diese Thresholds bestimmen, ab welcher Confidence-Stufe
+    das System automatisch handelt:
+    - >= Threshold: Automatische Aktion
+    - < Threshold: User-Bestaetigung erforderlich
+    """
+    from app.core.config import settings
+
+    return AutonomyThresholdsResponse(
+        document_classification=settings.AUTONOMY_DOCUMENT_CLASSIFICATION_THRESHOLD,
+        entity_linking=settings.AUTONOMY_ENTITY_LINKING_THRESHOLD,
+        invoice_approval=settings.AUTONOMY_INVOICE_APPROVAL_THRESHOLD,
+        payment_matching=settings.AUTONOMY_PAYMENT_MATCHING_THRESHOLD,
+        ocr_correction=settings.AUTONOMY_OCR_CORRECTION_THRESHOLD,
+        auto_approval_max_amount=settings.AUTONOMY_AUTO_APPROVAL_MAX_AMOUNT,
+        auto_approval_enabled=settings.AUTONOMY_AUTO_APPROVAL_ENABLED,
+        routing_enabled=settings.AUTONOMY_ROUTING_ENABLED,
+        routing_min_confidence=settings.AUTONOMY_ROUTING_MIN_CONFIDENCE,
+        anomaly_detection_enabled=settings.AUTONOMY_ANOMALY_DETECTION_ENABLED,
+        anomaly_alert_threshold=settings.AUTONOMY_ANOMALY_ALERT_THRESHOLD,
+        suggestions_enabled=settings.AUTONOMY_SUGGESTIONS_ENABLED,
+        max_suggestions_per_document=settings.AUTONOMY_MAX_SUGGESTIONS_PER_DOCUMENT,
+        nlq_enabled=settings.AUTONOMY_NLQ_ENABLED,
+        nlq_max_results=settings.AUTONOMY_NLQ_MAX_RESULTS,
+        audit_logging_enabled=settings.AUTONOMY_AUDIT_LOGGING_ENABLED,
+    )

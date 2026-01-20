@@ -726,6 +726,108 @@ class Settings(BaseSettings):
     RAG_BATCH_JOB_RETRY_DELAY: int = 60  # Sekunden
 
     # =============================================================================
+    # KI-Autonomie Settings (Confidence-basierte Auto-Aktionen)
+    # =============================================================================
+    # Bei Confidence >= Threshold fuehrt das System automatisch Aktionen aus
+    # ohne User-Interaktion. Darunter wird User-Bestaetiuung angefordert.
+
+    # Auto-Classification: Dokumente automatisch klassifizieren
+    AUTONOMY_DOCUMENT_CLASSIFICATION_THRESHOLD: float = Field(
+        default=0.95,
+        ge=0.5, le=1.0,
+        description="Confidence-Threshold fuer automatische Dokumentenklassifizierung"
+    )
+
+    # Auto-Entity-Linking: Dokumente automatisch mit Entities verknuepfen
+    AUTONOMY_ENTITY_LINKING_THRESHOLD: float = Field(
+        default=0.90,
+        ge=0.5, le=1.0,
+        description="Confidence-Threshold fuer automatisches Entity-Linking"
+    )
+
+    # Auto-Invoice-Approval: Rechnungen automatisch freigeben
+    AUTONOMY_INVOICE_APPROVAL_THRESHOLD: float = Field(
+        default=0.95,
+        ge=0.5, le=1.0,
+        description="Confidence-Threshold fuer automatische Rechnungsfreigabe"
+    )
+
+    # Auto-Payment-Matching: Zahlungen automatisch zuordnen
+    AUTONOMY_PAYMENT_MATCHING_THRESHOLD: float = Field(
+        default=0.95,
+        ge=0.5, le=1.0,
+        description="Confidence-Threshold fuer automatische Zahlungszuordnung"
+    )
+
+    # Auto-OCR-Correction: OCR-Ergebnisse automatisch korrigieren
+    AUTONOMY_OCR_CORRECTION_THRESHOLD: float = Field(
+        default=0.90,
+        ge=0.5, le=1.0,
+        description="Confidence-Threshold fuer automatische OCR-Korrekturen"
+    )
+
+    # Auto-Approval Limits (zusaetzlich zu Confidence)
+    AUTONOMY_AUTO_APPROVAL_MAX_AMOUNT: float = Field(
+        default=5000.0,
+        ge=0.0,
+        description="Maximaler Betrag (EUR) fuer automatische Rechnungsfreigabe"
+    )
+    AUTONOMY_AUTO_APPROVAL_ENABLED: bool = Field(
+        default=True,
+        description="Automatische Rechnungsfreigabe aktivieren"
+    )
+
+    # Routing Intelligence: Automatisches Dokumenten-Routing
+    AUTONOMY_ROUTING_ENABLED: bool = Field(
+        default=True,
+        description="KI-basiertes Dokumenten-Routing aktivieren"
+    )
+    AUTONOMY_ROUTING_MIN_CONFIDENCE: float = Field(
+        default=0.85,
+        ge=0.5, le=1.0,
+        description="Minimale Confidence fuer automatisches Routing"
+    )
+
+    # Anomalie-Erkennung: Automatische Alerts
+    AUTONOMY_ANOMALY_DETECTION_ENABLED: bool = Field(
+        default=True,
+        description="Automatische Anomalie-Erkennung aktivieren"
+    )
+    AUTONOMY_ANOMALY_ALERT_THRESHOLD: float = Field(
+        default=0.75,
+        ge=0.0, le=1.0,
+        description="Anomalie-Score ab dem Alerts generiert werden"
+    )
+
+    # Smart Suggestions: Vorschlaege fuer User
+    AUTONOMY_SUGGESTIONS_ENABLED: bool = Field(
+        default=True,
+        description="Smart Suggestions aktivieren"
+    )
+    AUTONOMY_MAX_SUGGESTIONS_PER_DOCUMENT: int = Field(
+        default=5,
+        ge=1, le=20,
+        description="Maximale Anzahl Vorschlaege pro Dokument"
+    )
+
+    # Natural Language Queries: NLQ aktivieren
+    AUTONOMY_NLQ_ENABLED: bool = Field(
+        default=True,
+        description="Natural Language Queries aktivieren"
+    )
+    AUTONOMY_NLQ_MAX_RESULTS: int = Field(
+        default=100,
+        ge=10, le=500,
+        description="Maximale Ergebnisse pro NLQ-Abfrage"
+    )
+
+    # Logging von autonomen Aktionen
+    AUTONOMY_AUDIT_LOGGING_ENABLED: bool = Field(
+        default=True,
+        description="Alle autonomen Aktionen im Audit-Log protokollieren"
+    )
+
+    # =============================================================================
     # Tune Settings (Dokument-Kontext-Konfiguration)
     # =============================================================================
     # Tunes definieren kontextspezifische Verarbeitungsregeln für Dokumente
