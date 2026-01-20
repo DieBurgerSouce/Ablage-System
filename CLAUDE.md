@@ -294,6 +294,37 @@ primary_supplier_number: str  # Hauptlieferantennummer
 
 **SECURITY**: Input-Whitelist-Validierung fuer Backends, Feldnamen, Korrektur-Typen, Test-IDs (Regex + Laengenbegrenzung)
 
+### Help System (Januar 2026)
+
+**Status**: Production-Ready | **Migration**: Keine (JSONB in User.preferences)
+
+| Service | Beschreibung |
+|---------|--------------|
+| `Help System API` | Kontextuelle Hilfe, Onboarding, Tooltips, Video-Tutorials |
+
+**API Endpoints:**
+- `GET /api/v1/help/articles` - Hilfe-Artikel (mit Kategorie/Context-Filter)
+- `GET /api/v1/help/articles/{article_id}` - Einzelner Artikel
+- `GET /api/v1/help/articles/context/{context}` - Artikel fuer spezifische Seite
+- `GET /api/v1/help/search?q=query` - Volltextsuche
+- `GET /api/v1/help/tooltips/{feature_id}` - Feature-Tooltip
+- `GET /api/v1/help/onboarding` - Onboarding-Status
+- `PATCH /api/v1/help/onboarding/step/{step_id}` - Schritt als erledigt
+- `POST /api/v1/help/onboarding/skip` - Onboarding ueberspringen
+- `GET /api/v1/help/videos` - Video-Tutorials
+- `GET/PATCH /api/v1/help/preferences` - User-Praeferenzen
+
+**Features:**
+- Kontextuelle Hilfe nach Seite/Feature
+- 5-Schritt Onboarding-Tour mit Progress-Tracking
+- Feature-Tooltips mit Dismiss-Funktion
+- Video-Tutorial-Verknuepfungen
+- Volltext-Suche mit Score-Ranking (Titel 1.0, Tags 0.7, Content 0.5)
+
+**Frontend:** Alle Texte auf Deutsch, Markdown-Support fuer Artikel-Content
+
+**Details**: Siehe `.claude/Docs/API/Help-API.md`
+
 ### Validation UI (Januar 2026)
 
 **Status**: Production-Ready | **Features**: Keyboard + Swipe
