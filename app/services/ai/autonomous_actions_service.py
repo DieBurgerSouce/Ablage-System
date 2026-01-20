@@ -91,11 +91,23 @@ class ActionResult:
 
 @dataclass
 class AutonomyConfig:
-    """Konfiguration fuer autonome Aktionen."""
+    """Konfiguration fuer autonome Aktionen.
+
+    Nutzt Settings aus app.core.config fuer alle Thresholds.
+    Kann per create_autonomy_config() mit aktuellen Settings erstellt werden.
+    """
+
+    # Confidence Thresholds (aus Settings)
+    document_classification_threshold: float = 0.95
+    entity_linking_threshold: float = 0.90
+    invoice_approval_threshold: float = 0.95
+    payment_matching_threshold: float = 0.95
+    ocr_correction_threshold: float = 0.90
 
     # Zahlungsfreigabe
-    payment_auto_approve_limit: Decimal = Decimal("100.00")
-    payment_suggest_limit: Decimal = Decimal("1000.00")
+    payment_auto_approve_limit: Decimal = Decimal("5000.00")  # Max EUR
+    payment_suggest_limit: Decimal = Decimal("10000.00")  # Vorschlag bis
+    auto_approval_enabled: bool = True
 
     # Mahnungen
     dunning_auto_send_level: int = 1  # Bis Level 1 automatisch
@@ -105,9 +117,28 @@ class AutonomyConfig:
     master_data_auto_update_confidence: float = 0.95
     master_data_fields_auto_update: List[str] = None  # None = alle
 
-    # Ablage
+    # Ablage (filing)
     filing_auto_confidence: float = 0.95
     filing_suggest_confidence: float = 0.80
+
+    # Routing Intelligence
+    routing_enabled: bool = True
+    routing_min_confidence: float = 0.85
+
+    # Anomalie-Erkennung
+    anomaly_detection_enabled: bool = True
+    anomaly_alert_threshold: float = 0.75
+
+    # Smart Suggestions
+    suggestions_enabled: bool = True
+    max_suggestions_per_document: int = 5
+
+    # NLQ (Natural Language Queries)
+    nlq_enabled: bool = True
+    nlq_max_results: int = 100
+
+    # Audit Logging
+    audit_logging_enabled: bool = True
 
     def __post_init__(self):
         if self.master_data_fields_auto_update is None:
@@ -116,6 +147,55 @@ class AutonomyConfig:
                 "phone",
                 "website",
             ]
+
+
+def create_autonomy_config() -> AutonomyConfig:
+    """Erstellt AutonomyConfig aus aktuellen Settings.
+
+    Laedt alle Thresholds und Einstellungen aus app.core.config.
+    Fallback auf Defaults wenn Settings nicht verfuegbar.
+
+    Returns:
+        AutonomyConfig mit aktuellen Settings
+    """
+    try:
+        from app.core.config import settings
+
+        return AutonomyConfig(
+            # Confidence Thresholds
+            document_classification_threshold=settings.AUTONOMY_DOCUMENT_CLASSIFICATION_THRESHOLD,
+            entity_linking_threshold=settings.AUTONOMY_ENTITY_LINKING_THRESHOLD,
+            invoice_approval_threshold=settings.AUTONOMY_INVOICE_APPROVAL_THRESHOLD,
+            payment_matching_threshold=settings.AUTONOMY_PAYMENT_MATCHING_THRESHOLD,
+            ocr_correction_threshold=settings.AUTONOMY_OCR_CORRECTION_THRESHOLD,
+            # Zahlungsfreigabe
+            payment_auto_approve_limit=Decimal(str(settings.AUTONOMY_AUTO_APPROVAL_MAX_AMOUNT)),
+            auto_approval_enabled=settings.AUTONOMY_AUTO_APPROVAL_ENABLED,
+            # Routing
+            routing_enabled=settings.AUTONOMY_ROUTING_ENABLED,
+            routing_min_confidence=settings.AUTONOMY_ROUTING_MIN_CONFIDENCE,
+            # Anomalie
+            anomaly_detection_enabled=settings.AUTONOMY_ANOMALY_DETECTION_ENABLED,
+            anomaly_alert_threshold=settings.AUTONOMY_ANOMALY_ALERT_THRESHOLD,
+            # Suggestions
+            suggestions_enabled=settings.AUTONOMY_SUGGESTIONS_ENABLED,
+            max_suggestions_per_document=settings.AUTONOMY_MAX_SUGGESTIONS_PER_DOCUMENT,
+            # NLQ
+            nlq_enabled=settings.AUTONOMY_NLQ_ENABLED,
+            nlq_max_results=settings.AUTONOMY_NLQ_MAX_RESULTS,
+            # Audit
+            audit_logging_enabled=settings.AUTONOMY_AUDIT_LOGGING_ENABLED,
+            # Filing thresholds (mapped from classification)
+            filing_auto_confidence=settings.AUTONOMY_DOCUMENT_CLASSIFICATION_THRESHOLD,
+            filing_suggest_confidence=0.80,  # Suggest bei 80%+
+        )
+    except Exception as e:
+        logger.warning(
+            "autonomy_config_fallback",
+            error=str(e),
+            message="Konnte Settings nicht laden, nutze Defaults",
+        )
+        return AutonomyConfig()
 
 
 # ============================================================================
@@ -128,6 +208,8 @@ class AutonomousActionsService:
 
     Koordiniert spezifische autonome Aktionen und integriert sie
     mit dem AIDecisionService fuer Audit-Trail und Self-Learning.
+
+    Die Thresholds werden aus app.core.config.settings geladen.
     """
 
     def __init__(
@@ -139,11 +221,21 @@ class AutonomousActionsService:
 
         Args:
             db: Async Database Session
-            config: Autonomie-Konfiguration (oder Defaults)
+            config: Autonomie-Konfiguration (oder aus Settings via create_autonomy_config())
         """
         self.db = db
-        self.config = config or AutonomyConfig()
+        # Nutze uebergebene Config oder lade aus Settings
+        self.config = config or create_autonomy_config()
         self.decision_service = get_ai_decision_service()
+
+        logger.debug(
+            "autonomous_actions_service_initialized",
+            classification_threshold=self.config.document_classification_threshold,
+            entity_linking_threshold=self.config.entity_linking_threshold,
+            invoice_approval_threshold=self.config.invoice_approval_threshold,
+            payment_matching_threshold=self.config.payment_matching_threshold,
+            auto_approval_max=float(self.config.payment_auto_approve_limit),
+        )
 
     # ========================================================================
     # 1. Ablageort automatisch bestimmen
@@ -169,8 +261,10 @@ class AutonomousActionsService:
         Returns:
             ActionProposal mit vorgeschlagenem Folder
         """
-        # Dokument laden
+        # Dokument laden MIT Multi-Tenant Filter
         stmt = select(Document).where(Document.id == document_id)
+        if company_id:
+            stmt = stmt.where(Document.company_id == company_id)
         result = await self.db.execute(stmt)
         document = result.scalar_one_or_none()
 
@@ -180,7 +274,7 @@ class AutonomousActionsService:
                 target_id=document_id,
                 proposed_value={},
                 confidence=0.0,
-                reasoning="Dokument nicht gefunden",
+                reasoning="Dokument nicht gefunden oder kein Zugriff",
                 requires_confirmation=True,
             )
 
@@ -193,6 +287,9 @@ class AutonomousActionsService:
             stmt = select(BusinessEntity).where(
                 BusinessEntity.id == document.business_entity_id
             )
+            # Multi-Tenant Filter: Entity muss zur gleichen Company gehoeren
+            if company_id:
+                stmt = stmt.where(BusinessEntity.company_id == company_id)
             result = await self.db.execute(stmt)
             entity = result.scalar_one_or_none()
 
@@ -266,6 +363,7 @@ class AutonomousActionsService:
         document_id: uuid.UUID,
         folder_id: uuid.UUID,
         decision_id: Optional[uuid.UUID] = None,
+        company_id: Optional[uuid.UUID] = None,
     ) -> ActionResult:
         """Fuehrt die Ablage eines Dokuments aus.
 
@@ -273,11 +371,15 @@ class AutonomousActionsService:
             document_id: ID des Dokuments
             folder_id: Ziel-Folder-ID
             decision_id: Optional AIDecision-ID fuer Tracking
+            company_id: Optional Company-ID fuer Multi-Tenant Filter
 
         Returns:
             ActionResult
         """
+        # Multi-Tenant Filter bei Document und Folder Abfrage
         stmt = select(Document).where(Document.id == document_id)
+        if company_id:
+            stmt = stmt.where(Document.company_id == company_id)
         result = await self.db.execute(stmt)
         document = result.scalar_one_or_none()
 
@@ -286,11 +388,13 @@ class AutonomousActionsService:
                 success=False,
                 action_type=AutonomousAction.FILE_DOCUMENT,
                 target_id=document_id,
-                error_message="Dokument nicht gefunden",
+                error_message="Dokument nicht gefunden oder kein Zugriff",
             )
 
-        # Folder pruefen
+        # Folder pruefen MIT Multi-Tenant Filter
         stmt = select(Folder).where(Folder.id == folder_id)
+        if company_id:
+            stmt = stmt.where(Folder.company_id == company_id)
         result = await self.db.execute(stmt)
         folder = result.scalar_one_or_none()
 
@@ -299,7 +403,7 @@ class AutonomousActionsService:
                 success=False,
                 action_type=AutonomousAction.FILE_DOCUMENT,
                 target_id=document_id,
-                error_message="Folder nicht gefunden",
+                error_message="Folder nicht gefunden oder kein Zugriff",
             )
 
         # Ablegen
@@ -346,7 +450,10 @@ class AutonomousActionsService:
         Returns:
             ActionProposal
         """
+        # Multi-Tenant Filter
         stmt = select(InvoiceTracking).where(InvoiceTracking.id == invoice_id)
+        if company_id:
+            stmt = stmt.where(InvoiceTracking.company_id == company_id)
         result = await self.db.execute(stmt)
         invoice = result.scalar_one_or_none()
 
@@ -356,7 +463,7 @@ class AutonomousActionsService:
                 target_id=invoice_id,
                 proposed_value={},
                 confidence=0.0,
-                reasoning="Rechnung nicht gefunden",
+                reasoning="Rechnung nicht gefunden oder kein Zugriff",
                 requires_confirmation=True,
             )
 
@@ -438,17 +545,22 @@ class AutonomousActionsService:
         self,
         invoice_id: uuid.UUID,
         decision_id: Optional[uuid.UUID] = None,
+        company_id: Optional[uuid.UUID] = None,
     ) -> ActionResult:
         """Fuehrt Zahlungsfreigabe aus.
 
         Args:
             invoice_id: ID der Rechnung
             decision_id: Optional AIDecision-ID
+            company_id: Optional Company-ID fuer Multi-Tenant Filter
 
         Returns:
             ActionResult
         """
+        # Multi-Tenant Filter
         stmt = select(InvoiceTracking).where(InvoiceTracking.id == invoice_id)
+        if company_id:
+            stmt = stmt.where(InvoiceTracking.company_id == company_id)
         result = await self.db.execute(stmt)
         invoice = result.scalar_one_or_none()
 
@@ -457,7 +569,7 @@ class AutonomousActionsService:
                 success=False,
                 action_type=AutonomousAction.APPROVE_PAYMENT,
                 target_id=invoice_id,
-                error_message="Rechnung nicht gefunden",
+                error_message="Rechnung nicht gefunden oder kein Zugriff",
             )
 
         invoice.status = "approved"
@@ -506,10 +618,19 @@ class AutonomousActionsService:
         today = utc_now().date()
         min_due_date = today - timedelta(days=self.config.dunning_min_overdue_days)
 
+        # KRITISCH: Multi-Tenant Filter - company_id MUSS vorhanden sein!
+        if not company_id:
+            logger.warning(
+                "get_dunning_candidates_missing_company_id",
+                message="company_id ist Pflicht fuer Multi-Tenant Isolation",
+            )
+            return []
+
         stmt = (
             select(InvoiceTracking)
             .where(
                 and_(
+                    InvoiceTracking.company_id == company_id,  # Multi-Tenant!
                     InvoiceTracking.status == "overdue",
                     InvoiceTracking.due_date <= min_due_date,
                     InvoiceTracking.dunning_level <= self.config.dunning_auto_send_level,
@@ -554,17 +675,22 @@ class AutonomousActionsService:
         self,
         invoice_id: uuid.UUID,
         decision_id: Optional[uuid.UUID] = None,
+        company_id: Optional[uuid.UUID] = None,
     ) -> ActionResult:
         """Fuehrt Mahnungsstufen-Erhoehung aus.
 
         Args:
             invoice_id: ID der Rechnung
             decision_id: Optional AIDecision-ID
+            company_id: Optional Company-ID fuer Multi-Tenant Filter
 
         Returns:
             ActionResult
         """
+        # Multi-Tenant Filter
         stmt = select(InvoiceTracking).where(InvoiceTracking.id == invoice_id)
+        if company_id:
+            stmt = stmt.where(InvoiceTracking.company_id == company_id)
         result = await self.db.execute(stmt)
         invoice = result.scalar_one_or_none()
 
@@ -573,7 +699,7 @@ class AutonomousActionsService:
                 success=False,
                 action_type=AutonomousAction.SEND_DUNNING,
                 target_id=invoice_id,
-                error_message="Rechnung nicht gefunden",
+                error_message="Rechnung nicht gefunden oder kein Zugriff",
             )
 
         old_level = invoice.dunning_level or 0
@@ -712,6 +838,7 @@ class AutonomousActionsService:
         field: str,
         new_value: str,
         decision_id: Optional[uuid.UUID] = None,
+        company_id: Optional[uuid.UUID] = None,
     ) -> ActionResult:
         """Fuehrt Stammdaten-Update aus.
 
@@ -720,11 +847,15 @@ class AutonomousActionsService:
             field: Feldname
             new_value: Neuer Wert
             decision_id: Optional AIDecision-ID
+            company_id: Optional Company-ID fuer Multi-Tenant Filter
 
         Returns:
             ActionResult
         """
+        # Multi-Tenant Filter
         stmt = select(BusinessEntity).where(BusinessEntity.id == entity_id)
+        if company_id:
+            stmt = stmt.where(BusinessEntity.company_id == company_id)
         result = await self.db.execute(stmt)
         entity = result.scalar_one_or_none()
 
@@ -733,7 +864,7 @@ class AutonomousActionsService:
                 success=False,
                 action_type=AutonomousAction.UPDATE_MASTER_DATA,
                 target_id=entity_id,
-                error_message="Entity nicht gefunden",
+                error_message="Entity nicht gefunden oder kein Zugriff",
             )
 
         # Nur erlaubte Felder updaten
@@ -795,10 +926,15 @@ class AutonomousActionsService:
         if not folder_name:
             return None
 
+        # Multi-Tenant: company_id ist Pflicht fuer sichere Abfrage
+        if not company_id:
+            logger.warning("find_folder_by_document_type_missing_company_id")
+            return None
+
         stmt = select(Folder).where(
             and_(
                 Folder.name.ilike(f"%{folder_name}%"),
-                Folder.company_id == company_id if company_id else True,
+                Folder.company_id == company_id,  # Multi-Tenant Filter!
             )
         )
         result = await self.db.execute(stmt)
@@ -813,6 +949,11 @@ class AutonomousActionsService:
         if not document.document_type:
             return None, 0.0
 
+        # Multi-Tenant: company_id ist Pflicht!
+        if not company_id:
+            logger.warning("find_folder_by_history_missing_company_id")
+            return None, 0.0
+
         # Finde haeufigsten Folder fuer diesen Dokumenttyp
         stmt = (
             select(
@@ -823,7 +964,7 @@ class AutonomousActionsService:
                 and_(
                     Document.document_type == document.document_type,
                     Document.folder_id.isnot(None),
-                    Document.company_id == company_id if company_id else True,
+                    Document.company_id == company_id,  # Multi-Tenant Filter!
                 )
             )
             .group_by(Document.folder_id)
