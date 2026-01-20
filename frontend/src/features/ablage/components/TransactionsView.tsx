@@ -40,6 +40,7 @@ import {
 import { Breadcrumbs } from '@/components/ui/breadcrumb';
 import { cn } from '@/lib/utils';
 import { TransactionListItem } from './TransactionTimeline';
+import { transactionsService } from '@/lib/api/services/transactions';
 import type {
   Transaction,
   TransactionStatus,
@@ -56,96 +57,6 @@ interface TransactionsViewProps {
 
 type SortField = 'createdAt' | 'lastActivityAt' | 'totalAmount' | 'transactionNumber';
 type SortOrder = 'asc' | 'desc';
-
-// ==================== Mock Data (TODO: Replace with API) ====================
-
-const MOCK_TRANSACTIONS: Transaction[] = [
-  {
-    id: '1',
-    transactionNumber: 'VG-2024-001',
-    name: 'Bestellung Druckplatten',
-    status: 'pending',
-    entityId: 'entity-1',
-    entityName: 'Mueller GmbH',
-    folderId: 'folie',
-    steps: [
-      { id: 's1', type: 'anfrage', status: 'completed', documentId: 'd1', documentNumber: 'AF-001', completedAt: '2024-03-01', amount: null, currency: 'EUR' },
-      { id: 's2', type: 'angebot', status: 'completed', documentId: 'd2', documentNumber: 'AG-123', completedAt: '2024-03-03', amount: 1234.56, currency: 'EUR' },
-      { id: 's3', type: 'auftrag', status: 'completed', documentId: 'd3', documentNumber: 'AB-456', completedAt: '2024-03-05', amount: 1234.56, currency: 'EUR' },
-      { id: 's4', type: 'lieferschein', status: 'completed', documentId: 'd4', documentNumber: 'LS-789', completedAt: '2024-03-10', amount: null, currency: 'EUR' },
-      { id: 's5', type: 'rechnung', status: 'active', documentId: 'd5', documentNumber: 'RG-012', completedAt: null, amount: 1234.56, currency: 'EUR' },
-      { id: 's6', type: 'zahlung', status: 'pending', documentId: null, documentNumber: null, completedAt: null, amount: null, currency: 'EUR' },
-    ],
-    totalAmount: 1234.56,
-    currency: 'EUR',
-    createdAt: '2024-03-01T10:00:00Z',
-    updatedAt: '2024-03-15T14:30:00Z',
-    completedAt: null,
-    lastActivityAt: '2024-03-15T14:30:00Z',
-  },
-  {
-    id: '2',
-    transactionNumber: 'VG-2024-002',
-    name: 'Folienlieferung Q1',
-    status: 'completed',
-    entityId: 'entity-1',
-    entityName: 'Mueller GmbH',
-    folderId: 'folie',
-    steps: [
-      { id: 's1', type: 'anfrage', status: 'skipped', documentId: null, documentNumber: null, completedAt: null, amount: null, currency: 'EUR' },
-      { id: 's2', type: 'angebot', status: 'completed', documentId: 'd6', documentNumber: 'AG-124', completedAt: '2024-01-15', amount: 5678.90, currency: 'EUR' },
-      { id: 's3', type: 'auftrag', status: 'completed', documentId: 'd7', documentNumber: 'AB-457', completedAt: '2024-01-18', amount: 5678.90, currency: 'EUR' },
-      { id: 's4', type: 'lieferschein', status: 'completed', documentId: 'd8', documentNumber: 'LS-790', completedAt: '2024-01-25', amount: null, currency: 'EUR' },
-      { id: 's5', type: 'rechnung', status: 'completed', documentId: 'd9', documentNumber: 'RG-013', completedAt: '2024-01-28', amount: 5678.90, currency: 'EUR' },
-      { id: 's6', type: 'zahlung', status: 'completed', documentId: null, documentNumber: 'ZA-001', completedAt: '2024-02-10', amount: 5678.90, currency: 'EUR' },
-    ],
-    totalAmount: 5678.90,
-    currency: 'EUR',
-    createdAt: '2024-01-15T09:00:00Z',
-    updatedAt: '2024-02-10T11:00:00Z',
-    completedAt: '2024-02-10T11:00:00Z',
-    lastActivityAt: '2024-02-10T11:00:00Z',
-  },
-  {
-    id: '3',
-    transactionNumber: 'VG-2024-003',
-    name: 'Sonderanfertigung',
-    status: 'draft',
-    entityId: 'entity-1',
-    entityName: 'Mueller GmbH',
-    folderId: 'messer',
-    steps: [
-      { id: 's1', type: 'anfrage', status: 'completed', documentId: 'd10', documentNumber: 'AF-002', completedAt: '2024-03-20', amount: null, currency: 'EUR' },
-      { id: 's2', type: 'angebot', status: 'active', documentId: null, documentNumber: null, completedAt: null, amount: null, currency: 'EUR' },
-      { id: 's3', type: 'auftrag', status: 'pending', documentId: null, documentNumber: null, completedAt: null, amount: null, currency: 'EUR' },
-      { id: 's4', type: 'lieferschein', status: 'pending', documentId: null, documentNumber: null, completedAt: null, amount: null, currency: 'EUR' },
-      { id: 's5', type: 'rechnung', status: 'pending', documentId: null, documentNumber: null, completedAt: null, amount: null, currency: 'EUR' },
-      { id: 's6', type: 'zahlung', status: 'pending', documentId: null, documentNumber: null, completedAt: null, amount: null, currency: 'EUR' },
-    ],
-    totalAmount: null,
-    currency: 'EUR',
-    createdAt: '2024-03-20T08:00:00Z',
-    updatedAt: '2024-03-20T08:00:00Z',
-    completedAt: null,
-    lastActivityAt: '2024-03-20T08:00:00Z',
-  },
-];
-
-// TODO: Replace with actual API call
-async function fetchTransactions(
-  _filter: TransactionFilter
-): Promise<{ items: Transaction[]; total: number; page: number; pageSize: number; totalPages: number }> {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 500));
-
-  return {
-    items: MOCK_TRANSACTIONS,
-    total: MOCK_TRANSACTIONS.length,
-    page: 1,
-    pageSize: 20,
-    totalPages: 1,
-  };
-}
 
 // ==================== Helper Functions ====================
 
@@ -426,18 +337,18 @@ export function TransactionsView({ entityType }: TransactionsViewProps) {
     error,
   } = useQuery({
     queryKey: ['transactions', filter],
-    queryFn: () => fetchTransactions(filter),
+    queryFn: () => transactionsService.list(filter),
     enabled: !!entityId && !!folderId,
   });
 
   const transactions = data?.items || [];
   const totalCount = data?.total || 0;
 
-  // Filter and sort locally (TODO: Move to API)
+  // Filter and sort - API handles primary filtering, client-side as backup
   const filteredTransactions = useMemo(() => {
     let result = [...transactions];
 
-    // Client-side filtering (backup, should be done by API)
+    // Client-side filtering (backup for additional refinement)
     if (debouncedSearch) {
       const searchLower = debouncedSearch.toLowerCase();
       result = result.filter(
@@ -451,7 +362,7 @@ export function TransactionsView({ entityType }: TransactionsViewProps) {
       result = result.filter((t) => t.status === statusFilter);
     }
 
-    // Sort
+    // Sort client-side (API sorting may be limited)
     result.sort((a, b) => {
       let comparison = 0;
       switch (sortField) {
