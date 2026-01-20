@@ -18,7 +18,7 @@ Rechtliche Grundlagen:
 """
 
 import uuid
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
 from enum import Enum
@@ -83,7 +83,19 @@ class GoBDComplianceService:
 
         Returns:
             Dict mit Compliance-Bericht
+
+        Raises:
+            ValueError: Wenn company_id nicht gefunden
         """
+        # Input-Validierung: Company muss existieren
+        company = await db.get(Company, company_id)
+        if not company:
+            logger.warning(
+                "gobd_compliance_company_not_found",
+                company_id=str(company_id),
+            )
+            raise ValueError(f"Firma {company_id} nicht gefunden")
+
         report_date = report_date or date.today()
 
         # Sammle alle Compliance-Metriken
@@ -105,7 +117,7 @@ class GoBDComplianceService:
             "report_id": str(uuid.uuid4()),
             "company_id": str(company_id),
             "report_date": report_date.isoformat(),
-            "generated_at": datetime.now().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "overall_status": overall_status.value,
             "overall_score": overall_score,
             "score_description": self._get_score_description(overall_score),
@@ -412,8 +424,8 @@ class GoBDComplianceService:
             recommendation="Sofort pruefen - moegliche Manipulation!" if failed_verifications > 0 else None,
         ))
 
-        # Verifikationen älter als 90 Tage
-        ninety_days_ago = datetime.now() - timedelta(days=90)
+        # Verifikationen aelter als 90 Tage
+        ninety_days_ago = datetime.now(timezone.utc) - timedelta(days=90)
         old_verif_result = await db.execute(
             select(func.count()).select_from(DocumentArchive)
             .where(
@@ -588,7 +600,26 @@ class GoBDComplianceService:
         """Gibt einen schnellen Compliance-Status zurueck (ohne Details).
 
         Fuer Dashboard-Widgets und Uebersichten.
+
+        Args:
+            db: Datenbank-Session
+            company_id: Firmen-ID (Multi-Tenant Isolation!)
+
+        Returns:
+            Dict mit Compliance-Status
+
+        Raises:
+            ValueError: Wenn company_id nicht gefunden
         """
+        # Input-Validierung: Company muss existieren (Multi-Tenant!)
+        company = await db.get(Company, company_id)
+        if not company:
+            logger.warning(
+                "quick_compliance_company_not_found",
+                company_id=str(company_id),
+            )
+            raise ValueError(f"Firma {company_id} nicht gefunden")
+
         # Schnelle Checks
         # 1. Fehlgeschlagene Verifikationen
         failed_result = await db.execute(
@@ -624,8 +655,432 @@ class GoBDComplianceService:
             "status": status.value,
             "failed_verifications": failed_verifications,
             "audit_trail_gaps": null_sequences,
-            "checked_at": datetime.now().isoformat(),
+            "checked_at": datetime.now(timezone.utc).isoformat(),
         }
+
+    # ==========================================================================
+    # VERFAHRENSDOKUMENTATION (GoBD Prozessdokumentation)
+    # ==========================================================================
+
+    async def generate_verfahrensdokumentation(
+        self,
+        db: AsyncSession,
+        company_id: uuid.UUID,
+        include_system_info: bool = True,
+        include_user_roles: bool = True,
+        include_change_history: bool = True,
+    ) -> Dict[str, Any]:
+        """Generiert die GoBD-konforme Verfahrensdokumentation.
+
+        Die Verfahrensdokumentation ist Pflicht nach GoBD und muss enthalten:
+        - Allgemeine Beschreibung des DV-Systems
+        - Prozessbeschreibungen
+        - Benutzer- und Rollenkonzept
+        - Aenderungshistorie
+
+        Args:
+            db: Datenbank-Session
+            company_id: Firmen-ID
+            include_system_info: System-Architektur einschliessen
+            include_user_roles: Benutzer und Rollen einschliessen
+            include_change_history: Aenderungshistorie einschliessen
+
+        Returns:
+            Dict mit vollstaendiger Verfahrensdokumentation
+        """
+        # Firmendaten laden
+        company = await db.get(Company, company_id)
+        if not company:
+            raise ValueError(f"Firma {company_id} nicht gefunden")
+
+        documentation = {
+            "meta": {
+                "document_type": "GoBD Verfahrensdokumentation",
+                "version": "1.0",
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "company_id": str(company_id),
+                # WICHTIG: Firmennamen sind nicht PII im Sinne der DSGVO,
+                # da sie oeffentliche Handelsdaten sind (Handelsregister)
+                "company_name": company.name if company else "Unbekannt",
+            },
+            "rechtliche_grundlagen": self._get_legal_basis(),
+            "system_beschreibung": await self._generate_system_description(db, company_id),
+            "prozess_beschreibungen": await self._generate_process_descriptions(db, company_id),
+        }
+
+        if include_system_info:
+            documentation["system_architektur"] = self._generate_system_architecture()
+
+        if include_user_roles:
+            documentation["benutzer_rollen"] = await self._generate_user_role_documentation(db, company_id)
+
+        if include_change_history:
+            documentation["aenderungshistorie"] = await self._generate_change_history(db, company_id)
+
+        return documentation
+
+    def _get_legal_basis(self) -> Dict[str, Any]:
+        """Gibt die rechtlichen Grundlagen zurueck."""
+        return {
+            "gobd": {
+                "name": "Grundsaetze zur ordnungsmaessigen Fuehrung und Aufbewahrung von Buechern, Aufzeichnungen und Unterlagen in elektronischer Form sowie zum Datenzugriff",
+                "kurzform": "GoBD",
+                "herausgeber": "Bundesministerium der Finanzen",
+                "version": "BMF-Schreiben vom 28.11.2019",
+            },
+            "aufbewahrungsfristen": [
+                {"kategorie": "Handels- und Geschaeftsbriefe", "frist_jahre": 6, "rechtsgrundlage": "§ 257 Abs. 4 HGB"},
+                {"kategorie": "Buchungsbelege", "frist_jahre": 10, "rechtsgrundlage": "§ 147 Abs. 3 AO"},
+                {"kategorie": "Rechnungen", "frist_jahre": 10, "rechtsgrundlage": "§ 14b UStG"},
+                {"kategorie": "Handels- und Geschaeftsbuecher", "frist_jahre": 10, "rechtsgrundlage": "§ 257 Abs. 4 HGB"},
+            ],
+            "kernprinzipien": [
+                "Nachvollziehbarkeit und Nachpruefbarkeit",
+                "Vollstaendigkeit",
+                "Richtigkeit",
+                "Zeitgerechte Buchung und Aufzeichnung",
+                "Ordnung",
+                "Unveraenderbarkeit",
+            ],
+        }
+
+    async def _generate_system_description(
+        self,
+        db: AsyncSession,
+        company_id: uuid.UUID,
+    ) -> Dict[str, Any]:
+        """Generiert die allgemeine Systembeschreibung."""
+        return {
+            "name": "Ablage-System OCR",
+            "beschreibung": (
+                "Intelligentes Dokumentenmanagementsystem mit OCR-Verarbeitung, "
+                "automatischer Klassifizierung und GoBD-konformer Archivierung."
+            ),
+            "einsatzzweck": [
+                "Digitalisierung von Eingangsrechnungen und Geschaeftskorrespondenz",
+                "Automatische Texterkennung (OCR) mit GPU-Beschleunigung",
+                "Klassifizierung und Kategorisierung von Dokumenten",
+                "Revisionssichere Archivierung nach GoBD-Anforderungen",
+                "Aufbewahrungsfristen-Management",
+                "DATEV-Export fuer Steuerberater",
+            ],
+            "datenarten": [
+                {"art": "Eingangsrechnungen", "aufbewahrung": "10 Jahre"},
+                {"art": "Ausgangsrechnungen", "aufbewahrung": "10 Jahre"},
+                {"art": "Vertraege", "aufbewahrung": "10 Jahre (ab Vertragsende)"},
+                {"art": "Geschaeftskorrespondenz", "aufbewahrung": "6 Jahre"},
+                {"art": "Buchhaltungsbelege", "aufbewahrung": "10 Jahre"},
+            ],
+            "compliance_features": [
+                "SHA-256 Hash-Signaturen fuer alle archivierten Dokumente",
+                "Blockchain-aehnliche Audit-Chain fuer Nachvollziehbarkeit",
+                "RFC 3161 Zeitstempel-Unterstuetzung (optional)",
+                "Automatische Aufbewahrungsfristen nach Dokumenttyp",
+                "Loeschsperre waehrend Aufbewahrungsfrist",
+                "Integritaetspruefungen (automatisch und manuell)",
+                "Vollstaendiger Audit-Trail aller Zugriffe",
+            ],
+        }
+
+    def _generate_system_architecture(self) -> Dict[str, Any]:
+        """Generiert die Systemarchitektur-Dokumentation."""
+        return {
+            "komponenten": [
+                {
+                    "name": "Backend API",
+                    "technologie": "Python FastAPI",
+                    "funktion": "REST-API fuer alle Geschaeftslogik",
+                },
+                {
+                    "name": "Datenbank",
+                    "technologie": "PostgreSQL 16",
+                    "funktion": "Persistente Datenspeicherung mit JSONB-Unterstuetzung",
+                },
+                {
+                    "name": "Objektspeicher",
+                    "technologie": "MinIO (S3-kompatibel)",
+                    "funktion": "Speicherung der Original-Dokumente",
+                },
+                {
+                    "name": "Cache / Queue",
+                    "technologie": "Redis",
+                    "funktion": "Session-Cache und Task-Queue",
+                },
+                {
+                    "name": "Task Processing",
+                    "technologie": "Celery",
+                    "funktion": "Asynchrone Verarbeitung (OCR, Exports, etc.)",
+                },
+                {
+                    "name": "OCR Engine",
+                    "technologie": "DeepSeek-Janus-Pro / GOT-OCR 2.0",
+                    "funktion": "Texterkennung mit GPU-Beschleunigung",
+                },
+                {
+                    "name": "Frontend",
+                    "technologie": "React + TypeScript",
+                    "funktion": "Benutzeroberflaeche",
+                },
+            ],
+            "sicherheitsmerkmale": [
+                "HTTPS/TLS fuer alle Verbindungen",
+                "JWT-basierte Authentifizierung",
+                "Bcrypt-Passwort-Hashing (Cost Factor 12)",
+                "Multi-Tenant Isolation (Row Level Security)",
+                "Rate Limiting (Login: 5/15min, API: 100/min)",
+                "GDPR-konforme Datenhaltung",
+                "AES-256-GCM Verschluesselung fuer sensible Daten",
+            ],
+            "datensicherung": [
+                "Taegliche Datenbank-Backups (PostgreSQL)",
+                "Inkrementelle MinIO-Backups",
+                "30-Tage Backup-Retention",
+                "Verschluesselte Backup-Speicherung",
+            ],
+        }
+
+    async def _generate_process_descriptions(
+        self,
+        db: AsyncSession,
+        company_id: uuid.UUID,
+    ) -> List[Dict[str, Any]]:
+        """Generiert die Prozessbeschreibungen."""
+        return [
+            {
+                "prozess_id": "P001",
+                "name": "Dokumentenerfassung",
+                "beschreibung": "Erfassung von Dokumenten ueber verschiedene Eingangskanaele",
+                "schritte": [
+                    "1. Dokument-Upload (manuell oder automatisch via Email/Folder-Import)",
+                    "2. Format-Validierung (PDF, JPG, PNG, TIFF)",
+                    "3. Vergabe einer eindeutigen Dokumenten-ID (UUID)",
+                    "4. Speicherung im Objektspeicher (MinIO)",
+                    "5. Erstellung des Metadaten-Eintrags in der Datenbank",
+                    "6. Einreihung in OCR-Queue",
+                ],
+                "verantwortlich": "System (automatisch) oder Benutzer (manuell)",
+            },
+            {
+                "prozess_id": "P002",
+                "name": "OCR-Verarbeitung",
+                "beschreibung": "Automatische Texterkennung und Datenextraktion",
+                "schritte": [
+                    "1. Dokument aus Queue entnehmen",
+                    "2. Vorverarbeitung (Deskew, Binarisierung)",
+                    "3. OCR mit konfigurierten Backend (DeepSeek/GOT-OCR)",
+                    "4. Strukturierte Datenextraktion (Rechnungsnummer, Betrag, etc.)",
+                    "5. Confidence-Score Berechnung",
+                    "6. Speicherung der extrahierten Daten",
+                    "7. Bei niedriger Confidence: Markierung zur manuellen Pruefung",
+                ],
+                "verantwortlich": "System (automatisch)",
+            },
+            {
+                "prozess_id": "P003",
+                "name": "GoBD-Archivierung",
+                "beschreibung": "Revisionssichere Archivierung von Dokumenten",
+                "schritte": [
+                    "1. Dokumentkategorie bestimmen (Rechnung, Vertrag, etc.)",
+                    "2. Aufbewahrungsfrist aus RetentionPolicy ermitteln",
+                    "3. SHA-256 Hash des Dokuments berechnen",
+                    "4. Optional: RFC 3161 Zeitstempel anfordern",
+                    "5. Archiv-Eintrag mit Hash-Signatur erstellen",
+                    "6. Eintrag in Audit-Chain hinzufuegen",
+                    "7. Loeschsperre aktivieren bis Ablauf der Aufbewahrungsfrist",
+                ],
+                "verantwortlich": "System (automatisch) oder Benutzer (manuell)",
+            },
+            {
+                "prozess_id": "P004",
+                "name": "Integritaetspruefung",
+                "beschreibung": "Regelmaessige Verifikation der Dokumentintegritaet",
+                "schritte": [
+                    "1. Geplante Pruefung via Celery-Task (taeglich/woechentlich)",
+                    "2. Dokument aus Objektspeicher laden",
+                    "3. SHA-256 Hash neu berechnen",
+                    "4. Vergleich mit gespeichertem Hash",
+                    "5. Bei Abweichung: Alarm und Protokollierung",
+                    "6. Ergebnis in Audit-Chain protokollieren",
+                    "7. last_verification_at aktualisieren",
+                ],
+                "verantwortlich": "System (automatisch)",
+            },
+            {
+                "prozess_id": "P005",
+                "name": "DATEV-Export",
+                "beschreibung": "Export von Buchungsdaten fuer Steuerberater",
+                "schritte": [
+                    "1. Zeitraum und Dokumenttypen auswaehlen",
+                    "2. Buchungsstapel gemaess DATEV-Format (Version 700) generieren",
+                    "3. Vendor-Mapping anwenden (Lieferant -> Konto)",
+                    "4. CSV-Export erstellen",
+                    "5. Export in Historie protokollieren",
+                    "6. Download bereitstellen",
+                ],
+                "verantwortlich": "Benutzer (manuell)",
+            },
+            {
+                "prozess_id": "P006",
+                "name": "Steuerberater-Zugang",
+                "beschreibung": "Temporaerer Lesezugriff fuer Steuerberater",
+                "schritte": [
+                    "1. Administrator erstellt Einladung mit Gueltigkeitsdauer",
+                    "2. Einladungs-Link per Email an Steuerberater",
+                    "3. Steuerberater akzeptiert und setzt Passwort",
+                    "4. Lesezugriff auf freigegebene Dokumente/Zeitraeume",
+                    "5. Alle Zugriffe werden protokolliert",
+                    "6. Automatische Deaktivierung nach Ablauf",
+                ],
+                "verantwortlich": "Administrator / System",
+            },
+        ]
+
+    async def _generate_user_role_documentation(
+        self,
+        db: AsyncSession,
+        company_id: uuid.UUID,
+    ) -> Dict[str, Any]:
+        """Generiert die Benutzer- und Rollendokumentation.
+
+        WICHTIG: Diese Methode gibt nur aggregierte Statistiken zurueck,
+        keine individuellen User-Daten (PII-Schutz nach DSGVO).
+        """
+        from app.db.models import User
+
+        # WICHTIG: Wir laden NUR die Rollen, KEINE User-Details (PII)!
+        # Aggregierte Abfrage statt User-Objekte laden
+        role_result = await db.execute(
+            select(User.role, func.count(User.id).label('count'))
+            .where(User.company_id == company_id)
+            .group_by(User.role)
+        )
+        role_rows = role_result.all()
+
+        role_counts = {}
+        total_users = 0
+        for row in role_rows:
+            role_name = row[0] if row[0] else 'user'
+            count = row[1]
+            role_counts[role_name] = count
+            total_users += count
+
+        return {
+            "rollendefinitionen": [
+                {
+                    "rolle": "admin",
+                    "beschreibung": "Administrator mit vollen Zugriffsrechten",
+                    "berechtigungen": [
+                        "Alle Dokumente lesen, bearbeiten, loeschen",
+                        "Benutzer verwalten",
+                        "System-Einstellungen aendern",
+                        "Aufbewahrungsfristen konfigurieren",
+                        "DATEV-Export",
+                        "Steuerberater-Zugang verwalten",
+                        "Compliance-Berichte abrufen",
+                    ],
+                },
+                {
+                    "rolle": "editor",
+                    "beschreibung": "Bearbeiter mit erweiterten Rechten",
+                    "berechtigungen": [
+                        "Dokumente lesen und bearbeiten",
+                        "Dokumente hochladen",
+                        "OCR-Ergebnisse korrigieren",
+                        "Dokumente archivieren",
+                    ],
+                },
+                {
+                    "rolle": "viewer",
+                    "beschreibung": "Leser mit eingeschraenkten Rechten",
+                    "berechtigungen": [
+                        "Zugewiesene Dokumente lesen",
+                        "Keine Aenderungen moeglich",
+                    ],
+                },
+                {
+                    "rolle": "tax_advisor",
+                    "beschreibung": "Steuerberater mit temporaerem Lesezugriff",
+                    "berechtigungen": [
+                        "Freigegebene Dokumente lesen",
+                        "DATEV-Export (eingeschraenkt)",
+                        "Keine Aenderungen moeglich",
+                        "Zeitlich und inhaltlich begrenzt",
+                    ],
+                },
+            ],
+            "benutzerstatistik": {
+                # NUR aggregierte Zahlen, KEINE individuellen User-Daten!
+                "gesamt": total_users,
+                "nach_rolle": role_counts,
+                "stand": datetime.now(timezone.utc).isoformat(),
+            },
+        }
+
+    async def _generate_change_history(
+        self,
+        db: AsyncSession,
+        company_id: uuid.UUID,
+        limit: int = 50,
+    ) -> Dict[str, Any]:
+        """Generiert die Aenderungshistorie aus dem Audit-Trail.
+
+        HINWEIS: Gibt nur technische Metadaten zurueck, keine PII.
+        """
+        # Input-Validierung: limit begrenzen (DoS-Schutz)
+        if limit <= 0 or limit > 1000:
+            limit = 50
+
+        # Importiere AuditChainEntry falls vorhanden
+        try:
+            from app.db.models.gobd import AuditChainEntry
+
+            result = await db.execute(
+                select(AuditChainEntry)
+                .where(AuditChainEntry.company_id == company_id)
+                .order_by(AuditChainEntry.sequence_number.desc())
+                .limit(limit)
+            )
+            entries = result.scalars().all()
+
+            history_entries = []
+            for entry in entries:
+                history_entries.append({
+                    "sequence": entry.sequence_number,
+                    "event_type": entry.event_type,
+                    "timestamp": entry.created_at.isoformat() if entry.created_at else None,
+                    # Nur Document-ID (UUID), keine Namen oder Inhalte (PII-Schutz)
+                    "document_id": str(entry.document_id) if entry.document_id else None,
+                    "verified": entry.is_verified,
+                })
+
+            return {
+                "quelle": "GoBD Audit-Chain",
+                "eintraege": history_entries,
+                "gesamt_eintraege": len(history_entries),
+                "abgerufen_am": datetime.now(timezone.utc).isoformat(),
+            }
+        except ImportError:
+            # AuditChainEntry Model noch nicht vorhanden - erwarteter Zustand
+            logger.info("change_history_model_not_available")
+            return {
+                "quelle": "GoBD Audit-Chain",
+                "eintraege": [],
+                "hinweis": "Audit-Chain Model noch nicht initialisiert",
+                "abgerufen_am": datetime.now(timezone.utc).isoformat(),
+            }
+        except Exception as e:
+            # Unerwarteter Fehler - loggen aber nicht Details exponieren
+            logger.error(
+                "change_history_unexpected_error",
+                error_type=type(e).__name__,
+                # WICHTIG: Keine Details des Fehlers loggen (koennte PII enthalten)
+            )
+            return {
+                "quelle": "GoBD Audit-Chain",
+                "eintraege": [],
+                "hinweis": "Fehler beim Abrufen der Audit-Chain",
+                "abgerufen_am": datetime.now(timezone.utc).isoformat(),
+            }
 
 
 # Singleton-Instanz
