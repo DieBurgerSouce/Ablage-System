@@ -1,5 +1,724 @@
 # Recent Changes
 
+## 2026-01-21
+
+### Critical Senior Developer Review
+
+**Gefundene Luecken und Behebungen**:
+
+| # | Luecke | Behebung |
+|---|--------|----------|
+| 1 | **Fehlende Tests fuer Hardware Monitoring** | `tests/unit/services/test_hardware_monitoring_service.py` (540+ Zeilen) |
+| 2 | **Fehlende Tests fuer Hardware API** | `tests/unit/api/test_hardware_api.py` (450+ Zeilen) |
+| 3 | **pynvml fehlte in requirements.txt** | `pynvml==11.5.0` hinzugefuegt |
+
+**Tests geschrieben**:
+- CPUMetrics, MemoryMetrics, DiskMetrics, NetworkMetrics Tests
+- GPUMetrics mit Mocks (fuer Systeme ohne NVIDIA)
+- TemperatureMetrics Tests
+- Alert Generation Tests
+- Full Hardware Report Tests
+- Singleton Pattern Tests
+- API Authorization Tests (Admin-only)
+- Response Format Tests
+
+**Review-Ergebnis**: Alle identifizierten Luecken wurden behoben.
+
+---
+
+### Phase 10: On-Premises Excellence (ABGESCHLOSSEN)
+
+**Status**: ✅ Production-Ready
+**Plan**: `.claude/plans/scalable-swimming-pizza.md`
+
+---
+
+**Phase 10.1: Air-Gapped Installation Documentation**
+
+| Dokumentation | Pfad | Inhalt |
+|---------------|------|--------|
+| **Air-Gapped Installation Guide** | `docs/deployment/AIR-GAPPED-INSTALLATION.md` | ~400 Zeilen |
+
+**Neue Scripts**:
+- `scripts/air-gapped/prepare_offline_package.sh` - Erstellt Offline-Paket mit Docker Images, Wheels, Models
+- `scripts/air-gapped/install_offline.sh` - Installation auf Air-Gapped System
+- `infrastructure/docker-compose.airgap.yml` - Docker Compose fuer Air-Gapped Deployment
+
+**Features**:
+- Docker Image Export/Import (backend, frontend, postgres, redis, minio)
+- Python Wheels Bundling fuer Offline-Installation
+- OCR Model Downloads (DeepSeek, GOT-OCR, Surya)
+- Certificate Management ohne Internet
+- Offline Update-Mechanismus
+
+---
+
+**Phase 10.2: Cluster Deployment Configuration**
+
+| Dokumentation | Pfad | Inhalt |
+|---------------|------|--------|
+| **Cluster Deployment Guide** | `docs/deployment/CLUSTER-DEPLOYMENT.md` | ~400 Zeilen |
+
+**Neue Konfigurationsdateien**:
+```
+infrastructure/cluster/
+├── docker-compose.cluster.yml    # Multi-Node Docker Compose mit Profiles
+├── patroni.yml                   # PostgreSQL HA Konfiguration
+├── sentinel.conf                 # Redis Sentinel Konfiguration
+└── haproxy.cfg                   # Load Balancer Konfiguration
+```
+
+**Cluster-Architektur (2-3 Nodes)**:
+```
+                    ┌─────────────────────┐
+                    │      HAProxy        │
+                    │   Load Balancer     │
+                    └──────────┬──────────┘
+                               │
+            ┌──────────────────┼──────────────────┐
+            │                  │                  │
+            ▼                  ▼                  ▼
+    ┌───────────────┐  ┌───────────────┐  ┌───────────────┐
+    │    Node 1     │  │    Node 2     │  │    Node 3     │
+    │  API + DB     │  │  API + Redis  │  │  GPU Worker   │
+    │  Primary      │  │  Replica      │  │  Celery       │
+    └───────────────┘  └───────────────┘  └───────────────┘
+```
+
+**PostgreSQL HA mit Patroni**:
+- Automatisches Failover
+- etcd Consensus Store
+- Streaming Replication
+- pg_rewind fuer schnelle Recovery
+
+**Redis HA mit Sentinel**:
+- Master-Slave Replication
+- Automatische Master-Election
+- Quorum: 2 Sentinels muessen zustimmen
+- 5 Sekunden Down-Detection
+
+**HAProxy Features**:
+- SSL/TLS Termination
+- Round-Robin Load Balancing
+- Health Checks fuer alle Backends
+- Rate Limiting (100 req/10s pro IP)
+- Stats Page auf Port 8404
+- Prometheus Metrics auf Port 8405
+
+**Docker Compose Profiles**:
+- `--profile node1` - PostgreSQL Primary, Redis Master, API, Frontend
+- `--profile node2` - PostgreSQL Replica, Redis Slave, API
+- `--profile node3` - GPU Worker, Redis Slave, Celery Beat
+
+---
+
+**Phase 10.3: Hardware Monitoring Service**
+
+| Service | Datei | Zeilen | Beschreibung |
+|---------|-------|--------|--------------|
+| **HardwareMonitoringService** | `services/hardware_monitoring_service.py` | ~600 | CPU, Memory, Disk, Network, GPU, Temperatur |
+| **Hardware API** | `api/v1/hardware.py` | ~400 | Admin-only REST API Endpoints |
+
+**Features**:
+| Metrik | Beschreibung | Prometheus Metric |
+|--------|--------------|-------------------|
+| CPU Usage | Per-Core und Gesamt | `hardware_cpu_usage_percent` |
+| CPU Frequency | Aktuelle/Min/Max MHz | `hardware_cpu_frequency_mhz` |
+| Memory | Used/Available/Cached | `hardware_memory_usage_bytes` |
+| Disk I/O | Read/Write IOPS, Bytes/s | `hardware_disk_*` |
+| Network | RX/TX Bytes, Packets, Errors | `hardware_network_*` |
+| GPU (NVIDIA) | VRAM, Utilization, Temp | `hardware_gpu_*` |
+| Temperature | CPU, GPU, Disk (wenn verfuegbar) | `hardware_temperature_celsius` |
+
+**Alert Thresholds (konfigurierbar)**:
+| Metrik | Warning | Critical |
+|--------|---------|----------|
+| CPU | 80% | 95% |
+| Memory | 85% | 95% |
+| Disk | 85% | 95% |
+| GPU Memory | 85% | 95% |
+| Temperature | 80°C | 95°C |
+
+**API Endpoints** (`/api/v1/hardware/*`, Admin-only):
+- `GET /status` - Vollstaendiger Hardware-Report
+- `GET /health` - Health-Check mit Alerts
+- `GET /cpu` - CPU-Metriken
+- `GET /memory` - Speicher-Metriken
+- `GET /disk` - Disk I/O Metriken
+- `GET /network` - Netzwerk-Metriken
+- `GET /gpu` - GPU-Metriken (NVIDIA via pynvml)
+- `GET /temperature` - Temperatur-Metriken
+
+**Dependencies hinzugefuegt**:
+- `psutil` - System-Metriken (CPU, Memory, Disk, Network)
+- `pynvml` - NVIDIA GPU Monitoring (optional)
+
+**Geaenderte Dateien**:
+- `app/main.py` - Hardware Router registriert
+
+---
+
+### Phase 9: Dream Features (ABGESCHLOSSEN)
+
+**Status**: ✅ Production-Ready
+**Plan**: `.claude/plans/scalable-swimming-pizza.md`
+
+**Phase 9.1: Document Comparison Service**
+
+| Service | Datei | Zeilen | Beschreibung |
+|---------|-------|--------|--------------|
+| **DocumentComparisonService** | `services/document_comparison_service.py` | ~700 | Text-/Struktur-Vergleich, Diff-Reports, Aehnlichkeitssuche |
+
+**Features**:
+- `compare_documents()` - Vergleicht zwei Dokumente (Text, Strukturiert, Visuell, Hybrid)
+- `generate_diff_report()` - Detaillierter Diff-Report mit Aenderungshistorie
+- `find_similar_documents()` - Findet aehnliche Dokumente via Embeddings
+- Text-Similarity via difflib SequenceMatcher
+- Feld-Vergleich mit Kategorisierung (financial, identification, metadata, other)
+- Significance-Bewertung (critical, high, medium, low)
+
+**ComparisonType Enum**:
+- `TEXT` - Reiner Textvergleich
+- `STRUCTURED` - Strukturierter Feldvergleich
+- `VISUAL` - Visueller Vergleich (PDF-Rendering)
+- `HYBRID` - Kombination aller Methoden
+
+---
+
+**Phase 9.2: Predictive Document Routing**
+
+| Service | Datei | Zeilen | Beschreibung |
+|---------|-------|--------|--------------|
+| **RoutingPredictor** | `ml/routing_predictor.py` | ~500 | ML-basierte Dokumenten-Zuweisung |
+| **RoutingFeatureExtractor** | `ml/routing_predictor.py` | ~200 | Feature-Extraktion fuer ML |
+
+**Features**:
+- `predict()` - Vorhersage des besten Bearbeiters/Abteilung
+- `train()` - Training mit historischen Routing-Daten
+- `update_from_feedback()` - Online-Learning via User-Feedback
+- `get_feature_importance()` - SHAP-aehnliche Erklaerungen
+
+**Feature-Kategorien**:
+- Dokumenttyp (one-hot encoded)
+- Betrag (normalisiert, log-transformiert)
+- Supplier/Kunde Frequenz
+- Zeitliche Features (Wochentag, Monat)
+- Text-Features (Laenge, Keywords)
+
+**RoutingTarget Enum**:
+- `USER` - Direktzuweisung an Benutzer
+- `DEPARTMENT` - Zuweisung an Abteilung
+- `WORKFLOW` - Automatischer Workflow-Start
+- `QUEUE` - In Warteschlange einreihen
+
+---
+
+**Phase 9.3: Enhanced NLQ with RAG**
+
+| Service | Datei | Beschreibung |
+|---------|-------|--------------|
+| **NLQService** | `ai/nlq_service.py` (erweitert) | RAG-Integration fuer kontextuelle Antworten |
+
+**Neue Features**:
+- `_process_chat_query_with_rag()` - RAG-basierte Abfrageverarbeitung
+- Semantische Suche via Qdrant/pgvector
+- Chunk-Retrieval mit Relevanz-Ranking
+- Quellenangaben in Antworten
+- Kontext-Fenster-Management (4k/8k Tokens)
+
+**RAG Pipeline**:
+1. Query → Embedding (SentenceTransformer)
+2. Vector Search → Top-K Chunks
+3. Reranking → Relevanz-Sortierung
+4. LLM Query mit Kontext
+5. Response mit Quellenangaben
+
+---
+
+**Phase 9.4: API Endpoints fuer Dream Features**
+
+**Neue API-Dateien**:
+- `app/api/v1/compare.py` - Document Comparison Endpoints (~500 Zeilen)
+- `app/api/v1/routing.py` - Predictive Routing Endpoints (~500 Zeilen)
+
+**Compare API Endpoints** (`/api/v1/compare/*`):
+- `POST /documents` - Zwei Dokumente vergleichen
+- `GET /diff/{doc_id_1}/{doc_id_2}` - Diff-Report abrufen
+- `GET /similar/{doc_id}` - Aehnliche Dokumente finden
+- `POST /batch` - Batch-Vergleich (max 20)
+- `GET /duplicates` - Potentielle Duplikate finden
+
+**Routing API Endpoints** (`/api/v1/routing/*`):
+- `POST /predict` - Routing-Vorhersage
+- `POST /feedback` - Feedback fuer Online-Learning
+- `POST /train` - Modell-Training starten
+- `GET /model/info` - Modell-Informationen
+- `GET /suggestions/{doc_id}` - Quick-Suggestions
+- `POST /auto-route/{doc_id}` - Automatisches Routing
+
+**Response-Schemas**:
+- `ComparisonResultResponse` - Vergleichsergebnis mit Scores
+- `DiffReportResponse` - Detaillierter Diff-Report
+- `SimilarDocumentResponse` - Aehnliches Dokument mit Score
+- `RoutingPredictionResponse` - Routing-Vorhersage mit Confidence
+- `TrainingResultResponse` - Training-Statistiken
+
+---
+
+**Phase 9.5: Tests fuer Phase 9**
+
+**Neue Test-Dateien**:
+- `tests/unit/services/test_document_comparison_service.py` (~400 Zeilen)
+- `tests/unit/ml/test_routing_predictor.py` (~450 Zeilen)
+- `tests/unit/api/test_compare_api.py` (~400 Zeilen)
+- `tests/unit/api/test_routing_api.py` (~400 Zeilen)
+
+**Test-Kategorien**:
+- Enum/Dataclass Tests
+- Service-Methoden Tests
+- Error-Handling Tests
+- Multi-Tenant Isolation Tests
+- Request/Response Schema Tests
+- Edge Cases
+
+**Geaenderte Dateien**:
+- `app/main.py` - Router-Registrierung fuer compare und routing
+
+---
+
+### Phase 8: Deutsche Fachsprache (ABGESCHLOSSEN)
+
+**Status**: ✅ Production-Ready
+**Plan**: `.claude/plans/scalable-swimming-pizza.md`
+
+**Neue Verzeichnisstruktur**:
+```
+app/data/industry_vocabularies/
+├── __init__.py             # Helper-Funktionen (load_vocabulary, get_term, etc.)
+├── baugewerbe.json         (~60 Terme, Bau-Fachsprache)
+├── handwerk.json           (~55 Terme, Handwerks-Begriffe)
+├── medizin.json            (~70 Terme, Medizinische Fachbegriffe)
+├── recht.json              (~60 Terme, Juristische Terminologie)
+├── handel.json             (~55 Terme, Kaufmaennische Begriffe)
+└── it.json                 (~55 Terme, IT-Fachsprache)
+```
+
+**Neue Services**:
+
+| Service | Datei | Zeilen | Beschreibung |
+|---------|-------|--------|--------------|
+| **IndustryVocabularyService** | `ocr/industry_vocabulary_service.py` | ~400 | Branchenerkennung, Varianten-Korrektur, Abkuerzungen |
+
+**IndustryVocabularyService Features**:
+- `detect_industry(text)` - Automatische Branchenerkennung via Keywords
+- `apply_industry_corrections(text)` - OCR-Varianten zu kanonischen Termen korrigieren
+- `get_abbreviation_expansion(abbrev)` - Abkuerzungen expandieren (VOB, HOAI, MwSt, etc.)
+- `get_term_info(term)` - Term-Details abrufen
+- `get_statistics()` - Vokabular-Statistiken
+
+**IndustryType Enum**:
+- `BAUGEWERBE` - Bau und Bauwesen
+- `HANDWERK` - Handwerksbetriebe
+- `MEDIZIN` - Medizin und Gesundheit
+- `RECHT` - Juristische Dokumente
+- `HANDEL` - Handel und Kaufleute
+- `IT` - Informationstechnologie
+- `GENERAL` - Fallback fuer unbekannte Branchen
+
+**GermanTextPostprocessor Integration**:
+- Neuer Parameter: `use_industry_vocabulary=True`
+- Automatische Branchenerkennung im postprocess() Flow
+- Explizite Branche via `options={"industry": "baugewerbe"}`
+- Skip via `options={"skip_industry": True}`
+- Stats enthalten `industry_corrections` Counter
+
+**Geaenderte Dateien**:
+- `app/services/german_text_postprocessor.py` - Industry Vocabulary Integration
+
+**Tests erstellt**:
+- `tests/unit/data/test_industry_vocabularies.py` - 25 Tests (JSON-Validierung, Struktur, Helpers)
+- `tests/unit/services/ocr/test_industry_vocabulary_service.py` - 30 Tests (Detection, Corrections, Abbreviations)
+- `tests/unit/services/test_german_text_postprocessor_industry.py` - 20 Tests (Integration)
+
+**JSON-Struktur (alle Vokabulare)**:
+```json
+{
+  "industry": "baugewerbe",
+  "version": "1.0.0",
+  "language": "de",
+  "terms": {
+    "estrich": {"canonical": "Estrich", "variants": ["Estrlch", "Estr1ch"], "category": "material"}
+  },
+  "compounds": [
+    {"word": "Baustelleneinrichtung", "parts": ["Baustellen", "einrichtung"]}
+  ],
+  "abbreviations": {"VOB": "Vergabe- und Vertragsordnung fuer Bauleistungen"},
+  "detection_keywords": ["baustelle", "rohbau", "estrich"]
+}
+```
+
+---
+
+### Phase 6: Proaktive Intelligenz - Erweitern (ABGESCHLOSSEN)
+
+**Status**: ✅ Production-Ready
+**Plan**: `.claude/plans/scalable-swimming-pizza.md`
+
+**Neue Services erstellt**:
+
+| Service | Datei | Zeilen | Beschreibung |
+|---------|-------|--------|--------------|
+| **DeadlineInsightsService** | `orchestration/deadline_insights_service.py` | ~400 | Skonto, Vertraege, Zahlungen, Aufbewahrungsfristen |
+| **AnomalyInsightsService** | `orchestration/anomaly_insights_service.py` | ~500 | Preis-, Volumen-, Timing-Anomalien, Duplikat-Muster |
+| **WorkflowInsightsService** | `orchestration/workflow_insights_service.py` | ~350 | Batch-Genehmigungen, Bottlenecks, Automatisierung |
+| **DataEnrichmentInsightsService** | `orchestration/data_enrichment_insights_service.py` | ~300 | Fehlende Daten, Duplikate, Inkonsistenzen |
+
+**Neue Insight-Typen**:
+- `skonto_expiring` - Skonto laeuft in X Tagen ab
+- `contract_cancellation` - Kuendigungsfrist naht
+- `payment_overdue` - Zahlung ueberfaellig
+- `retention_expiry` - Aufbewahrungsfrist laeuft ab
+- `price_anomaly` - Preis weicht stark ab (Z-Score)
+- `volume_anomaly` - Volumen-Abweichung
+- `duplicate_pattern` - Verdaechtige Duplikate
+- `batch_approval_suggestion` - Genehmigungen buendeln
+- `workflow_bottleneck` - Engpass im Workflow
+- `automation_suggestion` - Automatisierungsvorschlag
+- `missing_data` - Unvollstaendige Stammdaten
+- `duplicate_entity` - Duplikat-Warnung (Jaccard)
+- `data_inconsistency` - Daten-Inkonsistenz
+
+**API Endpoints** (`/api/v1/proactive-insights/*`):
+- `GET /` - Alle Insights abrufen
+- `GET /deadline` - Deadline-Warnungen
+- `GET /anomaly` - Anomalie-Alerts
+- `GET /workflow` - Workflow-Optimierung
+- `GET /data-quality/summary` - Datenqualitaets-Uebersicht
+- `POST /feedback` - Insight-Feedback
+
+**Tests erstellt**:
+- `test_deadline_insights_service.py` - 17 Tests (Singleton, DeadlineType, Skonto, Contracts, Payment, Retention)
+- `test_anomaly_insights_service.py` - 15 Tests (Z-Score, Price, Volume, Invoice Pattern, Duplicates)
+- `test_workflow_insights_service.py` - 14 Tests (Batch Approvals, Bottlenecks, Automation, Workload)
+- `test_data_enrichment_insights_service.py` - 16 Tests (Missing Data, Duplicates, Inconsistencies, Quality Summary)
+- `test_proactive_insights_api.py` - 15 Tests (Auth, Endpoints, Validation, Error Handling)
+
+**Geaenderte Dateien**:
+- `app/main.py` - Router registriert
+- `app/api/v1/proactive_insights.py` - NEU: API Endpoints
+- `app/services/orchestration/__init__.py` - Exports hinzugefuegt
+
+**Architektur-Merkmale**:
+- Singleton-Pattern fuer alle Services
+- Async/await mit SQLAlchemy
+- Dataclass-basierte Result-Typen
+- Z-Score fuer statistische Anomalien
+- Jaccard-Similarity fuer Duplikat-Erkennung
+- Prioritaets-basierte Sortierung (critical > high > medium > low)
+
+---
+
+### Phase 5.4: Payment Automation (Strategische Roadmap)
+
+**Status**: ✅ Production-Ready
+
+**Core Service**: `PaymentAutomationService` (`app/services/banking/payment_automation_service.py`)
+
+**Features**:
+| Feature | Beschreibung |
+|---------|--------------|
+| Zahlungsvorschlaege | Intelligente Generierung basierend auf Strategie |
+| Skonto-Optimierung | Maximiert Skonto-Ersparnis durch Timing |
+| Payment Batches | Gruppierung mehrerer Zahlungen |
+| SEPA-Export | pain.001 Datei-Generierung |
+| Skonto-Alerts | Warnungen vor ablaufenden Fristen |
+
+**Zahlungsstrategien**:
+- `skonto_optimized` - Maximiert Skonto-Ersparnis
+- `cashflow_optimized` - Minimiert Liquiditaetsabfluss
+- `deadline_based` - Zahlt kurz vor Faelligkeit
+- `immediate` - Sofortige Zahlung
+
+**Payment Prioritaeten**:
+- `critical` - Sofort zahlen (abgelaufen, Mahnung)
+- `high` - Skonto laeuft bald ab
+- `normal` - Regulaere Zahlung
+- `low` - Kann warten
+
+**API Endpoints** (`/api/v1/banking/payment-automation/*`):
+- `GET /suggestions` - Zahlungsvorschlaege generieren
+- `GET /batches` - Batches auflisten
+- `POST /batches` - Batch erstellen
+- `POST /batches/optimized` - Optimierten Batch erstellen
+- `GET /batches/{id}` - Batch-Details
+- `POST /batches/{id}/approve` - Batch genehmigen
+- `POST /batches/{id}/reject` - Batch ablehnen
+- `POST /batches/{id}/sepa` - SEPA-Datei generieren
+- `GET /schedule` - Zahlungsplan abrufen
+- `GET /statistics` - Statistiken abrufen
+- `GET /config` - Konfiguration abrufen
+- `PATCH /config` - Konfiguration aktualisieren
+- `GET /skonto-alerts` - Skonto-Warnungen
+
+**Datenmodelle**:
+- `PaymentSuggestion` - Einzelner Zahlungsvorschlag
+- `PaymentBatch` - Gruppe von Zahlungen
+- `PaymentSchedule` - Zahlungskalender
+- `AutomationConfig` - Konfiguration
+
+**Geaenderte Dateien**:
+- `app/services/banking/payment_automation_service.py` - Service-Implementierung
+- `app/services/banking/__init__.py` - Exports hinzugefuegt
+- `app/api/v1/banking.py` - API Endpoints + Pydantic Models
+
+---
+
+### Bugfixes nach PC-Neustart
+
+**Problem 1**: SQLAlchemy `metadata` Konflikt in DLPAuditLog
+- **Datei**: `app/db/models.py:15597`
+- **Fehler**: `sqlalchemy.exc.InvalidRequestError: Attribute name 'metadata' is reserved`
+- **Fix**: `metadata` → `log_metadata` umbenannt
+- **Auch geaendert**: `app/services/dlp/dlp_service.py:806`
+
+**Problem 2**: BPMN Models Import-Fehler
+- **Datei**: `app/db/models.py:15624`
+- **Fehler**: `ModuleNotFoundError: 'app.db.models' is not a package`
+- **Ursache**: Python Modul-Konflikt zwischen `models.py` (Datei) und `models/` (Verzeichnis)
+- **Fix**: Import entfernt, BPMN Models direkt via `from app.db.models.bpmn import ...` nutzen
+
+**Problem 3**: Fehlende PyJWT Dependency
+- **Datei**: `app/api/v1/websocket.py:17`
+- **Fehler**: `ModuleNotFoundError: No module named 'jwt'`
+- **Fix**: `PyJWT>=2.8.0` zu `requirements.txt` hinzugefuegt
+- **Status**: Backend-Container wird neu gebaut
+
+---
+
+### Enterprise TODOs Phase 3 - Codebase Audit
+
+**Status**: ✅ Alle TODOs bereits implementiert
+
+#### Audit-Ergebnis: 22 vermeintliche TODOs geprueft
+
+| Kategorie | Anzahl | Ergebnis |
+|-----------|--------|----------|
+| **Backend (3A)** | 8 | ✅ 6 bereits implementiert, 2 Future Work |
+| **Frontend (3B)** | 11 | ✅ Alle bereits implementiert |
+| **Infrastruktur** | 3 | 🔮 Future Work (SMTP, Vault, TSA) |
+
+#### Backend TODOs (Bereits Implementiert)
+
+| TODO | Datei | Status |
+|------|-------|--------|
+| User-Gruppen aus Rollen | `bpmn.py:583-586` | ✅ Zeile 586: `[role.name for role in current_user.roles]` |
+| DocumentType.OFFER | `models.py:111` | ✅ `OFFER = "offer"` im Enum |
+| Company-Filter | `holding_kpi_service.py:58-67` | ✅ UserCompany JOIN implementiert |
+| Entity Name Join | `nlq_service.py:634-636` | ✅ `outerjoin(BusinessEntity, ...)` |
+| Expected Income | `banking_fints.py:610-624` | ✅ InvoiceTracking Query |
+
+#### Backend TODOs (Future Work)
+
+| TODO | Datei | Abhaengigkeit |
+|------|-------|---------------|
+| SEPA-Transfers | `banking_tasks.py:2010` | SEPATransfer Model + Migration |
+| AdminSettings | `master_data_hygiene_service.py:1077` | AdminSettings Tabelle |
+
+#### Frontend TODOs (Bereits Implementiert)
+
+| TODO | Datei | Status |
+|------|-------|--------|
+| Order Sections | `StructuredReviewPanel.tsx:256-450` | ✅ Vollstaendige OrderSections Komponente |
+| Contract Sections | `StructuredReviewPanel.tsx:590-750` | ✅ Vollstaendige ContractSections Komponente |
+| Field Navigation (J/K) | `use-keyboard-shortcuts.ts:84-92` | ✅ J/K Keys implementiert |
+| Field Confirmation | `use-keyboard-shortcuts.ts:119-130` | ✅ Enter/Ctrl+Shift+Enter |
+| Emergency Edit | `EmergencyPage.tsx:84-102` | ✅ API Call + State Update |
+| Cashflow Payment | `CashflowDashboard.tsx:62-68` | ✅ Navigation zu Rechnungsliste |
+| Console.log Cleanup | `sw-custom.ts:25-30` | ✅ SW_DEBUG konditionell |
+
+#### Field Navigation Hook
+
+**Datei**: `frontend/src/features/ocr-review/hooks/use-field-navigation.ts`
+- `goToNext()` / `goToPrevious()` - Feld-Navigation
+- `focusField(path)` - Direktes Fokussieren
+- `MutationObserver` - Dynamische Feld-Updates
+- `data-field-nav` Attribut fuer navigierbare Felder
+
+---
+
+### Enterprise TODOs Phase 2
+
+**Status**: ✅ Production-Ready
+
+#### 1. Import Statistics Chart-Daten (imports.py)
+
+| Feature | Beschreibung |
+|---------|--------------|
+| **Chart-Daten Query** | `imports_by_day` mit daily aggregation (count, successful, failed) |
+| **Zeitraum** | Letzte 30 Tage |
+
+**Geaenderte Dateien**:
+- `app/api/v1/imports.py:1028-1051` - Chart-Daten Query hinzugefuegt
+
+**API Response (imports_by_day)**:
+```json
+[
+  {"date": "2026-01-15", "count": 45, "successful": 42, "failed": 3},
+  {"date": "2026-01-16", "count": 38, "successful": 37, "failed": 1}
+]
+```
+
+#### 2. TransactionsView Navigation (Frontend)
+
+| Feature | Beschreibung |
+|---------|--------------|
+| **Transaction Click** | Navigiert zum ersten Dokument des Vorgangs |
+| **Step Click** | Navigiert zum Dokument-Viewer |
+
+**Geaenderte Dateien**:
+- `frontend/src/features/ablage/components/TransactionsView.tsx:391-422` - Navigation implementiert
+
+**Navigation Routes**:
+- Transaction → `/documents/$documentId` (erstes Dokument)
+- Step → `/documents/$documentId` (spezifisches Dokument)
+
+#### 3. ValidationDashboard Search & Sort (Backend + Frontend)
+
+| Feature | Beschreibung |
+|---------|--------------|
+| **Volltextsuche** | Suche in file_path, ground_truth_text, document_type |
+| **Sortierung** | 7 Felder mit asc/desc |
+| **Whitelist** | SQL-Injection Schutz durch Feld-Whitelist |
+
+**Geaenderte Dateien Backend**:
+- `app/services/ocr_training_service.py:159-254` - Search + Sort Parameter
+- `app/api/v1/training.py:79-126` - API Endpoint Parameter
+
+**Geaenderte Dateien Frontend**:
+- `frontend/src/features/validation/api/validation-api.ts:33-87` - ListSamplesParams
+- `frontend/src/features/validation/components/ValidationDashboard.tsx:38-109` - Query-Integration
+
+**Sortierfelder**:
+- `created_at`, `updated_at`, `document_type`, `status`, `difficulty`, `business_priority`, `language`
+
+**API Usage**:
+```bash
+GET /api/v1/training/samples?search=rechnung&sort_by=created_at&sort_order=desc
+```
+
+---
+
+## 2026-01-20
+
+### Enterprise Security: MFA & DLP
+
+**Commits**: `fab1007b`, `ade2735e`
+**Status**: Production-Ready
+
+#### Multi-Factor Authentication (Commit fab1007b)
+
+| Feature | Beschreibung |
+|---------|--------------|
+| **MFA Backend Service** | TOTP (RFC 6238) mit Backup-Codes, AES-256-GCM Secret-Encryption |
+| **MFA API Endpoints** | /mfa/setup, /verify, /disable, /regenerate, /validate, /backup |
+| **MFA Frontend UI** | 4-Step Setup Wizard, Status-Display, QR-Code Setup |
+
+**Neue Dateien Backend**:
+- `app/services/auth/mfa_service.py` - MFAService mit TOTP + Backup-Codes
+- `app/api/v1/mfa.py` - 7 API Endpoints
+
+**Neue Dateien Frontend**:
+- `frontend/src/features/security/components/MFASetup.tsx`
+- `frontend/src/features/security/components/MFAStatus.tsx`
+- `frontend/src/app/routes/settings.tsx` (Parent Layout)
+- `frontend/src/app/routes/settings.security.tsx`
+
+**Security**:
+- TOTP Secrets verschluesselt (AES-256-GCM)
+- Backup-Codes bcrypt-gehashed
+- 30-Sekunden TOTP-Fenster (RFC 6238)
+
+#### Data Loss Prevention (Commit ade2735e)
+
+| Feature | Beschreibung |
+|---------|--------------|
+| **DLP Backend Service** | Policy-basierte Zugriffskontrollen, Wasserzeichen, Sensitive Data Detection |
+| **DLP API Endpoints** | /dlp/policies CRUD, /dlp/check, /dlp/scan |
+| **DLP Frontend UI** | Admin-Seite /admin/dlp mit Policy-Management + Scanner |
+
+**Neue Dateien Backend**:
+- `app/services/dlp/dlp_service.py` - DLPService mit 5 Actions (allow/block/watermark/notify/audit_only)
+- `app/api/v1/dlp.py` - 8 API Endpoints
+
+**Neue Dateien Frontend**:
+- `frontend/src/features/admin/dlp/` - API, Hooks, Components, Page
+- `frontend/src/app/routes/admin.dlp.tsx`
+
+**DLP Features**:
+- Download-Restriktionen (Rollen, Zeitfenster, Tags)
+- Automatische Wasserzeichen (Diagonal, Corner, Username, Timestamp)
+- Sensitive Data Detection (Kreditkarte, IBAN, SSN, Email, Telefon)
+- Audit-Logging aller Zugriffe
+
+---
+
+### Enterprise UI & Real-Time Collaboration
+
+**Commits**: `897742c2`, `bbd19244`
+**Status**: ✅ Production-Ready
+
+#### Quick Wins UI (Commit 897742c2)
+
+| Feature | Beschreibung |
+|---------|--------------|
+| **Audit-Log Viewer** | Admin-Seite `/admin/audit-logs` mit Filterung, Export, Statistiken |
+| **Facetten-Filter** | Sidebar-Komponente fuer TanStack Table mit Multi-Select |
+| **Loading Skeletons** | SkeletonTable, SkeletonCard, SkeletonList Komponenten |
+| **Accessibility** | Skip-to-Main-Content Link, `lang="de"` im HTML |
+| **Sidebar** | Audit-Logs Link im Admin-Bereich hinzugefuegt |
+
+#### Real-Time Collaboration (Commit bbd19244)
+
+| Feature | Beschreibung |
+|---------|--------------|
+| **WebSocket Comment Events** | 6 neue Event-Typen: created/updated/deleted/replied/reaction_added/removed |
+| **EventBroadcaster** | Comment-Handler und Convenience-Methods hinzugefuegt |
+| **CommentService** | Broadcastet Events bei create/update/delete/reactions |
+| **CommentsPanel** | Live-Status-Indikator (Wifi/WifiOff Badge) |
+| **useCommentRealtime Hook** | Document-spezifische Comment-Subscriptions |
+| **useMentionNotifications Hook** | User-spezifische @-Mention Alerts |
+
+#### Neue Dateien
+
+```
+frontend/src/
+├── app/routes/admin.audit-logs.tsx
+├── components/ui/
+│   ├── facet-filter/
+│   │   ├── FacetFilter.tsx
+│   │   ├── FacetGroup.tsx
+│   │   └── FacetItem.tsx
+│   └── skeleton/
+│       ├── SkeletonTable.tsx
+│       ├── SkeletonCard.tsx
+│       └── SkeletonList.tsx
+└── features/admin/audit/
+    ├── audit-api.ts
+    └── AuditLogTable.tsx
+```
+
+#### Geaenderte Dateien
+
+| Datei | Aenderung |
+|-------|-----------|
+| `websocket.ts` | +6 Comment Event-Typen, useCommentRealtime, useMentionNotifications |
+| `event_broadcaster.py` | +Comment Handler, +Convenience Methods |
+| `comment_service.py` | +WebSocket Broadcasting bei allen Mutations |
+| `CommentsPanel.tsx` | +Live-Status, +Auth-Integration, +Real-Time Toast |
+| `Sidebar.tsx` | +Audit-Logs Link |
+
+---
+
 ## 2026-01-19
 
 ### Security Hardening - BusinessContact & CustomerDetection

@@ -73,11 +73,13 @@ rich==13.7.0
 
 # Monitoring & Logging
 psutil==5.9.7
+pynvml==11.5.0  # NVIDIA GPU monitoring (optional, graceful degradation if unavailable)
 prometheus-client==0.19.0
 structlog==24.1.0
 
 # Authentication & Security
 python-jose[cryptography]==3.3.0
+PyJWT>=2.8.0  # WebSocket JWT-Authentication
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.9
 bcrypt==4.1.2
