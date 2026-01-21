@@ -15,6 +15,7 @@ import {
   CheckCircle,
   AlertTriangle,
   Loader2,
+  TestTube2,
 } from 'lucide-react';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -33,6 +34,7 @@ import { FolderConfigList } from '../components/FolderConfigList';
 import { FolderConfigForm } from '../components/FolderConfigForm';
 import { ImportLogTable } from '../components/ImportLogTable';
 import { ImportRuleBuilder } from '../components/ImportRuleBuilder';
+import { RuleTestingPanel } from '../components/RuleTestingPanel';
 import { useImportStats, useImportRules } from '../hooks/use-import-queries';
 
 // ==================== Stats Cards ====================
@@ -296,7 +298,7 @@ export function ImportsPage() {
       <ImportStatsCards />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
             Uebersicht
@@ -312,6 +314,10 @@ export function ImportsPage() {
           <TabsTrigger value="rules" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             Regeln
+          </TabsTrigger>
+          <TabsTrigger value="testing" className="flex items-center gap-2">
+            <TestTube2 className="h-4 w-4" />
+            Testen
           </TabsTrigger>
           <TabsTrigger value="logs" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
@@ -350,6 +356,10 @@ export function ImportsPage() {
 
         <TabsContent value="rules" className="pt-4">
           <ImportRuleBuilder onSave={() => {}} />
+        </TabsContent>
+
+        <TabsContent value="testing" className="pt-4">
+          <RuleTestingPanel />
         </TabsContent>
 
         <TabsContent value="logs" className="pt-4">

@@ -548,7 +548,20 @@ export function useRetryImport() {
 }
 
 /**
- * Import-Statistiken
+ * Frontend Stats Response fuer ImportsPage
+ */
+export interface ImportDashboardStats {
+  documentsImportedToday: number;
+  documentsImportedThisWeek: number;
+  pendingImports: number;
+  failedImportsLast24h: number;
+  totalImports: number;
+  successfulImports: number;
+  avgProcessingTimeMs: number;
+}
+
+/**
+ * Import-Statistiken (transformiert fuer Dashboard)
  */
 export function useImportStats(
   dateFrom?: string,
@@ -557,7 +570,19 @@ export function useImportStats(
 ) {
   return useQuery({
     queryKey: importQueryKeys.stats(dateFrom, dateTo),
-    queryFn: () => importLogsService.getStats(dateFrom, dateTo),
+    queryFn: async (): Promise<ImportDashboardStats> => {
+      const stats = await importLogsService.getStats(dateFrom, dateTo);
+      // Transformiere Backend-Stats zu Frontend-Dashboard-Stats
+      return {
+        documentsImportedToday: stats.documentsCreated ?? stats.successfulImports ?? 0,
+        documentsImportedThisWeek: stats.totalImports ?? 0,
+        pendingImports: 0, // Backend liefert dies nicht direkt, wird aus Logs berechnet
+        failedImportsLast24h: stats.failedImports ?? 0,
+        totalImports: stats.totalImports ?? 0,
+        successfulImports: stats.successfulImports ?? 0,
+        avgProcessingTimeMs: stats.avgProcessingTimeMs ?? 0,
+      };
+    },
     staleTime: STALE_TIMES.stats,
     gcTime: GC_TIMES.stats,
     enabled: options?.enabled !== false,
