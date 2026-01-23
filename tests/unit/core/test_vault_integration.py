@@ -405,6 +405,282 @@ class TestVaultEncryption:
         assert connected_client._client is not None
 
 
+class TestVaultTransitEncryption:
+    """Tests für die neuen Transit Encryption Methoden."""
+
+    @pytest.fixture
+    def connected_client(self):
+        """Erstelle verbundenen VaultClient mit Mock."""
+        client = VaultClient(
+            vault_addr="https://vault.example.com:8200",
+            vault_token="s.token123",
+        )
+        client._authenticated = True
+        client._client = MagicMock()
+        return client
+
+    def test_transit_encrypt_success(self, connected_client):
+        """transit_encrypt sollte verschlüsselte Daten zurückgeben."""
+        mock_response = {"data": {"ciphertext": "vault:v1:encrypted_data"}}
+        connected_client._client.secrets.transit.encrypt_data.return_value = mock_response
+
+        result = connected_client.transit_encrypt(
+            plaintext="sensitive data",
+            key_name="test-key",
+        )
+
+        assert result == "vault:v1:encrypted_data"
+        connected_client._client.secrets.transit.encrypt_data.assert_called_once()
+
+    def test_transit_encrypt_with_context(self, connected_client):
+        """transit_encrypt sollte Context unterstützen."""
+        mock_response = {"data": {"ciphertext": "vault:v1:context_encrypted"}}
+        connected_client._client.secrets.transit.encrypt_data.return_value = mock_response
+
+        result = connected_client.transit_encrypt(
+            plaintext="data",
+            key_name="test-key",
+            context="user:123",
+        )
+
+        assert result is not None
+        # Verify context was passed (base64 encoded)
+        call_args = connected_client._client.secrets.transit.encrypt_data.call_args
+        assert call_args is not None
+
+    def test_transit_encrypt_returns_none_on_error(self, connected_client):
+        """transit_encrypt sollte None bei Fehler zurückgeben."""
+        connected_client._client.secrets.transit.encrypt_data.side_effect = Exception("Transit error")
+
+        result = connected_client.transit_encrypt(
+            plaintext="data",
+            key_name="nonexistent-key",
+        )
+
+        assert result is None
+
+    def test_transit_decrypt_success(self, connected_client):
+        """transit_decrypt sollte entschlüsselte Daten zurückgeben."""
+        import base64
+        plaintext_b64 = base64.b64encode(b"decrypted data").decode()
+        mock_response = {"data": {"plaintext": plaintext_b64}}
+        connected_client._client.secrets.transit.decrypt_data.return_value = mock_response
+
+        result = connected_client.transit_decrypt(
+            ciphertext="vault:v1:encrypted",
+            key_name="test-key",
+        )
+
+        assert result == "decrypted data"
+
+    def test_transit_decrypt_returns_none_on_error(self, connected_client):
+        """transit_decrypt sollte None bei Fehler zurückgeben."""
+        connected_client._client.secrets.transit.decrypt_data.side_effect = Exception("Decrypt error")
+
+        result = connected_client.transit_decrypt(
+            ciphertext="invalid",
+            key_name="test-key",
+        )
+
+        assert result is None
+
+    def test_transit_rewrap_success(self, connected_client):
+        """transit_rewrap sollte neu verschlüsselte Daten zurückgeben."""
+        mock_response = {"data": {"ciphertext": "vault:v2:rewrapped"}}
+        connected_client._client.secrets.transit.rewrap_data.return_value = mock_response
+
+        result = connected_client.transit_rewrap(
+            ciphertext="vault:v1:old",
+            key_name="test-key",
+        )
+
+        assert result == "vault:v2:rewrapped"
+
+    def test_transit_create_key_success(self, connected_client):
+        """transit_create_key sollte True zurückgeben bei Erfolg."""
+        result = connected_client.transit_create_key(
+            key_name="new-key",
+            key_type="aes256-gcm96",
+        )
+
+        assert result is True
+        connected_client._client.secrets.transit.create_key.assert_called_once()
+
+    def test_transit_create_key_handles_existing(self, connected_client):
+        """transit_create_key sollte True zurückgeben wenn Key existiert."""
+        connected_client._client.secrets.transit.create_key.side_effect = Exception("key already exists")
+
+        result = connected_client.transit_create_key(key_name="existing-key")
+
+        assert result is True
+
+    def test_transit_rotate_key_success(self, connected_client):
+        """transit_rotate_key sollte True zurückgeben bei Erfolg."""
+        result = connected_client.transit_rotate_key(key_name="test-key")
+
+        assert result is True
+        connected_client._client.secrets.transit.rotate_key.assert_called_once()
+
+    def test_transit_get_key_info_success(self, connected_client):
+        """transit_get_key_info sollte Key-Info zurückgeben."""
+        mock_response = {
+            "data": {
+                "name": "test-key",
+                "type": "aes256-gcm96",
+                "latest_version": 3,
+            }
+        }
+        connected_client._client.secrets.transit.read_key.return_value = mock_response
+
+        result = connected_client.transit_get_key_info(key_name="test-key")
+
+        assert result["name"] == "test-key"
+        assert result["latest_version"] == 3
+
+
+class TestVaultTransitEncryptionService:
+    """Tests für VaultTransitEncryptionService."""
+
+    def test_encryption_service_singleton(self):
+        """VaultTransitEncryptionService sollte Singleton sein."""
+        from app.core.config.vault_client import VaultTransitEncryptionService
+
+        # Reset singleton
+        VaultTransitEncryptionService._instance = None
+
+        instance1 = VaultTransitEncryptionService.get_instance()
+        instance2 = VaultTransitEncryptionService.get_instance()
+
+        assert instance1 is instance2
+
+        # Cleanup
+        VaultTransitEncryptionService._instance = None
+
+    @patch('app.core.config.vault_client.VaultClient.get_instance')
+    def test_encryption_service_fallback_to_local(self, mock_get_instance):
+        """Service sollte auf lokale Verschlüsselung fallbacken."""
+        from app.core.config.vault_client import VaultTransitEncryptionService
+
+        # Mock VaultClient der nicht konfiguriert ist
+        mock_client = MagicMock()
+        mock_client.is_configured.return_value = False
+        mock_get_instance.return_value = mock_client
+
+        service = VaultTransitEncryptionService(
+            vault_client=mock_client,
+            fallback_to_local=True,
+        )
+        service._vault_available = False
+
+        # Mock die lokale Verschlüsselung
+        with patch('app.core.encryption.encrypt_data') as mock_encrypt:
+            mock_encrypt.return_value = "encrypted_local_data"
+
+            result = service.encrypt("test data", context="test")
+
+            # Ergebnis sollte local:-Prefix haben
+            assert result.startswith("local:")
+            mock_encrypt.assert_called_once()
+
+    def test_encryption_service_detects_transit_backend(self):
+        """Service sollte Transit-Backend aus Prefix erkennen."""
+        transit_ciphertext = "transit:vault:v1:encrypted_data_here"
+        assert transit_ciphertext.startswith("transit:")
+
+    def test_encryption_service_detects_local_backend(self):
+        """Service sollte lokales Backend aus Prefix erkennen."""
+        local_ciphertext = "local:base64_encrypted_data"
+        assert local_ciphertext.startswith("local:")
+
+    def test_encryption_service_handles_legacy_format(self):
+        """Service sollte Legacy-Format (ohne Prefix) als lokal behandeln."""
+        legacy_ciphertext = "some_legacy_encrypted_data_without_prefix"
+        assert not legacy_ciphertext.startswith("transit:")
+        assert not legacy_ciphertext.startswith("local:")
+
+
+class TestVaultTransitKeyNameValidation:
+    """Tests für Key-Name Validierung (Security: Path Traversal Prevention)."""
+
+    @pytest.fixture
+    def connected_client(self):
+        """Erstelle verbundenen VaultClient mit Mock."""
+        client = VaultClient(
+            vault_addr="https://vault.example.com:8200",
+            vault_token="s.token123",
+        )
+        client._authenticated = True
+        client._client = MagicMock()
+        return client
+
+    def test_valid_key_names(self, connected_client):
+        """Gültige Key-Namen sollten akzeptiert werden."""
+        valid_names = [
+            "ablage-encryption-key",
+            "test_key",
+            "MyKey123",
+            "a",
+            "key-with-dashes",
+            "key_with_underscores",
+        ]
+        for name in valid_names:
+            assert connected_client._validate_key_name(name) is True, f"'{name}' sollte gültig sein"
+
+    def test_invalid_key_names_path_traversal(self, connected_client):
+        """Path-Traversal-Versuche sollten abgelehnt werden."""
+        invalid_names = [
+            "../etc/passwd",
+            "..\\windows\\system32",
+            "key/../../../secret",
+            "/absolute/path",
+        ]
+        for name in invalid_names:
+            assert connected_client._validate_key_name(name) is False, f"'{name}' sollte abgelehnt werden"
+
+    def test_invalid_key_names_special_chars(self, connected_client):
+        """Sonderzeichen sollten abgelehnt werden."""
+        invalid_names = [
+            "key with spaces",
+            "key@symbol",
+            "key#hash",
+            "key$dollar",
+            "",
+            None,
+        ]
+        for name in invalid_names:
+            result = connected_client._validate_key_name(name) if name is not None else False
+            if name is None:
+                # None wird separat behandelt
+                continue
+            assert result is False, f"'{name}' sollte abgelehnt werden"
+
+    def test_invalid_key_name_too_long(self, connected_client):
+        """Zu lange Key-Namen sollten abgelehnt werden."""
+        long_name = "a" * 65  # Max 64 Zeichen
+        assert connected_client._validate_key_name(long_name) is False
+
+    def test_invalid_key_name_starts_with_number(self, connected_client):
+        """Key-Namen die mit Zahl beginnen sollten abgelehnt werden."""
+        assert connected_client._validate_key_name("123key") is False
+        assert connected_client._validate_key_name("0test") is False
+
+    def test_transit_encrypt_rejects_invalid_key(self, connected_client):
+        """transit_encrypt sollte ungültige Key-Namen ablehnen."""
+        result = connected_client.transit_encrypt(
+            plaintext="test",
+            key_name="../malicious",
+        )
+        assert result is None
+
+    def test_transit_decrypt_rejects_invalid_key(self, connected_client):
+        """transit_decrypt sollte ungültige Key-Namen ablehnen."""
+        result = connected_client.transit_decrypt(
+            ciphertext="vault:v1:test",
+            key_name="../../etc/passwd",
+        )
+        assert result is None
+
+
 class TestVaultConfigValidation:
     """Tests für Vault-Konfigurationsvalidierung."""
 
