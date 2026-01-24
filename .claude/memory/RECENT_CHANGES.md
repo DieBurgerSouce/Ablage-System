@@ -1,5 +1,116 @@
 # Recent Changes
 
+## 2026-01-24
+
+### Ralph Loop Session 5 - Final Critical Review
+
+**Gefundene Luecken in Session 4 API-Tests und Korrekturen**:
+
+| # | Luecke | Behebung |
+|---|--------|----------|
+| 1 | **test_interest_rates_api.py: Falscher Mock-Typ** | `get_bundesbank_rate_service` ist sync, gab aber AsyncMock zurueck → Korrigiert zu MagicMock |
+| 2 | **test_formula_api.py: Falsche Response-Feldnamen** | API gibt `formeln` + `formeln_gefunden` zurueck (deutsch!), Test erwartete englisch → Korrigiert |
+
+**Session 5 Review-Ergebnis**:
+- Syntax aller 3 API-Test-Dateien geprüft: OK
+- Mock-Typen korrigiert
+- Response-Feldnamen an API angepasst
+
+---
+
+### Ralph Loop Session 4 - Critical Senior Developer Review
+
+**Gefundene Luecke und Behebung**:
+
+| # | Luecke | Behebung |
+|---|--------|----------|
+| 1 | **Fehlende API-Tests fuer Features 18, 19, 20** | Service-Tests vorhanden, aber API-Endpoint-Tests fehlten komplett |
+
+**Neue API-Test-Dateien erstellt**:
+
+| Test-Datei | Feature | Getestete Endpoints |
+|------------|---------|---------------------|
+| `tests/unit/api/test_interest_rates_api.py` | 18 (Bundesbank) | `/dunning/interest-rates`, `/history`, `/calculate` |
+| `tests/unit/api/test_formula_api.py` | 19 (LaTeX) | `/formulas/extract`, `/parse`, `/validate` |
+| `tests/unit/api/test_tax_authority_export_api.py` | 20 (Steuerexport) | `/export/tax-authority/*` |
+
+**Tests pruefen**:
+- Authentifizierung (401 ohne Token)
+- Autorisierung (403 fuer Non-Superuser bei Feature 20)
+- Input-Validierung (422 bei ungueltigem Format)
+- Erfolgsfall (200 mit korrektem Response-Schema)
+- Error-Handling (500 bei Service-Fehlern)
+
+**Review-Ergebnis**: API-Tests erstellt (Bugs in Session 5 behoben).
+
+---
+
+### Ralph Loop Session 3 - Final Verification
+
+**Kritischer Bug gefunden und behoben**:
+
+| # | Luecke | Behebung |
+|---|--------|----------|
+| 1 | **Fehlendes Singleton `bundesbank_rate_service`** | Celery Task importierte nicht-existentes Singleton → Hinzugefuegt in bundesbank_rate_service.py |
+
+---
+
+### Ralph Loop Session 2 - Final Critical Review
+
+**Zusaetzliche Fixes nach zweitem Deep Review**:
+
+| # | Luecke | Behebung |
+|---|--------|----------|
+| 1 | **TaxAuthorityExportService ohne API** | Neue Endpoints in `/api/v1/archive.py`: `/export/tax-authority/*` |
+| 2 | **Fehlende count_records_by_category** | Methode zum Service hinzugefuegt fuer Preview-Endpoint |
+| 3 | **Compliance __init__.py Import-Fehler** | Imports korrigiert (ExportTable statt GDPdUTableDefinition) |
+| 4 | **Bundesbank Celery Task fehlte** | `update_bundesbank_basiszins` Task + Beat Schedule (1.1. + 1.7.) |
+| 5 | **Fehlende refresh_basiszins Methode** | Neue Methode fuer Cache-Invalidierung bei Basiszins-Updates |
+
+**Neue API Endpoints (TaxAuthorityExport)**:
+- `GET /api/v1/archive/export/tax-authority/tables` - Tabellendefinitionen
+- `POST /api/v1/archive/export/tax-authority/preview` - Export-Vorschau
+- `POST /api/v1/archive/export/tax-authority` - GDPdU-Export erstellen
+
+**Neue Celery Tasks**:
+- `banking-bundesbank-basiszins-jan` - 1. Januar 06:00
+- `banking-bundesbank-basiszins-jul` - 1. Juli 06:00
+
+**Tests erweitert**:
+- `test_tax_authority_export_service.py`: +3 Tests fuer count_records_by_category
+- `test_bundesbank_rate_service.py`: +2 Tests fuer refresh_basiszins
+
+---
+
+### Critical Senior Developer Review - Features 18, 19, 20
+
+**Gefundene Luecken und Behebungen**:
+
+| # | Luecke | Behebung |
+|---|--------|----------|
+| 1 | **Banking Endpoint nutzte Sync-Fallback** | `banking.py` /interest-rates jetzt async mit BundesbankRateService |
+| 2 | **Fehlende Basiszins-Historie/Berechnungs-Endpoints** | Neue Endpoints: `/interest-rates/history`, `/interest-rates/calculate` |
+| 3 | **Fehlende Formula Extraction API** | Neue Endpoints: `/ocr/formulas/extract`, `/formulas/parse`, `/formulas/validate` |
+| 4 | **Fehlende Unit Tests** | 3 neue Test-Dateien erstellt |
+
+**Neue Unit Tests**:
+- `tests/unit/services/test_bundesbank_rate_service.py` - Vollstaendige Tests fuer Feature 18
+- `tests/unit/services/ocr/test_formula_extraction_service.py` - Vollstaendige Tests fuer Feature 19
+- `tests/unit/services/compliance/test_tax_authority_export_service.py` - Vollstaendige Tests fuer Feature 20
+
+**API Erweiterungen**:
+- `GET /api/v1/banking/dunning/interest-rates` - Jetzt mit async Bundesbank-Abruf
+- `GET /api/v1/banking/dunning/interest-rates/history` - Historische Basiszinssaetze
+- `GET /api/v1/banking/dunning/interest-rates/calculate` - Verzugszins-Berechnung
+- `POST /api/v1/ocr/formulas/extract` - LaTeX-Formeln aus Text extrahieren
+- `POST /api/v1/ocr/formulas/parse` - Einzelne Formel parsen
+- `POST /api/v1/ocr/formulas/validate` - Formel-Syntax validieren
+
+**Dokumentation aktualisiert**:
+- `CLAUDE.md` Enterprise Features erweitert um Features 18, 19, 20, 15
+
+---
+
 ## 2026-01-21
 
 ### Critical Senior Developer Review
