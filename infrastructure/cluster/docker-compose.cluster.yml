@@ -1,0 +1,629 @@
+# =============================================================================
+# Ablage-System: Cluster Docker Compose
+# =============================================================================
+# Hochverfuegbares Deployment fuer 2-3 Nodes.
+#
+# Verwendung:
+#   Node 1: docker-compose -f docker-compose.cluster.yml --profile node1 up -d
+#   Node 2: docker-compose -f docker-compose.cluster.yml --profile node2 up -d
+#   Node 3: docker-compose -f docker-compose.cluster.yml --profile node3 up -d
+# =============================================================================
+
+version: '3.8'
+
+x-common-env: &common-env
+  POSTGRES_HOST: ${POSTGRES_HOST:-node1}
+  POSTGRES_PORT: 5432
+  POSTGRES_DB: ${POSTGRES_DB:-ablage}
+  POSTGRES_USER: ${POSTGRES_USER:-ablage}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD erforderlich}
+  REDIS_SENTINELS: ${REDIS_SENTINELS:-node1:26379,node2:26379,node3:26379}
+  REDIS_MASTER_NAME: ablage-redis
+  REDIS_PASSWORD: ${REDIS_PASSWORD}
+  MINIO_ENDPOINT: ${MINIO_ENDPOINT:-node3:9000}
+  MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY erforderlich}
+  MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY erforderlich}
+  SECRET_KEY: ${SECRET_KEY:?SECRET_KEY erforderlich}
+  CLUSTER_MODE: "true"
+  NODE_ID: ${NODE_ID:?NODE_ID erforderlich}
+
+services:
+  # ===========================================================================
+  # Node 1: Primary Database + Redis Master + API + Beat
+  # ===========================================================================
+
+  # PostgreSQL Primary (Node 1)
+  postgres-primary:
+    image: postgres:16-alpine
+    container_name: ablage-postgres-primary
+    profiles: ["node1"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ablage}
+      POSTGRES_USER: ${POSTGRES_USER:-ablage}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-primary.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    command:
+      - "postgres"
+      - "-c"
+      - "wal_level=replica"
+      - "-c"
+      - "max_wal_senders=10"
+      - "-c"
+      - "max_replication_slots=10"
+      - "-c"
+      - "hot_standby=on"
+      - "-c"
+      - "shared_buffers=4GB"
+      - "-c"
+      - "effective_cache_size=12GB"
+      - "-c"
+      - "max_connections=200"
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ablage} -d ${POSTGRES_DB:-ablage}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cluster
+
+  # Patroni fuer PostgreSQL HA (Node 1)
+  patroni-node1:
+    image: patroni:latest
+    container_name: ablage-patroni-node1
+    profiles: ["node1"]
+    restart: unless-stopped
+    environment:
+      PATRONI_NAME: node1
+      PATRONI_SCOPE: ablage-cluster
+      PATRONI_RESTAPI_LISTEN: 0.0.0.0:8008
+      PATRONI_RESTAPI_CONNECT_ADDRESS: ${NODE_IP:-node1}:8008
+      PATRONI_ETCD3_HOSTS: "'node1:2379','node2:2379','node3:2379'"
+      PATRONI_POSTGRESQL_LISTEN: 0.0.0.0:5432
+      PATRONI_POSTGRESQL_CONNECT_ADDRESS: ${NODE_IP:-node1}:5432
+      PATRONI_POSTGRESQL_DATA_DIR: /var/lib/postgresql/data
+      PATRONI_SUPERUSER_USERNAME: postgres
+      PATRONI_SUPERUSER_PASSWORD: ${POSTGRES_PASSWORD}
+      PATRONI_REPLICATION_USERNAME: replicator
+      PATRONI_REPLICATION_PASSWORD: ${REPLICATION_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./patroni.yml:/etc/patroni/config.yml:ro
+    ports:
+      - "8008:8008"
+    networks:
+      - cluster
+
+  # Redis Master (Node 1)
+  redis-master:
+    image: redis:7-alpine
+    container_name: ablage-redis-master
+    profiles: ["node1"]
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 4gb
+      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD}
+      --masterauth ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cluster
+
+  # Redis Sentinel (Node 1)
+  redis-sentinel-node1:
+    image: redis:7-alpine
+    container_name: ablage-sentinel-node1
+    profiles: ["node1"]
+    restart: unless-stopped
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - ./sentinel.conf:/etc/redis/sentinel.conf:ro
+    ports:
+      - "26379:26379"
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    networks:
+      - cluster
+
+  # etcd (Node 1)
+  etcd-node1:
+    image: quay.io/coreos/etcd:v3.5.9
+    container_name: ablage-etcd-node1
+    profiles: ["node1"]
+    restart: unless-stopped
+    environment:
+      ETCD_NAME: node1
+      ETCD_DATA_DIR: /etcd-data
+      ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+      ETCD_ADVERTISE_CLIENT_URLS: http://node1:2379
+      ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: http://node1:2380
+      ETCD_INITIAL_CLUSTER: node1=http://node1:2380,node2=http://node2:2380,node3=http://node3:2380
+      ETCD_INITIAL_CLUSTER_STATE: new
+      ETCD_INITIAL_CLUSTER_TOKEN: ablage-etcd-cluster
+    volumes:
+      - etcd_data:/etcd-data
+    ports:
+      - "2379:2379"
+      - "2380:2380"
+    networks:
+      - cluster
+
+  # API Backend (Node 1)
+  backend-node1:
+    image: ablage-system-backend:latest
+    container_name: ablage-backend-node1
+    profiles: ["node1"]
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      CELERY_BROKER_URL: sentinel://node1:26379,node2:26379,node3:26379/0
+      CELERY_RESULT_BACKEND: sentinel://node1:26379,node2:26379,node3:26379/1
+    volumes:
+      - shared_uploads:/app/uploads
+      - shared_exports:/app/exports
+      - ./logs/backend:/app/logs
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+      redis-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - cluster
+
+  # Celery Beat (nur auf Node 1)
+  beat-node1:
+    image: ablage-system-worker:latest
+    container_name: ablage-beat-node1
+    profiles: ["node1"]
+    restart: unless-stopped
+    command: celery -A app.workers.celery_app beat --loglevel=info
+    environment:
+      <<: *common-env
+      CELERY_BROKER_URL: sentinel://node1:26379,node2:26379,node3:26379/0
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    networks:
+      - cluster
+
+  # Celery Worker (Node 1, CPU)
+  worker-node1:
+    image: ablage-system-worker:latest
+    container_name: ablage-worker-node1
+    profiles: ["node1"]
+    restart: unless-stopped
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=4 -Q default,metadata
+    environment:
+      <<: *common-env
+      CELERY_BROKER_URL: sentinel://node1:26379,node2:26379,node3:26379/0
+      CELERY_RESULT_BACKEND: sentinel://node1:26379,node2:26379,node3:26379/1
+    volumes:
+      - shared_uploads:/app/uploads
+      - ./logs/worker:/app/logs
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    networks:
+      - cluster
+
+  # ===========================================================================
+  # Node 2: Replica Database + Redis Slave + API
+  # ===========================================================================
+
+  # PostgreSQL Replica (Node 2)
+  postgres-replica:
+    image: postgres:16-alpine
+    container_name: ablage-postgres-replica
+    profiles: ["node2"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ablage}
+      POSTGRES_USER: ${POSTGRES_USER:-ablage}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_PRIMARY_HOST: node1
+      POSTGRES_REPLICATION_USER: replicator
+      POSTGRES_REPLICATION_PASSWORD: ${REPLICATION_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-replica.sh:/docker-entrypoint-initdb.d/init-replica.sh:ro
+    command:
+      - "postgres"
+      - "-c"
+      - "hot_standby=on"
+      - "-c"
+      - "shared_buffers=4GB"
+      - "-c"
+      - "effective_cache_size=12GB"
+      - "-c"
+      - "max_connections=200"
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ablage} -d ${POSTGRES_DB:-ablage}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cluster
+
+  # Patroni fuer PostgreSQL HA (Node 2)
+  patroni-node2:
+    image: patroni:latest
+    container_name: ablage-patroni-node2
+    profiles: ["node2"]
+    restart: unless-stopped
+    environment:
+      PATRONI_NAME: node2
+      PATRONI_SCOPE: ablage-cluster
+      PATRONI_RESTAPI_LISTEN: 0.0.0.0:8008
+      PATRONI_RESTAPI_CONNECT_ADDRESS: ${NODE_IP:-node2}:8008
+      PATRONI_ETCD3_HOSTS: "'node1:2379','node2:2379','node3:2379'"
+      PATRONI_POSTGRESQL_LISTEN: 0.0.0.0:5432
+      PATRONI_POSTGRESQL_CONNECT_ADDRESS: ${NODE_IP:-node2}:5432
+      PATRONI_POSTGRESQL_DATA_DIR: /var/lib/postgresql/data
+      PATRONI_SUPERUSER_USERNAME: postgres
+      PATRONI_SUPERUSER_PASSWORD: ${POSTGRES_PASSWORD}
+      PATRONI_REPLICATION_USERNAME: replicator
+      PATRONI_REPLICATION_PASSWORD: ${REPLICATION_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./patroni.yml:/etc/patroni/config.yml:ro
+    ports:
+      - "8008:8008"
+    networks:
+      - cluster
+
+  # Redis Slave (Node 2)
+  redis-slave-node2:
+    image: redis:7-alpine
+    container_name: ablage-redis-slave-node2
+    profiles: ["node2"]
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 4gb
+      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD}
+      --masterauth ${REDIS_PASSWORD}
+      --replicaof node1 6379
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cluster
+
+  # Redis Sentinel (Node 2)
+  redis-sentinel-node2:
+    image: redis:7-alpine
+    container_name: ablage-sentinel-node2
+    profiles: ["node2"]
+    restart: unless-stopped
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - ./sentinel.conf:/etc/redis/sentinel.conf:ro
+    ports:
+      - "26379:26379"
+    networks:
+      - cluster
+
+  # etcd (Node 2)
+  etcd-node2:
+    image: quay.io/coreos/etcd:v3.5.9
+    container_name: ablage-etcd-node2
+    profiles: ["node2"]
+    restart: unless-stopped
+    environment:
+      ETCD_NAME: node2
+      ETCD_DATA_DIR: /etcd-data
+      ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+      ETCD_ADVERTISE_CLIENT_URLS: http://node2:2379
+      ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: http://node2:2380
+      ETCD_INITIAL_CLUSTER: node1=http://node1:2380,node2=http://node2:2380,node3=http://node3:2380
+      ETCD_INITIAL_CLUSTER_STATE: new
+      ETCD_INITIAL_CLUSTER_TOKEN: ablage-etcd-cluster
+    volumes:
+      - etcd_data:/etcd-data
+    ports:
+      - "2379:2379"
+      - "2380:2380"
+    networks:
+      - cluster
+
+  # API Backend (Node 2)
+  backend-node2:
+    image: ablage-system-backend:latest
+    container_name: ablage-backend-node2
+    profiles: ["node2"]
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      CELERY_BROKER_URL: sentinel://node1:26379,node2:26379,node3:26379/0
+      CELERY_RESULT_BACKEND: sentinel://node1:26379,node2:26379,node3:26379/1
+    volumes:
+      - shared_uploads:/app/uploads
+      - shared_exports:/app/exports
+      - ./logs/backend:/app/logs
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - cluster
+
+  # Celery Worker (Node 2, CPU)
+  worker-node2:
+    image: ablage-system-worker:latest
+    container_name: ablage-worker-node2
+    profiles: ["node2"]
+    restart: unless-stopped
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=4 -Q default,metadata
+    environment:
+      <<: *common-env
+      CELERY_BROKER_URL: sentinel://node1:26379,node2:26379,node3:26379/0
+      CELERY_RESULT_BACKEND: sentinel://node1:26379,node2:26379,node3:26379/1
+    volumes:
+      - shared_uploads:/app/uploads
+      - ./logs/worker:/app/logs
+    networks:
+      - cluster
+
+  # ===========================================================================
+  # Node 3: GPU Worker + MinIO + Redis Slave
+  # ===========================================================================
+
+  # Redis Slave (Node 3)
+  redis-slave-node3:
+    image: redis:7-alpine
+    container_name: ablage-redis-slave-node3
+    profiles: ["node3"]
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 2gb
+      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD}
+      --masterauth ${REDIS_PASSWORD}
+      --replicaof node1 6379
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cluster
+
+  # Redis Sentinel (Node 3)
+  redis-sentinel-node3:
+    image: redis:7-alpine
+    container_name: ablage-sentinel-node3
+    profiles: ["node3"]
+    restart: unless-stopped
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - ./sentinel.conf:/etc/redis/sentinel.conf:ro
+    ports:
+      - "26379:26379"
+    networks:
+      - cluster
+
+  # etcd (Node 3)
+  etcd-node3:
+    image: quay.io/coreos/etcd:v3.5.9
+    container_name: ablage-etcd-node3
+    profiles: ["node3"]
+    restart: unless-stopped
+    environment:
+      ETCD_NAME: node3
+      ETCD_DATA_DIR: /etcd-data
+      ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+      ETCD_ADVERTISE_CLIENT_URLS: http://node3:2379
+      ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: http://node3:2380
+      ETCD_INITIAL_CLUSTER: node1=http://node1:2380,node2=http://node2:2380,node3=http://node3:2380
+      ETCD_INITIAL_CLUSTER_STATE: new
+      ETCD_INITIAL_CLUSTER_TOKEN: ablage-etcd-cluster
+    volumes:
+      - etcd_data:/etcd-data
+    ports:
+      - "2379:2379"
+      - "2380:2380"
+    networks:
+      - cluster
+
+  # MinIO Object Storage (Node 3)
+  minio:
+    image: minio/minio:latest
+    container_name: ablage-minio
+    profiles: ["node3"]
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - cluster
+
+  # GPU Worker (Node 3)
+  worker-gpu:
+    image: ablage-system-worker:latest
+    container_name: ablage-worker-gpu
+    profiles: ["node3"]
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=1 --pool=solo -Q gpu,ocr
+    environment:
+      <<: *common-env
+      CELERY_BROKER_URL: sentinel://node1:26379,node2:26379,node3:26379/0
+      CELERY_RESULT_BACKEND: sentinel://node1:26379,node2:26379,node3:26379/1
+      CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-0}
+      GPU_MEMORY_FRACTION: ${GPU_MEMORY_FRACTION:-0.85}
+      DEEPSEEK_MODEL_PATH: /opt/models/deepseek-janus-pro-7b
+      GOT_OCR_MODEL_PATH: /opt/models/got-ocr-2.0
+      SURYA_MODEL_PATH: /opt/models/surya
+    volumes:
+      - shared_uploads:/app/uploads
+      - shared_models:/opt/models:ro
+      - ./logs/worker-gpu:/app/logs
+    networks:
+      - cluster
+
+  # ===========================================================================
+  # Frontend (kann auf jedem Node laufen)
+  # ===========================================================================
+  frontend:
+    image: ablage-system-frontend:latest
+    container_name: ablage-frontend
+    profiles: ["node1", "node2"]
+    restart: unless-stopped
+    volumes:
+      - ./nginx/nginx-cluster.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - cluster
+
+  # ===========================================================================
+  # Monitoring Stack (optional, auf Node 1)
+  # ===========================================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ablage-prometheus
+    profiles: ["node1"]
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+    volumes:
+      - prometheus_data:/prometheus
+      - ./prometheus-cluster.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - cluster
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ablage-grafana
+    profiles: ["node1"]
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin123}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3002:3000"
+    networks:
+      - cluster
+
+# =============================================================================
+# Netzwerke
+# =============================================================================
+networks:
+  cluster:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  etcd_data:
+    driver: local
+  minio_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  # Shared Volumes (NFS oder lokaler Mount)
+  shared_uploads:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=${NFS_SERVER:-node1},rw
+      device: ":/srv/ablage-shared/uploads"
+  shared_exports:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=${NFS_SERVER:-node1},rw
+      device: ":/srv/ablage-shared/exports"
+  shared_models:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=${NFS_SERVER:-node1},ro
+      device: ":/srv/ablage-shared/models"
