@@ -314,6 +314,66 @@ async def set_rls_company_context(db: AsyncSession, company_id: UUID) -> None:
         )
 
 
+async def enable_rls_bypass(db: AsyncSession) -> None:
+    """P1.1 SECURITY: Aktiviert RLS-Bypass fuer Service-Account Operationen.
+
+    WARNUNG: Nur fuer Hintergrund-Tasks, Migrations, und Admin-Operationen!
+    Niemals fuer normale User-Requests verwenden!
+
+    Args:
+        db: Datenbank-Session
+    """
+    try:
+        await db.execute(
+            sa.text("SELECT set_config('app.rls_bypass', 'true', true)")
+        )
+        logger.debug("rls_bypass_enabled")
+    except Exception as e:
+        logger.warning("rls_bypass_enable_failed", error=str(e))
+
+
+async def disable_rls_bypass(db: AsyncSession) -> None:
+    """P1.1 SECURITY: Deaktiviert RLS-Bypass.
+
+    Sollte IMMER nach Service-Operationen aufgerufen werden!
+
+    Args:
+        db: Datenbank-Session
+    """
+    try:
+        await db.execute(
+            sa.text("SELECT set_config('app.rls_bypass', 'false', true)")
+        )
+        logger.debug("rls_bypass_disabled")
+    except Exception as e:
+        logger.warning("rls_bypass_disable_failed", error=str(e))
+
+
+from contextlib import asynccontextmanager
+
+
+@asynccontextmanager
+async def rls_bypass_context(db: AsyncSession):
+    """P1.1 SECURITY: Context Manager fuer RLS-Bypass.
+
+    Verwendung:
+        async with rls_bypass_context(db):
+            # Hier koennen cross-tenant Operationen ausgefuehrt werden
+            ...
+        # RLS ist wieder aktiv
+
+    Args:
+        db: Datenbank-Session
+
+    WARNUNG: Nur fuer Celery-Tasks, Migrations und System-Operationen!
+    """
+    try:
+        await enable_rls_bypass(db)
+        yield
+    finally:
+        await disable_rls_bypass(db)
+
+
 from app.api.dependencies import get_current_active_user
 
 

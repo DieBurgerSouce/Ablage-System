@@ -61,6 +61,8 @@ function BatchWorkflowPage() {
     const [showKeyboardHelp, setShowKeyboardHelp] = useState(false)
     const [autoSaveEnabled] = useState(true)
     const [lastAutoSave, setLastAutoSave] = useState<Date | null>(null)
+    // History-Stack fuer Navigation (Zurueck-Funktion)
+    const [itemHistory, setItemHistory] = useState<string[]>([])
 
     // Queries
     const { data: batch, isLoading: isLoadingBatch } = useQuery({
@@ -142,6 +144,9 @@ function BatchWorkflowPage() {
 
         const validationTime = Math.round((Date.now() - startTime) / 1000)
 
+        // Speichere aktuelles Item im History-Stack (fuer Zurueck-Funktion)
+        setItemHistory(prev => [...prev.slice(-9), currentItem.id]) // Max 10 Items
+
         // Speichere korrigierten Text
         await updateSampleMutation.mutateAsync({
             ground_truth_text: correctedText,
@@ -162,11 +167,31 @@ function BatchWorkflowPage() {
     const handleSkip = useCallback(async () => {
         if (!currentItem) return
 
+        // Speichere aktuelles Item im History-Stack
+        setItemHistory(prev => [...prev, currentItem.id])
+
         await updateItemMutation.mutateAsync({
             status: 'skipped',
             validation_notes: notes || 'Übersprungen',
         })
     }, [currentItem, notes, updateItemMutation])
+
+    const handlePrevious = useCallback(() => {
+        if (itemHistory.length === 0) return
+
+        // Hole letztes Item aus History und navigiere dorthin
+        const previousItemId = itemHistory[itemHistory.length - 1]
+        setItemHistory(prev => prev.slice(0, -1))
+
+        // Navigiere zum vorherigen Sample via Query-Params oder refetch
+        // Da wir keinen direkten API-Zugriff haben, zeigen wir einen Hinweis
+        // FUTURE: Implement getBatchItem(itemId) API
+        navigate({
+            to: '/admin/ocr-training/batch/$id',
+            params: { id: batchId },
+            search: { itemId: previousItemId },
+        })
+    }, [itemHistory, batchId, navigate])
 
     // Keyboard Shortcuts
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -180,10 +205,10 @@ function BatchWorkflowPage() {
             e.preventDefault()
             handleSkip()
         }
-        // Alt + Links: Zurück
+        // Alt + Links: Zurück (falls History vorhanden)
         if (e.altKey && e.key === 'ArrowLeft') {
             e.preventDefault()
-            // TODO: Previous item navigation
+            handlePrevious()
         }
         // Alt + Rechts: Weiter
         if (e.altKey && e.key === 'ArrowRight') {
@@ -194,7 +219,7 @@ function BatchWorkflowPage() {
         if (e.key === 'Escape') {
             setShowKeyboardHelp((prev) => !prev)
         }
-    }, [handleSaveAndNext, handleSkip])
+    }, [handleSaveAndNext, handleSkip, handlePrevious])
 
     useEffect(() => {
         window.addEventListener('keydown', handleKeyDown)

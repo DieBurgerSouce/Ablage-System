@@ -1,6 +1,9 @@
 @import url('https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&f[]=satoshi@300,400,500,700,900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
+/* WCAG 2.1 AA High Contrast Support */
+@import './styles/high-contrast.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -194,6 +197,41 @@
 }
 
 @layer utilities {
+    /* ACCESSIBILITY: Reduced Motion Support (WCAG 2.1 AA - 2.3.3)
+     * Respects user's system preference for reduced motion.
+     * Disables animations, transitions, and scrolling behaviors that could
+     * cause vestibular disorders or motion sickness. */
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+        }
+
+        /* Disable spinning animations */
+        .animate-spin {
+            animation: none !important;
+        }
+
+        /* Disable pulse animations */
+        .animate-pulse {
+            animation: none !important;
+        }
+
+        /* Disable bounce animations */
+        .animate-bounce {
+            animation: none !important;
+        }
+
+        /* Disable ping animations */
+        .animate-ping {
+            animation: none !important;
+        }
+    }
+
     /* Status Badge Utilities - Theme-aware colors for all display modes */
     .badge-success {
         background-color: oklch(from var(--success) l c h / 0.15);
@@ -251,5 +289,123 @@
     .dark .glass-card {
         background: rgba(30, 30, 30, 0.7);
         border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+}
+
+/* =============================================================================
+ * MOBILE-FIRST UTILITIES
+ * WCAG 2.1 AA compliant touch targets and mobile optimizations
+ * ============================================================================= */
+
+@layer utilities {
+    /* Touch Target Minimum Sizes (WCAG 2.1 AA: 44x44px) */
+    .touch-target {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    .touch-target-lg {
+        min-height: 48px;
+        min-width: 48px;
+    }
+
+    .touch-target-xl {
+        min-height: 56px;
+        min-width: 56px;
+    }
+
+    /* Touch Manipulation (prevents zoom on double-tap) */
+    .touch-manipulation {
+        touch-action: manipulation;
+    }
+
+    /* Prevent text selection on touch */
+    .no-select {
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+    }
+
+    /* Safe Area Padding (for notch/home indicator) */
+    .p-safe {
+        padding-top: env(safe-area-inset-top, 0);
+        padding-right: env(safe-area-inset-right, 0);
+        padding-bottom: env(safe-area-inset-bottom, 0);
+        padding-left: env(safe-area-inset-left, 0);
+    }
+
+    .pt-safe {
+        padding-top: env(safe-area-inset-top, 0);
+    }
+
+    .pb-safe {
+        padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+
+    /* Smooth Scrolling on iOS */
+    .scroll-smooth-touch {
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
+    }
+
+    /* Hide scrollbar on mobile */
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Active state for touch feedback */
+    .active-scale:active {
+        transform: scale(0.97);
+    }
+
+    /* Swipe indicator styles */
+    .swipe-left-indicator {
+        background: linear-gradient(to left, transparent, hsl(var(--destructive) / 0.2));
+    }
+
+    .swipe-right-indicator {
+        background: linear-gradient(to right, transparent, hsl(var(--success) / 0.2));
+    }
+}
+
+/* Mobile-specific overrides */
+@media (max-width: 767px) {
+    /* Ensure buttons meet touch target requirements */
+    button:not(.inline-btn),
+    [role="button"]:not(.inline-btn),
+    a[href]:not(.inline-link) {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* Larger checkbox/radio on mobile */
+    input[type="checkbox"],
+    input[type="radio"] {
+        min-height: 24px;
+        min-width: 24px;
+    }
+
+    /* Stack form labels on mobile */
+    .form-stack-mobile {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    /* Hide desktop-only elements */
+    .desktop-only {
+        display: none !important;
+    }
+}
+
+/* Tablet and up: show desktop elements */
+@media (min-width: 768px) {
+    .mobile-only {
+        display: none !important;
     }
 }

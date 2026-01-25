@@ -195,11 +195,11 @@ export function TuneManagement() {
                                         {!tune.is_active && <Badge variant="destructive">Inaktiv</Badge>}
                                     </div>
                                     <div className="flex gap-2">
-                                        <Button variant="ghost" size="icon" onClick={() => openEdit(tune)}>
+                                        <Button variant="ghost" size="icon" onClick={() => openEdit(tune)} aria-label={`${tune.name} bearbeiten`}>
                                             <Pencil className="h-4 w-4" />
                                         </Button>
                                         {!tune.is_system && (
-                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => deleteMutation.mutate(tune.id)}>
+                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => deleteMutation.mutate(tune.id)} aria-label={`${tune.name} loeschen`}>
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
                                         )}

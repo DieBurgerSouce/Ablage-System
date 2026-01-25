@@ -35,6 +35,11 @@ try:
         TimestampAuthorityConfig,
         RetentionDeletionRequest,
     )
+    # Import OCR Self-Learning models
+    from app.db.models_ocr_feedback import (
+        OCRCorrectionFeedback,
+        OCRBackendPerformance,
+    )
     target_metadata = Base.metadata
 except ImportError as e:
     # Fallback to None if models not yet available

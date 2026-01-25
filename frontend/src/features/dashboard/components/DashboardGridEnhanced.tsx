@@ -15,6 +15,9 @@ import { useDashboardStore, DASHBOARD_PRESETS, GRID_COLUMNS } from '../stores/us
 import { getWidgetComponent, getWidgetDefinition } from '../registry'
 import { ResizableWidget } from './ResizableWidget'
 import { WidgetCatalogDrawer } from './WidgetCatalogDrawer'
+import { WidgetConfigModal } from './WidgetConfigModal'
+import { WidgetSyncStatus } from './WidgetSyncStatus'
+import { useWidgetConfig, type WidgetSettings } from '../hooks/useWidgetConfig'
 import { Button } from '@/components/ui/button'
 import {
     DropdownMenu,
@@ -43,6 +46,7 @@ import {
     Users,
     Shield,
     Layers,
+    Settings,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -76,7 +80,19 @@ export function DashboardGridEnhanced() {
     const [isEditMode, setIsEditMode] = useState(false)
     const [showCatalog, setShowCatalog] = useState(false)
     const [gridCellWidth, setGridCellWidth] = useState(100) // Default until measured
+    const [configWidget, setConfigWidget] = useState<{ id: string; type: string } | null>(null)
     const gridRef = useRef<HTMLDivElement>(null)
+
+    // Server sync hook
+    const {
+        isLoading: isSyncLoading,
+        isSyncing,
+        lastSynced,
+        error: syncError,
+        syncNow,
+        updateWidgetSettings,
+        getWidgetSettings,
+    } = useWidgetConfig({ autoSync: true, debounceMs: 1500 })
 
     // Fixed row height constant
     const GRID_CELL_HEIGHT = 80
@@ -147,6 +163,28 @@ export function DashboardGridEnhanced() {
             description: 'Das Dashboard wurde auf die Standardansicht zurueckgesetzt.',
         })
     }, [resetToDefault])
+
+    // Handle widget config
+    const handleConfigWidget = useCallback((id: string, type: string) => {
+        setConfigWidget({ id, type })
+    }, [])
+
+    // Handle widget settings save
+    const handleSaveWidgetSettings = useCallback(async (settings: WidgetSettings) => {
+        if (configWidget) {
+            try {
+                await updateWidgetSettings(configWidget.id, settings)
+                toast.success('Einstellungen gespeichert', {
+                    description: 'Die Widget-Einstellungen wurden aktualisiert.',
+                })
+            } catch (error) {
+                toast.error('Fehler beim Speichern', {
+                    description: 'Die Einstellungen konnten nicht gespeichert werden.',
+                })
+                throw error
+            }
+        }
+    }, [configWidget, updateWidgetSettings])
 
     // Sort widgets by position for proper grid ordering
     const sortedWidgets = useMemo(() => {
@@ -268,6 +306,15 @@ export function DashboardGridEnhanced() {
                         </TooltipProvider>
                     )}
 
+                    {/* Sync Status */}
+                    <WidgetSyncStatus
+                        isLoading={isSyncLoading}
+                        isSyncing={isSyncing}
+                        lastSynced={lastSynced}
+                        error={syncError}
+                        onSync={syncNow}
+                    />
+
                     {/* Active Preset Badge */}
                     {activePreset && !isEditMode && (
                         <div className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground bg-muted rounded">
@@ -317,6 +364,7 @@ export function DashboardGridEnhanced() {
                             onRemove={handleRemoveWidget}
                             onResize={handleResize}
                             onDragStart={handleDragStart}
+                            onConfig={handleConfigWidget}
                             gridCellWidth={gridCellWidth}
                             gridCellHeight={GRID_CELL_HEIGHT}
                         >
@@ -352,6 +400,17 @@ export function DashboardGridEnhanced() {
 
             {/* Widget Catalog Drawer */}
             <WidgetCatalogDrawer open={showCatalog} onOpenChange={setShowCatalog} />
+
+            {/* Widget Config Modal */}
+            <WidgetConfigModal
+                isOpen={configWidget !== null}
+                onClose={() => setConfigWidget(null)}
+                widgetId={configWidget?.id || ''}
+                widgetType={configWidget?.type || ''}
+                currentSettings={configWidget ? getWidgetSettings(configWidget.id) : undefined}
+                onSave={handleSaveWidgetSettings}
+                isSaving={false}
+            />
         </div>
     )
 }

@@ -124,7 +124,7 @@ def jsonb_exists(column_name: str, key: str) -> literal_column:
 # Mapping von Kategorie-Slugs zu DocumentType-Enums
 CATEGORY_TO_DOCTYPE: Dict[str, DocumentType] = {
     "rechnungen": DocumentType.INVOICE,
-    "angebote": DocumentType.OTHER,  # TODO: Add OFFER to DocumentType
+    "angebote": DocumentType.OFFER,
     "bestellungen": DocumentType.ORDER,
     "vertraege": DocumentType.CONTRACT,
     "lieferscheine": DocumentType.DELIVERY_NOTE,

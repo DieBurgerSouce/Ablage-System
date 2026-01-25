@@ -10,6 +10,10 @@ import { GlobalShortcutsProvider } from '@/components/GlobalShortcutsProvider'
 import { GlobalCommandDialog } from '@/components/GlobalCommandDialog'
 // FIX Phase 7.5: ErrorBoundary für alle Routes (Enterprise Error Recovery)
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+// Phase 4.4: Global Undo Provider for reversible actions
+import { UndoProvider } from '@/hooks/useUndoableAction'
+// WCAG 2.1 AA: Skip Links for keyboard navigation
+import { SkipLinks } from '@/components/SkipLinks'
 
 export const Route = createRootRoute({
     component: RootComponent,
@@ -47,25 +51,26 @@ function RootComponent() {
 
     // Render protected layout
     // FIX Phase 7.5: ErrorBoundary um geschützte Routes (Enterprise Error Recovery)
+    // Phase 4.4: UndoProvider für globale Undo-Funktionalität
     return (
         <ErrorBoundary
             errorTitle="Anwendungsfehler"
             errorDescription="Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut oder kehren Sie zur Startseite zurück."
         >
-            <GlobalShortcutsProvider>
-                <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 z-50 px-4 py-2 bg-background border rounded-md shadow-lg">
-                    Zum Hauptinhalt springen
-                </a>
-                <GlobalCommandDialog />
-                <OfflineIndicator />
-                <AppLayout id="main-content">
-                    <Outlet />
-                    {import.meta.env.DEV && <TanStackRouterDevtools />}
-                </AppLayout>
-                <WelcomeModal />
-                <SessionExpiredModal />
-                <Toaster />
-            </GlobalShortcutsProvider>
+            <UndoProvider options={{ maxStackSize: 30, toastDuration: 6000 }}>
+                <GlobalShortcutsProvider>
+                    <SkipLinks />
+                    <GlobalCommandDialog />
+                    <OfflineIndicator />
+                    <AppLayout id="main-content">
+                        <Outlet />
+                        {import.meta.env.DEV && <TanStackRouterDevtools />}
+                    </AppLayout>
+                    <WelcomeModal />
+                    <SessionExpiredModal />
+                    <Toaster />
+                </GlobalShortcutsProvider>
+            </UndoProvider>
         </ErrorBoundary>
     )
 }

@@ -6,6 +6,7 @@ Integrierte Buchhaltung fuer das Ablage-System:
 - Offene Posten (Debitoren/Kreditoren)
 - USt-Voranmeldung
 - Einnahmen-Ueberschuss-Rechnung (EUER)
+- Automatische Buchungsvorschlaege (NEU: Januar 2026)
 - (Geplant: GuV/Bilanz)
 
 GoBD-konform und Enterprise-Ready.
@@ -42,6 +43,17 @@ from app.services.accounting.eur_service import (
     ExpenseCategory,
 )
 
+from app.services.accounting.auto_booking_service import (
+    AutoBookingService,
+    get_auto_booking_service,
+    BookingSuggestion,
+    AutoBookingResult,
+    BookingConfidence,
+    BookingType,
+    BookingPattern,
+    TaxCode,
+)
+
 __all__ = [
     # Open Items
     "OpenItemsService",
@@ -68,4 +80,13 @@ __all__ = [
     "EURCategorySummary",
     "IncomeCategory",
     "ExpenseCategory",
+    # Auto-Booking
+    "AutoBookingService",
+    "get_auto_booking_service",
+    "BookingSuggestion",
+    "AutoBookingResult",
+    "BookingConfidence",
+    "BookingType",
+    "BookingPattern",
+    "TaxCode",
 ]

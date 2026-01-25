@@ -30,6 +30,20 @@ export {
   type PermissionFilteredWidget,
 } from './hooks/useWidgetPermissions';
 
+export {
+  useWidgetConfig,
+  type WidgetSettings,
+  type WidgetConfigResponse,
+} from './hooks/useWidgetConfig';
+
+export {
+  useWidgetExport,
+  type ExportFormat,
+  type ExportOptions,
+  type ExportResult,
+  type UseWidgetExportReturn,
+} from './hooks/useWidgetExport';
+
 // Registry
 export {
   widgetRegistry,
@@ -62,3 +76,23 @@ export { WidgetCatalogDrawer } from './components/WidgetCatalogDrawer';
 export { WidgetPreviewCard } from './components/WidgetPreviewCard';
 export { PresetSelector } from './components/PresetSelector';
 export { ActivityFeed, ActivityFeedWidget } from './components/ActivityFeed';
+export { WidgetConfigModal } from './components/WidgetConfigModal';
+export { WidgetSyncStatus } from './components/WidgetSyncStatus';
+export { WidgetExportButton, DashboardExportButton } from './components/WidgetExportButton';
+
+// Mobile Components
+export { MobileDashboard } from './MobileDashboard';
+
+// Config
+export {
+  ALL_LAYOUT_TEMPLATES,
+  DEFAULT_LAYOUTS_BY_ROLE,
+  DEFAULT_WIDGET_CONFIGS,
+  ROLE_HIERARCHY,
+  getDefaultLayoutForRole,
+  getAvailableTemplatesForRole,
+  getTemplateById,
+  getTemplatesByTag,
+  hasMinRole,
+  type LayoutTemplate,
+} from './config/defaultLayoutTemplates';

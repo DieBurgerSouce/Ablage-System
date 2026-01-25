@@ -26,7 +26,7 @@ async def send_payment_reminder(
         Aktualisierte Variablen mit Erinnerungs-Info
     """
     from app.db.session import async_session_maker
-    from app.db.models.bpmn import ProcessHistory
+    from app.db.bpmn_models.bpmn import ProcessHistory
 
     invoice_id = variables.get("invoice_id")
     customer_id = variables.get("customer_id")
@@ -81,7 +81,7 @@ async def send_first_dunning(
         Aktualisierte Variablen mit Mahnungs-Info
     """
     from app.db.session import async_session_maker
-    from app.db.models.bpmn import ProcessHistory
+    from app.db.bpmn_models.bpmn import ProcessHistory
 
     invoice_id = variables.get("invoice_id")
     amount = variables.get("amount", 0)
@@ -134,7 +134,7 @@ async def send_second_dunning(
         Aktualisierte Variablen mit Mahnungs-Info
     """
     from app.db.session import async_session_maker
-    from app.db.models.bpmn import ProcessHistory
+    from app.db.bpmn_models.bpmn import ProcessHistory
 
     invoice_id = variables.get("invoice_id")
     amount = variables.get("amount", 0)
@@ -183,7 +183,7 @@ async def send_final_dunning(
         Aktualisierte Variablen mit Mahnungs-Info
     """
     from app.db.session import async_session_maker
-    from app.db.models.bpmn import ProcessHistory
+    from app.db.bpmn_models.bpmn import ProcessHistory
 
     invoice_id = variables.get("invoice_id")
     amount = variables.get("amount", 0)
@@ -232,7 +232,7 @@ async def transfer_to_collection(
         Aktualisierte Variablen mit Inkasso-Info
     """
     from app.db.session import async_session_maker
-    from app.db.models.bpmn import ProcessHistory
+    from app.db.bpmn_models.bpmn import ProcessHistory
 
     invoice_id = variables.get("invoice_id")
     amount = variables.get("total_outstanding", variables.get("amount", 0))
@@ -340,7 +340,7 @@ async def close_dunning_case(
         Aktualisierte Variablen
     """
     from app.db.session import async_session_maker
-    from app.db.models.bpmn import ProcessHistory
+    from app.db.bpmn_models.bpmn import ProcessHistory
 
     invoice_id = variables.get("invoice_id")
     payment_amount = variables.get("payment_amount", 0)

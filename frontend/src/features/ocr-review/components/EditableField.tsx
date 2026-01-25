@@ -65,10 +65,12 @@ interface EditableFieldComponentProps {
     type?: 'text' | 'number' | 'date' | 'currency'
     placeholder?: string
     className?: string
+    /** Ob das Feld für Navigation registriert werden soll (default: true) */
+    navigable?: boolean
 }
 
 export function EditableField({
-    fieldPath: _fieldPath,
+    fieldPath,
     fieldLabel,
     value,
     confidence,
@@ -78,12 +80,13 @@ export function EditableField({
     isConfirmed = false,
     isCorrected = false,
     onEdit,
-    onConfirm: _onConfirm,
+    onConfirm,
     onUnconfirm: _onUnconfirm,
     disabled = false,
     type = 'text',
     placeholder = '-',
     className,
+    navigable = true,
 }: EditableFieldComponentProps) {
     const [isEditing, setIsEditing] = useState(false)
     const [editValue, setEditValue] = useState('')
@@ -147,8 +150,27 @@ export function EditableField({
     const displayValue = formatValue(value, type)
     const isEmpty = displayValue === '' || displayValue === '-' || value === null || value === undefined
 
+    // Keyboard Handler für Enter zum Bestätigen
+    const handleFieldKeyDown = useCallback((e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !isEditing && !disabled) {
+            e.preventDefault()
+            // Bei Enter: Feld bestätigen oder bearbeiten starten
+            if (!isConfirmed) {
+                onConfirm()
+            } else {
+                handleStartEdit()
+            }
+        } else if (e.key === ' ' && !isEditing && !disabled) {
+            e.preventDefault()
+            handleStartEdit()
+        }
+    }, [isEditing, disabled, isConfirmed, onConfirm, handleStartEdit])
+
     return (
-        <div className={cn('space-y-0.5', className)}>
+        <div
+            className={cn('space-y-0.5', className)}
+            data-field-nav={navigable ? fieldPath : undefined}
+        >
             {/* Label - kompakt */}
             <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                 {fieldLabel}
@@ -199,6 +221,7 @@ export function EditableField({
                 <div
                     className={cn(
                         'group flex items-center justify-between rounded border px-2 py-1 min-h-[28px] transition-colors',
+                        'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1',
                         styles.bg,
                         styles.border,
                         styles.text,
@@ -208,12 +231,7 @@ export function EditableField({
                     onClick={handleStartEdit}
                     role="button"
                     tabIndex={disabled ? -1 : 0}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault()
-                            handleStartEdit()
-                        }
-                    }}
+                    onKeyDown={handleFieldKeyDown}
                 >
                     {/* Value */}
                     <span className={cn('text-sm truncate flex-1', isEmpty && 'italic text-xs')}>

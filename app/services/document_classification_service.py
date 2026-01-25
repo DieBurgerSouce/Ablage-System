@@ -163,13 +163,245 @@ RECEIPT_CONFIG = DocumentTypeConfig(
     ],
 )
 
-# Alle Konfigurationen
+# =============================================================================
+# PHASE 1.2: NEUE DOKUMENTTYPEN
+# =============================================================================
+
+BANK_STATEMENT_CONFIG = DocumentTypeConfig(
+    doc_type=ExtractedDocumentType.BANK_STATEMENT,
+    primary_keywords={
+        "kontoauszug", "kontostand", "saldo", "kontobewegungen",
+        "kontoauszugsnummer", "bank statement", "account statement",
+        "girokonto", "sparkonto", "konto-nr", "kontonummer",
+    },
+    secondary_keywords={
+        "haben", "soll", "buchungsdatum", "wertstellung", "valuta",
+        "ueberweisung", "lastschrift", "gutschrift", "abbuchung",
+        "kontoinhaber", "bic", "swift", "blz", "bankleitzahl",
+        "auszugsnummer", "auszug", "zeitraum", "von", "bis",
+        "neuer saldo", "alter saldo", "anfangssaldo", "endsaldo",
+    },
+    negative_keywords={
+        "rechnung", "bestellung", "vertrag", "angebot",
+    },
+    required_patterns=[
+        re.compile(r'kontoauszug(?:s)?[\s\-\.:]?(?:nr\.?|nummer)?', re.IGNORECASE),
+        re.compile(r'saldo|kontostand', re.IGNORECASE),
+        re.compile(r'haben|soll|buchung', re.IGNORECASE),
+        re.compile(r'DE\d{2}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{2}', re.IGNORECASE),  # IBAN
+    ],
+)
+
+TAX_DOCUMENT_CONFIG = DocumentTypeConfig(
+    doc_type=ExtractedDocumentType.TAX_DOCUMENT,
+    primary_keywords={
+        "steuerbescheid", "umsatzsteuervoranmeldung", "ust-voranmeldung",
+        "einkommensteuerbescheid", "koerperschaftsteuerbescheid",
+        "gewerbesteuerbescheid", "steuererklaerung", "finanzamt",
+        "steuernummer", "steuer-id", "tax return", "lohnsteuerbescheinigung",
+        "jahresabschluss", "elster", "steuerberater",
+    },
+    secondary_keywords={
+        "steuerpflichtig", "zu versteuerndes einkommen", "freibetrag",
+        "veranlagung", "vorauszahlung", "nachzahlung", "erstattung",
+        "umsatzsteuer", "vorsteuer", "einkommensteuer", "lohnsteuer",
+        "kirchensteuer", "solidaritaetszuschlag", "soli",
+        "betriebsausgaben", "werbungskosten", "sonderausgaben",
+        "absetzbar", "abschreibung", "afa",
+    },
+    negative_keywords={
+        "bestellung", "lieferschein", "angebot",
+    },
+    required_patterns=[
+        re.compile(r'finanzamt\s+\w+', re.IGNORECASE),
+        re.compile(r'steuer(?:nummer|id|erklaerung|bescheid)', re.IGNORECASE),
+        re.compile(r'ust[\s\-]?(?:va|voranmeldung)', re.IGNORECASE),
+        re.compile(r'veranlagungszeitraum|steuerjahr', re.IGNORECASE),
+    ],
+)
+
+DUNNING_LETTER_CONFIG = DocumentTypeConfig(
+    doc_type=ExtractedDocumentType.DUNNING,
+    primary_keywords={
+        "mahnung", "zahlungserinnerung", "mahnschreiben", "zahlungsaufforderung",
+        "1. mahnung", "2. mahnung", "3. mahnung", "letzte mahnung",
+        "erste mahnung", "zweite mahnung", "dritte mahnung",
+        "verzug", "mahngebuehr", "mahnkosten", "inkasso",
+    },
+    secondary_keywords={
+        "ueberfaellig", "offener betrag", "offene rechnung", "ausstehend",
+        "zahlungsfrist", "fristverlaengerung", "saeumnis", "rueckstand",
+        "verzugszinsen", "mahnverfahren", "gerichtlich", "anwalt",
+        "rechtliche schritte", "zwangsvollstreckung", "vollstreckung",
+        "letztmalig", "umgehend", "sofort", "unverzueglich",
+    },
+    negative_keywords={
+        "angebot", "bestellung", "lieferschein", "vertrag",
+    },
+    required_patterns=[
+        re.compile(r'\d\.?\s*mahnung|letzte\s+mahnung', re.IGNORECASE),
+        re.compile(r'zahlungserinnerung|mahnschreiben', re.IGNORECASE),
+        re.compile(r'ueberfaellig|rueckstand|ausstehend', re.IGNORECASE),
+        re.compile(r'mahngebuehr|verzugszinsen|inkasso', re.IGNORECASE),
+    ],
+)
+
+CREDIT_NOTE_CONFIG = DocumentTypeConfig(
+    doc_type=ExtractedDocumentType.CREDIT_NOTE,
+    primary_keywords={
+        "gutschrift", "stornierung", "storno", "rueckerstattung",
+        "rueckzahlung", "credit note", "credit memo", "gutschriftsnummer",
+        "korrekturrechnung", "rechnungskorrektur", "erstattung",
+    },
+    secondary_keywords={
+        "original-rechnung", "bezugnehmend", "korrektur", "minusbetrag",
+        "rueckbuchung", "guthaben", "erstattungsbetrag",
+        "stornobetrag", "korrigiert", "berichtigt",
+    },
+    negative_keywords={
+        "bestellung", "lieferschein", "angebot", "mahnung",
+    },
+    required_patterns=[
+        re.compile(r'gutschrift(?:s)?[\s\-\.:]?(?:nr\.?|nummer)?', re.IGNORECASE),
+        re.compile(r'storno|stornierung|korrektur', re.IGNORECASE),
+        re.compile(r'rueckerstattung|erstattung', re.IGNORECASE),
+    ],
+)
+
+OFFER_CONFIG = DocumentTypeConfig(
+    doc_type=ExtractedDocumentType.OFFER,
+    primary_keywords={
+        "angebot", "angebotsnummer", "kostenvoranschlag", "offerte",
+        "preisangebot", "quote", "quotation", "proposal",
+        "unverbindliches angebot", "verbindliches angebot",
+    },
+    secondary_keywords={
+        "gueltigkeit", "gueltig bis", "angebotsdatum", "angebotspreis",
+        "rabatt", "nachlass", "sonderpreis", "konditionen",
+        "lieferzeit", "zahlungsbedingungen", "freibleibend",
+        "unverbindlich", "vorbehaltlich", "optional",
+    },
+    negative_keywords={
+        "rechnung", "mahnung", "lieferschein",
+    },
+    required_patterns=[
+        re.compile(r'angebot(?:s)?[\s\-\.:]?(?:nr\.?|nummer)?', re.IGNORECASE),
+        re.compile(r'kostenvoranschlag', re.IGNORECASE),
+        re.compile(r'gueltig\s+bis|gueltigkeit', re.IGNORECASE),
+    ],
+)
+
+LETTER_CONFIG = DocumentTypeConfig(
+    doc_type=ExtractedDocumentType.LETTER,
+    primary_keywords={
+        "sehr geehrte", "sehr geehrter", "liebe", "lieber",
+        "mit freundlichen gruessen", "hochachtungsvoll",
+        "betreff", "ihr zeichen", "unser zeichen",
+    },
+    secondary_keywords={
+        "anlage", "anlagen", "kopie", "verteiler", "nachrichtlich",
+        "bezug", "bezueglich", "in der anlage", "anbei",
+        "zur kenntnisnahme", "zur information",
+    },
+    negative_keywords={
+        "rechnungsnummer", "bestellnummer", "vertragsnummer",
+        "kontoauszug", "mahnung",
+    },
+    required_patterns=[
+        re.compile(r'sehr\s+geehrte[r]?\s+(?:damen|herr|frau)', re.IGNORECASE),
+        re.compile(r'mit\s+freundlichen\s+gruessen', re.IGNORECASE),
+        re.compile(r'betreff\s*:', re.IGNORECASE),
+    ],
+    weight_primary=2.0,  # Briefe sind generischer
+)
+
+FORM_CONFIG = DocumentTypeConfig(
+    doc_type=ExtractedDocumentType.FORM,
+    primary_keywords={
+        "antrag", "formular", "antragsformular", "anmeldung",
+        "abmeldung", "aenderungsantrag", "vollmacht",
+        "einwilligung", "erklaerung", "bestaetigung",
+    },
+    secondary_keywords={
+        "ausfuellen", "unterschrift", "datum", "stempel",
+        "feld", "pflichtfeld", "angaben", "hinweise",
+        "zutreffendes", "ankreuzen", "bitte", "kreuzen",
+    },
+    negative_keywords={
+        "rechnung", "bestellung", "kontoauszug",
+    },
+    required_patterns=[
+        re.compile(r'antrag\s+(?:auf|fuer|zur)', re.IGNORECASE),
+        re.compile(r'bitte\s+ausfuellen|ankreuzen', re.IGNORECASE),
+        re.compile(r'\[\s*\]|\(\s*\)', re.IGNORECASE),  # Checkboxen
+    ],
+)
+
+REPORT_CONFIG = DocumentTypeConfig(
+    doc_type=ExtractedDocumentType.REPORT,
+    primary_keywords={
+        "bericht", "protokoll", "gutachten", "analyse",
+        "auswertung", "report", "assessment", "evaluation",
+        "jahresbericht", "monatsbericht", "quartalsbericht",
+    },
+    secondary_keywords={
+        "zusammenfassung", "fazit", "ergebnis", "schlussfolgerung",
+        "empfehlung", "massnahme", "uebersicht", "statistik",
+        "kennzahl", "kpi", "diagramm", "grafik", "tabelle",
+    },
+    negative_keywords={
+        "rechnung", "bestellung", "vertrag", "mahnung",
+    },
+    required_patterns=[
+        re.compile(r'bericht\s+(?:ueber|zum|zur|fuer)', re.IGNORECASE),
+        re.compile(r'zusammenfassung|fazit|ergebnis', re.IGNORECASE),
+        re.compile(r'protokoll\s+(?:vom|der|des)', re.IGNORECASE),
+    ],
+)
+
+PURCHASE_ORDER_CONFIG = DocumentTypeConfig(
+    doc_type=ExtractedDocumentType.PURCHASE_ORDER,
+    primary_keywords={
+        "bestellauftrag", "purchase order", "po-nummer", "po-nr",
+        "bestellformular", "einkaufsbestellung", "beschaffungsauftrag",
+    },
+    secondary_keywords={
+        "lieferant", "einkauf", "beschaffung", "bezugsquelle",
+        "wareneingang", "bestellmenge", "bestellwert",
+        "rahmenbestellung", "abrufauftrag",
+    },
+    negative_keywords={
+        "rechnung", "vertrag", "angebot", "mahnung",
+    },
+    required_patterns=[
+        re.compile(r'purchase\s*order|po[\s\-]?(?:nr|nummer)', re.IGNORECASE),
+        re.compile(r'bestellauftrag|einkaufsbestellung', re.IGNORECASE),
+    ],
+)
+
+# Alle Konfigurationen (15 Typen - Phase 1.2 Komplett)
 DOCUMENT_TYPE_CONFIGS = [
+    # Rechnungswesen (hoehere Prioritaet)
     INVOICE_CONFIG,
-    ORDER_CONFIG,
-    CONTRACT_CONFIG,
-    DELIVERY_NOTE_CONFIG,
+    CREDIT_NOTE_CONFIG,
     RECEIPT_CONFIG,
+    DUNNING_LETTER_CONFIG,
+
+    # Bestellwesen
+    PURCHASE_ORDER_CONFIG,
+    ORDER_CONFIG,
+    OFFER_CONFIG,
+    DELIVERY_NOTE_CONFIG,
+
+    # Vertraege & Dokumente
+    CONTRACT_CONFIG,
+    FORM_CONFIG,
+    LETTER_CONFIG,
+    REPORT_CONFIG,
+
+    # Finanz & Steuer
+    BANK_STATEMENT_CONFIG,
+    TAX_DOCUMENT_CONFIG,
 ]
 
 

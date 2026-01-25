@@ -487,6 +487,7 @@ class CustomerCardService:
         customers = []
 
         # Existierende Cards
+        existing_names: set[str] = set()
         result = await db.execute(
             select(
                 RAGCustomerCard.customer_id,
@@ -495,9 +496,31 @@ class CustomerCardService:
         )
         for row in result.fetchall():
             customers.append((row.customer_id, row.customer_name))
+            existing_names.add(row.customer_name.lower() if row.customer_name else "")
 
-        # TODO: Neue Kunden aus extracted_data ermitteln
-        # Dies wuerde eine Analyse der extrahierten Rechnungs-/Vertragsdaten erfordern
+        # Neue Kunden aus extracted_data ermitteln
+        # Suche nach sender_name/company_name in Dokumenten ohne zugeordnete Customer Card
+        docs_result = await db.execute(
+            select(Document.extracted_data)
+            .where(
+                Document.extracted_data.isnot(None),
+                Document.deleted_at.is_(None),
+            )
+            .limit(500)  # Performance-Limit
+        )
+
+        # Extrahiere eindeutige Kundennamen
+        for row in docs_result.fetchall():
+            if row.extracted_data:
+                for key in ["sender_name", "company_name", "customer_name", "lieferant"]:
+                    name = row.extracted_data.get(key)
+                    if name and isinstance(name, str) and len(name) > 2:
+                        name_lower = name.strip().lower()
+                        if name_lower not in existing_names:
+                            # Generiere eine temporaere ID basierend auf dem Namen
+                            temp_id = f"new_{name_lower.replace(' ', '_')[:50]}"
+                            customers.append((temp_id, name.strip()))
+                            existing_names.add(name_lower)
 
         return customers
 

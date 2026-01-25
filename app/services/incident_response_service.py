@@ -462,7 +462,7 @@ class IncidentResponseService:
 
         # Persistiere in Redis wenn verfügbar
         try:
-            from app.core.redis_client import get_redis
+            from app.core.redis_state import get_redis
 
             redis = await get_redis()
             if redis:

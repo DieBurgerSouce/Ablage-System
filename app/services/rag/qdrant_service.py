@@ -111,6 +111,7 @@ try:
         Filter,
         FieldCondition,
         MatchValue,
+        MatchAny,
         SearchRequest,
         ScoredPoint,
     )
@@ -584,12 +585,21 @@ class QdrantService:
                 must_conditions = []
                 for key, value in filter_conditions.items():
                     if value is not None:
-                        must_conditions.append(
-                            FieldCondition(
-                                key=key,
-                                match=MatchValue(value=value),
+                        # Spezial-Behandlung fuer IN-Filter (document_ids)
+                        if key == "_document_ids_in" and isinstance(value, list):
+                            must_conditions.append(
+                                FieldCondition(
+                                    key="document_id",
+                                    match=MatchAny(any=value),
+                                )
                             )
-                        )
+                        else:
+                            must_conditions.append(
+                                FieldCondition(
+                                    key=key,
+                                    match=MatchValue(value=value),
+                                )
+                            )
                 if must_conditions:
                     search_filter = Filter(must=must_conditions)
 
@@ -654,8 +664,10 @@ class QdrantService:
         if section_type:
             filter_conditions["section_type"] = section_type
 
-        # Document IDs erfordern speziellen Filter
-        # TODO: Implementiere IN-Filter fuer document_ids
+        # Document IDs mit MatchAny (IN-Filter) zur filter_conditions hinzufuegen
+        if document_ids:
+            # Spezial-Schluessel fuer IN-Filter (wird in search() behandelt)
+            filter_conditions["_document_ids_in"] = document_ids
 
         return await self.search(
             collection_name=collection_name,

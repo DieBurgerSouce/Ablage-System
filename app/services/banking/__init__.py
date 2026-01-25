@@ -63,6 +63,18 @@ from .liquidity_forecast_service import (
     ForecastConfidence,
     get_liquidity_forecast_service,
 )
+from .payment_automation_service import (
+    PaymentAutomationService,
+    get_payment_automation_service,
+    PaymentPriority,
+    PaymentStrategy,
+    PaymentBatchStatus,
+    SuggestionReason,
+    PaymentSuggestion,
+    PaymentBatch,
+    PaymentSchedule,
+    AutomationConfig,
+)
 
 __all__ = [
     # Enums
@@ -128,4 +140,15 @@ __all__ = [
     "ConfidenceInterval",
     "ForecastConfidence",
     "get_liquidity_forecast_service",
+    # Phase 5.4: Payment Automation (Januar 2026)
+    "PaymentAutomationService",
+    "get_payment_automation_service",
+    "PaymentPriority",
+    "PaymentStrategy",
+    "PaymentBatchStatus",
+    "SuggestionReason",
+    "PaymentSuggestion",
+    "PaymentBatch",
+    "PaymentSchedule",
+    "AutomationConfig",
 ]

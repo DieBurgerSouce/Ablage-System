@@ -12,6 +12,11 @@ Arbeitspaket 6: Audit Log Immutabilität
 - Sequenznummern für Ordering
 - Verifikationsfunktionen für Tamper-Detection
 
+Phase 1.4: Audit-Log Encryption (Januar 2026)
+- AES-256-GCM Verschlüsselung für sensitive Metadaten
+- Versionierte Encryption für Key-Rotation
+- Encryption-at-rest für GDPR Art. 32 Compliance
+
 Feinpoliert und durchdacht - Enterprise-grade Audit Logging.
 """
 
@@ -21,12 +26,45 @@ from enum import Enum
 import uuid
 import hashlib
 import json
+import base64
 
 import structlog
 from sqlalchemy import select, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.encryption import (
+    encrypt_data,
+    decrypt_data,
+    is_encrypted,
+    EncryptionError,
+    DecryptionError,
+)
+
 logger = structlog.get_logger(__name__)
+
+# ==================== Encryption Configuration (Phase 1.4) ====================
+
+# Flag um Encryption zu aktivieren/deaktivieren (für Migrations-Kompatibilität)
+AUDIT_ENCRYPTION_ENABLED = True
+
+# Felder die IMMER verschlüsselt werden sollten (PII, sensitive data)
+SENSITIVE_FIELDS = {
+    "ip_address",
+    "user_agent",
+    "email",
+    "phone",
+    "address",
+    "iban",
+    "vat_id",
+    "customer_number",
+    "supplier_number",
+    "session_id",
+    "device_id",
+    "location",
+}
+
+# Encryption prefix für verschlüsselte Werte
+ENCRYPTION_PREFIX = "ENC:"
 
 # Genesis-Hash für den ersten Eintrag in der Kette
 GENESIS_HASH = "0" * 64  # 64 Nullen als Genesis-Block-Hash
@@ -133,6 +171,112 @@ class SecurityEventType(str, Enum):
     EMPLOYEES_LISTED = "employees_listed"
     DEPARTMENTS_LISTED = "departments_listed"
     POSITIONS_LISTED = "positions_listed"
+
+
+# ==================== Encryption Functions (Phase 1.4) ====================
+
+def encrypt_audit_metadata(
+    metadata: Dict[str, Any],
+    entry_id: str,
+) -> Dict[str, Any]:
+    """
+    Verschlüsselt sensitive Felder in Audit-Metadaten.
+
+    Verwendet AES-256-GCM mit entry_id als AAD (Additional Authenticated Data)
+    um sicherzustellen, dass verschlüsselte Daten nicht zwischen Einträgen
+    kopiert werden können.
+
+    Args:
+        metadata: Die zu verschlüsselnden Metadaten
+        entry_id: Audit-Log-Entry-ID als AAD
+
+    Returns:
+        Dict mit verschlüsselten sensitiven Feldern
+    """
+    if not AUDIT_ENCRYPTION_ENABLED:
+        return metadata
+
+    encrypted = {}
+    for key, value in metadata.items():
+        key_lower = key.lower()
+
+        # Prüfe ob Feld verschlüsselt werden soll
+        should_encrypt = any(s in key_lower for s in SENSITIVE_FIELDS)
+
+        if should_encrypt and value is not None and isinstance(value, str):
+            try:
+                # Verschlüssele mit Entry-ID als AAD
+                encrypted_value = encrypt_data(value, associated_data=f"audit:{entry_id}")
+                encrypted[key] = f"{ENCRYPTION_PREFIX}{encrypted_value}"
+            except EncryptionError as e:
+                # Bei Fehler: Wert maskieren statt Klartext speichern
+                logger.warning(
+                    "audit_metadata_encryption_failed",
+                    field=key,
+                    error=str(e),
+                )
+                encrypted[key] = "[ENCRYPTION_FAILED]"
+        else:
+            encrypted[key] = value
+
+    return encrypted
+
+
+def decrypt_audit_metadata(
+    metadata: Dict[str, Any],
+    entry_id: str,
+) -> Dict[str, Any]:
+    """
+    Entschlüsselt sensitive Felder in Audit-Metadaten.
+
+    Args:
+        metadata: Die verschlüsselten Metadaten
+        entry_id: Audit-Log-Entry-ID als AAD
+
+    Returns:
+        Dict mit entschlüsselten Feldern
+    """
+    if not metadata:
+        return metadata
+
+    decrypted = {}
+    for key, value in metadata.items():
+        if isinstance(value, str) and value.startswith(ENCRYPTION_PREFIX):
+            try:
+                # Entferne Prefix und entschlüssele
+                encrypted_value = value[len(ENCRYPTION_PREFIX):]
+                decrypted[key] = decrypt_data(encrypted_value, associated_data=f"audit:{entry_id}")
+            except DecryptionError as e:
+                logger.warning(
+                    "audit_metadata_decryption_failed",
+                    field=key,
+                    error=str(e),
+                )
+                decrypted[key] = "[DECRYPTION_FAILED]"
+        else:
+            decrypted[key] = value
+
+    return decrypted
+
+
+def is_audit_metadata_encrypted(metadata: Dict[str, Any]) -> bool:
+    """
+    Prüft ob Audit-Metadaten verschlüsselte Felder enthalten.
+
+    Args:
+        metadata: Die zu prüfenden Metadaten
+
+    Returns:
+        True wenn mindestens ein Feld verschlüsselt ist
+    """
+    if not metadata:
+        return False
+
+    for value in metadata.values():
+        if isinstance(value, str) and value.startswith(ENCRYPTION_PREFIX):
+            return True
+
+    return False
 
 
 # ==================== Integrity Functions (AP6) ====================
@@ -534,6 +678,11 @@ class SecurityAuditLogger:
                 created_at = datetime.now(timezone.utc)
                 filtered_details = self._filter_sensitive_data(details)
 
+                # Phase 1.4: Verschlüssele sensitive Metadaten
+                entry_id = str(uuid.uuid4())
+                if AUDIT_ENCRYPTION_ENABLED:
+                    filtered_details = encrypt_audit_metadata(filtered_details, entry_id)
+
                 # AP6: Berechne Integrity-Hash
                 integrity_hash = calculate_entry_hash(
                     sequence_number=sequence,
@@ -548,7 +697,7 @@ class SecurityAuditLogger:
                 )
 
                 audit_log = AuditLog(
-                    id=uuid.uuid4(),
+                    id=uuid.UUID(entry_id),  # Phase 1.4: Verwende vorher generierte ID für AAD
                     user_id=uuid.UUID(user_id) if user_id else None,
                     action=event_type.value,
                     resource_type=resource_type or "security",
@@ -572,6 +721,7 @@ class SecurityAuditLogger:
                     "audit_log_saved_with_integrity",
                     sequence=sequence,
                     integrity_hash=integrity_hash[:16] + "...",
+                    encrypted=AUDIT_ENCRYPTION_ENABLED,
                 )
 
                 return str(audit_log.id)
@@ -781,6 +931,107 @@ class SecurityAuditLogger:
             details={"reason": reason},
             severity="warning",
         )
+
+
+# ==================== Audit Log Retrieval with Decryption (Phase 1.4) ====================
+
+async def get_audit_log_decrypted(
+    db: AsyncSession,
+    log_id: uuid.UUID,
+) -> Optional[Dict[str, Any]]:
+    """
+    Holt einen Audit-Log-Eintrag und entschlüsselt die Metadaten.
+
+    Args:
+        db: Datenbank-Session
+        log_id: ID des Audit-Log-Eintrags
+
+    Returns:
+        Dict mit entschlüsselten Audit-Log-Daten oder None
+    """
+    from app.db.models import AuditLog
+
+    result = await db.execute(
+        select(AuditLog).where(AuditLog.id == log_id)
+    )
+    entry = result.scalar_one_or_none()
+
+    if not entry:
+        return None
+
+    # Entschlüssele Metadaten
+    decrypted_metadata = decrypt_audit_metadata(
+        entry.audit_metadata or {},
+        str(entry.id),
+    )
+
+    return {
+        "id": str(entry.id),
+        "user_id": str(entry.user_id) if entry.user_id else None,
+        "action": entry.action,
+        "resource_type": entry.resource_type,
+        "resource_id": str(entry.resource_id) if entry.resource_id else None,
+        "ip_address": entry.ip_address,
+        "user_agent": entry.user_agent,
+        "metadata": decrypted_metadata,
+        "created_at": entry.created_at.isoformat() if entry.created_at else None,
+        "sequence_number": entry.sequence_number,
+        "integrity_hash": entry.integrity_hash,
+        "is_encrypted": is_audit_metadata_encrypted(entry.audit_metadata or {}),
+    }
+
+
+async def get_audit_logs_for_export(
+    db: AsyncSession,
+    start_date: datetime,
+    end_date: datetime,
+    decrypt: bool = True,
+    limit: int = 10000,
+) -> List[Dict[str, Any]]:
+    """
+    Holt Audit-Logs für Export mit optionaler Entschlüsselung.
+
+    Args:
+        db: Datenbank-Session
+        start_date: Startdatum
+        end_date: Enddatum
+        decrypt: Ob Metadaten entschlüsselt werden sollen
+        limit: Maximale Anzahl Einträge
+
+    Returns:
+        Liste von Audit-Log-Dicts
+    """
+    from app.db.models import AuditLog
+
+    result = await db.execute(
+        select(AuditLog)
+        .where(
+            AuditLog.created_at >= start_date,
+            AuditLog.created_at <= end_date,
+        )
+        .order_by(AuditLog.sequence_number)
+        .limit(limit)
+    )
+    entries = result.scalars().all()
+
+    logs = []
+    for entry in entries:
+        metadata = entry.audit_metadata or {}
+        if decrypt:
+            metadata = decrypt_audit_metadata(metadata, str(entry.id))
+
+        logs.append({
+            "id": str(entry.id),
+            "user_id": str(entry.user_id) if entry.user_id else None,
+            "action": entry.action,
+            "resource_type": entry.resource_type,
+            "ip_address": entry.ip_address,
+            "metadata": metadata,
+            "created_at": entry.created_at.isoformat() if entry.created_at else None,
+            "sequence_number": entry.sequence_number,
+        })
+
+    return logs
 
 
 # Singleton-Instance für globalen Zugriff (ohne DB)

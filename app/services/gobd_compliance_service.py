@@ -1032,7 +1032,7 @@ class GoBDComplianceService:
 
         # Importiere AuditChainEntry falls vorhanden
         try:
-            from app.db.models.gobd import AuditChainEntry
+            from app.db.bpmn_models.gobd import AuditChainEntry
 
             result = await db.execute(
                 select(AuditChainEntry)

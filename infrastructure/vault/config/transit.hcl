@@ -46,3 +46,33 @@ key "ablage-audit-hmac" {
   allow_plaintext_backup = false
   exportable             = false
 }
+
+# Haupt-Verschlüsselungsschlüssel für allgemeine Daten
+# Verwendet von VaultTransitEncryptionService als Standard-Key
+key "ablage-encryption-key" {
+  type                   = "aes256-gcm96"
+  deletion_allowed       = false
+  allow_plaintext_backup = false
+  exportable             = false
+
+  # Key-Rotation-Einstellungen
+  min_decryption_version = 1
+  min_encryption_version = 0  # 0 = immer neueste Version
+}
+
+# TOTP-Secrets Verschlüsselung
+# Separate Schlüssel für MFA-Secrets
+key "ablage-totp-secrets" {
+  type                   = "aes256-gcm96"
+  deletion_allowed       = false
+  allow_plaintext_backup = false
+  exportable             = false
+}
+
+# API-Keys Verschlüsselung (ERP-Verbindungen, etc.)
+key "ablage-api-keys" {
+  type                   = "aes256-gcm96"
+  deletion_allowed       = false
+  allow_plaintext_backup = false
+  exportable             = false
+}

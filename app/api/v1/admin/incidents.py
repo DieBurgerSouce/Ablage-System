@@ -406,7 +406,7 @@ async def unblock_ip(
 
     # Entferne aus Redis
     try:
-        from app.core.redis_client import get_redis
+        from app.core.redis_state import get_redis
         redis = await get_redis()
         if redis:
             await redis.delete(f"blocked_ip:{ip_address}")

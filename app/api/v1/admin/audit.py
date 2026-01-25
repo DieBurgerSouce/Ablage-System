@@ -6,16 +6,18 @@ Provides audit log viewing and export for admins:
 - View admin actions
 - Export audit data
 - Get audit statistics
+- Permission audit and compliance reporting (Phase 1.2)
 """
 
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_db, get_current_superuser
+from app.api.dependencies import get_db, get_current_superuser, get_current_user
 from app.core.german_messages import HTTPErrors
 from app.core.security import build_content_disposition
 from app.db.models import User
@@ -27,6 +29,12 @@ from app.db.schemas import (
     SortOrder,
 )
 from app.services.admin.audit_service import AuditService
+from app.services.permission_audit_service import (
+    PermissionAuditService,
+    PermissionChangeType,
+    PermissionChangeRecord,
+    PermissionAuditExport,
+)
 
 
 router = APIRouter(prefix="/audit", tags=["Admin - Audit-Logs"])
@@ -339,4 +347,204 @@ async def search_audit_logs(
         per_page=per_page,
         filters=filters,
         sort_order=SortOrder.DESC,
+    )
+
+
+# ==================== Permission Audit (Phase 1.2) ====================
+
+
+@router.get(
+    "/permissions",
+    response_model=PermissionAuditExport,
+    summary="Berechtigungs-Audit abrufen",
+    description="Listet alle Berechtigungsänderungen für die Company auf",
+)
+async def get_permission_audit(
+    start_date: Optional[datetime] = Query(None, description="Ab Datum (ISO-Format)"),
+    end_date: Optional[datetime] = Query(None, description="Bis Datum (ISO-Format)"),
+    change_type: Optional[PermissionChangeType] = Query(
+        None, description="Nach Änderungstyp filtern"
+    ),
+    limit: int = Query(500, ge=1, le=5000, description="Maximale Anzahl Einträge"),
+    offset: int = Query(0, ge=0, description="Offset für Pagination"),
+    admin: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> PermissionAuditExport:
+    """
+    Ruft alle Berechtigungsänderungen für die aktuelle Company ab.
+
+    **Phase 1.2 - Berechtigungsprotokoll für Compliance**
+
+    Enthält:
+    - Rollenzuweisungen/-entzüge
+    - Einzelne Permission-Grants/-Revokes
+    - Gruppenmitgliedschafts-Änderungen
+    - Delegationen (Phase 3)
+
+    **DSGVO Art. 30 konform** - Alle Änderungen sind nachvollziehbar.
+
+    **Tenant-isoliert** - Nur Daten der eigenen Company.
+    """
+    if not admin.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Keine Company-Zuordnung gefunden",
+        )
+
+    service = PermissionAuditService(db)
+
+    change_types = [change_type] if change_type else None
+
+    return await service.get_company_permission_audit(
+        company_id=str(admin.company_id),
+        start_date=start_date,
+        end_date=end_date,
+        change_types=change_types,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get(
+    "/permissions/user/{user_id}",
+    response_model=List[PermissionChangeRecord],
+    summary="Benutzer-Berechtigungs-Historie",
+    description="Ruft die Berechtigungsänderungs-Historie für einen Benutzer ab",
+)
+async def get_user_permission_history(
+    user_id: UUID,
+    start_date: Optional[datetime] = Query(None, description="Ab Datum"),
+    end_date: Optional[datetime] = Query(None, description="Bis Datum"),
+    limit: int = Query(100, ge=1, le=1000, description="Maximale Anzahl"),
+    offset: int = Query(0, ge=0, description="Offset"),
+    admin: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> List[PermissionChangeRecord]:
+    """
+    Ruft die komplette Berechtigungs-Historie für einen Benutzer ab.
+
+    **Use Cases:**
+    - Compliance-Audits: "Wer hatte wann welche Rechte?"
+    - Security-Reviews: "Wie haben sich die Rechte entwickelt?"
+    - Incident Response: "Hatte der User zum Zeitpunkt X Zugriff auf Y?"
+
+    **Tenant-isoliert** - Nur für Benutzer der eigenen Company.
+    """
+    if not admin.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Keine Company-Zuordnung gefunden",
+        )
+
+    service = PermissionAuditService(db)
+
+    return await service.get_user_permission_history(
+        user_id=str(user_id),
+        company_id=str(admin.company_id),
+        start_date=start_date,
+        end_date=end_date,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get(
+    "/permissions/export",
+    summary="Berechtigungs-Audit exportieren",
+    description="Exportiert Berechtigungsänderungen als CSV oder JSON",
+)
+async def export_permission_audit(
+    format: str = Query("csv", description="Exportformat (csv oder json)"),
+    start_date: Optional[datetime] = Query(None, description="Ab Datum"),
+    end_date: Optional[datetime] = Query(None, description="Bis Datum"),
+    admin: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """
+    Exportiert Berechtigungsänderungen für Compliance-Reports.
+
+    **Formate:**
+    - **csv**: Semikolon-getrennt (Excel-kompatibel, deutsche Spaltenköpfe)
+    - **json**: JSON mit vollständigen Metadaten
+
+    **DSGVO Art. 30** - Export für Verzeichnis der Verarbeitungstätigkeiten.
+
+    **Limit**: Maximal 10.000 Einträge pro Export.
+    """
+    if not admin.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Keine Company-Zuordnung gefunden",
+        )
+
+    if format not in ["csv", "json"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ungültiges Format. Erlaubt: csv, json",
+        )
+
+    service = PermissionAuditService(db)
+
+    if format == "csv":
+        content = await service.export_csv(
+            company_id=str(admin.company_id),
+            start_date=start_date,
+            end_date=end_date,
+        )
+        media_type = "text/csv; charset=utf-8"
+    else:
+        content = await service.export_json(
+            company_id=str(admin.company_id),
+            start_date=start_date,
+            end_date=end_date,
+        )
+        media_type = "application/json; charset=utf-8"
+
+    filename = f"berechtigungen_audit_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{format}"
+
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": build_content_disposition(filename, "attachment"),
+        },
+    )
+
+
+@router.get(
+    "/permissions/summary",
+    summary="Berechtigungs-Audit Zusammenfassung",
+    description="Gibt eine Compliance-Zusammenfassung der Berechtigungsänderungen zurück",
+)
+async def get_permission_audit_summary(
+    days: int = Query(30, ge=1, le=365, description="Betrachtungszeitraum in Tagen"),
+    admin: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Erstellt eine Compliance-Zusammenfassung für Berechtigungsänderungen.
+
+    **Enthält:**
+    - Gesamtzahl der Änderungen im Zeitraum
+    - Aufschlüsselung nach Änderungstyp
+    - Top betroffene Benutzer
+    - Top Administratoren
+    - Zeitraumstatistiken
+
+    **Nützlich für:**
+    - Compliance-Dashboard
+    - Audit-Vorbereitung
+    - Security-Reviews
+    """
+    if not admin.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Keine Company-Zuordnung gefunden",
+        )
+
+    service = PermissionAuditService(db)
+
+    return await service.get_compliance_summary(
+        company_id=str(admin.company_id),
+        period_days=days,
     )

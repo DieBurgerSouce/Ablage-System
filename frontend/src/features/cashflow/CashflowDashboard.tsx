@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ import { CashflowSummaryCards } from './components/CashflowSummaryCards';
 import type { ScenarioRequest } from './api/cashflow-api';
 
 export function CashflowDashboard() {
+  const navigate = useNavigate();
   const [forecastDays, setForecastDays] = useState(30);
   const [activeScenario, setActiveScenario] = useState<string | null>(null);
 
@@ -58,8 +60,11 @@ export function CashflowDashboard() {
   };
 
   const handlePayInvoice = (invoiceId: string) => {
-    // Navigate to invoice payment or open modal
-    console.log('Pay invoice:', invoiceId);
+    // Navigate to invoice list with invoice ID for payment action
+    navigate({
+      to: '/admin/rechnungen/liste',
+      search: { invoiceId },
+    });
   };
 
   return (

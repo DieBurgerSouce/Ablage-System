@@ -83,13 +83,23 @@ async def list_training_samples(
     document_type: Optional[str] = Query(None, description="Filter nach Dokumenttyp"),
     has_ground_truth: Optional[bool] = Query(None, description="Hat Ground Truth Text"),
     verified_only: bool = Query(False, description="Nur verifizierte Samples"),
+    search: Optional[str] = Query(None, max_length=200, description="Volltextsuche"),
+    sort_by: str = Query(
+        "created_at",
+        regex="^(created_at|updated_at|document_type|status|difficulty|business_priority|language)$",
+        description="Sortierfeld"
+    ),
+    sort_order: str = Query("desc", regex="^(asc|desc)$", description="Sortierreihenfolge"),
     limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl"),
-    offset: int = Query(0, ge=0, description="Offset für Paginierung"),
+    offset: int = Query(0, ge=0, description="Offset fuer Paginierung"),
     current_user: User = Depends(require_any_role("admin", "editor")),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Listet Training Samples mit optionalen Filtern auf.
+
+    Unterstuetzt Volltextsuche in file_path und ground_truth_text.
+    Sortierung ueber sort_by und sort_order Parameter.
 
     Erfordert Editor- oder Admin-Rolle.
     """
@@ -101,6 +111,9 @@ async def list_training_samples(
         document_type=document_type,
         has_ground_truth=has_ground_truth,
         verified_only=verified_only,
+        search=search,
+        sort_by=sort_by,
+        sort_order=sort_order,
         limit=limit,
         offset=offset
     )

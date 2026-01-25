@@ -131,8 +131,16 @@ export function EmergencyAccessPanel({
   className,
 }: EmergencyAccessPanelProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const [selectedContact, setSelectedContact] = React.useState<PrivatEmergencyContact | null>(null);
   const [denyReason, setDenyReason] = React.useState('');
   const [selectedRequest, setSelectedRequest] = React.useState<PrivatEmergencyAccessRequest | null>(null);
+
+  // Handler für Edit öffnen
+  const handleOpenEditDialog = React.useCallback((contact: PrivatEmergencyContact) => {
+    setSelectedContact(contact);
+    setIsEditDialogOpen(true);
+  }, []);
 
   const pendingRequests = requests.filter((r) => r.status === 'pending');
 
@@ -249,7 +257,7 @@ export function EmergencyAccessPanel({
                 <ContactCard
                   key={contact.id}
                   contact={contact}
-                  onEdit={onEditContact}
+                  onEdit={handleOpenEditDialog}
                   onDelete={onDeleteContact}
                 />
               ))}
@@ -350,6 +358,26 @@ export function EmergencyAccessPanel({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Contact Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          {selectedContact && (
+            <EditContactForm
+              contact={selectedContact}
+              onSubmit={(updatedContact) => {
+                onEditContact?.({ ...selectedContact, ...updatedContact });
+                setIsEditDialogOpen(false);
+                setSelectedContact(null);
+              }}
+              onCancel={() => {
+                setIsEditDialogOpen(false);
+                setSelectedContact(null);
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -585,6 +613,125 @@ function AddContactForm({ onSubmit, onCancel }: AddContactFormProps) {
           Abbrechen
         </Button>
         <Button type="submit">Hinzufügen</Button>
+      </DialogFooter>
+    </form>
+  );
+}
+
+interface EditContactFormProps {
+  contact: PrivatEmergencyContact;
+  onSubmit: (contact: Partial<Omit<PrivatEmergencyContact, 'id' | 'spaceId' | 'createdAt' | 'updatedAt'>>) => void;
+  onCancel: () => void;
+}
+
+function EditContactForm({ contact, onSubmit, onCancel }: EditContactFormProps) {
+  const [firstName, setFirstName] = React.useState(contact.firstName);
+  const [lastName, setLastName] = React.useState(contact.lastName);
+  const [email, setEmail] = React.useState(contact.email);
+  const [phone, setPhone] = React.useState(contact.phone || '');
+  const [relationship, setRelationship] = React.useState(contact.relationship || '');
+  const [waitingPeriodDays, setWaitingPeriodDays] = React.useState(contact.waitingPeriodDays);
+  const [notes, setNotes] = React.useState(contact.notes || '');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit({
+      firstName,
+      lastName,
+      email,
+      phone: phone || undefined,
+      relationship: relationship || undefined,
+      waitingPeriodDays,
+      notes: notes || undefined,
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <DialogHeader>
+        <DialogTitle>Vertrauensperson bearbeiten</DialogTitle>
+        <DialogDescription>
+          Ändern Sie die Daten der Vertrauensperson.
+        </DialogDescription>
+      </DialogHeader>
+      <div className="grid gap-4 py-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="edit-firstName">Vorname *</Label>
+            <Input
+              id="edit-firstName"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="edit-lastName">Nachname *</Label>
+            <Input
+              id="edit-lastName"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              required
+            />
+          </div>
+        </div>
+        <div>
+          <Label htmlFor="edit-email">E-Mail *</Label>
+          <Input
+            id="edit-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="edit-phone">Telefon</Label>
+          <Input
+            id="edit-phone"
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+        </div>
+        <div>
+          <Label htmlFor="edit-relationship">Beziehung</Label>
+          <Input
+            id="edit-relationship"
+            value={relationship}
+            onChange={(e) => setRelationship(e.target.value)}
+            placeholder="z.B. Ehepartner, Kind, Anwalt..."
+          />
+        </div>
+        <div>
+          <Label htmlFor="edit-waitingPeriod">Wartezeit (Tage) *</Label>
+          <Input
+            id="edit-waitingPeriod"
+            type="number"
+            min={1}
+            max={365}
+            value={waitingPeriodDays}
+            onChange={(e) => setWaitingPeriodDays(Number(e.target.value))}
+          />
+          <p className="text-sm text-muted-foreground mt-1">
+            Zeitraum, in dem Sie eine Anfrage ablehnen können
+          </p>
+        </div>
+        <div>
+          <Label htmlFor="edit-notes">Notizen</Label>
+          <Input
+            id="edit-notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Zusätzliche Informationen..."
+          />
+        </div>
+      </div>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Abbrechen
+        </Button>
+        <Button type="submit">Speichern</Button>
       </DialogFooter>
     </form>
   );

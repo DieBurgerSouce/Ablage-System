@@ -32,8 +32,12 @@ import structlog
 from sqlalchemy import select, and_, or_, func, case, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.datetime_utils import utc_now, parse_german_date
-from app.db.models import Document, BusinessEntity, Folder, InvoiceTracking
+from app.core.datetime_utils import utc_now
+from app.services.extraction.patterns.date_patterns import parse_german_date
+from app.db.models import Document, BusinessEntity, InvoiceTracking
+
+# NOTE: Folder model does not exist - folder-based queries disabled
+Folder = None
 
 logger = structlog.get_logger(__name__)
 
@@ -630,8 +634,12 @@ class NLQService:
     ) -> NLQResult:
         """Verarbeitet eine Such-Abfrage."""
 
-        # Base-Query
-        stmt = select(Document).where(Document.deleted_at.is_(None))
+        # Base-Query mit optional Entity Join
+        stmt = (
+            select(Document, BusinessEntity.name.label("entity_name"))
+            .outerjoin(BusinessEntity, Document.business_entity_id == BusinessEntity.id)
+            .where(Document.deleted_at.is_(None))
+        )
 
         if company_id:
             stmt = stmt.where(Document.company_id == company_id)
@@ -676,22 +684,25 @@ class NLQService:
 
         stmt = stmt.order_by(Document.created_at.desc()).limit(limit)
 
-        # Ausfuehren
+        # Ausfuehren (Tupel: Document, entity_name)
         result = await self.db.execute(stmt)
-        documents = result.scalars().all()
+        rows = result.all()
 
         # Ergebnis aufbereiten
-        results = [
-            {
+        results = []
+        documents = []
+        for row in rows:
+            doc = row[0]  # Document
+            entity_name = row[1]  # BusinessEntity.name (kann None sein)
+            documents.append(doc)
+            results.append({
                 "id": str(doc.id),
                 "filename": doc.filename,
                 "document_type": doc.document_type,
                 "created_at": doc.created_at.isoformat() if doc.created_at else None,
                 "amount": doc.extracted_data.get("total_gross") if doc.extracted_data else None,
-                "entity_name": None,  # TODO: Join mit Entity
-            }
-            for doc in documents
-        ]
+                "entity_name": entity_name,
+            })
 
         # Natuerliche Antwort generieren
         if len(documents) == 0:
@@ -864,23 +875,162 @@ class NLQService:
         entities: List[ExtractedEntity],
         company_id: Optional[uuid.UUID],
     ) -> NLQResult:
-        """Verarbeitet eine Chat/RAG-Abfrage."""
+        """Verarbeitet eine Chat/RAG-Abfrage mit vollstaendiger RAG-Integration.
 
-        # Placeholder fuer RAG-Integration
-        # In einer vollstaendigen Implementation wuerde hier
-        # ein LLM mit Dokumenten-Kontext aufgerufen werden
+        Phase 9.3: Enhanced NLQ with RAG
 
-        return NLQResult(
-            success=True,
-            intent=QueryIntent.CHAT,
-            extracted_entities=entities,
-            natural_response=(
-                "Diese Funktion verwendet RAG (Retrieval Augmented Generation) "
-                "um Fragen ueber Ihre Dokumente zu beantworten. "
-                "Die vollstaendige RAG-Integration ist in Entwicklung."
-            ),
-            confidence=0.60,
-        )
+        Workflow:
+        1. Semantische Suche nach relevanten Dokumenten-Chunks
+        2. Kontext aus Chunks zusammenstellen
+        3. LLM mit Kontext und Frage aufrufen
+        4. Antwort mit Quellenangaben zurueckgeben
+        """
+        try:
+            # RAG-Services importieren (lazy import um Circular Imports zu vermeiden)
+            from app.services.rag.search_service import RAGSearchService
+            from app.services.rag.llm_service import LLMService, LLMMessage, LLMContextType
+
+            # 1. Semantische Suche nach relevanten Chunks
+            search_service = RAGSearchService()
+            search_result = await search_service.semantic_search(
+                db=self.db,
+                query=query,
+                limit=5,  # Top 5 relevante Chunks
+                threshold=0.6,
+                rerank=True
+            )
+
+            # Pruefen ob Chunks gefunden wurden
+            if not search_result.results:
+                return NLQResult(
+                    success=True,
+                    intent=QueryIntent.CHAT,
+                    extracted_entities=entities,
+                    natural_response=(
+                        "Ich konnte keine relevanten Dokumente zu Ihrer Frage finden. "
+                        "Bitte stellen Sie sicher, dass die entsprechenden Dokumente "
+                        "bereits verarbeitet wurden."
+                    ),
+                    confidence=0.40,
+                    results=[],
+                    result_count=0,
+                )
+
+            # 2. Kontext aus Chunks zusammenstellen
+            context_parts: List[str] = []
+            source_documents: List[Dict[str, Any]] = []
+
+            for i, chunk in enumerate(search_result.results, 1):
+                context_parts.append(
+                    f"[Quelle {i}] (Relevanz: {chunk.similarity:.0%}):\n{chunk.chunk_text}"
+                )
+                source_documents.append({
+                    "chunk_id": str(chunk.chunk_id),
+                    "document_id": str(chunk.document_id),
+                    "similarity": round(chunk.similarity, 3),
+                    "page_number": chunk.page_number,
+                    "section_type": chunk.section_type,
+                })
+
+            context = "\n\n---\n\n".join(context_parts)
+
+            # 3. System-Prompt fuer RAG erstellen
+            system_prompt = """Du bist ein hilfreicher Assistent fuer ein Dokumentenmanagementsystem.
+Beantworte die Frage basierend auf den bereitgestellten Dokumenten-Auszuegen.
+
+WICHTIGE REGELN:
+- Antworte NUR basierend auf den bereitgestellten Informationen
+- Wenn die Information nicht in den Dokumenten enthalten ist, sage das ehrlich
+- Nenne die Quellen (Quelle 1, Quelle 2, etc.) wenn du Informationen verwendest
+- Antworte auf Deutsch
+- Halte dich kurz und praezise
+
+KONTEXT AUS DOKUMENTEN:
+{context}"""
+
+            # 4. LLM aufrufen
+            llm_service = LLMService()
+            try:
+                messages = [
+                    LLMMessage(role="system", content=system_prompt.format(context=context)),
+                    LLMMessage(role="user", content=query)
+                ]
+
+                llm_response = await llm_service.generate(
+                    messages=messages,
+                    context_type=LLMContextType.GENERAL,
+                    max_tokens=1024,
+                    temperature=0.3  # Niedrigere Temperatur fuer faktische Antworten
+                )
+
+                natural_response = llm_response.content
+
+                # Quellenangaben hinzufuegen
+                if source_documents:
+                    natural_response += "\n\n📚 Verwendete Quellen: "
+                    natural_response += ", ".join(
+                        f"Dokument {i+1}" for i in range(len(source_documents))
+                    )
+
+                return NLQResult(
+                    success=True,
+                    intent=QueryIntent.CHAT,
+                    extracted_entities=entities,
+                    natural_response=natural_response,
+                    confidence=0.85,
+                    results=source_documents,
+                    result_count=len(source_documents),
+                )
+
+            except Exception as llm_error:
+                logger.warning(
+                    "nlq_llm_fallback",
+                    error=str(llm_error),
+                    query=query[:50]
+                )
+                # Fallback: Chunks ohne LLM-Verarbeitung zurueckgeben
+                return NLQResult(
+                    success=True,
+                    intent=QueryIntent.CHAT,
+                    extracted_entities=entities,
+                    natural_response=(
+                        f"Ich habe {len(search_result.results)} relevante Dokumente gefunden. "
+                        "Die LLM-Verarbeitung ist derzeit nicht verfuegbar. "
+                        "Hier sind die relevanten Textausschnitte:\n\n" +
+                        "\n---\n".join(
+                            f"• {r.chunk_text[:200]}..." for r in search_result.results[:3]
+                        )
+                    ),
+                    confidence=0.65,
+                    results=source_documents,
+                    result_count=len(source_documents),
+                )
+
+            finally:
+                await llm_service.close()
+
+        except ImportError as e:
+            logger.warning("nlq_rag_import_error", error=str(e))
+            return NLQResult(
+                success=True,
+                intent=QueryIntent.CHAT,
+                extracted_entities=entities,
+                natural_response=(
+                    "Die RAG-Funktionalitaet ist derzeit nicht verfuegbar. "
+                    "Bitte versuchen Sie es spaeter erneut."
+                ),
+                confidence=0.30,
+            )
+        except Exception as e:
+            logger.error("nlq_chat_error", error=str(e), query=query[:50])
+            return NLQResult(
+                success=False,
+                intent=QueryIntent.CHAT,
+                extracted_entities=entities,
+                natural_response=f"Fehler bei der Verarbeitung: {str(e)}",
+                confidence=0.0,
+                error_message=str(e),
+            )
 
 
 # ============================================================================

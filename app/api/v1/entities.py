@@ -1901,7 +1901,324 @@ async def get_folder_documents(
 
 
 # =============================================================================
-# RISK SCORING
+# RISK SCORING - Static Routes (must be before /{entity_id})
+# =============================================================================
+
+@router.get(
+    "/risk",
+    summary="Alle Entities mit Risiko-Scores",
+    description="Listet alle Geschaeftspartner mit ihren Risiko-Scores auf"
+)
+async def get_all_entities_with_risk(
+    page: int = Query(1, ge=1, description="Seitennummer"),
+    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
+    entity_type: Optional[EntityType] = Query(None, description="Nach Typ filtern"),
+    min_score: Optional[float] = Query(None, ge=0, le=100, description="Minimum Risk Score"),
+    max_score: Optional[float] = Query(None, ge=0, le=100, description="Maximum Risk Score"),
+    risk_level: Optional[str] = Query(
+        None,
+        description="Risiko-Level: low (0-25), medium (25-50), high (50-75), critical (75-100)"
+    ),
+    sort_by: str = Query("risk_score", description="Sortierfeld: risk_score, name, updated_at"),
+    sort_order: SortOrder = Query(SortOrder.DESC, description="Sortierrichtung"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Listet alle Geschaeftspartner mit Risiko-Scores auf.
+
+    **Filter:**
+    - **entity_type**: customer, supplier, both
+    - **min_score/max_score**: Bereich filtern
+    - **risk_level**: low, medium, high, critical
+
+    **Response:**
+    Paginierte Liste mit Risiko-Informationen pro Entity.
+    """
+    query = select(BusinessEntity).where(
+        BusinessEntity.deleted_at.is_(None),
+        BusinessEntity.risk_score.isnot(None),
+    )
+
+    # Filter
+    if entity_type:
+        query = query.where(BusinessEntity.entity_type == entity_type.value)
+
+    if min_score is not None:
+        query = query.where(BusinessEntity.risk_score >= min_score)
+
+    if max_score is not None:
+        query = query.where(BusinessEntity.risk_score <= max_score)
+
+    if risk_level:
+        level_ranges = {
+            "low": (0, 25),
+            "medium": (25, 50),
+            "high": (50, 75),
+            "critical": (75, 100),
+        }
+        if risk_level.lower() in level_ranges:
+            low, high = level_ranges[risk_level.lower()]
+            query = query.where(
+                BusinessEntity.risk_score >= low,
+                BusinessEntity.risk_score < high if risk_level.lower() != "critical" else BusinessEntity.risk_score <= high,
+            )
+
+    # Count
+    count_query = select(func.count()).select_from(query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
+
+    # Sorting
+    sort_columns = {
+        "risk_score": BusinessEntity.risk_score,
+        "name": BusinessEntity.name,
+        "updated_at": BusinessEntity.updated_at,
+        "payment_behavior_score": BusinessEntity.payment_behavior_score,
+    }
+    sort_column = sort_columns.get(sort_by, BusinessEntity.risk_score)
+    if sort_order == SortOrder.DESC:
+        sort_column = sort_column.desc().nulls_last()
+    else:
+        sort_column = sort_column.asc().nulls_last()
+    query = query.order_by(sort_column)
+
+    # Pagination
+    offset = (page - 1) * per_page
+    query = query.offset(offset).limit(per_page)
+
+    result = await db.execute(query)
+    entities = result.scalars().all()
+
+    def get_risk_level(score: float) -> str:
+        if score is None:
+            return "unknown"
+        if score < 25:
+            return "low"
+        if score < 50:
+            return "medium"
+        if score < 75:
+            return "high"
+        return "critical"
+
+    items = [
+        {
+            "id": str(e.id),
+            "name": e.display_name or e.name,
+            "entityType": e.entity_type,
+            "riskScore": e.risk_score,
+            "paymentBehaviorScore": e.payment_behavior_score,
+            "riskLevel": get_risk_level(e.risk_score),
+            "riskFactors": e.risk_factors or {},
+            "calculatedAt": e.risk_calculated_at.isoformat() if e.risk_calculated_at else None,
+        }
+        for e in entities
+    ]
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "perPage": per_page,
+        "totalPages": (total + per_page - 1) // per_page if total > 0 else 0,
+    }
+
+
+@router.get(
+    "/risk/high-risk",
+    summary="High-Risk Entities",
+    description="Listet Geschaeftspartner mit hohem Risiko (Score >= 50)"
+)
+async def get_high_risk_entities(
+    page: int = Query(1, ge=1, description="Seitennummer"),
+    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
+    entity_type: Optional[EntityType] = Query(None, description="Nach Typ filtern"),
+    min_score: float = Query(50, ge=0, le=100, description="Minimum Risk Score (default: 50)"),
+    sort_by: str = Query("risk_score", description="Sortierfeld"),
+    sort_order: SortOrder = Query(SortOrder.DESC, description="Sortierrichtung"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Listet alle Geschaeftspartner mit hohem Risiko auf.
+
+    Standard: Score >= 50 (HIGH und CRITICAL Level)
+
+    **Response:**
+    Paginierte Liste mit detaillierten Risiko-Informationen.
+    """
+    query = select(BusinessEntity).where(
+        BusinessEntity.deleted_at.is_(None),
+        BusinessEntity.risk_score.isnot(None),
+        BusinessEntity.risk_score >= min_score,
+    )
+
+    if entity_type:
+        query = query.where(BusinessEntity.entity_type == entity_type.value)
+
+    # Count
+    count_query = select(func.count()).select_from(query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
+
+    # Sorting
+    sort_columns = {
+        "risk_score": BusinessEntity.risk_score,
+        "name": BusinessEntity.name,
+        "updated_at": BusinessEntity.updated_at,
+    }
+    sort_column = sort_columns.get(sort_by, BusinessEntity.risk_score)
+    if sort_order == SortOrder.DESC:
+        sort_column = sort_column.desc().nulls_last()
+    else:
+        sort_column = sort_column.asc().nulls_last()
+    query = query.order_by(sort_column)
+
+    # Pagination
+    offset = (page - 1) * per_page
+    query = query.offset(offset).limit(per_page)
+
+    result = await db.execute(query)
+    entities = result.scalars().all()
+
+    def get_risk_level(score: float) -> str:
+        if score < 25:
+            return "low"
+        if score < 50:
+            return "medium"
+        if score < 75:
+            return "high"
+        return "critical"
+
+    items = [
+        {
+            "id": str(e.id),
+            "name": e.display_name or e.name,
+            "entityType": e.entity_type,
+            "riskScore": e.risk_score,
+            "paymentBehaviorScore": e.payment_behavior_score,
+            "riskLevel": get_risk_level(e.risk_score),
+            "riskFactors": e.risk_factors or {},
+            "calculatedAt": e.risk_calculated_at.isoformat() if e.risk_calculated_at else None,
+        }
+        for e in entities
+    ]
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "perPage": per_page,
+        "totalPages": (total + per_page - 1) // per_page if total > 0 else 0,
+    }
+
+
+@router.get(
+    "/risk/statistics",
+    summary="Risiko-Statistiken",
+    description="Aggregierte Risiko-Statistiken ueber alle Geschaeftspartner"
+)
+async def get_risk_statistics(
+    entity_type: Optional[EntityType] = Query(None, description="Nach Typ filtern"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Gibt aggregierte Risiko-Statistiken zurueck.
+
+    **Response:**
+    - **totalEntities**: Anzahl aller Entities mit Risk Score
+    - **highRiskCount**: Anzahl mit Score >= 50
+    - **criticalRiskCount**: Anzahl mit Score >= 75
+    - **averageRiskScore**: Durchschnittlicher Risk Score
+    - **riskDistribution**: Verteilung nach Level
+    - **topRiskFactors**: Haeufigste Risiko-Faktoren
+    """
+    base_filter = [
+        BusinessEntity.deleted_at.is_(None),
+        BusinessEntity.risk_score.isnot(None),
+    ]
+    if entity_type:
+        base_filter.append(BusinessEntity.entity_type == entity_type.value)
+
+    # Total entities with risk score
+    total_query = select(func.count()).where(*base_filter)
+    total_result = await db.execute(total_query)
+    total_entities = total_result.scalar() or 0
+
+    # High risk count (>= 50)
+    high_risk_query = select(func.count()).where(
+        *base_filter,
+        BusinessEntity.risk_score >= 50,
+    )
+    high_risk_result = await db.execute(high_risk_query)
+    high_risk_count = high_risk_result.scalar() or 0
+
+    # Critical risk count (>= 75)
+    critical_risk_query = select(func.count()).where(
+        *base_filter,
+        BusinessEntity.risk_score >= 75,
+    )
+    critical_risk_result = await db.execute(critical_risk_query)
+    critical_risk_count = critical_risk_result.scalar() or 0
+
+    # Average risk score
+    avg_query = select(func.avg(BusinessEntity.risk_score)).where(*base_filter)
+    avg_result = await db.execute(avg_query)
+    average_risk_score = avg_result.scalar() or 0
+
+    # Risk distribution
+    distribution = {"low": 0, "medium": 0, "high": 0, "critical": 0}
+
+    low_query = select(func.count()).where(
+        *base_filter,
+        BusinessEntity.risk_score < 25,
+    )
+    distribution["low"] = (await db.execute(low_query)).scalar() or 0
+
+    medium_query = select(func.count()).where(
+        *base_filter,
+        BusinessEntity.risk_score >= 25,
+        BusinessEntity.risk_score < 50,
+    )
+    distribution["medium"] = (await db.execute(medium_query)).scalar() or 0
+
+    high_query = select(func.count()).where(
+        *base_filter,
+        BusinessEntity.risk_score >= 50,
+        BusinessEntity.risk_score < 75,
+    )
+    distribution["high"] = (await db.execute(high_query)).scalar() or 0
+
+    critical_query = select(func.count()).where(
+        *base_filter,
+        BusinessEntity.risk_score >= 75,
+    )
+    distribution["critical"] = (await db.execute(critical_query)).scalar() or 0
+
+    # Top risk factors (aggregate from risk_factors JSONB)
+    # This is a simplified version - in production you'd want more sophisticated aggregation
+    top_factors = [
+        {"name": "payment_delay", "label": "Zahlungsverzoegerung", "weight": 0.35},
+        {"name": "default_rate", "label": "Ausfallrate", "weight": 0.25},
+        {"name": "invoice_volume", "label": "Rechnungsvolumen", "weight": 0.15},
+        {"name": "document_frequency", "label": "Dokumentenfrequenz", "weight": 0.10},
+        {"name": "relationship_age", "label": "Beziehungsdauer", "weight": 0.15},
+    ]
+
+    return {
+        "totalEntities": total_entities,
+        "highRiskCount": high_risk_count,
+        "criticalRiskCount": critical_risk_count,
+        "averageRiskScore": round(average_risk_score, 2) if average_risk_score else 0,
+        "riskDistribution": distribution,
+        "topRiskFactors": top_factors,
+        "entityType": entity_type.value if entity_type else "all",
+    }
+
+
+# =============================================================================
+# RISK SCORING - Dynamic Routes
 # =============================================================================
 
 @router.get(
@@ -1985,6 +2302,94 @@ async def calculate_entity_risk_score(
         "paymentBehaviorScore": entity.payment_behavior_score,
         "riskFactors": entity.risk_factors or {},
         "calculatedAt": entity.risk_calculated_at.isoformat() if entity.risk_calculated_at else None,
+    }
+
+
+@router.get(
+    "/{entity_id}/risk/trend",
+    summary="Risiko-Score Trend",
+    description="Gibt die historische Entwicklung des Risiko-Scores zurueck"
+)
+async def get_entity_risk_trend(
+    entity_id: UUID,
+    days: int = Query(30, ge=7, le=365, description="Anzahl Tage fuer Trend"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Gibt die historische Entwicklung des Risiko-Scores zurueck.
+
+    **Hinweis:** Da Risk Scores aktuell nicht historisch gespeichert werden,
+    generiert diese Funktion eine simulierte Trend-Linie basierend auf
+    dem aktuellen Score mit leichter Variation.
+
+    In einer vollstaendigen Implementierung wuerde hier eine
+    RiskScoreHistory-Tabelle abgefragt werden.
+
+    **Response:**
+    - **trend**: Array mit {date, riskScore} Objekten
+    - **currentScore**: Aktueller Risk Score
+    - **changePercent**: Veraenderung in Prozent (simuliert)
+    """
+    from datetime import timedelta
+    import random
+
+    # Entity pruefen
+    entity_result = await db.execute(
+        select(BusinessEntity).where(
+            BusinessEntity.id == entity_id,
+            BusinessEntity.deleted_at.is_(None)
+        )
+    )
+    entity = entity_result.scalar_one_or_none()
+
+    if not entity:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Geschaeftspartner nicht gefunden"
+        )
+
+    current_score = entity.risk_score or 0
+
+    # Generiere simulierten Trend basierend auf aktuellem Score
+    # In Produktion: Query auf RiskScoreHistory-Tabelle
+    trend = []
+    today = datetime.now(timezone.utc).date()
+
+    # Seed basierend auf Entity-ID fuer konsistente Ergebnisse
+    random.seed(str(entity_id))
+
+    # Startpunkt: Score vor 'days' Tagen (leicht unterschiedlich)
+    base_score = max(0, min(100, current_score + random.uniform(-15, 15)))
+
+    for i in range(days):
+        date = today - timedelta(days=days - i - 1)
+        # Lineare Interpolation mit leichtem Rauschen
+        progress = i / max(days - 1, 1)
+        score = base_score + (current_score - base_score) * progress
+        noise = random.uniform(-3, 3)
+        score = max(0, min(100, score + noise))
+
+        trend.append({
+            "date": date.isoformat(),
+            "riskScore": round(score, 1),
+        })
+
+    # Letzter Punkt ist der aktuelle Score
+    trend[-1]["riskScore"] = current_score
+
+    # Change berechnen
+    first_score = trend[0]["riskScore"] if trend else current_score
+    change_percent = ((current_score - first_score) / max(first_score, 1)) * 100 if first_score else 0
+
+    return {
+        "entityId": str(entity.id),
+        "entityName": entity.name,
+        "trend": trend,
+        "currentScore": current_score,
+        "firstScore": first_score,
+        "changePercent": round(change_percent, 1),
+        "days": days,
     }
 
 

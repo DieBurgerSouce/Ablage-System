@@ -1025,6 +1025,31 @@ async def get_import_stats(
         )
         source_counts[source] = count_result.scalar() or 0
 
+    # Imports nach Tag fuer Chart-Daten (letzte 30 Tage)
+    imports_by_day_result = await db.execute(
+        select(
+            func.date(ImportLog.started_at).label("date"),
+            func.count().label("count"),
+            func.count().filter(ImportLog.status == "completed").label("successful"),
+            func.count().filter(ImportLog.status == "failed").label("failed"),
+        )
+        .where(
+            ImportLog.user_id == current_user.id,
+            ImportLog.started_at >= start_date,
+        )
+        .group_by(func.date(ImportLog.started_at))
+        .order_by(func.date(ImportLog.started_at))
+    )
+    imports_by_day = [
+        {
+            "date": str(row.date),
+            "count": row.count,
+            "successful": row.successful,
+            "failed": row.failed,
+        }
+        for row in imports_by_day_result.all()
+    ]
+
     return {
         "total_imports": total_imports,
         "successful_imports": status_counts.get("completed", 0),
@@ -1033,5 +1058,5 @@ async def get_import_stats(
         "documents_created": documents_created,
         "avg_processing_time_ms": float(avg_processing_time),
         "imports_by_source": source_counts,
-        "imports_by_day": [],  # TODO: Implementierung fuer Chart-Daten
+        "imports_by_day": imports_by_day,
     }

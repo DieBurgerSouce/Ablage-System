@@ -36,9 +36,11 @@ const DOCUMENT_TYPES = [
 ];
 
 const SORT_OPTIONS = [
-  { value: 'priority', label: 'Priorität' },
-  { value: 'date_desc', label: 'Neueste zuerst' },
-  { value: 'date_asc', label: 'Älteste zuerst' },
+  { value: 'business_priority:desc', label: 'Priorität' },
+  { value: 'created_at:desc', label: 'Neueste zuerst' },
+  { value: 'created_at:asc', label: 'Älteste zuerst' },
+  { value: 'difficulty:desc', label: 'Schwierigkeit' },
+  { value: 'document_type:asc', label: 'Dokumenttyp' },
 ];
 
 const STATUS_OPTIONS = [
@@ -55,13 +57,19 @@ export function ValidationDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('pending');
   const [documentTypeFilter, setDocumentTypeFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('priority');
+  const [sortBy, setSortBy] = useState('created_at:desc');
   const [page, setPage] = useState(0);
+
+  // Parse sort value into sort_by and sort_order
+  const [sortField, sortOrder] = sortBy.split(':') as [string, 'asc' | 'desc'];
 
   // Build query params
   const queryParams: ListSamplesParams = {
     status: statusFilter === 'all' ? undefined : (statusFilter as TrainingSampleStatus),
     document_type: documentTypeFilter === 'all' ? undefined : documentTypeFilter,
+    search: searchQuery || undefined,
+    sort_by: sortField as ListSamplesParams['sort_by'],
+    sort_order: sortOrder,
     limit: PAGE_SIZE,
     offset: page * PAGE_SIZE,
   };
@@ -73,9 +81,9 @@ export function ValidationDashboard() {
   // Handlers
   const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement search when backend supports it
-    refetch();
-  }, [refetch]);
+    setPage(0); // Reset to first page on search
+    // Query wird automatisch durch queryParams aktualisiert
+  }, []);
 
   const handleFilterChange = useCallback(() => {
     setPage(0); // Reset to first page on filter change
@@ -93,7 +101,7 @@ export function ValidationDashboard() {
 
   const handleSortChange = (value: string) => {
     setSortBy(value);
-    // TODO: Implement sorting when backend supports it
+    setPage(0); // Reset to first page on sort change
   };
 
   const handleRefresh = () => {

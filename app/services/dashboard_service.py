@@ -1095,8 +1095,15 @@ class DashboardService:
             "roles": json.dumps(updated_roles),
         })
 
-        # TODO: In production, create dashboard_shares table for user-specific sharing
-        # For now, we only support role-based sharing via shared_with_roles
+        # FUTURE: dashboard_shares Tabelle fuer User-spezifisches Sharing
+        # Migration erforderlich:
+        #   CREATE TABLE dashboard_shares (
+        #       dashboard_id UUID REFERENCES user_dashboards(id),
+        #       shared_with_user_id UUID REFERENCES users(id),
+        #       permissions JSONB DEFAULT '{"view": true, "edit": false}',
+        #       created_at TIMESTAMPTZ DEFAULT now()
+        #   );
+        # Aktuell: Nur Rollen-basiertes Sharing via shared_with_roles
 
         await self.db.commit()
 
@@ -1127,8 +1134,9 @@ class DashboardService:
         """
         from sqlalchemy import text
 
-        # TODO: In production, delete from dashboard_shares table
-        # For now, this is a placeholder
+        # FUTURE: User-spezifisches Unsharing via dashboard_shares Tabelle
+        # DELETE FROM dashboard_shares WHERE dashboard_id = :id AND shared_with_user_id = :user_id
+        # Aktuell: Placeholder (nur Rollen-basiert moeglich)
 
         logger.info(
             "dashboard_unshared",

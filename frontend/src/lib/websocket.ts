@@ -11,6 +11,10 @@
 
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { logger } from './logger';
+
+// Create WebSocket-specific logger
+const wsLogger = logger.withLabels({ component: 'WebSocket' });
 
 // ============================================================================
 // Types
@@ -61,7 +65,11 @@ export type RealtimeEventType =
   | 'comment.deleted'
   | 'comment.replied'
   | 'comment.reaction_added'
-  | 'comment.reaction_removed';
+  | 'comment.reaction_removed'
+  // Widget Events (Real-time Updates)
+  | 'widget.update'
+  | 'widget.data_changed'
+  | 'widget.refresh_required';
 
 export interface RealtimeEvent {
   event_type: RealtimeEventType;
@@ -179,7 +187,7 @@ class RealtimeWebSocketClient {
       this.ws = new WebSocket(wsUrl);
       this.setupEventListeners();
     } catch (error) {
-      console.error('WebSocket creation failed:', error);
+      wsLogger.error('WebSocket creation failed', error);
       this.handleReconnect();
     }
   }
@@ -188,7 +196,7 @@ class RealtimeWebSocketClient {
     if (!this.ws) return;
 
     this.ws.onopen = () => {
-      console.log('WebSocket connected');
+      wsLogger.debug('WebSocket connected');
       this.setState('connected');
       this.reconnectAttempts = 0;
       this.reconnectDelay = 1000;
@@ -212,7 +220,7 @@ class RealtimeWebSocketClient {
     };
 
     this.ws.onclose = (event) => {
-      console.log('WebSocket closed:', event.code, event.reason);
+      wsLogger.debug('WebSocket closed', { code: event.code, reason: event.reason });
       this.stopPingInterval();
 
       if (event.code !== 1000) {
@@ -224,7 +232,7 @@ class RealtimeWebSocketClient {
     };
 
     this.ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
+      wsLogger.error('WebSocket error', error);
     };
 
     this.ws.onmessage = (event) => {
@@ -232,7 +240,7 @@ class RealtimeWebSocketClient {
         const message: WSMessage = JSON.parse(event.data);
         this.handleMessage(message);
       } catch (error) {
-        console.error('Failed to parse WebSocket message:', error);
+        wsLogger.error('Failed to parse WebSocket message', error);
       }
     };
   }
@@ -240,7 +248,7 @@ class RealtimeWebSocketClient {
   private handleMessage(message: WSMessage): void {
     switch (message.type) {
       case 'connected':
-        console.log('WebSocket authenticated:', message.payload);
+        wsLogger.debug('WebSocket authenticated', message.payload);
         break;
 
       case 'pong':
@@ -261,15 +269,15 @@ class RealtimeWebSocketClient {
         break;
 
       case 'subscribed':
-        console.log('Subscribed to events:', message.payload);
+        wsLogger.debug('Subscribed to events', message.payload);
         break;
 
       case 'unsubscribed':
-        console.log('Unsubscribed from events:', message.payload);
+        wsLogger.debug('Unsubscribed from events', message.payload);
         break;
 
       default:
-        console.log('Unknown message type:', message.type);
+        wsLogger.debug('Unknown message type', { type: message.type });
     }
   }
 
@@ -284,7 +292,7 @@ class RealtimeWebSocketClient {
         try {
           handler(event);
         } catch (error) {
-          console.error('Event handler error:', error);
+          wsLogger.error('Event handler error', error);
         }
       });
     }
@@ -296,7 +304,7 @@ class RealtimeWebSocketClient {
         try {
           handler(event);
         } catch (error) {
-          console.error('Wildcard handler error:', error);
+          wsLogger.error('Wildcard handler error', error);
         }
       });
     }
@@ -311,7 +319,7 @@ class RealtimeWebSocketClient {
 
   private handleReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('Max reconnect attempts reached');
+      wsLogger.error('Max reconnect attempts reached');
       this.setState('disconnected');
       return;
     }
@@ -325,7 +333,7 @@ class RealtimeWebSocketClient {
       this.maxReconnectDelay
     );
 
-    console.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
+    wsLogger.debug('Reconnecting', { delay, attempt: this.reconnectAttempts });
 
     setTimeout(() => {
       if (this.state === 'reconnecting' && this.token) {
@@ -361,7 +369,7 @@ class RealtimeWebSocketClient {
         try {
           handler(state);
         } catch (error) {
-          console.error('State change handler error:', error);
+          wsLogger.error('State change handler error', error);
         }
       });
     }
@@ -686,6 +694,259 @@ export function useMentionNotifications(
       onMentionRef.current(event);
     }
   });
+}
+
+// ============================================================================
+// Widget Subscription Hooks (Phase 4.7)
+// ============================================================================
+
+/**
+ * Widget-Typen fuer Echtzeit-Subscriptions.
+ */
+export type WidgetType =
+  | 'cashflow'
+  | 'recent_documents'
+  | 'finance_status'
+  | 'dunning'
+  | 'ocr_performance'
+  | 'aging_report'
+  | 'skonto'
+  | 'system_status'
+  | 'today'
+  | 'quick_links'
+  | 'upload';
+
+/**
+ * Widget Update Event Payload.
+ */
+export interface WidgetUpdatePayload {
+  widget_type: WidgetType;
+  update_type: 'full' | 'partial' | 'refresh_hint';
+  data?: Record<string, unknown>;
+  changed_fields?: string[];
+  timestamp: string;
+}
+
+interface UseWidgetSubscriptionOptions {
+  /** Debounce-Zeit in ms (default: 500ms) */
+  debounceMs?: number;
+  /** Callback bei Widget-Update */
+  onUpdate?: (payload: WidgetUpdatePayload) => void;
+  /** Query Keys die bei Update invalidiert werden sollen */
+  queryKeysToInvalidate?: string[][];
+  /** Automatische Query-Invalidation aktivieren */
+  autoInvalidate?: boolean;
+}
+
+/**
+ * Hook fuer Widget-spezifische Echtzeit-Updates mit Debouncing.
+ *
+ * Bietet:
+ * - Automatische Query-Invalidation bei Updates
+ * - Debouncing fuer haeufige Updates (konfigurierbar)
+ * - Widget-spezifische Event-Filterung
+ *
+ * @param widgetType - Widget-Typ
+ * @param options - Optionale Konfiguration
+ *
+ * @example
+ * // Einfache Nutzung mit Auto-Invalidation
+ * useWidgetSubscription('cashflow', {
+ *   autoInvalidate: true,
+ *   queryKeysToInvalidate: [['cashflow'], ['finance']],
+ * });
+ *
+ * @example
+ * // Mit Custom Handler
+ * useWidgetSubscription('dunning', {
+ *   debounceMs: 1000,
+ *   onUpdate: (payload) => {
+ *     console.log('Dunning widget updated:', payload);
+ *   },
+ * });
+ */
+export function useWidgetSubscription(
+  widgetType: WidgetType,
+  options: UseWidgetSubscriptionOptions = {}
+): void {
+  const {
+    debounceMs = 500,
+    onUpdate,
+    queryKeysToInvalidate,
+    autoInvalidate = true,
+  } = options;
+
+  const queryClient = useQueryClient();
+  const onUpdateRef = useRef(onUpdate);
+  const pendingUpdateRef = useRef<WidgetUpdatePayload | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Update refs
+  useEffect(() => {
+    onUpdateRef.current = onUpdate;
+  }, [onUpdate]);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Process update with debouncing
+  const processUpdate = useCallback(
+    (payload: WidgetUpdatePayload) => {
+      // Store pending update
+      pendingUpdateRef.current = payload;
+
+      // Clear existing timer
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+
+      // Set new timer
+      debounceTimerRef.current = setTimeout(() => {
+        const update = pendingUpdateRef.current;
+        if (!update) return;
+
+        // Clear pending
+        pendingUpdateRef.current = null;
+
+        // Call custom handler
+        onUpdateRef.current?.(update);
+
+        // Auto-invalidate queries
+        if (autoInvalidate && queryKeysToInvalidate) {
+          queryKeysToInvalidate.forEach((key) => {
+            queryClient.invalidateQueries({ queryKey: key });
+          });
+        }
+      }, debounceMs);
+    },
+    [debounceMs, autoInvalidate, queryKeysToInvalidate, queryClient]
+  );
+
+  // Subscribe to widget.update events
+  useRealtimeEvent('widget.update', (event) => {
+    const payload = event.payload as unknown as WidgetUpdatePayload;
+    if (payload.widget_type === widgetType) {
+      processUpdate(payload);
+    }
+  });
+
+  // Subscribe to widget.data_changed events
+  useRealtimeEvent('widget.data_changed', (event) => {
+    const payload = event.payload as unknown as WidgetUpdatePayload;
+    if (payload.widget_type === widgetType) {
+      processUpdate(payload);
+    }
+  });
+
+  // Subscribe to widget.refresh_required events (immediate, no debounce)
+  useRealtimeEvent('widget.refresh_required', (event) => {
+    const payload = event.payload as unknown as WidgetUpdatePayload;
+    if (payload.widget_type === widgetType) {
+      // Clear any pending debounced update
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+      pendingUpdateRef.current = null;
+
+      // Immediate callback
+      onUpdateRef.current?.(payload);
+
+      // Immediate invalidation
+      if (autoInvalidate && queryKeysToInvalidate) {
+        queryKeysToInvalidate.forEach((key) => {
+          queryClient.invalidateQueries({ queryKey: key });
+        });
+      }
+    }
+  });
+}
+
+/**
+ * Hook fuer mehrere Widget-Subscriptions gleichzeitig.
+ *
+ * Optimiert fuer Dashboard-Nutzung mit intelligenter Query-Invalidation.
+ *
+ * @param widgetConfigs - Map von Widget-Typ zu Query-Keys
+ *
+ * @example
+ * useMultiWidgetSubscription({
+ *   cashflow: [['cashflow'], ['finance']],
+ *   dunning: [['dunning'], ['invoices']],
+ *   recent_documents: [['documents']],
+ * });
+ */
+export function useMultiWidgetSubscription(
+  widgetConfigs: Partial<Record<WidgetType, string[][]>>
+): void {
+  const queryClient = useQueryClient();
+  const configRef = useRef(widgetConfigs);
+
+  // Update ref
+  useEffect(() => {
+    configRef.current = widgetConfigs;
+  }, [widgetConfigs]);
+
+  // Handle widget updates with minimal re-renders
+  useRealtimeEvent('widget.update', (event) => {
+    const payload = event.payload as unknown as WidgetUpdatePayload;
+    const queryKeys = configRef.current[payload.widget_type];
+    if (queryKeys) {
+      queryKeys.forEach((key) => {
+        queryClient.invalidateQueries({ queryKey: key });
+      });
+    }
+  });
+
+  useRealtimeEvent('widget.data_changed', (event) => {
+    const payload = event.payload as unknown as WidgetUpdatePayload;
+    const queryKeys = configRef.current[payload.widget_type];
+    if (queryKeys) {
+      queryKeys.forEach((key) => {
+        queryClient.invalidateQueries({ queryKey: key });
+      });
+    }
+  });
+
+  useRealtimeEvent('widget.refresh_required', (event) => {
+    const payload = event.payload as unknown as WidgetUpdatePayload;
+    const queryKeys = configRef.current[payload.widget_type];
+    if (queryKeys) {
+      queryKeys.forEach((key) => {
+        queryClient.invalidateQueries({ queryKey: key });
+      });
+    }
+  });
+}
+
+/**
+ * Hook zum Senden von Widget-Refresh-Anfragen.
+ *
+ * Wird vom Server verwendet, um Widget-Updates anzufordern.
+ * Frontend kann dies nutzen um manuelle Refreshes zu triggern.
+ */
+export function useWidgetRefreshTrigger() {
+  const queryClient = useQueryClient();
+
+  const triggerRefresh = useCallback(
+    (widgetType: WidgetType, queryKeys?: string[][]) => {
+      // Immediately invalidate local queries
+      if (queryKeys) {
+        queryKeys.forEach((key) => {
+          queryClient.invalidateQueries({ queryKey: key });
+        });
+      }
+    },
+    [queryClient]
+  );
+
+  return { triggerRefresh };
 }
 
 export default RealtimeWebSocketClient;

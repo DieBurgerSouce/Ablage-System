@@ -21,9 +21,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db
 from app.db.models import User, Document
-from app.db.models.gobd import (
+from app.db.bpmn_models.gobd import (
     AuditChainEventType,
     RetentionPolicy,
     RetentionDeletionRequest,
@@ -32,6 +32,12 @@ from app.services.compliance import (
     audit_chain_service,
     retention_service,
     gobd_archive_service,
+    get_breach_notification_service,
+    BreachSeverity,
+    BreachType,
+    BreachStatus,
+    AffectedDataCategory,
+    SUPERVISORY_AUTHORITIES,
 )
 from app.services.compliance.audit_chain_service import ChainEntry
 from app.services.gobd_compliance_service import gobd_compliance_service
@@ -423,7 +429,7 @@ async def verify_archive_integrity(
     Vergleicht den gespeicherten Hash mit dem aktuellen Hash.
     Bei Abweichung: KRITISCHER FEHLER - moegliche Manipulation!
     """
-    from app.db.models.gobd import DocumentArchive
+    from app.db.bpmn_models.gobd import DocumentArchive
 
     # Lade Archiv-Informationen um document_id zu erhalten
     archive_result = await db.execute(
@@ -588,7 +594,7 @@ async def get_audit_chain_entries(
     else:
         # Hole allgemeine Eintraege (neueste zuerst)
         from sqlalchemy import select, desc
-        from app.db.models.gobd import AuditChainEntry
+        from app.db.bpmn_models.gobd import AuditChainEntry
 
         result = await db.execute(
             select(AuditChainEntry)
@@ -1253,3 +1259,546 @@ async def get_steuerberater_export(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Fehler beim Steuerberater-Export: {str(e)}",
         )
+
+
+# ================== GDPR Breach Notification (Art. 33-34) ==================
+
+class AffectedDataCategorySchema(BaseModel):
+    """Schema fuer betroffene Datenkategorie."""
+    category: str = Field(..., description="Kategorie (z.B. 'name', 'email', 'iban')")
+    description: str = Field(..., description="Beschreibung der Daten")
+    count: int = Field(0, ge=0, description="Anzahl betroffener Datensaetze")
+    is_sensitive: bool = Field(False, description="Besondere Kategorie nach Art. 9 DSGVO")
+
+
+class BreachReportRequest(BaseModel):
+    """Request zum Melden einer Datenschutzverletzung."""
+    breach_type: str = Field(..., description="Art der Verletzung (z.B. 'unauthorized_access')")
+    severity: str = Field(..., description="Schweregrad (low, medium, high, critical)")
+    description: str = Field(..., min_length=20, description="Beschreibung des Vorfalls")
+    affected_subjects_count: int = Field(..., ge=0, description="Anzahl betroffener Personen")
+    affected_data_categories: List[AffectedDataCategorySchema] = Field(
+        ..., min_length=1, description="Betroffene Datenkategorien"
+    )
+    occurred_at: Optional[str] = Field(None, description="Zeitpunkt des Vorfalls (ISO 8601)")
+    is_estimate: bool = Field(False, description="True wenn Anzahl geschaetzt ist")
+
+
+class BreachReportResponse(BaseModel):
+    """Response nach Melden einer Datenschutzverletzung."""
+    success: bool
+    breach_id: Optional[str] = None
+    deadline_72h: Optional[str] = None
+    requires_authority_notification: bool = False
+    requires_subject_notification: bool = False
+    message: str
+
+
+class BreachStatusUpdateRequest(BaseModel):
+    """Request zum Aktualisieren des Breach-Status."""
+    status: str = Field(..., description="Neuer Status")
+    notes: Optional[str] = Field(None, description="Optionale Notizen")
+
+
+class BreachMeasureRequest(BaseModel):
+    """Request zum Hinzufuegen einer Massnahme."""
+    measure: str = Field(..., min_length=10, description="Beschreibung der Massnahme")
+
+
+class BreachRootCauseRequest(BaseModel):
+    """Request fuer Root-Cause-Analyse."""
+    root_cause: str = Field(..., min_length=20, description="Root-Cause-Analyse")
+    impact_assessment: str = Field(..., min_length=20, description="Impact-Assessment")
+
+
+class AuthorityNotificationRequest(BaseModel):
+    """Request fuer Behoerdenbenachrichtigung."""
+    state_code: str = Field("DE-DEFAULT", description="Bundesland-Code (DE-BW, DE-BY, etc.)")
+    company_name: Optional[str] = None
+    company_address: Optional[str] = None
+    dpo_name: Optional[str] = None
+    dpo_contact: Optional[str] = None
+
+
+class BreachListResponse(BaseModel):
+    """Response fuer Breach-Liste."""
+    breaches: List[dict]
+    total: int
+    limit: int
+    offset: int
+
+
+@router.post("/breach/report", response_model=BreachReportResponse)
+async def report_data_breach(
+    request: BreachReportRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Meldet eine Datenschutzverletzung nach Art. 33 DSGVO.
+
+    WICHTIG: Die 72-Stunden-Frist fuer die Meldung an die Aufsichtsbehoerde
+    beginnt mit dem Zeitpunkt der Erkennung der Verletzung.
+
+    Schweregrade:
+    - low: Minimales Risiko, keine Meldepflicht
+    - medium: Risiko vorhanden, Meldung an Behoerde erforderlich
+    - high: Hohes Risiko, Meldung + Betroffenenbenachrichtigung erforderlich
+    - critical: Kritisch, sofortige Eskalation
+    """
+    try:
+        breach_type = BreachType(request.breach_type)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ungueltiger Breach-Typ. Erlaubt: {[t.value for t in BreachType]}",
+        )
+
+    try:
+        severity = BreachSeverity(request.severity)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ungueltiger Schweregrad. Erlaubt: {[s.value for s in BreachSeverity]}",
+        )
+
+    # Konvertiere Datenkategorien
+    categories = [
+        AffectedDataCategory(
+            category=cat.category,
+            description=cat.description,
+            count=cat.count,
+            is_sensitive=cat.is_sensitive,
+        )
+        for cat in request.affected_data_categories
+    ]
+
+    # Parse occurred_at wenn angegeben
+    occurred_at = None
+    if request.occurred_at:
+        from datetime import datetime
+        try:
+            occurred_at = datetime.fromisoformat(request.occurred_at.replace("Z", "+00:00"))
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ungueltiges Datumsformat fuer occurred_at. Erwartet: ISO 8601",
+            )
+
+    service = get_breach_notification_service()
+    result = await service.report_breach(
+        db=db,
+        breach_type=breach_type,
+        severity=severity,
+        description=request.description,
+        affected_subjects_count=request.affected_subjects_count,
+        affected_data_categories=categories,
+        reported_by=str(current_user.id),
+        company_id=str(current_user.company_id) if current_user.company_id else None,
+        occurred_at=occurred_at,
+        is_estimate=request.is_estimate,
+    )
+
+    if result.success:
+        logger.warning(
+            "breach_reported_via_api",
+            breach_id=result.breach_id,
+            user_id=str(current_user.id)[:8],
+            severity=severity.value,
+            security_event=True,
+        )
+
+        return BreachReportResponse(
+            success=True,
+            breach_id=result.breach_id,
+            deadline_72h=result.deadline_72h.isoformat() if result.deadline_72h else None,
+            requires_authority_notification=result.requires_authority_notification,
+            requires_subject_notification=result.requires_subject_notification,
+            message="Datenschutzverletzung erfolgreich gemeldet. Bitte beachten Sie die 72-Stunden-Frist!",
+        )
+    else:
+        return BreachReportResponse(
+            success=False,
+            message=result.error or "Fehler beim Melden der Datenschutzverletzung",
+        )
+
+
+@router.get("/breach", response_model=BreachListResponse)
+async def list_breaches(
+    status_filter: Optional[str] = Query(None, description="Status-Filter"),
+    severity_filter: Optional[str] = Query(None, description="Schweregrad-Filter"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Listet alle Datenschutzverletzungen auf.
+
+    Optionale Filter:
+    - status_filter: detected, investigating, contained, authority_notified, etc.
+    - severity_filter: low, medium, high, critical
+    """
+    status_enum = None
+    if status_filter:
+        try:
+            status_enum = BreachStatus(status_filter)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Ungueltiger Status. Erlaubt: {[s.value for s in BreachStatus]}",
+            )
+
+    severity_enum = None
+    if severity_filter:
+        try:
+            severity_enum = BreachSeverity(severity_filter)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Ungueltiger Schweregrad. Erlaubt: {[s.value for s in BreachSeverity]}",
+            )
+
+    service = get_breach_notification_service()
+    breaches, total = await service.list_breaches(
+        db=db,
+        company_id=str(current_user.company_id) if current_user.company_id else None,
+        status=status_enum,
+        severity=severity_enum,
+        limit=limit,
+        offset=offset,
+    )
+
+    return BreachListResponse(
+        breaches=[
+            {
+                "id": b.id,
+                "breach_type": b.breach_type.value,
+                "severity": b.severity.value,
+                "status": b.status.value,
+                "description": b.description[:200] + "..." if len(b.description) > 200 else b.description,
+                "affected_subjects_count": b.affected_subjects_count,
+                "detected_at": b.detected_at.isoformat(),
+                "deadline_72h": b.deadline_72h.isoformat(),
+                "authority_notification": b.authority_notification.value,
+                "subjects_notification": b.subjects_notification.value,
+            }
+            for b in breaches
+        ],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get("/breach/deadlines")
+async def get_breach_deadlines(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Gibt alle Breaches mit anstehenden 72-Stunden-Deadlines zurueck.
+
+    KRITISCH: Diese Deadlines muessen eingehalten werden!
+    """
+    service = get_breach_notification_service()
+    deadlines = await service.get_pending_deadlines(
+        db=db,
+        company_id=str(current_user.company_id) if current_user.company_id else None,
+    )
+
+    return {
+        "count": len(deadlines),
+        "deadlines": deadlines,
+    }
+
+
+@router.get("/breach/{breach_id}")
+async def get_breach_details(
+    breach_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Holt Details einer Datenschutzverletzung."""
+    service = get_breach_notification_service()
+    breach = await service.get_breach(db, breach_id)
+
+    if not breach:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Breach {breach_id} nicht gefunden",
+        )
+
+    # Pruefe Company-Zugehoerigkeit
+    if breach.company_id and current_user.company_id:
+        if breach.company_id != str(current_user.company_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Keine Berechtigung fuer diesen Breach",
+            )
+
+    return {
+        "id": breach.id,
+        "breach_type": breach.breach_type.value,
+        "severity": breach.severity.value,
+        "status": breach.status.value,
+        "description": breach.description,
+        "root_cause": breach.root_cause,
+        "impact_assessment": breach.impact_assessment,
+        "detected_at": breach.detected_at.isoformat(),
+        "occurred_at": breach.occurred_at.isoformat() if breach.occurred_at else None,
+        "contained_at": breach.contained_at.isoformat() if breach.contained_at else None,
+        "deadline_72h": breach.deadline_72h.isoformat(),
+        "is_deadline_met": breach.is_deadline_met,
+        "affected_data_categories": [
+            {
+                "category": cat.category,
+                "description": cat.description,
+                "count": cat.count,
+                "is_sensitive": cat.is_sensitive,
+            }
+            for cat in breach.affected_data_categories
+        ],
+        "affected_subjects_count": breach.affected_subjects_count,
+        "affected_subjects_estimate": breach.affected_subjects_estimate,
+        "containment_measures": breach.containment_measures,
+        "remediation_measures": breach.remediation_measures,
+        "preventive_measures": breach.preventive_measures,
+        "authority_notification": breach.authority_notification.value,
+        "authority_notified_at": breach.authority_notified_at.isoformat() if breach.authority_notified_at else None,
+        "subjects_notification": breach.subjects_notification.value,
+        "subjects_notified_at": breach.subjects_notified_at.isoformat() if breach.subjects_notified_at else None,
+    }
+
+
+@router.get("/breach/{breach_id}/timeline")
+async def get_breach_timeline(
+    breach_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Holt die Timeline einer Datenschutzverletzung."""
+    service = get_breach_notification_service()
+    timeline = await service.get_timeline(breach_id)
+
+    return {
+        "breach_id": breach_id,
+        "entries": timeline,
+    }
+
+
+@router.patch("/breach/{breach_id}/status")
+async def update_breach_status(
+    breach_id: str,
+    request: BreachStatusUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Aktualisiert den Status einer Datenschutzverletzung."""
+    try:
+        new_status = BreachStatus(request.status)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ungueltiger Status. Erlaubt: {[s.value for s in BreachStatus]}",
+        )
+
+    service = get_breach_notification_service()
+    success = await service.update_breach_status(
+        db=db,
+        breach_id=breach_id,
+        new_status=new_status,
+        updated_by=str(current_user.id),
+        notes=request.notes,
+    )
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Breach {breach_id} nicht gefunden",
+        )
+
+    logger.info(
+        "breach_status_updated_via_api",
+        breach_id=breach_id,
+        new_status=new_status.value,
+        user_id=str(current_user.id)[:8],
+    )
+
+    return {"success": True, "breach_id": breach_id, "status": new_status.value}
+
+
+@router.post("/breach/{breach_id}/containment")
+async def add_containment_measure(
+    breach_id: str,
+    request: BreachMeasureRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Fuegt eine Eindaemmungsmassnahme hinzu."""
+    service = get_breach_notification_service()
+    success = await service.add_containment_measure(
+        db=db,
+        breach_id=breach_id,
+        measure=request.measure,
+        added_by=str(current_user.id),
+    )
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Breach {breach_id} nicht gefunden",
+        )
+
+    return {"success": True, "breach_id": breach_id, "message": "Eindaemmungsmassnahme hinzugefuegt"}
+
+
+@router.post("/breach/{breach_id}/remediation")
+async def add_remediation_measure(
+    breach_id: str,
+    request: BreachMeasureRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Fuegt eine Behebungsmassnahme hinzu."""
+    service = get_breach_notification_service()
+    success = await service.add_remediation_measure(
+        db=db,
+        breach_id=breach_id,
+        measure=request.measure,
+        added_by=str(current_user.id),
+    )
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Breach {breach_id} nicht gefunden",
+        )
+
+    return {"success": True, "breach_id": breach_id, "message": "Behebungsmassnahme hinzugefuegt"}
+
+
+@router.post("/breach/{breach_id}/root-cause")
+async def set_breach_root_cause(
+    breach_id: str,
+    request: BreachRootCauseRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Setzt Root-Cause-Analyse und Impact-Assessment."""
+    service = get_breach_notification_service()
+    success = await service.set_root_cause(
+        db=db,
+        breach_id=breach_id,
+        root_cause=request.root_cause,
+        impact_assessment=request.impact_assessment,
+        updated_by=str(current_user.id),
+    )
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Breach {breach_id} nicht gefunden",
+        )
+
+    return {"success": True, "breach_id": breach_id, "message": "Root-Cause-Analyse gespeichert"}
+
+
+@router.post("/breach/{breach_id}/generate-authority-notification")
+async def generate_authority_notification(
+    breach_id: str,
+    request: AuthorityNotificationRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generiert die Behoerdenbenachrichtigung nach Art. 33 DSGVO.
+
+    Die Benachrichtigung enthaelt alle Pflichtangaben nach Art. 33 Abs. 3 DSGVO:
+    - Art der Verletzung
+    - Kategorien und Anzahl der Betroffenen
+    - Wahrscheinliche Folgen
+    - Ergriffene Massnahmen
+    """
+    service = get_breach_notification_service()
+    template = await service.generate_authority_notification(
+        db=db,
+        breach_id=breach_id,
+        state_code=request.state_code,
+        company_name=request.company_name or "",
+        company_address=request.company_address or "",
+        dpo_name=request.dpo_name or "",
+        dpo_contact=request.dpo_contact or "",
+    )
+
+    if not template:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Breach {breach_id} nicht gefunden",
+        )
+
+    return {
+        "breach_id": breach_id,
+        "authority_name": template.authority_name,
+        "authority_email": template.authority_email,
+        "authority_address": template.authority_address,
+        "text_content": template.to_text(),
+        "html_content": template.to_html(),
+        "generated_at": template.generated_at.isoformat(),
+    }
+
+
+@router.post("/breach/{breach_id}/generate-subject-notification")
+async def generate_subject_notification(
+    breach_id: str,
+    company_name: Optional[str] = Query(None),
+    dpo_name: Optional[str] = Query(None),
+    dpo_contact: Optional[str] = Query(None),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generiert die Betroffenenbenachrichtigung nach Art. 34 DSGVO.
+
+    Die Benachrichtigung ist in klarer, verstaendlicher Sprache verfasst
+    und enthaelt:
+    - Art der Verletzung
+    - Wahrscheinliche Folgen
+    - Ergriffene Massnahmen
+    - Empfehlungen fuer Betroffene
+    """
+    service = get_breach_notification_service()
+    template = await service.generate_subject_notification(
+        db=db,
+        breach_id=breach_id,
+        company_name=company_name or "",
+        dpo_name=dpo_name or "",
+        dpo_contact=dpo_contact or "",
+    )
+
+    if not template:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Breach {breach_id} nicht gefunden",
+        )
+
+    return {
+        "breach_id": breach_id,
+        "text_content": template.to_text(),
+        "generated_at": template.generated_at.isoformat(),
+    }
+
+
+@router.get("/breach/supervisory-authorities")
+async def get_supervisory_authorities(
+    current_user: User = Depends(get_current_user),
+):
+    """Gibt Liste aller konfigurierten Aufsichtsbehoerden zurueck."""
+    return {
+        "authorities": [
+            {
+                "code": code,
+                "name": auth["name"],
+                "email": auth["email"],
+                "phone": auth["phone"],
+                "address": auth["address"],
+                "form_url": auth["form_url"],
+            }
+            for code, auth in SUPERVISORY_AUTHORITIES.items()
+        ]
+    }

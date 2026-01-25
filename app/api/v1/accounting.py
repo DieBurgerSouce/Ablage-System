@@ -28,11 +28,15 @@ from app.services.accounting import (
     get_open_items_service,
     get_vat_service,
     get_eur_service,
+    get_auto_booking_service,
     OpenItemType,
     PaymentPriority,
     VATRate,
     IncomeCategory,
     ExpenseCategory,
+    BookingConfidence,
+    BookingType,
+    TaxCode,
 )
 
 logger = structlog.get_logger(__name__)
@@ -954,4 +958,503 @@ async def get_accounting_statistics(
             "months_completed": ytd_summary["months_completed"],
         },
         "generated_at": datetime.now().isoformat(),
+    }
+
+
+# =============================================================================
+# AUTO-BOOKING (BUCHUNGSVORSCHLAEGE)
+# =============================================================================
+
+
+class BookingSuggestionSchema(BaseModel):
+    """Schema fuer einen Buchungsvorschlag."""
+
+    debit_account: str = Field(..., description="Soll-Konto (SKR03/04)")
+    debit_account_name: str = Field(..., description="Name des Soll-Kontos")
+    credit_account: str = Field(..., description="Haben-Konto (SKR03/04)")
+    credit_account_name: str = Field(..., description="Name des Haben-Kontos")
+    amount: Decimal = Field(..., description="Buchungsbetrag")
+    tax_code: Optional[str] = Field(None, description="DATEV-Steuerschluessel")
+    tax_rate: Optional[float] = Field(None, description="Steuersatz in Prozent")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Konfidenz (0-1)")
+    confidence_level: str = Field(..., description="Konfidenz-Stufe")
+    explanation: str = Field(..., description="Erklaerung fuer den Vorschlag")
+    similar_bookings_count: int = Field(0, description="Anzahl aehnlicher Buchungen")
+    booking_text: Optional[str] = Field(None, description="Buchungstext")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AlternativeSuggestionSchema(BaseModel):
+    """Schema fuer alternative Buchungsvorschlaege."""
+
+    debit_account: str
+    debit_account_name: str
+    credit_account: str
+    credit_account_name: str
+    confidence: float
+    explanation: str
+
+
+class AutoBookingResultSchema(BaseModel):
+    """Schema fuer das Auto-Booking Ergebnis."""
+
+    document_id: UUID
+    document_type: Optional[str] = None
+    entity_name: Optional[str] = None
+    primary_suggestion: BookingSuggestionSchema
+    alternative_suggestions: List[AlternativeSuggestionSchema] = []
+    booking_type: str = Field(..., description="expense, revenue, etc.")
+    analysis_details: Dict[str, Any] = Field(default_factory=dict)
+    can_auto_book: bool = Field(
+        False, description="True wenn Confidence >= 90% (HIGH)"
+    )
+
+
+class BookingPatternSchema(BaseModel):
+    """Schema fuer ein Buchungsmuster."""
+
+    supplier_name: Optional[str] = None
+    entity_id: Optional[UUID] = None
+    debit_account: str
+    credit_account: str
+    tax_code: Optional[str] = None
+    occurrence_count: int
+    last_used_at: Optional[datetime] = None
+    average_amount: Optional[Decimal] = None
+    confidence: float
+
+
+class LearnBookingRequest(BaseModel):
+    """Request fuer Booking-Feedback."""
+
+    document_id: UUID = Field(..., description="Dokument-ID")
+    debit_account: str = Field(..., description="Gewaehltes Soll-Konto")
+    credit_account: str = Field(..., description="Gewaehltes Haben-Konto")
+    tax_code: Optional[str] = Field(None, description="DATEV-Steuerschluessel")
+    booking_text: Optional[str] = Field(None, description="Buchungstext")
+
+
+class ApplyBookingRequest(BaseModel):
+    """Request zum Anwenden eines Buchungsvorschlags."""
+
+    document_id: UUID = Field(..., description="Dokument-ID")
+    debit_account: str = Field(..., description="Soll-Konto")
+    credit_account: str = Field(..., description="Haben-Konto")
+    amount: Decimal = Field(..., description="Buchungsbetrag")
+    tax_code: Optional[str] = Field(None, description="DATEV-Steuerschluessel")
+    booking_date: Optional[date] = Field(None, description="Buchungsdatum")
+    booking_text: Optional[str] = Field(None, description="Buchungstext")
+    auto_export_datev: bool = Field(False, description="Direkt nach DATEV exportieren")
+
+
+class ApplyBookingResponse(BaseModel):
+    """Response nach Anwenden einer Buchung."""
+
+    success: bool
+    booking_id: Optional[UUID] = None
+    message: str
+    datev_exported: bool = False
+
+
+@router.post(
+    "/auto-booking/suggest/{document_id}",
+    response_model=AutoBookingResultSchema,
+    summary="Buchungsvorschlag generieren",
+    description="Generiert ML-basierte Buchungsvorschlaege fuer ein Dokument",
+)
+async def suggest_booking(
+    document_id: UUID,
+    company_id: UUID = Query(..., description="Firmen-ID"),
+    kontenrahmen: str = Query("SKR03", description="Kontenrahmen (SKR03/SKR04)"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> AutoBookingResultSchema:
+    """
+    Generiert automatische Buchungsvorschlaege basierend auf:
+
+    **Analyse-Faktoren:**
+    - **Lieferanten-Historie**: Wie wurde dieser Lieferant bisher gebucht?
+    - **Dokumenttyp**: Rechnung → Aufwand, Gutschrift → Ertrag
+    - **Betragsanalyse**: Kleine Betraege oft Bueromaterial
+    - **Text-Analyse**: Keywords wie "Telefon", "Miete", "Personal"
+
+    **Konfidenz-Stufen:**
+    - **HIGH** (>90%): Auto-Booking moeglich
+    - **MEDIUM** (70-90%): Vorschlag mit Bestaetigung
+    - **LOW** (50-70%): Vorschlag mit Warnung
+    - **UNCERTAIN** (<50%): Manuelle Kontierung
+    """
+    logger.info(
+        "auto_booking_suggest_requested",
+        document_id=str(document_id),
+        company_id=str(company_id),
+        user_id=str(current_user.id),
+        kontenrahmen=kontenrahmen,
+    )
+
+    # Kontenrahmen validieren
+    if kontenrahmen not in ("SKR03", "SKR04"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ungueltiger Kontenrahmen. Erlaubt: SKR03, SKR04",
+        )
+
+    service = get_auto_booking_service(db)
+    result = await service.suggest_booking(
+        document_id=document_id,
+        company_id=company_id,
+        kontenrahmen=kontenrahmen,
+    )
+
+    # Primary Suggestion mappen
+    primary = result.suggestion
+    primary_schema = BookingSuggestionSchema(
+        debit_account=primary.debit_account,
+        debit_account_name=primary.debit_account_name,
+        credit_account=primary.credit_account,
+        credit_account_name=primary.credit_account_name,
+        amount=primary.amount,
+        tax_code=primary.tax_code.value if primary.tax_code else None,
+        tax_rate=primary.tax_rate,
+        confidence=primary.confidence,
+        confidence_level=primary.confidence_level.value,
+        explanation=primary.explanation,
+        similar_bookings_count=primary.similar_bookings_count,
+        booking_text=primary.booking_text,
+    )
+
+    # Alternativen mappen
+    alternatives = [
+        AlternativeSuggestionSchema(
+            debit_account=alt.debit_account,
+            debit_account_name=alt.debit_account_name,
+            credit_account=alt.credit_account,
+            credit_account_name=alt.credit_account_name,
+            confidence=alt.confidence,
+            explanation=alt.explanation,
+        )
+        for alt in (primary.alternative_suggestions or [])
+    ]
+
+    return AutoBookingResultSchema(
+        document_id=result.document_id,
+        document_type=result.document_type,
+        entity_name=result.entity_name,
+        primary_suggestion=primary_schema,
+        alternative_suggestions=alternatives,
+        booking_type=result.booking_type.value,
+        analysis_details=result.analysis_details,
+        can_auto_book=result.can_auto_book,
+    )
+
+
+@router.post(
+    "/auto-booking/learn",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Buchung lernen",
+    description="Meldet eine tatsaechliche Buchung zum Lernen",
+)
+async def learn_booking(
+    request: LearnBookingRequest,
+    company_id: UUID = Query(..., description="Firmen-ID"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """
+    Meldet eine vom User bestaetigte/korrigierte Buchung zurueck.
+
+    Das System lernt aus diesen Korrekturen und verbessert zukuenftige
+    Vorschlaege fuer diesen Lieferanten/Dokumenttyp.
+
+    **Verwendung:**
+    - Nach manueller Kontierung
+    - Nach Korrektur eines Vorschlags
+    - Nach Bestaetigung eines Auto-Bookings
+    """
+    logger.info(
+        "auto_booking_learn_requested",
+        document_id=str(request.document_id),
+        company_id=str(company_id),
+        user_id=str(current_user.id),
+        debit_account=request.debit_account,
+        credit_account=request.credit_account,
+    )
+
+    service = get_auto_booking_service(db)
+    await service.learn_from_booking(
+        document_id=request.document_id,
+        company_id=company_id,
+        debit_account=request.debit_account,
+        credit_account=request.credit_account,
+        tax_code=request.tax_code,
+        user_id=current_user.id,
+    )
+
+
+@router.get(
+    "/auto-booking/patterns",
+    response_model=List[BookingPatternSchema],
+    summary="Buchungsmuster abrufen",
+    description="Zeigt gelernte Buchungsmuster fuer einen Lieferanten",
+)
+async def get_booking_patterns(
+    company_id: UUID = Query(..., description="Firmen-ID"),
+    supplier_name: Optional[str] = Query(None, description="Lieferantenname"),
+    entity_id: Optional[UUID] = Query(None, description="Entity-ID"),
+    min_occurrences: int = Query(2, ge=1, description="Mindestanzahl Vorkommen"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> List[BookingPatternSchema]:
+    """
+    Zeigt die gelernten Buchungsmuster fuer einen Lieferanten.
+
+    **Nuetzlich fuer:**
+    - Analyse der Buchungshistorie
+    - Erkennung von Anomalien
+    - Optimierung der Kontierung
+
+    **Filter:**
+    - Nach Lieferantenname (Fuzzy-Match)
+    - Nach Entity-ID (exakt)
+    - Mindestanzahl Vorkommen
+    """
+    logger.info(
+        "auto_booking_patterns_requested",
+        company_id=str(company_id),
+        user_id=str(current_user.id),
+        supplier_name=supplier_name,
+        entity_id=str(entity_id) if entity_id else None,
+    )
+
+    service = get_auto_booking_service(db)
+    patterns = await service.get_supplier_patterns(
+        company_id=company_id,
+        supplier_name=supplier_name,
+        entity_id=entity_id,
+    )
+
+    # Nach min_occurrences filtern
+    filtered = [p for p in patterns if p.occurrence_count >= min_occurrences]
+
+    return [
+        BookingPatternSchema(
+            supplier_name=p.supplier_name,
+            entity_id=p.entity_id,
+            debit_account=p.debit_account,
+            credit_account=p.credit_account,
+            tax_code=p.tax_code.value if p.tax_code else None,
+            occurrence_count=p.occurrence_count,
+            last_used_at=p.last_used_at,
+            average_amount=p.average_amount,
+            confidence=p.confidence,
+        )
+        for p in filtered
+    ]
+
+
+@router.post(
+    "/auto-booking/apply",
+    response_model=ApplyBookingResponse,
+    summary="Buchung anwenden",
+    description="Wendet einen Buchungsvorschlag an und speichert die Buchung",
+)
+async def apply_booking(
+    request: ApplyBookingRequest,
+    company_id: UUID = Query(..., description="Firmen-ID"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> ApplyBookingResponse:
+    """
+    Wendet einen Buchungsvorschlag an und speichert die Buchung.
+
+    **Aktionen:**
+    1. Buchung in der Datenbank speichern
+    2. Dokument als "gebucht" markieren
+    3. Optional: DATEV-Export vorbereiten
+    4. Lernen aus der Buchung (fuer zukuenftige Vorschlaege)
+
+    **Hinweis:** Bei auto_export_datev=true wird die Buchung direkt
+    in den naechsten DATEV-Buchungsstapel aufgenommen.
+    """
+    logger.info(
+        "auto_booking_apply_requested",
+        document_id=str(request.document_id),
+        company_id=str(company_id),
+        user_id=str(current_user.id),
+        debit_account=request.debit_account,
+        credit_account=request.credit_account,
+        amount=str(request.amount),
+        auto_export_datev=request.auto_export_datev,
+    )
+
+    service = get_auto_booking_service(db)
+
+    try:
+        # Buchung anwenden
+        booking_id = await service.apply_booking(
+            document_id=request.document_id,
+            company_id=company_id,
+            debit_account=request.debit_account,
+            credit_account=request.credit_account,
+            amount=request.amount,
+            tax_code=request.tax_code,
+            booking_date=request.booking_date,
+            booking_text=request.booking_text,
+            user_id=current_user.id,
+            auto_export_datev=request.auto_export_datev,
+        )
+
+        # Lernen aus der Buchung
+        await service.learn_from_booking(
+            document_id=request.document_id,
+            company_id=company_id,
+            debit_account=request.debit_account,
+            credit_account=request.credit_account,
+            tax_code=request.tax_code,
+            user_id=current_user.id,
+        )
+
+        return ApplyBookingResponse(
+            success=True,
+            booking_id=booking_id,
+            message="Buchung erfolgreich angewendet",
+            datev_exported=request.auto_export_datev,
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except Exception as e:
+        logger.error(
+            "auto_booking_apply_failed",
+            document_id=str(request.document_id),
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Buchung konnte nicht angewendet werden",
+        )
+
+
+@router.get(
+    "/auto-booking/statistics",
+    summary="Auto-Booking Statistiken",
+    description="Zeigt Statistiken zur Auto-Booking Performance",
+)
+async def get_auto_booking_statistics(
+    company_id: UUID = Query(..., description="Firmen-ID"),
+    period_days: int = Query(30, ge=1, le=365, description="Zeitraum in Tagen"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Zeigt Statistiken zur Auto-Booking Performance.
+
+    **Metriken:**
+    - Anzahl Vorschlaege (gesamt, akzeptiert, korrigiert)
+    - Durchschnittliche Konfidenz
+    - Top-Konten nach Haeufigkeit
+    - Lernfortschritt ueber Zeit
+    """
+    logger.info(
+        "auto_booking_statistics_requested",
+        company_id=str(company_id),
+        user_id=str(current_user.id),
+        period_days=period_days,
+    )
+
+    service = get_auto_booking_service(db)
+    stats = await service.get_statistics(
+        company_id=company_id,
+        period_days=period_days,
+    )
+
+    return {
+        "period_days": period_days,
+        "total_suggestions": stats.get("total_suggestions", 0),
+        "accepted_suggestions": stats.get("accepted_suggestions", 0),
+        "corrected_suggestions": stats.get("corrected_suggestions", 0),
+        "acceptance_rate": stats.get("acceptance_rate", 0.0),
+        "average_confidence": stats.get("average_confidence", 0.0),
+        "auto_booked_count": stats.get("auto_booked_count", 0),
+        "top_debit_accounts": stats.get("top_debit_accounts", []),
+        "top_credit_accounts": stats.get("top_credit_accounts", []),
+        "confidence_distribution": stats.get("confidence_distribution", {}),
+        "generated_at": datetime.now().isoformat(),
+    }
+
+
+@router.get(
+    "/auto-booking/kontenrahmen/{kontenrahmen}",
+    summary="Kontenrahmen abrufen",
+    description="Gibt die verfuegbaren Konten des Kontenrahmens zurueck",
+)
+async def get_kontenrahmen(
+    kontenrahmen: str,
+    account_class: Optional[str] = Query(None, description="Kontenklasse (0-9)"),
+    search: Optional[str] = Query(None, description="Suchbegriff"),
+    current_user: User = Depends(get_current_active_user),
+) -> Dict[str, Any]:
+    """
+    Gibt die Konten eines Kontenrahmens zurueck.
+
+    **Kontenklassen (SKR03):**
+    - **0**: Anlage- und Kapitalkonten
+    - **1**: Finanzkonten
+    - **2**: Abgrenzungskonten
+    - **3**: Wareneingang/Bestand
+    - **4**: Betriebliche Aufwendungen
+    - **5**: Sonstige Aufwendungen
+    - **6**: (Reserviert)
+    - **7**: Bestandsveraenderungen
+    - **8**: Erloese
+    - **9**: Vortragskonten
+    """
+    if kontenrahmen not in ("SKR03", "SKR04"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ungueltiger Kontenrahmen. Erlaubt: SKR03, SKR04",
+        )
+
+    # Kontenrahmen-Daten laden
+    if kontenrahmen == "SKR03":
+        from app.services.datev.kontenrahmen.skr03 import SKR03_ACCOUNTS
+        accounts = SKR03_ACCOUNTS
+    else:
+        from app.services.datev.kontenrahmen.skr04 import SKR04_ACCOUNTS
+        accounts = SKR04_ACCOUNTS
+
+    # Filtern
+    result = []
+    for account_num, account_name in accounts.items():
+        # Nach Kontenklasse filtern
+        if account_class and not account_num.startswith(account_class):
+            continue
+
+        # Nach Suchbegriff filtern
+        if search:
+            search_lower = search.lower()
+            if (
+                search_lower not in account_num.lower()
+                and search_lower not in account_name.lower()
+            ):
+                continue
+
+        result.append({
+            "account_number": account_num,
+            "account_name": account_name,
+            "account_class": account_num[0] if account_num else "",
+        })
+
+    # Nach Kontonummer sortieren
+    result.sort(key=lambda x: x["account_number"])
+
+    return {
+        "kontenrahmen": kontenrahmen,
+        "account_count": len(result),
+        "accounts": result[:100],  # Limitieren auf 100
+        "has_more": len(result) > 100,
     }

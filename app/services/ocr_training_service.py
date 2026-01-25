@@ -17,7 +17,7 @@ from uuid import UUID
 import hashlib
 import random
 
-from sqlalchemy import select, and_, func, desc, or_
+from sqlalchemy import select, and_, func, desc, asc, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 import structlog
@@ -156,6 +156,17 @@ class OCRTrainingService:
         result = await db.execute(query)
         return result.scalar_one_or_none()
 
+    # Erlaubte Sortierfelder (Whitelist gegen SQL-Injection)
+    ALLOWED_SORT_FIELDS = {
+        "created_at": OCRTrainingSample.created_at,
+        "updated_at": OCRTrainingSample.updated_at,
+        "document_type": OCRTrainingSample.document_type,
+        "status": OCRTrainingSample.status,
+        "difficulty": OCRTrainingSample.difficulty,
+        "business_priority": OCRTrainingSample.business_priority,
+        "language": OCRTrainingSample.language,
+    }
+
     async def list_training_samples(
         self,
         db: AsyncSession,
@@ -164,11 +175,27 @@ class OCRTrainingService:
         document_type: Optional[str] = None,
         has_ground_truth: Optional[bool] = None,
         verified_only: bool = False,
+        search: Optional[str] = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
         limit: int = 50,
         offset: int = 0
     ) -> Tuple[List[OCRTrainingSample], int]:
         """
         Listet Training Samples mit Filtern auf.
+
+        Args:
+            db: Database session
+            status: Filter nach Status
+            language: Filter nach Sprache
+            document_type: Filter nach Dokumenttyp
+            has_ground_truth: Filter nach Ground Truth vorhanden
+            verified_only: Nur verifizierte Samples
+            search: Volltextsuche in file_path und ground_truth_text
+            sort_by: Sortierfeld (created_at, document_type, status, etc.)
+            sort_order: Sortierreihenfolge (asc, desc)
+            limit: Maximale Anzahl
+            offset: Offset fuer Paginierung
 
         Returns:
             Tuple von (Samples, Total Count)
@@ -193,6 +220,17 @@ class OCRTrainingService:
         if verified_only:
             filters.append(OCRTrainingSample.status == TrainingSampleStatus.VERIFIED.value)
 
+        # Volltextsuche (LIKE Pattern, keine SQL-Injection durch parameterisierte Query)
+        if search:
+            search_pattern = f"%{search}%"
+            filters.append(
+                or_(
+                    OCRTrainingSample.file_path.ilike(search_pattern),
+                    OCRTrainingSample.ground_truth_text.ilike(search_pattern),
+                    OCRTrainingSample.document_type.ilike(search_pattern),
+                )
+            )
+
         if filters:
             query = query.where(and_(*filters))
             count_query = count_query.where(and_(*filters))
@@ -201,13 +239,15 @@ class OCRTrainingService:
         total_result = await db.execute(count_query)
         total = total_result.scalar() or 0
 
+        # Sortierung (mit Whitelist-Validierung)
+        sort_column = self.ALLOWED_SORT_FIELDS.get(sort_by, OCRTrainingSample.created_at)
+        if sort_order == "asc":
+            query = query.order_by(asc(sort_column))
+        else:
+            query = query.order_by(desc(sort_column))
+
         # Paginated Results
-        query = (
-            query
-            .order_by(desc(OCRTrainingSample.created_at))
-            .offset(offset)
-            .limit(limit)
-        )
+        query = query.offset(offset).limit(limit)
         result = await db.execute(query)
         samples = list(result.scalars().all())
 

@@ -29,14 +29,38 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 # =============================================================================
 
 class ExtractedDocumentType(str, Enum):
-    """Klassifizierter Dokumenttyp."""
-    INVOICE = "invoice"
-    ORDER = "order"
-    CONTRACT = "contract"
-    DELIVERY_NOTE = "delivery_note"
-    RECEIPT = "receipt"
-    LETTER = "letter"
-    UNKNOWN = "unknown"
+    """Klassifizierter Dokumenttyp - 15 Types fuer Enterprise-Klassifikation.
+
+    Phase 1.2: Erweitert um Bank Statement, Tax Document, Dunning Letter,
+    Purchase Order, Credit Note.
+
+    Synchronisiert mit app.db.models.DocumentType.
+    """
+    # === RECHNUNGSWESEN ===
+    INVOICE = "invoice"              # Rechnung (Ein-/Ausgang)
+    CREDIT_NOTE = "credit_note"      # Gutschrift
+    RECEIPT = "receipt"              # Quittung/Kassenbon
+    DUNNING = "dunning"              # Mahnung (Zahlungserinnerung bis 3. Mahnung)
+
+    # === BESTELLWESEN ===
+    ORDER = "order"                  # Bestellung (allgemein)
+    PURCHASE_ORDER = "purchase_order"  # Bestellauftrag (formell)
+    OFFER = "offer"                  # Angebot
+    DELIVERY_NOTE = "delivery_note"  # Lieferschein
+
+    # === VERTRAEGE & DOKUMENTE ===
+    CONTRACT = "contract"            # Vertrag
+    FORM = "form"                    # Formular
+    LETTER = "letter"                # Brief/Korrespondenz
+    REPORT = "report"                # Bericht
+
+    # === FINANZ & STEUER ===
+    BANK_STATEMENT = "bank_statement"  # Kontoauszug
+    TAX_DOCUMENT = "tax_document"      # Steuerdokument (USt-Voranmeldung, etc.)
+
+    # === SONSTIGES ===
+    OTHER = "other"                  # Sonstiges (bekannt aber nicht kategorisiert)
+    UNKNOWN = "unknown"              # Unbekannt (Klassifikation fehlgeschlagen)
 
 
 class Currency(str, Enum):

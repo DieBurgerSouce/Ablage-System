@@ -210,20 +210,35 @@ class DunningLetterService:
     # BGB §288 Zinssatz-Berechnung
     # =========================================================================
 
-    def get_base_interest_rate(self) -> Decimal:
+    async def get_base_interest_rate_async(self) -> Decimal:
         """
-        Holt den aktuellen Basiszinssatz der Bundesbank.
+        Holt den aktuellen Basiszinssatz von der Bundesbank API.
 
         Der Basiszinssatz wird halbjaehrlich (01.01. und 01.07.) angepasst.
-        Hier ist der aktuelle Wert (Stand: 2026-01) hartcodiert.
-        Fuer Produktion sollte ein API-Aufruf erfolgen.
+        Verwendet den BundesbankRateService mit Caching und Fallback.
 
         Returns:
             Aktueller Basiszinssatz
         """
-        # TODO: Bundesbank API Integration fuer dynamischen Basiszinssatz
-        # https://www.bundesbank.de/de/statistiken/geld-und-kapitalmaerkte/zinssaetze-und-renditen/basiszinssatz
-        return Decimal("3.62")  # Stand: Januar 2026
+        from app.services.bundesbank_rate_service import get_current_basiszins
+
+        basiszins_data = await get_current_basiszins()
+        return basiszins_data.rate
+
+    def get_base_interest_rate(self) -> Decimal:
+        """
+        Holt den aktuellen Basiszinssatz der Bundesbank (synchron).
+
+        Fuer synchrone Kontexte - verwendet Fallback-Wert.
+        Fuer async Kontexte: get_base_interest_rate_async() verwenden.
+
+        Returns:
+            Aktueller Basiszinssatz (Fallback-Wert)
+        """
+        # Synchroner Fallback - fuer async Kontexte get_base_interest_rate_async() nutzen
+        from app.services.bundesbank_rate_service import FALLBACK_BASISZINS
+
+        return FALLBACK_BASISZINS
 
     def calculate_interest_rate(self, is_b2b: bool = True) -> Decimal:
         """

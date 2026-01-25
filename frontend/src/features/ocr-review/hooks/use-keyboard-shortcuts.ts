@@ -5,7 +5,7 @@
 import { useEffect, useCallback, useState } from 'react'
 
 export interface ReviewAction {
-    type: 'accept' | 'reject' | 'skip' | 'correct' | 'umlaut' | 'llm' | 'help' | 'escape' | 'tab1' | 'tab2' | 'nextField' | 'prevField' | 'confirmField' | 'confirmAll'
+    type: 'accept' | 'reject' | 'skip' | 'correct' | 'umlaut' | 'llm' | 'help' | 'escape' | 'tab1' | 'tab2' | 'nextField' | 'prevField' | 'confirmField' | 'confirmAll' | 'editField'
 }
 
 interface UseKeyboardShortcutsOptions {
@@ -81,6 +81,21 @@ export function useKeyboardShortcuts({
                     onAction({ type: 'tab2' })
                     handled = true
                     break
+                case 'j':
+                    // J = Nächstes Feld (wie Vim-Navigation)
+                    onAction({ type: 'nextField' })
+                    handled = true
+                    break
+                case 'k':
+                    // K = Vorheriges Feld (wie Vim-Navigation)
+                    onAction({ type: 'prevField' })
+                    handled = true
+                    break
+                case 'e':
+                    // E = Aktuelles Feld bearbeiten
+                    onAction({ type: 'editField' })
+                    handled = true
+                    break
                 case 'tab':
                     if (event.shiftKey) {
                         onAction({ type: 'prevField' })
@@ -150,8 +165,11 @@ export const KEYBOARD_SHORTCUTS = [
     { key: '1', description: 'Tab: Strukturiert', action: 'tab1' as const },
     { key: '2', description: 'Tab: OCR-Text', action: 'tab2' as const },
     // Feld-Navigation (Strukturierter Modus)
-    { key: 'Tab', description: 'Nächstes Feld', action: 'nextField' as const },
-    { key: 'Shift+Tab', description: 'Vorheriges Feld', action: 'prevField' as const },
+    { key: 'J', description: 'Nächstes Feld', action: 'nextField' as const },
+    { key: 'K', description: 'Vorheriges Feld', action: 'prevField' as const },
+    { key: 'Tab', description: 'Nächstes Feld (alt)', action: 'nextField' as const },
+    { key: 'Shift+Tab', description: 'Vorheriges Feld (alt)', action: 'prevField' as const },
+    { key: 'E', description: 'Feld bearbeiten', action: 'editField' as const },
     { key: 'Enter', description: 'Feld bestätigen', action: 'confirmField' as const },
     { key: 'Ctrl+Shift+Enter', description: 'Alle Felder bestätigen', action: 'confirmAll' as const },
     // Hilfe

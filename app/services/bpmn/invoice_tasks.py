@@ -39,7 +39,7 @@ async def auto_approve_invoice(
 
     async with async_session_maker() as db:
         # Invoice-Status aktualisieren
-        from app.db.models.bpmn import ProcessHistory
+        from app.db.bpmn_models.bpmn import ProcessHistory
         from sqlalchemy import select
 
         # Audit-Eintrag

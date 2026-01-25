@@ -4,6 +4,8 @@ export { SamplesList } from './SamplesList';
 export { BatchesList } from './BatchesList';
 export { DiffView, DiffStats } from './DiffView';
 export { SampleDetailModal } from './SampleDetailModal';
+export { CorrectionDialog } from './CorrectionDialog';
+export type { CorrectionDialogProps, CorrectionSubmitData } from './CorrectionDialog';
 export { LearningInsights } from './LearningInsights';
 export { RunBenchmarkDialog } from './RunBenchmarkDialog';
 export { GroundTruthEditor } from './GroundTruthEditor';

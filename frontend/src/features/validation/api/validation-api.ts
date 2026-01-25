@@ -36,6 +36,9 @@ export interface ListSamplesParams {
   document_type?: string;
   has_ground_truth?: boolean;
   verified_only?: boolean;
+  search?: string;
+  sort_by?: 'created_at' | 'updated_at' | 'document_type' | 'status' | 'difficulty' | 'business_priority' | 'language';
+  sort_order?: 'asc' | 'desc';
   limit?: number;
   offset?: number;
 }
@@ -62,6 +65,15 @@ export async function listTrainingSamples(
   }
   if (params.verified_only) {
     searchParams.append('verified_only', 'true');
+  }
+  if (params.search) {
+    searchParams.append('search', params.search);
+  }
+  if (params.sort_by) {
+    searchParams.append('sort_by', params.sort_by);
+  }
+  if (params.sort_order) {
+    searchParams.append('sort_order', params.sort_order);
   }
   if (params.limit) {
     searchParams.append('limit', String(params.limit));
@@ -323,6 +335,63 @@ export async function runBenchmarks(
   return response.data;
 }
 
+// ==================== Sample Benchmarks ====================
+
+export interface SampleBenchmark {
+  id: string;
+  training_sample_id: string;
+  backend_name: string;
+  backend_version: string | null;
+  raw_text: string | null;
+  confidence_score: number | null;
+  cer: number | null;
+  wer: number | null;
+  umlaut_accuracy: number | null;
+  capitalization_accuracy: number | null;
+  field_accuracies: Record<string, number> | null;
+  error_patterns: string[] | null;
+  processing_time_ms: number | null;
+  processed_at: string | null;
+}
+
+/**
+ * Holt Benchmark-Ergebnisse für ein Sample.
+ */
+export async function getSampleBenchmarks(sampleId: string): Promise<SampleBenchmark[]> {
+  const response = await apiClient.get<SampleBenchmark[]>(
+    `${BASE_URL}/samples/${sampleId}/benchmarks`
+  );
+  return response.data;
+}
+
+/**
+ * Berechnet die durchschnittliche Konfidenz aus Benchmarks.
+ */
+export function calculateAverageConfidence(benchmarks: SampleBenchmark[]): number {
+  const validScores = benchmarks
+    .map(b => b.confidence_score)
+    .filter((score): score is number => score !== null && score !== undefined);
+
+  if (validScores.length === 0) {
+    return 0.85; // Default wenn keine Benchmarks vorhanden
+  }
+
+  return validScores.reduce((sum, score) => sum + score, 0) / validScores.length;
+}
+
+/**
+ * Berechnet Feld-spezifische Konfidenz aus Benchmarks.
+ */
+export function getFieldConfidence(benchmarks: SampleBenchmark[], fieldName: string): number {
+  for (const benchmark of benchmarks) {
+    if (benchmark.field_accuracies && benchmark.field_accuracies[fieldName] !== undefined) {
+      return benchmark.field_accuracies[fieldName];
+    }
+  }
+  // Fallback auf durchschnittliche Konfidenz
+  return calculateAverageConfidence(benchmarks);
+}
+
 // ==================== Export Object ====================
 
 export const validationApi = {
@@ -355,6 +424,9 @@ export const validationApi = {
 
   // Benchmarks
   runBenchmarks,
+  getSampleBenchmarks,
+  calculateAverageConfidence,
+  getFieldConfidence,
 };
 
 export default validationApi;

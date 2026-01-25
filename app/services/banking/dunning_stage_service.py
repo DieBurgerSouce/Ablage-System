@@ -30,6 +30,12 @@ from app.db.models import (
     DunningStageConfig,
     CustomerDunningOverride,
     BusinessEntity,
+    User,
+)
+from app.services.banking.models import (
+    AutoDunningSettingsResponse,
+    AutoDunningSettingsUpdate,
+    LevelIntervals,
 )
 
 logger = structlog.get_logger(__name__)
@@ -525,6 +531,132 @@ class DunningStageConfigService:
         )
 
         return True
+
+    # =========================================================================
+    # Auto-Mahnlauf Einstellungen
+    # =========================================================================
+
+    # Schluessel fuer Auto-Mahnlauf-Einstellungen im User.preferences JSONB
+    AUTO_DUNNING_SETTINGS_KEY = "auto_dunning_settings"
+
+    async def get_auto_dunning_settings(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+    ) -> AutoDunningSettingsResponse:
+        """Hole Auto-Mahnlauf-Einstellungen fuer Benutzer.
+
+        Args:
+            db: Datenbank-Session
+            user_id: Benutzer-ID
+
+        Returns:
+            Auto-Mahnlauf-Einstellungen mit Standardwerten wenn nicht gesetzt
+        """
+        query = select(User).where(User.id == user_id)
+        result = await db.execute(query)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            raise ValueError("Benutzer nicht gefunden")
+
+        # Einstellungen aus preferences laden oder Defaults verwenden
+        preferences = user.preferences or {}
+        settings_data = preferences.get(self.AUTO_DUNNING_SETTINGS_KEY, {})
+
+        # Level-Intervalle parsen
+        level_intervals_data = settings_data.get("level_intervals", {})
+        level_intervals = LevelIntervals(
+            level_1=level_intervals_data.get("level_1", 7),
+            level_2=level_intervals_data.get("level_2", 14),
+            level_3=level_intervals_data.get("level_3", 21),
+        )
+
+        return AutoDunningSettingsResponse(
+            enabled=settings_data.get("enabled", False),
+            run_time=settings_data.get("run_time", "08:00"),
+            exclude_weekends=settings_data.get("exclude_weekends", True),
+            exclude_holidays=settings_data.get("exclude_holidays", True),
+            auto_send_email=settings_data.get("auto_send_email", False),
+            min_amount=Decimal(str(settings_data.get("min_amount", "10.00"))),
+            max_auto_level=settings_data.get("max_auto_level", 2),
+            level_intervals=level_intervals,
+            last_run_at=settings_data.get("last_run_at"),
+            next_run_at=settings_data.get("next_run_at"),
+        )
+
+    async def update_auto_dunning_settings(
+        self,
+        db: AsyncSession,
+        user_id: UUID,
+        settings: AutoDunningSettingsUpdate,
+    ) -> AutoDunningSettingsResponse:
+        """Aktualisiere Auto-Mahnlauf-Einstellungen fuer Benutzer.
+
+        Args:
+            db: Datenbank-Session
+            user_id: Benutzer-ID
+            settings: Zu aktualisierende Einstellungen
+
+        Returns:
+            Aktualisierte Auto-Mahnlauf-Einstellungen
+        """
+        query = select(User).where(User.id == user_id)
+        result = await db.execute(query)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            raise ValueError("Benutzer nicht gefunden")
+
+        # Aktuelle Einstellungen laden
+        preferences = dict(user.preferences or {})
+        current_settings = dict(preferences.get(self.AUTO_DUNNING_SETTINGS_KEY, {}))
+
+        # Nur gesetzte Werte aktualisieren
+        if settings.enabled is not None:
+            current_settings["enabled"] = settings.enabled
+        if settings.run_time is not None:
+            current_settings["run_time"] = settings.run_time
+        if settings.exclude_weekends is not None:
+            current_settings["exclude_weekends"] = settings.exclude_weekends
+        if settings.exclude_holidays is not None:
+            current_settings["exclude_holidays"] = settings.exclude_holidays
+        if settings.auto_send_email is not None:
+            current_settings["auto_send_email"] = settings.auto_send_email
+        if settings.min_amount is not None:
+            current_settings["min_amount"] = str(settings.min_amount)
+        if settings.max_auto_level is not None:
+            current_settings["max_auto_level"] = settings.max_auto_level
+
+        # Level-Intervalle aktualisieren
+        if settings.level_intervals is not None:
+            level_intervals = current_settings.get("level_intervals", {})
+            if settings.level_intervals.level_1 is not None:
+                level_intervals["level_1"] = settings.level_intervals.level_1
+            if settings.level_intervals.level_2 is not None:
+                level_intervals["level_2"] = settings.level_intervals.level_2
+            if settings.level_intervals.level_3 is not None:
+                level_intervals["level_3"] = settings.level_intervals.level_3
+            current_settings["level_intervals"] = level_intervals
+
+        # Zeitstempel aktualisieren
+        current_settings["updated_at"] = utc_now().isoformat()
+
+        # In preferences speichern
+        preferences[self.AUTO_DUNNING_SETTINGS_KEY] = current_settings
+        user.preferences = preferences
+        user.updated_at = utc_now()
+
+        await db.commit()
+        await db.refresh(user)
+
+        logger.info(
+            "auto_dunning_settings_updated",
+            user_id=str(user_id),
+            enabled=current_settings.get("enabled", False),
+        )
+
+        return await self.get_auto_dunning_settings(db, user_id)
 
     # =========================================================================
     # Verzugszinsen-Berechnung (BGB §286)

@@ -28,7 +28,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import User, Company
-from app.db.models.gobd import (
+from app.db.bpmn_models.gobd import (
     AuditChainEntry,
     RetentionPolicy,
     TimestampAuthorityConfig,

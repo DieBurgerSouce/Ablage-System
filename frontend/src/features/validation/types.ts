@@ -75,6 +75,23 @@ export const BATCH_STATUS_LABELS: Record<TrainingBatchStatus, string> = {
 
 // ==================== Training Sample Types ====================
 
+export interface SampleBenchmark {
+  id: string;
+  training_sample_id: string;
+  backend_name: string;
+  backend_version: string | null;
+  raw_text: string | null;
+  confidence_score: number | null;
+  cer: number | null;
+  wer: number | null;
+  umlaut_accuracy: number | null;
+  capitalization_accuracy: number | null;
+  field_accuracies: Record<string, number> | null;
+  error_patterns: string[] | null;
+  processing_time_ms: number | null;
+  processed_at: string | null;
+}
+
 export interface TrainingSample {
   id: string;
   file_path: string;
@@ -100,6 +117,10 @@ export interface TrainingSample {
   updated_at: string;
   annotated_at: string | null;
   verified_at: string | null;
+  // Optional: Benchmark-Daten (werden separat geladen)
+  benchmarks?: SampleBenchmark[];
+  // Cached Konfidenz-Wert aus Benchmarks
+  avg_confidence?: number;
 }
 
 export interface TrainingSampleListResponse {
@@ -334,6 +355,47 @@ export interface ValidationQueueItem {
 }
 
 /**
+ * Berechnet die durchschnittliche Konfidenz aus Benchmark-Daten.
+ */
+export function calculateConfidenceFromBenchmarks(benchmarks?: SampleBenchmark[]): number {
+  if (!benchmarks || benchmarks.length === 0) {
+    return 0.85; // Default wenn keine Benchmarks vorhanden
+  }
+
+  const validScores = benchmarks
+    .map(b => b.confidence_score)
+    .filter((score): score is number => score !== null && score !== undefined);
+
+  if (validScores.length === 0) {
+    return 0.85;
+  }
+
+  return validScores.reduce((sum, score) => sum + score, 0) / validScores.length;
+}
+
+/**
+ * Holt die Konfidenz für ein spezifisches Feld aus Benchmark-Daten.
+ */
+export function getFieldConfidenceFromBenchmarks(
+  benchmarks: SampleBenchmark[] | undefined,
+  fieldName: string
+): number {
+  if (!benchmarks || benchmarks.length === 0) {
+    return 0.85;
+  }
+
+  // Suche nach Feld-spezifischer Konfidenz in den Benchmarks
+  for (const benchmark of benchmarks) {
+    if (benchmark.field_accuracies && benchmark.field_accuracies[fieldName] !== undefined) {
+      return benchmark.field_accuracies[fieldName];
+    }
+  }
+
+  // Fallback auf durchschnittliche Konfidenz
+  return calculateConfidenceFromBenchmarks(benchmarks);
+}
+
+/**
  * Konvertiert ein TrainingSample zu einem ValidationQueueItem für die UI
  */
 export function toValidationQueueItem(sample: TrainingSample): ValidationQueueItem {
@@ -343,8 +405,8 @@ export function toValidationQueueItem(sample: TrainingSample): ValidationQueueIt
   // Extrahiere Dokumentname aus file_path
   const documentName = sample.file_path.split('/').pop() || sample.file_path;
 
-  // Durchschnittliche Konfidenz (placeholder - wird vom Backend berechnet)
-  const confidence = 0.85; // TODO: Aus Benchmark-Daten berechnen
+  // Durchschnittliche Konfidenz aus Benchmark-Daten oder cached Wert
+  const confidence = sample.avg_confidence ?? calculateConfidenceFromBenchmarks(sample.benchmarks);
 
   return {
     id: sample.id,

@@ -569,7 +569,7 @@ async def get_cashflow_summary(
 
     Zeigt aktuellen Stand und Prognose.
     """
-    from app.db.models import BankAccount, PaymentOrder
+    from app.db.models import BankAccount, PaymentOrder, InvoiceTracking
     from sqlalchemy import select, func, and_
     from datetime import timedelta
     from app.core.datetime_utils import utc_now
@@ -606,9 +606,26 @@ async def get_cashflow_summary(
     upcoming_payments = payment_stats.count or 0
     upcoming_amount = payment_stats.total or Decimal("0")
 
-    # Vereinfachte Prognose (in Produktion: echte Cash-Flow-Analyse)
-    projected_7 = current_balance - (upcoming_amount * Decimal("0.3"))
-    projected_30 = current_balance - upcoming_amount
+    # Hole erwartete Einnahmen aus offenen Forderungen (naechste 30 Tage)
+    income_result = await db.execute(
+        select(
+            func.count(InvoiceTracking.id).label("count"),
+            func.sum(InvoiceTracking.amount).label("total"),
+        ).where(
+            and_(
+                InvoiceTracking.user_id == current_user.id,
+                InvoiceTracking.status.in_(["pending", "overdue", "partial"]),
+                InvoiceTracking.due_date <= in_30_days,
+            )
+        )
+    )
+    income_stats = income_result.first()
+    expected_income_count = income_stats.count or 0
+    expected_income_amount = income_stats.total or Decimal("0")
+
+    # Verbesserte Prognose (mit erwarteten Einnahmen)
+    projected_7 = current_balance - (upcoming_amount * Decimal("0.3")) + (expected_income_amount * Decimal("0.2"))
+    projected_30 = current_balance - upcoming_amount + (expected_income_amount * Decimal("0.7"))
 
     return CashFlowSummaryResponse(
         current_balance=current_balance,
@@ -616,8 +633,8 @@ async def get_cashflow_summary(
         projected_30_days=projected_30,
         upcoming_payments=upcoming_payments,
         upcoming_payments_amount=upcoming_amount,
-        expected_income=0,  # TODO: Aus Forderungen berechnen
-        expected_income_amount=Decimal("0"),
+        expected_income=expected_income_count,
+        expected_income_amount=expected_income_amount,
         currency="EUR",
     )
 

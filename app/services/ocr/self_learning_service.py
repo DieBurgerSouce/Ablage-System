@@ -28,6 +28,12 @@ from app.db.models import (
     Document,
     OCRValidationCorrection,
 )
+from app.db.models_ocr_feedback import (
+    OCRCorrectionFeedback,
+    OCRBackendPerformance,
+    CorrectionType,
+    FeedbackStatus,
+)
 from app.core.redis_state import RedisStateManager
 
 logger = structlog.get_logger(__name__)
@@ -417,17 +423,19 @@ class SelfLearningOCRService:
         """
         Speichere Korrektur-Feedback fuer spaeteres Training.
 
-        NOTE: Training Samples werden aktuell nur in Redis gecacht,
-        da das OCRTrainingSample Model ein anderes Schema hat (fuer Benchmarking).
-        Fuer vollstaendiges Training-Tracking sollte ein dediziertes
-        OCRCorrectionFeedback Model erstellt werden.
+        Persistiert sowohl in Redis (fuer schnelle Batch-Verarbeitung)
+        als auch in PostgreSQL (fuer langfristige ML-Analyse).
         """
+        feedback_id: Optional[UUID] = None
+
         try:
-            # Speichere Korrektur-Feedback in Redis fuer Batch-Verarbeitung
+            # 1. Persistiere in PostgreSQL (langfristig, keine TTL)
+            feedback_id = await self._persist_feedback_to_db(feedback)
+
+            # 2. Speichere auch in Redis fuer schnelle Batch-Verarbeitung
             redis = RedisStateManager.get_instance()
             await redis.connect()
 
-            # Key fuer Korrektur-Queue
             queue_key = "ocr_learning:correction_queue"
             feedback_data = {
                 "document_id": str(feedback.document_id),
@@ -440,25 +448,222 @@ class SelfLearningOCRService:
                 "user_id": str(feedback.user_id) if feedback.user_id else None,
                 "timestamp": feedback.timestamp.isoformat(),
                 "learning_mode": self._learning_mode.value,
+                "db_feedback_id": str(feedback_id) if feedback_id else None,
             }
 
-            # Fuege zur Queue hinzu (LPUSH fuer FIFO)
             await redis._redis.lpush(queue_key, json.dumps(feedback_data))
-
-            # Begrenze Queue-Groesse auf 10000 Eintraege
             await redis._redis.ltrim(queue_key, 0, 9999)
 
             logger.debug(
                 "correction_feedback_queued",
                 document_id=str(feedback.document_id),
                 field=feedback.field_name,
+                db_id=str(feedback_id) if feedback_id else None,
             )
 
-            return feedback.document_id  # Rueckgabe der Document-ID als Referenz
+            return feedback_id or feedback.document_id
 
         except Exception as e:
             logger.warning("failed_to_queue_training_feedback", error=str(e))
+            return feedback_id  # Rueckgabe DB-ID wenn verfuegbar
+
+    async def _persist_feedback_to_db(
+        self,
+        feedback: CorrectionFeedback,
+    ) -> Optional[UUID]:
+        """
+        Persistiere OCR-Korrektur in PostgreSQL fuer langfristige Analyse.
+
+        Ermoeglicht:
+        - ML-Training auf historischen Daten (kein 30d Redis TTL)
+        - SQL-Analysen pro Backend/Dokumenttyp
+        - Compliance-Anforderungen (Audit-Trail)
+        """
+        import uuid
+        try:
+            # Hole Document fuer company_id und document_type
+            doc_query = select(Document).where(Document.id == feedback.document_id)
+            doc_result = await self._db.execute(doc_query)
+            doc = doc_result.scalar_one_or_none()
+
+            if not doc:
+                logger.warning(
+                    "feedback_document_not_found",
+                    document_id=str(feedback.document_id),
+                )
+                return None
+
+            # Bestimme Korrektur-Typ
+            correction_type = CorrectionType.TEXT
+            if feedback.correction_type == "amount":
+                correction_type = CorrectionType.AMOUNT
+            elif feedback.correction_type == "date":
+                correction_type = CorrectionType.DATE
+            elif feedback.correction_type == "entity":
+                correction_type = CorrectionType.ENTITY
+
+            # Berechne Edit-Distance (Levenshtein-Heuristik)
+            edit_distance = self._calculate_edit_distance(
+                feedback.original_value,
+                feedback.corrected_value,
+            )
+
+            # Bestimme Fehler-Kategorie
+            error_category = self._detect_error_category(
+                feedback.original_value,
+                feedback.corrected_value,
+            )
+
+            # Kalibrierte Confidence berechnen
+            calibrated_confidence = self.get_calibrated_confidence(
+                feedback.ocr_backend,
+                feedback.field_name,
+                feedback.original_confidence,
+            )
+
+            # Erstelle Feedback-Eintrag
+            db_feedback = OCRCorrectionFeedback(
+                id=uuid.uuid4(),
+                document_id=feedback.document_id,
+                company_id=doc.company_id,
+                user_id=feedback.user_id,
+                backend=feedback.ocr_backend,
+                backend_version=None,  # TODO: Aus OCR-Ergebnis extrahieren
+                field_name=feedback.field_name,
+                original_value=feedback.original_value,
+                corrected_value=feedback.corrected_value,
+                correction_type=correction_type.value,
+                confidence_before=feedback.original_confidence,
+                confidence_after=calibrated_confidence,
+                document_type=doc.document_type.value if doc.document_type else None,
+                error_category=error_category,
+                edit_distance=edit_distance,
+                status=FeedbackStatus.PENDING.value,
+                verification_source="user_correction",
+                metadata={
+                    "learning_mode": self._learning_mode.value,
+                    "is_major_correction": feedback.is_major_correction,
+                },
+            )
+
+            self._db.add(db_feedback)
+            await self._db.flush()
+
+            logger.info(
+                "ocr_feedback_persisted_to_db",
+                feedback_id=str(db_feedback.id),
+                document_id=str(feedback.document_id),
+                backend=feedback.ocr_backend,
+                field=feedback.field_name,
+                error_category=error_category,
+            )
+
+            return db_feedback.id
+
+        except Exception as e:
+            logger.error(
+                "failed_to_persist_feedback_to_db",
+                error=str(e),
+                document_id=str(feedback.document_id),
+            )
             return None
+
+    def _calculate_edit_distance(self, original: str, corrected: str) -> int:
+        """
+        Berechne Levenshtein Edit-Distance.
+
+        Vereinfachte Implementierung fuer Performance.
+        """
+        if not original:
+            return len(corrected) if corrected else 0
+        if not corrected:
+            return len(original)
+
+        # Einfache Implementierung (O(n*m))
+        m, n = len(original), len(corrected)
+
+        # Optimierung: Bei grossen Unterschieden abbrechen
+        if abs(m - n) > 50:
+            return abs(m - n)
+
+        # Begrenze auf max 200 Zeichen fuer Performance
+        original = original[:200]
+        corrected = corrected[:200]
+        m, n = len(original), len(corrected)
+
+        # DP-Matrix
+        dp = [[0] * (n + 1) for _ in range(m + 1)]
+
+        for i in range(m + 1):
+            dp[i][0] = i
+        for j in range(n + 1):
+            dp[0][j] = j
+
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                cost = 0 if original[i - 1] == corrected[j - 1] else 1
+                dp[i][j] = min(
+                    dp[i - 1][j] + 1,      # Deletion
+                    dp[i][j - 1] + 1,      # Insertion
+                    dp[i - 1][j - 1] + cost  # Substitution
+                )
+
+        return dp[m][n]
+
+    def _detect_error_category(self, original: str, corrected: str) -> Optional[str]:
+        """
+        Erkennt die Fehler-Kategorie basierend auf Original und Korrektur.
+
+        Kategorien:
+        - umlaut: Umlaut-Fehler (ae->ä, oe->ö, ue->ü)
+        - digit_swap: Ziffern vertauscht (1<->7, 0<->O)
+        - ocr_noise: Rauschen/Artefakte
+        - case: Gross-/Kleinschreibung
+        - spacing: Leerzeichen-Probleme
+        - unknown: Nicht kategorisierbar
+        """
+        if not original or not corrected:
+            return "unknown"
+
+        original_lower = original.lower()
+        corrected_lower = corrected.lower()
+
+        # Umlaut-Erkennung
+        umlaut_mappings = [
+            ("ae", "ä"), ("oe", "ö"), ("ue", "ü"),
+            ("ss", "ß"), ("Ae", "Ä"), ("Oe", "Ö"), ("Ue", "Ü"),
+        ]
+        for ascii_form, umlaut in umlaut_mappings:
+            if ascii_form in original and umlaut in corrected:
+                return "umlaut"
+            if umlaut in original and ascii_form in corrected:
+                return "umlaut"
+
+        # Ziffern-Fehler
+        digit_confusions = [
+            ("0", "O"), ("0", "o"), ("1", "l"), ("1", "I"),
+            ("5", "S"), ("8", "B"), ("6", "b"),
+        ]
+        for d1, d2 in digit_confusions:
+            if d1 in original and d2 in corrected:
+                return "digit_swap"
+            if d2 in original and d1 in corrected:
+                return "digit_swap"
+
+        # Case-Unterschied
+        if original_lower == corrected_lower and original != corrected:
+            return "case"
+
+        # Spacing-Unterschied
+        if original.replace(" ", "") == corrected.replace(" ", ""):
+            return "spacing"
+
+        # OCR-Noise (Sonderzeichen, kurze Artefakte)
+        noise_chars = set(".,;:!?'\"()[]{}<>|\\/@#$%^&*~`")
+        if any(c in noise_chars for c in original) or len(original) <= 2:
+            return "ocr_noise"
+
+        return "unknown"
 
     # =========================================================================
     # CONFIDENCE CALIBRATION
@@ -821,22 +1026,37 @@ class SelfLearningOCRService:
         """
         await self._load_state_from_db()
 
-        # Zaehle Training Samples
-        sample_count_query = select(func.count(OCRTrainingSample.id)).where(
-            OCRTrainingSample.ocr_backend != "__system__"  # Exclude markers
-        )
-        sample_count = (await self._db.execute(sample_count_query)).scalar() or 0
+        # Zaehle OCR-Korrektur-Feedbacks aus DB (persistent)
+        feedback_count_query = select(func.count(OCRCorrectionFeedback.id))
+        feedback_count = (await self._db.execute(feedback_count_query)).scalar() or 0
 
-        # Korrektur-Statistiken
+        # Zaehle nach Status
+        pending_query = select(func.count(OCRCorrectionFeedback.id)).where(
+            OCRCorrectionFeedback.status == FeedbackStatus.PENDING.value
+        )
+        pending_count = (await self._db.execute(pending_query)).scalar() or 0
+
+        processed_query = select(func.count(OCRCorrectionFeedback.id)).where(
+            OCRCorrectionFeedback.status == FeedbackStatus.PROCESSED.value
+        )
+        processed_count = (await self._db.execute(processed_query)).scalar() or 0
+
+        # Alte Korrektur-Statistiken (OCRValidationCorrection)
         correction_query = select(func.count(OCRValidationCorrection.id))
         correction_count = (await self._db.execute(correction_query)).scalar() or 0
 
+        # Backend-Statistiken aus DB
+        backend_stats = await self._get_backend_stats_from_db()
+
         return {
             "learning_mode": self._learning_mode.value,
-            "training_samples": sample_count,
-            "total_corrections": correction_count,
+            "total_feedbacks": feedback_count,
+            "pending_feedbacks": pending_count,
+            "processed_feedbacks": processed_count,
+            "legacy_corrections": correction_count,
             "backend_adjustments": (self._backend_adjustments or {}).copy(),
             "field_adjustments": {k: dict(v) for k, v in (self._field_adjustments or {}).items()},
+            "backend_stats": backend_stats,
             "active_ab_tests": [
                 {
                     "test_id": test_id,
@@ -857,6 +1077,266 @@ class SelfLearningOCRService:
                 for version, metrics in (self._model_metrics or {}).items()
             },
         }
+
+    async def _get_backend_stats_from_db(self) -> Dict[str, Any]:
+        """
+        Hole Backend-Statistiken aus OCRCorrectionFeedback Tabelle.
+
+        Returns:
+            Dictionary mit Backend-spezifischen Statistiken
+        """
+        try:
+            # Aggregiere nach Backend
+            stats_query = (
+                select(
+                    OCRCorrectionFeedback.backend,
+                    func.count(OCRCorrectionFeedback.id).label("total"),
+                    func.avg(OCRCorrectionFeedback.confidence_before).label("avg_conf_before"),
+                    func.avg(OCRCorrectionFeedback.confidence_after).label("avg_conf_after"),
+                    func.count(OCRCorrectionFeedback.id).filter(
+                        OCRCorrectionFeedback.error_category == "umlaut"
+                    ).label("umlaut_errors"),
+                    func.count(OCRCorrectionFeedback.id).filter(
+                        OCRCorrectionFeedback.error_category == "digit_swap"
+                    ).label("digit_errors"),
+                )
+                .group_by(OCRCorrectionFeedback.backend)
+            )
+
+            result = await self._db.execute(stats_query)
+            rows = result.all()
+
+            backend_stats = {}
+            for row in rows:
+                backend_stats[row.backend] = {
+                    "total_corrections": row.total,
+                    "avg_confidence_before": float(row.avg_conf_before) if row.avg_conf_before else None,
+                    "avg_confidence_after": float(row.avg_conf_after) if row.avg_conf_after else None,
+                    "umlaut_error_count": row.umlaut_errors,
+                    "digit_error_count": row.digit_errors,
+                }
+
+            return backend_stats
+
+        except Exception as e:
+            logger.warning("failed_to_get_backend_stats", error=str(e))
+            return {}
+
+    async def calculate_backend_performance(
+        self,
+        backend: Optional[str] = None,
+        period_days: int = 30,
+    ) -> List[Dict[str, Any]]:
+        """
+        Berechne und persistiere Backend-Performance-Metriken.
+
+        Args:
+            backend: Optional - Filter auf spezifisches Backend
+            period_days: Zeitraum in Tagen
+
+        Returns:
+            Liste mit Performance-Metriken pro Backend/Feld
+        """
+        import uuid
+        from datetime import datetime, timezone
+
+        period_start = datetime.now(timezone.utc) - timedelta(days=period_days)
+        period_end = datetime.now(timezone.utc)
+
+        try:
+            # Aggregiere Korrekturen
+            query = (
+                select(
+                    OCRCorrectionFeedback.backend,
+                    OCRCorrectionFeedback.field_name,
+                    OCRCorrectionFeedback.document_type,
+                    func.count(OCRCorrectionFeedback.id).label("total_corrections"),
+                    func.avg(OCRCorrectionFeedback.confidence_before).label("avg_conf_before"),
+                    func.count(OCRCorrectionFeedback.id).filter(
+                        OCRCorrectionFeedback.error_category == "umlaut"
+                    ).label("umlaut_errors"),
+                    func.count(OCRCorrectionFeedback.id).filter(
+                        OCRCorrectionFeedback.error_category == "digit_swap"
+                    ).label("digit_errors"),
+                )
+                .where(
+                    and_(
+                        OCRCorrectionFeedback.created_at >= period_start,
+                        OCRCorrectionFeedback.created_at <= period_end,
+                    )
+                )
+                .group_by(
+                    OCRCorrectionFeedback.backend,
+                    OCRCorrectionFeedback.field_name,
+                    OCRCorrectionFeedback.document_type,
+                )
+            )
+
+            if backend:
+                query = query.where(OCRCorrectionFeedback.backend == backend)
+
+            result = await self._db.execute(query)
+            rows = result.all()
+
+            performance_records = []
+
+            for row in rows:
+                total = row.total_corrections
+                umlaut_rate = row.umlaut_errors / total if total > 0 else 0.0
+                digit_rate = row.digit_errors / total if total > 0 else 0.0
+
+                # Berechne empfohlene Confidence-Anpassung
+                avg_conf = float(row.avg_conf_before) if row.avg_conf_before else 0.0
+                # Mehr Korrekturen = niedrigere Confidence
+                adjustment = -0.05 * (total / 100)  # -5% pro 100 Korrekturen
+
+                # Erstelle oder aktualisiere Performance-Record
+                perf_record = OCRBackendPerformance(
+                    id=uuid.uuid4(),
+                    backend=row.backend,
+                    field_name=row.field_name,
+                    document_type=row.document_type,
+                    company_id=None,  # Global, nicht company-spezifisch
+                    total_corrections=total,
+                    total_documents=0,  # TODO: Aus Document-Tabelle aggregieren
+                    correction_rate=0.0,  # TODO: Berechnen
+                    avg_confidence_before=avg_conf,
+                    avg_confidence_adjustment=adjustment,
+                    umlaut_error_rate=umlaut_rate,
+                    digit_error_rate=digit_rate,
+                    period_start=period_start,
+                    period_end=period_end,
+                )
+
+                # Upsert (Insert or Update)
+                stmt = pg_insert(OCRBackendPerformance).values(
+                    id=perf_record.id,
+                    backend=perf_record.backend,
+                    field_name=perf_record.field_name,
+                    document_type=perf_record.document_type,
+                    company_id=perf_record.company_id,
+                    total_corrections=perf_record.total_corrections,
+                    total_documents=perf_record.total_documents,
+                    correction_rate=perf_record.correction_rate,
+                    avg_confidence_before=perf_record.avg_confidence_before,
+                    avg_confidence_adjustment=perf_record.avg_confidence_adjustment,
+                    umlaut_error_rate=perf_record.umlaut_error_rate,
+                    digit_error_rate=perf_record.digit_error_rate,
+                    period_start=perf_record.period_start,
+                    period_end=perf_record.period_end,
+                ).on_conflict_do_update(
+                    constraint="uq_backend_performance_period",
+                    set_={
+                        "total_corrections": perf_record.total_corrections,
+                        "avg_confidence_before": perf_record.avg_confidence_before,
+                        "avg_confidence_adjustment": perf_record.avg_confidence_adjustment,
+                        "umlaut_error_rate": perf_record.umlaut_error_rate,
+                        "digit_error_rate": perf_record.digit_error_rate,
+                        "calculated_at": datetime.now(timezone.utc),
+                    }
+                )
+
+                await self._db.execute(stmt)
+
+                performance_records.append({
+                    "backend": row.backend,
+                    "field_name": row.field_name,
+                    "document_type": row.document_type,
+                    "total_corrections": total,
+                    "avg_confidence_before": avg_conf,
+                    "recommended_adjustment": adjustment,
+                    "umlaut_error_rate": umlaut_rate,
+                    "digit_error_rate": digit_rate,
+                })
+
+            await self._db.commit()
+
+            logger.info(
+                "backend_performance_calculated",
+                records=len(performance_records),
+                period_days=period_days,
+            )
+
+            return performance_records
+
+        except Exception as e:
+            logger.error("failed_to_calculate_backend_performance", error=str(e))
+            await self._db.rollback()
+            return []
+
+    async def mark_feedbacks_processed(
+        self,
+        feedback_ids: List[UUID],
+    ) -> int:
+        """
+        Markiere Feedbacks als verarbeitet.
+
+        Args:
+            feedback_ids: Liste von Feedback-IDs
+
+        Returns:
+            Anzahl aktualisierter Records
+        """
+        if not feedback_ids:
+            return 0
+
+        try:
+            stmt = (
+                update(OCRCorrectionFeedback)
+                .where(OCRCorrectionFeedback.id.in_(feedback_ids))
+                .values(
+                    status=FeedbackStatus.PROCESSED.value,
+                    processed_at=datetime.now(timezone.utc),
+                )
+            )
+
+            result = await self._db.execute(stmt)
+            await self._db.commit()
+
+            logger.info(
+                "feedbacks_marked_processed",
+                count=result.rowcount,
+            )
+
+            return result.rowcount
+
+        except Exception as e:
+            logger.error("failed_to_mark_feedbacks_processed", error=str(e))
+            await self._db.rollback()
+            return 0
+
+    async def get_pending_feedbacks(
+        self,
+        limit: int = 100,
+        backend: Optional[str] = None,
+    ) -> List[OCRCorrectionFeedback]:
+        """
+        Hole ausstehende Feedbacks fuer Batch-Verarbeitung.
+
+        Args:
+            limit: Maximale Anzahl
+            backend: Optional - Filter auf Backend
+
+        Returns:
+            Liste von OCRCorrectionFeedback Objekten
+        """
+        try:
+            query = (
+                select(OCRCorrectionFeedback)
+                .where(OCRCorrectionFeedback.status == FeedbackStatus.PENDING.value)
+                .order_by(OCRCorrectionFeedback.created_at)
+                .limit(limit)
+            )
+
+            if backend:
+                query = query.where(OCRCorrectionFeedback.backend == backend)
+
+            result = await self._db.execute(query)
+            return list(result.scalars().all())
+
+        except Exception as e:
+            logger.error("failed_to_get_pending_feedbacks", error=str(e))
+            return []
 
 
 def get_self_learning_service(db: AsyncSession) -> SelfLearningOCRService:

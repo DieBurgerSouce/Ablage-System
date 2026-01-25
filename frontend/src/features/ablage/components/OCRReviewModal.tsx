@@ -223,14 +223,14 @@ function DocumentPreview({
     <div className="flex flex-col h-full">
       {/* Toolbar */}
       <div className="flex items-center justify-end gap-1 p-2 border-b bg-muted/30">
-        <Button variant="ghost" size="icon" onClick={handleZoomOut} title="Verkleinern">
+        <Button variant="ghost" size="icon" onClick={handleZoomOut} aria-label="Verkleinern">
           <ZoomOut className="w-4 h-4" />
         </Button>
-        <span className="text-xs text-muted-foreground px-2">{Math.round(zoom * 100)}%</span>
-        <Button variant="ghost" size="icon" onClick={handleZoomIn} title="Vergrößern">
+        <span className="text-xs text-muted-foreground px-2" aria-live="polite">{Math.round(zoom * 100)}%</span>
+        <Button variant="ghost" size="icon" onClick={handleZoomIn} aria-label="Vergroessern">
           <ZoomIn className="w-4 h-4" />
         </Button>
-        <Button variant="ghost" size="icon" onClick={handleResetZoom} title="Zurücksetzen">
+        <Button variant="ghost" size="icon" onClick={handleResetZoom} aria-label="Zoom zuruecksetzen">
           <RotateCcw className="w-4 h-4" />
         </Button>
       </div>

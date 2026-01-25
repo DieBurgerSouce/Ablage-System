@@ -105,17 +105,36 @@ class OCRBackend(str, Enum):
 
 
 class DocumentType(str, Enum):
-    """Document type classification."""
-    INVOICE = "invoice"
-    ORDER = "order"
-    CONTRACT = "contract"
-    DELIVERY_NOTE = "delivery_note"
-    RECEIPT = "receipt"
-    FORM = "form"
-    LETTER = "letter"
-    REPORT = "report"
-    OTHER = "other"
-    UNKNOWN = "unknown"
+    """Document type classification - 15 Types fuer Enterprise-Klassifikation.
+
+    Phase 1.2: Erweitert um Bank Statement, Tax Document, Dunning Letter,
+    Purchase Order, Credit Note.
+    """
+    # === RECHNUNGSWESEN ===
+    INVOICE = "invoice"              # Rechnung (Ein-/Ausgang)
+    CREDIT_NOTE = "credit_note"      # Gutschrift
+    RECEIPT = "receipt"              # Quittung/Kassenbon
+    DUNNING_LETTER = "dunning"       # Mahnung (Zahlungserinnerung bis 3. Mahnung)
+
+    # === BESTELLWESEN ===
+    ORDER = "order"                  # Bestellung (allgemein)
+    PURCHASE_ORDER = "purchase_order"  # Bestellauftrag (formell)
+    OFFER = "offer"                  # Angebot
+    DELIVERY_NOTE = "delivery_note"  # Lieferschein
+
+    # === VERTRAEGE & DOKUMENTE ===
+    CONTRACT = "contract"            # Vertrag
+    FORM = "form"                    # Formular
+    LETTER = "letter"                # Brief/Korrespondenz
+    REPORT = "report"                # Bericht
+
+    # === FINANZ & STEUER ===
+    BANK_STATEMENT = "bank_statement"  # Kontoauszug
+    TAX_DOCUMENT = "tax_document"      # Steuerdokument (USt-Voranmeldung, etc.)
+
+    # === SONSTIGES ===
+    OTHER = "other"                  # Sonstiges (bekannt aber nicht kategorisiert)
+    UNKNOWN = "unknown"              # Unbekannt (Klassifikation fehlgeschlagen)
 
 
 class UserTier(str, Enum):
@@ -296,6 +315,14 @@ class Document(Base):
         foreign_keys=[chain_root_document_id],
         backref="chain_children",
         uselist=False
+    )
+
+    # OCR Self-Learning Feedbacks (Phase 1.3)
+    ocr_feedbacks = relationship(
+        "OCRCorrectionFeedback",
+        back_populates="document",
+        cascade="all, delete-orphan",
+        lazy="dynamic"
     )
 
     # Indexes
@@ -1154,7 +1181,7 @@ class GDPRConsentLog(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
-    user = relationship("User", backref="gdpr_consents")
+    user = relationship("User", backref="gdpr_consent_logs")
 
     # Indexes
     __table_args__ = (
@@ -15592,8 +15619,8 @@ class DLPAuditLog(Base):
     ip_address = Column(String(45), nullable=True)
     user_agent = Column(String(255), nullable=True)
 
-    # Metadata
-    metadata = Column(CrossDBJSON, default={})
+    # Metadata (HINWEIS: 'metadata' ist SQLAlchemy reserviert!)
+    log_metadata = Column(CrossDBJSON, default=dict)
 
     # Timestamp (immutable)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -15617,20 +15644,932 @@ class DLPAuditLog(Base):
 
 
 # =============================================================================
-# BPMN Process Engine Models (from app.db.models.bpmn)
+# BPMN Process Engine Models - Enums
+# =============================================================================
+# NOTE: The BPMN table models are in app/db/models/bpmn.py but due to Python
+# module resolution (models.py takes precedence over models/), we define the
+# enums here and the table models import Base from here.
+
+
+class ProcessStatus(str, Enum):
+    """Status eines BPMN Prozess-Instances."""
+    CREATED = "created"          # Erstellt, noch nicht gestartet
+    RUNNING = "running"          # Läuft aktuell
+    SUSPENDED = "suspended"      # Pausiert (z.B. wegen Timer)
+    COMPLETED = "completed"      # Erfolgreich abgeschlossen
+    TERMINATED = "terminated"    # Manuell abgebrochen
+    FAILED = "failed"            # Fehlgeschlagen
+
+
+class BpmnTaskStatus(str, Enum):
+    """Status eines BPMN Tasks (unterscheidet sich von TaskStatus)."""
+    PENDING = "pending"          # Wartet auf Aktivierung
+    ACTIVE = "active"            # Bereit zur Bearbeitung
+    ASSIGNED = "assigned"        # Benutzer zugewiesen
+    IN_PROGRESS = "in_progress"  # In Bearbeitung
+    COMPLETED = "completed"      # Abgeschlossen
+    FAILED = "failed"            # Fehlgeschlagen
+    SKIPPED = "skipped"          # Übersprungen (z.B. Gateway)
+    ESCALATED = "escalated"      # Eskaliert
+
+
+class TaskType(str, Enum):
+    """BPMN Task-Typen."""
+    USER_TASK = "user_task"              # Manuelle Aufgabe
+    SERVICE_TASK = "service_task"        # Automatische Aufgabe
+    SCRIPT_TASK = "script_task"          # Script-Ausführung
+    SEND_TASK = "send_task"              # Nachricht senden
+    RECEIVE_TASK = "receive_task"        # Nachricht empfangen
+    MANUAL_TASK = "manual_task"          # Reine manuelle Aufgabe
+    BUSINESS_RULE_TASK = "business_rule" # DMN-Entscheidung
+    CALL_ACTIVITY = "call_activity"      # Subprocess aufrufen
+
+
+class GatewayType(str, Enum):
+    """BPMN Gateway-Typen."""
+    EXCLUSIVE = "exclusive"      # XOR - Nur ein Pfad
+    PARALLEL = "parallel"        # AND - Alle Pfade
+    INCLUSIVE = "inclusive"      # OR - Ein oder mehrere Pfade
+    EVENT_BASED = "event_based"  # Basierend auf Events
+
+
+class EventType(str, Enum):
+    """BPMN Event-Typen."""
+    START = "start"
+    END = "end"
+    INTERMEDIATE_CATCH = "intermediate_catch"
+    INTERMEDIATE_THROW = "intermediate_throw"
+    BOUNDARY = "boundary"
+
+
+class EventTrigger(str, Enum):
+    """BPMN Event-Trigger."""
+    NONE = "none"
+    TIMER = "timer"
+    MESSAGE = "message"
+    SIGNAL = "signal"
+    ERROR = "error"
+    ESCALATION = "escalation"
+    CONDITIONAL = "conditional"
+    COMPENSATION = "compensation"
+
+
+# Verfuegbare BPMN Modelle in app/db/models/bpmn.py:
+# - ProcessDefinition, ProcessInstance, ProcessTask
+# - ProcessHistory, ProcessTimerJob, ProcessVariableHistory
+
+
+# =============================================================================
+# GDPR Consent Management Models - Phase 7
 # =============================================================================
 
-from app.db.models.bpmn import (
-    ProcessDefinition,
-    ProcessInstance,
-    ProcessTask,
-    ProcessHistory,
-    ProcessTimerJob,
-    ProcessVariableHistory,
-    ProcessStatus,
-    TaskStatus,
-    TaskType,
-    GatewayType,
-    EventType,
-    EventTrigger,
-)
+
+class GDPRConsentVersion(Base):
+    """Versionierte Consent-Texte fuer DSGVO-konforme Einwilligungen.
+
+    Speichert verschiedene Versionen von Einwilligungstexten mit SHA-256 Hash
+    zur Nachweisbarkeit welchen Text der User akzeptiert hat.
+    """
+    __tablename__ = "gdpr_consent_versions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Scope und Version
+    scope = Column(String(100), nullable=False, index=True,
+                   comment="Consent-Scope (personal_data, financial_data, etc.)")
+    version = Column(String(50), nullable=False,
+                     comment="Versionsnummer z.B. '1.0', '2.0'")
+
+    # Consent-Text
+    title = Column(String(255), nullable=False,
+                   comment="Titel der Einwilligung")
+    description = Column(Text, nullable=False,
+                         comment="Kurzbeschreibung")
+    full_text = Column(Text, nullable=False,
+                       comment="Vollstaendiger Consent-Text")
+    text_hash = Column(String(64), nullable=False, index=True,
+                       comment="SHA-256 Hash des Textes")
+
+    # Sprache und Status
+    language = Column(String(10), nullable=False, default="de",
+                      comment="Sprachcode (de, en, etc.)")
+    is_active = Column(Boolean, nullable=False, default=True, index=True,
+                       comment="Aktive Version fuer diesen Scope")
+
+    # Gueltigkeit
+    effective_from = Column(DateTime(timezone=True), nullable=False,
+                            default=func.now(),
+                            comment="Ab wann gueltig")
+    effective_until = Column(DateTime(timezone=True), nullable=True,
+                             comment="Bis wann gueltig (NULL = unbegrenzt)")
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_by_id = Column(UUID(as_uuid=True),
+                           ForeignKey("users.id", ondelete="SET NULL"),
+                           nullable=True)
+
+    # Relationships
+    created_by = relationship("User", backref="created_consent_versions")
+    consent_scopes = relationship("GDPRConsentScope", back_populates="consent_version")
+
+    __table_args__ = (
+        UniqueConstraint("scope", "version", name="uq_gdpr_consent_versions_scope_version"),
+        Index("ix_gdpr_consent_versions_scope_active", "scope", "is_active",
+              postgresql_where=text("is_active = true")),
+        {"comment": "Versionierte DSGVO Consent-Texte"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<GDPRConsentVersion {self.scope} v{self.version}>"
+
+
+class GDPRConsentScope(Base):
+    """Granulare Einwilligungen pro User und Scope.
+
+    Speichert fuer jeden User welche Einwilligungen erteilt oder
+    widerrufen wurden, mit vollstaendigem Audit-Trail.
+    """
+    __tablename__ = "gdpr_consent_scopes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # User und Company
+    user_id = Column(UUID(as_uuid=True),
+                     ForeignKey("users.id", ondelete="CASCADE"),
+                     nullable=False, index=True)
+    company_id = Column(UUID(as_uuid=True),
+                        ForeignKey("companies.id", ondelete="CASCADE"),
+                        nullable=True, index=True,
+                        comment="Optional fuer company-spezifische Consents")
+
+    # Scope und Status
+    scope = Column(String(100), nullable=False, index=True,
+                   comment="personal_data, financial_data, analytics, marketing, etc.")
+    consent_given = Column(Boolean, nullable=False, default=False,
+                           comment="True wenn Einwilligung erteilt")
+
+    # Referenz auf akzeptierte Version
+    consent_version_id = Column(UUID(as_uuid=True),
+                                ForeignKey("gdpr_consent_versions.id", ondelete="SET NULL"),
+                                nullable=True)
+    consent_text_hash = Column(String(64), nullable=True,
+                               comment="SHA-256 des akzeptierten Textes")
+
+    # Zeitstempel
+    granted_at = Column(DateTime(timezone=True), nullable=True,
+                        comment="Wann erteilt")
+    withdrawn_at = Column(DateTime(timezone=True), nullable=True,
+                          comment="Wann widerrufen")
+    valid_from = Column(DateTime(timezone=True), nullable=False,
+                        default=func.now())
+    valid_until = Column(DateTime(timezone=True), nullable=True,
+                         comment="Ablaufdatum der Einwilligung")
+
+    # Einwilligungsmethode
+    consent_method = Column(String(50), nullable=True,
+                            comment="web_form, api, paper, verbal, double_opt_in")
+    ip_address = Column(String(45), nullable=True,
+                        comment="IPv4/IPv6 bei Erteilung")
+    user_agent = Column(String(500), nullable=True,
+                        comment="Browser User-Agent")
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(),
+                        onupdate=func.now())
+
+    # Relationships
+    user = relationship("User", backref="gdpr_consent_scopes")
+    company = relationship("Company", backref="company_gdpr_consent_scopes")
+    consent_version = relationship("GDPRConsentVersion", back_populates="consent_scopes")
+    history = relationship("GDPRConsentHistory", back_populates="consent_scope",
+                           order_by="desc(GDPRConsentHistory.created_at)")
+
+    __table_args__ = (
+        Index("ix_gdpr_consent_scopes_user_scope_active", "user_id", "scope",
+              postgresql_where=text("withdrawn_at IS NULL")),
+        {"comment": "Granulare DSGVO Einwilligungen pro User/Scope"}
+    )
+
+    def __repr__(self) -> str:
+        status = "granted" if self.consent_given and not self.withdrawn_at else "withdrawn"
+        return f"<GDPRConsentScope {self.scope} ({status})>"
+
+
+class GDPRDataSubjectRequest(Base):
+    """Betroffenenrechte-Anfragen nach DSGVO Art. 15-21.
+
+    Trackt Anfragen von Betroffenen zu:
+    - Art. 15: Auskunftsrecht
+    - Art. 16: Recht auf Berichtigung
+    - Art. 17: Recht auf Loeschung
+    - Art. 18: Recht auf Einschraenkung
+    - Art. 20: Recht auf Datenuebertragbarkeit
+    - Art. 21: Widerspruchsrecht
+    """
+    __tablename__ = "gdpr_data_subject_requests"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Betroffener
+    user_id = Column(UUID(as_uuid=True),
+                     ForeignKey("users.id", ondelete="SET NULL"),
+                     nullable=True, index=True)
+    company_id = Column(UUID(as_uuid=True),
+                        ForeignKey("companies.id", ondelete="SET NULL"),
+                        nullable=True, index=True)
+
+    # Anfragetyp (Art. 15-21 DSGVO)
+    request_type = Column(String(50), nullable=False, index=True,
+                          comment="access, erasure, rectification, portability, restriction, objection")
+    status = Column(String(50), nullable=False, default="pending", index=True,
+                    comment="pending, in_progress, completed, rejected, cancelled")
+
+    # Antragsdaten
+    requester_email = Column(String(255), nullable=False,
+                             comment="Email des Antragstellers")
+    requester_name = Column(String(255), nullable=True)
+    verification_token = Column(String(255), nullable=True,
+                                comment="Token zur Verifizierung der Identitaet")
+    verified_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Details
+    description = Column(Text, nullable=True,
+                         comment="Beschreibung der Anfrage")
+    affected_data_categories = Column(CrossDBJSON, nullable=True,
+                                      comment='["personal", "financial", "documents"]')
+    rectification_details = Column(CrossDBJSON, nullable=True,
+                                   comment="Details fuer Art. 16 Berichtigung")
+
+    # Bearbeitung
+    assigned_to_id = Column(UUID(as_uuid=True),
+                            ForeignKey("users.id", ondelete="SET NULL"),
+                            nullable=True)
+    response_notes = Column(Text, nullable=True,
+                            comment="Interne Notizen zur Bearbeitung")
+    rejection_reason = Column(Text, nullable=True,
+                              comment="Grund bei Ablehnung")
+
+    # Ergebnis
+    export_file_path = Column(String(500), nullable=True,
+                              comment="Pfad zum Export bei Portabilitaet")
+    export_format = Column(String(20), nullable=True,
+                           comment="json, csv, xml")
+
+    # Zeitstempel (DSGVO: 30 Tage Frist!)
+    requested_at = Column(DateTime(timezone=True), server_default=func.now())
+    due_date = Column(DateTime(timezone=True), nullable=False,
+                      comment="Frist: requested_at + 30 Tage")
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(),
+                        onupdate=func.now())
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id], backref="dsr_requests")
+    assigned_to = relationship("User", foreign_keys=[assigned_to_id],
+                               backref="assigned_dsr_requests")
+    company = relationship("Company", backref="dsr_requests")
+    exports = relationship("GDPRDataExport", back_populates="request")
+
+    __table_args__ = (
+        Index("ix_gdpr_dsr_pending_overdue", "due_date", "status",
+              postgresql_where=text("status IN ('pending', 'in_progress')")),
+        {"comment": "DSGVO Betroffenenrechte-Anfragen (Art. 15-21)"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<GDPRDataSubjectRequest {self.request_type} ({self.status})>"
+
+
+class GDPRDataExport(Base):
+    """Datenexport-Logs fuer DSGVO Art. 20 Portabilitaet.
+
+    Trackt alle Datenexporte die im Rahmen von Betroffenenrechte-Anfragen
+    oder auf Userwunsch erstellt wurden.
+    """
+    __tablename__ = "gdpr_data_exports"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Betroffener
+    user_id = Column(UUID(as_uuid=True),
+                     ForeignKey("users.id", ondelete="SET NULL"),
+                     nullable=True, index=True)
+    company_id = Column(UUID(as_uuid=True),
+                        ForeignKey("companies.id", ondelete="SET NULL"),
+                        nullable=True, index=True)
+    request_id = Column(UUID(as_uuid=True),
+                        ForeignKey("gdpr_data_subject_requests.id", ondelete="SET NULL"),
+                        nullable=True, index=True,
+                        comment="Referenz auf DSR falls vorhanden")
+
+    # Export-Details
+    export_type = Column(String(50), nullable=False,
+                         comment="full, partial, category")
+    data_categories = Column(CrossDBJSON, nullable=False,
+                             comment='["documents", "comments", "settings"]')
+    format = Column(String(20), nullable=False, default="json",
+                    comment="json, csv, xml")
+
+    # Datei
+    file_path = Column(String(500), nullable=True,
+                       comment="Pfad zur Export-Datei")
+    file_size_bytes = Column(BigInteger, nullable=True)
+    file_hash = Column(String(64), nullable=True,
+                       comment="SHA-256 der Export-Datei")
+
+    # Status
+    status = Column(String(50), nullable=False, default="pending", index=True,
+                    comment="pending, processing, completed, failed, expired, downloaded")
+    error_message = Column(Text, nullable=True)
+
+    # Download-Tracking
+    download_count = Column(Integer, nullable=False, default=0)
+    last_downloaded_at = Column(DateTime(timezone=True), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False,
+                        comment="Export verfaellt nach 7 Tagen")
+
+    # Zeitstempel
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    user = relationship("User", backref="gdpr_exports")
+    company = relationship("Company", backref="gdpr_exports")
+    request = relationship("GDPRDataSubjectRequest", back_populates="exports")
+
+    __table_args__ = (
+        Index("ix_gdpr_exports_expired", "expires_at", "status",
+              postgresql_where=text("status = 'completed'")),
+        {"comment": "DSGVO Datenexport-Logs (Art. 20 Portabilitaet)"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<GDPRDataExport {self.export_type} ({self.status})>"
+
+
+class GDPRConsentHistory(Base):
+    """Audit-Trail fuer Einwilligungsaenderungen.
+
+    Dokumentiert jede Aenderung an Einwilligungen fuer
+    vollstaendige Nachweisbarkeit (DSGVO Art. 7).
+    """
+    __tablename__ = "gdpr_consent_history"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Referenzen
+    consent_scope_id = Column(UUID(as_uuid=True),
+                              ForeignKey("gdpr_consent_scopes.id", ondelete="CASCADE"),
+                              nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True),
+                     ForeignKey("users.id", ondelete="SET NULL"),
+                     nullable=True, index=True)
+
+    # Aenderung
+    action = Column(String(50), nullable=False, index=True,
+                    comment="granted, withdrawn, updated, expired, version_changed")
+    previous_value = Column(Boolean, nullable=True,
+                            comment="Vorheriger Consent-Status")
+    new_value = Column(Boolean, nullable=False,
+                       comment="Neuer Consent-Status")
+    consent_version_id = Column(UUID(as_uuid=True),
+                                ForeignKey("gdpr_consent_versions.id", ondelete="SET NULL"),
+                                nullable=True)
+
+    # Kontext
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(String(500), nullable=True)
+    reason = Column(Text, nullable=True,
+                    comment="Grund bei Widerruf")
+
+    # Timestamp (immutable)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    consent_scope = relationship("GDPRConsentScope", back_populates="history")
+    user = relationship("User", backref="consent_history")
+    consent_version = relationship("GDPRConsentVersion", backref="history_entries")
+
+    __table_args__ = (
+        Index("ix_gdpr_consent_history_created_at", "created_at"),
+        {"comment": "Audit-Trail fuer DSGVO Einwilligungsaenderungen"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<GDPRConsentHistory {self.action} at {self.created_at}>"
+
+
+# ============================================================================
+# SAVED FILTERS - Server-side Filter Persistence with Sharing
+# Phase 4.5: Frontend UX Enhancement
+# ============================================================================
+
+class SavedFilter(Base):
+    """Gespeicherte Filter fuer Server-seitige Persistenz mit Sharing.
+
+    Ersetzt die LocalStorage-basierte Implementierung durch eine
+    persistente Loesung mit Multi-Tenant-Isolation und Sharing-Option.
+
+    Features:
+    - Pro Feature (documents, invoices, entities, transactions)
+    - Sharing innerhalb einer Company
+    - Default-Filter pro User
+    - Usage-Tracking fuer Sortierung nach Haeufigkeit
+
+    Usage:
+        # Eigene Filter
+        filters = db.query(SavedFilter).filter(
+            SavedFilter.user_id == current_user.id,
+            SavedFilter.feature == "documents"
+        ).all()
+
+        # Geteilte Filter der Company
+        shared = db.query(SavedFilter).filter(
+            SavedFilter.company_id == current_user.company_id,
+            SavedFilter.is_shared == True,
+            SavedFilter.feature == "documents"
+        ).all()
+    """
+    __tablename__ = "saved_filters"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+
+    # Owner and tenant
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Feature this filter applies to
+    feature = Column(
+        String(100),
+        nullable=False,
+        index=True,
+        comment="Feature scope: documents, invoices, entities, transactions, etc."
+    )
+
+    # Filter configuration as JSONB
+    filter_config = Column(
+        CrossDBJSON,
+        nullable=False,
+        default=dict,
+        comment="Flexible filter config: {status: [], tags: [], dateRange: {}, search: ''}"
+    )
+
+    # Sharing and default settings
+    is_shared = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        index=True,
+        comment="If true, visible to all users in the same company"
+    )
+    is_default = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        comment="If true, auto-applied when opening the feature"
+    )
+
+    # Usage tracking for sorting by popularity/recency
+    use_count = Column(Integer, nullable=False, default=0)
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Soft delete
+    deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    user = relationship("User", backref="saved_filters")
+    company = relationship("Company", backref="saved_filters")
+
+    __table_args__ = (
+        Index("ix_saved_filters_user_feature", "user_id", "feature", "deleted_at"),
+        Index("ix_saved_filters_company_shared", "company_id", "feature", "is_shared", "deleted_at"),
+        {"comment": "Server-side saved filters with sharing support"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<SavedFilter {self.name} ({self.feature})>"
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for API responses."""
+        return {
+            "id": str(self.id),
+            "name": self.name,
+            "description": self.description,
+            "feature": self.feature,
+            "filter_config": self.filter_config,
+            "is_shared": self.is_shared,
+            "is_default": self.is_default,
+            "use_count": self.use_count,
+            "last_used_at": self.last_used_at.isoformat() if self.last_used_at else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "is_own": True,  # Will be set by service
+        }
+
+
+# ============================================================================
+# APP CONFIG - Key-Value Store for Application Configuration
+# Used by MLOps, OCR Self-Learning, and other system-wide settings
+# ============================================================================
+
+class AppConfig(Base):
+    """System-weite Konfigurationsspeicherung als Key-Value Store.
+
+    Flexibler JSONB-basierter Speicher fuer:
+    - MLOps Model Registry
+    - OCR Confidence Adjustments
+    - Feature Flags
+    - System-weite Einstellungen
+
+    Usage:
+        # Speichern
+        config = AppConfig(
+            key="mlops_model_registry",
+            value={"deepseek": [...], "got_ocr": [...]},
+            description="MLOps Model Versioning"
+        )
+        db.add(config)
+
+        # Laden
+        config = await db.execute(
+            select(AppConfig).where(AppConfig.key == "mlops_model_registry")
+        )
+        registry = config.scalar_one_or_none()
+    """
+    __tablename__ = "app_config"
+
+    key = Column(
+        String(255),
+        primary_key=True,
+        nullable=False,
+        comment="Eindeutiger Schluessel fuer die Konfiguration"
+    )
+    value = Column(
+        CrossDBJSON,
+        nullable=False,
+        default=dict,
+        comment="JSONB-Wert der Konfiguration"
+    )
+    description = Column(
+        Text,
+        nullable=True,
+        comment="Beschreibung der Konfiguration"
+    )
+
+    # Timestamps
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False
+    )
+
+    __table_args__ = (
+        {"comment": "System-weite Konfiguration als Key-Value Store"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<AppConfig key={self.key}>"
+
+
+# =============================================================================
+# DPIA (Data Protection Impact Assessment) Models
+# =============================================================================
+
+
+class DPIAStatus(str, Enum):
+    """DPIA Status enum."""
+    DRAFT = "draft"
+    REVIEW = "review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    ARCHIVED = "archived"
+
+
+class DPIARiskLevel(str, Enum):
+    """DPIA Risk Level enum."""
+    VERY_HIGH = "very_high"
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+    MINIMAL = "minimal"
+
+
+class DPIALegalBasis(str, Enum):
+    """DPIA Legal Basis enum (Art. 6 DSGVO)."""
+    CONSENT = "consent"
+    CONTRACT = "contract"
+    LEGAL_OBLIGATION = "legal_obligation"
+    VITAL_INTERESTS = "vital_interests"
+    PUBLIC_INTEREST = "public_interest"
+    LEGITIMATE_INTEREST = "legitimate_interest"
+
+
+class DPIAMeasureType(str, Enum):
+    """DPIA Mitigation Measure Type enum."""
+    TECHNICAL = "technical"
+    ORGANIZATIONAL = "organizational"
+    CONTRACTUAL = "contractual"
+    LEGAL = "legal"
+
+
+class DPIAImplementationStatus(str, Enum):
+    """DPIA Implementation Status enum."""
+    PLANNED = "planned"
+    IN_PROGRESS = "in_progress"
+    IMPLEMENTED = "implemented"
+
+
+class DPIA(Base):
+    """
+    Data Protection Impact Assessment (Art. 35 DSGVO).
+
+    Vollstaendige DPIA-Dokumentation mit Risikobewertung,
+    Massnahmen und DPO-Konsultation.
+    """
+    __tablename__ = "dpias"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    version = Column(String(20), nullable=False, default="1.0")
+    status = Column(
+        String(20),
+        nullable=False,
+        default=DPIAStatus.DRAFT.value
+    )
+
+    # Verantwortlichkeiten
+    controller_name = Column(String(255), nullable=False)
+    controller_contact = Column(String(255), nullable=True)
+    dpo_name = Column(String(255), nullable=False)
+    dpo_contact = Column(String(255), nullable=True)
+    assessment_date = Column(DateTime(timezone=True), nullable=True)
+    assessor_name = Column(String(255), nullable=True)
+
+    # Bewertungen
+    necessity_assessment = Column(Text, nullable=True)
+    proportionality_assessment = Column(Text, nullable=True)
+    overall_risk_level = Column(
+        String(20),
+        nullable=True,
+        default=DPIARiskLevel.MEDIUM.value
+    )
+
+    # Aufsichtsbehoerde
+    supervisory_authority_consultation = Column(Boolean, default=False)
+    supervisory_authority_response = Column(Text, nullable=True)
+
+    # Multi-Tenant
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    created_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    company = relationship("Company", backref="dpias")
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    processing_operations = relationship(
+        "DPIAProcessingOperation",
+        back_populates="dpia",
+        cascade="all, delete-orphan"
+    )
+    data_subject_groups = relationship(
+        "DPIADataSubjectGroup",
+        back_populates="dpia",
+        cascade="all, delete-orphan"
+    )
+    risks = relationship(
+        "DPIARisk",
+        back_populates="dpia",
+        cascade="all, delete-orphan"
+    )
+    mitigation_measures = relationship(
+        "DPIAMitigationMeasure",
+        back_populates="dpia",
+        cascade="all, delete-orphan"
+    )
+    consultation = relationship(
+        "DPIAConsultation",
+        back_populates="dpia",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
+    audit_logs = relationship(
+        "DPIAAuditLog",
+        back_populates="dpia",
+        cascade="all, delete-orphan",
+        order_by="desc(DPIAAuditLog.created_at)"
+    )
+
+    __table_args__ = (
+        Index("ix_dpias_company_status", "company_id", "status"),
+        {"comment": "Data Protection Impact Assessments (Art. 35 DSGVO)"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<DPIA {self.id} title={self.title} status={self.status}>"
+
+
+class DPIAProcessingOperation(Base):
+    """Verarbeitungstaetigkeit innerhalb einer DPIA."""
+    __tablename__ = "dpia_processing_operations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dpia_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("dpias.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    purpose = Column(Text, nullable=True)
+    legal_basis = Column(String(50), nullable=True)
+    data_categories = Column(CrossDBJSON, default=list)  # Array of strings
+    retention_period = Column(String(255), nullable=True)
+    automated_decision_making = Column(Boolean, default=False)
+    profiling = Column(Boolean, default=False)
+    data_transfer_outside_eu = Column(Boolean, default=False)
+    transfer_countries = Column(CrossDBJSON, default=list)  # Array of strings
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationship
+    dpia = relationship("DPIA", back_populates="processing_operations")
+
+    def __repr__(self) -> str:
+        return f"<DPIAProcessingOperation {self.id} name={self.name}>"
+
+
+class DPIADataSubjectGroup(Base):
+    """Betroffenengruppe innerhalb einer DPIA."""
+    __tablename__ = "dpia_data_subject_groups"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dpia_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("dpias.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    estimated_count = Column(Integer, nullable=True)
+    includes_vulnerable = Column(Boolean, default=False)
+    includes_children = Column(Boolean, default=False)
+
+    # Relationship
+    dpia = relationship("DPIA", back_populates="data_subject_groups")
+
+    def __repr__(self) -> str:
+        return f"<DPIADataSubjectGroup {self.id} name={self.name}>"
+
+
+class DPIARisk(Base):
+    """Risikobewertung innerhalb einer DPIA."""
+    __tablename__ = "dpia_risks"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dpia_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("dpias.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    risk_id = Column(String(50), nullable=False)  # e.g., R1, R2
+    description = Column(Text, nullable=False)
+    affected_rights = Column(CrossDBJSON, default=list)  # Array of strings
+    likelihood = Column(Integer, nullable=False)  # 1-5
+    impact = Column(Integer, nullable=False)  # 1-5
+    inherent_risk = Column(String(20), nullable=True)
+    residual_risk = Column(String(20), nullable=True)
+    mitigation_measures = Column(CrossDBJSON, default=list)  # Array of measure IDs
+
+    # Relationship
+    dpia = relationship("DPIA", back_populates="risks")
+
+    @property
+    def risk_score(self) -> int:
+        """Berechne Risiko-Score (1-25)."""
+        return self.likelihood * self.impact
+
+    def __repr__(self) -> str:
+        return f"<DPIARisk {self.id} risk_id={self.risk_id}>"
+
+
+class DPIAMitigationMeasure(Base):
+    """Risikominderungsmassnahme innerhalb einer DPIA."""
+    __tablename__ = "dpia_mitigation_measures"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dpia_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("dpias.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    measure_id = Column(String(50), nullable=False)  # e.g., M1, M2
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    measure_type = Column(String(30), nullable=True)
+    addresses_risks = Column(CrossDBJSON, default=list)  # Array of risk IDs
+    implementation_status = Column(
+        String(30),
+        default=DPIAImplementationStatus.PLANNED.value
+    )
+    responsible_person = Column(String(255), nullable=True)
+    deadline = Column(DateTime(timezone=True), nullable=True)
+    effectiveness = Column(Text, nullable=True)
+
+    # Relationship
+    dpia = relationship("DPIA", back_populates="mitigation_measures")
+
+    def __repr__(self) -> str:
+        return f"<DPIAMitigationMeasure {self.id} measure_id={self.measure_id}>"
+
+
+class DPIAConsultation(Base):
+    """DPO-Konsultation zu einer DPIA."""
+    __tablename__ = "dpia_consultations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dpia_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("dpias.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True  # One consultation per DPIA
+    )
+    dpo_name = Column(String(255), nullable=False)
+    consultation_date = Column(DateTime(timezone=True), nullable=False)
+    opinion = Column(Text, nullable=True)
+    recommendations = Column(CrossDBJSON, default=list)  # Array of strings
+    approval = Column(Boolean, nullable=False)
+    conditions = Column(CrossDBJSON, default=list)  # Array of strings
+
+    # Relationship
+    dpia = relationship("DPIA", back_populates="consultation")
+
+    def __repr__(self) -> str:
+        return f"<DPIAConsultation {self.id} approval={self.approval}>"
+
+
+class DPIAAuditLog(Base):
+    """Audit-Trail fuer DPIA-Aenderungen."""
+    __tablename__ = "dpia_audit_log"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dpia_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("dpias.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    action = Column(String(50), nullable=False)
+    user_name = Column(String(255), nullable=True)
+    details = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationship
+    dpia = relationship("DPIA", back_populates="audit_logs")
+
+    def __repr__(self) -> str:
+        return f"<DPIAAuditLog {self.id} action={self.action}>"

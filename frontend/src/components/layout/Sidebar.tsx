@@ -1,5 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package, Landmark, AlertTriangle, Wallet, Receipt, GitBranch, UserCircle, Shield, Lock, Bookmark, Search, Pin, Database, FileSignature, FilePlus, Building2, BookOpen, BarChart3, MessageCircle, FolderInput, Truck, Gauge, Award, CreditCard, TrendingUp, ShieldAlert, BrainCircuit, Brain, ScrollText } from 'lucide-react'
+import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package, Landmark, AlertTriangle, Wallet, Receipt, GitBranch, UserCircle, Shield, Lock, Bookmark, Search, Pin, Database, FileSignature, FilePlus, Building2, BookOpen, BarChart3, MessageCircle, FolderInput, Truck, Gauge, Award, CreditCard, TrendingUp, ShieldAlert, BrainCircuit, Brain, ScrollText, Link2, Trash2, Bell, Users2, HardDrive, Play, ListOrdered, Banknote, Code2, Warehouse } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { usePermissions } from '@/lib/auth/hooks/use-permissions'
@@ -83,7 +83,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                 </div>
             </div>
 
-            <nav className="flex-1 px-4 space-y-2 overflow-y-auto" role="navigation" aria-label="Hauptmenü">
+            <nav id="main-navigation" className="flex-1 px-4 space-y-2 overflow-y-auto" role="navigation" aria-label="Hauptmenü" tabIndex={-1}>
                 <SidebarLink to="/" icon={LayoutDashboard} label="Dashboard" onNavigate={onNavigate} />
                 <SidebarLink to="/chat" icon={MessageSquare} label="Chat" onNavigate={onNavigate} />
                 <SidebarLink to="/upload" icon={Upload} label="Upload Wizard" onNavigate={onNavigate} />
@@ -92,11 +92,14 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                     <SidebarLink to="/validation-queue" icon={CheckCircle} label="Validierung" onNavigate={onNavigate} />
                 )}
                 <SidebarLink to="/document-groups" icon={Layers} label="Dokumentgruppen" onNavigate={onNavigate} />
+                <SidebarLink to="/document-chains" icon={Link2} label="Auftragsketten" onNavigate={onNavigate} />
                 <SidebarLink to="/admin/datev" icon={FileSpreadsheet} label="DATEV Export" onNavigate={onNavigate} />
                 <SidebarLink to="/berichte" icon={BarChart3} label="Berichte" onNavigate={onNavigate} />
                 <SidebarLink to="/holding" icon={Building2} label="Holding" onNavigate={onNavigate} />
                 <SidebarLink to="/cashflow" icon={TrendingUp} label="Cash-Flow" onNavigate={onNavigate} />
                 <SidebarLink to="/fraud" icon={ShieldAlert} label="Fraud Detection" onNavigate={onNavigate} />
+                <SidebarLink to="/alerts" icon={Bell} label="Alert Center" onNavigate={onNavigate} />
+                <SidebarLink to="/teams" icon={Users2} label="Teams" onNavigate={onNavigate} />
 
                 {/* Ablage-Struktur Section */}
                 <div className="pt-4">
@@ -110,6 +113,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                     <SidebarLink to="/lieferanten/ranking" icon={Award} label="Lieferanten-Ranking" onNavigate={onNavigate} />
                     <SidebarLink to="/finanzen" icon={Landmark} label="Finanzen" onNavigate={onNavigate} />
                     <SidebarLink to="/finanzen/zahlungsverhalten" icon={CreditCard} label="Zahlungsverhalten" onNavigate={onNavigate} />
+                    <SidebarLink to="/banking/payment-automation" icon={Banknote} label="Auto-Zahlungen" onNavigate={onNavigate} />
                     <SidebarLink to="/kasse" icon={Wallet} label="Kassenbuch" onNavigate={onNavigate} />
                     <SidebarLink to="/spesen" icon={Receipt} label="Spesen" onNavigate={onNavigate} />
                     <SidebarLink to="/streckengeschaeft" icon={GitBranch} label="Streckengeschäft" onNavigate={onNavigate} />
@@ -129,7 +133,19 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                             Logistik
                         </span>
                     </div>
+                    <SidebarLink to="/inventory" icon={Warehouse} label="Lagerverwaltung" onNavigate={onNavigate} />
                     <SidebarLink to="/sendungen" icon={Truck} label="Sendungen" onNavigate={onNavigate} />
+                </div>
+
+                {/* System Utilities */}
+                <div className="pt-4">
+                    <div className="px-3 mb-2">
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            System
+                        </span>
+                    </div>
+                    <SidebarLink to="/trash" icon={Trash2} label="Papierkorb" onNavigate={onNavigate} />
+                    <SidebarLink to="/developer" icon={Code2} label="Developer Portal" onNavigate={onNavigate} />
                 </div>
 
                 {/* Smart Folders (Gespeicherte Suchen) */}
@@ -233,8 +249,23 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                                 {permissions.isAdmin && (
                                     <SidebarLink to="/admin/ocr-learning" icon={Brain} label="OCR Learning" onNavigate={onNavigate} />
                                 )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/mlops" icon={BrainCircuit} label="MLOps" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/smart-queue" icon={ListOrdered} label="Smart Queue" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/risk-scoring" icon={Gauge} label="Risk Dashboard" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/validation" icon={ClipboardCheck} label="Validierung" onNavigate={onNavigate} />
+                                )}
                                 {permissions.canViewMahnwesen && (
                                     <SidebarLink to="/admin/mahnungen" icon={AlertTriangle} label="Mahnwesen" onNavigate={onNavigate} />
+                                )}
+                                {permissions.canViewMahnwesen && (
+                                    <SidebarLink to="/banking/auto-mahnlauf" icon={Play} label="Auto-Mahnlauf" onNavigate={onNavigate} />
                                 )}
                                 {permissions.isAdmin && (
                                     <SidebarLink to="/risk" icon={Gauge} label="Risiko-Scoring" onNavigate={onNavigate} />
@@ -259,6 +290,9 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                                 )}
                                 {permissions.isAdmin && (
                                     <SidebarLink to="/admin/audit-logs" icon={ScrollText} label="Audit-Logs" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/disaster-recovery" icon={HardDrive} label="Disaster Recovery" onNavigate={onNavigate} />
                                 )}
                             </div>
                         )}

@@ -33,6 +33,43 @@ class AblageSystemException(Exception):
         }
 
 
+# Generic HTTP-Style Exceptions
+class NotFoundError(AblageSystemException):
+    """Resource not found error"""
+
+    def __init__(self, message: str = "Ressource nicht gefunden", details: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            message=message,
+            error_code="E404",
+            details=details,
+            user_message_de=message
+        )
+
+
+class ForbiddenError(AblageSystemException):
+    """Access forbidden error"""
+
+    def __init__(self, message: str = "Zugriff verweigert", details: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            message=message,
+            error_code="E403",
+            details=details,
+            user_message_de=message
+        )
+
+
+class ValidationError(AblageSystemException):
+    """Input validation error"""
+
+    def __init__(self, message: str = "Validierungsfehler", details: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            message=message,
+            error_code="E400",
+            details=details,
+            user_message_de=message
+        )
+
+
 # GPU-Related Exceptions
 class GPUException(AblageSystemException):
     """Base class for GPU-related errors"""

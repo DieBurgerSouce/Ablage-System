@@ -5,7 +5,7 @@
  * NEU: Tab-System mit "Strukturiert" (Default) und "OCR-Text"
  */
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { apiClient } from '@/lib/api/client'
 import { logger } from '@/lib/logger'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
@@ -36,6 +36,7 @@ import { useNextSample, useSampleDetail, useLLMReview, useVerifySample, useSubmi
 import { useKeyboardShortcuts, type ReviewAction } from '../hooks/use-keyboard-shortcuts'
 import { useExtractedDataForReview } from '../hooks/use-extracted-data-review'
 import { useFieldCorrections } from '../hooks/use-field-corrections'
+import { useFieldNavigation } from '../hooks/use-field-navigation'
 import { CorrectionEditor } from './CorrectionEditor'
 import { KeyboardShortcutsHelp, ShortcutHint } from './KeyboardShortcutsHelp'
 import { StructuredReviewPanel } from './StructuredReviewPanel'
@@ -123,6 +124,9 @@ export function ReviewWorkspace({
     const [activeTab, setActiveTab] = useState<'structured' | 'ocr-text'>('structured')
     const [zoomLevel, setZoomLevel] = useState(100) // Zoom in Prozent
 
+    // Ref für StructuredReviewPanel Container (für Field Navigation)
+    const structuredPanelRef = useRef<HTMLDivElement>(null)
+
     // Zoom-Funktionen
     const handleZoomIn = useCallback(() => {
         setZoomLevel(prev => Math.min(prev + 25, 300))
@@ -167,6 +171,12 @@ export function ReviewWorkspace({
         sampleId,
         documentId,
         backendUsed: sampleDetail?.benchmarks ? Object.keys(sampleDetail.benchmarks)[0] : 'unknown',
+    })
+
+    // NEU: Field Navigation Hook
+    const fieldNavigation = useFieldNavigation({
+        containerRef: structuredPanelRef,
+        enabled: activeTab === 'structured' && !isSubmitting,
     })
 
     // Mutations
@@ -374,13 +384,34 @@ export function ReviewWorkspace({
                 setActiveTab('ocr-text')
                 break
             case 'nextField':
+                // J oder Tab: Nächstes Feld
+                if (activeTab === 'structured') {
+                    fieldNavigation.goToNext()
+                }
+                break
             case 'prevField':
-                // TODO: Implement field navigation in StructuredReviewPanel
-                // For now, these are handled by browser's native Tab behavior
+                // K oder Shift+Tab: Vorheriges Feld
+                if (activeTab === 'structured') {
+                    fieldNavigation.goToPrevious()
+                }
+                break
+            case 'editField':
+                // E: Aktuelles Feld bearbeiten
+                if (activeTab === 'structured' && fieldNavigation.currentField) {
+                    // Das fokussierte Element klicken, um Edit-Modus zu starten
+                    const activeElement = document.activeElement as HTMLElement
+                    if (activeElement) {
+                        activeElement.click()
+                    }
+                }
                 break
             case 'confirmField':
-                // TODO: Confirm currently focused field
-                // Would need field focus tracking in StructuredReviewPanel
+                // Enter: Aktuelles Feld bestätigen
+                if (activeTab === 'structured' && fieldNavigation.currentField) {
+                    corrections.confirmField(fieldNavigation.currentField)
+                    // Zum nächsten Feld navigieren
+                    fieldNavigation.goToNext()
+                }
                 break
             case 'confirmAll':
                 // Bestätigt alle sichtbaren Felder (nur im Strukturiert-Tab)
@@ -390,7 +421,7 @@ export function ReviewWorkspace({
                 }
                 break
         }
-    }, [handleAccept, handleCorrect, handleSkip, handleReject, handleApplyLLMSuggestion, showShortcutsHelp, onExit, activeTab, extractedDataReview.invoiceData, corrections])
+    }, [handleAccept, handleCorrect, handleSkip, handleReject, handleApplyLLMSuggestion, showShortcutsHelp, onExit, activeTab, extractedDataReview.invoiceData, corrections, fieldNavigation])
 
     // Keyboard Shortcuts
     useKeyboardShortcuts({
@@ -630,13 +661,15 @@ export function ReviewWorkspace({
                         </TabsList>
 
                         <TabsContent value="structured" className="flex-1 mt-3 overflow-hidden">
-                            <StructuredReviewPanel
-                                queueItem={nextSample}
-                                extractedDataReview={extractedDataReview}
-                                corrections={corrections}
-                                disabled={isSubmitting}
-                                className="h-full"
-                            />
+                            <div ref={structuredPanelRef} className="h-full">
+                                <StructuredReviewPanel
+                                    queueItem={nextSample}
+                                    extractedDataReview={extractedDataReview}
+                                    corrections={corrections}
+                                    disabled={isSubmitting}
+                                    className="h-full"
+                                />
+                            </div>
                         </TabsContent>
 
                         <TabsContent value="ocr-text" className="flex-1 mt-3">
@@ -694,6 +727,12 @@ export function ReviewWorkspace({
                         </div>
 
                         <div className="flex items-center gap-4">
+                            {/* Field Navigation Status */}
+                            {activeTab === 'structured' && fieldNavigation.totalFields > 0 && (
+                                <span className="text-xs text-muted-foreground">
+                                    Feld {fieldNavigation.currentIndex + 1}/{fieldNavigation.totalFields}
+                                </span>
+                            )}
                             <span className="text-xs text-muted-foreground">
                                 {sessionStats.reviewed_today} heute | {sessionStats.corrections_today} Korrekturen
                             </span>

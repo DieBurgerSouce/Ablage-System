@@ -27,7 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Document, DocumentArchive, HashAlgorithm
 from app.services.storage_service import StorageService
-from app.db.models.gobd import (
+from app.db.bpmn_models.gobd import (
     ArchiveIntegrityCheck,
     IntegrityCheckStatus,
     TimestampAuthorityConfig,

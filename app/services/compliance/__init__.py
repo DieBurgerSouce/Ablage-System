@@ -1,13 +1,16 @@
-"""GoBD Compliance Services.
+"""GoBD & GDPR Compliance Services.
 
-Dieses Modul stellt Services fuer GoBD-konforme Dokumentenverarbeitung bereit:
+Dieses Modul stellt Services fuer GoBD- und DSGVO-konforme Dokumentenverarbeitung bereit:
 - AuditChainService: Blockchain-aehnliche Hash-Kette
 - RetentionService: Aufbewahrungsfristen-Management
 - ArchiveService: Revisionssichere Archivierung mit TSA
+- ConsentManagementService: DSGVO Einwilligungsverwaltung (Phase 7)
 
 GoBD = Grundsaetze zur ordnungsmaessigen Fuehrung und Aufbewahrung
        von Buechern, Aufzeichnungen und Unterlagen in elektronischer
        Form sowie zum Datenzugriff
+
+DSGVO = Datenschutz-Grundverordnung (Art. 6, 7, 15-21)
 """
 
 from app.services.compliance.audit_chain_service import (
@@ -39,6 +42,78 @@ from app.services.compliance.procedure_documentation_service import (
     DocumentSection,
     ProcedureDocumentation,
 )
+from app.services.compliance.consent_management_service import (
+    ConsentManagementService,
+    consent_management_service,
+    get_consent_management_service,
+    ConsentScope,
+    ConsentMethod,
+    ConsentStatus,
+    ConsentHistoryAction,
+    ConsentRecord,
+    ConsentVersionInfo,
+    ConsentGrantResult,
+    ConsentWithdrawalResult,
+    ConsentCheckResult,
+    ConsentHistoryEntry,
+    ConsentSummary,
+)
+from app.services.compliance.data_subject_rights_service import (
+    DataSubjectRightsService,
+    data_subject_rights_service,
+    get_data_subject_rights_service,
+    DSRType,
+    DSRStatus,
+    DataCategory,
+    DSRRequest,
+    DSRCreateResult,
+    DSRVerificationResult,
+    PersonalDataExport,
+    PersonalDataSummary,
+    ErasureResult,
+    RectificationResult,
+)
+from app.services.compliance.audit_archive_service import (
+    AuditArchiveService,
+    audit_archive_service,
+    archive_monthly_audit_logs,
+    verify_all_archives,
+    ArchiveStatus,
+    ArchiveResult,
+    ArchiveVerificationResult,
+)
+from app.services.compliance.breach_notification_service import (
+    BreachNotificationService,
+    breach_notification_service,
+    get_breach_notification_service,
+    BreachSeverity,
+    BreachType,
+    BreachStatus,
+    NotificationStatus,
+    BreachReport,
+    AffectedDataCategory,
+    AuthorityNotificationTemplate,
+    SubjectNotificationTemplate,
+    CreateBreachResult,
+    SUPERVISORY_AUTHORITIES,
+)
+from app.services.compliance.tax_authority_export_service import (
+    TaxAuthorityExportService,
+    get_tax_authority_export_service,
+    ExportFormat,
+    DataCategory as TaxDataCategory,
+    ExportField,
+    ExportTable,
+    ExportStatistics,
+    ExportResult,
+    get_invoice_table_definition,
+    get_bank_transaction_table_definition,
+    get_document_table_definition,
+    get_audit_log_table_definition,
+    ENCODING,
+    MAX_FIELD_LENGTH,
+    GDPDU_NAMESPACE,
+)
 
 __all__ = [
     # Audit Chain
@@ -65,4 +140,70 @@ __all__ = [
     "DocumentFormat",
     "DocumentSection",
     "ProcedureDocumentation",
+    # GDPR Consent Management (Phase 7)
+    "ConsentManagementService",
+    "consent_management_service",
+    "get_consent_management_service",
+    "ConsentScope",
+    "ConsentMethod",
+    "ConsentStatus",
+    "ConsentHistoryAction",
+    "ConsentRecord",
+    "ConsentVersionInfo",
+    "ConsentGrantResult",
+    "ConsentWithdrawalResult",
+    "ConsentCheckResult",
+    "ConsentHistoryEntry",
+    "ConsentSummary",
+    # GDPR Data Subject Rights (Phase 7)
+    "DataSubjectRightsService",
+    "data_subject_rights_service",
+    "get_data_subject_rights_service",
+    "DSRType",
+    "DSRStatus",
+    "DataCategory",
+    "DSRRequest",
+    "DSRCreateResult",
+    "DSRVerificationResult",
+    "PersonalDataExport",
+    "ErasureResult",
+    "RectificationResult",
+    # Audit Archive (Phase 1.4)
+    "AuditArchiveService",
+    "audit_archive_service",
+    "archive_monthly_audit_logs",
+    "verify_all_archives",
+    "ArchiveStatus",
+    "ArchiveResult",
+    "ArchiveVerificationResult",
+    # GDPR Breach Notification (Art. 33-34)
+    "BreachNotificationService",
+    "breach_notification_service",
+    "get_breach_notification_service",
+    "BreachSeverity",
+    "BreachType",
+    "BreachStatus",
+    "NotificationStatus",
+    "BreachReport",
+    "AffectedDataCategory",
+    "AuthorityNotificationTemplate",
+    "SubjectNotificationTemplate",
+    "CreateBreachResult",
+    "SUPERVISORY_AUTHORITIES",
+    # Tax Authority Export (§90 III AO)
+    "TaxAuthorityExportService",
+    "get_tax_authority_export_service",
+    "ExportFormat",
+    "TaxDataCategory",
+    "ExportField",
+    "ExportTable",
+    "ExportStatistics",
+    "ExportResult",
+    "get_invoice_table_definition",
+    "get_bank_transaction_table_definition",
+    "get_document_table_definition",
+    "get_audit_log_table_definition",
+    "ENCODING",
+    "MAX_FIELD_LENGTH",
+    "GDPDU_NAMESPACE",
 ]

@@ -390,20 +390,35 @@ export function TransactionsView({ entityType }: TransactionsViewProps) {
   // Handlers
   const handleTransactionClick = useCallback(
     (transaction: Transaction) => {
-      // TODO: Navigate to transaction detail page
-      logger.debug('Navigiere zu Vorgang:', { transactionId: transaction.id });
+      // Navigiere zum ersten Dokument des Vorgangs (falls vorhanden)
+      const firstDocumentStep = transaction.steps.find((step) => step.documentId);
+      if (firstDocumentStep?.documentId) {
+        logger.debug('Navigiere zu Vorgang-Dokument:', {
+          transactionId: transaction.id,
+          documentId: firstDocumentStep.documentId,
+        });
+        navigate({
+          to: '/documents/$documentId',
+          params: { documentId: firstDocumentStep.documentId },
+        });
+      } else {
+        logger.debug('Vorgang hat keine Dokumente:', { transactionId: transaction.id });
+      }
     },
-    []
+    [navigate]
   );
 
   const handleStepClick = useCallback(
     (step: TransactionStep) => {
       if (step.documentId) {
-        // TODO: Navigate to document viewer
         logger.debug('Navigiere zu Dokument:', { documentId: step.documentId });
+        navigate({
+          to: '/documents/$documentId',
+          params: { documentId: step.documentId },
+        });
       }
     },
-    []
+    [navigate]
   );
 
   const handleBack = useCallback(() => {

@@ -8,7 +8,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect, type MouseEvent as ReactMouseEvent } from 'react'
-import { GripVertical, X, Maximize2, Minimize2 } from 'lucide-react'
+import { GripVertical, X, Maximize2, Minimize2, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -48,6 +48,7 @@ interface ResizableWidgetProps {
     onRemove?: (id: string) => void
     onResize?: (id: string, w: number, h: number) => void
     onDragStart?: (id: string, e: ReactMouseEvent<HTMLDivElement>) => void
+    onConfig?: (id: string, type: string) => void
     gridCellWidth?: number
     gridCellHeight?: number
 }
@@ -68,6 +69,7 @@ export function ResizableWidget({
     onRemove,
     onResize,
     onDragStart,
+    onConfig,
     gridCellWidth = DEFAULT_GRID_CELL_WIDTH,
     gridCellHeight = DEFAULT_GRID_CELL_HEIGHT,
 }: ResizableWidgetProps) {
@@ -287,6 +289,28 @@ export function ResizableWidget({
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
+
+                            {/* Config Button */}
+                            {onConfig && (
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                className="h-6 w-6 bg-background"
+                                                onClick={() => onConfig(widget.id, widget.type)}
+                                                aria-label="Widget konfigurieren"
+                                            >
+                                                <Settings className="h-3 w-3" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Einstellungen</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            )}
                         </div>
 
                         {/* Remove Button */}

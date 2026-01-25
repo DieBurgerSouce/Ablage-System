@@ -57,6 +57,32 @@ from app.services.ai.predictive_action_service import (
     ActionPriority,
     ActionStatus,
 )
+from app.services.ai.finance_assistant_service import (
+    FinanceAssistantService,
+    AssistantIntent,
+    AssistantContext,
+    AssistantResponse,
+    ActionProposal,
+    BookingSuggestion,
+    Insight as AssistantInsight,
+    get_finance_assistant_service,
+)
+from app.services.ai.action_executor_service import (
+    ActionExecutorService,
+    ActionStatus as ExecutorActionStatus,
+    ActionCategory,
+    ActionContext,
+    ActionResult,
+    get_action_executor_service,
+)
+from app.services.ai.insight_generator_service import (
+    InsightGeneratorService,
+    InsightCategory,
+    InsightSeverity,
+    Insight,
+    InsightContext,
+    get_insight_generator_service,
+)
 
 __all__ = [
     # Core Decision Service
@@ -99,4 +125,27 @@ __all__ = [
     "ActionType",
     "ActionPriority",
     "ActionStatus",
+    # Finance Assistant (Vision 2.0 - Januar 2026)
+    "FinanceAssistantService",
+    "AssistantIntent",
+    "AssistantContext",
+    "AssistantResponse",
+    "ActionProposal",
+    "BookingSuggestion",
+    "AssistantInsight",
+    "get_finance_assistant_service",
+    # Action Executor (Vision 2.0 - Januar 2026)
+    "ActionExecutorService",
+    "ExecutorActionStatus",
+    "ActionCategory",
+    "ActionContext",
+    "ActionResult",
+    "get_action_executor_service",
+    # Insight Generator (Vision 2.0 - Januar 2026)
+    "InsightGeneratorService",
+    "InsightCategory",
+    "InsightSeverity",
+    "Insight",
+    "InsightContext",
+    "get_insight_generator_service",
 ]

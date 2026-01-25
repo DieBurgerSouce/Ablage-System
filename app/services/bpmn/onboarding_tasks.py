@@ -28,7 +28,7 @@ async def verify_customer_data(
         Validierungsergebnis
     """
     from app.db.session import async_session_maker
-    from app.db.models.bpmn import ProcessHistory
+    from app.db.bpmn_models.bpmn import ProcessHistory
 
     customer_name = variables.get("customer_name", "")
     customer_type = variables.get("customer_type", "business")
@@ -100,7 +100,7 @@ async def check_credit_rating(
         Bonitaetsergebnis
     """
     from app.db.session import async_session_maker
-    from app.db.models.bpmn import ProcessHistory
+    from app.db.bpmn_models.bpmn import ProcessHistory
 
     customer_name = variables.get("customer_name", "")
     customer_type = variables.get("customer_type", "business")
@@ -172,7 +172,7 @@ async def setup_customer_account(
         Konto-Informationen
     """
     from app.db.session import async_session_maker
-    from app.db.models.bpmn import ProcessHistory
+    from app.db.bpmn_models.bpmn import ProcessHistory
     import secrets
 
     customer_name = variables.get("customer_name", "")
@@ -235,7 +235,7 @@ async def send_welcome_package(
         Versand-Status
     """
     from app.db.session import async_session_maker
-    from app.db.models.bpmn import ProcessHistory
+    from app.db.bpmn_models.bpmn import ProcessHistory
 
     customer_number = variables.get("customer_number", "")
     contact_email = variables.get("contact_email", "")
@@ -288,7 +288,7 @@ async def assign_account_manager(
         Betreuer-Zuweisung
     """
     from app.db.session import async_session_maker
-    from app.db.models.bpmn import ProcessHistory
+    from app.db.bpmn_models.bpmn import ProcessHistory
 
     customer_type = variables.get("customer_type", "business")
     credit_limit = variables.get("credit_limit", 0)
@@ -337,7 +337,7 @@ async def assign_account_manager(
 async def complete_onboarding(
     instance_id: str,
     variables: Dict[str, Any]
-) -> Dict[str, Any]:\
+) -> Dict[str, Any]:
     """Schliesst das Onboarding ab.
 
     Aktiviert den Kunden fuer den Geschaeftsbetrieb.
@@ -350,7 +350,7 @@ async def complete_onboarding(
         Abschluss-Informationen
     """
     from app.db.session import async_session_maker
-    from app.db.models.bpmn import ProcessHistory
+    from app.db.bpmn_models.bpmn import ProcessHistory
 
     customer_number = variables.get("customer_number", "")
     credit_approved = variables.get("credit_approved", False)

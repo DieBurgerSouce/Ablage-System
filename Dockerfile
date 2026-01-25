@@ -29,6 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr \
     tesseract-ocr-deu \
     fonts-dejavu-core \
+    libhunspell-dev \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 

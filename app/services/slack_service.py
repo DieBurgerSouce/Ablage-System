@@ -44,6 +44,7 @@ class SlackNotificationType(str, Enum):
     WORKFLOW_COMPLETED = "workflow_completed"
     HIGH_RISK_ENTITY = "high_risk_entity"
     DUNNING_ESCALATION = "dunning_escalation"
+    SKONTO_EXPIRING = "skonto_expiring"
     REPORT_GENERATED = "report_generated"
     SYSTEM_ALERT = "system_alert"
     CUSTOM = "custom"
@@ -541,6 +542,7 @@ class SlackService:
             "workflow_completed": "#36A64F",  # Gruen
             "high_risk_entity": "#FF0000",  # Rot
             "dunning_escalation": "#FF8C00",  # Orange
+            "skonto_expiring": "#FFA500",  # Orange - Ablaufende Skonto-Fristen
             "report_generated": "#0066CC",  # Blau
             "system_alert": "#FF8C00",  # Orange
         }
@@ -557,6 +559,7 @@ class SlackService:
             "workflow_completed": ":checkered_flag:",
             "high_risk_entity": ":warning:",
             "dunning_escalation": ":warning:",
+            "skonto_expiring": ":moneybag:",
             "report_generated": ":bar_chart:",
             "system_alert": ":rotating_light:",
             "custom": ":bell:",

@@ -899,6 +899,247 @@ async def create_gdpdu_export(
 
 
 # =============================================================================
+# Tax Authority Export (§90 III AO) - Feature 20
+# =============================================================================
+
+
+class TaxExportRequest(BaseModel):
+    """Anfrage fuer Tax Authority Export nach §90 III AO."""
+
+    period_start: date = Field(..., description="Beginn Pruefungszeitraum")
+    period_end: date = Field(..., description="Ende Pruefungszeitraum")
+    include_invoices: bool = Field(True, description="Rechnungen einschliessen")
+    include_transactions: bool = Field(True, description="Bankbewegungen einschliessen")
+    include_documents: bool = Field(True, description="Belege einschliessen")
+    include_audit_log: bool = Field(True, description="Aenderungsprotokoll einschliessen")
+    output_dir: Optional[str] = Field(None, description="Optionales Ausgabeverzeichnis")
+
+
+class TaxExportPreviewResponse(BaseModel):
+    """Vorschau eines Tax Authority Exports."""
+
+    period_start: date
+    period_end: date
+    estimated_records: int = Field(..., description="Geschaetzte Anzahl Datensaetze")
+    categories: dict = Field(default_factory=dict, description="Datensaetze pro Kategorie")
+    tables: list = Field(default_factory=list, description="Verfuegbare Tabellen")
+
+
+class TaxExportResultResponse(BaseModel):
+    """Ergebnis eines Tax Authority Exports."""
+
+    success: bool
+    export_id: str
+    format: str
+    period_start: date
+    period_end: date
+    company_name: str
+    created_at: datetime
+    total_records: int
+    files: list = Field(default_factory=list)
+    archive_path: Optional[str] = None
+    error: Optional[str] = None
+
+
+@router.get(
+    "/export/tax-authority/tables",
+    response_model=dict,
+    summary="Verfuegbare Export-Tabellen",
+    description="Listet alle verfuegbaren Tabellen fuer den Steuerpruefer-Export auf."
+)
+async def list_tax_export_tables(
+    current_user: User = Depends(get_current_superuser),
+) -> dict:
+    """
+    Listet alle Tabellendefinitionen fuer den Tax Authority Export.
+
+    Tabellen:
+    - rechnungen: Ausgangs- und Eingangsrechnungen
+    - bankbewegungen: Kontoumsaetze
+    - belege: Archivierte Dokumente
+    - aenderungsprotokoll: Audit-Trail
+    """
+    from app.services.compliance.tax_authority_export_service import (
+        get_invoice_table_definition,
+        get_bank_transaction_table_definition,
+        get_document_table_definition,
+        get_audit_log_table_definition,
+    )
+
+    tables = [
+        get_invoice_table_definition(),
+        get_bank_transaction_table_definition(),
+        get_document_table_definition(),
+        get_audit_log_table_definition(),
+    ]
+
+    return {
+        "tables": [
+            {
+                "name": t.name,
+                "description": t.description,
+                "category": t.category.value,
+                "primary_key": t.primary_key,
+                "fields_count": len(t.fields),
+                "fields": [
+                    {
+                        "name": f.name,
+                        "description": f.description,
+                        "data_type": f.data_type,
+                        "required": f.required,
+                    }
+                    for f in t.fields
+                ],
+            }
+            for t in tables
+        ],
+        "total_tables": len(tables),
+    }
+
+
+@router.post(
+    "/export/tax-authority/preview",
+    response_model=TaxExportPreviewResponse,
+    summary="Tax Authority Export Vorschau",
+    description="Zeigt eine Vorschau des Exports fuer Betriebspruefungen nach §90 III AO."
+)
+async def preview_tax_authority_export(
+    request: TaxExportRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+    company: Company = Depends(require_company),
+) -> TaxExportPreviewResponse:
+    """
+    Erstellt eine Vorschau des Tax Authority Exports.
+
+    Zeigt:
+    - Geschaetzte Anzahl Datensaetze
+    - Aufschluesselung nach Kategorien
+    - Verfuegbare Tabellen
+    """
+    from app.services.compliance.tax_authority_export_service import (
+        get_tax_authority_export_service,
+    )
+
+    service = get_tax_authority_export_service(db)
+
+    # Datensaetze zaehlen
+    categories = await service.count_records_by_category(
+        company_id=company.id,
+        period_start=request.period_start,
+        period_end=request.period_end,
+    )
+
+    tables = []
+    if request.include_invoices:
+        tables.append("rechnungen")
+    if request.include_transactions:
+        tables.append("bankbewegungen")
+    if request.include_documents:
+        tables.append("belege")
+    if request.include_audit_log:
+        tables.append("aenderungsprotokoll")
+
+    return TaxExportPreviewResponse(
+        period_start=request.period_start,
+        period_end=request.period_end,
+        estimated_records=sum(categories.values()),
+        categories=categories,
+        tables=tables,
+    )
+
+
+@router.post(
+    "/export/tax-authority",
+    summary="Tax Authority Export erstellen",
+    description="Erstellt einen GDPdU-konformen Export fuer Betriebspruefungen nach §90 III AO."
+)
+async def create_tax_authority_export(
+    request: TaxExportRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+    company: Company = Depends(require_company),
+):
+    """
+    Erstellt einen vollstaendigen Export fuer die Datenueberlassung
+    an Finanzbehroeden nach §90 III AO / §147 VI AO.
+
+    Der Export enthaelt:
+    - index.xml: Strukturbeschreibung (GDPdU-konform)
+    - DTD-Datei: Validierungsschema
+    - CSV-Dateien: Tabellarische Daten
+    - MD5-Pruefsummen: Integritaetssicherung
+
+    Hinweis: Dieser Endpoint ist nur fuer Superuser zugaenglich.
+    """
+    from app.services.compliance.tax_authority_export_service import (
+        get_tax_authority_export_service,
+    )
+
+    service = get_tax_authority_export_service(db)
+
+    try:
+        result = await service.create_gdpdu_export(
+            company_id=company.id,
+            period_start=request.period_start,
+            period_end=request.period_end,
+            output_dir=request.output_dir,
+        )
+
+        if not result.success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=result.error or "Export fehlgeschlagen",
+            )
+
+        # ZIP-Archiv zurueckgeben
+        if result.archive_path:
+            with open(result.archive_path, "rb") as f:
+                zip_content = f.read()
+
+            filename = (
+                f"tax_authority_export_{company.name.replace(' ', '_')}_"
+                f"{request.period_start.strftime('%Y%m%d')}_"
+                f"{request.period_end.strftime('%Y%m%d')}.zip"
+            )
+
+            from fastapi import Response
+            return Response(
+                content=zip_content,
+                media_type="application/zip",
+                headers={
+                    "Content-Disposition": f'attachment; filename="{filename}"'
+                }
+            )
+
+        # Falls kein Archiv, Metadaten zurueckgeben
+        return TaxExportResultResponse(
+            success=result.success,
+            export_id=result.export_id,
+            format=result.format.value,
+            period_start=result.period_start,
+            period_end=result.period_end,
+            company_name=result.company_name,
+            created_at=result.created_at,
+            total_records=result.statistics.total_records,
+            files=result.files,
+            archive_path=result.archive_path,
+            error=result.error,
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Export fehlgeschlagen: {str(e)}"
+        )
+
+
+# =============================================================================
 # Document Access Audit Trail Endpoints (GoBD Nachvollziehbarkeit)
 # =============================================================================
 

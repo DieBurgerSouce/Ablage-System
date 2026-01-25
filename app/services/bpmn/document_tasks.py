@@ -30,7 +30,7 @@ async def extract_document_text(
         Extrahierter Text und Metadaten
     """
     from app.db.session import async_session_maker
-    from app.db.models.bpmn import ProcessHistory
+    from app.db.bpmn_models.bpmn import ProcessHistory
 
     document_id = variables.get("document_id")
     file_path = variables.get("file_path", "")
@@ -193,7 +193,7 @@ async def classify_document(
         Klassifizierungsergebnis
     """
     from app.db.session import async_session_maker
-    from app.db.models.bpmn import ProcessHistory
+    from app.db.bpmn_models.bpmn import ProcessHistory
 
     document_id = variables.get("document_id")
     extracted_text = variables.get("extracted_text", "")
@@ -357,7 +357,7 @@ async def extract_entities(
         Extrahierte Entitaeten
     """
     from app.db.session import async_session_maker
-    from app.db.models.bpmn import ProcessHistory
+    from app.db.bpmn_models.bpmn import ProcessHistory
 
     document_id = variables.get("document_id")
     document_type = variables.get("document_type", "other")
@@ -537,7 +537,7 @@ async def match_business_entity(
         Matching-Ergebnis
     """
     from app.db.session import async_session_maker
-    from app.db.models.bpmn import ProcessHistory
+    from app.db.bpmn_models.bpmn import ProcessHistory
 
     document_id = variables.get("document_id")
     entities = variables.get("entities", {})
@@ -680,7 +680,7 @@ async def route_to_folder(
         Routing-Ergebnis
     """
     from app.db.session import async_session_maker
-    from app.db.models.bpmn import ProcessHistory
+    from app.db.bpmn_models.bpmn import ProcessHistory
 
     document_id = variables.get("document_id")
     document_type = variables.get("document_type", "other")
@@ -807,7 +807,7 @@ async def trigger_workflow(
         Workflow-Start-Info
     """
     from app.db.session import async_session_maker
-    from app.db.models.bpmn import ProcessHistory
+    from app.db.bpmn_models.bpmn import ProcessHistory
 
     document_id = variables.get("document_id")
     document_type = variables.get("document_type", "other")
@@ -852,7 +852,7 @@ async def trigger_workflow(
                 exec_service = ProcessExecutionService(db_session)
 
                 # Workflow-Definition finden (MIT company_id Filter fuer Multi-Tenant!)
-                from app.db.models.bpmn import ProcessDefinition
+                from app.db.bpmn_models.bpmn import ProcessDefinition
                 definition_result = await db_session.execute(
                     select(ProcessDefinition).where(
                         ProcessDefinition.key == follow_up_workflow,
@@ -932,7 +932,7 @@ async def complete_classification(
         Abschluss-Informationen
     """
     from app.db.session import async_session_maker
-    from app.db.models.bpmn import ProcessHistory
+    from app.db.bpmn_models.bpmn import ProcessHistory
 
     document_id = variables.get("document_id")
     document_type = variables.get("document_type", "other")

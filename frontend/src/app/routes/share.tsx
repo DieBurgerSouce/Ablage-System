@@ -134,10 +134,27 @@ function ShareTargetPage() {
 
   // Handle URL/text share (create note or bookmark)
   const handleSaveLink = async () => {
-    // TODO: Implement saving URL as bookmark or creating note
-    toast.info('Link gespeichert', {
-      description: sharedData?.url || sharedData?.text,
-    })
+    const linkData = {
+      url: sharedData?.url,
+      text: sharedData?.text,
+      title: sharedData?.title || 'Geteilter Link',
+      savedAt: new Date().toISOString(),
+    }
+
+    // Speichere im LocalStorage (FUTURE: Backend API fuer Bookmarks)
+    try {
+      const existingLinks = JSON.parse(localStorage.getItem('savedLinks') || '[]')
+      existingLinks.unshift(linkData)
+      // Max 50 Links speichern
+      localStorage.setItem('savedLinks', JSON.stringify(existingLinks.slice(0, 50)))
+
+      toast.success('Link gespeichert', {
+        description: `"${linkData.title}" wurde zu Ihren Links hinzugefuegt`,
+      })
+    } catch {
+      toast.error('Speichern fehlgeschlagen')
+    }
+
     navigate({ to: '/' })
   }
 

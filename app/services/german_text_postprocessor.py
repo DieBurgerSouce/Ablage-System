@@ -9,14 +9,22 @@ Gemeinsamer Service fuer deutsche Textnachbearbeitung in allen OCR-Backends:
 - Compound-Word-Erkennung und -Splitting
 - Phonetische Aehnlichkeit (Cologne Phonetic)
 - Integration mit GermanValidator
+- Branchenspezifische Fachvokabulare (Phase 8)
 
 Feinpoliert und durchdacht - Deutsche OCR-Qualitaet.
 """
 
 import re
 import structlog
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, TYPE_CHECKING
 from functools import lru_cache
+
+if TYPE_CHECKING:
+    from app.services.ocr.industry_vocabulary_service import (
+        IndustryType,
+        IndustryVocabularyService,
+    )
+    from app.services.german_spellchecker import GermanSpellchecker
 
 logger = structlog.get_logger(__name__)
 
@@ -192,7 +200,9 @@ class GermanTextPostprocessor:
     def __init__(
         self,
         use_validator: bool = True,
-        aggressive_mode: bool = False
+        aggressive_mode: bool = False,
+        use_industry_vocabulary: bool = True,
+        use_spellchecker: bool = True
     ):
         """
         Initialisiere German Text Postprocessor.
@@ -200,14 +210,22 @@ class GermanTextPostprocessor:
         Args:
             use_validator: GermanValidator fuer erweiterte Validierung nutzen
             aggressive_mode: Aggressivere Umlaut-Ersetzung (mehr false positives moeglich)
+            use_industry_vocabulary: Branchenspezifische Vokabulare nutzen (Phase 8)
+            use_spellchecker: SymSpell-basierte Rechtschreibkorrektur nutzen (Phase 5.1)
         """
         self.use_validator = use_validator
         self.aggressive_mode = aggressive_mode
+        self.use_industry_vocabulary = use_industry_vocabulary
+        self.use_spellchecker = use_spellchecker
         self._validator = None
+        self._industry_vocab_service: Optional["IndustryVocabularyService"] = None
+        self._spellchecker: Optional["GermanSpellchecker"] = None
         self._stats = {
             "total_processed": 0,
             "umlaut_corrections": 0,
             "eszett_corrections": 0,
+            "industry_corrections": 0,
+            "spelling_corrections": 0,
             "validation_errors": 0
         }
 
@@ -221,6 +239,28 @@ class GermanTextPostprocessor:
                 logger.warning("german_validator_not_available")
                 self._validator = None
 
+        # Lade IndustryVocabularyService wenn verfuegbar (Phase 8)
+        if use_industry_vocabulary:
+            try:
+                from app.services.ocr.industry_vocabulary_service import (
+                    get_industry_vocabulary_service,
+                )
+                self._industry_vocab_service = get_industry_vocabulary_service()
+                logger.debug("industry_vocabulary_service_loaded")
+            except ImportError:
+                logger.warning("industry_vocabulary_service_not_available")
+                self._industry_vocab_service = None
+
+        # Lade GermanSpellchecker wenn verfuegbar (Phase 5.1)
+        if use_spellchecker:
+            try:
+                from app.services.german_spellchecker import get_german_spellchecker
+                self._spellchecker = get_german_spellchecker()
+                logger.debug("german_spellchecker_loaded")
+            except ImportError:
+                logger.warning("german_spellchecker_not_available")
+                self._spellchecker = None
+
         # Precompile regex patterns fuer Performance
         self._word_pattern = re.compile(r'\b\w+\b')
 
@@ -232,6 +272,8 @@ class GermanTextPostprocessor:
             "german_postprocessor_initialized",
             use_validator=use_validator,
             aggressive_mode=aggressive_mode,
+            use_industry_vocabulary=use_industry_vocabulary,
+            use_spellchecker=use_spellchecker,
             umlaut_words_count=len(self.GERMAN_UMLAUT_WORDS),
             eszett_words_count=len(self.ESZETT_WORDS)
         )
@@ -475,6 +517,10 @@ class GermanTextPostprocessor:
             options: Zusaetzliche Optionen:
                 - skip_umlauts: Umlaut-Korrektur ueberspringen
                 - skip_eszett: Eszett-Korrektur ueberspringen
+                - skip_spelling: Rechtschreibkorrektur ueberspringen (Phase 5.1)
+                - skip_industry: Branchenspezifische Korrektur ueberspringen
+                - industry: Explizite Branche (z.B. "baugewerbe", "medizin")
+                - expand_abbreviations: Abkuerzungen im Text expandieren
                 - validate: Mit GermanValidator validieren
 
         Returns:
@@ -483,6 +529,7 @@ class GermanTextPostprocessor:
                 - corrections: Liste der Korrekturen
                 - stats: Statistiken
                 - validation: Validierungsergebnis (optional)
+                - industry_detection: Erkannte Branche (optional)
         """
         if not text or not text.strip():
             return {
@@ -510,7 +557,28 @@ class GermanTextPostprocessor:
             corrections.extend(eszett_corrections)
             self._stats["eszett_corrections"] += len(eszett_corrections)
 
-        # 3. Validierung (optional)
+        # 3. Rechtschreibkorrektur mit SymSpell (Phase 5.1)
+        if not options.get("skip_spelling", False) and self._spellchecker:
+            corrected_text, spelling_corrections = self._apply_spelling_correction(
+                corrected_text
+            )
+            corrections.extend(spelling_corrections)
+            self._stats["spelling_corrections"] += len(spelling_corrections)
+
+        # 4. Branchenspezifische Korrektur (Phase 8)
+        industry_detection = None
+        if not options.get("skip_industry", False) and self._industry_vocab_service:
+            corrected_text, industry_corrections, industry_detection = (
+                self._apply_industry_corrections(
+                    corrected_text,
+                    industry=options.get("industry"),
+                    expand_abbreviations=options.get("expand_abbreviations", False)
+                )
+            )
+            corrections.extend(industry_corrections)
+            self._stats["industry_corrections"] += len(industry_corrections)
+
+        # 5. Validierung (optional)
         validation_result = None
         if options.get("validate", False) and self._validator:
             try:
@@ -519,7 +587,7 @@ class GermanTextPostprocessor:
                 logger.warning("validation_failed", error=str(e))
                 self._stats["validation_errors"] += 1
 
-        # 4. Erstelle Ergebnis
+        # 6. Erstelle Ergebnis
         result = {
             "text": corrected_text,
             "corrections": corrections,
@@ -527,6 +595,11 @@ class GermanTextPostprocessor:
             "stats": {
                 "umlaut_corrections": sum(1 for c in corrections if c["type"] == "umlaut"),
                 "eszett_corrections": sum(1 for c in corrections if c["type"] == "eszett"),
+                "spelling_corrections": sum(1 for c in corrections if c["type"] == "spelling"),
+                "industry_corrections": sum(
+                    1 for c in corrections
+                    if c.get("type") in ("variant_correction", "general_ocr_correction")
+                ),
                 "total": len(corrections)
             },
             "processed": True,
@@ -536,13 +609,124 @@ class GermanTextPostprocessor:
         if validation_result:
             result["validation"] = validation_result
 
+        if industry_detection:
+            result["industry_detection"] = industry_detection
+
         logger.debug(
             "german_postprocessing_completed",
             corrections_count=len(corrections),
-            text_changed=result["text_changed"]
+            text_changed=result["text_changed"],
+            industry_detected=industry_detection.get("industry") if industry_detection else None
         )
 
         return result
+
+    def _apply_industry_corrections(
+        self,
+        text: str,
+        industry: Optional[str] = None,
+        expand_abbreviations: bool = False
+    ) -> Tuple[str, List[Dict[str, Any]], Optional[Dict[str, Any]]]:
+        """
+        Wende branchenspezifische Korrekturen an (Phase 8).
+
+        Args:
+            text: Eingabetext
+            industry: Explizite Branche (optional)
+            expand_abbreviations: Abkuerzungen expandieren
+
+        Returns:
+            Tuple (korrigierter_text, korrekturen, industry_detection)
+        """
+        if not self._industry_vocab_service:
+            return text, [], None
+
+        try:
+            from app.services.ocr.industry_vocabulary_service import IndustryType
+
+            # Branche bestimmen
+            industry_type = None
+            if industry:
+                try:
+                    industry_type = IndustryType(industry.lower())
+                except ValueError:
+                    logger.warning(
+                        "invalid_industry_type",
+                        industry=industry,
+                        valid_types=[t.value for t in IndustryType]
+                    )
+
+            # Korrekturen anwenden
+            result = self._industry_vocab_service.apply_industry_corrections(
+                text=text,
+                industry=industry_type,
+                expand_abbreviations=expand_abbreviations,
+                auto_detect_industry=True
+            )
+
+            # Industry Detection Info erstellen
+            industry_detection = None
+            if result.detected_industry:
+                industry_detection = {
+                    "industry": result.detected_industry.value,
+                    "confidence": result.industry_confidence,
+                    "abbreviations_expanded": result.abbreviations_expanded,
+                    "compounds_found": result.compounds_found
+                }
+
+            return result.corrected_text, result.corrections, industry_detection
+
+        except Exception as e:
+            logger.warning(
+                "industry_correction_failed",
+                error=str(e),
+                error_type=type(e).__name__
+            )
+            return text, [], None
+
+    def _apply_spelling_correction(
+        self,
+        text: str
+    ) -> Tuple[str, List[Dict[str, Any]]]:
+        """
+        Wende SymSpell-basierte Rechtschreibkorrektur an (Phase 5.1).
+
+        Args:
+            text: Eingabetext
+
+        Returns:
+            Tuple (korrigierter_text, korrekturen)
+        """
+        if not self._spellchecker:
+            return text, []
+
+        try:
+            corrected_text, corrections = self._spellchecker.correct_text(
+                text,
+                preserve_case=True,
+                preserve_numbers=True
+            )
+
+            # Konvertiere Corrections in unser Format
+            formatted_corrections = []
+            for corr in corrections:
+                formatted_corrections.append({
+                    "type": "spelling",
+                    "original": corr["original"],
+                    "corrected": corr["corrected"],
+                    "position": corr.get("position", 0),
+                    "confidence": 0.85  # SymSpell-basierte Korrektur
+                })
+
+            return corrected_text, formatted_corrections
+
+        except Exception as e:
+            logger.warning(
+                "spelling_correction_failed",
+                error=str(e),
+                error_type=type(e).__name__
+            )
+            return text, []
 
     def _restore_umlauts(self, text: str) -> Tuple[str, List[Dict[str, Any]]]:
         """
@@ -620,11 +804,23 @@ class GermanTextPostprocessor:
 
     def get_stats(self) -> Dict[str, Any]:
         """Hole Verarbeitungsstatistiken."""
-        return {
+        stats = {
             **self._stats,
             "umlaut_words_in_dictionary": len(self.GERMAN_UMLAUT_WORDS),
             "eszett_words_in_dictionary": len(self.ESZETT_WORDS)
         }
+
+        # Fuege Industry Vocabulary Stats hinzu wenn verfuegbar
+        if self._industry_vocab_service:
+            industry_stats = self._industry_vocab_service.get_statistics()
+            stats["industry_vocabularies"] = industry_stats
+
+        # Fuege Spellchecker Stats hinzu wenn verfuegbar (Phase 5.1)
+        if self._spellchecker:
+            spellchecker_stats = self._spellchecker.get_stats()
+            stats["spellchecker"] = spellchecker_stats
+
+        return stats
 
     def reset_stats(self) -> None:
         """Setze Statistiken zurueck."""
@@ -632,6 +828,8 @@ class GermanTextPostprocessor:
             "total_processed": 0,
             "umlaut_corrections": 0,
             "eszett_corrections": 0,
+            "spelling_corrections": 0,
+            "industry_corrections": 0,
             "validation_errors": 0
         }
 

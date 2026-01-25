@@ -2,7 +2,7 @@
 
 > **Detaillierte Dokumentation**: `.claude/CLAUDE.md`
 > **Memory-Dateien**: `.claude/memory/` (Auto-Managed)
-> **Letzte Aktualisierung**: 2026-01-17
+> **Letzte Aktualisierung**: 2026-01-20
 
 ---
 
@@ -294,6 +294,26 @@ primary_supplier_number: str  # Hauptlieferantennummer
 
 **SECURITY**: Input-Whitelist-Validierung fuer Backends, Feldnamen, Korrektur-Typen, Test-IDs (Regex + Laengenbegrenzung)
 
+### MLOps Pipeline (Januar 2026)
+
+**Status**: Production-Ready | **Migration**: Keine (JSONB-basiert)
+
+| Service | Beschreibung |
+|---------|--------------|
+| `ModelRegistry` | Model Versioning mit Rollback-Capability |
+| `RetrainingService` | Automatisches Retraining bei 100+ Korrekturen |
+
+**Model Lifecycle**: DRAFT → CANDIDATE → ACTIVE → DEPRECATED/ROLLED_BACK
+
+**Celery Tasks:**
+- `mlops.check_retraining_threshold` - Taeglich 03:00
+- `mlops.run_retraining` - GPU-Queue, max 1h
+- `mlops.evaluate_model` - Entscheidet Promotion/Rejection
+- `mlops.rollback_if_degraded` - Automatisch bei >5% Degradation
+- `mlops.cleanup_old_versions` - Woechentlich, archiviert >90 Tage
+
+**Details**: Siehe `.claude/CLAUDE.md` - MLOps Pipeline Sektion
+
 ### Help System (Januar 2026)
 
 **Status**: Production-Ready | **Migration**: Keine (JSONB in User.preferences)
@@ -408,6 +428,267 @@ primary_supplier_number: str  # Hauptlieferantennummer
 - Violation Logging
 
 **API Endpoints:** `/api/v1/admin/rate-limits/*`
+
+### Multi-Factor Authentication (Januar 2026)
+
+**Status**: Production-Ready | **Migration**: Keine (JSONB in User-Model)
+
+| Service | Beschreibung |
+|---------|--------------|
+| `MFAService` | TOTP (RFC 6238) basierte 2FA mit Backup-Codes |
+
+**Features:**
+- TOTP via Authenticator-Apps (Google, Microsoft, Authy)
+- 10 Backup-Codes (bcrypt-gehashed)
+- AES-256-GCM verschluesselte Secrets
+- QR-Code Setup mit manuellem Secret-Fallback
+
+**API Endpoints:**
+- `GET /api/v1/mfa/status` - 2FA-Status abrufen
+- `POST /api/v1/mfa/setup` - Setup initiieren (QR + Secret)
+- `POST /api/v1/mfa/verify` - Setup verifizieren
+- `POST /api/v1/mfa/disable` - 2FA deaktivieren
+- `POST /api/v1/mfa/regenerate` - Backup-Codes neu generieren
+- `POST /api/v1/mfa/validate` - TOTP-Code validieren
+- `POST /api/v1/mfa/backup` - Backup-Code verwenden
+
+**Frontend:** `/settings/security` - MFA Setup Wizard mit 4 Steps
+
+**SECURITY**: TOTP-Secrets AES-256-GCM verschluesselt, Backup-Codes bcrypt-gehashed
+
+### Data Loss Prevention (Januar 2026)
+
+**Status**: Production-Ready | **Migration**: Keine (In-Memory Policies)
+
+| Service | Beschreibung |
+|---------|--------------|
+| `DLPService` | Policy-basierte Zugriffskontrollen fuer Dokumente |
+
+**Features:**
+- Download-Restriktionen (Rollen, Zeitfenster, Tags)
+- Automatische Wasserzeichen (Text, Position, Opacity)
+- Sensitive Data Detection (Kreditkarte, IBAN, SSN, Email, etc.)
+- Audit-Logging aller Zugriffe
+- Benachrichtigungen bei Policy-Verletzungen
+
+**DLP Actions:**
+- `allow` - Zugriff erlauben
+- `block` - Zugriff blockieren
+- `watermark` - Mit Wasserzeichen erlauben
+- `notify` - Erlauben + Admin benachrichtigen
+- `audit_only` - Nur protokollieren
+
+**API Endpoints:**
+- `GET/POST/PATCH/DELETE /api/v1/dlp/policies` - Policy CRUD (Admin)
+- `POST /api/v1/dlp/check` - Zugriffspruefung durchfuehren
+- `POST /api/v1/dlp/scan` - Text auf sensible Daten scannen
+- `GET /api/v1/dlp/sensitive-data-types` - Verfuegbare Typen
+
+**Frontend:** `/admin/dlp` - Policy Management + Scanner Tool
+
+**Sensitive Data Types:**
+- Kreditkarten (Luhn-Algorithmus)
+- IBAN (DE-Format)
+- Sozialversicherungsnummer (US SSN)
+- Steuer-IDs
+- Email, Telefon, Geburtsdatum
+
+### Bundesbank Basiszins-API (Januar 2026)
+
+**Status**: Production-Ready | **Feature 18**
+
+| Service | Beschreibung |
+|---------|--------------|
+| `BundesbankRateService` | Automatischer Abruf des Basiszinssatzes von der Bundesbank |
+
+**Features:**
+- SDMX-REST API Anbindung zur Deutschen Bundesbank
+- Redis-Caching mit 6-Monats-TTL
+- Fallback-Wert bei API-Ausfall (3.62% seit 01.07.2024)
+- §288 BGB Verzugszins-Berechnung (B2B +9%, B2C +5%)
+
+**API Endpoints:**
+- `GET /api/v1/banking/dunning/interest-rates` - Aktuelle Verzugszinssaetze
+- `GET /api/v1/banking/dunning/interest-rates/history` - Historische Basiszinssaetze
+- `GET /api/v1/banking/dunning/interest-rates/calculate` - Verzugszins-Berechnung
+
+**Datenmodell (BasiszinsData):**
+```python
+rate: Decimal           # Basiszinssatz (z.B. 3.62)
+valid_from: str         # Gueltig ab (z.B. "2024-07-01")
+valid_until: Optional[str]
+source: BasiszinsSource # api, cache, fallback
+```
+
+### LaTeX Formula Parsing (Januar 2026)
+
+**Status**: Production-Ready | **Feature 19**
+
+| Service | Beschreibung |
+|---------|--------------|
+| `FormulaExtractionService` | LaTeX-Formeln aus OCR-Output extrahieren und parsen |
+
+**Features:**
+- Erkennung von Inline ($...$), Display ($$...$$) und equation-Formeln
+- Formeltyp-Klassifikation (Gleichung, Bruch, Summe, Integral, Matrix)
+- Kontext-Erkennung (Finanziell, Wissenschaftlich, Statistisch)
+- Syntax-Validierung mit OCR-Fehler-Erkennung
+- MathML-Konvertierung
+- Numerische Wertextraktion mit Einheiten
+
+**API Endpoints:**
+- `POST /api/v1/ocr/formulas/extract` - Formeln aus Text extrahieren
+- `POST /api/v1/ocr/formulas/parse` - Einzelne Formel parsen
+- `POST /api/v1/ocr/formulas/validate` - Formel-Syntax validieren
+
+### Tax Authority Export (Januar 2026)
+
+**Status**: Production-Ready | **Feature 20**
+
+| Service | Beschreibung |
+|---------|--------------|
+| `TaxAuthorityExportService` | GDPdU-konformer Export fuer Steuerpruefungen (§90 III AO) |
+
+**Features:**
+- GDPdU-konformer Export (XML + CSV)
+- index.xml und DTD-Generierung fuer IDEA/ACL
+- Tabellendefinitionen: Rechnungen, Bankbewegungen, Belege, Aenderungsprotokoll
+- ZIP-Archiv mit MD5-Pruefsummen
+- UTF-8 Encoding
+
+**Kategorien:**
+- `invoices_outgoing` / `invoices_incoming` - Rechnungen
+- `bank_transactions` - Bankbewegungen
+- `documents` - Belege
+- `audit_log` - Aenderungsprotokoll
+
+### Intercompany Reconciliation (Januar 2026)
+
+**Status**: Production-Ready | **Feature 15**
+
+| Service | Beschreibung |
+|---------|--------------|
+| `IntercompanyReconciliationService` | IC-Transaktionen abstimmen und Eliminierungen generieren |
+
+**Features:**
+- IC-Transaktionen zwischen Konzernfirmen
+- Automatische Saldenabstimmung
+- Differenzerkennung (Betrag, Datum, fehlendes Gegenkonto)
+- Eliminierungsbuchungen fuer Konzernabschluss
+- Multi-Tenant mit Company-Isolation
+
+**API Endpoints:**
+- `GET /api/v1/holding/ic/summary` - IC-Zusammenfassung
+- `GET /api/v1/holding/ic/transactions` - IC-Transaktionen
+- `GET /api/v1/holding/ic/balances` - IC-Salden
+- `POST /api/v1/holding/ic/reconcile` - Abstimmung durchfuehren
+- `GET /api/v1/holding/ic/eliminations` - Eliminierungsbuchungen
+- `GET /api/v1/holding/ic/report` - Vollstaendiger Bericht
+
+**Frontend:** `/holding/reconciliation` - Vollstaendige React-UI mit 4 Tabs
+
+### Alert Center (Januar 2026)
+
+**Status**: Production-Ready | **Migration**: 117
+
+| Service | Beschreibung |
+|---------|--------------|
+| `AlertCenterService` | Zentrales Alert-Management mit Kategorisierung und Workflows |
+
+**Alert-Kategorien:**
+- `fraud` - Betrugsverdacht (Duplikate, Preisanomalien)
+- `risk` - Risikowarnungen (High-Risk Entities, Zahlungsverzoegerungen)
+- `compliance` - Compliance-Verletzungen (GDPR, GoBD, DLP)
+- `deadline` - Fristwarnungen (Skonto, Rechnungen, Vertraege)
+- `system` - Systemwarnungen (GPU, Disk, OCR-Fehlerrate)
+- `security` - Sicherheitswarnungen (Login-Versuche, API-Missbrauch)
+- `quality` - Qualitaetswarnungen (OCR-Confidence, Umlaute)
+- `workflow` - Workflow-Alerts (Eskalation, Delegation)
+
+**Schweregrade:** info, low, medium, high, critical
+
+**API Endpoints:**
+- `GET /api/v1/alerts` - Alert-Liste mit Filterung
+- `GET /api/v1/alerts/stats` - Dashboard-Statistiken
+- `POST /api/v1/alerts/{id}/acknowledge` - Als gelesen markieren
+- `POST /api/v1/alerts/{id}/dismiss` - Verwerfen
+- `POST /api/v1/alerts/{id}/resolve` - Als geloest markieren
+- `POST /api/v1/alerts/{id}/escalate` - Eskalieren
+- `POST /api/v1/alerts/bulk` - Massenaktionen
+
+**Frontend:** `/alerts` - Dashboard mit Filtern, Statistiken, Quick-Actions
+
+### AI Conversations Persistence (Januar 2026)
+
+**Status**: Production-Ready | **Migration**: 120
+
+| Service | Beschreibung |
+|---------|--------------|
+| `AIConversation` | Chat-Sessions mit dem KI-Finanzassistenten |
+| `AIConversationMessage` | Einzelne Nachrichten (User/Assistant/System) |
+| `AIConversationAction` | Vorgeschlagene/Ausgefuehrte Aktionen |
+| `AIConversationFeedback` | Benutzer-Feedback zu Antworten |
+
+**Features:**
+- Chat-History Persistenz fuer Kontext-Bewahrung
+- Intent-Erkennung (search, execute_action, explain, suggest_booking, etc.)
+- Aktions-Tracking mit Bestaetigungs-Workflow
+- Feedback-Sammlung fuer kontinuierliche Verbesserung
+- Multi-Tenant Isolation via RLS Policies
+
+**API Endpoints:**
+- `GET /api/v1/ai/conversations` - Konversationen auflisten
+- `POST /api/v1/ai/conversations` - Neue Konversation starten
+- `GET /api/v1/ai/conversations/{id}` - Konversation abrufen
+- `PATCH /api/v1/ai/conversations/{id}` - Konversation aktualisieren
+- `DELETE /api/v1/ai/conversations/{id}` - Konversation loeschen
+- `POST /api/v1/ai/conversations/{id}/messages` - Nachricht senden
+- `GET /api/v1/ai/conversations/{id}/messages` - Nachrichten abrufen
+- `POST /api/v1/ai/conversations/{id}/feedback` - Feedback geben
+- `GET /api/v1/ai/conversations/{id}/actions` - Aktionen abrufen
+- `POST /api/v1/ai/conversations/{id}/actions/{action_id}/confirm` - Aktion bestaetigen
+- `POST /api/v1/ai/conversations/{id}/actions/{action_id}/cancel` - Aktion abbrechen
+- `GET /api/v1/ai/conversations/stats/summary` - Statistiken
+
+**Datenmodell:**
+```python
+# AIConversation
+session_id: str           # Eindeutige Frontend-Session-ID
+user_id: UUID             # Benutzer
+company_id: UUID          # Multi-Tenant
+title: str                # Automatisch generiert
+context_page: str         # Seite wo gestartet
+message_count: int        # Anzahl Nachrichten
+action_count: int         # Anzahl Aktionen
+is_starred: bool          # Favorit markiert
+context_data: JSONB       # Zusaetzlicher Kontext
+
+# AIConversationMessage
+role: Enum                # user, assistant, system
+content: str              # Markdown-formatiert
+intent: Enum              # search, execute_action, etc.
+confidence: float         # Intent-Konfidenz (0.0-1.0)
+processing_time_ms: int   # Verarbeitungszeit
+tokens_used: int          # Token-Nutzung
+referenced_documents: JSONB
+
+# AIConversationAction
+action_type: str          # payment_run, approve_invoices, etc.
+status: Enum              # proposed, confirmed, executed, cancelled, failed
+parameters: JSONB         # Aktionsparameter
+result: JSONB             # Ergebnis
+requires_confirmation: bool
+confirmed_by_id: UUID
+
+# AIConversationFeedback
+feedback_type: Enum       # helpful, not_helpful, incorrect, confusing
+rating: int               # 1-5 Sterne
+comment: str              # Freitext
+correction: str           # Korrigierte Antwort
+expected_intent: str      # Falls falsch erkannt
+```
+
+**SECURITY**: Konversationen sind Benutzer- und Company-isoliert via RLS
 <!-- /AUTO-MANAGED: enterprise-features -->
 
 ---

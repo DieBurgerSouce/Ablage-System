@@ -23,7 +23,7 @@ from sqlalchemy import select, func, and_, or_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import DocumentArchive, RetentionCategory
-from app.db.models.gobd import (
+from app.db.bpmn_models.gobd import (
     RetentionPolicy,
     RetentionDeletionRequest,
     AuditChainEventType,

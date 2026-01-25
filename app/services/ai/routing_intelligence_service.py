@@ -32,7 +32,10 @@ from sqlalchemy import select, and_, or_, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import utc_now
-from app.db.models import Document, BusinessEntity, Folder
+from app.db.models import Document, BusinessEntity
+
+# NOTE: Folder model does not exist - folder-based routing disabled
+Folder = None
 
 logger = structlog.get_logger(__name__)
 
@@ -490,54 +493,19 @@ class RoutingIntelligenceService:
     async def _route_by_historical_pattern(
         self, document: Document
     ) -> Optional[RoutingDecision]:
-        """Routing basierend auf historischen Mustern."""
-        # Aehnliche Dokumente finden (gleicher Typ, aehnlicher Dateiname)
+        """Routing basierend auf historischen Mustern.
+
+        NOTE: Deaktiviert - Folder-Model nicht implementiert.
+        """
+        # Folder-System nicht verfuegbar
+        if Folder is None:
+            return None
+
         doc_type = document.document_type
         if not doc_type:
             return None
 
-        # Letzte 100 Dokumente gleichen Typs mit Folder-Zuweisung
-        stmt = (
-            select(Document.folder_id, func.count(Document.id).label("count"))
-            .where(
-                and_(
-                    Document.document_type == doc_type,
-                    Document.folder_id.isnot(None),
-                    Document.company_id == document.company_id,
-                )
-            )
-            .group_by(Document.folder_id)
-            .order_by(desc("count"))
-            .limit(1)
-        )
-
-        result = await self.db.execute(stmt)
-        row = result.first()
-
-        if not row or row.count < 5:  # Mindestens 5 Dokumente fuer Pattern
-            return None
-
-        # Folder laden
-        folder_stmt = select(Folder).where(Folder.id == row.folder_id)
-        folder_result = await self.db.execute(folder_stmt)
-        folder = folder_result.scalar_one_or_none()
-
-        if not folder:
-            return None
-
-        confidence = min(0.6 + (row.count * 0.02), 0.85)
-
-        return RoutingDecision(
-            document_id=document.id,
-            target_type=RoutingTarget.QUEUE,
-            target_id=str(folder.id),
-            target_name=f"Ordner: {folder.name}",
-            priority=Priority.MEDIUM,
-            confidence=confidence,
-            reasons=[RoutingReason.HISTORICAL_PATTERN],
-            explanation=f"Aehnliche Dokumente ({row.count}) wurden in '{folder.name}' abgelegt.",
-            metadata={"folder_id": str(folder.id), "pattern_count": row.count},
-        )
+        return None  # Folder-basiertes Routing deaktiviert
 
     async def _apply_custom_rules(
         self, document: Document
@@ -653,29 +621,8 @@ class RoutingIntelligenceService:
         """
         since = utc_now() - timedelta(days=days)
 
-        # Dokumente nach Folder gruppieren
-        stmt = (
-            select(
-                Folder.name.label("folder_name"),
-                func.count(Document.id).label("count"),
-            )
-            .join(Folder, Document.folder_id == Folder.id)
-            .where(
-                and_(
-                    Document.company_id == company_id,
-                    Document.created_at >= since,
-                )
-            )
-            .group_by(Folder.name)
-            .order_by(desc("count"))
-            .limit(10)
-        )
-
-        result = await self.db.execute(stmt)
-        folder_distribution = [
-            {"folder": row.folder_name, "count": row.count}
-            for row in result.fetchall()
-        ]
+        # Dokumente nach Folder gruppieren (deaktiviert - Folder nicht implementiert)
+        folder_distribution: list = []  # Folder-System nicht verfuegbar
 
         # Dokumente nach Typ gruppieren
         type_stmt = (

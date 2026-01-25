@@ -6,7 +6,7 @@
  */
 
 import { createFileRoute, Outlet, Link, useLocation } from '@tanstack/react-router';
-import { Settings, Shield, User, Bell, Palette, KeyRound } from 'lucide-react';
+import { Settings, Shield, User, Bell, Palette, KeyRound, FileCheck, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export const Route = createFileRoute('/settings')({
@@ -19,6 +19,18 @@ const settingsNavItems = [
     href: '/settings/security',
     icon: Shield,
     description: '2FA, Passwort, Sitzungen',
+  },
+  {
+    title: 'Datenschutz',
+    href: '/settings/consent',
+    icon: FileCheck,
+    description: 'DSGVO-Einwilligungen',
+  },
+  {
+    title: 'Vertretungen',
+    href: '/settings/delegations',
+    icon: Users,
+    description: 'Vertretungsregelungen',
   },
   // Zukuenftige Einstellungsseiten:
   // {

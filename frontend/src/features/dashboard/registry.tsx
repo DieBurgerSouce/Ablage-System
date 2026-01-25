@@ -7,8 +7,10 @@ import { RecentDocumentsWidget } from './components/widgets/RecentDocumentsWidge
 import { CashFlowWidget } from './components/widgets/CashFlowWidget'
 import { AgingReportWidget } from './components/widgets/AgingReportWidget'
 import { DunningWidget } from './components/widgets/DunningWidget'
+import { SkontoWidget } from './components/widgets/SkontoWidget'
 import { OCRPerformanceWidget } from './components/widgets/OCRPerformanceWidget'
 import { ActivityFeedWidget } from './components/ActivityFeed'
+import { ProactiveInsightsWidget } from './components/widgets/ProactiveInsightsWidget'
 import type { LucideIcon } from 'lucide-react'
 import {
     Calendar,
@@ -26,6 +28,8 @@ import {
     ShieldCheck,
     CheckCircle2,
     Bell,
+    Percent,
+    Sparkles,
 } from 'lucide-react'
 
 export interface WidgetRegistryEntry {
@@ -107,6 +111,15 @@ const WIDGET_DEFINITIONS: WidgetRegistryEntry[] = [
         defaultSize: { w: 6, h: 3 },
     },
     {
+        type: 'skonto',
+        component: SkontoWidget,
+        label: 'Skonto-Chancen',
+        description: 'Zeigt Skonto-Moeglichkeiten mit Fristen und moeglicher Ersparnis.',
+        icon: Percent,
+        category: 'finance',
+        defaultSize: { w: 6, h: 3 },
+    },
+    {
         type: 'cashflow',
         component: CashFlowWidget,
         label: 'Cashflow',
@@ -179,6 +192,16 @@ const WIDGET_DEFINITIONS: WidgetRegistryEntry[] = [
         category: 'info',
         defaultSize: { w: 4, h: 5 },
         minSize: { w: 3, h: 3 },
+    },
+    {
+        type: 'proactive-insights',
+        component: ProactiveInsightsWidget,
+        label: 'KI-Insights',
+        description: 'KI-generierte Erkenntnisse und Handlungsempfehlungen (Skonto, Risiken, Optimierungen).',
+        icon: Sparkles,
+        category: 'info',
+        defaultSize: { w: 6, h: 5 },
+        minSize: { w: 4, h: 3 },
     },
 ]
 

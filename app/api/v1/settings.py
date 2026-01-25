@@ -7,7 +7,7 @@ Provides REST API endpoints for:
 - Privacy settings
 """
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime, timezone
 
 import structlog
@@ -68,6 +68,47 @@ class PrivacySettings(BaseModel):
     allow_search_indexing: bool = Field(True, description="Dokumente in Suche aufnehmen")
 
 
+# ==================== Widget Config Schemas ====================
+
+class WidgetPosition(BaseModel):
+    """Position und Groesse eines Widgets im Grid."""
+    id: str = Field(..., description="Eindeutige Widget-ID")
+    type: str = Field(..., description="Widget-Typ")
+    x: int = Field(..., ge=0, le=11, description="X-Position im Grid (0-11)")
+    y: int = Field(..., ge=0, description="Y-Position im Grid")
+    w: int = Field(..., ge=1, le=12, description="Breite in Grid-Spalten (1-12)")
+    h: int = Field(..., ge=1, le=6, description="Hoehe in Grid-Zeilen (1-6)")
+
+
+class WidgetSettings(BaseModel):
+    """Individuelle Widget-Einstellungen."""
+    time_range: Optional[str] = Field(None, description="Zeitraum: 7d, 30d, 90d, 1y")
+    filter_tags: Optional[list[str]] = Field(None, description="Filter-Tags")
+    show_legend: Optional[bool] = Field(None, description="Legende anzeigen")
+    chart_type: Optional[str] = Field(None, description="Diagrammtyp: line, bar, pie")
+    max_items: Optional[int] = Field(None, ge=5, le=50, description="Max. angezeigte Elemente")
+
+
+class WidgetConfigResponse(BaseModel):
+    """Vollstaendige Widget-Konfiguration."""
+    widgets: list[WidgetPosition]
+    active_preset: Optional[str] = Field(None, description="Aktives Preset")
+    compact_mode: bool = Field(False, description="Kompakter Modus")
+    widget_settings: Dict[str, WidgetSettings] = Field(
+        default_factory=dict,
+        description="Individuelle Einstellungen pro Widget (key=widget_id)"
+    )
+    last_synced: Optional[datetime] = None
+
+
+class UpdateWidgetConfigRequest(BaseModel):
+    """Request zum Aktualisieren der Widget-Konfiguration."""
+    widgets: Optional[list[WidgetPosition]] = None
+    active_preset: Optional[str] = None
+    compact_mode: Optional[bool] = None
+    widget_settings: Optional[Dict[str, WidgetSettings]] = None
+
+
 class UserSettingsResponse(BaseModel):
     """Vollständige Benutzereinstellungen."""
     display: DisplaySettings
@@ -113,6 +154,21 @@ DEFAULT_SETTINGS = {
         "allow_search_indexing": True
     },
     "last_updated": None
+}
+
+DEFAULT_WIDGET_CONFIG = {
+    "widgets": [
+        {"id": "today", "type": "today", "x": 0, "y": 0, "w": 4, "h": 3},
+        {"id": "system", "type": "system-status", "x": 4, "y": 0, "w": 4, "h": 3},
+        {"id": "finance", "type": "finance-status", "x": 8, "y": 0, "w": 4, "h": 3},
+        {"id": "quick", "type": "quick-links", "x": 0, "y": 3, "w": 4, "h": 2},
+        {"id": "upload", "type": "upload", "x": 4, "y": 3, "w": 4, "h": 3},
+        {"id": "recent", "type": "recent-documents", "x": 8, "y": 3, "w": 4, "h": 3},
+    ],
+    "active_preset": "default",
+    "compact_mode": False,
+    "widget_settings": {},
+    "last_synced": None
 }
 
 
@@ -421,4 +477,218 @@ async def reset_settings(
     return {
         "message": "Einstellungen wurden auf Standardwerte zurückgesetzt",
         "reset_at": reset_settings["last_updated"]
+    }
+
+
+# ==================== Widget Config Endpoints ====================
+
+def get_widget_config(user: User) -> Dict[str, Any]:
+    """Laedt Widget-Konfiguration aus User.preferences oder gibt Defaults zurueck."""
+    config = dict(DEFAULT_WIDGET_CONFIG)
+
+    if user.preferences and "widget_config" in user.preferences:
+        user_config = user.preferences["widget_config"]
+        if "widgets" in user_config and isinstance(user_config["widgets"], list):
+            config["widgets"] = user_config["widgets"]
+        if "active_preset" in user_config:
+            config["active_preset"] = user_config["active_preset"]
+        if "compact_mode" in user_config:
+            config["compact_mode"] = user_config["compact_mode"]
+        if "widget_settings" in user_config:
+            config["widget_settings"] = user_config["widget_settings"]
+        if "last_synced" in user_config:
+            config["last_synced"] = user_config["last_synced"]
+
+    return config
+
+
+@router.get("/widget-config", response_model=WidgetConfigResponse)
+async def get_widget_configuration(
+    current_user: User = Depends(get_current_active_user)
+):
+    """Widget-Konfiguration abrufen.
+
+    Gibt die gespeicherte Dashboard-Widget-Konfiguration zurueck:
+    - Widget-Positionen (x, y, w, h)
+    - Aktives Preset
+    - Kompakter Modus
+    - Individuelle Widget-Einstellungen
+    """
+    config = get_widget_config(current_user)
+
+    return WidgetConfigResponse(
+        widgets=[WidgetPosition(**w) for w in config["widgets"]],
+        active_preset=config["active_preset"],
+        compact_mode=config["compact_mode"],
+        widget_settings={
+            k: WidgetSettings(**v) for k, v in config.get("widget_settings", {}).items()
+        },
+        last_synced=datetime.fromisoformat(config["last_synced"]) if config["last_synced"] else None
+    )
+
+
+@router.put("/widget-config", response_model=WidgetConfigResponse)
+async def update_widget_configuration(
+    request: UpdateWidgetConfigRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Widget-Konfiguration aktualisieren.
+
+    Speichert die Dashboard-Widget-Konfiguration serverseitig.
+    Nur angegebene Felder werden aktualisiert.
+
+    **Beispiel:**
+    ```
+    PUT /api/v1/settings/widget-config
+    {
+        "widgets": [
+            {"id": "today", "type": "today", "x": 0, "y": 0, "w": 6, "h": 4}
+        ],
+        "compact_mode": true
+    }
+    ```
+    """
+    # Aktuelle Konfiguration laden
+    current_config = get_widget_config(current_user)
+
+    # Konfiguration aktualisieren
+    if request.widgets is not None:
+        # Validiere Widget-IDs auf Eindeutigkeit
+        widget_ids = [w.id for w in request.widgets]
+        if len(widget_ids) != len(set(widget_ids)):
+            raise HTTPException(
+                status_code=400,
+                detail="Doppelte Widget-IDs gefunden. Jede ID muss eindeutig sein."
+            )
+        current_config["widgets"] = [w.model_dump() for w in request.widgets]
+
+    if request.active_preset is not None:
+        valid_presets = ["default", "finance-focus", "manager-overview", "admin-full", "minimal", None]
+        if request.active_preset not in valid_presets and request.active_preset != "":
+            # Erlaube auch leere Strings (wird zu None konvertiert)
+            pass  # Custom presets erlaubt
+        current_config["active_preset"] = request.active_preset if request.active_preset else None
+
+    if request.compact_mode is not None:
+        current_config["compact_mode"] = request.compact_mode
+
+    if request.widget_settings is not None:
+        # Merge widget settings
+        if "widget_settings" not in current_config:
+            current_config["widget_settings"] = {}
+        for widget_id, settings in request.widget_settings.items():
+            current_config["widget_settings"][widget_id] = settings.model_dump(exclude_none=True)
+
+    # Timestamp aktualisieren
+    current_config["last_synced"] = datetime.now(timezone.utc).isoformat()
+
+    # In User.preferences speichern
+    if current_user.preferences is None:
+        current_user.preferences = {}
+
+    current_user.preferences["widget_config"] = current_config
+    await db.commit()
+
+    logger.info(
+        "widget_config_updated",
+        user_id=str(current_user.id),
+        widget_count=len(current_config["widgets"]),
+        active_preset=current_config["active_preset"]
+    )
+
+    return WidgetConfigResponse(
+        widgets=[WidgetPosition(**w) for w in current_config["widgets"]],
+        active_preset=current_config["active_preset"],
+        compact_mode=current_config["compact_mode"],
+        widget_settings={
+            k: WidgetSettings(**v) for k, v in current_config.get("widget_settings", {}).items()
+        },
+        last_synced=datetime.fromisoformat(current_config["last_synced"])
+    )
+
+
+@router.patch("/widget-config/widget/{widget_id}", response_model=WidgetSettings)
+async def update_single_widget_settings(
+    widget_id: str,
+    settings: WidgetSettings,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Einstellungen fuer ein einzelnes Widget aktualisieren.
+
+    Aktualisiert nur die individuellen Einstellungen eines Widgets
+    (z.B. Zeitraum, Filter, Diagrammtyp).
+
+    **Beispiel:**
+    ```
+    PATCH /api/v1/settings/widget-config/widget/cashflow-123
+    {
+        "time_range": "30d",
+        "chart_type": "bar"
+    }
+    ```
+    """
+    # Aktuelle Konfiguration laden
+    current_config = get_widget_config(current_user)
+
+    # Pruefen ob Widget existiert
+    widget_exists = any(w["id"] == widget_id for w in current_config["widgets"])
+    if not widget_exists:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Widget mit ID '{widget_id}' nicht gefunden"
+        )
+
+    # Widget-Einstellungen aktualisieren
+    if "widget_settings" not in current_config:
+        current_config["widget_settings"] = {}
+
+    # Merge mit existierenden Einstellungen
+    existing = current_config["widget_settings"].get(widget_id, {})
+    new_settings = settings.model_dump(exclude_none=True)
+    existing.update(new_settings)
+    current_config["widget_settings"][widget_id] = existing
+
+    # Timestamp aktualisieren
+    current_config["last_synced"] = datetime.now(timezone.utc).isoformat()
+
+    # Speichern
+    if current_user.preferences is None:
+        current_user.preferences = {}
+    current_user.preferences["widget_config"] = current_config
+    await db.commit()
+
+    logger.info(
+        "widget_settings_updated",
+        user_id=str(current_user.id),
+        widget_id=widget_id
+    )
+
+    return WidgetSettings(**current_config["widget_settings"][widget_id])
+
+
+@router.post("/widget-config/reset")
+async def reset_widget_configuration(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Widget-Konfiguration auf Standardwerte zuruecksetzen."""
+    reset_config = dict(DEFAULT_WIDGET_CONFIG)
+    reset_config["last_synced"] = datetime.now(timezone.utc).isoformat()
+
+    if current_user.preferences is None:
+        current_user.preferences = {}
+
+    current_user.preferences["widget_config"] = reset_config
+    await db.commit()
+
+    logger.info(
+        "widget_config_reset",
+        user_id=str(current_user.id)
+    )
+
+    return {
+        "message": "Widget-Konfiguration wurde auf Standardwerte zurueckgesetzt",
+        "reset_at": reset_config["last_synced"]
     }

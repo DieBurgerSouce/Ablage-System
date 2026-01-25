@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
@@ -964,6 +964,12 @@ class PredictiveActionService:
         Hinweis: In Produktion wuerde dies in einer separaten Tabelle
         gespeichert und fuer Model-Training verwendet.
         """
+        # Feedback wird in strukturierten Logs gespeichert fuer ML-Training
+        # FUTURE: Wenn ActionFeedback-Tabelle erstellt, hier persistieren:
+        #   await db.execute(insert(ActionFeedback).values(
+        #       action_id=action_id, user_id=user_id, accepted=accepted,
+        #       feedback_type=feedback_type, feedback_text=feedback_text
+        #   ))
         logger.info(
             "predictive_action_feedback",
             action_id=str(action_id),
@@ -971,10 +977,14 @@ class PredictiveActionService:
             accepted=accepted,
             feedback_type=feedback_type,
             feedback_text=feedback_text,
+            # Strukturierte Daten fuer spaeteren Log-Export zu ML-Pipeline
+            ml_training_data={
+                "action_id": str(action_id),
+                "accepted": accepted,
+                "feedback_type": feedback_type,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
         )
-
-        # TODO: Speichere in Datenbank fuer ML-Training
-        # await db.execute(insert(ActionFeedbackTable).values(...))
 
     async def get_action_statistics(
         self,

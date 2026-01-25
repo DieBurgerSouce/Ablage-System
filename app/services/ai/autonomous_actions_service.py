@@ -30,11 +30,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.datetime_utils import utc_now
 from app.db.models import (
     Document,
-    Folder,
     BusinessEntity,
     InvoiceTracking,
     AIDecision,
 )
+
+# NOTE: Folder model does not exist in the current schema.
+# Document filing functionality is disabled until a proper folder structure is implemented.
+# The service will work for entity-based and invoice-related autonomous actions.
+Folder = None  # Placeholder - Folder-based filing is disabled
 from app.services.ai.decision_service import (
     AIDecisionService,
     DecisionType,
@@ -248,114 +252,29 @@ class AutonomousActionsService:
     ) -> ActionProposal:
         """Schlaegt Ablageort fuer ein Dokument vor.
 
-        Analysiert:
-        - Dokumenttyp
-        - Erkannte Entitaet
-        - Historische Ablage aehnlicher Dokumente
-        - OCR-Inhalt
+        NOTE: Diese Funktion ist deaktiviert, da das Folder-Model nicht existiert.
+        Das Feature wird in einer zukuenftigen Version implementiert.
 
         Args:
             document_id: ID des Dokuments
             company_id: Optional Company-ID
 
         Returns:
-            ActionProposal mit vorgeschlagenem Folder
+            ActionProposal mit "Feature nicht verfuegbar" Status
         """
-        # Dokument laden MIT Multi-Tenant Filter
-        stmt = select(Document).where(Document.id == document_id)
-        if company_id:
-            stmt = stmt.where(Document.company_id == company_id)
-        result = await self.db.execute(stmt)
-        document = result.scalar_one_or_none()
-
-        if not document:
-            return ActionProposal(
-                action_type=AutonomousAction.FILE_DOCUMENT,
-                target_id=document_id,
-                proposed_value={},
-                confidence=0.0,
-                reasoning="Dokument nicht gefunden oder kein Zugriff",
-                requires_confirmation=True,
-            )
-
-        confidence = 0.0
-        proposed_folder_id: Optional[uuid.UUID] = None
-        reasoning_parts: List[str] = []
-
-        # 1. Wenn Entity zugewiesen, deren Standard-Folder nutzen
-        if document.business_entity_id:
-            stmt = select(BusinessEntity).where(
-                BusinessEntity.id == document.business_entity_id
-            )
-            # Multi-Tenant Filter: Entity muss zur gleichen Company gehoeren
-            if company_id:
-                stmt = stmt.where(BusinessEntity.company_id == company_id)
-            result = await self.db.execute(stmt)
-            entity = result.scalar_one_or_none()
-
-            if entity and entity.default_folder_id:
-                proposed_folder_id = entity.default_folder_id
-                confidence = 0.90
-                reasoning_parts.append(f"Standard-Ablage von {entity.name}")
-
-        # 2. Dokumenttyp-basierte Ablage
-        if not proposed_folder_id and document.document_type:
-            folder = await self._find_folder_by_document_type(
-                document.document_type, company_id
-            )
-            if folder:
-                proposed_folder_id = folder.id
-                confidence = max(confidence, 0.85)
-                reasoning_parts.append(f"Typ-Zuordnung: {document.document_type}")
-
-        # 3. Historische Ablage aehnlicher Dokumente
-        if not proposed_folder_id:
-            folder, hist_confidence = await self._find_folder_by_history(
-                document, company_id
-            )
-            if folder:
-                proposed_folder_id = folder.id
-                confidence = max(confidence, hist_confidence)
-                reasoning_parts.append("Basierend auf aehnlichen Dokumenten")
-
-        # Keine Zuordnung moeglich
-        if not proposed_folder_id:
-            return ActionProposal(
-                action_type=AutonomousAction.FILE_DOCUMENT,
-                target_id=document_id,
-                proposed_value={},
-                confidence=0.0,
-                reasoning="Kein passender Ablageort gefunden",
-                requires_confirmation=True,
-            )
-
-        # Entscheidung fuer Auto-Apply oder Bestaetigung
-        auto_approved = confidence >= self.config.filing_auto_confidence
-        requires_confirmation = not auto_approved
-
-        # AI Decision erstellen fuer Audit-Trail
-        decision_result = await self.decision_service.make_decision(
-            db=self.db,
-            decision_type=DecisionType.CATEGORIZATION,
-            decision_value={
-                "action": AutonomousAction.FILE_DOCUMENT.value,
-                "folder_id": str(proposed_folder_id),
-            },
-            confidence=confidence,
-            document_id=document_id,
-            company_id=company_id,
-            explanation={"reasoning": reasoning_parts},
+        # Folder-basierte Ablage ist nicht implementiert
+        logger.info(
+            "propose_filing_location_disabled",
+            document_id=str(document_id),
+            reason="Folder model not implemented",
         )
-
         return ActionProposal(
             action_type=AutonomousAction.FILE_DOCUMENT,
             target_id=document_id,
-            proposed_value={"folder_id": proposed_folder_id},
-            confidence=confidence,
-            reasoning="; ".join(reasoning_parts),
-            requires_confirmation=requires_confirmation,
-            auto_approved=auto_approved,
-            decision_id=decision_result.decision_id,
+            proposed_value={},
+            confidence=0.0,
+            reasoning="Automatische Ablage ist derzeit nicht verfuegbar (Folder-System nicht implementiert)",
+            requires_confirmation=True,
         )
 
     async def execute_filing(
@@ -367,6 +286,8 @@ class AutonomousActionsService:
     ) -> ActionResult:
         """Fuehrt die Ablage eines Dokuments aus.
 
+        NOTE: Diese Funktion ist deaktiviert, da das Folder-Model nicht existiert.
+
         Args:
             document_id: ID des Dokuments
             folder_id: Ziel-Folder-ID
@@ -374,57 +295,20 @@ class AutonomousActionsService:
             company_id: Optional Company-ID fuer Multi-Tenant Filter
 
         Returns:
-            ActionResult
+            ActionResult mit Fehler (Feature nicht verfuegbar)
         """
-        # Multi-Tenant Filter bei Document und Folder Abfrage
-        stmt = select(Document).where(Document.id == document_id)
-        if company_id:
-            stmt = stmt.where(Document.company_id == company_id)
-        result = await self.db.execute(stmt)
-        document = result.scalar_one_or_none()
-
-        if not document:
-            return ActionResult(
-                success=False,
-                action_type=AutonomousAction.FILE_DOCUMENT,
-                target_id=document_id,
-                error_message="Dokument nicht gefunden oder kein Zugriff",
-            )
-
-        # Folder pruefen MIT Multi-Tenant Filter
-        stmt = select(Folder).where(Folder.id == folder_id)
-        if company_id:
-            stmt = stmt.where(Folder.company_id == company_id)
-        result = await self.db.execute(stmt)
-        folder = result.scalar_one_or_none()
-
-        if not folder:
-            return ActionResult(
-                success=False,
-                action_type=AutonomousAction.FILE_DOCUMENT,
-                target_id=document_id,
-                error_message="Folder nicht gefunden oder kein Zugriff",
-            )
-
-        # Ablegen
-        document.folder_id = folder_id
-        document.updated_at = utc_now()
-        await self.db.commit()
-
+        # Folder-basierte Ablage ist nicht implementiert
         logger.info(
-            "document_filed_autonomously",
+            "execute_filing_disabled",
             document_id=str(document_id),
             folder_id=str(folder_id),
-            decision_id=str(decision_id) if decision_id else None,
+            reason="Folder model not implemented",
         )
-
         return ActionResult(
-            success=True,
+            success=False,
             action_type=AutonomousAction.FILE_DOCUMENT,
             target_id=document_id,
-            applied_value={"folder_id": folder_id},
-            was_autonomous=True,
-            decision_id=decision_id,
+            error_message="Automatische Ablage ist derzeit nicht verfuegbar (Folder-System nicht implementiert)",
         )
 
     # ========================================================================
@@ -911,82 +795,25 @@ class AutonomousActionsService:
         self,
         document_type: str,
         company_id: Optional[uuid.UUID],
-    ) -> Optional[Folder]:
-        """Findet Standard-Folder fuer Dokumenttyp."""
-        # Mapping von Dokumenttypen zu Folder-Namen (vereinfacht)
-        type_folder_map = {
-            "invoice": "Rechnungen",
-            "contract": "Vertraege",
-            "delivery_note": "Lieferscheine",
-            "offer": "Angebote",
-            "correspondence": "Korrespondenz",
-        }
+    ) -> None:
+        """Findet Standard-Folder fuer Dokumenttyp.
 
-        folder_name = type_folder_map.get(document_type)
-        if not folder_name:
-            return None
-
-        # Multi-Tenant: company_id ist Pflicht fuer sichere Abfrage
-        if not company_id:
-            logger.warning("find_folder_by_document_type_missing_company_id")
-            return None
-
-        stmt = select(Folder).where(
-            and_(
-                Folder.name.ilike(f"%{folder_name}%"),
-                Folder.company_id == company_id,  # Multi-Tenant Filter!
-            )
-        )
-        result = await self.db.execute(stmt)
-        return result.scalar_one_or_none()
+        NOTE: Deaktiviert - Folder-Model nicht implementiert.
+        """
+        # Folder-System nicht verfuegbar
+        return None
 
     async def _find_folder_by_history(
         self,
         document: Document,
         company_id: Optional[uuid.UUID],
-    ) -> tuple[Optional[Folder], float]:
-        """Findet Folder basierend auf historischer Ablage."""
-        if not document.document_type:
-            return None, 0.0
+    ) -> tuple[None, float]:
+        """Findet Folder basierend auf historischer Ablage.
 
-        # Multi-Tenant: company_id ist Pflicht!
-        if not company_id:
-            logger.warning("find_folder_by_history_missing_company_id")
-            return None, 0.0
-
-        # Finde haeufigsten Folder fuer diesen Dokumenttyp
-        stmt = (
-            select(
-                Document.folder_id,
-                func.count(Document.id).label("count"),
-            )
-            .where(
-                and_(
-                    Document.document_type == document.document_type,
-                    Document.folder_id.isnot(None),
-                    Document.company_id == company_id,  # Multi-Tenant Filter!
-                )
-            )
-            .group_by(Document.folder_id)
-            .order_by(func.count(Document.id).desc())
-            .limit(1)
-        )
-
-        result = await self.db.execute(stmt)
-        row = result.first()
-
-        if not row or not row.folder_id:
-            return None, 0.0
-
-        # Folder laden
-        stmt = select(Folder).where(Folder.id == row.folder_id)
-        result = await self.db.execute(stmt)
-        folder = result.scalar_one_or_none()
-
-        # Confidence basierend auf Anzahl historischer Dokumente
-        confidence = min(0.90, 0.60 + (row.count / 50))
-
-        return folder, confidence
+        NOTE: Deaktiviert - Folder-Model nicht implementiert.
+        """
+        # Folder-System nicht verfuegbar
+        return None, 0.0
 
 
 # ============================================================================

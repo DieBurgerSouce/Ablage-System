@@ -54,7 +54,13 @@ import {
     Loader2,
     Clock,
 } from 'lucide-react';
-import { useDunningStageConfigs, useUpdateDunningStageConfig } from '../hooks/use-banking-queries';
+import { Link } from '@tanstack/react-router';
+import {
+    useDunningStageConfigs,
+    useUpdateDunningStageConfig,
+    useAutoDunningSettings,
+    useUpdateAutoDunningSettings,
+} from '../hooks/use-banking-queries';
 import type { DunningStageConfig } from '@/types/models/banking';
 import { formatCurrency } from '../utils/format';
 
@@ -168,31 +174,76 @@ function B2BSettingsCard() {
 // ==================== Automation Settings Card ====================
 
 function AutomationSettingsCard() {
-    const [autoEscalate, setAutoEscalate] = useState(true);
-    const [mahnlaufTime, setMahnlaufTime] = useState('08:00');
-    const [excludeWeekends, setExcludeWeekends] = useState(true);
-    const [excludeHolidays, setExcludeHolidays] = useState(true);
+    const { toast } = useToast();
+    const { data: settings, isLoading } = useAutoDunningSettings();
+    const updateSettings = useUpdateAutoDunningSettings();
+
+    const handleToggle = async (key: string, value: boolean) => {
+        try {
+            await updateSettings.mutateAsync({ [key]: value });
+            toast({ title: 'Einstellung gespeichert' });
+        } catch {
+            toast({ title: 'Fehler beim Speichern', variant: 'destructive' });
+        }
+    };
+
+    const handleTimeChange = async (value: string) => {
+        try {
+            await updateSettings.mutateAsync({ run_time: value });
+            toast({ title: 'Uhrzeit gespeichert' });
+        } catch {
+            toast({ title: 'Fehler beim Speichern', variant: 'destructive' });
+        }
+    };
+
+    if (isLoading) {
+        return <Skeleton className="h-[300px] w-full" />;
+    }
 
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="text-sm flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    Automatisierung
-                </CardTitle>
-                <CardDescription>
-                    Einstellungen für den täglichen automatischen Mahnlauf
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle className="text-sm flex items-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            Automatisierung
+                        </CardTitle>
+                        <CardDescription>
+                            Einstellungen für den täglichen automatischen Mahnlauf
+                        </CardDescription>
+                    </div>
+                    <Link to="/banking/auto-mahnlauf">
+                        <Button variant="outline" size="sm">
+                            Mahnlauf-Dashboard
+                        </Button>
+                    </Link>
+                </div>
             </CardHeader>
             <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
+                    <div className="space-y-1">
+                        <Label className="text-base font-medium">Automatischer Mahnlauf</Label>
+                        <p className="text-sm text-muted-foreground">
+                            Mahnungen werden täglich automatisch verarbeitet
+                        </p>
+                    </div>
+                    <Switch
+                        checked={settings?.enabled ?? false}
+                        onCheckedChange={(checked) => handleToggle('enabled', checked)}
+                        disabled={updateSettings.isPending}
+                    />
+                </div>
+
                 <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                         <Label htmlFor="mahnlauf-time">Mahnlauf-Uhrzeit</Label>
                         <Input
                             id="mahnlauf-time"
                             type="time"
-                            value={mahnlaufTime}
-                            onChange={(e) => setMahnlaufTime(e.target.value)}
+                            value={settings?.run_time ?? '08:00'}
+                            onChange={(e) => handleTimeChange(e.target.value)}
+                            disabled={updateSettings.isPending}
                         />
                         <p className="text-xs text-muted-foreground">
                             Wann der tägliche Mahnlauf ausgeführt wird
@@ -205,27 +256,15 @@ function AutomationSettingsCard() {
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
                         <div className="space-y-1">
-                            <Label>Automatische Eskalation</Label>
-                            <p className="text-xs text-muted-foreground">
-                                Mahnvorgänge automatisch auf nächste Stufe eskalieren
-                            </p>
-                        </div>
-                        <Switch
-                            checked={autoEscalate}
-                            onCheckedChange={setAutoEscalate}
-                        />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                        <div className="space-y-1">
                             <Label>Wochenenden ausschließen</Label>
                             <p className="text-xs text-muted-foreground">
                                 Kein Mahnlauf an Samstagen und Sonntagen
                             </p>
                         </div>
                         <Switch
-                            checked={excludeWeekends}
-                            onCheckedChange={setExcludeWeekends}
+                            checked={settings?.exclude_weekends ?? true}
+                            onCheckedChange={(checked) => handleToggle('exclude_weekends', checked)}
+                            disabled={updateSettings.isPending}
                         />
                     </div>
 
@@ -237,11 +276,32 @@ function AutomationSettingsCard() {
                             </p>
                         </div>
                         <Switch
-                            checked={excludeHolidays}
-                            onCheckedChange={setExcludeHolidays}
+                            checked={settings?.exclude_holidays ?? true}
+                            onCheckedChange={(checked) => handleToggle('exclude_holidays', checked)}
+                            disabled={updateSettings.isPending}
+                        />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                            <Label>Automatischer E-Mail-Versand</Label>
+                            <p className="text-xs text-muted-foreground">
+                                Mahnungen automatisch per E-Mail versenden (Opt-in)
+                            </p>
+                        </div>
+                        <Switch
+                            checked={settings?.auto_send_email ?? false}
+                            onCheckedChange={(checked) => handleToggle('auto_send_email', checked)}
+                            disabled={updateSettings.isPending}
                         />
                     </div>
                 </div>
+
+                {settings?.last_run_at && (
+                    <div className="text-xs text-muted-foreground text-right pt-2">
+                        Letzter Mahnlauf: {new Date(settings.last_run_at).toLocaleString('de-DE')}
+                    </div>
+                )}
             </CardContent>
         </Card>
     );

@@ -1074,7 +1074,15 @@ async def get_hygiene_service_with_settings(
     Factory mit Settings aus Admin-Konfiguration.
 
     Laedt Einstellungen aus der Datenbank falls vorhanden.
+    FUTURE: Wenn eine AdminSettings-Tabelle erstellt wird, hier laden:
+        settings = await db.execute(select(AdminSettings).where(...))
+        config = settings.scalar_one_or_none()
+        if config:
+            return MasterDataHygieneService(
+                db,
+                inactivity_days=config.inactivity_days or DEFAULT,
+                auto_correct_confidence=config.auto_correct or DEFAULT,
+            )
     """
-    # TODO: Settings aus AdminSettings laden
-    # Fuer jetzt: Defaults verwenden
+    # Verwende Service-Defaults (keine persistierte Konfiguration)
     return MasterDataHygieneService(db)

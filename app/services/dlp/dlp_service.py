@@ -803,7 +803,7 @@ class DLPService:
             sensitive_data_types=sensitive_data_info,
             ip_address=ip_address,
             user_agent=user_agent,
-            metadata={
+            log_metadata={
                 "policy_name": result.policy_name,
                 "watermark_required": result.watermark_required,
                 "notifications": result.notifications,

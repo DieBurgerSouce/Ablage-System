@@ -9,7 +9,7 @@
  * - Detail Sheet
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useSearch } from '@tanstack/react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,11 +44,13 @@ export function InvoiceListPage() {
   // Read URL search params for initial filter
   let initialOverdueOnly: boolean | undefined;
   let initialStatus: InvoiceStatus | undefined;
+  let initialInvoiceId: string | undefined;
 
   try {
     const search = useSearch({ strict: false }) as Record<string, string | undefined>;
     initialOverdueOnly = search?.overdueOnly === 'true' ? true : undefined;
     initialStatus = search?.status as InvoiceStatus | undefined;
+    initialInvoiceId = search?.invoiceId;
   } catch {
     // Router context not available in tests
   }
@@ -75,6 +77,17 @@ export function InvoiceListPage() {
     isError,
     refetch,
   } = useInvoicePage(filter);
+
+  // Auto-open detail sheet when invoiceId is in URL
+  useEffect(() => {
+    if (initialInvoiceId && invoices.length > 0 && !detailSheetOpen) {
+      const targetInvoice = invoices.find((inv) => inv.id === initialInvoiceId);
+      if (targetInvoice) {
+        setSelectedInvoice(targetInvoice);
+        setDetailSheetOpen(true);
+      }
+    }
+  }, [initialInvoiceId, invoices, detailSheetOpen]);
 
   // Mutations
   const markPaidMutation = useMarkInvoicePaid();

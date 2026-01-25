@@ -57,6 +57,8 @@ bitsandbytes>=0.43.0  # 4-bit and 8-bit quantization (>=0.43 für CUDA 12.x)
 # German Text Processing
 spacy>=3.8.0  # Updated to resolve typer conflict with docling
 # Run after install: python -m spacy download de_core_news_sm
+symspellpy>=6.7.0  # German spellchecking for OCR correction
+hunspell>=0.5.5  # Hunspell dictionary support for German spellchecking
 
 # Translation (Multi-language OCR Support)
 argostranslate>=1.9.1  # Offline translation for non-German documents
@@ -127,6 +129,9 @@ mt-940>=4.30.0  # MT940 Bank Statement Parser (SWIFT)
 sepaxml>=2.7.0  # SEPA XML Generation (PAIN.001/008)
 pyiso20022>=1.6.0  # CAMT.053 ISO 20022 Parser
 pdfplumber>=0.11.0  # PDF Bank Statement Parsing
+
+# QR-Code & Barcode Detection
+pyzbar>=0.1.9  # QR-Code and Barcode scanning (SEPA-QR, EAN-13, Code-128, etc.)
 
 # Mahnwesen (Dunning System)
 holidays>=0.40  # German/Austrian/Swiss holidays for scheduled Mahnlauf

@@ -208,7 +208,7 @@ async def _batch_integrity_check(
     from app.db.models import DocumentArchive
     from app.services.compliance import gobd_archive_service, audit_chain_service
     from app.services.compliance.audit_chain_service import ChainEntry
-    from app.db.models.gobd import AuditChainEventType
+    from app.db.bpmn_models.gobd import AuditChainEventType
 
     # Query fuer Archive die geprueft werden sollen
     query = select(DocumentArchive)
@@ -410,6 +410,197 @@ async def _check_retention_warnings(db) -> dict:
 
 
 # =============================================================================
+# GDPR Breach Notification Tasks (Art. 33-34)
+# =============================================================================
+
+
+@celery_app.task(
+    name="gdpr.check_breach_deadlines",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+)
+def check_breach_deadlines_task(self) -> dict:
+    """Prueft alle 72-Stunden-Deadlines fuer Datenschutzverletzungen.
+
+    KRITISCH: Muss regelmaessig laufen um DSGVO-Fristen einzuhalten!
+
+    Prueft:
+    - Abgelaufene Deadlines (SOFORT Alarm)
+    - Kritische Deadlines (<12h)
+    - Warnungen (<24h)
+
+    Wird stuendlich via Celery Beat ausgefuehrt.
+
+    Returns:
+        Dictionary mit Deadline-Status
+    """
+    import asyncio
+
+    async def _check():
+        async with async_session_factory() as db:
+            return await _check_all_breach_deadlines(db)
+
+    try:
+        result = asyncio.get_event_loop().run_until_complete(_check())
+
+        # Bei kritischen Alerts explizit loggen
+        if result.get("critical_count", 0) > 0:
+            logger.critical(
+                "breach_deadlines_critical",
+                critical_count=result["critical_count"],
+                overdue_count=result.get("overdue_count", 0),
+                security_event=True,
+            )
+
+        logger.info("breach_deadline_check_completed", **result)
+        return result
+
+    except Exception as e:
+        logger.error("breach_deadline_check_failed", error=str(e))
+        raise self.retry(exc=e)
+
+
+async def _check_all_breach_deadlines(db) -> dict:
+    """Interne Funktion fuer Breach-Deadline-Pruefung."""
+    from app.services.compliance import get_breach_notification_service
+
+    service = get_breach_notification_service()
+    alerts = await service.check_deadline_alerts(db)
+
+    results = {
+        "total_alerts": len(alerts),
+        "overdue_count": 0,
+        "critical_count": 0,
+        "warning_count": 0,
+        "alerts": [],
+    }
+
+    for alert in alerts:
+        severity = alert.get("severity", "medium")
+
+        if "overdue" in alert.get("message", "").lower():
+            results["overdue_count"] += 1
+        elif severity == "critical" or severity == "high":
+            results["critical_count"] += 1
+        else:
+            results["warning_count"] += 1
+
+        results["alerts"].append({
+            "breach_id": alert["breach_id"],
+            "severity": severity,
+            "message": alert["message"],
+        })
+
+        # Sende Benachrichtigungen bei kritischen Deadlines
+        if severity in ["critical", "high"]:
+            await _send_breach_deadline_notification(db, alert)
+
+    return results
+
+
+async def _send_breach_deadline_notification(db, alert: dict) -> None:
+    """Sendet Benachrichtigung bei kritischer Breach-Deadline."""
+    try:
+        from app.services.notification_service import NotificationService
+
+        service = NotificationService()
+        await service.send_admin_alert(
+            subject=f"DSGVO FRISTWARNUNG: Breach {alert['breach_id']}",
+            message=alert.get("message", "72-Stunden-Frist laeuft ab!"),
+            priority="critical",
+        )
+    except Exception as e:
+        logger.warning(
+            "breach_deadline_notification_failed",
+            breach_id=alert.get("breach_id"),
+            error=str(e),
+        )
+
+
+@celery_app.task(
+    name="gdpr.daily_breach_report",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=300,
+)
+def daily_breach_report_task(self) -> dict:
+    """Erstellt taeglichen Bericht ueber Datenschutzverletzungen.
+
+    Enthaelt:
+    - Offene Breaches
+    - Status-Zusammenfassung
+    - Ausstehende Deadlines
+    - Abgeschlossene Breaches (letzte 24h)
+
+    Wird taeglich via Celery Beat ausgefuehrt.
+
+    Returns:
+        Dictionary mit Tagesbericht
+    """
+    import asyncio
+
+    async def _report():
+        async with async_session_factory() as db:
+            return await _generate_daily_breach_report(db)
+
+    try:
+        result = asyncio.get_event_loop().run_until_complete(_report())
+        logger.info("daily_breach_report_generated", **result)
+        return result
+    except Exception as e:
+        logger.error("daily_breach_report_failed", error=str(e))
+        raise self.retry(exc=e)
+
+
+async def _generate_daily_breach_report(db) -> dict:
+    """Generiert taeglichen Breach-Bericht."""
+    from app.services.compliance import get_breach_notification_service, BreachStatus
+
+    service = get_breach_notification_service()
+
+    # Alle Breaches holen
+    all_breaches, total = await service.list_breaches(db, limit=500)
+
+    report = {
+        "report_date": datetime.now().isoformat(),
+        "total_breaches": total,
+        "by_status": {},
+        "by_severity": {},
+        "pending_deadlines": 0,
+        "overdue": 0,
+        "closed_last_24h": 0,
+    }
+
+    cutoff = datetime.now() - timedelta(hours=24)
+
+    for breach in all_breaches:
+        # Nach Status zaehlen
+        status = breach.status.value
+        report["by_status"][status] = report["by_status"].get(status, 0) + 1
+
+        # Nach Schweregrad zaehlen
+        severity = breach.severity.value
+        report["by_severity"][severity] = report["by_severity"].get(severity, 0) + 1
+
+        # Ausstehende Deadlines
+        if breach.authority_notification.value == "pending":
+            report["pending_deadlines"] += 1
+
+            # Ueberfaellig?
+            if breach.deadline_72h < datetime.now():
+                report["overdue"] += 1
+
+        # In letzten 24h geschlossen
+        if breach.status in [BreachStatus.RESOLVED, BreachStatus.CLOSED]:
+            if hasattr(breach, 'contained_at') and breach.contained_at:
+                if breach.contained_at.replace(tzinfo=None) >= cutoff:
+                    report["closed_last_24h"] += 1
+
+    return report
+
+
+# =============================================================================
 # Celery Beat Schedule (zur Referenz)
 # =============================================================================
 # Diese Tasks sollten zum Beat-Schedule in celery_app.py hinzugefuegt werden:
@@ -427,5 +618,16 @@ async def _check_retention_warnings(db) -> dict:
 #     'gobd-retention-warnings-daily': {
 #         'task': 'gobd.check_retention_warnings',
 #         'schedule': crontab(hour=9, minute=0),  # Taeglich 09:00
+#     },
+# }
+#
+# GDPR_BREACH_BEAT_SCHEDULE = {
+#     'gdpr-breach-deadlines-hourly': {
+#         'task': 'gdpr.check_breach_deadlines',
+#         'schedule': crontab(minute=0),  # Jede volle Stunde
+#     },
+#     'gdpr-breach-report-daily': {
+#         'task': 'gdpr.daily_breach_report',
+#         'schedule': crontab(hour=8, minute=0),  # Taeglich 08:00
 #     },
 # }

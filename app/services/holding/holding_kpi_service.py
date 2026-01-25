@@ -28,6 +28,7 @@ from app.db.models import (
     BusinessEntity,
     BankAccount,
     BankTransaction,
+    UserCompany,
 )
 
 logger = structlog.get_logger(__name__)
@@ -53,11 +54,15 @@ class HoldingKPIService:
         Returns:
             Konsolidierte KPIs
         """
-        # Hole alle Firmen des Users falls nicht spezifiziert
+        # Hole alle Firmen auf die der User Zugriff hat
         if company_ids is None:
-            # TODO: Filtere nach User-Zugriff
             result = await self.db.execute(
-                select(Company.id).where(Company.deleted_at.is_(None))
+                select(Company.id)
+                .join(UserCompany, UserCompany.company_id == Company.id)
+                .where(
+                    UserCompany.user_id == user_id,
+                    Company.deleted_at.is_(None)
+                )
             )
             company_ids = [row[0] for row in result.all()]
 

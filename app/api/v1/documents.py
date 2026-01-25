@@ -7,7 +7,7 @@ Provides REST API endpoints for:
 - Batch operations (delete, tag, export)
 """
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime, timezone
 from uuid import UUID
 import io
@@ -86,6 +86,7 @@ def build_content_disposition(filename: str, disposition: str = "attachment") ->
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile, File, Form, Request, status
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import func
 
@@ -1996,9 +1997,6 @@ class ExtractedDataUpdateRequest(BaseModel):
         extra = "forbid"  # Keine zusaetzlichen Felder erlaubt
 
 
-from pydantic import BaseModel
-
-
 @router.patch(
     "/{document_id}/extracted-data",
     response_model=Dict[str, Any],
@@ -2685,8 +2683,6 @@ async def list_deleted_documents(
 
 # ==================== Document Classification Confirmation ====================
 
-from pydantic import BaseModel, Field
-from typing import Literal
 
 class ClassificationConfirmRequest(BaseModel):
     """Request zum Bestaetigen/Aendern der Dokumentklassifizierung."""

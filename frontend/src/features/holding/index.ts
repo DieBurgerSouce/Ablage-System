@@ -25,5 +25,9 @@ export {
   holdingKeys,
 } from './hooks/use-holding';
 
+// Intercompany Reconciliation
+export { IntercompanyReconciliation } from './IntercompanyReconciliation';
+
 // API
 export * from './api/holding-api';
+export * from './api/reconciliation-api';

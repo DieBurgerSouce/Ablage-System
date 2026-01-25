@@ -35,11 +35,14 @@ import {
   useUpdateTrainingSample,
   useVerifyTrainingSample,
 } from '../hooks/use-validation-queries';
-import { getSamplePreviewUrl } from '../api/validation-api';
+import { getSamplePreviewUrl, getSampleBenchmarks } from '../api/validation-api';
 import {
   TrainingSampleStatus,
   SAMPLE_STATUS_LABELS,
   getStatusColor,
+  getFieldConfidenceFromBenchmarks,
+  calculateConfidenceFromBenchmarks,
+  type SampleBenchmark,
 } from '../types';
 
 interface ValidationEditorProps {
@@ -90,7 +93,19 @@ export function ValidationEditor({ sampleId }: ValidationEditorProps) {
   const updateMutation = useUpdateTrainingSample();
   const verifyMutation = useVerifyTrainingSample();
 
-  // Initialize fields from sample data
+  // Benchmark-Daten für Konfidenz
+  const [benchmarks, setBenchmarks] = useState<SampleBenchmark[]>([]);
+
+  // Lade Benchmark-Daten wenn Sample verfügbar
+  useEffect(() => {
+    if (sample?.id) {
+      getSampleBenchmarks(sample.id)
+        .then(setBenchmarks)
+        .catch(() => setBenchmarks([])); // Fallback bei Fehler
+    }
+  }, [sample?.id]);
+
+  // Initialize fields from sample data with benchmark confidence
   useEffect(() => {
     if (sample) {
       const extractedFields = sample.extracted_fields || {};
@@ -100,7 +115,7 @@ export function ValidationEditor({ sampleId }: ValidationEditorProps) {
           label: FIELD_LABELS[key] || key,
           value: String(value ?? ''),
           originalValue: String(value ?? ''),
-          confidence: 0.85, // TODO: Get from benchmark data
+          confidence: getFieldConfidenceFromBenchmarks(benchmarks, key),
           isModified: false,
         })
       );
@@ -109,7 +124,7 @@ export function ValidationEditor({ sampleId }: ValidationEditorProps) {
       setAnnotationNotes(sample.annotation_notes || '');
       setHasChanges(false);
     }
-  }, [sample]);
+  }, [sample, benchmarks]);
 
   // Handlers
   const handleFieldChange = (index: number, newValue: string) => {
@@ -144,7 +159,7 @@ export function ValidationEditor({ sampleId }: ValidationEditorProps) {
           label: FIELD_LABELS[key] || key,
           value: String(value ?? ''),
           originalValue: String(value ?? ''),
-          confidence: 0.85,
+          confidence: getFieldConfidenceFromBenchmarks(benchmarks, key),
           isModified: false,
         })
       );

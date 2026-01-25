@@ -1,6 +1,8 @@
 /**
  * Dunning Widget für Dashboard
  * Zeigt offene Mahnungen mit KPIs
+ *
+ * Phase 4.7: Real-time Widget Updates
  */
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -8,8 +10,15 @@ import { DashboardSectionError, QueryErrorAlert, KPICard } from '../shared';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle, Clock, Receipt, Users } from 'lucide-react';
 import { useDunningStats, useOverdueInvoices } from '@/features/banking/hooks/use-banking-queries';
+import { useWidgetSubscription } from '@/hooks/use-widget-subscription';
 
 export function DunningWidget() {
+    // Real-time Widget Updates (Phase 4.7)
+    useWidgetSubscription('dunning', {
+        debounceMs: 1000,
+        autoInvalidate: true,
+        queryKeysToInvalidate: [['dunning'], ['invoices'], ['overdue-invoices']],
+    });
     const {
         data: dunningStats,
         isLoading: isLoadingStats,

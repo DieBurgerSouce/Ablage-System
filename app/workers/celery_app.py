@@ -274,6 +274,7 @@ celery_app = Celery(
         "app.workers.tasks.notification_tasks",  # Notification Tasks (Daily Digest, Cleanup)
         "app.workers.tasks.approval_tasks",  # Approval Workflow Tasks (Escalation, Reminders, Stats)
         "app.workers.tasks.collaboration_tasks",  # Collaboration Tasks (Digest, Task Reminders, Escalation)
+        "app.workers.tasks.mlops_tasks",  # MLOps Pipeline (Model Registry, Retraining, Rollback)
     ]
 )
 
@@ -540,6 +541,21 @@ celery_app.conf.update(
             "task": "app.workers.tasks.backup_tasks.update_backup_metrics_task",
             "schedule": 900.0,  # Alle 15 Minuten
         },
+        # Audit Archive Tasks (Phase 1.4 - GoBD WORM Storage)
+        "audit-archive-monthly": {
+            "task": "app.workers.tasks.backup_tasks.archive_audit_logs_monthly_task",
+            "schedule": crontab(day_of_month=1, hour=1, minute=0),  # 1. des Monats um 01:00
+        },
+        "audit-archive-verify-weekly": {
+            "task": "app.workers.tasks.backup_tasks.verify_audit_archives_task",
+            "schedule": crontab(day_of_week=6, hour=4, minute=0),  # Samstag 04:00
+        },
+        # Backup Restore Test (Phase 2.3 - Woechentliche Validierung)
+        "backup-restore-test-weekly": {
+            "task": "app.workers.tasks.backup_tasks.backup_restore_test_task",
+            "schedule": crontab(day_of_week=0, hour=2, minute=0),  # Sonntag 02:00
+            "kwargs": {"validation_level": "standard", "cleanup_on_success": True},
+        },
         # Cleanup Tasks (GDPR-konform)
         "cleanup-soft-deleted-daily": {
             "task": "app.workers.tasks.cleanup_tasks.cleanup_soft_deleted_documents",
@@ -682,6 +698,19 @@ celery_app.conf.update(
         "training-weekly-report": {
             "task": "app.workers.tasks.training_tasks.generate_training_report",
             "schedule": crontab(day_of_week=1, hour=7, minute=0),  # Montag 07:00 Uhr
+        },
+        # =================================================================
+        # OCR Self-Learning Tasks (Persistent DB-based)
+        # =================================================================
+        "ocr-learning-backend-performance": {
+            "task": "app.workers.tasks.ocr_tasks.calculate_ocr_backend_performance",
+            "schedule": crontab(hour=2, minute=45),  # Taeglich um 02:45 Uhr (nach Training)
+            "kwargs": {"period_days": 30},
+        },
+        "ocr-learning-process-feedbacks": {
+            "task": "app.workers.tasks.ocr_tasks.process_pending_ocr_feedbacks",
+            "schedule": crontab(hour="*/4"),  # Alle 4 Stunden
+            "kwargs": {"batch_size": 100},
         },
         # =================================================================
         # Export Tasks (Scheduled Exports)
@@ -1113,6 +1142,19 @@ celery_app.conf.update(
         "banking-skonto-alerts-morning": {
             "task": "app.workers.tasks.banking_tasks.send_skonto_alerts",
             "schedule": crontab(hour=7, minute=30),  # Taeglich um 07:30 Uhr
+            "kwargs": {"days_ahead": 7},
+        },
+        # Taeglich: Skonto-Alerts um 08:00 Uhr (3 Tage voraus - dringend)
+        "banking-skonto-alerts-urgent-3d": {
+            "task": "app.workers.tasks.banking_tasks.send_skonto_alerts",
+            "schedule": crontab(hour=8, minute=0),  # Taeglich um 08:00 Uhr
+            "kwargs": {"days_ahead": 3},
+        },
+        # Taeglich: Skonto-Alerts um 08:30 Uhr (1 Tag voraus - kritisch)
+        "banking-skonto-alerts-critical-1d": {
+            "task": "app.workers.tasks.banking_tasks.send_skonto_alerts",
+            "schedule": crontab(hour=8, minute=30),  # Taeglich um 08:30 Uhr
+            "kwargs": {"days_ahead": 1},
         },
         # Taeglich: Dunning Daily Report um 18:00 Uhr (Tagesabschluss)
         "banking-dunning-daily-report": {
@@ -1148,6 +1190,20 @@ celery_app.conf.update(
         "gobd-retention-warnings-daily": {
             "task": "gobd.check_retention_warnings",
             "schedule": crontab(hour=9, minute=15),
+        },
+        # =================================================================
+        # MLOps Pipeline Tasks (Model Lifecycle Management)
+        # =================================================================
+        # Taeglich: Pruefe ob Retraining-Threshold erreicht (03:00)
+        "mlops-check-retraining-threshold": {
+            "task": "mlops.check_retraining_threshold",
+            "schedule": crontab(hour=3, minute=0),
+        },
+        # Woechentlich: Alte Modell-Versionen archivieren (Sonntag 05:30)
+        "mlops-cleanup-old-versions": {
+            "task": "mlops.cleanup_old_versions",
+            "schedule": crontab(day_of_week=0, hour=5, minute=30),
+            "kwargs": {"archive_older_than_days": 90},
         },
     },
 
@@ -1228,6 +1284,13 @@ celery_app.conf.update(
         "app.workers.tasks.ml_tasks.generate_ml_report": {"queue": "maintenance", "priority": 1},
         "app.workers.tasks.ml_tasks.generate_monthly_drift_report": {"queue": "maintenance", "priority": 1},
         "app.workers.tasks.ml_tasks.trigger_model_retrain": {"queue": "maintenance", "priority": 2},
+        # MLOps Pipeline tasks (Model Lifecycle Management)
+        "mlops.check_retraining_threshold": {"queue": "maintenance", "priority": 2},
+        "mlops.run_retraining": {"queue": "gpu", "priority": 4},
+        "mlops.evaluate_model": {"queue": "metadata", "priority": 3},
+        "mlops.rollback_if_degraded": {"queue": "maintenance", "priority": 8},  # Hohe Prioritaet fuer Rollback
+        "mlops.cleanup_old_versions": {"queue": "maintenance", "priority": 1},
+        "mlops.get_stats": {"queue": "metadata", "priority": 1},
         # DLQ Management tasks (CPU)
         "app.workers.tasks.dlq_management_tasks.check_dlq_health": {"queue": "metrics", "priority": 1},
         "app.workers.tasks.dlq_management_tasks.cleanup_old_dlq_tasks": {"queue": "maintenance", "priority": 1},

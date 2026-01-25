@@ -35,12 +35,62 @@ path "sys/leases/renew" {
 }
 
 # Transit-Verschlüsselung für sensible Daten (DSGVO-konform)
+# ablage-data: Dokumentendaten
 path "transit/encrypt/ablage-data" {
   capabilities = ["update"]
 }
 
 path "transit/decrypt/ablage-data" {
   capabilities = ["update"]
+}
+
+# ablage-encryption-key: Allgemeine Verschlüsselung (Standard-Key)
+path "transit/encrypt/ablage-encryption-key" {
+  capabilities = ["update"]
+}
+
+path "transit/decrypt/ablage-encryption-key" {
+  capabilities = ["update"]
+}
+
+path "transit/rewrap/ablage-encryption-key" {
+  capabilities = ["update"]
+}
+
+# ablage-pii: Personenbezogene Daten
+path "transit/encrypt/ablage-pii" {
+  capabilities = ["update"]
+}
+
+path "transit/decrypt/ablage-pii" {
+  capabilities = ["update"]
+}
+
+path "transit/rewrap/ablage-pii" {
+  capabilities = ["update"]
+}
+
+# ablage-totp-secrets: MFA-Secrets
+path "transit/encrypt/ablage-totp-secrets" {
+  capabilities = ["update"]
+}
+
+path "transit/decrypt/ablage-totp-secrets" {
+  capabilities = ["update"]
+}
+
+# ablage-api-keys: ERP/API-Keys
+path "transit/encrypt/ablage-api-keys" {
+  capabilities = ["update"]
+}
+
+path "transit/decrypt/ablage-api-keys" {
+  capabilities = ["update"]
+}
+
+# Transit Key-Info lesen (für Debugging)
+path "transit/keys/ablage-*" {
+  capabilities = ["read"]
 }
 
 # Keine Schreibrechte auf Secrets - nur Admins dürfen schreiben

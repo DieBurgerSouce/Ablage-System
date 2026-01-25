@@ -25,7 +25,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, get_db, require_admin
+from app.api.dependencies import get_current_user, get_db, require_admin
 from app.db.models import User, Document
 from app.services.dlp import (
     DLPService,

@@ -29,6 +29,7 @@ from app.db.models import (
 )
 
 # J.6 SECURITY FIX: Redis für Multi-Worker-synchronized Permission Cache
+# P1.1 SECURITY FIX: Tenant-isolierte Cache Keys - company_id:user_id
 PERMISSION_CACHE_PREFIX = "permission_cache:"
 PERMISSION_CACHE_TTL = 30  # Sekunden - kurz genug um Aenderungen schnell zu propagieren
 
@@ -76,8 +77,8 @@ class PermissionService:
         """
         if self._redis_client is None:
             try:
-                from app.core.cache import get_redis_client
-                self._redis_client = await get_redis_client()
+                from app.core.redis_state import get_redis
+                self._redis_client = await get_redis()
                 # Redis ist verfuegbar - Fallback-Modus zuruecksetzen
                 if self._redis_fallback_mode:
                     logger.info(
@@ -111,14 +112,34 @@ class PermissionService:
         """
         return not self._redis_fallback_mode
 
-    async def _get_cached_permissions_redis(self, user_id: str) -> Optional[Set[str]]:
-        """J.6 SECURITY FIX: Permissions aus Redis Cache laden."""
+    def _build_cache_key(self, user_id: str, company_id: Optional[str] = None) -> str:
+        """P1.1 SECURITY FIX: Tenant-isolierte Cache-Keys generieren.
+
+        Cache-Keys enthalten company_id um Cross-Tenant Leaks zu verhindern.
+        Format: permission_cache:{company_id}:{user_id}
+
+        Args:
+            user_id: User-UUID als String
+            company_id: Company-UUID als String (optional, default "global")
+
+        Returns:
+            Cache-Key mit Tenant-Isolation
+        """
+        tenant_id = company_id if company_id else "global"
+        return f"{PERMISSION_CACHE_PREFIX}{tenant_id}:{user_id}"
+
+    async def _get_cached_permissions_redis(
+        self, user_id: str, company_id: Optional[str] = None
+    ) -> Optional[Set[str]]:
+        """J.6 SECURITY FIX: Permissions aus Redis Cache laden.
+        P1.1 FIX: Tenant-isolierte Cache Keys.
+        """
         redis = await self._get_redis_client()
         if redis is None:
             return None
 
         try:
-            key = f"{PERMISSION_CACHE_PREFIX}{user_id}"
+            key = self._build_cache_key(user_id, company_id)
             data = await redis.get(key)
             if data:
                 return set(json.loads(data))
@@ -126,28 +147,47 @@ class PermissionService:
             logger.warning("permission_cache_redis_read_error", error=str(e))
         return None
 
-    async def _set_cached_permissions_redis(self, user_id: str, permissions: Set[str]) -> None:
-        """J.6 SECURITY FIX: Permissions in Redis Cache speichern."""
+    async def _set_cached_permissions_redis(
+        self, user_id: str, permissions: Set[str], company_id: Optional[str] = None
+    ) -> None:
+        """J.6 SECURITY FIX: Permissions in Redis Cache speichern.
+        P1.1 FIX: Tenant-isolierte Cache Keys.
+        """
         redis = await self._get_redis_client()
         if redis is None:
             return
 
         try:
-            key = f"{PERMISSION_CACHE_PREFIX}{user_id}"
+            key = self._build_cache_key(user_id, company_id)
             await redis.setex(key, PERMISSION_CACHE_TTL, json.dumps(list(permissions)))
         except Exception as e:
             logger.warning("permission_cache_redis_write_error", error=str(e))
 
-    async def _invalidate_cache_redis(self, user_id: Optional[str] = None) -> None:
-        """J.6 SECURITY FIX: Cache in Redis invalidieren."""
+    async def _invalidate_cache_redis(
+        self, user_id: Optional[str] = None, company_id: Optional[str] = None
+    ) -> None:
+        """J.6 SECURITY FIX: Cache in Redis invalidieren.
+        P1.1 FIX: Tenant-isolierte Invalidierung.
+        """
         redis = await self._get_redis_client()
         if redis is None:
             return
 
         try:
-            if user_id:
-                key = f"{PERMISSION_CACHE_PREFIX}{user_id}"
+            if user_id and company_id:
+                # Spezifischer User in spezifischer Company
+                key = self._build_cache_key(user_id, company_id)
                 await redis.delete(key)
+            elif user_id:
+                # Alle Companies fuer diesen User
+                pattern = f"{PERMISSION_CACHE_PREFIX}*:{user_id}"
+                async for key in redis.scan_iter(match=pattern):
+                    await redis.delete(key)
+            elif company_id:
+                # P1.1: Alle User in dieser Company invalidieren
+                pattern = f"{PERMISSION_CACHE_PREFIX}{company_id}:*"
+                async for key in redis.scan_iter(match=pattern):
+                    await redis.delete(key)
             else:
                 # Alle Permission-Cache-Keys loeschen
                 pattern = f"{PERMISSION_CACHE_PREFIX}*"
@@ -265,27 +305,35 @@ class PermissionService:
                 return False
         return True
 
-    async def get_user_permissions(self, user: User) -> Set[str]:
+    async def get_user_permissions(
+        self, user: User, company_id: Optional[UUID] = None
+    ) -> Set[str]:
         """
         Holt alle Berechtigungen eines Benutzers aus allen zugewiesenen Rollen.
 
         J.6 SECURITY FIX: Redis-basierter Cache für Multi-Worker-Synchronisation.
+        P1.1 SECURITY FIX: Tenant-isolierte Cache Keys mit company_id.
         Falls Redis nicht verfuegbar, Fallback auf In-Memory mit Lock.
 
         Args:
             user: Der Benutzer
+            company_id: Company-ID fuer Tenant-Isolation (optional)
 
         Returns:
             Set aller Berechtigungsnamen
         """
-        cache_key = str(user.id)
+        user_id_str = str(user.id)
+        company_id_str = str(company_id) if company_id else None
+
+        # P1.1 FIX: Tenant-isolierter Cache-Key
+        cache_key = self._build_cache_key(user_id_str, company_id_str)
 
         # J.6 FIX: Erst Redis-Cache pruefen (Multi-Worker-synchronized)
-        redis_cached = await self._get_cached_permissions_redis(cache_key)
+        redis_cached = await self._get_cached_permissions_redis(user_id_str, company_id_str)
         if redis_cached is not None:
             return redis_cached
 
-        # Fallback: In-Memory Cache
+        # Fallback: In-Memory Cache (auch tenant-isoliert)
         if cache_key in self._permission_cache:
             return self._permission_cache[cache_key]
 
@@ -312,13 +360,14 @@ class PermissionService:
             result = await self.db.execute(stmt)
             permissions = set(row[0] for row in result.fetchall())
 
-            # J.6 FIX: In Redis UND In-Memory cachen
-            await self._set_cached_permissions_redis(cache_key, permissions)
+            # J.6 FIX: In Redis UND In-Memory cachen (P1.1: tenant-isoliert)
+            await self._set_cached_permissions_redis(user_id_str, permissions, company_id_str)
             self._permission_cache[cache_key] = permissions
 
             logger.debug(
                 "user_permissions_loaded",
-                user_id=str(user.id),
+                user_id=user_id_str,
+                company_id=company_id_str,
                 permission_count=len(permissions)
             )
 
@@ -700,20 +749,37 @@ class PermissionService:
 
         return True
 
-    async def _clear_user_cache_async(self, user: User) -> None:
+    async def _clear_user_cache_async(
+        self, user: User, company_id: Optional[UUID] = None
+    ) -> None:
         """
         Löscht den Permission-Cache für einen Benutzer (async).
 
         J.6 FIX: Loescht Cache in Redis UND In-Memory.
+        P1.1 FIX: Tenant-isolierte Cache Invalidierung.
 
         Args:
             user: Der Benutzer
+            company_id: Company-ID (wenn None, alle Companies invalidieren)
         """
-        cache_key = str(user.id)
-        # J.6 FIX: Redis-Cache invalidieren
-        await self._invalidate_cache_redis(cache_key)
-        # pop statt del um KeyError zu vermeiden wenn Key bereits gelöscht
-        self._permission_cache.pop(cache_key, None)
+        user_id_str = str(user.id)
+        company_id_str = str(company_id) if company_id else None
+
+        # J.6 FIX: Redis-Cache invalidieren (P1.1: tenant-aware)
+        await self._invalidate_cache_redis(user_id_str, company_id_str)
+
+        # P1.1: In-Memory Cache - wenn company_id angegeben, nur diesen Key loeschen
+        if company_id_str:
+            cache_key = self._build_cache_key(user_id_str, company_id_str)
+            self._permission_cache.pop(cache_key, None)
+        else:
+            # Alle Company-spezifischen Keys fuer diesen User loeschen
+            keys_to_remove = [
+                k for k in self._permission_cache.keys()
+                if k.endswith(f":{user_id_str}")
+            ]
+            for key in keys_to_remove:
+                self._permission_cache.pop(key, None)
 
     def _clear_user_cache(self, user: User) -> None:
         """
@@ -721,13 +787,50 @@ class PermissionService:
 
         Note: Bevorzuge _clear_user_cache_async() in async Contexten
         für vollstaendige Redis-Invalidierung.
+        P1.1: Diese Methode leert ALLE Company-Keys fuer den User (In-Memory).
 
         Args:
             user: Der Benutzer
         """
-        cache_key = str(user.id)
-        # pop statt del um KeyError zu vermeiden wenn Key bereits gelöscht
-        self._permission_cache.pop(cache_key, None)
+        user_id_str = str(user.id)
+        # P1.1: Alle Company-spezifischen Keys fuer diesen User loeschen
+        keys_to_remove = [
+            k for k in self._permission_cache.keys()
+            if k.endswith(f":{user_id_str}")
+        ]
+        for key in keys_to_remove:
+            self._permission_cache.pop(key, None)
+
+    async def invalidate_company_cache_async(self, company_id: UUID) -> None:
+        """
+        P1.1 SECURITY: Invalidiert alle Permission-Caches einer Company.
+
+        Sollte aufgerufen werden bei:
+        - Company-weiten Rollen-Aenderungen
+        - Company-Loeschung
+        - Massen-Benutzer-Updates
+
+        Args:
+            company_id: Company-ID
+        """
+        company_id_str = str(company_id)
+
+        # Redis-Cache fuer diese Company invalidieren
+        await self._invalidate_cache_redis(company_id=company_id_str)
+
+        # In-Memory: Alle Keys dieser Company loeschen
+        keys_to_remove = [
+            k for k in self._permission_cache.keys()
+            if k.startswith(f"{PERMISSION_CACHE_PREFIX}{company_id_str}:")
+        ]
+        for key in keys_to_remove:
+            self._permission_cache.pop(key, None)
+
+        logger.info(
+            "company_permission_cache_invalidated",
+            company_id=company_id_str,
+            cleared_keys=len(keys_to_remove)
+        )
 
     async def clear_cache_async(self) -> None:
         """

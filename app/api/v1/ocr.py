@@ -9,11 +9,11 @@ Feinpoliert und durchdacht - Enterprise OCR API.
 """
 
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, UploadFile, File, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -1340,3 +1340,1926 @@ async def batch_job_status(
         },
         "jobs": jobs_status
     }
+
+
+# =============================================================================
+# Semantic Validation (Phase 2.1)
+# =============================================================================
+
+
+@router.post(
+    "/documents/{document_id}/semantic-validate",
+    summary="Semantische Validierung durchfuehren",
+    description="Validiert OCR-Ergebnisse gegen Stammdaten und Business Rules.",
+)
+async def semantic_validate_document(
+    document_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Fuehrt semantische Validierung fuer ein Dokument durch.
+
+    **Phase 2.1: OCR Evolution - Semantic Validation**
+
+    Validiert gegen:
+    - **Lexware Master Data**: Kundennummern, Lieferantennamen, IBANs
+    - **Betragsplausibilitaet**: Negative Betraege, ungewoehnlich hohe Werte
+    - **Betragskonsistenz**: Brutto = Netto + MwSt
+    - **MwSt-Berechnung**: Korrekte Steuerberechnung
+    - **Formatvalidierung**: IBAN-Pruefsumme, USt-ID Format, Datumsformate
+
+    **Rueckgabe:**
+    - overall_score: Gesamtbewertung (0.0 - 1.0)
+    - errors/warnings/passed: Anzahl der jeweiligen Validierungen
+    - results: Detaillierte Validierungsergebnisse
+    - matched_entity: Gefundene Entity aus Stammdaten
+    - suggestions: Verbesserungsvorschlaege
+
+    **Anwendungsfaelle:**
+    - Automatische Qualitaetspruefung nach OCR
+    - Entity-Linking Vorschlaege
+    - Compliance-Checks vor Buchung
+    """
+    from sqlalchemy import select
+    from app.db.models import Document
+    from app.services.ocr.semantic_validation_service import SemanticValidationService
+
+    # Dokument laden
+    doc_query = select(Document).where(Document.id == document_id)
+    result = await db.execute(doc_query)
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(status_code=404, detail="Dokument nicht gefunden")
+
+    if document.owner_id != current_user.id and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=403,
+            detail="Keine Berechtigung fuer dieses Dokument"
+        )
+
+    # Semantische Validierung durchfuehren
+    service = SemanticValidationService(db)
+    report = await service.validate_document(str(document_id))
+
+    logger.info(
+        "semantic_validation_completed",
+        document_id=str(document_id),
+        overall_score=report.overall_score,
+        errors=report.errors,
+        warnings=report.warnings,
+        user_id=str(current_user.id),
+    )
+
+    return report.model_dump()
+
+
+@router.get(
+    "/documents/{document_id}/validation-report",
+    summary="Validierungsbericht abrufen",
+    description="Ruft den letzten semantischen Validierungsbericht ab.",
+)
+async def get_validation_report(
+    document_id: UUID,
+    revalidate: bool = Query(
+        False, description="Wenn True, wird Validierung erneut durchgefuehrt"
+    ),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ruft den Validierungsbericht fuer ein Dokument ab.
+
+    **Parameter:**
+    - revalidate: Bei True wird eine neue Validierung durchgefuehrt
+
+    **Anwendungsfaelle:**
+    - Anzeige des Validierungsstatus in der UI
+    - Pruefung vor Freigabe/Buchung
+    - Qualitaetsuebersicht
+    """
+    from sqlalchemy import select
+    from app.db.models import Document
+    from app.services.ocr.semantic_validation_service import SemanticValidationService
+
+    # Dokument laden
+    doc_query = select(Document).where(Document.id == document_id)
+    result = await db.execute(doc_query)
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(status_code=404, detail="Dokument nicht gefunden")
+
+    if document.owner_id != current_user.id and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=403,
+            detail="Keine Berechtigung fuer dieses Dokument"
+        )
+
+    # Validierung durchfuehren (cached oder neu)
+    service = SemanticValidationService(db)
+    report = await service.validate_document(str(document_id))
+
+    return {
+        "document_id": str(document_id),
+        "document_filename": document.original_filename,
+        "document_status": document.status,
+        "validation": report.model_dump(),
+    }
+
+
+@router.post(
+    "/documents/batch/semantic-validate",
+    summary="Batch-Semantische-Validierung",
+    description="Validiert mehrere Dokumente gleichzeitig.",
+)
+async def batch_semantic_validate(
+    document_ids: list[UUID] = Query(
+        ...,
+        description="Liste der Dokument-IDs (max. 50)"
+    ),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Batch-Validierung fuer mehrere Dokumente.
+
+    **Limit:** Maximal 50 Dokumente pro Anfrage.
+
+    **Rueckgabe:**
+    - summary: Zusammenfassung ueber alle Dokumente
+    - results: Validierungsergebnisse pro Dokument
+
+    **Anwendungsfaelle:**
+    - Qualitaetspruefung einer Dokumentencharge
+    - Uebersicht vor Batch-Freigabe
+    """
+    from sqlalchemy import select
+    from app.db.models import Document
+    from app.services.ocr.semantic_validation_service import SemanticValidationService
+
+    if len(document_ids) > 50:
+        raise HTTPException(
+            status_code=400,
+            detail="Maximal 50 Dokumente pro Anfrage"
+        )
+
+    service = SemanticValidationService(db)
+    results = []
+    total_score = 0.0
+    total_errors = 0
+    total_warnings = 0
+    valid_count = 0
+
+    for doc_id in document_ids:
+        try:
+            # Dokument pruefen
+            doc_query = select(Document).where(Document.id == doc_id)
+            result = await db.execute(doc_query)
+            document = result.scalar_one_or_none()
+
+            if not document:
+                results.append({
+                    "document_id": str(doc_id),
+                    "status": "not_found",
+                })
+                continue
+
+            if document.owner_id != current_user.id and not current_user.is_superuser:
+                results.append({
+                    "document_id": str(doc_id),
+                    "status": "no_permission",
+                })
+                continue
+
+            # Validierung
+            report = await service.validate_document(str(doc_id))
+
+            results.append({
+                "document_id": str(doc_id),
+                "filename": document.original_filename,
+                "status": "validated",
+                "overall_score": report.overall_score,
+                "errors": report.errors,
+                "warnings": report.warnings,
+                "passed": report.passed,
+                "matched_entity": report.matched_entity,
+            })
+
+            total_score += report.overall_score
+            total_errors += report.errors
+            total_warnings += report.warnings
+            valid_count += 1
+
+        except Exception as e:
+            logger.error(
+                "batch_validation_error",
+                document_id=str(doc_id),
+                error=str(e)
+            )
+            results.append({
+                "document_id": str(doc_id),
+                "status": "error",
+                "message": "Validierung fehlgeschlagen",
+            })
+
+    avg_score = total_score / valid_count if valid_count > 0 else 0.0
+
+    return {
+        "total_requested": len(document_ids),
+        "validated": valid_count,
+        "summary": {
+            "average_score": round(avg_score, 3),
+            "total_errors": total_errors,
+            "total_warnings": total_warnings,
+            "high_quality_count": sum(
+                1 for r in results
+                if r.get("status") == "validated" and r.get("overall_score", 0) >= 0.9
+            ),
+            "needs_review_count": sum(
+                1 for r in results
+                if r.get("status") == "validated" and r.get("errors", 0) > 0
+            ),
+        },
+        "results": results,
+    }
+
+
+# =============================================================================
+# Handwriting Detection Endpoints
+# =============================================================================
+
+
+class HandwritingRegionResponse(BaseModel):
+    """Eine erkannte handschriftliche Region."""
+    x: int
+    y: int
+    width: int
+    height: int
+    confidence: float
+    region_type: str
+    features: list[str]
+    area: int
+
+
+class HandwritingAnalysisResponse(BaseModel):
+    """Antwort der Handschrift-Analyse."""
+    document_id: str
+    has_handwriting: bool
+    handwriting_percentage: float
+    primary_type: str
+    confidence: float
+    confidence_level: str
+    regions: list[HandwritingRegionResponse]
+    recommended_backend: str
+    confidence_penalty: float
+    analysis_details: Dict[str, Any]
+
+
+@router.post(
+    "/documents/{document_id}/analyze-handwriting",
+    response_model=HandwritingAnalysisResponse,
+    summary="Handschrift-Analyse",
+    description="Analysiert ein Dokument auf handschriftliche Inhalte.",
+)
+async def analyze_document_handwriting(
+    document_id: UUID,
+    detect_signatures: bool = Query(True, description="Unterschriften erkennen"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> HandwritingAnalysisResponse:
+    """
+    Analysiert ein Dokument auf handschriftliche Inhalte.
+
+    Erkennt:
+    - Unterschriften auf Vertraegen
+    - Handschriftliche Notizen/Anmerkungen
+    - Formular-Ausfuellungen
+    - Komplett handgeschriebene Dokumente
+
+    Gibt ausserdem eine Confidence-Penalty zurueck, die bei der OCR-Verarbeitung
+    beruecksichtigt werden sollte (Handschrift ist schwerer zu erkennen).
+    """
+    from datetime import datetime, timezone
+    from sqlalchemy import select
+    from app.db.models import Document
+    from app.agents.preprocessing.handwriting_detector import (
+        detect_handwriting,
+        HandwritingAnalysis,
+    )
+
+    logger.info(
+        "handwriting_analysis_requested",
+        document_id=str(document_id),
+        user_id=str(current_user.id),
+        detect_signatures=detect_signatures,
+    )
+
+    # Dokument laden
+    doc_query = select(Document).where(Document.id == document_id)
+    result = await db.execute(doc_query)
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(
+            status_code=404,
+            detail="Dokument nicht gefunden"
+        )
+
+    if document.owner_id != current_user.id and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=403,
+            detail="Kein Zugriff auf dieses Dokument"
+        )
+
+    # Dokument-Bild laden
+    try:
+        # Versuche Bild zu laden (bei PDF erste Seite konvertieren)
+        from app.services.storage_service import StorageService
+        import numpy as np
+        from PIL import Image
+        import io
+
+        storage = StorageService()
+        file_content = await storage.get_file(str(document.storage_path))
+
+        if not file_content:
+            raise HTTPException(
+                status_code=404,
+                detail="Dokument-Datei nicht gefunden"
+            )
+
+        # Format bestimmen
+        file_ext = Path(document.storage_path).suffix.lower() if document.storage_path else ""
+
+        if file_ext == ".pdf":
+            # PDF: Erste Seite als Bild
+            try:
+                import fitz  # PyMuPDF
+                pdf_doc = fitz.open(stream=file_content, filetype="pdf")
+                page = pdf_doc[0]
+                pix = page.get_pixmap(matrix=fitz.Matrix(2.0, 2.0))  # 2x Zoom fuer bessere Qualitaet
+                image = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+                pdf_doc.close()
+            except ImportError:
+                raise HTTPException(
+                    status_code=500,
+                    detail="PyMuPDF nicht verfuegbar fuer PDF-Analyse"
+                )
+        else:
+            # Bild direkt laden
+            image = Image.open(io.BytesIO(file_content))
+
+        # Zu numpy array konvertieren
+        image_array = np.array(image)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "handwriting_image_load_error",
+            document_id=str(document_id),
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Fehler beim Laden des Dokument-Bildes: {str(e)}"
+        )
+
+    # Handschrift-Analyse durchfuehren
+    try:
+        analysis: HandwritingAnalysis = await detect_handwriting(
+            image_array,
+            metadata={"document_id": str(document_id), "filename": document.original_filename},
+            detect_signatures=detect_signatures,
+        )
+    except Exception as e:
+        logger.error(
+            "handwriting_analysis_error",
+            document_id=str(document_id),
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Handschrift-Analyse fehlgeschlagen: {str(e)}"
+        )
+
+    # Ergebnis in metadata speichern
+    if document.metadata is None:
+        document.metadata = {}
+    document.metadata["handwriting_analysis"] = {
+        "has_handwriting": analysis.has_handwriting,
+        "handwriting_percentage": analysis.handwriting_percentage,
+        "primary_type": analysis.primary_type.value,
+        "confidence": analysis.confidence,
+        "confidence_penalty": analysis.confidence_penalty,
+        "recommended_backend": analysis.recommended_backend,
+        "region_count": len(analysis.regions),
+        "analyzed_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.commit()
+
+    logger.info(
+        "handwriting_analysis_complete",
+        document_id=str(document_id),
+        has_handwriting=analysis.has_handwriting,
+        handwriting_percentage=round(analysis.handwriting_percentage, 1),
+        primary_type=analysis.primary_type.value,
+    )
+
+    return HandwritingAnalysisResponse(
+        document_id=str(document_id),
+        has_handwriting=analysis.has_handwriting,
+        handwriting_percentage=analysis.handwriting_percentage,
+        primary_type=analysis.primary_type.value,
+        confidence=analysis.confidence,
+        confidence_level=analysis.confidence_level.value,
+        regions=[
+            HandwritingRegionResponse(
+                x=r.x,
+                y=r.y,
+                width=r.width,
+                height=r.height,
+                confidence=r.confidence,
+                region_type=r.region_type.value,
+                features=[f.value for f in r.features],
+                area=r.area,
+            )
+            for r in analysis.regions
+        ],
+        recommended_backend=analysis.recommended_backend,
+        confidence_penalty=analysis.confidence_penalty,
+        analysis_details=analysis.analysis_details,
+    )
+
+
+@router.get(
+    "/documents/{document_id}/handwriting-report",
+    response_model=Dict[str, Any],
+    summary="Handschrift-Report abrufen",
+    description="Ruft den letzten Handschrift-Analyse-Report ab.",
+)
+async def get_handwriting_report(
+    document_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Ruft den letzten Handschrift-Analyse-Report fuer ein Dokument ab.
+
+    Falls keine Analyse vorhanden ist, wird eine neue durchgefuehrt.
+    """
+    from sqlalchemy import select
+    from app.db.models import Document
+
+    # Dokument laden
+    doc_query = select(Document).where(Document.id == document_id)
+    result = await db.execute(doc_query)
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(
+            status_code=404,
+            detail="Dokument nicht gefunden"
+        )
+
+    if document.owner_id != current_user.id and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=403,
+            detail="Kein Zugriff auf dieses Dokument"
+        )
+
+    # Gespeicherten Report holen
+    if document.metadata and "handwriting_analysis" in document.metadata:
+        analysis_data = document.metadata["handwriting_analysis"]
+        return {
+            "document_id": str(document_id),
+            "filename": document.original_filename,
+            "from_cache": True,
+            "analysis": analysis_data,
+        }
+
+    # Keine Analyse vorhanden
+    return {
+        "document_id": str(document_id),
+        "filename": document.original_filename,
+        "from_cache": False,
+        "analysis": None,
+        "message": "Keine Handschrift-Analyse vorhanden. Nutzen Sie POST /analyze-handwriting.",
+    }
+
+
+@router.post(
+    "/upload/analyze-handwriting",
+    response_model=Dict[str, Any],
+    summary="Handschrift-Analyse aus Upload",
+    description="Analysiert eine hochgeladene Datei auf Handschrift ohne Dokument-Erstellung.",
+)
+async def analyze_upload_handwriting(
+    file: UploadFile = File(..., description="Dokument (PDF, PNG, JPG, TIFF)"),
+    detect_signatures: bool = Query(True, description="Unterschriften erkennen"),
+    current_user: User = Depends(get_current_active_user),
+) -> Dict[str, Any]:
+    """
+    Analysiert eine hochgeladene Datei auf handschriftliche Inhalte.
+
+    Diese Methode speichert das Dokument nicht in der Datenbank,
+    sondern fuehrt nur eine temporaere Analyse durch.
+    """
+    from app.agents.preprocessing.handwriting_detector import detect_handwriting
+    import numpy as np
+    from PIL import Image
+    import io
+
+    logger.info(
+        "handwriting_upload_analysis_requested",
+        user_id=str(current_user.id),
+        filename=file.filename,
+        content_type=file.content_type,
+    )
+
+    # Dateiformat validieren
+    if file.filename:
+        try:
+            sanitized = sanitize_filename(file.filename)
+            file_ext = Path(sanitized).suffix.lower()
+        except PathTraversalError:
+            raise HTTPException(
+                status_code=400,
+                detail="Ungueltiger Dateiname"
+            )
+    else:
+        file_ext = ""
+
+    allowed_extensions = {".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp"}
+    if file_ext not in allowed_extensions:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Nicht unterstuetztes Format. Erlaubt: {', '.join(allowed_extensions)}"
+        )
+
+    # Datei lesen
+    try:
+        file_content = await file.read()
+
+        if file_ext == ".pdf":
+            try:
+                import fitz
+                pdf_doc = fitz.open(stream=file_content, filetype="pdf")
+                page = pdf_doc[0]
+                pix = page.get_pixmap(matrix=fitz.Matrix(2.0, 2.0))
+                image = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+                pdf_doc.close()
+            except ImportError:
+                raise HTTPException(
+                    status_code=500,
+                    detail="PyMuPDF nicht verfuegbar fuer PDF-Analyse"
+                )
+        else:
+            image = Image.open(io.BytesIO(file_content))
+
+        image_array = np.array(image)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Fehler beim Laden der Datei: {str(e)}"
+        )
+
+    # Analyse durchfuehren
+    try:
+        analysis = await detect_handwriting(
+            image_array,
+            metadata={"filename": file.filename, "upload_analysis": True},
+            detect_signatures=detect_signatures,
+        )
+    except Exception as e:
+        logger.error(
+            "handwriting_upload_analysis_error",
+            filename=file.filename,
+            error=str(e)
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Handschrift-Analyse fehlgeschlagen: {str(e)}"
+        )
+
+    logger.info(
+        "handwriting_upload_analysis_complete",
+        filename=file.filename,
+        has_handwriting=analysis.has_handwriting,
+        handwriting_percentage=round(analysis.handwriting_percentage, 1),
+    )
+
+    return {
+        "filename": file.filename,
+        "has_handwriting": analysis.has_handwriting,
+        "handwriting_percentage": analysis.handwriting_percentage,
+        "primary_type": analysis.primary_type.value,
+        "confidence": analysis.confidence,
+        "confidence_level": analysis.confidence_level.value,
+        "region_count": len(analysis.regions),
+        "regions": [
+            {
+                "x": r.x,
+                "y": r.y,
+                "width": r.width,
+                "height": r.height,
+                "confidence": r.confidence,
+                "region_type": r.region_type.value,
+                "features": [f.value for f in r.features],
+            }
+            for r in analysis.regions
+        ],
+        "recommended_backend": analysis.recommended_backend,
+        "confidence_penalty": analysis.confidence_penalty,
+        "recommendation": (
+            "Dieses Dokument enthaelt handschriftliche Inhalte. "
+            f"Empfohlenes Backend: {analysis.recommended_backend}. "
+            f"Die OCR-Confidence sollte um {abs(analysis.confidence_penalty)*100:.0f}% reduziert werden."
+            if analysis.has_handwriting
+            else "Keine signifikanten handschriftlichen Inhalte erkannt."
+        ),
+    }
+
+
+# =============================================================================
+# Table Extraction Endpoints (Phase 2.3)
+# =============================================================================
+
+
+class TableCellResponse(BaseModel):
+    """Response-Model fuer eine Tabellenzelle."""
+    row: int
+    col: int
+    text: str
+    row_span: int = 1
+    col_span: int = 1
+    is_header: bool = False
+    confidence: float
+    data_type: str
+    normalized_value: Optional[str] = None
+
+
+class TableColumnResponse(BaseModel):
+    """Response-Model fuer Spalten-Metadaten."""
+    index: int
+    header_text: str
+    data_type: str
+    alignment: str
+    is_numeric: bool
+    contains_currency: bool
+    avg_confidence: float
+
+
+class ExtractedTableResponse(BaseModel):
+    """Response-Model fuer eine extrahierte Tabelle."""
+    table_id: str
+    page_number: int
+    num_rows: int
+    num_cols: int
+    has_header: bool
+    header_row_count: int
+    table_type: str
+    caption: Optional[str] = None
+    overall_confidence: float
+    cells: List[TableCellResponse]
+    columns: List[TableColumnResponse]
+
+
+class TableExtractionResultResponse(BaseModel):
+    """Response-Model fuer Table Extraction Ergebnis."""
+    document_id: str
+    total_tables: int
+    page_count: int
+    extraction_timestamp: str
+    processing_time_ms: int
+    tables: List[ExtractedTableResponse]
+    metadata: Dict[str, Any]
+
+
+@router.post(
+    "/documents/{document_id}/extract-tables",
+    response_model=TableExtractionResultResponse,
+    summary="Tabellen aus Dokument extrahieren",
+    description="Extrahiert alle Tabellen aus einem Dokument mit Cell-Level Confidence.",
+)
+async def extract_document_tables(
+    document_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Dict[str, Any]:
+    """
+    Extrahiert Tabellen aus einem Dokument.
+
+    - Cell-Level Confidence Tracking
+    - Spanning Cell Detection (row_span, col_span)
+    - Header-Row Erkennung
+    - Automatische Typ-Erkennung
+    """
+    from app.services.ocr.table_extraction_service import (
+        TableExtractionService,
+        get_table_extraction_service,
+    )
+
+    # Dokument laden und Berechtigung pruefen
+    doc_query = select(Document).where(Document.id == str(document_id))
+    result = await db.execute(doc_query)
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dokument nicht gefunden.",
+        )
+
+    # Berechtigung pruefen
+    if document.company_id != current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Keine Berechtigung fuer dieses Dokument.",
+        )
+
+    # Table Extraction Service
+    service = get_table_extraction_service(db)
+
+    # Layout aus Metadata laden falls vorhanden
+    layout = None
+    if document.metadata and document.metadata.get("layout"):
+        from app.agents.ocr.models.layout_models import DocumentLayout
+        try:
+            layout_data = document.metadata.get("layout")
+            if isinstance(layout_data, dict):
+                layout = DocumentLayout.from_dict(layout_data)
+        except Exception as e:
+            logger.warning(
+                "layout_parse_error",
+                document_id=str(document_id),
+                error=str(e),
+            )
+
+    # Tabellen extrahieren
+    extraction_result = await service.extract_tables_from_document(
+        document_id=str(document_id),
+        layout=layout,
+    )
+
+    # In Metadata speichern fuer spaetere Abfragen
+    if document.metadata is None:
+        document.metadata = {}
+    document.metadata["tables_extracted"] = True
+    document.metadata["table_extraction_result"] = extraction_result.to_dict()
+    document.metadata["tables_extraction_timestamp"] = datetime.now(timezone.utc).isoformat()
+
+    await db.commit()
+
+    logger.info(
+        "tables_extracted",
+        document_id=str(document_id),
+        table_count=extraction_result.total_tables,
+        user_id=str(current_user.id),
+    )
+
+    return extraction_result.to_dict()
+
+
+@router.get(
+    "/documents/{document_id}/tables",
+    response_model=TableExtractionResultResponse,
+    summary="Extrahierte Tabellen abrufen",
+    description="Ruft gecachte Tabellen-Extraktion eines Dokuments ab.",
+)
+async def get_document_tables(
+    document_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Dict[str, Any]:
+    """
+    Ruft bereits extrahierte Tabellen aus einem Dokument ab.
+    """
+    # Dokument laden
+    doc_query = select(Document).where(Document.id == str(document_id))
+    result = await db.execute(doc_query)
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dokument nicht gefunden.",
+        )
+
+    if document.company_id != current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Keine Berechtigung fuer dieses Dokument.",
+        )
+
+    # Gecachte Extraktion pruefen
+    if not document.metadata or not document.metadata.get("table_extraction_result"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Keine Tabellen-Extraktion vorhanden. Bitte zuerst /extract-tables aufrufen.",
+        )
+
+    return document.metadata["table_extraction_result"]
+
+
+@router.get(
+    "/documents/{document_id}/tables/{table_index}/export",
+    summary="Tabelle exportieren",
+    description="Exportiert eine spezifische Tabelle in verschiedenen Formaten.",
+)
+async def export_document_table(
+    document_id: UUID,
+    table_index: int,
+    format: str = Query(
+        default="markdown",
+        description="Export-Format: markdown, csv, json, json_ld, html, excel_compatible",
+    ),
+    include_metadata: bool = Query(
+        default=False,
+        description="Metadaten im Export inkludieren",
+    ),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Response:
+    """
+    Exportiert eine Tabelle in das gewuenschte Format.
+
+    Unterstuetzte Formate:
+    - markdown: Markdown-Tabelle
+    - csv: CSV mit Semikolon-Trenner
+    - json: JSON-Array
+    - json_ld: Schema.org JSON-LD
+    - html: HTML-Tabelle
+    - excel_compatible: CSV mit BOM fuer Excel
+    """
+    from app.services.ocr.table_extraction_service import (
+        TableExportFormat,
+        TableExtractionService,
+        ExtractedTable,
+        get_table_extraction_service,
+    )
+
+    # Format validieren
+    valid_formats = ["markdown", "csv", "json", "json_ld", "html", "excel_compatible"]
+    if format not in valid_formats:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ungueltiges Format. Erlaubt: {', '.join(valid_formats)}",
+        )
+
+    # Dokument laden
+    doc_query = select(Document).where(Document.id == str(document_id))
+    result = await db.execute(doc_query)
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dokument nicht gefunden.",
+        )
+
+    if document.company_id != current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Keine Berechtigung fuer dieses Dokument.",
+        )
+
+    # Gecachte Extraktion pruefen
+    if not document.metadata or not document.metadata.get("table_extraction_result"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Keine Tabellen-Extraktion vorhanden.",
+        )
+
+    extraction_data = document.metadata["table_extraction_result"]
+    tables_data = extraction_data.get("tables", [])
+
+    if table_index < 0 or table_index >= len(tables_data):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Tabelle {table_index} nicht gefunden. Verfuegbar: 0-{len(tables_data)-1}",
+        )
+
+    # Tabelle rekonstruieren
+    from app.services.ocr.table_extraction_service import (
+        EnhancedTableCell,
+        TableColumn,
+        CellDataType,
+        TableType,
+    )
+
+    table_data = tables_data[table_index]
+
+    # Cells rekonstruieren
+    cells = []
+    for c in table_data.get("cells", []):
+        cells.append(EnhancedTableCell(
+            row=c["row"],
+            col=c["col"],
+            text=c["text"],
+            row_span=c.get("row_span", 1),
+            col_span=c.get("col_span", 1),
+            is_header=c.get("is_header", False),
+            confidence=c.get("confidence", 0.0),
+            data_type=CellDataType(c.get("data_type", "text")),
+            normalized_value=c.get("normalized_value"),
+        ))
+
+    # Columns rekonstruieren
+    columns = []
+    for col in table_data.get("columns", []):
+        columns.append(TableColumn(
+            index=col["index"],
+            header_text=col.get("header_text", ""),
+            data_type=CellDataType(col.get("data_type", "text")),
+            alignment=col.get("alignment", "left"),
+            is_numeric=col.get("is_numeric", False),
+            contains_currency=col.get("contains_currency", False),
+            avg_confidence=col.get("avg_confidence", 0.0),
+        ))
+
+    table = ExtractedTable(
+        table_id=table_data["table_id"],
+        page_number=table_data["page_number"],
+        num_rows=table_data["num_rows"],
+        num_cols=table_data["num_cols"],
+        cells=cells,
+        columns=columns,
+        has_header=table_data.get("has_header", False),
+        header_row_count=table_data.get("header_row_count", 0),
+        table_type=TableType(table_data.get("table_type", "generic")),
+        caption=table_data.get("caption"),
+        overall_confidence=table_data.get("overall_confidence", 0.0),
+    )
+
+    # Export durchfuehren
+    service = get_table_extraction_service()
+    export_format = TableExportFormat(format)
+    exported = service.export_table(table, export_format, include_metadata)
+
+    # Content-Type und Filename bestimmen
+    content_types = {
+        "markdown": "text/markdown",
+        "csv": "text/csv",
+        "json": "application/json",
+        "json_ld": "application/ld+json",
+        "html": "text/html",
+        "excel_compatible": "text/csv",
+    }
+
+    extensions = {
+        "markdown": "md",
+        "csv": "csv",
+        "json": "json",
+        "json_ld": "json",
+        "html": "html",
+        "excel_compatible": "csv",
+    }
+
+    content_type = content_types.get(format, "text/plain")
+    extension = extensions.get(format, "txt")
+    filename = f"table_{table_index}_doc_{document_id}.{extension}"
+
+    return Response(
+        content=exported,
+        media_type=content_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
+
+
+@router.post(
+    "/upload/extract-tables",
+    summary="Tabellen aus Upload extrahieren",
+    description="Extrahiert Tabellen aus einer hochgeladenen Datei ohne Speicherung.",
+)
+async def extract_upload_tables(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user),
+) -> Dict[str, Any]:
+    """
+    Extrahiert Tabellen aus einer hochgeladenen Datei.
+
+    Die Datei wird nicht gespeichert - nur temporaer verarbeitet.
+    Unterstuetzt: PDF, PNG, JPG
+    """
+    from app.services.ocr.table_extraction_service import (
+        TableExtractionService,
+        get_table_extraction_service,
+    )
+    from app.agents.ocr.docling_layout_analyzer import get_docling_layout_analyzer
+    import time
+
+    # Dateiformat pruefen
+    allowed_extensions = [".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".tif"]
+    file_ext = "." + file.filename.split(".")[-1].lower() if file.filename and "." in file.filename else ""
+
+    if file_ext not in allowed_extensions:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Nicht unterstuetztes Dateiformat. Erlaubt: {', '.join(allowed_extensions)}",
+        )
+
+    # Datei lesen
+    content = await file.read()
+
+    if len(content) > 50 * 1024 * 1024:  # 50MB Limit
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Datei zu gross. Maximum: 50MB.",
+        )
+
+    start_time = time.time()
+
+    # Layout-Analyse durchfuehren
+    try:
+        layout_analyzer = get_docling_layout_analyzer()
+        layout = await layout_analyzer.analyze_layout(content)
+    except Exception as e:
+        logger.error(
+            "layout_analysis_failed",
+            filename=file.filename,
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Layout-Analyse fehlgeschlagen.",
+        )
+
+    # Tabellen extrahieren
+    service = get_table_extraction_service()
+    temp_doc_id = f"upload_{current_user.id}_{int(time.time())}"
+
+    extraction_result = await service.extract_tables_from_document(
+        document_id=temp_doc_id,
+        layout=layout,
+    )
+
+    processing_time = int((time.time() - start_time) * 1000)
+
+    logger.info(
+        "upload_tables_extracted",
+        filename=file.filename,
+        table_count=extraction_result.total_tables,
+        processing_time_ms=processing_time,
+        user_id=str(current_user.id),
+    )
+
+    result_dict = extraction_result.to_dict()
+    result_dict["filename"] = file.filename
+    result_dict["processing_time_ms"] = processing_time
+
+    return result_dict
+
+
+@router.get(
+    "/documents/{document_id}/tables/export-all",
+    summary="Alle Tabellen exportieren",
+    description="Exportiert alle Tabellen eines Dokuments in einem Format.",
+)
+async def export_all_document_tables(
+    document_id: UUID,
+    format: str = Query(
+        default="markdown",
+        description="Export-Format: markdown, csv, json, json_ld, html",
+    ),
+    include_metadata: bool = Query(
+        default=False,
+        description="Metadaten im Export inkludieren",
+    ),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Response:
+    """
+    Exportiert alle Tabellen eines Dokuments.
+    """
+    from app.services.ocr.table_extraction_service import (
+        TableExportFormat,
+        TableExtractionResult,
+        ExtractedTable,
+        EnhancedTableCell,
+        TableColumn,
+        CellDataType,
+        TableType,
+        get_table_extraction_service,
+    )
+
+    # Format validieren
+    valid_formats = ["markdown", "csv", "json", "json_ld", "html"]
+    if format not in valid_formats:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ungueltiges Format. Erlaubt: {', '.join(valid_formats)}",
+        )
+
+    # Dokument laden
+    doc_query = select(Document).where(Document.id == str(document_id))
+    result = await db.execute(doc_query)
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dokument nicht gefunden.",
+        )
+
+    if document.company_id != current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Keine Berechtigung fuer dieses Dokument.",
+        )
+
+    # Gecachte Extraktion pruefen
+    if not document.metadata or not document.metadata.get("table_extraction_result"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Keine Tabellen-Extraktion vorhanden.",
+        )
+
+    extraction_data = document.metadata["table_extraction_result"]
+
+    # TableExtractionResult rekonstruieren
+    tables: List[ExtractedTable] = []
+    for table_data in extraction_data.get("tables", []):
+        cells = []
+        for c in table_data.get("cells", []):
+            cells.append(EnhancedTableCell(
+                row=c["row"],
+                col=c["col"],
+                text=c["text"],
+                row_span=c.get("row_span", 1),
+                col_span=c.get("col_span", 1),
+                is_header=c.get("is_header", False),
+                confidence=c.get("confidence", 0.0),
+                data_type=CellDataType(c.get("data_type", "text")),
+                normalized_value=c.get("normalized_value"),
+            ))
+
+        columns = []
+        for col in table_data.get("columns", []):
+            columns.append(TableColumn(
+                index=col["index"],
+                header_text=col.get("header_text", ""),
+                data_type=CellDataType(col.get("data_type", "text")),
+                alignment=col.get("alignment", "left"),
+                is_numeric=col.get("is_numeric", False),
+                contains_currency=col.get("contains_currency", False),
+                avg_confidence=col.get("avg_confidence", 0.0),
+            ))
+
+        tables.append(ExtractedTable(
+            table_id=table_data["table_id"],
+            page_number=table_data["page_number"],
+            num_rows=table_data["num_rows"],
+            num_cols=table_data["num_cols"],
+            cells=cells,
+            columns=columns,
+            has_header=table_data.get("has_header", False),
+            header_row_count=table_data.get("header_row_count", 0),
+            table_type=TableType(table_data.get("table_type", "generic")),
+            caption=table_data.get("caption"),
+            overall_confidence=table_data.get("overall_confidence", 0.0),
+        ))
+
+    extraction_result = TableExtractionResult(
+        document_id=extraction_data["document_id"],
+        tables=tables,
+        total_tables=extraction_data["total_tables"],
+        page_count=extraction_data["page_count"],
+        extraction_timestamp=extraction_data["extraction_timestamp"],
+        processing_time_ms=extraction_data["processing_time_ms"],
+        metadata=extraction_data.get("metadata", {}),
+    )
+
+    # Export durchfuehren
+    service = get_table_extraction_service()
+    export_format = TableExportFormat(format)
+    exported = service.export_all_tables(extraction_result, export_format, include_metadata)
+
+    # Content-Type bestimmen
+    content_types = {
+        "markdown": "text/markdown",
+        "csv": "text/csv",
+        "json": "application/json",
+        "json_ld": "application/ld+json",
+        "html": "text/html",
+    }
+
+    extensions = {
+        "markdown": "md",
+        "csv": "csv",
+        "json": "json",
+        "json_ld": "json",
+        "html": "html",
+    }
+
+    content_type = content_types.get(format, "text/plain")
+    extension = extensions.get(format, "txt")
+    filename = f"tables_doc_{document_id}.{extension}"
+
+    return Response(
+        content=exported,
+        media_type=content_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
+
+
+# =============================================================================
+# Cross-Backend Consistency Endpoints (Phase 2.4)
+# =============================================================================
+
+
+class InconsistentRegionResponse(BaseModel):
+    """Response-Model fuer inkonsistente Region."""
+    region_id: str
+    region_type: str
+    start_position: int
+    end_position: int
+    backend_values: Dict[str, str]
+    backend_confidences: Dict[str, float]
+    agreement_score: float
+    consistency_level: str
+    review_priority: str
+    suggested_value: str
+    suggestion_confidence: float
+    context_before: str
+    context_after: str
+    is_critical_field: bool
+
+
+class ConsistencyReportResponse(BaseModel):
+    """Response-Model fuer Consistency Report."""
+    document_id: str
+    backends_used: List[str]
+    overall_agreement: float
+    consistency_level: str
+    total_regions_analyzed: int
+    inconsistent_region_count: int
+    inconsistent_regions: List[InconsistentRegionResponse]
+    high_priority_count: int
+    needs_third_backend: bool
+    third_backend_triggered: bool
+    third_backend_name: Optional[str] = None
+    final_text: str
+    final_confidence: float
+    processing_time_ms: int
+    recommendations: List[str]
+    analysis_timestamp: str
+
+
+@router.post(
+    "/documents/{document_id}/check-consistency",
+    response_model=ConsistencyReportResponse,
+    summary="Cross-Backend Konsistenz pruefen",
+    description="Vergleicht OCR-Ergebnisse verschiedener Backends und identifiziert Inkonsistenzen.",
+)
+async def check_document_consistency(
+    document_id: UUID,
+    trigger_third_backend: bool = Query(
+        default=False,
+        description="Drittes Backend bei niedriger Konsistenz automatisch triggern",
+    ),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Dict[str, Any]:
+    """
+    Prueft die Konsistenz zwischen OCR-Backend-Ergebnissen.
+
+    - Token-Level Vergleich zwischen Backends
+    - Identifiziert inkonsistente Regionen
+    - Flaggt kritische Felder (Betraege, Daten)
+    - Optional: Triggert drittes Backend bei niedriger Konsistenz
+    """
+    from app.services.ocr.cross_backend_consistency_service import (
+        get_cross_backend_consistency_service,
+    )
+    from app.services.ensemble_voting import OCRResult
+
+    # Dokument laden
+    doc_query = select(Document).where(Document.id == str(document_id))
+    result = await db.execute(doc_query)
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dokument nicht gefunden.",
+        )
+
+    if document.company_id != current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Keine Berechtigung fuer dieses Dokument.",
+        )
+
+    # OCR-Ergebnisse aus Metadata laden
+    if not document.metadata:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Keine OCR-Ergebnisse vorhanden.",
+        )
+
+    ocr_results_data = document.metadata.get("ocr_results", [])
+    if not ocr_results_data:
+        # Fallback: Einzelnes Ergebnis
+        if document.metadata.get("ocr_text"):
+            ocr_results_data = [{
+                "backend": document.metadata.get("ocr_backend", "unknown"),
+                "text": document.metadata.get("ocr_text", ""),
+                "confidence": document.metadata.get("ocr_confidence", 0.0),
+            }]
+
+    if len(ocr_results_data) < 2:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mindestens 2 OCR-Ergebnisse von verschiedenen Backends erforderlich.",
+        )
+
+    # Konvertiere zu OCRResult
+    ocr_results = [
+        OCRResult(
+            backend=r.get("backend", "unknown"),
+            text=r.get("text", ""),
+            confidence=r.get("confidence", 0.0),
+        )
+        for r in ocr_results_data
+    ]
+
+    # Consistency Service
+    service = get_cross_backend_consistency_service(db=db)
+
+    # Analyse durchfuehren
+    report = await service.analyze_consistency(
+        document_id=str(document_id),
+        results=ocr_results,
+        trigger_third_backend=trigger_third_backend,
+    )
+
+    # Report in Metadata speichern
+    if document.metadata is None:
+        document.metadata = {}
+    document.metadata["consistency_report"] = report.to_dict()
+    document.metadata["consistency_checked_at"] = datetime.now(timezone.utc).isoformat()
+
+    await db.commit()
+
+    logger.info(
+        "consistency_check_complete",
+        document_id=str(document_id),
+        agreement=round(report.overall_agreement, 3),
+        level=report.consistency_level.value,
+        inconsistent_count=len(report.inconsistent_regions),
+        user_id=str(current_user.id),
+    )
+
+    return report.to_dict()
+
+
+@router.get(
+    "/documents/{document_id}/consistency-report",
+    response_model=ConsistencyReportResponse,
+    summary="Konsistenz-Report abrufen",
+    description="Ruft den gecachten Konsistenz-Report eines Dokuments ab.",
+)
+async def get_consistency_report(
+    document_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Dict[str, Any]:
+    """Ruft bereits erstellten Konsistenz-Report ab."""
+    # Dokument laden
+    doc_query = select(Document).where(Document.id == str(document_id))
+    result = await db.execute(doc_query)
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dokument nicht gefunden.",
+        )
+
+    if document.company_id != current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Keine Berechtigung fuer dieses Dokument.",
+        )
+
+    if not document.metadata or not document.metadata.get("consistency_report"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Kein Konsistenz-Report vorhanden. Bitte zuerst /check-consistency aufrufen.",
+        )
+
+    return document.metadata["consistency_report"]
+
+
+@router.get(
+    "/documents/{document_id}/inconsistent-regions",
+    summary="Inkonsistente Regionen abrufen",
+    description="Ruft Regionen mit Inkonsistenzen fuer manuelles Review ab.",
+)
+async def get_inconsistent_regions(
+    document_id: UUID,
+    min_priority: str = Query(
+        default="normal",
+        description="Minimale Prioritaet: immediate, high, normal, low",
+    ),
+    critical_only: bool = Query(
+        default=False,
+        description="Nur kritische Felder (Betraege, Daten)",
+    ),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Dict[str, Any]:
+    """
+    Ruft inkonsistente Regionen fuer Review ab.
+
+    Filtert nach:
+    - Minimale Prioritaet (immediate > high > normal > low)
+    - Kritische Felder (Betraege, Daten, IBANs)
+    """
+    from app.services.ocr.cross_backend_consistency_service import ReviewPriority
+
+    # Prioritaet validieren
+    valid_priorities = ["immediate", "high", "normal", "low"]
+    if min_priority not in valid_priorities:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ungueltige Prioritaet. Erlaubt: {', '.join(valid_priorities)}",
+        )
+
+    # Dokument laden
+    doc_query = select(Document).where(Document.id == str(document_id))
+    result = await db.execute(doc_query)
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dokument nicht gefunden.",
+        )
+
+    if document.company_id != current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Keine Berechtigung fuer dieses Dokument.",
+        )
+
+    if not document.metadata or not document.metadata.get("consistency_report"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Kein Konsistenz-Report vorhanden.",
+        )
+
+    report = document.metadata["consistency_report"]
+    regions = report.get("inconsistent_regions", [])
+
+    # Nach Prioritaet filtern
+    priority_order = ["immediate", "high", "normal", "low"]
+    min_idx = priority_order.index(min_priority)
+    allowed_priorities = set(priority_order[:min_idx + 1])
+
+    filtered = [
+        r for r in regions
+        if r.get("review_priority") in allowed_priorities
+    ]
+
+    # Optional: Nur kritische Felder
+    if critical_only:
+        filtered = [r for r in filtered if r.get("is_critical_field", False)]
+
+    return {
+        "document_id": str(document_id),
+        "total_inconsistent": len(report.get("inconsistent_regions", [])),
+        "filtered_count": len(filtered),
+        "filter_applied": {
+            "min_priority": min_priority,
+            "critical_only": critical_only,
+        },
+        "regions": filtered,
+    }
+
+
+@router.post(
+    "/compare-backends",
+    summary="Backend-Texte vergleichen",
+    description="Vergleicht Texte verschiedener Backends direkt.",
+)
+async def compare_backend_texts(
+    texts: List[str] = Body(
+        ...,
+        description="Liste von 2-4 Texten verschiedener Backends",
+        min_length=2,
+        max_length=4,
+    ),
+    backend_names: Optional[List[str]] = Body(
+        default=None,
+        description="Optionale Backend-Namen",
+    ),
+    current_user: User = Depends(get_current_active_user),
+) -> Dict[str, Any]:
+    """
+    Vergleicht OCR-Texte verschiedener Backends.
+
+    Nuetzlich fuer:
+    - Schnelle Konsistenzpruefung ohne Dokument-Upload
+    - Testing und Debugging
+    - API-Integration
+    """
+    from app.services.ocr.cross_backend_consistency_service import (
+        get_cross_backend_consistency_service,
+        calculate_backend_agreement,
+    )
+    from app.services.ensemble_voting import OCRResult
+
+    if len(texts) < 2:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mindestens 2 Texte erforderlich.",
+        )
+
+    # Backend-Namen generieren falls nicht angegeben
+    if not backend_names:
+        backend_names = [f"backend_{i}" for i in range(len(texts))]
+    elif len(backend_names) != len(texts):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Anzahl der Backend-Namen muss der Anzahl der Texte entsprechen.",
+        )
+
+    # OCRResults erstellen
+    results = [
+        OCRResult(
+            backend=name,
+            text=text,
+            confidence=1.0,  # Keine Confidence-Info verfuegbar
+        )
+        for name, text in zip(backend_names, texts)
+    ]
+
+    # Analyse durchfuehren
+    service = get_cross_backend_consistency_service()
+    report = await service.analyze_consistency(
+        document_id="direct_comparison",
+        results=results,
+        trigger_third_backend=False,
+    )
+
+    return {
+        "overall_agreement": round(report.overall_agreement, 3),
+        "consistency_level": report.consistency_level.value,
+        "backends_compared": backend_names,
+        "inconsistent_count": len(report.inconsistent_regions),
+        "final_text": report.final_text,
+        "recommendations": report.recommendations,
+        "inconsistent_regions": [r.to_dict() for r in report.inconsistent_regions[:20]],
+    }
+
+
+@router.get(
+    "/consistency/statistics",
+    summary="Konsistenz-Statistiken",
+    description="Globale Statistiken ueber Backend-Konsistenz.",
+)
+async def get_consistency_statistics(
+    days: int = Query(
+        default=7,
+        ge=1,
+        le=90,
+        description="Zeitraum in Tagen",
+    ),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Dict[str, Any]:
+    """
+    Ruft Konsistenz-Statistiken fuer den Mandanten ab.
+
+    Zeigt:
+    - Durchschnittliche Agreement-Scores
+    - Haeufige Inkonsistenz-Typen
+    - Backend-Performance-Vergleich
+    """
+    from datetime import timedelta
+
+    # Zeitbereich
+    start_date = datetime.now(timezone.utc) - timedelta(days=days)
+
+    # Dokumente mit Konsistenz-Reports laden
+    doc_query = select(Document).where(
+        Document.company_id == current_user.company_id,
+        Document.created_at >= start_date,
+    )
+    result = await db.execute(doc_query)
+    documents = result.scalars().all()
+
+    # Statistiken berechnen
+    total_checks = 0
+    agreement_scores: List[float] = []
+    level_counts: Dict[str, int] = {"high": 0, "medium": 0, "low": 0, "critical": 0}
+    region_type_counts: Dict[str, int] = {}
+    third_backend_triggers = 0
+
+    for doc in documents:
+        if doc.metadata and doc.metadata.get("consistency_report"):
+            report = doc.metadata["consistency_report"]
+            total_checks += 1
+            agreement_scores.append(report.get("overall_agreement", 0))
+
+            level = report.get("consistency_level", "unknown")
+            if level in level_counts:
+                level_counts[level] += 1
+
+            if report.get("third_backend_triggered"):
+                third_backend_triggers += 1
+
+            for region in report.get("inconsistent_regions", []):
+                rt = region.get("region_type", "unknown")
+                region_type_counts[rt] = region_type_counts.get(rt, 0) + 1
+
+    avg_agreement = sum(agreement_scores) / len(agreement_scores) if agreement_scores else 0.0
+
+    return {
+        "period_days": days,
+        "total_checks": total_checks,
+        "average_agreement": round(avg_agreement, 3),
+        "consistency_levels": level_counts,
+        "third_backend_triggers": third_backend_triggers,
+        "common_region_types": dict(sorted(
+            region_type_counts.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )[:10]),
+        "documents_needing_review": level_counts.get("critical", 0) + level_counts.get("low", 0),
+    }
+
+
+# =============================================================================
+# Formula Extraction Endpoints (Feature 19: LaTeX Formula Parsing)
+# =============================================================================
+
+
+class FormulaExtractionRequest(BaseModel):
+    """Anfrage fuer Formelextraktion aus Text."""
+
+    text: str = Field(..., min_length=1, max_length=50000, description="OCR-Text mit Formeln")
+    include_mathml: bool = Field(False, description="MathML-Konvertierung einschliessen")
+
+
+class FormulaParsRequest(BaseModel):
+    """Anfrage zum Parsen einer einzelnen Formel."""
+
+    formula: str = Field(..., min_length=1, max_length=2000, description="LaTeX-Formel")
+    context: Optional[str] = Field(None, description="Kontext-Hinweis (financial, scientific, etc.)")
+
+
+class FormulaValidationRequest(BaseModel):
+    """Anfrage zur Formel-Validierung."""
+
+    formula: str = Field(..., min_length=1, max_length=2000, description="LaTeX-Formel zum Validieren")
+
+
+class ExtractedFormulaResponse(BaseModel):
+    """Einzelne extrahierte Formel."""
+
+    original: str = Field(..., description="Original LaTeX-String")
+    formula_type: str = Field(..., description="Typ: equation, fraction, sum, integral, etc.")
+    context: str = Field(..., description="Kontext: financial, scientific, general")
+    is_valid: bool = Field(..., description="Syntax valide?")
+    confidence: float = Field(..., ge=0, le=1, description="Confidence-Score")
+    extracted_values: List[Dict[str, Any]] = Field(default_factory=list, description="Extrahierte Zahlen/Einheiten")
+    variables: List[str] = Field(default_factory=list, description="Erkannte Variablen")
+    validation_issues: List[Dict[str, Any]] = Field(default_factory=list, description="Validierungsprobleme")
+    mathml: Optional[str] = Field(None, description="MathML-Repraesentation")
+
+
+class FormulaExtractionResponse(BaseModel):
+    """Antwort fuer Formelextraktion."""
+
+    erfolg: bool = Field(..., description="War Extraktion erfolgreich?")
+    formeln_gefunden: int = Field(..., description="Anzahl gefundener Formeln")
+    formeln: List[ExtractedFormulaResponse] = Field(default_factory=list, description="Extrahierte Formeln")
+    fehler: Optional[str] = Field(None, description="Fehlermeldung bei Misserfolg")
+
+
+class FormulaValidationResponse(BaseModel):
+    """Antwort fuer Formel-Validierung."""
+
+    is_valid: bool = Field(..., description="Formel syntaktisch korrekt?")
+    issues: List[Dict[str, Any]] = Field(default_factory=list, description="Gefundene Probleme")
+    severity: str = Field(..., description="Hoechster Schweregrad: error, warning, info")
+    suggestions: List[str] = Field(default_factory=list, description="Korrekturvorschlaege")
+
+
+@router.post(
+    "/formulas/extract",
+    response_model=FormulaExtractionResponse,
+    summary="Formeln aus Text extrahieren",
+    description="Extrahiert LaTeX-Formeln aus OCR-Text und parst diese.",
+)
+async def extract_formulas(
+    request: FormulaExtractionRequest,
+    current_user: User = Depends(get_current_active_user),
+) -> FormulaExtractionResponse:
+    """
+    Extrahiert mathematische Formeln aus OCR-Text.
+
+    Erkennt:
+    - Inline-Formeln: $...$
+    - Display-Formeln: $$...$$
+    - equation-Umgebungen: \\begin{equation}...\\end{equation}
+
+    Analysiert:
+    - Formeltyp (Gleichung, Bruch, Summe, Integral, Matrix)
+    - Kontext (finanziell, wissenschaftlich, statistisch)
+    - Numerische Werte und Einheiten
+    - Syntax-Validierung
+    """
+    logger.info(
+        "formula_extraction_angefordert",
+        user_id=str(current_user.id),
+        text_length=len(request.text),
+        include_mathml=request.include_mathml,
+    )
+
+    try:
+        from app.services.ocr.formula_extraction_service import get_formula_extraction_service
+
+        service = get_formula_extraction_service()
+
+        # Formeln extrahieren
+        results = service.extract_formulas(request.text)
+
+        formeln: List[ExtractedFormulaResponse] = []
+        for result in results:
+            mathml = None
+            if request.include_mathml:
+                mathml = service.to_mathml(result.original)
+
+            formeln.append(ExtractedFormulaResponse(
+                original=result.original,
+                formula_type=result.formula_type.value,
+                context=result.context.value,
+                is_valid=result.is_valid,
+                confidence=result.confidence,
+                extracted_values=[v.to_dict() for v in result.extracted_values],
+                variables=list(result.variables),
+                validation_issues=[i.to_dict() for i in result.validation_issues],
+                mathml=mathml,
+            ))
+
+        logger.info(
+            "formula_extraction_erfolgreich",
+            user_id=str(current_user.id),
+            formeln_gefunden=len(formeln),
+        )
+
+        return FormulaExtractionResponse(
+            erfolg=True,
+            formeln_gefunden=len(formeln),
+            formeln=formeln,
+            fehler=None,
+        )
+
+    except Exception as e:
+        logger.exception(
+            "formula_extraction_fehler",
+            user_id=str(current_user.id),
+            error=str(e),
+        )
+        return FormulaExtractionResponse(
+            erfolg=False,
+            formeln_gefunden=0,
+            formeln=[],
+            fehler="Formelextraktion fehlgeschlagen. Bitte erneut versuchen.",
+        )
+
+
+@router.post(
+    "/formulas/parse",
+    response_model=ExtractedFormulaResponse,
+    summary="Einzelne Formel parsen",
+    description="Parst und analysiert eine einzelne LaTeX-Formel.",
+)
+async def parse_formula(
+    request: FormulaParsRequest,
+    current_user: User = Depends(get_current_active_user),
+) -> ExtractedFormulaResponse:
+    """
+    Parst eine einzelne LaTeX-Formel.
+
+    Analysiert:
+    - Formeltyp (Gleichung, Bruch, Summe, Integral, Matrix)
+    - Kontext (finanziell, wissenschaftlich, statistisch)
+    - Numerische Werte mit Einheiten
+    - Variablen
+    - Syntax-Validierung
+    """
+    logger.info(
+        "formula_parse_angefordert",
+        user_id=str(current_user.id),
+        formula_length=len(request.formula),
+    )
+
+    try:
+        from app.services.ocr.formula_extraction_service import get_formula_extraction_service
+
+        service = get_formula_extraction_service()
+        result = service.parse_formula(request.formula)
+        mathml = service.to_mathml(request.formula)
+
+        return ExtractedFormulaResponse(
+            original=result.original,
+            formula_type=result.formula_type.value,
+            context=result.context.value,
+            is_valid=result.is_valid,
+            confidence=result.confidence,
+            extracted_values=[v.to_dict() for v in result.extracted_values],
+            variables=list(result.variables),
+            validation_issues=[i.to_dict() for i in result.validation_issues],
+            mathml=mathml,
+        )
+
+    except Exception as e:
+        logger.exception(
+            "formula_parse_fehler",
+            user_id=str(current_user.id),
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Formel konnte nicht geparst werden.",
+        )
+
+
+@router.post(
+    "/formulas/validate",
+    response_model=FormulaValidationResponse,
+    summary="Formel-Syntax validieren",
+    description="Validiert die Syntax einer LaTeX-Formel.",
+)
+async def validate_formula(
+    request: FormulaValidationRequest,
+    current_user: User = Depends(get_current_active_user),
+) -> FormulaValidationResponse:
+    """
+    Validiert LaTeX-Formel-Syntax.
+
+    Prueft:
+    - Ausgeglichene Klammern
+    - Bekannte LaTeX-Befehle
+    - Typische OCR-Fehler (z.B. l statt f in \\frac)
+    - Strukturelle Integritaet
+    """
+    logger.info(
+        "formula_validate_angefordert",
+        user_id=str(current_user.id),
+        formula_length=len(request.formula),
+    )
+
+    try:
+        from app.services.ocr.formula_extraction_service import get_formula_extraction_service
+
+        service = get_formula_extraction_service()
+        is_valid, issues = service.validate_formula(request.formula)
+
+        # Hoechsten Schweregrad bestimmen
+        severity = "info"
+        for issue in issues:
+            if issue.severity.value == "error":
+                severity = "error"
+                break
+            elif issue.severity.value == "warning" and severity != "error":
+                severity = "warning"
+
+        # Korrekturvorschlaege generieren
+        suggestions: List[str] = []
+        for issue in issues:
+            if "OCR" in issue.message:
+                suggestions.append("Moeglicherweise OCR-Fehler - bitte Originaltext pruefen")
+            if "Klammer" in issue.message:
+                suggestions.append("Klammern pruefen und ergaenzen")
+            if "Unbekannter LaTeX-Befehl" in issue.message:
+                suggestions.append(f"Befehl pruefen: {issue.message}")
+
+        return FormulaValidationResponse(
+            is_valid=is_valid,
+            issues=[i.to_dict() for i in issues],
+            severity=severity,
+            suggestions=list(set(suggestions)),  # Deduplizieren
+        )
+
+    except Exception as e:
+        logger.exception(
+            "formula_validate_fehler",
+            user_id=str(current_user.id),
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Formel-Validierung fehlgeschlagen.",
+        )

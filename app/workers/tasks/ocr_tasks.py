@@ -1596,3 +1596,144 @@ def update_system_metrics(self) -> Dict[str, Any]:
 
     # Run async processing - use asyncio.run() for automatic cleanup
     return asyncio.run(store_metrics())
+
+
+# ==================== OCR Self-Learning Tasks ====================
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.ocr_tasks.calculate_ocr_backend_performance"
+)
+def calculate_ocr_backend_performance(
+    self,
+    backend: Optional[str] = None,
+    period_days: int = 30,
+) -> Dict[str, Any]:
+    """
+    Berechne und persistiere OCR Backend Performance-Metriken.
+
+    Aggregiert OCR-Korrekturen aus der ocr_correction_feedbacks Tabelle
+    und erstellt/aktualisiert ocr_backend_performance Records.
+
+    Args:
+        backend: Optional - Filter auf spezifisches Backend
+        period_days: Zeitraum in Tagen (default: 30)
+
+    Returns:
+        Dictionary mit Berechnungs-Ergebnissen
+    """
+    task_id = self.request.id
+
+    logger.info(
+        "ocr_backend_performance_calculation_starting",
+        task_id=task_id,
+        backend=backend,
+        period_days=period_days,
+    )
+
+    async def calculate_async() -> Dict[str, Any]:
+        from app.services.ocr.self_learning_service import get_self_learning_service
+
+        async with get_async_session_context() as session:
+            service = get_self_learning_service(session)
+
+            # Berechne Performance-Metriken
+            performance_records = await service.calculate_backend_performance(
+                backend=backend,
+                period_days=period_days,
+            )
+
+            logger.info(
+                "ocr_backend_performance_calculation_completed",
+                task_id=task_id,
+                records_created=len(performance_records),
+            )
+
+            return {
+                "success": True,
+                "task_id": task_id,
+                "records_created": len(performance_records),
+                "performance_data": performance_records,
+            }
+
+    return asyncio.run(calculate_async())
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.ocr_tasks.process_pending_ocr_feedbacks"
+)
+def process_pending_ocr_feedbacks(
+    self,
+    batch_size: int = 100,
+    backend: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Verarbeite ausstehende OCR-Feedbacks und markiere als processed.
+
+    Dieser Task wird regelmaessig ausgefuehrt um:
+    1. Pending Feedbacks zu holen
+    2. Confidence-Adjustments zu aktualisieren
+    3. Feedbacks als processed zu markieren
+
+    Args:
+        batch_size: Maximale Anzahl pro Batch
+        backend: Optional - Filter auf Backend
+
+    Returns:
+        Dictionary mit Verarbeitungs-Ergebnissen
+    """
+    task_id = self.request.id
+
+    logger.info(
+        "ocr_feedback_processing_starting",
+        task_id=task_id,
+        batch_size=batch_size,
+        backend=backend,
+    )
+
+    async def process_async() -> Dict[str, Any]:
+        from app.services.ocr.self_learning_service import get_self_learning_service
+
+        async with get_async_session_context() as session:
+            service = get_self_learning_service(session)
+
+            # Hole ausstehende Feedbacks
+            pending_feedbacks = await service.get_pending_feedbacks(
+                limit=batch_size,
+                backend=backend,
+            )
+
+            if not pending_feedbacks:
+                logger.info(
+                    "ocr_feedback_processing_no_pending",
+                    task_id=task_id,
+                )
+                return {
+                    "success": True,
+                    "task_id": task_id,
+                    "processed_count": 0,
+                    "message": "Keine ausstehenden Feedbacks",
+                }
+
+            # Markiere als verarbeitet
+            feedback_ids = [f.id for f in pending_feedbacks]
+            processed_count = await service.mark_feedbacks_processed(feedback_ids)
+
+            logger.info(
+                "ocr_feedback_processing_completed",
+                task_id=task_id,
+                processed_count=processed_count,
+            )
+
+            return {
+                "success": True,
+                "task_id": task_id,
+                "processed_count": processed_count,
+                "feedback_ids": [str(fid) for fid in feedback_ids],
+            }
+
+    return asyncio.run(process_async())

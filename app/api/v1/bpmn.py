@@ -18,10 +18,10 @@ from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db, get_current_active_user
-from app.db.models import User
-from app.db.models.bpmn import (
+from app.db.models import (
+    User,
     ProcessStatus,
-    TaskStatus,
+    BpmnTaskStatus as TaskStatus,
     TaskType,
 )
 from app.services.bpmn import (
@@ -580,8 +580,10 @@ async def get_my_tasks(
     """
     service = get_task_service(db)
 
-    # User-Gruppen aus current_user.roles oder aehnlich
-    user_groups = []  # TODO: Aus User-Rollen ableiten
+    # User-Gruppen aus User-Rollen ableiten
+    user_groups: list[str] = []
+    if current_user.roles:
+        user_groups = [role.name for role in current_user.roles]
 
     tasks, total = await service.get_user_tasks(
         user_id=current_user.id,

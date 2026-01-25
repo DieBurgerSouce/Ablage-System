@@ -993,6 +993,42 @@ def send_skonto_alerts(self, days_ahead: int = 7) -> Dict[str, Any]:
                                 priority=NotificationPriority.HIGH,
                             )
 
+                            # Sende auch Slack-Benachrichtigung fuer dringende Fristen (<=3 Tage)
+                            if days_ahead <= 3:
+                                try:
+                                    from app.services.slack_service import (
+                                        SlackService,
+                                        SlackNotificationType,
+                                        SlackMessagePriority,
+                                    )
+                                    slack = SlackService()
+                                    urgency = "KRITISCH" if days_ahead <= 1 else "DRINGEND"
+                                    slack_priority = (
+                                        SlackMessagePriority.URGENT
+                                        if days_ahead <= 1
+                                        else SlackMessagePriority.HIGH
+                                    )
+                                    await slack.send_notification(
+                                        notification_type=SlackNotificationType.SKONTO_EXPIRING,
+                                        title=f"{urgency}: Skonto-Fristen laufen ab",
+                                        message=(
+                                            f"*{len(opportunities)} Rechnung(en)* mit ablaufenden "
+                                            f"Skonto-Fristen in den naechsten {days_ahead} Tag(en).\n\n"
+                                            f"Potenzielle Ersparnis: *{user_savings:.2f} EUR*"
+                                        ),
+                                        context={
+                                            "rechnungen": len(opportunities),
+                                            "ersparnis_eur": user_savings,
+                                            "tage_voraus": days_ahead,
+                                        },
+                                        priority=slack_priority,
+                                    )
+                                except Exception as slack_error:
+                                    logger.debug(
+                                        "skonto_slack_notification_failed",
+                                        error=str(slack_error),
+                                    )
+
                     except Exception as e:
                         logger.warning(
                             "skonto_alert_user_error",
@@ -2007,13 +2043,20 @@ def execute_pending_sepa_transfers(self) -> Dict[str, Any]:
             }
 
             async with get_async_session() as db:
-                # TODO: Query fuer pending SEPA Transfers
-                # Diese wuerden aus einer SEPATransfer-Tabelle kommen
-                # nach Workflow-Freigabe
+                # FUTURE: SEPATransfer-Model muss erstellt werden:
+                # Migration: sepa_transfers Tabelle mit status, amount, iban_to, etc.
+                # Query waere:
+                # pending_transfers = await db.execute(
+                #     select(SEPATransfer)
+                #     .where(SEPATransfer.status == "pending_approval")
+                #     .where(SEPATransfer.scheduled_at <= datetime.now(timezone.utc))
+                # )
+                # Aktuell keine SEPA-Transfers vorhanden - Feature noch nicht implementiert
+                _ = db  # Suppress unused warning
 
                 logger.info(
-                    "sepa_transfer_execution_placeholder",
-                    message="SEPA Transfer Execution - Placeholder",
+                    "sepa_transfer_execution_skipped",
+                    message="SEPA Transfer Execution - Model nicht implementiert",
                 )
 
             return stats
@@ -2036,6 +2079,82 @@ def execute_pending_sepa_transfers(self) -> Dict[str, Any]:
             exc_info=True,
         )
         raise self.retry(exc=e)
+
+
+# =============================================================================
+# Bundesbank Basiszins Tasks (§288 BGB)
+# =============================================================================
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.banking_tasks.update_bundesbank_basiszins",
+    max_retries=3,
+)
+def update_bundesbank_basiszins(self) -> Dict[str, Any]:
+    """
+    Aktualisiere Bundesbank Basiszins Daten.
+
+    Holt den aktuellen Basiszins von der Bundesbank SDMX-REST API
+    und aktualisiert den Redis-Cache.
+
+    Laeuft halbjaehrlich am 1. Januar und 1. Juli, da der Basiszins
+    nur zum 1.1. und 1.7. angepasst wird (§247 BGB).
+
+    Returns:
+        Update-Statistik mit neuem Basiszins-Wert
+    """
+    logger.info(
+        "bundesbank_basiszins_update_started",
+        task_id=self.request.id,
+    )
+
+    try:
+        async def do_update():
+            from app.services.bundesbank_rate_service import (
+                bundesbank_rate_service,
+            )
+
+            # Erzwinge Neuladung des Basiszinssatzes
+            current_rate = await bundesbank_rate_service.refresh_basiszins()
+
+            # Berechne Verzugszinsen (fuer schnellen Cache-Zugriff)
+            verzugszins_b2b = await bundesbank_rate_service.get_verzugszins(
+                is_b2b=True
+            )
+            verzugszins_b2c = await bundesbank_rate_service.get_verzugszins(
+                is_b2b=False
+            )
+
+            return {
+                "success": True,
+                "current_basiszins": float(current_rate.rate) if current_rate else None,
+                "valid_from": current_rate.valid_from if current_rate else None,
+                "verzugszins_b2b": float(verzugszins_b2b),
+                "verzugszins_b2c": float(verzugszins_b2c),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+        result = run_async(do_update())
+
+        logger.info(
+            "bundesbank_basiszins_update_completed",
+            task_id=self.request.id,
+            current_basiszins=result.get("current_basiszins"),
+            verzugszins_b2b=result.get("verzugszins_b2b"),
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "bundesbank_basiszins_update_failed",
+            task_id=self.request.id,
+            error=str(e),
+            exc_info=True,
+        )
+        raise self.retry(exc=e, countdown=3600)  # Retry nach 1 Stunde
 
 
 BANKING_BEAT_SCHEDULE = {
@@ -2156,6 +2275,30 @@ BANKING_BEAT_SCHEDULE = {
         "task": "app.workers.tasks.banking_tasks.generate_dunning_daily_report",
         "schedule": {
             "hour": 18,
+            "minute": 0,
+        },
+        "options": {"queue": "default"},
+    },
+    # =================================================================
+    # BUNDESBANK BASISZINS (§247 BGB / §288 BGB)
+    # =================================================================
+    # Basiszins wird nur zum 1.1. und 1.7. angepasst
+    "banking-bundesbank-basiszins-jan": {
+        "task": "app.workers.tasks.banking_tasks.update_bundesbank_basiszins",
+        "schedule": {
+            "day_of_month": 1,
+            "month_of_year": "1",  # Januar
+            "hour": 6,
+            "minute": 0,
+        },
+        "options": {"queue": "default"},
+    },
+    "banking-bundesbank-basiszins-jul": {
+        "task": "app.workers.tasks.banking_tasks.update_bundesbank_basiszins",
+        "schedule": {
+            "day_of_month": 1,
+            "month_of_year": "7",  # Juli
+            "hour": 6,
             "minute": 0,
         },
         "options": {"queue": "default"},

@@ -24,27 +24,8 @@ export {
   useRiskMutations,
 } from './hooks/use-risk-queries';
 
-// Components
-export {
-  RiskScoreGauge,
-  RiskScoreBadge,
-  RiskIndicator,
-} from './components/RiskScoreGauge';
+// Components (use barrel export)
+export * from './components';
 
-export {
-  RiskFactorBreakdown,
-  FactorContributionChart,
-} from './components/RiskFactorBreakdown';
-
-export {
-  HighRiskEntitiesTable,
-  RiskEntityList,
-} from './components/HighRiskEntitiesTable';
-
-export {
-  RiskTrendChart,
-  RiskDistributionChart,
-  EntityRiskMiniChart,
-} from './components/RiskTrendChart';
-
-export { RiskDashboard } from './components/RiskDashboard';
+// Pages
+export { RiskProfilePage } from './pages/RiskProfilePage';

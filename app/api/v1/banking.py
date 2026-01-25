@@ -10,7 +10,8 @@ Alle Antworten auf Deutsch.
 """
 
 from datetime import datetime, date
-from typing import List, Optional
+from decimal import Decimal
+from typing import List, Optional, Any, Dict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile, File, Form, Query, status, Request
@@ -33,6 +34,18 @@ from app.services.banking.dunning_service import DunningService, DunningAction
 from app.services.banking.aging_report_service import AgingReportService
 from app.services.banking.mahn_task_service import MahnTaskService
 from app.services.banking.dunning_stage_service import DunningStageConfigService
+from app.services.banking.payment_automation_service import (
+    PaymentAutomationService,
+    get_payment_automation_service,
+    PaymentPriority,
+    PaymentStrategy,
+    PaymentBatchStatus,
+    SuggestionReason,
+    PaymentSuggestion,
+    PaymentBatch,
+    PaymentSchedule,
+    AutomationConfig,
+)
 from app.services.banking.models import (
     BankAccountCreate,
     BankAccountUpdate,
@@ -93,6 +106,10 @@ from app.services.banking.models import (
     B2BPauschaleClaimResponse,
     VerzugszinsenCalculation,
     ContactMethod,
+    # Auto-Mahnlauf Schemas
+    AutoDunningSettingsResponse,
+    AutoDunningSettingsUpdate,
+    AutomaticDunningAction,
 )
 
 logger = structlog.get_logger(__name__)
@@ -111,6 +128,8 @@ aging_router = APIRouter(prefix="/banking/aging", tags=["Banking - Altersanalyse
 mahn_tasks_router = APIRouter(prefix="/banking/mahn-tasks", tags=["Banking - Mahnaufgaben"])
 dunning_settings_router = APIRouter(prefix="/banking/settings", tags=["Banking - Mahneinstellungen"])
 customer_dunning_router = APIRouter(prefix="/banking/customers", tags=["Banking - Kundeneinstellungen"])
+# Phase 5.4: Payment Automation Router
+payment_automation_router = APIRouter(prefix="/banking/payment-automation", tags=["Banking - Zahlungsautomation"])
 
 # Service instances
 account_service = AccountService()
@@ -125,6 +144,8 @@ aging_report_service = AgingReportService()
 # Neue Mahnungswesen Services
 mahn_task_service = MahnTaskService()
 dunning_stage_service = DunningStageConfigService()
+# Phase 5.4: Payment Automation Service
+payment_automation_service = PaymentAutomationService()
 
 
 # ==================== SECURITY: File Upload Validation ====================
@@ -1932,9 +1953,9 @@ async def get_dunning_history(
     description="Setzt einen Mahnstopp (z.B. bei Reklamation)."
 )
 async def set_mahnstopp(
-    http_request: Request,  # SECURITY FIX 28-7: Required for rate limiter (renamed to avoid conflict)
+    request: Request,  # Required for rate limiter
     dunning_id: UUID,
-    request: MahnstoppSetRequest,
+    body: MahnstoppSetRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> DunningRecordResponse:
@@ -1944,8 +1965,8 @@ async def set_mahnstopp(
             db=db,
             user_id=current_user.id,
             dunning_id=dunning_id,
-            reason=request.reason,
-            until_date=request.until_date,
+            reason=body.reason,
+            until_date=body.until_date,
         )
     except ValueError as e:
         logger.warning(
@@ -2140,9 +2161,9 @@ async def calculate_verzugszinsen(
     description="Protokolliert einen Telefonkontakt zum Mahnvorgang."
 )
 async def log_phone_call(
-    http_request: Request,  # SECURITY FIX 28-7: Required for rate limiter (renamed to avoid conflict)
+    request: Request,  # Required for rate limiter
     dunning_id: UUID,
-    request: PhoneCallLogCreate,
+    body: PhoneCallLogCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> PhoneCallLogResponse:
@@ -2152,13 +2173,13 @@ async def log_phone_call(
             db=db,
             user_id=current_user.id,
             dunning_record_id=dunning_id,
-            contact_name=request.contact_name,
-            phone_number=request.phone_number,
-            outcome=request.outcome.value,
-            notes=request.notes,
-            follow_up_required=request.follow_up_required,
-            follow_up_date=request.follow_up_date,
-            follow_up_notes=request.follow_up_notes,
+            contact_name=body.contact_name,
+            phone_number=body.phone_number,
+            outcome=body.outcome.value,
+            notes=body.notes,
+            follow_up_required=body.follow_up_required,
+            follow_up_date=body.follow_up_date,
+            follow_up_notes=body.follow_up_notes,
         )
     except ValueError as e:
         logger.warning(
@@ -2206,8 +2227,8 @@ async def get_phone_calls(
     description="Eskaliert mehrere Mahnvorgaenge gleichzeitig."
 )
 async def bulk_escalate_dunnings(
-    http_request: Request,  # SECURITY FIX 28-7: Required for rate limiter (renamed to avoid conflict)
-    request: BulkEscalateRequest,
+    request: Request,  # Required for rate limiter
+    body: BulkEscalateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> BulkEscalateResponse:
@@ -2215,8 +2236,8 @@ async def bulk_escalate_dunnings(
     return await dunning_service.bulk_escalate(
         db=db,
         user_id=current_user.id,
-        dunning_ids=request.dunning_ids,
-        notes=request.notes,
+        dunning_ids=body.dunning_ids,
+        notes=body.notes,
     )
 
 
@@ -2235,6 +2256,401 @@ async def get_dunnings_with_mahnstopp(
         db=db,
         user_id=current_user.id,
     )
+
+
+# ==================== Mahnbrief PDF Endpoints ====================
+
+
+@dunning_router.get(
+    "/{dunning_id}/letter/preview",
+    summary="Mahnbrief-Vorschau (HTML)",
+    description="Generiert eine HTML-Vorschau des Mahnbriefs fuer die angegebene Mahnstufe."
+)
+async def preview_dunning_letter(
+    dunning_id: UUID,
+    dunning_level: int = Query(..., ge=1, le=4, description="Mahnstufe (1-4)"),
+    is_b2b: bool = Query(True, description="B2B-Kunde (9% Verzugszins) oder B2C (5%)"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Response:
+    """
+    Generiert eine HTML-Vorschau des Mahnbriefs.
+
+    Nuetzlich fuer:
+    - Vorab-Pruefung vor PDF-Generierung
+    - Anzeige im Browser
+
+    **Mahnstufen:**
+    - 1: Freundliche Zahlungserinnerung (keine Gebuehr)
+    - 2: 1. Mahnung (5 EUR Gebuehr)
+    - 3: 2. Mahnung (10 EUR Gebuehr)
+    - 4: Letzte Mahnung (15 EUR Gebuehr)
+    """
+    from app.services.banking.dunning_letter_service import dunning_letter_service
+
+    try:
+        html_content = await dunning_letter_service.generate_letter(
+            db=db,
+            dunning_record_id=dunning_id,
+            dunning_level=dunning_level,
+            is_b2b=is_b2b,
+            output_format="html",
+        )
+
+        return Response(
+            content=html_content,
+            media_type="text/html; charset=utf-8",
+        )
+
+    except ValueError as e:
+        logger.warning(
+            "dunning_letter_preview_failed",
+            dunning_id=str(dunning_id),
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Mahnvorgang nicht gefunden: {str(e)}",
+        )
+    except RuntimeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
+
+@dunning_router.get(
+    "/{dunning_id}/letter/pdf",
+    summary="Mahnbrief als PDF",
+    description="Generiert den Mahnbrief als PDF-Download."
+)
+async def download_dunning_letter_pdf(
+    dunning_id: UUID,
+    dunning_level: int = Query(..., ge=1, le=4, description="Mahnstufe (1-4)"),
+    is_b2b: bool = Query(True, description="B2B-Kunde (9% Verzugszins) oder B2C (5%)"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Response:
+    """
+    Generiert einen Mahnbrief als PDF.
+
+    Der PDF-Download enthaelt:
+    - Professionelles Brieflayout nach DIN 5008
+    - BGB-konforme Verzugszinsberechnung
+    - Korrekte Mahngebuehren je Stufe
+    - B2B-Pauschale (40 EUR) ab Stufe 2
+
+    **Dateiname:** `mahnung_{invoice_number}_stufe{level}.pdf`
+    """
+    from app.services.banking.dunning_letter_service import dunning_letter_service
+
+    try:
+        # Hole Daten fuer Dateinamen
+        data = await dunning_letter_service.prepare_letter_data(
+            db=db,
+            dunning_record_id=dunning_id,
+            dunning_level=dunning_level,
+            is_b2b=is_b2b,
+        )
+
+        pdf_content = await dunning_letter_service.generate_letter(
+            db=db,
+            dunning_record_id=dunning_id,
+            dunning_level=dunning_level,
+            is_b2b=is_b2b,
+            output_format="pdf",
+        )
+
+        # Sanitize invoice number fuer Dateinamen
+        safe_invoice_number = "".join(
+            c if c.isalnum() or c in "-_" else "_"
+            for c in (data.invoice_number or "unknown")
+        )
+        filename = f"mahnung_{safe_invoice_number}_stufe{dunning_level}.pdf"
+
+        logger.info(
+            "dunning_letter_pdf_downloaded",
+            dunning_id=str(dunning_id),
+            dunning_level=dunning_level,
+            user_id=str(current_user.id),
+        )
+
+        return Response(
+            content=pdf_content,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+            },
+        )
+
+    except ValueError as e:
+        logger.warning(
+            "dunning_letter_pdf_failed",
+            dunning_id=str(dunning_id),
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Mahnvorgang nicht gefunden: {str(e)}",
+        )
+    except RuntimeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
+
+@limiter.limit("10/minute", key_func=get_user_identifier)
+@dunning_router.post(
+    "/letters/batch",
+    summary="Mahnbriefe im Batch generieren",
+    description="Generiert mehrere Mahnbriefe als ZIP-Archiv."
+)
+async def batch_generate_dunning_letters(
+    request: Request,  # Required for rate limiter
+    dunning_ids: List[UUID] = Query(..., description="Liste der Mahnvorgang-IDs"),
+    dunning_level: int = Query(..., ge=1, le=4, description="Mahnstufe fuer alle"),
+    is_b2b: bool = Query(True, description="B2B-Kunden"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Response:
+    """
+    Generiert mehrere Mahnbriefe als ZIP-Archiv.
+
+    Nuetzlich fuer:
+    - Massenversand per Post
+    - Archivierung
+    - Batch-Verarbeitung
+
+    **Maximale Anzahl:** 50 Mahnbriefe pro Anfrage
+    """
+    import io
+    import zipfile
+    from app.services.banking.dunning_letter_service import dunning_letter_service
+
+    if len(dunning_ids) > 50:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Maximal 50 Mahnbriefe pro Batch erlaubt.",
+        )
+
+    if len(dunning_ids) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mindestens eine Mahnvorgang-ID erforderlich.",
+        )
+
+    # Sammle alle Dunning Records
+    records = [{"id": did, "level": dunning_level, "is_b2b": is_b2b} for did in dunning_ids]
+
+    results = await dunning_letter_service.generate_batch_letters(
+        db=db,
+        dunning_records=records,
+        output_format="pdf",
+    )
+
+    # ZIP erstellen
+    zip_buffer = io.BytesIO()
+    success_count = 0
+    error_count = 0
+
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for result in results:
+            if result["content"] and not result["error"]:
+                # Versuche invoice_number zu holen
+                try:
+                    data = await dunning_letter_service.prepare_letter_data(
+                        db=db,
+                        dunning_record_id=result["id"],
+                        dunning_level=dunning_level,
+                        is_b2b=is_b2b,
+                    )
+                    safe_name = "".join(
+                        c if c.isalnum() or c in "-_" else "_"
+                        for c in (data.invoice_number or str(result["id"])[:8])
+                    )
+                except Exception:
+                    safe_name = str(result["id"])[:8]
+
+                filename = f"mahnung_{safe_name}_stufe{dunning_level}.pdf"
+                zf.writestr(filename, result["content"])
+                success_count += 1
+            else:
+                error_count += 1
+
+        # Fehlerprotokoll hinzufuegen
+        if error_count > 0:
+            error_log = "Fehlgeschlagene Mahnbriefe:\n\n"
+            for result in results:
+                if result["error"]:
+                    error_log += f"- {result['id']}: {result['error']}\n"
+            zf.writestr("_fehler.txt", error_log.encode("utf-8"))
+
+    zip_content = zip_buffer.getvalue()
+    zip_buffer.close()
+
+    logger.info(
+        "dunning_letters_batch_generated",
+        total=len(dunning_ids),
+        success=success_count,
+        errors=error_count,
+        user_id=str(current_user.id),
+    )
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"mahnbriefe_stufe{dunning_level}_{timestamp}.zip"
+
+    return Response(
+        content=zip_content,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
+
+
+@dunning_router.get(
+    "/letter-templates",
+    summary="Verfuegbare Mahnbrief-Vorlagen",
+    description="Listet alle verfuegbaren Mahnbrief-Vorlagen mit Konfiguration."
+)
+async def list_dunning_letter_templates(
+    current_user: User = Depends(get_current_active_user),
+) -> List[dict]:
+    """
+    Listet alle verfuegbaren Mahnbrief-Vorlagen.
+
+    Gibt fuer jede Mahnstufe zurueck:
+    - Name und Titel
+    - Standardgebuehr
+    - Zahlungsfrist
+    - Eskalationswarnung
+    """
+    from app.services.banking.dunning_letter_service import dunning_letter_service
+
+    templates = []
+    for level, config in dunning_letter_service.DUNNING_LEVEL_CONFIG.items():
+        templates.append({
+            "level": level,
+            "name": config["name"],
+            "title": config["title"],
+            "tone": config["tone"],
+            "fee": float(config["fee"]),
+            "payment_days": config["payment_days"],
+            "escalation_warning": config["escalation_warning"],
+            "template_file": config["template"],
+        })
+
+    return templates
+
+
+@dunning_router.get(
+    "/interest-rates",
+    summary="Aktuelle Verzugszinssaetze",
+    description="Gibt die aktuellen Verzugszinssaetze nach BGB §288 zurueck."
+)
+async def get_current_interest_rates(
+    current_user: User = Depends(get_current_active_user),
+) -> dict:
+    """
+    Gibt aktuelle Verzugszinssaetze zurueck.
+
+    Berechnung nach BGB §288:
+    - B2B: Basiszins + 9 Prozentpunkte
+    - B2C: Basiszins + 5 Prozentpunkte
+
+    Nutzt den BundesbankRateService fuer aktuelle Basiszinssaetze
+    mit Caching (6 Monate TTL) und Fallback.
+    """
+    from app.services.bundesbank_rate_service import (
+        get_current_basiszins,
+        get_verzugszins,
+    )
+
+    # Async-Abruf des aktuellen Basiszinses von der Bundesbank
+    basiszins_data = await get_current_basiszins()
+    b2b_rate = await get_verzugszins(is_b2b=True)
+    b2c_rate = await get_verzugszins(is_b2b=False)
+
+    return {
+        "base_rate": float(basiszins_data.rate),
+        "valid_from": basiszins_data.valid_from,
+        "valid_until": basiszins_data.valid_until,
+        "source": basiszins_data.source.value,
+        "b2b_rate": float(b2b_rate),
+        "b2c_rate": float(b2c_rate),
+        "legal_basis": "BGB §288",
+        "b2b_pauschale": 40.0,
+        "b2b_pauschale_legal_basis": "BGB §288 Abs. 5",
+        "note": "Basiszinssatz der Deutschen Bundesbank (halbjaehrliche Anpassung)",
+        "fetched_at": basiszins_data.fetched_at,
+    }
+
+
+@dunning_router.get(
+    "/interest-rates/history",
+    summary="Historische Basiszinssaetze",
+    description="Gibt die historischen Basiszinssaetze der Bundesbank zurueck."
+)
+async def get_interest_rate_history(
+    current_user: User = Depends(get_current_active_user),
+) -> dict:
+    """
+    Gibt historische Basiszinssaetze zurueck.
+
+    Die Bundesbank passt den Basiszins halbjaehrlich an (01.01. und 01.07.).
+    """
+    from app.services.bundesbank_rate_service import get_bundesbank_rate_service
+
+    service = get_bundesbank_rate_service()
+    history = await service.get_basiszins_history()
+
+    return {
+        "rates": [
+            {
+                "rate": float(r.rate),
+                "valid_from": r.valid_from,
+                "valid_until": r.valid_until,
+            }
+            for r in history.rates
+        ],
+        "last_updated": history.last_updated,
+        "count": len(history.rates),
+    }
+
+
+@dunning_router.get(
+    "/interest-rates/calculate",
+    summary="Verzugszins berechnen",
+    description="Berechnet Verzugszinsen fuer einen bestimmten Zeitraum."
+)
+async def calculate_interest_for_period(
+    amount: float = Query(..., gt=0, description="Rechnungsbetrag in EUR"),
+    days_overdue: int = Query(..., ge=0, description="Anzahl Verzugstage"),
+    is_b2b: bool = Query(True, description="B2B-Geschaeft (True) oder B2C (False)"),
+    current_user: User = Depends(get_current_active_user),
+) -> dict:
+    """
+    Berechnet Verzugszinsen fuer einen bestimmten Betrag und Zeitraum.
+
+    Formel: Betrag × Verzugszins × Tage / 365
+    """
+    from decimal import Decimal
+    from app.services.bundesbank_rate_service import get_verzugszins
+
+    verzugszins = await get_verzugszins(is_b2b=is_b2b)
+    daily_rate = verzugszins / Decimal("365")
+    interest_amount = Decimal(str(amount)) * daily_rate * days_overdue / Decimal("100")
+
+    return {
+        "original_amount": amount,
+        "days_overdue": days_overdue,
+        "is_b2b": is_b2b,
+        "verzugszins_rate": float(verzugszins),
+        "interest_amount": float(interest_amount.quantize(Decimal("0.01"))),
+        "total_amount": float(Decimal(str(amount)) + interest_amount.quantize(Decimal("0.01"))),
+        "legal_basis": "BGB §288 Abs. 2" if is_b2b else "BGB §288 Abs. 1",
+    }
 
 
 # ==================== Mahn-Tasks Endpoints ====================
@@ -2312,8 +2728,8 @@ async def get_mahn_task_summary(
     description="Erstellt eine neue Mahnaufgabe."
 )
 async def create_mahn_task(
-    http_request: Request,  # SECURITY FIX 28-8: Required for rate limiter (renamed to avoid conflict)
-    request: MahnTaskCreate,
+    request: Request,  # Required for rate limiter
+    body: MahnTaskCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> MahnTaskResponse:
@@ -2321,11 +2737,11 @@ async def create_mahn_task(
     try:
         return await mahn_task_service.create_task(
             db=db,
-            dunning_record_id=request.dunning_record_id,
-            task_type=request.task_type.value,
-            due_date=request.due_date,
-            assigned_user_id=request.assigned_user_id,
-            priority=request.priority,
+            dunning_record_id=body.dunning_record_id,
+            task_type=body.task_type.value,
+            due_date=body.due_date,
+            assigned_user_id=body.assigned_user_id,
+            priority=body.priority,
         )
     except ValueError as e:
         logger.warning(
@@ -2384,9 +2800,9 @@ async def assign_mahn_task(
     description="Stellt eine Aufgabe zurueck (max. 3x)."
 )
 async def snooze_mahn_task(
-    http_request: Request,  # SECURITY FIX 28-8: Required for rate limiter (renamed to avoid conflict)
+    request: Request,  # Required for rate limiter
     task_id: UUID,
-    request: MahnTaskSnoozeRequest,
+    body: MahnTaskSnoozeRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> MahnTaskResponse:
@@ -2396,8 +2812,8 @@ async def snooze_mahn_task(
             db=db,
             user_id=current_user.id,
             task_id=task_id,
-            snooze_until=request.snooze_until,
-            reason=request.reason,
+            snooze_until=body.snooze_until,
+            reason=body.reason,
         )
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
@@ -2422,9 +2838,9 @@ async def snooze_mahn_task(
     description="Schliesst eine Aufgabe ab."
 )
 async def complete_mahn_task(
-    http_request: Request,  # SECURITY FIX 28-8: Required for rate limiter (renamed to avoid conflict)
+    request: Request,  # Required for rate limiter
     task_id: UUID,
-    request: MahnTaskCompleteRequest,
+    body: MahnTaskCompleteRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> MahnTaskResponse:
@@ -2434,7 +2850,7 @@ async def complete_mahn_task(
             db=db,
             user_id=current_user.id,
             task_id=task_id,
-            notes=request.notes,
+            notes=body.notes,
         )
     except ValueError as e:
         logger.warning(
@@ -2458,8 +2874,8 @@ async def complete_mahn_task(
     description="Schliesst mehrere Aufgaben gleichzeitig ab."
 )
 async def bulk_complete_mahn_tasks(
-    http_request: Request,  # SECURITY FIX 28-8: Required for rate limiter (renamed to avoid conflict)
-    request: MahnTaskBulkCompleteRequest,
+    request: Request,  # Required for rate limiter
+    body: MahnTaskBulkCompleteRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> dict:
@@ -2468,13 +2884,13 @@ async def bulk_complete_mahn_tasks(
     failed = 0
     errors = []
 
-    for task_id in request.task_ids:
+    for task_id in body.task_ids:
         try:
             await mahn_task_service.complete_task(
                 db=db,
                 user_id=current_user.id,
                 task_id=task_id,
-                notes=request.notes,
+                notes=body.notes,
             )
             completed += 1
         except ValueError as e:
@@ -2627,6 +3043,66 @@ async def reorder_dunning_stages(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Mahnstufen konnten nicht neu geordnet werden.",
+        )
+
+
+# ==================== Auto-Mahnlauf Settings Endpoints ====================
+
+@dunning_settings_router.get(
+    "/auto-dunning",
+    response_model=AutoDunningSettingsResponse,
+    summary="Auto-Mahnlauf-Einstellungen abrufen",
+    description="Gibt die Einstellungen fuer den automatischen Mahnlauf zurueck."
+)
+async def get_auto_dunning_settings(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> AutoDunningSettingsResponse:
+    """Hole Auto-Mahnlauf-Einstellungen."""
+    try:
+        return await dunning_stage_service.get_auto_dunning_settings(
+            db=db,
+            user_id=current_user.id,
+        )
+    except Exception as e:
+        logger.error(
+            "auto_dunning_settings_get_failed",
+            user_id=str(current_user.id),
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fehler beim Abrufen der Auto-Mahnlauf-Einstellungen.",
+        )
+
+
+@dunning_settings_router.put(
+    "/auto-dunning",
+    response_model=AutoDunningSettingsResponse,
+    summary="Auto-Mahnlauf-Einstellungen aktualisieren",
+    description="Aktualisiert die Einstellungen fuer den automatischen Mahnlauf."
+)
+async def update_auto_dunning_settings(
+    request: AutoDunningSettingsUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> AutoDunningSettingsResponse:
+    """Aktualisiere Auto-Mahnlauf-Einstellungen."""
+    try:
+        return await dunning_stage_service.update_auto_dunning_settings(
+            db=db,
+            user_id=current_user.id,
+            settings=request,
+        )
+    except ValueError as e:
+        logger.warning(
+            "auto_dunning_settings_update_failed",
+            user_id=str(current_user.id),
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Auto-Mahnlauf-Einstellungen konnten nicht aktualisiert werden.",
         )
 
 
@@ -2881,6 +3357,693 @@ async def calculate_dso(
     )
 
 
+# ==================== Payment Automation Endpoints (Phase 5.4) ====================
+
+from pydantic import BaseModel, Field
+
+
+class PaymentSuggestionResponse(BaseModel):
+    """Einzelner Zahlungsvorschlag."""
+
+    invoice_id: UUID
+    entity_id: Optional[UUID] = None
+    entity_name: Optional[str] = None
+    invoice_number: Optional[str] = None
+    amount: float
+    due_date: Optional[date] = None
+    skonto_available: bool = False
+    skonto_amount: Optional[float] = None
+    skonto_deadline: Optional[date] = None
+    priority: str
+    reasons: List[str]
+    recommended_payment_date: date
+    savings_potential: float = 0.0
+
+
+class PaymentBatchResponse(BaseModel):
+    """Zahlungs-Batch Response."""
+
+    id: UUID
+    name: str
+    company_id: UUID
+    status: str
+    total_amount: float
+    payment_count: int
+    created_at: datetime
+    created_by_id: UUID
+    approved_at: Optional[datetime] = None
+    approved_by_id: Optional[UUID] = None
+    executed_at: Optional[datetime] = None
+    debtor_account_id: Optional[UUID] = None
+    sepa_file_path: Optional[str] = None
+    payment_ids: List[UUID] = []
+
+
+class PaymentScheduleEntryResponse(BaseModel):
+    """Einzelner Eintrag im Zahlungsplan."""
+
+    payment_date: date
+    total_amount: float
+    payment_count: int
+    skonto_savings: float
+    invoices: List[dict]
+
+
+class PaymentScheduleResponse(BaseModel):
+    """Gesamter Zahlungsplan."""
+
+    period_days: int
+    strategy: str
+    total_payments: int
+    total_amount: float
+    total_skonto_savings: float
+    daily_schedule: List[PaymentScheduleEntryResponse]
+
+
+class AutomationStatisticsResponse(BaseModel):
+    """Statistiken zur Zahlungsautomation."""
+
+    period_days: int
+    batches_created: int
+    batches_approved: int
+    batches_executed: int
+    total_payments: int
+    total_amount: float
+    skonto_savings: float
+    average_batch_size: float
+    approval_rate: float
+
+
+class CreateBatchRequest(BaseModel):
+    """Request zum Erstellen eines Zahlungs-Batches."""
+
+    name: str = Field(..., min_length=1, max_length=200)
+    invoice_ids: List[UUID] = Field(..., min_length=1)
+    debtor_account_id: Optional[UUID] = None
+
+
+class CreateOptimizedBatchRequest(BaseModel):
+    """Request zum Erstellen eines optimierten Batches."""
+
+    strategy: PaymentStrategy = PaymentStrategy.SKONTO_OPTIMIZED
+    max_amount: Optional[float] = None
+    debtor_account_id: Optional[UUID] = None
+
+
+class GenerateSepaRequest(BaseModel):
+    """Request zur SEPA-Dateigenerierung."""
+
+    execution_date: Optional[date] = None
+
+
+@payment_automation_router.get(
+    "/suggestions",
+    response_model=List[PaymentSuggestionResponse],
+    summary="Zahlungsvorschlaege generieren",
+    description="Generiert intelligente Zahlungsvorschlaege basierend auf offenen Rechnungen, "
+                "Skonto-Fristen und Cashflow-Optimierung."
+)
+async def get_payment_suggestions(
+    strategy: PaymentStrategy = Query(
+        PaymentStrategy.SKONTO_OPTIMIZED,
+        description="Optimierungsstrategie"
+    ),
+    lookahead_days: int = Query(14, ge=1, le=90, description="Vorausschau in Tagen"),
+    include_overdue: bool = Query(True, description="Ueberfaellige einbeziehen"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> List[PaymentSuggestionResponse]:
+    """Generiere Zahlungsvorschlaege.
+
+    Analysiert offene Rechnungen und erstellt priorisierte Vorschlaege
+    basierend auf der gewaehlten Strategie.
+    """
+    suggestions = await payment_automation_service.generate_payment_suggestions(
+        db=db,
+        company_id=current_user.company_id,
+        strategy=strategy,
+        lookahead_days=lookahead_days,
+        include_overdue=include_overdue,
+    )
+
+    return [
+        PaymentSuggestionResponse(
+            invoice_id=s.invoice_id,
+            entity_id=s.entity_id,
+            entity_name=s.entity_name,
+            invoice_number=s.invoice_number,
+            amount=float(s.payment_amount),
+            due_date=s.due_date.date() if s.due_date else None,
+            skonto_available=s.is_skonto_available,
+            skonto_amount=float(s.skonto_amount) if s.skonto_amount else None,
+            skonto_deadline=s.skonto_deadline.date() if s.skonto_deadline else None,
+            priority=s.priority.value,
+            reasons=[s.reason.value],
+            recommended_payment_date=s.suggested_payment_date or date.today(),
+            savings_potential=float(s.skonto_savings),
+        )
+        for s in suggestions
+    ]
+
+
+@payment_automation_router.get(
+    "/batches",
+    response_model=List[PaymentBatchResponse],
+    summary="Zahlungs-Batches auflisten",
+    description="Listet alle Zahlungs-Batches mit Filtermoeglichkeiten auf."
+)
+async def list_payment_batches(
+    status: Optional[PaymentBatchStatus] = Query(None, description="Nach Status filtern"),
+    limit: int = Query(20, ge=1, le=100, description="Anzahl der Ergebnisse"),
+    offset: int = Query(0, ge=0, description="Offset fuer Pagination"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> List[PaymentBatchResponse]:
+    """Liste alle Zahlungs-Batches."""
+    batches = await payment_automation_service.list_batches(
+        db=db,
+        company_id=current_user.company_id,
+        status=status,
+        limit=limit,
+        offset=offset,
+    )
+
+    return [
+        PaymentBatchResponse(
+            id=b.id,
+            name=b.name,
+            company_id=b.company_id,
+            status=b.status.value,
+            total_amount=float(b.total_amount),
+            payment_count=b.payment_count,
+            created_at=b.created_at,
+            created_by_id=b.created_by_id,
+            approved_at=b.approved_at,
+            approved_by_id=b.approved_by_id,
+            executed_at=b.executed_at,
+            debtor_account_id=b.debtor_account_id,
+            sepa_file_path=b.sepa_file_path,
+            payment_ids=b.payment_ids,
+        )
+        for b in batches
+    ]
+
+
+@payment_automation_router.post(
+    "/batches",
+    response_model=PaymentBatchResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Zahlungs-Batch erstellen",
+    description="Erstellt einen neuen Zahlungs-Batch aus ausgewaehlten Rechnungen."
+)
+async def create_payment_batch(
+    request: CreateBatchRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> PaymentBatchResponse:
+    """Erstelle einen neuen Zahlungs-Batch."""
+    # Hole Suggestions fuer die angegebenen Rechnungen
+    suggestions = await payment_automation_service.get_suggestions_for_invoices(
+        db=db,
+        company_id=current_user.company_id,
+        invoice_ids=request.invoice_ids,
+    )
+
+    if not suggestions:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Keine gueltigen Rechnungen fuer Batch gefunden.",
+        )
+
+    batch = await payment_automation_service.create_payment_batch(
+        db=db,
+        company_id=current_user.company_id,
+        suggestions=suggestions,
+        name=request.name,
+        debtor_account_id=request.debtor_account_id,
+        created_by_id=current_user.id,
+    )
+
+    return PaymentBatchResponse(
+        id=batch.id,
+        name=batch.name,
+        company_id=batch.company_id,
+        status=batch.status.value,
+        total_amount=float(batch.total_amount),
+        payment_count=batch.payment_count,
+        created_at=batch.created_at,
+        created_by_id=batch.created_by_id,
+        approved_at=batch.approved_at,
+        approved_by_id=batch.approved_by_id,
+        executed_at=batch.executed_at,
+        debtor_account_id=batch.debtor_account_id,
+        sepa_file_path=batch.sepa_file_path,
+        payment_ids=batch.payment_ids,
+    )
+
+
+@payment_automation_router.post(
+    "/batches/optimized",
+    response_model=PaymentBatchResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Optimierten Batch erstellen",
+    description="Erstellt automatisch einen optimierten Zahlungs-Batch basierend auf der Strategie."
+)
+async def create_optimized_batch(
+    request: CreateOptimizedBatchRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> PaymentBatchResponse:
+    """Erstelle einen optimierten Zahlungs-Batch."""
+    max_amount = Decimal(str(request.max_amount)) if request.max_amount else None
+
+    batch = await payment_automation_service.create_optimized_batch(
+        db=db,
+        company_id=current_user.company_id,
+        strategy=request.strategy,
+        max_amount=max_amount,
+        debtor_account_id=request.debtor_account_id,
+        created_by_id=current_user.id,
+    )
+
+    if not batch:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Keine Zahlungen fuer optimierten Batch gefunden.",
+        )
+
+    return PaymentBatchResponse(
+        id=batch.id,
+        name=batch.name,
+        company_id=batch.company_id,
+        status=batch.status.value,
+        total_amount=float(batch.total_amount),
+        payment_count=batch.payment_count,
+        created_at=batch.created_at,
+        created_by_id=batch.created_by_id,
+        approved_at=batch.approved_at,
+        approved_by_id=batch.approved_by_id,
+        executed_at=batch.executed_at,
+        debtor_account_id=batch.debtor_account_id,
+        sepa_file_path=batch.sepa_file_path,
+        payment_ids=batch.payment_ids,
+    )
+
+
+@payment_automation_router.get(
+    "/batches/{batch_id}",
+    response_model=PaymentBatchResponse,
+    summary="Batch-Details abrufen",
+    description="Ruft die Details eines spezifischen Zahlungs-Batches ab."
+)
+async def get_payment_batch(
+    batch_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> PaymentBatchResponse:
+    """Hole Details eines Zahlungs-Batches."""
+    batch = await payment_automation_service.get_batch(
+        db=db,
+        batch_id=batch_id,
+        company_id=current_user.company_id,
+    )
+
+    if not batch:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Zahlungs-Batch nicht gefunden.",
+        )
+
+    return PaymentBatchResponse(
+        id=batch.id,
+        name=batch.name,
+        company_id=batch.company_id,
+        status=batch.status.value,
+        total_amount=float(batch.total_amount),
+        payment_count=batch.payment_count,
+        created_at=batch.created_at,
+        created_by_id=batch.created_by_id,
+        approved_at=batch.approved_at,
+        approved_by_id=batch.approved_by_id,
+        executed_at=batch.executed_at,
+        debtor_account_id=batch.debtor_account_id,
+        sepa_file_path=batch.sepa_file_path,
+        payment_ids=batch.payment_ids,
+    )
+
+
+@payment_automation_router.post(
+    "/batches/{batch_id}/approve",
+    response_model=PaymentBatchResponse,
+    summary="Batch genehmigen",
+    description="Genehmigt einen Zahlungs-Batch fuer die Ausfuehrung."
+)
+async def approve_payment_batch(
+    batch_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> PaymentBatchResponse:
+    """Genehmige einen Zahlungs-Batch."""
+    batch = await payment_automation_service.get_batch(
+        db=db,
+        batch_id=batch_id,
+        company_id=current_user.company_id,
+    )
+
+    if not batch:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Zahlungs-Batch nicht gefunden.",
+        )
+
+    if batch.status != PaymentBatchStatus.PENDING:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Batch kann nicht genehmigt werden. Status: {batch.status.value}",
+        )
+
+    approved_batch = await payment_automation_service.approve_batch(
+        db=db,
+        batch=batch,
+        approver_id=current_user.id,
+    )
+
+    return PaymentBatchResponse(
+        id=approved_batch.id,
+        name=approved_batch.name,
+        company_id=approved_batch.company_id,
+        status=approved_batch.status.value,
+        total_amount=float(approved_batch.total_amount),
+        payment_count=approved_batch.payment_count,
+        created_at=approved_batch.created_at,
+        created_by_id=approved_batch.created_by_id,
+        approved_at=approved_batch.approved_at,
+        approved_by_id=approved_batch.approved_by_id,
+        executed_at=approved_batch.executed_at,
+        debtor_account_id=approved_batch.debtor_account_id,
+        sepa_file_path=approved_batch.sepa_file_path,
+        payment_ids=approved_batch.payment_ids,
+    )
+
+
+@payment_automation_router.post(
+    "/batches/{batch_id}/reject",
+    response_model=PaymentBatchResponse,
+    summary="Batch ablehnen",
+    description="Lehnt einen Zahlungs-Batch ab."
+)
+async def reject_payment_batch(
+    batch_id: UUID,
+    reason: str = Query(..., min_length=1, max_length=500, description="Ablehnungsgrund"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> PaymentBatchResponse:
+    """Lehne einen Zahlungs-Batch ab."""
+    batch = await payment_automation_service.get_batch(
+        db=db,
+        batch_id=batch_id,
+        company_id=current_user.company_id,
+    )
+
+    if not batch:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Zahlungs-Batch nicht gefunden.",
+        )
+
+    if batch.status != PaymentBatchStatus.PENDING:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Batch kann nicht abgelehnt werden. Status: {batch.status.value}",
+        )
+
+    rejected_batch = await payment_automation_service.reject_batch(
+        db=db,
+        batch=batch,
+        rejector_id=current_user.id,
+        reason=reason,
+    )
+
+    return PaymentBatchResponse(
+        id=rejected_batch.id,
+        name=rejected_batch.name,
+        company_id=rejected_batch.company_id,
+        status=rejected_batch.status.value,
+        total_amount=float(rejected_batch.total_amount),
+        payment_count=rejected_batch.payment_count,
+        created_at=rejected_batch.created_at,
+        created_by_id=rejected_batch.created_by_id,
+        approved_at=rejected_batch.approved_at,
+        approved_by_id=rejected_batch.approved_by_id,
+        executed_at=rejected_batch.executed_at,
+        debtor_account_id=rejected_batch.debtor_account_id,
+        sepa_file_path=rejected_batch.sepa_file_path,
+        payment_ids=rejected_batch.payment_ids,
+    )
+
+
+@payment_automation_router.post(
+    "/batches/{batch_id}/sepa",
+    response_model=dict,
+    summary="SEPA-Datei generieren",
+    description="Generiert eine SEPA pain.001 Datei fuer den genehmigten Batch."
+)
+async def generate_sepa_file(
+    batch_id: UUID,
+    request: GenerateSepaRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> dict:
+    """Generiere SEPA-Datei fuer einen Batch."""
+    batch = await payment_automation_service.get_batch(
+        db=db,
+        batch_id=batch_id,
+        company_id=current_user.company_id,
+    )
+
+    if not batch:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Zahlungs-Batch nicht gefunden.",
+        )
+
+    if batch.status != PaymentBatchStatus.APPROVED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="SEPA-Datei kann nur fuer genehmigte Batches erstellt werden.",
+        )
+
+    sepa_content, file_name = await payment_automation_service.generate_sepa_file(
+        db=db,
+        batch=batch,
+        execution_date=request.execution_date,
+    )
+
+    # Batch als ausgefuehrt markieren
+    batch.status = PaymentBatchStatus.EXECUTED
+    batch.executed_at = datetime.utcnow()
+    batch.sepa_file_path = file_name
+    await db.commit()
+
+    return {
+        "file_name": file_name,
+        "content": sepa_content,
+        "payment_count": batch.payment_count,
+        "total_amount": float(batch.total_amount),
+        "execution_date": (request.execution_date or date.today()).isoformat(),
+    }
+
+
+@payment_automation_router.get(
+    "/schedule",
+    response_model=PaymentScheduleResponse,
+    summary="Zahlungsplan erstellen",
+    description="Erstellt einen optimierten Zahlungsplan fuer die naechsten Tage."
+)
+async def get_payment_schedule(
+    period_days: int = Query(30, ge=7, le=90, description="Planungszeitraum in Tagen"),
+    strategy: PaymentStrategy = Query(
+        PaymentStrategy.SKONTO_OPTIMIZED,
+        description="Optimierungsstrategie"
+    ),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> PaymentScheduleResponse:
+    """Erstelle einen Zahlungsplan."""
+    schedule = await payment_automation_service.create_payment_schedule(
+        db=db,
+        company_id=current_user.company_id,
+        period_days=period_days,
+        strategy=strategy,
+    )
+
+    return PaymentScheduleResponse(
+        period_days=schedule.period_days,
+        strategy=schedule.strategy.value,
+        total_payments=schedule.total_payments,
+        total_amount=float(schedule.total_amount),
+        total_skonto_savings=float(schedule.total_skonto_savings),
+        daily_schedule=[
+            PaymentScheduleEntryResponse(
+                payment_date=entry["payment_date"],
+                total_amount=float(entry["total_amount"]),
+                payment_count=entry["payment_count"],
+                skonto_savings=float(entry["skonto_savings"]),
+                invoices=entry["invoices"],
+            )
+            for entry in schedule.daily_schedule
+        ],
+    )
+
+
+@payment_automation_router.get(
+    "/statistics",
+    response_model=AutomationStatisticsResponse,
+    summary="Statistiken abrufen",
+    description="Ruft Statistiken zur Zahlungsautomation ab."
+)
+async def get_automation_statistics(
+    days: int = Query(30, ge=7, le=365, description="Betrachtungszeitraum in Tagen"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> AutomationStatisticsResponse:
+    """Hole Statistiken zur Zahlungsautomation."""
+    stats = await payment_automation_service.get_automation_statistics(
+        db=db,
+        company_id=current_user.company_id,
+        days=days,
+    )
+
+    return AutomationStatisticsResponse(
+        period_days=stats["period_days"],
+        batches_created=stats["batches_created"],
+        batches_approved=stats["batches_approved"],
+        batches_executed=stats["batches_executed"],
+        total_payments=stats["total_payments"],
+        total_amount=float(stats["total_amount"]),
+        skonto_savings=float(stats["skonto_savings"]),
+        average_batch_size=stats["average_batch_size"],
+        approval_rate=stats["approval_rate"],
+    )
+
+
+@payment_automation_router.get(
+    "/config",
+    response_model=dict,
+    summary="Konfiguration abrufen",
+    description="Ruft die aktuelle Automationskonfiguration ab."
+)
+async def get_automation_config(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> dict:
+    """Hole Automationskonfiguration."""
+    config = await payment_automation_service.get_config(
+        db=db,
+        company_id=current_user.company_id,
+    )
+
+    return {
+        "auto_generate_on_approval": config.auto_generate_on_approval,
+        "auto_approve_threshold": float(config.auto_approve_threshold),
+        "prioritize_skonto": config.prioritize_skonto,
+        "skonto_alert_days": config.skonto_alert_days,
+        "preferred_payment_days": config.preferred_payment_days,
+        "max_batch_size": config.max_batch_size,
+        "daily_limit": float(config.daily_limit),
+    }
+
+
+@payment_automation_router.patch(
+    "/config",
+    response_model=dict,
+    summary="Konfiguration aktualisieren",
+    description="Aktualisiert die Automationskonfiguration."
+)
+async def update_automation_config(
+    auto_generate_on_approval: Optional[bool] = None,
+    auto_approve_threshold: Optional[float] = None,
+    prioritize_skonto: Optional[bool] = None,
+    skonto_alert_days: Optional[int] = Query(None, ge=1, le=30),
+    preferred_payment_days: Optional[List[int]] = None,
+    max_batch_size: Optional[int] = Query(None, ge=1, le=200),
+    daily_limit: Optional[float] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> dict:
+    """Aktualisiere Automationskonfiguration."""
+    updates = {}
+
+    if auto_generate_on_approval is not None:
+        updates["auto_generate_on_approval"] = auto_generate_on_approval
+    if auto_approve_threshold is not None:
+        updates["auto_approve_threshold"] = Decimal(str(auto_approve_threshold))
+    if prioritize_skonto is not None:
+        updates["prioritize_skonto"] = prioritize_skonto
+    if skonto_alert_days is not None:
+        updates["skonto_alert_days"] = skonto_alert_days
+    if preferred_payment_days is not None:
+        # Validiere Tage (1-31)
+        if not all(1 <= d <= 31 for d in preferred_payment_days):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Bevorzugte Zahlungstage muessen zwischen 1 und 31 liegen.",
+            )
+        updates["preferred_payment_days"] = preferred_payment_days
+    if max_batch_size is not None:
+        updates["max_batch_size"] = max_batch_size
+    if daily_limit is not None:
+        updates["daily_limit"] = Decimal(str(daily_limit))
+
+    config = await payment_automation_service.update_config(
+        db=db,
+        company_id=current_user.company_id,
+        **updates,
+    )
+
+    return {
+        "auto_generate_on_approval": config.auto_generate_on_approval,
+        "auto_approve_threshold": float(config.auto_approve_threshold),
+        "prioritize_skonto": config.prioritize_skonto,
+        "skonto_alert_days": config.skonto_alert_days,
+        "preferred_payment_days": config.preferred_payment_days,
+        "max_batch_size": config.max_batch_size,
+        "daily_limit": float(config.daily_limit),
+    }
+
+
+@payment_automation_router.get(
+    "/skonto-alerts",
+    response_model=List[dict],
+    summary="Skonto-Warnungen",
+    description="Listet Rechnungen mit bald ablaufenden Skonto-Fristen auf."
+)
+async def get_skonto_alerts(
+    days: int = Query(3, ge=1, le=14, description="Vorwarnzeit in Tagen"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> List[dict]:
+    """Hole Rechnungen mit ablaufenden Skonto-Fristen.
+
+    Gibt Alerts mit folgenden Feldern zurueck:
+    - invoice_id: Rechnungs-ID
+    - invoice_number: Rechnungsnummer
+    - entity_id: Entity-ID (optional)
+    - amount: Rechnungsbetrag
+    - skonto_percentage: Skonto-Prozentsatz
+    - skonto_deadline: Skonto-Frist
+    - days_remaining: Verbleibende Tage
+    - potential_savings: Moegliche Ersparnis
+    - urgency: Dringlichkeit (critical/warning/info)
+    - message: Meldung
+    """
+    return await payment_automation_service.get_skonto_alerts(
+        db=db,
+        company_id=current_user.company_id,
+        days=days,
+    )
+
+
 # ==================== Combined Router ====================
 
 router = APIRouter()
@@ -2896,3 +4059,5 @@ router.include_router(aging_router)
 router.include_router(mahn_tasks_router)
 router.include_router(dunning_settings_router)
 router.include_router(customer_dunning_router)
+# Phase 5.4: Payment Automation Router
+router.include_router(payment_automation_router)

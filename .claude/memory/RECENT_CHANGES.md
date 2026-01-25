@@ -1,5 +1,142 @@
 # Recent Changes
 
+## 2026-01-25
+
+### GlobalAIAssistantV2 - Conversation Persistence Integration
+
+**Vision 2.0 Feature**: KI-Finanzassistent mit vollstaendiger Konversations-Persistenz
+
+**Neue Features im Widget**:
+| Feature | Beschreibung |
+|---------|--------------|
+| **History Tab** | Dritter Tab im Finance-Modus zum Durchsuchen vergangener Konversationen |
+| **QuickFeedback** | Daumen hoch/runter Buttons auf jeder Assistenten-Nachricht |
+| **FeedbackDialog** | Detailliertes Feedback mit Sterne-Bewertung und Korrektur-Eingabe |
+| **Conversation Resume** | Vergangene Konversationen fortsetzen |
+| **Auto-Persistence** | Konversationen werden automatisch in der Datenbank gespeichert |
+
+**Geaenderte Datei**: `frontend/src/features/ai-assistant/components/GlobalAIAssistantV2.tsx`
+
+**Integration**:
+- Verwendet `usePersistentConversation` Hook fuer automatische DB-Speicherung
+- `ConversationHistory` Komponente im neuen "Verlauf" Tab
+- `QuickFeedback` in `FinanceChatMessage` Komponente
+- `FeedbackDialog` fuer detailliertes Feedback
+- Neue State-Variablen: `feedbackMessageId`, `feedbackMessageContent`
+- Neue Handlers: `handleSelectConversation`, `handleNewConversation`, `handleOpenFeedback`, `handleCloseFeedback`
+
+**TypeScript**: Kompilierung ohne Fehler
+
+---
+
+### AI Conversations Frontend Integration - Vollstaendige UI
+
+**Vision 2.0 Feature**: KI-Finanzassistent Frontend mit Persistenz
+
+| Komponente | Beschreibung |
+|------------|--------------|
+| **API Service** | `frontend/src/lib/api/services/finance-assistant.ts` erweitert |
+| **Hooks** | `frontend/src/features/ai-assistant/hooks/use-finance-assistant.ts` erweitert |
+| **ConversationHistory** | `frontend/src/features/ai-assistant/components/ConversationHistory.tsx` NEU |
+| **FeedbackDialog** | `frontend/src/features/ai-assistant/components/FeedbackDialog.tsx` NEU |
+
+**Neue API Service Functions**:
+- `createConversation()` - Konversation erstellen
+- `listConversations()` - Konversationen auflisten
+- `getConversation()` / `getConversationBySession()` - Konversation abrufen
+- `updateConversation()` / `deleteConversation()` - Konversation verwalten
+- `getConversationMessages()` - Nachrichten abrufen
+- `getConversationActions()` - Aktionen abrufen
+- `confirmConversationAction()` / `cancelConversationAction()` - Aktionen verwalten
+- `addMessageFeedback()` - Feedback hinzufuegen
+- `getConversationStats()` - Statistiken abrufen
+
+**Neue React Hooks**:
+- `useConversations()` - Liste mit Pagination und Filter
+- `usePersistentConversation()` - Einzelne Konversation mit Auto-Create
+- `useConversationMessages()` - Nachrichten laden
+- `useConversationActionsQuery()` - Aktionen mit Confirm/Cancel
+- `useMessageFeedback()` - Feedback-Mutation
+- `useConversationStats()` - Statistiken-Query
+
+**ConversationHistory Component Features**:
+- Search und Filter (aktiv/archiviert/favoriten)
+- Star/Favoriten markieren
+- Archivieren und Loeschen
+- Konversation fortsetzen
+
+**FeedbackDialog Component Features**:
+- Quick Feedback (Daumen hoch/runter)
+- Detailliertes Feedback mit Sterne-Bewertung
+- Korrektur-Eingabe fuer falsche Antworten
+- Kommentar-Feld
+
+---
+
+### AI Conversations Persistence (Migration 120) - Vollstaendige Integration
+
+**Vision 2.0 Feature**: KI-Finanzassistent Chat-Persistenz
+
+| Komponente | Beschreibung |
+|------------|--------------|
+| **Migration 120** | `alembic/versions/120_add_ai_conversations.py` |
+| **Models** | `app/db/models_ai_conversation.py` |
+| **API** | `app/api/v1/ai_conversations.py` |
+| **Service Integration** | `app/services/ai/finance_assistant_service.py` |
+| **Unit Tests** | `tests/unit/services/ai/test_finance_assistant_persistence.py` (27 Tests) |
+
+**BREAKING CHANGE**: SQLAlchemy reserved keyword Fix
+- `AIConversationMessage.metadata` umbenannt zu `extra_data`
+- In API-Responses weiterhin als `metadata` fuer Rueckwaertskompatibilitaet
+
+**Neue Tabellen**:
+- `ai_conversations` - Chat-Sessions
+- `ai_conversation_messages` - Nachrichten (User/Assistant/System)
+- `ai_conversation_actions` - Vorgeschlagene/Ausgefuehrte Aktionen
+- `ai_conversation_feedbacks` - Benutzer-Feedback
+
+**ENUMs**:
+- `ai_message_role` (user, assistant, system)
+- `ai_assistant_intent` (search, execute_action, explain, etc.)
+- `ai_action_status` (proposed, confirmed, executed, cancelled, failed)
+- `ai_feedback_type` (helpful, not_helpful, incorrect, confusing, other)
+
+**Service-Integration (NEU)**:
+
+`FinanceAssistantService` wurde erweitert um:
+- `get_or_create_conversation()` - Konversation holen/erstellen
+- `save_user_message()` - User-Nachricht persistieren
+- `save_assistant_response()` - Assistenten-Antwort persistieren
+- `save_proposed_actions()` - Aktionen speichern
+- `update_action_status()` - Aktionsstatus aktualisieren
+- `cancel_action()` - Aktion abbrechen
+- `get_pending_actions()` - Offene Aktionen abrufen
+- `load_conversation_history()` - Chat-Historie laden
+
+**process_message() Erweiterungen**:
+- `persist=True` Parameter fuer optionale Persistenz
+- Automatische Konversations-Erstellung
+- User- und Assistant-Nachrichten werden gespeichert
+- Aktionen werden als PROPOSED gespeichert
+- Automatisches Title-Generierung aus erster Nachricht
+
+**execute_action() Erweiterungen**:
+- `action_id` Parameter fuer Status-Tracking
+- Automatischer Status-Wechsel: PROPOSED → CONFIRMED → EXECUTED/FAILED
+- Fehlerbehandlung mit FAILED Status
+
+**Features**:
+- Multi-Tenant Isolation via RLS Policies
+- Benutzer- und Company-isolierte Konversationen
+- Intent-Erkennung mit Confidence-Scores
+- Aktions-Workflow mit Bestaetigungs-Mechanismus
+- Feedback-Loop fuer kontinuierliche Verbesserung
+- Vollstaendige Chat-Historie fuer Kontext-Bewahrung
+
+**API Endpoints**: 12 neue Endpoints unter `/api/v1/ai/conversations/*`
+
+---
+
 ## 2026-01-24
 
 ### Ralph Loop Session 5 - Final Critical Review

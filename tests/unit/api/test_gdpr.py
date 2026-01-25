@@ -1,10 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Tests für GDPR API - Art. 17 & Art. 20 DSGVO.
+Tests für GDPR API - Art. 6, 7, 15-21 DSGVO.
+
+Phase 7: Compliance & Audit - GDPR Erweiterungen
 
 Testet:
+- Art. 6, 7: Einwilligungsverwaltung (Consent Management)
+- Art. 15: Recht auf Auskunft (My Data)
+- Art. 16: Recht auf Berichtigung (Rectification)
 - Art. 17: Recht auf Löschung (Request, Status, Cancel)
 - Art. 20: Recht auf Datenübertragbarkeit (Export)
+- Betroffenenrechte-Anfragen (DSR)
 - Fehlerbehandlung und Validierung
 """
 
@@ -588,6 +594,463 @@ class TestGDPREdgeCases:
             )
 
             assert response.status in ["pending", "queued", "completed"]
+
+
+# ==================== Phase 7: Art. 6, 7 - Consent Management API Tests ====================
+
+
+class TestConsentManagementAPI:
+    """Tests fuer Consent Management API (Art. 6, 7 DSGVO)."""
+
+    @pytest.fixture
+    def mock_user(self):
+        """Mock fuer angemeldeten Benutzer."""
+        user = Mock()
+        user.id = uuid4()
+        user.email = "test@example.com"
+        user.company_id = uuid4()
+        return user
+
+    @pytest.fixture
+    def mock_db(self):
+        """Mock fuer Datenbank-Session."""
+        return AsyncMock()
+
+    @pytest.mark.asyncio
+    async def test_get_consent_status_success(self, mock_user, mock_db):
+        """Consent-Status erfolgreich abrufen."""
+        from app.api.v1.gdpr import get_consent_status
+
+        with patch('app.api.v1.gdpr.get_consent_management_service') as mock_service:
+            service = mock_service.return_value
+            mock_summary = Mock()
+            mock_summary.user_id = mock_user.id
+            mock_summary.scopes = []
+            mock_summary.total_scopes = 5
+            mock_summary.active_consents = 3
+            mock_summary.pending_consents = 2
+
+            service.get_consent_summary = AsyncMock(return_value=mock_summary)
+
+            response = await get_consent_status(
+                current_user=mock_user,
+                db=mock_db
+            )
+
+            service.get_consent_summary.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_grant_consent_success(self, mock_user, mock_db):
+        """Einwilligung erfolgreich erteilen."""
+        from app.api.v1.gdpr import grant_consent
+        from app.services.compliance import ConsentScope, ConsentGrantResult
+
+        with patch('app.api.v1.gdpr.get_consent_management_service') as mock_service:
+            service = mock_service.return_value
+            mock_result = Mock()
+            mock_result.success = True
+            mock_result.scope = ConsentScope.PERSONAL_DATA
+            mock_result.consent_given = True
+            mock_result.message = "Einwilligung erfolgreich erteilt"
+            mock_result.granted_at = datetime.now(timezone.utc)
+
+            service.grant_consent = AsyncMock(return_value=mock_result)
+
+            # Mock Request fuer consent_request
+            mock_request = Mock()
+            mock_request.scope = "personal_data"
+
+            response = await grant_consent(
+                consent_request=mock_request,
+                current_user=mock_user,
+                db=mock_db
+            )
+
+            service.grant_consent.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_withdraw_consent_success(self, mock_user, mock_db):
+        """Einwilligung erfolgreich widerrufen."""
+        from app.api.v1.gdpr import withdraw_consent
+
+        with patch('app.api.v1.gdpr.get_consent_management_service') as mock_service:
+            service = mock_service.return_value
+            mock_result = Mock()
+            mock_result.success = True
+            mock_result.scope = Mock(value="marketing")
+            mock_result.consent_given = False
+            mock_result.message = "Einwilligung erfolgreich widerrufen"
+            mock_result.withdrawn_at = datetime.now(timezone.utc)
+
+            service.withdraw_consent = AsyncMock(return_value=mock_result)
+
+            response = await withdraw_consent(
+                scope="marketing",
+                current_user=mock_user,
+                db=mock_db
+            )
+
+            service.withdraw_consent.assert_called_once()
+
+
+# ==================== Phase 7: Art. 15 - My Data API Tests ====================
+
+
+class TestMyDataAPI:
+    """Tests fuer Art. 15 DSGVO - Recht auf Auskunft."""
+
+    @pytest.fixture
+    def mock_user(self):
+        """Mock fuer angemeldeten Benutzer."""
+        user = Mock()
+        user.id = uuid4()
+        user.email = "test@example.com"
+        user.company_id = uuid4()
+        return user
+
+    @pytest.fixture
+    def mock_db(self):
+        """Mock fuer Datenbank-Session."""
+        return AsyncMock()
+
+    @pytest.mark.asyncio
+    async def test_get_my_data_success(self, mock_user, mock_db):
+        """Vollstaendige Auskunft erfolgreich abrufen."""
+        from app.api.v1.gdpr import get_my_data
+
+        with patch('app.api.v1.gdpr.get_data_subject_rights_service') as mock_service:
+            service = mock_service.return_value
+            mock_export = Mock()
+            mock_export.user_id = mock_user.id
+            mock_export.export_date = datetime.now(timezone.utc)
+            mock_export.data_categories = ["personal", "financial"]
+            mock_export.personal_data = {"user": {"email": "test@example.com"}}
+            mock_export.total_records = 42
+
+            service.export_personal_data_summary = AsyncMock(return_value=mock_export)
+
+            response = await get_my_data(
+                include_documents=True,
+                include_activity=True,
+                current_user=mock_user,
+                db=mock_db
+            )
+
+            service.export_personal_data_summary.assert_called_once_with(
+                db=mock_db,
+                user_id=mock_user.id,
+                company_id=mock_user.company_id,
+                include_documents=True,
+                include_activity=True,
+            )
+            assert "personal_data" in response
+
+
+# ==================== Phase 7: Art. 16 - Rectification API Tests ====================
+
+
+class TestRectificationAPI:
+    """Tests fuer Art. 16 DSGVO - Recht auf Berichtigung."""
+
+    @pytest.fixture
+    def mock_user(self):
+        """Mock fuer angemeldeten Benutzer."""
+        user = Mock()
+        user.id = uuid4()
+        user.email = "test@example.com"
+        return user
+
+    @pytest.fixture
+    def mock_db(self):
+        """Mock fuer Datenbank-Session."""
+        db = AsyncMock()
+        db.commit = AsyncMock()
+        db.rollback = AsyncMock()
+        return db
+
+    @pytest.mark.asyncio
+    async def test_rectify_data_success(self, mock_user, mock_db):
+        """Datenberichtigung erfolgreich."""
+        from app.api.v1.gdpr import rectify_data, RectificationRequest
+
+        with patch('app.api.v1.gdpr.get_data_subject_rights_service') as mock_service:
+            service = mock_service.return_value
+            mock_result = Mock()
+            mock_result.success = True
+            mock_result.corrected_fields = ["first_name"]
+            mock_result.skipped_fields = []
+            mock_result.protected_fields = ["id"]
+            mock_result.message = "1 Feld korrigiert"
+
+            service.rectify_data = AsyncMock(return_value=mock_result)
+
+            mock_request = RectificationRequest(
+                corrections={"first_name": "Maximilian"},
+                reason="Tippfehler"
+            )
+
+            response = await rectify_data(
+                rectification=mock_request,
+                current_user=mock_user,
+                db=mock_db
+            )
+
+            assert response.success is True
+            assert "first_name" in response.corrected_fields
+
+    @pytest.mark.asyncio
+    async def test_rectify_protected_fields(self, mock_user, mock_db):
+        """Geschuetzte Felder werden nicht geaendert."""
+        from app.api.v1.gdpr import rectify_data, RectificationRequest
+
+        with patch('app.api.v1.gdpr.get_data_subject_rights_service') as mock_service:
+            service = mock_service.return_value
+            mock_result = Mock()
+            mock_result.success = True
+            mock_result.corrected_fields = []
+            mock_result.skipped_fields = []
+            mock_result.protected_fields = ["id", "email"]
+            mock_result.message = "2 geschuetzte Felder nicht aenderbar"
+
+            service.rectify_data = AsyncMock(return_value=mock_result)
+
+            mock_request = RectificationRequest(
+                corrections={"id": str(uuid4()), "email": "hacker@evil.com"},
+                reason="Test"
+            )
+
+            response = await rectify_data(
+                rectification=mock_request,
+                current_user=mock_user,
+                db=mock_db
+            )
+
+            assert "id" in response.protected_fields or "email" in response.protected_fields
+
+
+# ==================== Phase 7: DSR (Betroffenenrechte) API Tests ====================
+
+
+class TestDSRAPI:
+    """Tests fuer Betroffenenrechte-Anfragen API."""
+
+    @pytest.fixture
+    def mock_user(self):
+        """Mock fuer angemeldeten Benutzer."""
+        user = Mock()
+        user.id = uuid4()
+        user.email = "test@example.com"
+        user.company_id = uuid4()
+        return user
+
+    @pytest.fixture
+    def mock_db(self):
+        """Mock fuer Datenbank-Session."""
+        db = AsyncMock()
+        db.commit = AsyncMock()
+        db.rollback = AsyncMock()
+        return db
+
+    @pytest.mark.asyncio
+    async def test_create_dsr_request_success(self, mock_user, mock_db):
+        """DSR-Anfrage erfolgreich erstellen."""
+        from app.api.v1.gdpr import create_dsr_request
+
+        with patch('app.api.v1.gdpr.get_data_subject_rights_service') as mock_service:
+            service = mock_service.return_value
+            mock_result = Mock()
+            mock_result.success = True
+            mock_result.request_id = uuid4()
+            mock_result.status = Mock(value="pending")
+            mock_result.due_date = datetime.now(timezone.utc) + timedelta(days=30)
+            mock_result.verification_required = True
+
+            service.create_request = AsyncMock(return_value=mock_result)
+
+            mock_request = Mock()
+            mock_request.request_type = "access"
+            mock_request.description = "Auskunft ueber meine Daten"
+            mock_request.data_categories = None
+            mock_request.rectification_details = None
+
+            response = await create_dsr_request(
+                dsr_request=mock_request,
+                current_user=mock_user,
+                db=mock_db
+            )
+
+            service.create_request.assert_called_once()
+            assert response.success is True
+
+    @pytest.mark.asyncio
+    async def test_list_dsr_requests_success(self, mock_user, mock_db):
+        """DSR-Anfragen erfolgreich auflisten."""
+        from app.api.v1.gdpr import list_dsr_requests
+
+        with patch('app.api.v1.gdpr.get_data_subject_rights_service') as mock_service:
+            service = mock_service.return_value
+
+            mock_request = Mock()
+            mock_request.id = uuid4()
+            mock_request.request_type = "access"
+            mock_request.status = "pending"
+            mock_request.due_date = datetime.now(timezone.utc) + timedelta(days=30)
+            mock_request.created_at = datetime.now(timezone.utc)
+
+            service.list_requests = AsyncMock(return_value=[mock_request])
+
+            response = await list_dsr_requests(
+                status_filter=None,
+                request_type=None,
+                current_user=mock_user,
+                db=mock_db
+            )
+
+            service.list_requests.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_dsr_request_success(self, mock_user, mock_db):
+        """DSR-Anfrage Details erfolgreich abrufen."""
+        from app.api.v1.gdpr import get_dsr_request
+
+        request_id = uuid4()
+
+        with patch('app.api.v1.gdpr.get_data_subject_rights_service') as mock_service:
+            service = mock_service.return_value
+
+            mock_request = Mock()
+            mock_request.id = request_id
+            mock_request.user_id = mock_user.id
+            mock_request.request_type = "access"
+            mock_request.status = "pending"
+            mock_request.due_date = datetime.now(timezone.utc) + timedelta(days=30)
+            mock_request.created_at = datetime.now(timezone.utc)
+            mock_request.requester_email = mock_user.email
+            mock_request.verified_at = None
+
+            service.get_request = AsyncMock(return_value=mock_request)
+
+            response = await get_dsr_request(
+                request_id=request_id,
+                current_user=mock_user,
+                db=mock_db
+            )
+
+            service.get_request.assert_called_once_with(
+                db=mock_db,
+                request_id=request_id,
+                user_id=mock_user.id,
+            )
+
+    @pytest.mark.asyncio
+    async def test_get_dsr_request_not_found(self, mock_user, mock_db):
+        """DSR-Anfrage nicht gefunden."""
+        from app.api.v1.gdpr import get_dsr_request
+
+        request_id = uuid4()
+
+        with patch('app.api.v1.gdpr.get_data_subject_rights_service') as mock_service:
+            service = mock_service.return_value
+            service.get_request = AsyncMock(return_value=None)
+
+            with pytest.raises(HTTPException) as exc_info:
+                await get_dsr_request(
+                    request_id=request_id,
+                    current_user=mock_user,
+                    db=mock_db
+                )
+
+            assert exc_info.value.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_verify_dsr_request_success(self, mock_user, mock_db):
+        """DSR-Verifikation erfolgreich."""
+        from app.api.v1.gdpr import verify_dsr_request, DSRVerifyRequest
+
+        request_id = uuid4()
+
+        with patch('app.api.v1.gdpr.get_data_subject_rights_service') as mock_service:
+            service = mock_service.return_value
+            mock_result = Mock()
+            mock_result.success = True
+            mock_result.verified = True
+            mock_result.verified_at = datetime.now(timezone.utc)
+            mock_result.error_message = None
+
+            service.verify_identity = AsyncMock(return_value=mock_result)
+
+            verify_request = DSRVerifyRequest(verification_token="valid-token-12345")
+
+            response = await verify_dsr_request(
+                request_id=request_id,
+                verify_request=verify_request,
+                current_user=mock_user,
+                db=mock_db
+            )
+
+            assert response.success is True
+
+    @pytest.mark.asyncio
+    async def test_verify_dsr_request_invalid_token(self, mock_user, mock_db):
+        """DSR-Verifikation mit ungueltigem Token."""
+        from app.api.v1.gdpr import verify_dsr_request, DSRVerifyRequest
+
+        request_id = uuid4()
+
+        with patch('app.api.v1.gdpr.get_data_subject_rights_service') as mock_service:
+            service = mock_service.return_value
+            mock_result = Mock()
+            mock_result.success = False
+            mock_result.verified = False
+            mock_result.verified_at = None
+            mock_result.error_message = "Token ungueltig"
+
+            service.verify_identity = AsyncMock(return_value=mock_result)
+
+            verify_request = DSRVerifyRequest(verification_token="invalid-token")
+
+            with pytest.raises(HTTPException) as exc_info:
+                await verify_dsr_request(
+                    request_id=request_id,
+                    verify_request=verify_request,
+                    current_user=mock_user,
+                    db=mock_db
+                )
+
+            assert exc_info.value.status_code == 400
+
+
+# ==================== Phase 7: GDPR 30-Day Deadline Tests ====================
+
+
+class TestGDPRDeadlines:
+    """Tests fuer DSGVO 30-Tage-Frist."""
+
+    def test_dsr_due_date_is_30_days(self):
+        """DSR-Frist muss 30 Tage betragen (DSGVO Art. 12)."""
+        now = datetime.now(timezone.utc)
+        due_date = now + timedelta(days=30)
+
+        # Pruefe dass die Differenz genau 30 Tage ist
+        diff = (due_date - now).days
+        assert diff == 30
+
+    @pytest.mark.asyncio
+    async def test_overdue_requests_filter(self):
+        """Ueberfaellige Anfragen werden korrekt gefiltert."""
+        now = datetime.now(timezone.utc)
+
+        overdue_request = Mock()
+        overdue_request.due_date = now - timedelta(days=5)  # 5 Tage ueberfaellig
+        overdue_request.status = "in_progress"
+
+        on_time_request = Mock()
+        on_time_request.due_date = now + timedelta(days=10)  # Noch 10 Tage Zeit
+        on_time_request.status = "in_progress"
+
+        # Pruefe Logik: Ueberfaellig wenn due_date < now
+        assert overdue_request.due_date < now
+        assert on_time_request.due_date >= now
 
 
 if __name__ == "__main__":

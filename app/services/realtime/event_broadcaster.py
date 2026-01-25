@@ -85,6 +85,11 @@ class RealtimeEventType(str, Enum):
     COMMENT_REPLIED = "comment.replied"
     COMMENT_REACTION = "comment.reaction"
 
+    # Widget Events (Real-time Updates - Phase 4.7)
+    WIDGET_UPDATE = "widget.update"
+    WIDGET_DATA_CHANGED = "widget.data_changed"
+    WIDGET_REFRESH_REQUIRED = "widget.refresh_required"
+
 
 @dataclass
 class RealtimeEvent:
@@ -739,6 +744,121 @@ class EventBroadcaster:
             },
             event_id=f"mention-{context_type}-{context_id}-{mentioned_user_id}",
             user_id=mentioned_user_id,  # Target the mentioned user
+            company_id=company_id,
+            priority="high",
+        )
+
+    # Widget Event Convenience Methods (Phase 4.7)
+
+    async def broadcast_widget_update(
+        self,
+        widget_type: str,
+        update_type: str = "partial",
+        data: Optional[Dict[str, Any]] = None,
+        changed_fields: Optional[List[str]] = None,
+        company_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+    ) -> None:
+        """
+        Broadcastet ein Widget-Update Event.
+
+        Args:
+            widget_type: Typ des Widgets (cashflow, dunning, etc.)
+            update_type: Art des Updates (full, partial, refresh_hint)
+            data: Optional Daten fuer das Update
+            changed_fields: Liste der geaenderten Felder
+            company_id: Optional Company-ID fuer Multi-Tenant
+            user_id: Optional User-ID fuer User-spezifische Updates
+
+        Widget Types:
+            - cashflow: Cash-Flow Prognose
+            - recent_documents: Letzte Dokumente
+            - finance_status: Finanz-Uebersicht
+            - dunning: Mahnwesen
+            - ocr_performance: OCR Leistung
+            - aging_report: Faelligkeitsanalyse
+            - skonto: Skonto-Tracking
+            - system_status: System-Status
+            - today: Heute-Widget
+            - quick_links: Schnelllinks
+            - upload: Upload-Widget
+        """
+        await self._broadcast_event(
+            event_type=RealtimeEventType.WIDGET_UPDATE,
+            payload={
+                "widget_type": widget_type,
+                "update_type": update_type,
+                "data": data or {},
+                "changed_fields": changed_fields or [],
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
+            event_id=f"widget-update-{widget_type}-{datetime.now(timezone.utc).timestamp()}",
+            user_id=user_id,
+            company_id=company_id,
+            priority="normal",
+        )
+
+    async def broadcast_widget_data_changed(
+        self,
+        widget_type: str,
+        source: str,
+        data: Optional[Dict[str, Any]] = None,
+        company_id: Optional[str] = None,
+    ) -> None:
+        """
+        Signalisiert dass sich die Daten eines Widgets geaendert haben.
+
+        Wird typischerweise von Services gesendet, wenn sich relevante Daten aendern.
+
+        Args:
+            widget_type: Typ des Widgets
+            source: Quelle der Aenderung (z.B. "invoice.paid", "transaction.imported")
+            data: Optional Kontext-Daten
+            company_id: Optional Company-ID
+        """
+        await self._broadcast_event(
+            event_type=RealtimeEventType.WIDGET_DATA_CHANGED,
+            payload={
+                "widget_type": widget_type,
+                "update_type": "partial",
+                "source": source,
+                "data": data or {},
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
+            event_id=f"widget-data-{widget_type}-{datetime.now(timezone.utc).timestamp()}",
+            user_id=None,
+            company_id=company_id,
+            priority="low",
+        )
+
+    async def broadcast_widget_refresh_required(
+        self,
+        widget_type: str,
+        reason: str,
+        company_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+    ) -> None:
+        """
+        Fordert ein sofortiges Refresh eines Widgets an.
+
+        Wird bei kritischen Aenderungen verwendet, die sofort sichtbar sein muessen.
+
+        Args:
+            widget_type: Typ des Widgets
+            reason: Grund fuer das Refresh
+            company_id: Optional Company-ID
+            user_id: Optional User-ID fuer User-spezifische Updates
+        """
+        await self._broadcast_event(
+            event_type=RealtimeEventType.WIDGET_REFRESH_REQUIRED,
+            payload={
+                "widget_type": widget_type,
+                "update_type": "full",
+                "reason": reason,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
+            event_id=f"widget-refresh-{widget_type}-{datetime.now(timezone.utc).timestamp()}",
+            user_id=user_id,
             company_id=company_id,
             priority="high",
         )

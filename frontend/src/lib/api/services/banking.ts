@@ -690,6 +690,36 @@ export const bankingService = {
         return response.data;
     },
 
+    /**
+     * Automatischen Mahnlauf durchführen
+     * @param dryRun - Wenn true, nur Vorschau ohne Ausführung (Standard: true)
+     * @returns Liste der geplanten/ausgeführten Aktionen
+     */
+    processAutomaticDunning: async (dryRun = true): Promise<AutomaticDunningAction[]> => {
+        const response = await apiClient.post<AutomaticDunningAction[]>(
+            '/banking/dunning/process-automatic',
+            null,
+            { params: { dry_run: dryRun } }
+        );
+        return response.data;
+    },
+
+    /**
+     * Automatischen Mahnlauf-Einstellungen abrufen
+     */
+    getAutoDunningSettings: async (): Promise<AutoDunningSettings> => {
+        const response = await apiClient.get<AutoDunningSettings>('/banking/settings/auto-dunning');
+        return response.data;
+    },
+
+    /**
+     * Automatischen Mahnlauf-Einstellungen aktualisieren
+     */
+    updateAutoDunningSettings: async (settings: AutoDunningSettingsUpdate): Promise<AutoDunningSettings> => {
+        const response = await apiClient.put<AutoDunningSettings>('/banking/settings/auto-dunning', settings);
+        return response.data;
+    },
+
     // ==================== Aging ====================
 
     getAgingSummary: async () => {
@@ -1295,4 +1325,79 @@ export interface CustomerDunningOverride {
     notes: string | null;
     created_at: string;
     updated_at: string;
+}
+
+// ==================== Auto-Mahnlauf Types ====================
+
+export type AutoDunningActionType = 'escalate' | 'send_reminder' | 'create_task' | 'skip';
+
+export interface AutomaticDunningAction {
+    /** ID des Mahnvorgangs */
+    dunning_id: string;
+    /** Rechnungsnummer */
+    invoice_number: string | null;
+    /** Name des Schuldners */
+    debtor_name: string | null;
+    /** Aktueller Mahnstand */
+    current_level: number;
+    /** Neuer Mahnstand (nach Aktion) */
+    new_level: number;
+    /** Typ der Aktion */
+    action_type: AutoDunningActionType;
+    /** Beschreibung der Aktion */
+    action_description: string;
+    /** Tage überfällig */
+    days_overdue: number;
+    /** Ausstehender Betrag */
+    outstanding_amount: number;
+    /** Währung */
+    currency: string;
+    /** Ob Aktion übersprungen wurde (z.B. wegen Mahnstopp) */
+    skipped: boolean;
+    /** Grund für Überspringen */
+    skip_reason: string | null;
+    /** Zeitstempel der Aktion (bei dryRun: geplant) */
+    scheduled_at: string;
+}
+
+export interface AutoDunningSettings {
+    /** Automatische Eskalation aktiviert */
+    enabled: boolean;
+    /** Uhrzeit für täglichen Mahnlauf (HH:MM) */
+    run_time: string;
+    /** Wochenenden ausschließen */
+    exclude_weekends: boolean;
+    /** Feiertage ausschließen */
+    exclude_holidays: boolean;
+    /** Automatischer Email-Versand */
+    auto_send_email: boolean;
+    /** Mindestbetrag für automatische Mahnung */
+    min_amount: number;
+    /** Maximale Mahnstufe für Automatik */
+    max_auto_level: number;
+    /** Intervalle in Tagen pro Mahnstufe */
+    level_intervals: {
+        level_1: number;
+        level_2: number;
+        level_3: number;
+    };
+    /** Letzte Ausführung */
+    last_run_at: string | null;
+    /** Nächste geplante Ausführung */
+    next_run_at: string | null;
+}
+
+export interface AutoDunningSettingsUpdate {
+    enabled?: boolean;
+    run_time?: string;
+    exclude_weekends?: boolean;
+    exclude_holidays?: boolean;
+    auto_send_email?: boolean;
+    min_amount?: number;
+    max_auto_level?: number;
+    level_intervals?: {
+        level_1?: number;
+        level_2?: number;
+        level_3?: number;
+    };
 }

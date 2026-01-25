@@ -6,18 +6,27 @@ contexts where FastAPI's dependency injection is not available.
 
 IMPORTANT: Engine is created inside async context to avoid event loop binding issues.
 For FastAPI endpoints, use AsyncSessionLocal from app.api.dependencies instead.
+
+RLS Support:
+- get_sync_session_with_rls() - Sets company context for RLS
+- enable_rls_bypass_sync() - Enables bypass for service operations
+- rls_bypass_context_sync() - Context manager for bypass
 """
 
 from contextlib import asynccontextmanager, contextmanager
 from threading import Lock
 from typing import AsyncGenerator, Generator, Optional
+from uuid import UUID
 
-from sqlalchemy import create_engine
+import structlog
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, Session
 
 from app.core.config import settings
+
+logger = structlog.get_logger(__name__)
 
 # Cached sync engine for Celery tasks - Thread-safe singleton
 _sync_engine: Optional[Engine] = None
@@ -174,6 +183,129 @@ def get_sync_session() -> Generator[Session, None, None]:
     """
     session = _get_sync_session_maker()()
     try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
+# =============================================================================
+# RLS (Row Level Security) Support for Celery Tasks
+# =============================================================================
+
+
+def set_rls_company_context_sync(session: Session, company_id: UUID) -> None:
+    """Setzt die PostgreSQL Session-Variable fuer RLS (synchron).
+
+    WICHTIG: Muss vor allen DB-Operationen in Celery Tasks aufgerufen werden,
+    wenn diese Company-spezifische Daten bearbeiten sollen.
+
+    Args:
+        session: Sync DB-Session
+        company_id: Company-ID fuer RLS-Filter
+    """
+    try:
+        # Strenge UUID-Validierung gegen SQL-Injection
+        company_id_str = str(company_id)
+        validated_uuid = UUID(company_id_str)
+
+        session.execute(
+            text("SELECT set_config('app.current_company_id', :cid, true)"),
+            {"cid": str(validated_uuid)}
+        )
+        logger.debug(
+            "rls_context_set_sync",
+            company_id=str(validated_uuid)
+        )
+    except ValueError:
+        logger.warning(
+            "rls_context_invalid_uuid_sync",
+            attempted_value=str(company_id)[:50]
+        )
+    except Exception as e:
+        logger.debug(
+            "rls_context_skip_sync",
+            reason=str(e)
+        )
+
+
+def enable_rls_bypass_sync(session: Session) -> None:
+    """Aktiviert RLS-Bypass fuer Service-Account Operationen (synchron).
+
+    WARNUNG: Nur fuer Migrations, Admin-Operationen und Cross-Tenant Tasks!
+
+    Args:
+        session: Sync DB-Session
+    """
+    try:
+        session.execute(
+            text("SELECT set_config('app.rls_bypass', 'true', true)")
+        )
+        logger.debug("rls_bypass_enabled_sync")
+    except Exception as e:
+        logger.warning("rls_bypass_enable_failed_sync", error=str(e))
+
+
+def disable_rls_bypass_sync(session: Session) -> None:
+    """Deaktiviert RLS-Bypass (synchron).
+
+    Args:
+        session: Sync DB-Session
+    """
+    try:
+        session.execute(
+            text("SELECT set_config('app.rls_bypass', 'false', true)")
+        )
+        logger.debug("rls_bypass_disabled_sync")
+    except Exception as e:
+        logger.warning("rls_bypass_disable_failed_sync", error=str(e))
+
+
+@contextmanager
+def rls_bypass_context_sync(session: Session) -> Generator[None, None, None]:
+    """Context Manager fuer RLS-Bypass in Celery Tasks (synchron).
+
+    Usage:
+        with get_sync_session() as session:
+            with rls_bypass_context_sync(session):
+                # Cross-tenant Operationen moeglich
+                ...
+            # RLS wieder aktiv
+
+    Args:
+        session: Sync DB-Session
+    """
+    try:
+        enable_rls_bypass_sync(session)
+        yield
+    finally:
+        disable_rls_bypass_sync(session)
+
+
+@contextmanager
+def get_sync_session_with_rls(company_id: UUID) -> Generator[Session, None, None]:
+    """Synchrone Session mit automatischem RLS-Context.
+
+    Convenience-Funktion fuer Celery Tasks, die nur fuer eine bestimmte
+    Company Daten verarbeiten.
+
+    Usage:
+        with get_sync_session_with_rls(company_id) as session:
+            # RLS ist automatisch aktiv fuer diese Company
+            docs = session.query(Document).all()  # Nur company_id's Docs
+
+    Args:
+        company_id: Company-ID fuer RLS-Filter
+
+    Yields:
+        Session: DB-Session mit aktivem RLS-Context
+    """
+    session = _get_sync_session_maker()()
+    try:
+        set_rls_company_context_sync(session, company_id)
         yield session
         session.commit()
     except Exception:

@@ -55,6 +55,14 @@ from app.workers.tasks.risk_scoring_tasks import (
     check_high_risk_entities_task,
     generate_risk_statistics_task,
 )
+from app.workers.tasks.chain_tasks import (
+    auto_link_document_task,
+    auto_link_all_documents_task,
+    check_chain_discrepancies_task,
+    on_ocr_completed_auto_link,
+    generate_chain_statistics_task,
+    CHAIN_BEAT_SCHEDULE,
+)
 
 __all__ = [
     # OCR tasks
@@ -105,4 +113,11 @@ __all__ = [
     "on_invoice_updated_recalculate",
     "check_high_risk_entities_task",
     "generate_risk_statistics_task",
+    # Document Chain tasks
+    "auto_link_document_task",
+    "auto_link_all_documents_task",
+    "check_chain_discrepancies_task",
+    "on_ocr_completed_auto_link",
+    "generate_chain_statistics_task",
+    "CHAIN_BEAT_SCHEDULE",
 ]

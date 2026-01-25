@@ -17,7 +17,7 @@ from sqlalchemy import select, and_, or_, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from app.db.models.bpmn import (
+from app.db.bpmn_models.bpmn import (
     ProcessTask,
     ProcessInstance,
     ProcessDefinition,

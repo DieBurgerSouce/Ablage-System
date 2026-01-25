@@ -1382,3 +1382,66 @@ export function usePaymentAnomalies(params?: {
         staleTime: STALE_TIMES.cashflow,
     });
 }
+
+// ==================== Auto-Mahnlauf Hooks ====================
+
+/**
+ * Query Keys für Auto-Mahnlauf
+ */
+export const autoMahnlaufQueryKeys = {
+    autoDunning: () => [...bankingQueryKeys.dunning(), 'auto'] as const,
+    autoDunningSettings: () => [...autoMahnlaufQueryKeys.autoDunning(), 'settings'] as const,
+    autoDunningPreview: () => [...autoMahnlaufQueryKeys.autoDunning(), 'preview'] as const,
+};
+
+/**
+ * Auto-Mahnlauf-Einstellungen abrufen
+ */
+export function useAutoDunningSettings() {
+    return useQuery({
+        queryKey: autoMahnlaufQueryKeys.autoDunningSettings(),
+        queryFn: () => bankingService.getAutoDunningSettings(),
+        staleTime: STALE_TIMES.stats,
+    });
+}
+
+/**
+ * Auto-Mahnlauf-Einstellungen aktualisieren
+ */
+export function useUpdateAutoDunningSettings() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (settings: Parameters<typeof bankingService.updateAutoDunningSettings>[0]) =>
+            bankingService.updateAutoDunningSettings(settings),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: autoMahnlaufQueryKeys.autoDunningSettings() });
+        },
+    });
+}
+
+/**
+ * Automatischen Mahnlauf-Vorschau abrufen (dry_run = true)
+ */
+export function useAutoDunningPreview() {
+    return useQuery({
+        queryKey: autoMahnlaufQueryKeys.autoDunningPreview(),
+        queryFn: () => bankingService.processAutomaticDunning(true),
+        staleTime: STALE_TIMES.dunning,
+    });
+}
+
+/**
+ * Automatischen Mahnlauf ausführen
+ */
+export function useProcessAutomaticDunning() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (dryRun = false) => bankingService.processAutomaticDunning(dryRun),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: bankingQueryKeys.dunning() });
+            queryClient.invalidateQueries({ queryKey: autoMahnlaufQueryKeys.autoDunning() });
+        },
+    });
+}

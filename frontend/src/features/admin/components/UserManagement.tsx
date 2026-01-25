@@ -350,7 +350,9 @@ export function UserManagement() {
                                 <TableCell className="text-right">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon"><MoreHorizontal className="w-4 h-4" /></Button>
+                                            <Button variant="ghost" size="icon" aria-label={`Aktionen fuer ${user.email}`}>
+                                                <MoreHorizontal className="w-4 h-4" />
+                                            </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
                                             <DropdownMenuLabel>Aktionen</DropdownMenuLabel>

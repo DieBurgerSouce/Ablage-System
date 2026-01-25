@@ -146,7 +146,7 @@ class IPBlockingMiddleware(BaseHTTPMiddleware):
 
         # 2. Prüfe Redis (falls konfiguriert)
         try:
-            from app.core.redis_client import get_redis
+            from app.core.redis_state import get_redis
 
             redis = await get_redis()
             if redis:

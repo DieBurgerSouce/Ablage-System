@@ -626,6 +626,7 @@ export function AuditLogTable({ userId, maxItems = 50 }: AuditLogTableProps) {
             className="h-9 w-9"
             onClick={() => refetch()}
             disabled={isFetching}
+            aria-label="Aktualisieren"
           >
             <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
           </Button>

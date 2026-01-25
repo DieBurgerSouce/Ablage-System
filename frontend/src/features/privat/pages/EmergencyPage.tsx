@@ -82,8 +82,23 @@ export function EmergencyPage({ spaceId: propSpaceId }: EmergencyPageProps = {})
   };
 
   const handleEditContact = async (contact: PrivatEmergencyContact) => {
-    // TODO: Implement edit dialog
-    toast.info('Bearbeiten wird implementiert');
+    try {
+      const updatedContact = await privatApi.updateEmergencyContact(contact.id, {
+        firstName: contact.firstName,
+        lastName: contact.lastName,
+        email: contact.email,
+        phone: contact.phone,
+        relationship: contact.relationship,
+        waitingPeriodDays: contact.waitingPeriodDays,
+        notes: contact.notes,
+      });
+      setContacts((prev) =>
+        prev.map((c) => (c.id === contact.id ? updatedContact : c))
+      );
+      toast.success('Vertrauensperson aktualisiert');
+    } catch (err) {
+      toast.error('Fehler beim Aktualisieren der Vertrauensperson');
+    }
   };
 
   const handleDeleteContact = async (contact: PrivatEmergencyContact) => {

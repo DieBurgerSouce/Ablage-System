@@ -21,6 +21,12 @@ from app.core.security import decode_token, verify_token_type, extract_user_id_f
 from app.db.models import User
 from app.services.user_service import UserService
 
+# Re-export company context functions for convenient access
+from app.middleware.company_context import get_current_company_id
+
+# Alias for backwards compatibility (used in alerts.py)
+get_company_id = get_current_company_id
+
 
 # ==================== Database Dependencies ====================
 

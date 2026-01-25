@@ -40,6 +40,7 @@ class DocumentType(str, Enum):
     DOCUMENT = "document"  # Generic document (default for uncategorized)
     INVOICE = "invoice"
     ORDER = "order"
+    OFFER = "offer"  # Angebote
     CONTRACT = "contract"
     DELIVERY_NOTE = "delivery_note"
     RECEIPT = "receipt"

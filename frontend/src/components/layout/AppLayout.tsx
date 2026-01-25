@@ -3,7 +3,7 @@ import { Toaster } from '@/components/ui/toaster'
 import { Breadcrumbs } from '@/components/ui/breadcrumb'
 import { SessionTimeoutWarning } from '@/components/SessionTimeoutWarning'
 import { MobileSidebarProvider, useMobileSidebar } from '@/context/MobileSidebarContext'
-import { GlobalAIAssistant } from '@/features/ai-assistant'
+import { GlobalAIAssistantV2 as GlobalAIAssistant } from '@/features/ai-assistant'
 import { Menu } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -35,7 +35,11 @@ function AppLayoutInner({ children, id }: { children: React.ReactNode; id?: stri
             </div>
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col overflow-hidden relative w-full">
+            <main
+                className="flex-1 flex flex-col overflow-hidden relative w-full"
+                tabIndex={-1}
+                aria-label="Hauptinhalt"
+            >
                 {/* Mobile Header with Hamburger + Breadcrumbs */}
                 <div className="flex-none sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-white/5 px-4 md:px-6 py-3">
                     <div className="flex items-center gap-3">

@@ -1012,6 +1012,68 @@ class MahnlaufResult(BaseModel):
 
 
 # =============================================================================
+# AUTO-MAHNLAUF SETTINGS SCHEMAS
+# =============================================================================
+
+class AutoDunningActionType(str, Enum):
+    """Typ der automatischen Mahnlauf-Aktion."""
+    ESCALATE = "escalate"
+    SEND_REMINDER = "send_reminder"
+    CREATE_TASK = "create_task"
+    SKIP = "skip"
+
+
+class AutomaticDunningAction(BaseModel):
+    """Einzelne Aktion aus dem automatischen Mahnlauf."""
+    dunning_id: UUID
+    invoice_number: Optional[str] = None
+    debtor_name: Optional[str] = None
+    current_level: int
+    new_level: int
+    action_type: AutoDunningActionType
+    action_description: str
+    days_overdue: int
+    outstanding_amount: Decimal
+    currency: str = "EUR"
+    skipped: bool = False
+    skip_reason: Optional[str] = None
+    scheduled_at: datetime
+
+
+class LevelIntervals(BaseModel):
+    """Intervalle in Tagen pro Mahnstufe."""
+    level_1: int = Field(default=7, ge=1, le=90, description="Tage bis 1. Mahnung")
+    level_2: int = Field(default=14, ge=1, le=90, description="Tage bis 2. Mahnung")
+    level_3: int = Field(default=21, ge=1, le=90, description="Tage bis 3. Mahnung")
+
+
+class AutoDunningSettingsResponse(BaseModel):
+    """Response-Schema fuer Auto-Mahnlauf-Einstellungen."""
+    enabled: bool = Field(default=False, description="Automatische Eskalation aktiviert")
+    run_time: str = Field(default="08:00", description="Uhrzeit fuer taeglichen Mahnlauf (HH:MM)")
+    exclude_weekends: bool = Field(default=True, description="Wochenenden ausschliessen")
+    exclude_holidays: bool = Field(default=True, description="Feiertage ausschliessen")
+    auto_send_email: bool = Field(default=False, description="Automatischer Email-Versand")
+    min_amount: Decimal = Field(default=Decimal("10.00"), ge=0, description="Mindestbetrag fuer automatische Mahnung")
+    max_auto_level: int = Field(default=2, ge=1, le=3, description="Maximale Mahnstufe fuer Automatik")
+    level_intervals: LevelIntervals = Field(default_factory=LevelIntervals)
+    last_run_at: Optional[datetime] = Field(default=None, description="Letzte Ausfuehrung")
+    next_run_at: Optional[datetime] = Field(default=None, description="Naechste geplante Ausfuehrung")
+
+
+class AutoDunningSettingsUpdate(BaseModel):
+    """Request-Schema fuer Auto-Mahnlauf-Einstellungen Update."""
+    enabled: Optional[bool] = None
+    run_time: Optional[str] = Field(default=None, pattern=r"^([01]\d|2[0-3]):([0-5]\d)$")
+    exclude_weekends: Optional[bool] = None
+    exclude_holidays: Optional[bool] = None
+    auto_send_email: Optional[bool] = None
+    min_amount: Optional[Decimal] = Field(default=None, ge=0)
+    max_auto_level: Optional[int] = Field(default=None, ge=1, le=3)
+    level_intervals: Optional[LevelIntervals] = None
+
+
+# =============================================================================
 # CASH FLOW SCHEMAS
 # =============================================================================
 

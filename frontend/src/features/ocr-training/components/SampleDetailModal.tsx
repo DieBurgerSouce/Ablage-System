@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
     Dialog,
     DialogContent,
@@ -18,9 +19,11 @@ import {
     Cpu,
     Languages,
     Loader2,
+    Edit3,
 } from 'lucide-react'
 import type { TrainingSample, BenchmarkResult } from '@/lib/api/services/training'
 import { DiffView, DiffStats } from './DiffView'
+import { CorrectionDialog, type CorrectionSubmitData } from './CorrectionDialog'
 import { BACKEND_CONFIG, BACKEND_IDS } from '../constants/backend-config'
 import {
     useSampleBenchmarks,
@@ -36,6 +39,10 @@ interface SampleDetailModalProps {
 }
 
 export function SampleDetailModal({ sample, benchmarks: propBenchmarks, open, onOpenChange }: SampleDetailModalProps) {
+    // State für Korrektur-Dialog
+    const [correctionDialogOpen, setCorrectionDialogOpen] = useState(false)
+    const [selectedBackendForCorrection, setSelectedBackendForCorrection] = useState<string | null>(null)
+
     // Hole Benchmark-Ergebnisse für dieses Sample (falls nicht als Prop übergeben)
     const { data: fetchedBenchmarks, isLoading: isLoadingBenchmarks } = useSampleBenchmarks(
         sample?.id ?? '',
@@ -284,24 +291,15 @@ export function SampleDetailModal({ sample, benchmarks: propBenchmarks, open, on
                             <div className="flex justify-end gap-2 pt-4 border-t">
                                 <Button
                                     variant="outline"
-                                    disabled={correctionMutation.isPending}
+                                    disabled={!bestBackend || !benchmarksByBackend[bestBackend]?.raw_text}
                                     onClick={() => {
-                                        // TODO: Korrektur-Dialog öffnen
-                                        // Für jetzt: Dummy-Korrektur erstellen
-                                        if (sample && bestBackend && benchmarksByBackend[bestBackend]?.raw_text) {
-                                            correctionMutation.mutate({
-                                                document_id: sample.id,
-                                                original_text: benchmarksByBackend[bestBackend].raw_text || '',
-                                                corrected_text: groundTruth,
-                                                correction_type: 'manual',
-                                                backend_used: bestBackend,
-                                            })
+                                        if (bestBackend) {
+                                            setSelectedBackendForCorrection(bestBackend)
+                                            setCorrectionDialogOpen(true)
                                         }
                                     }}
                                 >
-                                    {correctionMutation.isPending && (
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    )}
+                                    <Edit3 className="mr-2 h-4 w-4" />
                                     Korrektur einreichen
                                 </Button>
                                 <Button
@@ -475,6 +473,29 @@ export function SampleDetailModal({ sample, benchmarks: propBenchmarks, open, on
                     </Tabs>
                 </ScrollArea>
             </DialogContent>
+
+            {/* Korrektur-Dialog */}
+            {selectedBackendForCorrection && benchmarksByBackend[selectedBackendForCorrection] && (
+                <CorrectionDialog
+                    open={correctionDialogOpen}
+                    onOpenChange={setCorrectionDialogOpen}
+                    originalText={benchmarksByBackend[selectedBackendForCorrection]?.raw_text || ''}
+                    groundTruthText={groundTruth}
+                    backendName={selectedBackendForCorrection}
+                    documentId={sample.id}
+                    documentName={filename}
+                    onSubmit={async (data: CorrectionSubmitData) => {
+                        await correctionMutation.mutateAsync({
+                            document_id: data.document_id,
+                            original_text: data.original_text,
+                            corrected_text: data.corrected_text,
+                            correction_type: data.correction_type,
+                            backend_used: data.backend_used,
+                        })
+                    }}
+                    isSubmitting={correctionMutation.isPending}
+                />
+            )}
         </Dialog>
     )
 }

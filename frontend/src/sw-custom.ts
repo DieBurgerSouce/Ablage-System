@@ -14,6 +14,26 @@
 
 declare const self: ServiceWorkerGlobalScope;
 
+// Service Worker debug logging - only in development
+// Check for localhost or 127.0.0.1 to determine if in development
+const SW_DEBUG = typeof location !== 'undefined' && (
+  location.hostname === 'localhost' ||
+  location.hostname === '127.0.0.1' ||
+  location.hostname.endsWith('.local')
+);
+
+const swLog = {
+  debug: (message: string, ...args: unknown[]) => {
+    if (SW_DEBUG) {
+      console.log(`[SW] ${message}`, ...args);
+    }
+  },
+  error: (message: string, ...args: unknown[]) => {
+    // Errors always logged (but still prefixed)
+    console.error(`[SW] ${message}`, ...args);
+  },
+};
+
 // Import workbox modules (these are available in the SW context)
 import { clientsClaim } from 'workbox-core';
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
@@ -49,15 +69,15 @@ const offlineMutationsQueue = new BackgroundSyncPlugin('offline-mutations', {
     while ((entry = await queue.shiftRequest())) {
       try {
         await fetch(entry.request);
-        console.log('[SW] Background sync successful:', entry.request.url);
+        swLog.debug('Background sync successful:', entry.request.url);
       } catch (error) {
-        console.error('[SW] Background sync failed:', entry.request.url, error);
+        swLog.error('Background sync failed:', entry.request.url, error);
         // Put the request back in the queue
         await queue.unshiftRequest(entry);
         throw error;
       }
     }
-    console.log('[SW] Queue replay complete');
+    swLog.debug('Queue replay complete');
   },
 });
 
@@ -96,7 +116,7 @@ registerRoute(
       return response;
     } catch (error) {
       // If offline, queue the request
-      console.log('[SW] Request queued for background sync:', request.url);
+      swLog.debug('Request queued for background sync:', request.url);
 
       // Clone request and store in queue
       const requestData = {
@@ -254,7 +274,7 @@ registerRoute(
 
 self.addEventListener('sync', (event: any) => {
   if (event.tag === 'offline-mutations') {
-    console.log('[SW] Background sync triggered: offline-mutations');
+    swLog.debug('Background sync triggered: offline-mutations');
     event.waitUntil(syncOfflineRequests());
   }
 });
@@ -335,7 +355,7 @@ async function removeOfflineRequest(id: string): Promise<void> {
 
 async function syncOfflineRequests(): Promise<void> {
   const requests = await getOfflineRequests();
-  console.log(`[SW] Syncing ${requests.length} offline requests`);
+  swLog.debug(`Syncing ${requests.length} offline requests`);
 
   for (const req of requests) {
     try {
@@ -347,12 +367,12 @@ async function syncOfflineRequests(): Promise<void> {
 
       if (response.ok) {
         await removeOfflineRequest(req.id);
-        console.log('[SW] Synced request:', req.url);
+        swLog.debug('Synced request:', req.url);
       } else {
-        console.error('[SW] Sync failed:', req.url, response.status);
+        swLog.error('Sync failed:', req.url, response.status);
       }
     } catch (error) {
-      console.error('[SW] Sync error:', req.url, error);
+      swLog.error('Sync error:', req.url, error);
       // Leave in queue for next sync
       break; // Stop on first failure to maintain order
     }
@@ -378,7 +398,7 @@ self.addEventListener('fetch', (event: FetchEvent) => {
 
   // Handle share-target POST requests
   if (url.pathname === '/share-target' && event.request.method === 'POST') {
-    console.log('[SW] Handling share-target POST request');
+    swLog.debug('Handling share-target POST request');
 
     event.respondWith(
       (async () => {
@@ -393,7 +413,7 @@ self.addEventListener('fetch', (event: FetchEvent) => {
           const response = new Response(formData);
           await cache.put('/share-target-files', response);
 
-          console.log('[SW] Shared files cached successfully');
+          swLog.debug('Shared files cached successfully');
 
           // Build redirect URL with query params
           const title = formData.get('title');
@@ -412,7 +432,7 @@ self.addEventListener('fetch', (event: FetchEvent) => {
           // Redirect to the share page
           return Response.redirect(redirectUrl, 303);
         } catch (error) {
-          console.error('[SW] Share target handling failed:', error);
+          swLog.error('Share target handling failed:', error);
           // On error, still redirect to share page
           return Response.redirect('/share', 303);
         }
@@ -446,8 +466,8 @@ self.addEventListener('message', (event) => {
 // Install Event
 // ============================================
 
-self.addEventListener('install', (event) => {
-  console.log('[SW] Service Worker installing');
+self.addEventListener('install', (_event) => {
+  swLog.debug('Service Worker installing');
   self.skipWaiting();
 });
 
@@ -456,7 +476,7 @@ self.addEventListener('install', (event) => {
 // ============================================
 
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Service Worker activating');
+  swLog.debug('Service Worker activating');
   event.waitUntil(self.clients.claim());
 });
 

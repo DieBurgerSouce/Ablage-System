@@ -330,7 +330,7 @@ function BpmnEditorInner({
                 </Button>
               </>
             )}
-            <Button variant="outline" size="icon" className="h-8 w-8">
+            <Button variant="outline" size="icon" className="h-8 w-8" aria-label="Herunterladen">
               <Download className="h-4 w-4" />
             </Button>
           </Panel>

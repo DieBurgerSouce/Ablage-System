@@ -15,7 +15,7 @@ import structlog
 from sqlalchemy import select, update, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.bpmn import (
+from app.db.bpmn_models.bpmn import (
     ProcessDefinition,
     ProcessInstance,
     ProcessStatus,

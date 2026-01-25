@@ -18,13 +18,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import (
-    get_current_active_user,
-    get_db,
-    require_company_context,
-)
+from app.api.dependencies import get_current_active_user, get_db
+from app.middleware.company_context import require_company
 from app.core.datetime_utils import utc_now
-from app.db.models import User
+from app.db.models import User, Company
 from app.services.ai.predictive_action_service import (
     ActionPriority,
     ActionStatus,
@@ -215,7 +212,7 @@ async def get_predictive_actions(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(require_company_context),
+    company: Company = Depends(require_company),
 ) -> PredictiveActionsListResponse:
     """Hole alle relevanten Aktionsvorschlaege."""
     service = get_predictive_action_service()
@@ -244,7 +241,7 @@ async def get_predictive_actions(
     # Aktionen generieren
     actions = await service.get_pending_actions(
         db=db,
-        company_id=company_id,
+        company_id=company.id,
         user_id=current_user.id,
         limit=limit,
         action_types=action_type_list,
@@ -276,14 +273,14 @@ async def get_critical_actions(
     limit: int = Query(default=10, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(require_company_context),
+    company: Company = Depends(require_company),
 ) -> PredictiveActionsListResponse:
     """Hole kritische Aktionen fuer Dashboard-Widget."""
     service = get_predictive_action_service()
 
     actions = await service.get_pending_actions(
         db=db,
-        company_id=company_id,
+        company_id=company.id,
         user_id=current_user.id,
         limit=limit,
         min_priority=ActionPriority.HIGH,
@@ -311,14 +308,14 @@ async def get_skonto_actions(
     limit: int = Query(default=20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(require_company_context),
+    company: Company = Depends(require_company),
 ) -> PredictiveActionsListResponse:
     """Hole Skonto-spezifische Vorschlaege."""
     service = get_predictive_action_service()
 
     actions = await service.get_pending_actions(
         db=db,
-        company_id=company_id,
+        company_id=company.id,
         user_id=current_user.id,
         limit=limit,
         action_types=[ActionType.USE_SKONTO],
@@ -353,14 +350,14 @@ async def get_dunning_actions(
     limit: int = Query(default=20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(require_company_context),
+    company: Company = Depends(require_company),
 ) -> PredictiveActionsListResponse:
     """Hole Mahnungs-spezifische Vorschlaege."""
     service = get_predictive_action_service()
 
     actions = await service.get_pending_actions(
         db=db,
-        company_id=company_id,
+        company_id=company.id,
         user_id=current_user.id,
         limit=limit,
         action_types=[ActionType.SEND_DUNNING, ActionType.CALL_CUSTOMER],
@@ -396,14 +393,14 @@ async def accept_action(
     request: AcceptActionRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(require_company_context),
+    company: Company = Depends(require_company),
 ) -> ActionResultResponse:
     """Akzeptiere eine vorgeschlagene Aktion."""
     service = get_predictive_action_service()
 
     # Regeneriere Aktionen um die richtige zu finden
     # In Produktion: Aus Datenbank laden
-    actions = await service.generate_actions_for_company(db, company_id, current_user.id)
+    actions = await service.generate_actions_for_company(db, company.id, current_user.id)
 
     action = next((a for a in actions if str(a.id) == action_id), None)
 
@@ -448,12 +445,12 @@ async def reject_action(
     request: RejectActionRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(require_company_context),
+    company: Company = Depends(require_company),
 ) -> ActionResultResponse:
     """Lehne eine vorgeschlagene Aktion ab."""
     service = get_predictive_action_service()
 
-    actions = await service.generate_actions_for_company(db, company_id, current_user.id)
+    actions = await service.generate_actions_for_company(db, company.id, current_user.id)
     action = next((a for a in actions if str(a.id) == action_id), None)
 
     if not action:
@@ -497,12 +494,12 @@ async def snooze_action(
     request: SnoozeActionRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(require_company_context),
+    company: Company = Depends(require_company),
 ) -> ActionResultResponse:
     """Verschiebe eine Aktion auf spaeter."""
     service = get_predictive_action_service()
 
-    actions = await service.generate_actions_for_company(db, company_id, current_user.id)
+    actions = await service.generate_actions_for_company(db, company.id, current_user.id)
     action = next((a for a in actions if str(a.id) == action_id), None)
 
     if not action:
@@ -546,7 +543,7 @@ async def get_action_statistics(
     days: int = Query(default=30, ge=1, le=365, description="Anzahl Tage zurueck"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(require_company_context),
+    company: Company = Depends(require_company),
 ) -> ActionStatisticsResponse:
     """Hole Statistiken zu Aktionsvorschlaegen."""
     service = get_predictive_action_service()
@@ -556,7 +553,7 @@ async def get_action_statistics(
 
     stats = await service.get_action_statistics(
         db=db,
-        company_id=company_id,
+        company_id=company.id,
         start_date=start_date,
         end_date=end_date,
     )

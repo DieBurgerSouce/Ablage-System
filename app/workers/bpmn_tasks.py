@@ -31,7 +31,7 @@ from sqlalchemy import select, and_
 
 from app.workers.celery_app import celery_app
 from app.db.session import async_session_maker
-from app.db.models.bpmn import (
+from app.db.bpmn_models.bpmn import (
     ProcessTask,
     ProcessInstance,
     TaskStatus,

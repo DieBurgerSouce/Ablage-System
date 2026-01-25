@@ -17,12 +17,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import (
-    get_current_active_user,
-    get_db,
-    require_company_context,
-)
-from app.db.models import User
+from app.api.dependencies import get_current_active_user, get_db
+from app.middleware.company_context import require_company
+from app.db.models import User, Company
 from app.services.collaboration.smart_escalation_service import (
     AssignmentFactor,
     AssignmentRecommendation,
@@ -234,7 +231,7 @@ async def get_assignment_recommendation(
     request: AssignmentRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(require_company_context),
+    company: Company = Depends(require_company),
 ) -> AssignmentRecommendationResponse:
     """Ermittle optimale Aufgabenzuweisung."""
     service = get_smart_escalation_service(db)
@@ -259,7 +256,7 @@ async def get_assignment_recommendation(
     )
 
     recommendation = await service.get_assignment_recommendation(
-        company_id=company_id,
+        company_id=company.id,
         document_id=document_id,
         document_type=request.document_type,
         entity_id=entity_id,
@@ -277,7 +274,7 @@ async def get_assignment_recommendation(
 
     logger.info(
         "smart_escalation_recommendation_api",
-        company_id=str(company_id),
+        company_id=str(company.id),
         user_id=str(current_user.id),
         recommended_user=str(recommendation.recommended_user_id),
         confidence=recommendation.confidence,
@@ -300,7 +297,7 @@ async def get_assignment_recommendation_query(
     max_candidates: int = Query(default=10, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(require_company_context),
+    company: Company = Depends(require_company),
 ) -> AssignmentRecommendationResponse:
     """Ermittle optimale Aufgabenzuweisung via GET."""
     service = get_smart_escalation_service(db)
@@ -310,7 +307,7 @@ async def get_assignment_recommendation_query(
     ent_uuid = UUID(entity_id) if entity_id else None
 
     recommendation = await service.get_assignment_recommendation(
-        company_id=company_id,
+        company_id=company.id,
         document_id=doc_uuid,
         document_type=document_type,
         entity_id=ent_uuid,
@@ -336,12 +333,12 @@ async def get_assignment_recommendation_query(
 async def get_team_workload(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(require_company_context),
+    company: Company = Depends(require_company),
 ) -> TeamWorkloadResponse:
     """Hole Team-Auslastungsuebersicht."""
     service = get_smart_escalation_service(db)
 
-    overview = await service.get_team_workload_overview(company_id)
+    overview = await service.get_team_workload_overview(company.id)
 
     team_members = [
         TeamMemberWorkload(
@@ -376,7 +373,7 @@ async def get_user_scores(
     entity_id: Optional[str] = Query(default=None, description="Entity-ID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-    company_id: UUID = Depends(require_company_context),
+    company: Company = Depends(require_company),
 ) -> CandidateScoreResponse:
     """Hole detaillierte Scores eines Users."""
     service = get_smart_escalation_service(db)
@@ -394,7 +391,7 @@ async def get_user_scores(
     try:
         scores = await service.get_user_scores(
             user_id=user_uuid,
-            company_id=company_id,
+            company_id=company.id,
             document_type=document_type,
             entity_id=ent_uuid,
         )

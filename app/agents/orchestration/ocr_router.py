@@ -574,12 +574,71 @@ class OCRBackendRouter(OrchestrationAgent):
                 "handwriting_detected",
             )
 
-        if metadata.get("document_type") == "contract":
-            # Critical documents -> highest accuracy
+        # Phase 1.2: Document Type-Based Routing (15 Types)
+        doc_type = metadata.get("document_type", "unknown")
+
+        if doc_type == "contract":
+            # Vertraege: Hoechste Genauigkeit (rechtlich relevant)
             return select_best_backend(
                 ["hybrid", "deepseek"],
                 {"hybrid": 0.98, "deepseek": 0.95},
-                "critical_document_type",
+                "contract_type_critical",
+            )
+
+        if doc_type == "tax_document":
+            # Steuerdokumente: Hoechste Genauigkeit (Finanzamt!)
+            return select_best_backend(
+                ["hybrid", "deepseek"],
+                {"hybrid": 0.98, "deepseek": 0.96},
+                "tax_document_critical",
+            )
+
+        if doc_type == "bank_statement":
+            # Kontoauszuege: Strukturierte Daten, Tabellen
+            return select_best_backend(
+                ["deepseek", "hybrid", "got_ocr"],
+                {"deepseek": 0.95, "hybrid": 0.92, "got_ocr": 0.80},
+                "bank_statement_structured",
+            )
+
+        if doc_type in ("invoice", "credit_note"):
+            # Rechnungen/Gutschriften: Hohe Genauigkeit, strukturiert
+            return select_best_backend(
+                ["deepseek", "hybrid", "got_ocr"],
+                {"deepseek": 0.94, "hybrid": 0.90, "got_ocr": 0.78},
+                "invoice_type_financial",
+            )
+
+        if doc_type == "dunning":
+            # Mahnungen: Standard-Text, moderate Anforderungen
+            return select_best_backend(
+                ["got_ocr", "deepseek", "surya_gpu"],
+                {"got_ocr": 0.88, "deepseek": 0.85, "surya_gpu": 0.75},
+                "dunning_letter_standard",
+            )
+
+        if doc_type == "delivery_note":
+            # Lieferscheine: Oft schlecht gescannt, braucht Robustheit
+            return select_best_backend(
+                ["deepseek", "got_ocr", "surya_gpu"],
+                {"deepseek": 0.90, "got_ocr": 0.85, "surya_gpu": 0.72},
+                "delivery_note_robust",
+            )
+
+        if doc_type in ("order", "purchase_order", "offer"):
+            # Bestelldokumente: Wichtig aber standardisiert
+            return select_best_backend(
+                ["got_ocr", "deepseek", "surya_gpu"],
+                {"got_ocr": 0.88, "deepseek": 0.86, "surya_gpu": 0.74},
+                "order_type_standard",
+            )
+
+        if doc_type == "receipt":
+            # Quittungen: Oft schlecht lesbar (Thermopapier!)
+            return select_best_backend(
+                ["deepseek", "hybrid", "got_ocr"],
+                {"deepseek": 0.92, "hybrid": 0.88, "got_ocr": 0.70},
+                "receipt_low_quality_expected",
             )
 
         # Priority 3: Quality and complexity

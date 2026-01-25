@@ -901,6 +901,431 @@ async def get_upcoming_skonto_deadlines(
     ]
 
 
+@router.get(
+    "/skonto/missed",
+    summary="Verpasste Skonto-Moeglichkeiten",
+    description="Listet alle Rechnungen mit verpassten Skonto-Fristen"
+)
+async def get_missed_skonto(
+    start_date: Optional[datetime] = Query(None, description="Startdatum (ISO 8601)"),
+    end_date: Optional[datetime] = Query(None, description="Enddatum (ISO 8601)"),
+    page: int = Query(1, ge=1, description="Seitennummer"),
+    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Listet alle Rechnungen mit verpassten Skonto-Moeglichkeiten.
+
+    **Response:**
+    - items: Liste der verpassten Skonto-Rechnungen
+    - total: Gesamtanzahl
+    - total_missed_amount: Summe verpasster Ersparnisse
+    """
+    from app.db.models import BusinessEntity
+    from app.core.datetime_utils import utc_now
+    from decimal import Decimal
+
+    company_id = current_user.company_id
+    if not company_id:
+        return {"items": [], "total": 0, "total_missed_amount": 0.0}
+
+    now = utc_now()
+
+    # Basis-Filter: Verpasste Skonto-Rechnungen
+    base_conditions = [
+        InvoiceTracking.company_id == company_id,
+        InvoiceTracking.skonto_percentage.isnot(None),
+        InvoiceTracking.skonto_percentage > 0,
+        InvoiceTracking.skonto_deadline.isnot(None),
+        InvoiceTracking.skonto_deadline < now,
+        InvoiceTracking.skonto_used == False,
+        InvoiceTracking.deleted_at.is_(None),
+    ]
+
+    # Optionale Datumsfilter
+    if start_date:
+        base_conditions.append(InvoiceTracking.invoice_date >= start_date)
+    if end_date:
+        base_conditions.append(InvoiceTracking.invoice_date <= end_date)
+
+    # Count Query
+    count_stmt = select(func.count(InvoiceTracking.id)).where(and_(*base_conditions))
+    count_result = await db.execute(count_stmt)
+    total = count_result.scalar() or 0
+
+    # Summe der verpassten Betraege
+    sum_stmt = select(
+        func.sum(
+            InvoiceTracking.amount * InvoiceTracking.skonto_percentage / 100
+        )
+    ).where(and_(*base_conditions))
+    sum_result = await db.execute(sum_stmt)
+    total_missed_amount = sum_result.scalar() or 0.0
+
+    # Daten-Query mit Pagination
+    offset = (page - 1) * per_page
+    data_stmt = (
+        select(InvoiceTracking, Document, BusinessEntity)
+        .join(Document, InvoiceTracking.document_id == Document.id)
+        .outerjoin(BusinessEntity, Document.business_entity_id == BusinessEntity.id)
+        .where(and_(*base_conditions))
+        .order_by(InvoiceTracking.skonto_deadline.desc())
+        .offset(offset)
+        .limit(per_page)
+    )
+    data_result = await db.execute(data_stmt)
+    rows = data_result.all()
+
+    items = []
+    for invoice, document, entity in rows:
+        skonto_amount = float(
+            Decimal(str(invoice.amount)) * Decimal(str(invoice.skonto_percentage)) / Decimal("100")
+        )
+        days_missed = (now - invoice.skonto_deadline).days if invoice.skonto_deadline else 0
+
+        items.append({
+            "invoice_id": str(invoice.id),
+            "invoice_number": invoice.invoice_number or document.original_filename,
+            "document_id": str(invoice.document_id),
+            "entity_id": str(entity.id) if entity else None,
+            "entity_name": entity.name if entity else "Unbekannt",
+            "invoice_date": invoice.invoice_date.isoformat() if invoice.invoice_date else None,
+            "amount": float(invoice.amount),
+            "skonto_percentage": invoice.skonto_percentage,
+            "skonto_amount": round(skonto_amount, 2),
+            "skonto_deadline": invoice.skonto_deadline.isoformat() if invoice.skonto_deadline else None,
+            "days_missed_by": days_missed,
+            "paid_at": invoice.paid_at.isoformat() if invoice.paid_at else None,
+            "paid_amount": float(invoice.paid_amount) if invoice.paid_amount else None,
+        })
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "total_missed_amount": round(float(total_missed_amount), 2),
+    }
+
+
+@router.get(
+    "/skonto/statistics",
+    summary="Skonto-Statistiken",
+    description="Berechnet Skonto-Statistiken fuer einen Zeitraum"
+)
+async def get_skonto_statistics(
+    start_date: datetime = Query(..., description="Startdatum (ISO 8601)"),
+    end_date: datetime = Query(..., description="Enddatum (ISO 8601)"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Berechnet Skonto-Statistiken fuer einen Zeitraum.
+
+    **Response:**
+    - period_start/period_end: Zeitraum
+    - total_invoices: Gesamtzahl Rechnungen
+    - invoices_with_skonto: Rechnungen mit Skonto
+    - skonto_used_count: Skonto genutzt
+    - skonto_missed_count: Skonto verpasst
+    - skonto_pending_count: Skonto noch offen
+    - total_savings: Gesparte Betraege
+    - missed_savings: Verpasste Ersparnisse
+    - potential_savings: Potentielle Ersparnisse
+    - usage_rate: Nutzungsrate in Prozent
+    """
+    from app.services.banking.skonto_service import SkontoService
+
+    company_id = current_user.company_id
+    if not company_id:
+        return {
+            "period_start": start_date.isoformat(),
+            "period_end": end_date.isoformat(),
+            "total_invoices": 0,
+            "invoices_with_skonto": 0,
+            "skonto_used_count": 0,
+            "skonto_missed_count": 0,
+            "skonto_pending_count": 0,
+            "total_savings": 0.0,
+            "missed_savings": 0.0,
+            "potential_savings": 0.0,
+            "usage_rate": 0.0,
+        }
+
+    skonto_service = SkontoService()
+    stats = await skonto_service.get_skonto_statistics(
+        db=db,
+        company_id=company_id,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    return {
+        "period_start": stats.period_start.isoformat(),
+        "period_end": stats.period_end.isoformat(),
+        "total_invoices": stats.total_invoices,
+        "invoices_with_skonto": stats.invoices_with_skonto,
+        "skonto_used_count": stats.skonto_used_count,
+        "skonto_missed_count": stats.skonto_missed_count,
+        "skonto_pending_count": stats.skonto_pending_count,
+        "total_savings": float(stats.total_savings),
+        "missed_savings": float(stats.missed_savings),
+        "potential_savings": float(stats.potential_savings),
+        "usage_rate": stats.usage_rate,
+    }
+
+
+@router.get(
+    "/skonto/monthly-summary",
+    summary="Monatliche Skonto-Uebersicht",
+    description="Liefert monatliche Skonto-Zusammenfassung fuer Chart-Darstellung"
+)
+async def get_monthly_skonto_summary(
+    months: int = Query(12, ge=1, le=24, description="Anzahl Monate"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> list:
+    """
+    Liefert monatliche Skonto-Zusammenfassung.
+
+    **Response:**
+    - List von Monaten mit:
+      - year, month: Jahr und Monat
+      - used_amount: Genutzte Skonto-Betraege
+      - missed_amount: Verpasste Skonto-Betraege
+      - usage_rate: Nutzungsrate
+    """
+    from app.core.datetime_utils import utc_now
+    from datetime import timedelta
+    from decimal import Decimal
+    from calendar import monthrange
+
+    company_id = current_user.company_id
+    if not company_id:
+        return []
+
+    now = utc_now()
+    results = []
+
+    # Fuer jeden Monat Statistiken berechnen
+    for i in range(months - 1, -1, -1):
+        # Monat berechnen (rueckwaerts)
+        target_date = now - timedelta(days=i * 30)
+        year = target_date.year
+        month = target_date.month
+
+        # Monatsanfang und -ende
+        _, last_day = monthrange(year, month)
+        month_start = datetime(year, month, 1, tzinfo=timezone.utc)
+        month_end = datetime(year, month, last_day, 23, 59, 59, tzinfo=timezone.utc)
+
+        # Query fuer diesen Monat
+        month_conditions = [
+            InvoiceTracking.company_id == company_id,
+            InvoiceTracking.skonto_percentage.isnot(None),
+            InvoiceTracking.skonto_percentage > 0,
+            InvoiceTracking.invoice_date >= month_start,
+            InvoiceTracking.invoice_date <= month_end,
+            InvoiceTracking.deleted_at.is_(None),
+        ]
+
+        # Alle Rechnungen des Monats mit Skonto
+        stmt = select(InvoiceTracking).where(and_(*month_conditions))
+        result = await db.execute(stmt)
+        invoices = result.scalars().all()
+
+        used_amount = Decimal("0.00")
+        missed_amount = Decimal("0.00")
+        used_count = 0
+        missed_count = 0
+
+        for inv in invoices:
+            skonto_amount = Decimal(str(inv.amount)) * Decimal(str(inv.skonto_percentage)) / Decimal("100")
+            skonto_amount = skonto_amount.quantize(Decimal("0.01"))
+
+            if inv.skonto_used:
+                used_amount += skonto_amount
+                used_count += 1
+            elif inv.skonto_deadline and inv.skonto_deadline < now:
+                missed_amount += skonto_amount
+                missed_count += 1
+
+        total_with_outcome = used_count + missed_count
+        usage_rate = (used_count / total_with_outcome * 100) if total_with_outcome > 0 else 0.0
+
+        results.append({
+            "year": str(year),
+            "month": str(month).zfill(2),
+            "used_amount": float(used_amount),
+            "missed_amount": float(missed_amount),
+            "used_count": used_count,
+            "missed_count": missed_count,
+            "usage_rate": round(usage_rate, 1),
+        })
+
+    return results
+
+
+@router.get(
+    "/skonto/missed/export",
+    summary="Verpasste Skonto exportieren",
+    description="Exportiert verpasste Skonto-Daten als Excel oder CSV"
+)
+async def export_missed_skonto(
+    format: str = Query("xlsx", regex="^(xlsx|csv)$", description="Export-Format"),
+    start_date: Optional[datetime] = Query(None, description="Startdatum"),
+    end_date: Optional[datetime] = Query(None, description="Enddatum"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Exportiert verpasste Skonto-Daten.
+
+    **Formate:**
+    - xlsx: Excel-Datei
+    - csv: CSV-Datei
+    """
+    from fastapi.responses import StreamingResponse
+    from app.db.models import BusinessEntity
+    from app.core.datetime_utils import utc_now
+    from decimal import Decimal
+    import io
+
+    company_id = current_user.company_id
+    if not company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Keine Firmenzuordnung vorhanden"
+        )
+
+    now = utc_now()
+
+    # Filter
+    conditions = [
+        InvoiceTracking.company_id == company_id,
+        InvoiceTracking.skonto_percentage.isnot(None),
+        InvoiceTracking.skonto_percentage > 0,
+        InvoiceTracking.skonto_deadline.isnot(None),
+        InvoiceTracking.skonto_deadline < now,
+        InvoiceTracking.skonto_used == False,
+        InvoiceTracking.deleted_at.is_(None),
+    ]
+
+    if start_date:
+        conditions.append(InvoiceTracking.invoice_date >= start_date)
+    if end_date:
+        conditions.append(InvoiceTracking.invoice_date <= end_date)
+
+    stmt = (
+        select(InvoiceTracking, Document, BusinessEntity)
+        .join(Document, InvoiceTracking.document_id == Document.id)
+        .outerjoin(BusinessEntity, Document.business_entity_id == BusinessEntity.id)
+        .where(and_(*conditions))
+        .order_by(InvoiceTracking.skonto_deadline.desc())
+    )
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    # Daten aufbereiten
+    data = []
+    for invoice, document, entity in rows:
+        skonto_amount = float(
+            Decimal(str(invoice.amount)) * Decimal(str(invoice.skonto_percentage)) / Decimal("100")
+        )
+        days_missed = (now - invoice.skonto_deadline).days if invoice.skonto_deadline else 0
+
+        data.append({
+            "Rechnungsnummer": invoice.invoice_number or document.original_filename,
+            "Geschaeftspartner": entity.name if entity else "Unbekannt",
+            "Rechnungsdatum": invoice.invoice_date.strftime("%d.%m.%Y") if invoice.invoice_date else "",
+            "Rechnungsbetrag": f"{invoice.amount:.2f}".replace(".", ","),
+            "Skonto %": f"{invoice.skonto_percentage:.1f}".replace(".", ","),
+            "Skonto Betrag": f"{skonto_amount:.2f}".replace(".", ","),
+            "Skonto Frist": invoice.skonto_deadline.strftime("%d.%m.%Y") if invoice.skonto_deadline else "",
+            "Tage verpasst": days_missed,
+            "Bezahlt am": invoice.paid_at.strftime("%d.%m.%Y") if invoice.paid_at else "",
+        })
+
+    if format == "csv":
+        import csv
+        output = io.StringIO()
+        if data:
+            writer = csv.DictWriter(output, fieldnames=data[0].keys(), delimiter=";")
+            writer.writeheader()
+            writer.writerows(data)
+        content = output.getvalue().encode("utf-8-sig")  # BOM fuer Excel
+        media_type = "text/csv; charset=utf-8"
+        filename = f"verpasste_skonto_{now.strftime('%Y%m%d')}.csv"
+    else:
+        # Excel mit openpyxl
+        try:
+            from openpyxl import Workbook
+            from openpyxl.styles import Font, PatternFill, Alignment
+
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "Verpasste Skonto"
+
+            # Header
+            headers = list(data[0].keys()) if data else []
+            header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+            header_font = Font(bold=True, color="FFFFFF")
+
+            for col, header in enumerate(headers, 1):
+                cell = ws.cell(row=1, column=col, value=header)
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal="center")
+
+            # Daten
+            for row_idx, row_data in enumerate(data, 2):
+                for col_idx, key in enumerate(headers, 1):
+                    ws.cell(row=row_idx, column=col_idx, value=row_data[key])
+
+            # Spaltenbreiten anpassen
+            for col in ws.columns:
+                max_length = 0
+                column = col[0].column_letter
+                for cell in col:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except Exception:
+                        pass
+                ws.column_dimensions[column].width = min(max_length + 2, 50)
+
+            output = io.BytesIO()
+            wb.save(output)
+            content = output.getvalue()
+            media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            filename = f"verpasste_skonto_{now.strftime('%Y%m%d')}.xlsx"
+        except ImportError:
+            # Fallback zu CSV wenn openpyxl nicht installiert
+            import csv
+            output = io.StringIO()
+            if data:
+                writer = csv.DictWriter(output, fieldnames=data[0].keys(), delimiter=";")
+                writer.writeheader()
+                writer.writerows(data)
+            content = output.getvalue().encode("utf-8-sig")
+            media_type = "text/csv; charset=utf-8"
+            filename = f"verpasste_skonto_{now.strftime('%Y%m%d')}.csv"
+
+    logger.info(
+        "missed_skonto_export",
+        format=format,
+        records=len(data),
+        user_id=str(current_user.id),
+    )
+
+    return StreamingResponse(
+        io.BytesIO(content) if isinstance(content, bytes) else io.BytesIO(content.encode()),
+        media_type=media_type,
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
 # =============================================================================
 # PARTIAL PAYMENT ENDPOINTS
 # =============================================================================

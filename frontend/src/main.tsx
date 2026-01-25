@@ -7,6 +7,7 @@ import { queryClient } from '@/lib/api/query-client'
 import { AuthProvider } from '@/lib/auth/AuthContext'
 import { ThemeProvider } from '@/lib/theme/ThemeContext'
 import { CompanyProvider } from '@/context/CompanyContext'
+import { AccessibilityProvider } from '@/components/accessibility'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import type { ErrorDetails } from '@/components/ErrorBoundary'
 import { PWAProvider } from '@/context/PWAContext'
@@ -121,11 +122,12 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary onError={handleGlobalError}>
       <ThemeProvider>
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <CompanyProvider>
-              <PWAProvider>
-                <RouterProvider router={router} />
+        <AccessibilityProvider>
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <CompanyProvider>
+                <PWAProvider>
+                  <RouterProvider router={router} />
                 <Toaster
                   position="bottom-right"
                   expand={false}
@@ -140,10 +142,11 @@ createRoot(document.getElementById('root')!).render(
                     },
                   }}
                 />
-              </PWAProvider>
-            </CompanyProvider>
-          </AuthProvider>
-        </QueryClientProvider>
+                </PWAProvider>
+              </CompanyProvider>
+            </AuthProvider>
+          </QueryClientProvider>
+        </AccessibilityProvider>
       </ThemeProvider>
     </ErrorBoundary>
   </StrictMode>,

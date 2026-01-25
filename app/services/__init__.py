@@ -9,3 +9,6 @@ from app.services.reranker_service import (
 
 # RAG subpackage verfuegbar machen
 from app.services import rag as rag  # noqa: F401
+
+# MLOps Pipeline Services
+from app.services import mlops as mlops  # noqa: F401

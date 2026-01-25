@@ -723,6 +723,7 @@ from app.api.v1.admin import router as admin_router
 from app.api.v1.backup import router as backup_router
 from app.api.v1.vault import router as vault_router
 from app.api.v1.gdpr import router as gdpr_router, admin_router as gdpr_admin_router
+from app.api.v1.trash import router as trash_router
 from app.api.v1.webhooks import router as webhooks_router
 from app.api.v1.favorites import router as favorites_router
 from app.api.v1.search import router as search_router
@@ -801,10 +802,24 @@ from app.api.v1.risk_intelligence import router as risk_intelligence_router
 from app.api.v1.ocr_learning import router as ocr_learning_router
 from app.api.v1.bpmn import router as bpmn_router
 from app.api.v1.compliance import router as compliance_router
+from app.api.v1.dpia import router as dpia_router
 from app.api.v1.help import router as help_router
 from app.api.v1.mfa import router as mfa_router
 from app.api.v1.dlp import router as dlp_router
 from app.api.v1.transactions import router as transactions_router
+from app.api.v1.teams import router as teams_router
+from app.api.v1.delegations import router as delegations_router
+from app.api.v1.activity_timeline import router as activity_timeline_router
+from app.api.v1.rules import router as rules_router
+from app.api.v1.proactive_insights import router as proactive_insights_router
+from app.api.v1.compare import router as compare_router
+from app.api.v1.routing import router as routing_router
+from app.api.v1.hardware import router as hardware_router
+from app.api.v1.saved_filters import router as saved_filters_router
+from app.api.v1.alerts import router as alerts_router
+from app.api.v1.inventory import router as inventory_router
+from app.api.v1.finance_assistant import router as finance_assistant_router
+from app.api.v1.ai_conversations import router as ai_conversations_router
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -819,6 +834,7 @@ app.include_router(ocr.router, prefix="/api/v1")
 app.include_router(vault_router, prefix="/api/v1")
 app.include_router(gdpr_router, prefix="/api/v1")
 app.include_router(gdpr_admin_router, prefix="/api/v1")
+app.include_router(trash_router, prefix="/api/v1")
 app.include_router(webhooks_router, prefix="/api/v1")
 app.include_router(favorites_router, prefix="/api/v1")
 app.include_router(search_router, prefix="/api/v1")
@@ -900,10 +916,24 @@ app.include_router(risk_intelligence_router, prefix="/api/v1")
 app.include_router(ocr_learning_router, prefix="/api/v1")
 app.include_router(bpmn_router, prefix="/api/v1")
 app.include_router(compliance_router, prefix="/api/v1")
+app.include_router(dpia_router, prefix="/api/v1")
 app.include_router(help_router, prefix="/api/v1")
 app.include_router(mfa_router, prefix="/api/v1")
 app.include_router(dlp_router, prefix="/api/v1")
 app.include_router(transactions_router, prefix="/api/v1")
+app.include_router(teams_router, prefix="/api/v1")
+app.include_router(delegations_router, prefix="/api/v1")
+app.include_router(activity_timeline_router, prefix="/api/v1")
+app.include_router(rules_router, prefix="/api/v1")
+app.include_router(proactive_insights_router, prefix="/api/v1")
+app.include_router(compare_router, prefix="/api/v1")
+app.include_router(routing_router, prefix="/api/v1")
+app.include_router(hardware_router, prefix="/api/v1")
+app.include_router(saved_filters_router, prefix="/api/v1")
+app.include_router(alerts_router, prefix="/api/v1")
+app.include_router(inventory_router, prefix="/api/v1")
+app.include_router(finance_assistant_router, prefix="/api/v1")  # Vision 2.0: KI-Finanzassistent
+app.include_router(ai_conversations_router, prefix="/api/v1")  # Vision 2.0: KI-Konversationen Persistenz
 
 
 # ==================== Health & Status Endpoints ====================

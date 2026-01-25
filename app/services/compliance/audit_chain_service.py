@@ -27,7 +27,7 @@ import structlog
 from sqlalchemy import select, func, and_, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.gobd import AuditChainEntry, AuditChainEventType
+from app.db.bpmn_models.gobd import AuditChainEntry, AuditChainEventType
 
 logger = structlog.get_logger(__name__)
 
