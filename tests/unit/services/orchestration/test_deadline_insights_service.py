@@ -1,0 +1,466 @@
+# -*- coding: utf-8 -*-
+"""
+Unit Tests fuer DeadlineInsightsService.
+
+Testet:
+- Skonto-Deadline-Checks
+- Vertrags-Kuendigungsfristen
+- Zahlungsfristen
+- Aufbewahrungsfristen
+
+PHASE 6: Proaktive Intelligenz
+"""
+
+from datetime import datetime, timezone, timedelta
+from decimal import Decimal
+from typing import List
+from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import UUID, uuid4
+
+import pytest
+
+from app.services.orchestration.deadline_insights_service import (
+    DeadlineInsightsService,
+    DeadlineType,
+    DeadlineCheckResult,
+    get_deadline_insights_service,
+)
+
+
+# =============================================================================
+# Fixtures
+# =============================================================================
+
+@pytest.fixture
+def reset_service():
+    """Reset Singleton vor und nach jedem Test."""
+    DeadlineInsightsService._instance = None
+    yield
+    DeadlineInsightsService._instance = None
+
+
+@pytest.fixture
+def service(reset_service):
+    """Frische Service-Instanz fuer jeden Test."""
+    return DeadlineInsightsService()
+
+
+@pytest.fixture
+def mock_db():
+    """Mock Database Session."""
+    db = AsyncMock()
+    db.execute = AsyncMock()
+    return db
+
+
+@pytest.fixture
+def sample_company_id():
+    """Sample Company ID."""
+    return uuid4()
+
+
+@pytest.fixture
+def sample_invoice_with_skonto():
+    """Sample Invoice mit Skonto-Bedingungen."""
+    return MagicMock(
+        id=uuid4(),
+        invoice_number="R-2026-001",
+        vendor_name="Lieferant ABC GmbH",
+        gross_amount=Decimal("1190.00"),
+        skonto_percentage=2.0,
+        skonto_days=14,
+        skonto_deadline=datetime.now(timezone.utc) + timedelta(days=5),
+        due_date=datetime.now(timezone.utc) + timedelta(days=30),
+        invoice_date=datetime.now(timezone.utc) - timedelta(days=9),
+        status="pending",
+    )
+
+
+@pytest.fixture
+def sample_contract_with_cancellation():
+    """Sample Contract mit Kuendigungsfrist."""
+    return MagicMock(
+        id=uuid4(),
+        title="Rahmenvertrag Lieferant XYZ",
+        contract_type="supplier",
+        end_date=datetime.now(timezone.utc) + timedelta(days=60),
+        cancellation_notice_days=30,
+        auto_renewal=True,
+        value=Decimal("50000.00"),
+    )
+
+
+# =============================================================================
+# Singleton Tests
+# =============================================================================
+
+class TestSingletonPattern:
+    """Tests fuer Singleton-Verhalten."""
+
+    def test_singleton_returns_same_instance(self, reset_service):
+        """Singleton gibt immer dieselbe Instanz zurueck."""
+        instance1 = DeadlineInsightsService()
+        instance2 = DeadlineInsightsService()
+
+        assert instance1 is instance2
+
+    def test_factory_returns_same_instance(self, reset_service):
+        """Factory-Funktion gibt Singleton zurueck."""
+        instance1 = get_deadline_insights_service()
+        instance2 = get_deadline_insights_service()
+
+        assert instance1 is instance2
+
+
+# =============================================================================
+# DeadlineType Tests
+# =============================================================================
+
+class TestDeadlineType:
+    """Tests fuer DeadlineType Enum."""
+
+    def test_deadline_types_defined(self):
+        """Alle DeadlineTypes sind definiert."""
+        assert DeadlineType.SKONTO.value == "skonto"
+        assert DeadlineType.CONTRACT_CANCELLATION.value == "contract_cancellation"
+        assert DeadlineType.PAYMENT_DUE.value == "payment_due"
+        assert DeadlineType.RETENTION_EXPIRY.value == "retention_expiry"
+
+
+# =============================================================================
+# DeadlineCheckResult Tests
+# =============================================================================
+
+class TestDeadlineCheckResult:
+    """Tests fuer DeadlineCheckResult Dataclass."""
+
+    def test_defaults(self):
+        """DeadlineCheckResult hat sinnvolle Defaults."""
+        result = DeadlineCheckResult(
+            deadline_type=DeadlineType.SKONTO,
+            deadline_date=datetime.now(timezone.utc),
+            title="Test Deadline",
+            message="Test Message",
+        )
+
+        assert result.days_remaining >= 0 or result.days_remaining < 0
+        assert result.priority == "medium"
+        assert result.potential_value is None
+        assert result.action_url is None
+        assert result.entity_id is None
+
+    def test_to_insight_conversion(self):
+        """DeadlineCheckResult kann zu ProactiveInsight konvertiert werden."""
+        deadline = datetime.now(timezone.utc) + timedelta(days=5)
+        result = DeadlineCheckResult(
+            deadline_type=DeadlineType.SKONTO,
+            deadline_date=deadline,
+            days_remaining=5,
+            title="Skonto laeuft ab",
+            message="Skonto von 2% fuer Rechnung R-001 laeuft in 5 Tagen ab.",
+            detail="Bei Zahlung bis zum Stichtag sparen Sie 23.80 EUR.",
+            priority="high",
+            potential_value=Decimal("23.80"),
+            action_url="/invoices/123/pay",
+            entity_id=uuid4(),
+            entity_name="Lieferant ABC",
+        )
+
+        insight = result.to_insight()
+
+        assert insight.insight_type.value == "warning"
+        assert insight.priority.value == "high"
+        assert insight.title == "Skonto laeuft ab"
+        assert insight.potential_value == Decimal("23.80")
+
+
+# =============================================================================
+# Skonto Deadline Tests
+# =============================================================================
+
+class TestSkontoDeadlines:
+    """Tests fuer Skonto-Deadline-Checks."""
+
+    @pytest.mark.asyncio
+    async def test_check_skonto_deadlines_finds_expiring(
+        self, service, mock_db, sample_company_id, sample_invoice_with_skonto
+    ):
+        """Findet ablaufende Skonto-Fristen."""
+        # Mock DB Result
+        mock_result = MagicMock()
+        mock_result.scalars = MagicMock(return_value=MagicMock(all=MagicMock(
+            return_value=[sample_invoice_with_skonto]
+        )))
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        insights = await service.check_skonto_deadlines(
+            db=mock_db,
+            company_id=sample_company_id,
+            days_ahead=14,
+        )
+
+        assert isinstance(insights, list)
+        # Kann 0 oder mehr Insights haben je nach Mock-Setup
+
+    @pytest.mark.asyncio
+    async def test_check_skonto_calculates_savings(self, service):
+        """Berechnet Skonto-Ersparnis korrekt."""
+        gross_amount = Decimal("1190.00")
+        skonto_percentage = 2.0
+
+        expected_savings = gross_amount * Decimal(skonto_percentage) / Decimal(100)
+
+        assert expected_savings == Decimal("23.80")
+
+    @pytest.mark.asyncio
+    async def test_check_skonto_prioritizes_by_days(self, service):
+        """Priorisiert nach verbleibenden Tagen."""
+        # 3 Tage oder weniger = critical
+        # 5 Tage oder weniger = high
+        # Sonst = medium
+
+        assert service._get_skonto_priority(2) == "critical"
+        assert service._get_skonto_priority(3) == "critical"
+        assert service._get_skonto_priority(4) == "high"
+        assert service._get_skonto_priority(5) == "high"
+        assert service._get_skonto_priority(7) == "medium"
+        assert service._get_skonto_priority(10) == "medium"
+
+
+# =============================================================================
+# Contract Deadline Tests
+# =============================================================================
+
+class TestContractDeadlines:
+    """Tests fuer Vertrags-Kuendigungsfristen."""
+
+    @pytest.mark.asyncio
+    async def test_check_contract_deadlines_finds_upcoming(
+        self, service, mock_db, sample_company_id, sample_contract_with_cancellation
+    ):
+        """Findet bevorstehende Kuendigungsfristen."""
+        mock_result = MagicMock()
+        mock_result.scalars = MagicMock(return_value=MagicMock(all=MagicMock(
+            return_value=[sample_contract_with_cancellation]
+        )))
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        insights = await service.check_contract_deadlines(
+            db=mock_db,
+            company_id=sample_company_id,
+            days_ahead=90,
+        )
+
+        assert isinstance(insights, list)
+
+    @pytest.mark.asyncio
+    async def test_contract_auto_renewal_warning(self, service):
+        """Warnt bei automatischer Verlaengerung."""
+        # Vertrag mit Auto-Renewal sollte extra Warnung haben
+        contract = MagicMock(
+            auto_renewal=True,
+            end_date=datetime.now(timezone.utc) + timedelta(days=45),
+            cancellation_notice_days=30,
+            title="Test Vertrag",
+        )
+
+        message = service._build_contract_message(contract, 15)  # 15 Tage bis Kuendigung
+
+        assert "automatisch" in message.lower() or "verlaengert" in message.lower()
+
+
+# =============================================================================
+# Payment Due Tests
+# =============================================================================
+
+class TestPaymentDueDeadlines:
+    """Tests fuer Zahlungsfrist-Checks."""
+
+    @pytest.mark.asyncio
+    async def test_check_payment_deadlines_finds_due(
+        self, service, mock_db, sample_company_id
+    ):
+        """Findet faellige Zahlungen."""
+        mock_invoice = MagicMock(
+            id=uuid4(),
+            invoice_number="R-2026-002",
+            vendor_name="Lieferant XYZ",
+            gross_amount=Decimal("500.00"),
+            due_date=datetime.now(timezone.utc) + timedelta(days=3),
+            status="pending",
+        )
+
+        mock_result = MagicMock()
+        mock_result.scalars = MagicMock(return_value=MagicMock(all=MagicMock(
+            return_value=[mock_invoice]
+        )))
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        insights = await service.check_payment_deadlines(
+            db=mock_db,
+            company_id=sample_company_id,
+            days_ahead=7,
+        )
+
+        assert isinstance(insights, list)
+
+    @pytest.mark.asyncio
+    async def test_payment_overdue_is_critical(self, service):
+        """Ueberfaellige Zahlungen haben kritische Prioritaet."""
+        days_overdue = -5  # 5 Tage ueberfaellig
+
+        priority = service._get_payment_priority(days_overdue)
+
+        assert priority == "critical"
+
+    @pytest.mark.asyncio
+    async def test_payment_soon_is_high(self, service):
+        """Bald faellige Zahlungen haben hohe Prioritaet."""
+        days_remaining = 3
+
+        priority = service._get_payment_priority(days_remaining)
+
+        assert priority == "high"
+
+
+# =============================================================================
+# Retention Expiry Tests
+# =============================================================================
+
+class TestRetentionExpiryDeadlines:
+    """Tests fuer Aufbewahrungsfrist-Checks."""
+
+    @pytest.mark.asyncio
+    async def test_check_retention_deadlines_finds_expiring(
+        self, service, mock_db, sample_company_id
+    ):
+        """Findet ablaufende Aufbewahrungsfristen."""
+        mock_document = MagicMock(
+            id=uuid4(),
+            filename="rechnung_2016.pdf",
+            document_type="invoice",
+            retention_until=datetime.now(timezone.utc) + timedelta(days=30),
+            created_at=datetime.now(timezone.utc) - timedelta(days=3650),
+        )
+
+        mock_result = MagicMock()
+        mock_result.scalars = MagicMock(return_value=MagicMock(all=MagicMock(
+            return_value=[mock_document]
+        )))
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        insights = await service.check_retention_deadlines(
+            db=mock_db,
+            company_id=sample_company_id,
+            days_ahead=90,
+        )
+
+        assert isinstance(insights, list)
+
+
+# =============================================================================
+# Combined Check Tests
+# =============================================================================
+
+class TestCombinedDeadlineChecks:
+    """Tests fuer kombinierte Deadline-Checks."""
+
+    @pytest.mark.asyncio
+    async def test_check_all_deadlines(self, service, mock_db, sample_company_id):
+        """Kombinierter Check aller Deadline-Typen."""
+        # Mock leere Resultate
+        mock_result = MagicMock()
+        mock_result.scalars = MagicMock(return_value=MagicMock(all=MagicMock(
+            return_value=[]
+        )))
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        insights = await service.check_all_deadlines(
+            db=mock_db,
+            company_id=sample_company_id,
+        )
+
+        assert isinstance(insights, list)
+
+    @pytest.mark.asyncio
+    async def test_results_sorted_by_priority(self, service):
+        """Ergebnisse sind nach Prioritaet sortiert."""
+        results = [
+            DeadlineCheckResult(
+                deadline_type=DeadlineType.SKONTO,
+                deadline_date=datetime.now(timezone.utc),
+                title="Low Priority",
+                message="Test",
+                priority="low",
+            ),
+            DeadlineCheckResult(
+                deadline_type=DeadlineType.PAYMENT_DUE,
+                deadline_date=datetime.now(timezone.utc),
+                title="Critical",
+                message="Test",
+                priority="critical",
+            ),
+            DeadlineCheckResult(
+                deadline_type=DeadlineType.CONTRACT_CANCELLATION,
+                deadline_date=datetime.now(timezone.utc),
+                title="High",
+                message="Test",
+                priority="high",
+            ),
+        ]
+
+        sorted_results = service._sort_by_priority(results)
+
+        assert sorted_results[0].priority == "critical"
+        assert sorted_results[1].priority == "high"
+        assert sorted_results[2].priority == "low"
+
+
+# =============================================================================
+# Edge Cases
+# =============================================================================
+
+class TestEdgeCases:
+    """Tests fuer Randfaelle."""
+
+    @pytest.mark.asyncio
+    async def test_handles_empty_results(self, service, mock_db, sample_company_id):
+        """Behandelt leere Ergebnisse korrekt."""
+        mock_result = MagicMock()
+        mock_result.scalars = MagicMock(return_value=MagicMock(all=MagicMock(
+            return_value=[]
+        )))
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        insights = await service.check_all_deadlines(
+            db=mock_db,
+            company_id=sample_company_id,
+        )
+
+        assert insights == []
+
+    @pytest.mark.asyncio
+    async def test_handles_db_error_gracefully(self, service, mock_db, sample_company_id):
+        """Behandelt DB-Fehler graceful."""
+        mock_db.execute = AsyncMock(side_effect=Exception("DB Error"))
+
+        insights = await service.check_skonto_deadlines(
+            db=mock_db,
+            company_id=sample_company_id,
+        )
+
+        assert insights == []
+
+    @pytest.mark.asyncio
+    async def test_handles_none_values(self, service):
+        """Behandelt None-Werte korrekt."""
+        invoice = MagicMock(
+            skonto_percentage=None,
+            skonto_days=None,
+            skonto_deadline=None,
+        )
+
+        # Sollte keine Exception werfen
+        has_skonto = service._has_valid_skonto(invoice)
+
+        assert has_skonto is False

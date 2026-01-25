@@ -1196,6 +1196,131 @@ class ProactiveInsightsService:
 
 
 # =============================================================================
+# Extended Insight Rules (Phase 6)
+# =============================================================================
+
+class ExtendedInsightRuleEngine(InsightRuleEngine):
+    """
+    Erweiterte Rule Engine mit Phase 6 Insights.
+
+    Neue Regeln fuer:
+    - Skonto-Deadlines
+    - Vertrags-Kuendigungsfristen
+    - Zahlungsfristen
+    - Preisanomalien
+    - Batch-Genehmigungsvorschlaege
+    - Fehlende Stammdaten
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._register_extended_rules()
+
+    def _register_extended_rules(self) -> None:
+        """Registriert die erweiterten Regeln aus Phase 6."""
+
+        # Regel: Skonto laeuft ab
+        self._rules.append(InsightRule(
+            rule_id="skonto_expiring",
+            entity_types=[EntityType.DOCUMENT],
+            condition=lambda ctx: ctx.get("skonto_days_remaining", 99) <= 3 and ctx.get("skonto_days_remaining", 0) >= 0,
+            generate=lambda ctx: ProactiveInsight(
+                insight_type=InsightType.REMINDER,
+                priority=InsightPriority.CRITICAL if ctx.get("skonto_days_remaining", 99) <= 1 else InsightPriority.HIGH,
+                title=f"Skonto-Frist in {ctx.get('skonto_days_remaining', 0)} Tag(en)",
+                message=f"Bei Zahlung bis {ctx.get('skonto_deadline', 'morgen')} sparen Sie {ctx.get('skonto_percentage', 2):.1f}% ({ctx.get('skonto_amount', 0):,.2f} EUR).",
+                detail=f"Rechnung: {ctx.get('invoice_number', 'Unbekannt')}, Lieferant: {ctx.get('supplier_name', 'Unbekannt')}",
+                potential_value=Decimal(str(ctx.get("skonto_amount", 0))),
+                action_url=f"/invoices/{ctx.get('invoice_id')}",
+                action_label="Jetzt bezahlen",
+                expires_at=ctx.get("skonto_deadline_datetime"),
+            ),
+        ))
+
+        # Regel: Vertragskuendigung naht
+        self._rules.append(InsightRule(
+            rule_id="contract_cancellation",
+            entity_types=[EntityType.DOCUMENT],
+            condition=lambda ctx: ctx.get("cancellation_days_remaining", 99) <= 30 and ctx.get("cancellation_days_remaining", 0) >= 0,
+            generate=lambda ctx: ProactiveInsight(
+                insight_type=InsightType.WARNING,
+                priority=InsightPriority.HIGH if ctx.get("cancellation_days_remaining", 99) <= 7 else InsightPriority.MEDIUM,
+                title=f"Kuendigungsfrist in {ctx.get('cancellation_days_remaining', 0)} Tagen",
+                message=f"Vertrag '{ctx.get('contract_name', 'Unbekannt')}' verlaengert sich automatisch wenn nicht gekuendigt.",
+                detail=f"Monatliche Kosten: {ctx.get('monthly_cost', 0):,.2f} EUR, Verlaengerung: {ctx.get('auto_extend_months', 12)} Monate",
+                potential_value=Decimal(str(ctx.get("annual_cost", 0))),
+                action_url=f"/contracts/{ctx.get('contract_id')}",
+                action_label="Vertrag pruefen",
+            ),
+        ))
+
+        # Regel: Zahlung ueberfaellig
+        self._rules.append(InsightRule(
+            rule_id="payment_overdue",
+            entity_types=[EntityType.DOCUMENT],
+            condition=lambda ctx: ctx.get("days_overdue", 0) > 0,
+            generate=lambda ctx: ProactiveInsight(
+                insight_type=InsightType.WARNING,
+                priority=InsightPriority.CRITICAL if ctx.get("days_overdue", 0) > 14 else InsightPriority.HIGH,
+                title=f"Zahlung {ctx.get('days_overdue', 0)} Tage ueberfaellig",
+                message=f"Rechnung '{ctx.get('invoice_number', 'Unbekannt')}' ist seit {ctx.get('days_overdue', 0)} Tagen ueberfaellig.",
+                detail=f"Ausstehender Betrag: {ctx.get('outstanding_amount', 0):,.2f} EUR, Mahnstufe: {ctx.get('dunning_level', 0)}",
+                potential_value=Decimal(str(ctx.get("outstanding_amount", 0))),
+                action_url=f"/invoices/{ctx.get('invoice_id')}",
+                action_label="Rechnung oeffnen",
+            ),
+        ))
+
+        # Regel: Preisanomalie erkannt
+        self._rules.append(InsightRule(
+            rule_id="price_anomaly",
+            entity_types=[EntityType.SUPPLIER],
+            condition=lambda ctx: abs(ctx.get("price_deviation_percent", 0)) > 20,
+            generate=lambda ctx: ProactiveInsight(
+                insight_type=InsightType.ANOMALY,
+                priority=InsightPriority.HIGH if abs(ctx.get("price_deviation_percent", 0)) > 50 else InsightPriority.MEDIUM,
+                title=f"Preisabweichung bei {ctx.get('supplier_name', 'Lieferant')}",
+                message=f"Aktueller Preis liegt {ctx.get('price_deviation_percent', 0):+.1f}% {'ueber' if ctx.get('price_deviation_percent', 0) > 0 else 'unter'} dem Durchschnitt.",
+                detail=f"Historischer Durchschnitt: {ctx.get('historical_avg', 0):,.2f} EUR, Aktuell: {ctx.get('current_price', 0):,.2f} EUR",
+                action_url=f"/entities/{ctx.get('supplier_id')}/price-analysis",
+                action_label="Preisanalyse",
+            ),
+        ))
+
+        # Regel: Batch-Genehmigung moeglich
+        self._rules.append(InsightRule(
+            rule_id="batch_approval_suggestion",
+            entity_types=[EntityType.SUPPLIER, EntityType.GENERAL],
+            condition=lambda ctx: ctx.get("pending_approval_count", 0) >= 3 and ctx.get("same_supplier", False),
+            generate=lambda ctx: ProactiveInsight(
+                insight_type=InsightType.OPTIMIZATION,
+                priority=InsightPriority.MEDIUM,
+                title=f"Batch-Genehmigung: {ctx.get('pending_approval_count', 0)} Dokumente",
+                message=f"{ctx.get('pending_approval_count', 0)} Dokumente von {ctx.get('supplier_name', 'einem Lieferanten')} warten auf Genehmigung.",
+                detail=f"Gesamtwert: {ctx.get('total_amount', 0):,.2f} EUR. Batch-Verarbeitung spart Zeit.",
+                action_url="/approvals?batch=true",
+                action_label="Batch genehmigen",
+            ),
+        ))
+
+        # Regel: Fehlende Stammdaten
+        self._rules.append(InsightRule(
+            rule_id="missing_data_hint",
+            entity_types=[EntityType.SUPPLIER],
+            condition=lambda ctx: len(ctx.get("missing_fields", [])) > 0,
+            generate=lambda ctx: ProactiveInsight(
+                insight_type=InsightType.WARNING,
+                priority=InsightPriority.MEDIUM if "iban" in ctx.get("missing_fields", []) else InsightPriority.LOW,
+                title=f"Unvollstaendige Stammdaten: {ctx.get('entity_name', 'Entitaet')}",
+                message=f"Fehlende Felder: {', '.join(ctx.get('missing_fields', []))}",
+                detail="Vollstaendige Stammdaten ermoeglichen automatische Verarbeitung.",
+                action_url=f"/entities/{ctx.get('entity_id')}/edit",
+                action_label="Daten ergaenzen",
+            ),
+        ))
+
+
+# =============================================================================
 # Singleton Accessor
 # =============================================================================
 
@@ -1210,3 +1335,8 @@ def get_proactive_insights_service() -> ProactiveInsightsService:
         if _insights_instance is None:
             _insights_instance = ProactiveInsightsService()
         return _insights_instance
+
+
+def get_extended_rule_engine() -> ExtendedInsightRuleEngine:
+    """Gibt eine ExtendedInsightRuleEngine Instanz zurueck."""
+    return ExtendedInsightRuleEngine()
