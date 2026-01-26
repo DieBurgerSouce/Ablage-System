@@ -26,8 +26,11 @@ from app.services.entity_search_service import (
     normalize_text,
     calculate_similarity,
 )
+from app.core.security.sensitive_data_filter import get_pii_safe_logger
 
-logger = structlog.get_logger(__name__)
+# SECURITY: Use PII-safe logger for GDPR compliance
+# Never log customer numbers, IBANs, VAT-IDs, or other PII
+logger = get_pii_safe_logger(__name__)
 
 
 # ============================================================================

@@ -14,6 +14,9 @@ Phase 4 der Strategischen Roadmap (Januar 2026).
 
 from datetime import datetime, date
 from typing import Optional, List, Dict, Any, Union, Callable
+
+# Type alias for nested values from dictionaries
+NestedValue = Union[str, int, float, bool, list, dict, Decimal, datetime, date, None]
 from uuid import UUID, uuid4
 from enum import Enum
 import re
@@ -720,7 +723,7 @@ class BusinessRulesEngine:
     # Helpers
     # =========================================================================
 
-    def _get_nested_value(self, data: Dict[str, Any], path: str) -> Any:
+    def _get_nested_value(self, data: Dict[str, Any], path: str) -> NestedValue:
         """Holt verschachtelten Wert ueber Punkt-Notation.
 
         Beispiel: 'supplier.is_new' -> data['supplier']['is_new']

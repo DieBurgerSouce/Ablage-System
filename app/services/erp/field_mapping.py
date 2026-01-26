@@ -14,7 +14,10 @@ import structlog
 from abc import ABC, abstractmethod
 from datetime import datetime, date
 from decimal import Decimal
-from typing import Any, Callable, Dict, List, Optional, Type
+from typing import Any, Callable, Dict, List, Optional, Type, Union
+
+# Type alias for transformed values from ERP field transformations
+TransformedValue = Union[str, int, float, bool, Decimal, datetime, date, Dict[str, Any], None]
 from uuid import UUID
 
 logger = structlog.get_logger(__name__)
@@ -29,12 +32,12 @@ class FieldTransformer(ABC):
     """Abstrakte Basisklasse fuer Feld-Transformatoren."""
 
     @abstractmethod
-    def to_erp(self, value: Any, config: Optional[Dict[str, Any]] = None) -> Any:
+    def to_erp(self, value: Any, config: Optional[Dict[str, Any]] = None) -> TransformedValue:
         """Transformiert Wert fuer ERP-System."""
         pass
 
     @abstractmethod
-    def from_erp(self, value: Any, config: Optional[Dict[str, Any]] = None) -> Any:
+    def from_erp(self, value: Any, config: Optional[Dict[str, Any]] = None) -> TransformedValue:
         """Transformiert Wert aus ERP-System."""
         pass
 
@@ -42,10 +45,10 @@ class FieldTransformer(ABC):
 class PassthroughTransformer(FieldTransformer):
     """Keine Transformation - Wert durchreichen."""
 
-    def to_erp(self, value: Any, config: Optional[Dict[str, Any]] = None) -> Any:
+    def to_erp(self, value: Any, config: Optional[Dict[str, Any]] = None) -> TransformedValue:
         return value
 
-    def from_erp(self, value: Any, config: Optional[Dict[str, Any]] = None) -> Any:
+    def from_erp(self, value: Any, config: Optional[Dict[str, Any]] = None) -> TransformedValue:
         return value
 
 
@@ -291,13 +294,13 @@ class FieldMappingConfig:
         self.required = required
         self.default_value = default_value
 
-    def to_erp(self, value: Any) -> Any:
+    def to_erp(self, value: Any) -> TransformedValue:
         """Transformiert Wert fuer ERP."""
         if value is None and self.default_value is not None:
             value = self.default_value
         return self.transformer.to_erp(value, self.transformer_config)
 
-    def from_erp(self, value: Any) -> Any:
+    def from_erp(self, value: Any) -> TransformedValue:
         """Transformiert Wert aus ERP."""
         result = self.transformer.from_erp(value, self.transformer_config)
         if result is None and self.default_value is not None:
@@ -448,7 +451,7 @@ class EntityMappingService:
 
         return result
 
-    def _get_nested_value(self, data: Dict[str, Any], path: str) -> Any:
+    def _get_nested_value(self, data: Dict[str, Any], path: str) -> TransformedValue:
         """Holt verschachtelten Wert ueber Punkt-Notation."""
         parts = path.split(".")
         current = data

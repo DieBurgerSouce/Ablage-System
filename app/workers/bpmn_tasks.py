@@ -244,10 +244,26 @@ def execute_service_task(
             if implementation.startswith("python:"):
                 module_func = implementation[7:]
                 try:
-                    module_name, func_name = module_func.rsplit(".", 1)
-                    import importlib
-                    module = importlib.import_module(module_name)
-                    func = getattr(module, func_name)
+                    # SECURITY: Use safe module loader with whitelist
+                    # instead of unrestricted importlib.import_module
+                    # Prevents CWE-470 (Externally Controlled Reference)
+                    from app.core.security.safe_module_loader import (
+                        safe_load_function,
+                        ModuleNotAllowedError,
+                        FunctionNotAllowedError,
+                    )
+
+                    try:
+                        func = safe_load_function(module_func)
+                    except (ModuleNotAllowedError, FunctionNotAllowedError) as e:
+                        logger.error(
+                            "service_task_security_violation",
+                            implementation=implementation,
+                            error=str(e),
+                        )
+                        raise ValueError(
+                            f"Funktion nicht erlaubt: {module_func}"
+                        ) from e
 
                     # Funktion aufrufen (sync oder async)
                     if asyncio.iscoroutinefunction(func):
@@ -264,6 +280,9 @@ def execute_service_task(
                     if isinstance(result, dict):
                         result_variables = result
 
+                except (ModuleNotAllowedError, FunctionNotAllowedError):
+                    # Security violations should not be retried
+                    raise
                 except Exception as e:
                     logger.error(
                         "service_task_implementation_failed",

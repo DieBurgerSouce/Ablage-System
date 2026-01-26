@@ -9,7 +9,10 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import Dict, List, Optional, Union, TYPE_CHECKING
+
+# Type alias for field values returned from document context
+FieldValue = Union[str, int, float, bool, list, dict, None]
 
 import structlog
 
@@ -209,7 +212,7 @@ class ConditionEvaluator:
         self,
         field: str,
         context: "ExecutionContext",
-    ) -> Any:
+    ) -> FieldValue:
         """Holt den Wert eines Feldes aus dem Kontext.
 
         Args:
@@ -246,7 +249,7 @@ class ConditionEvaluator:
         self,
         path: List[str],
         context: "ExecutionContext",
-    ) -> Any:
+    ) -> FieldValue:
         """Holt Dokument-Feld aus Kontext."""
         if not context.document_data:
             return None
@@ -260,7 +263,7 @@ class ConditionEvaluator:
         self,
         path: List[str],
         context: "ExecutionContext",
-    ) -> Any:
+    ) -> FieldValue:
         """Holt extrahierte Daten aus Kontext."""
         extracted = context.document_data.get("extracted_data", {}) if context.document_data else {}
         if not path:
@@ -271,7 +274,7 @@ class ConditionEvaluator:
         self,
         path: List[str],
         context: "ExecutionContext",
-    ) -> Any:
+    ) -> FieldValue:
         """Holt OCR-Feld aus Kontext."""
         ocr_data = context.data.get("ocr", {})
         if not path:
@@ -282,7 +285,7 @@ class ConditionEvaluator:
         self,
         path: List[str],
         context: "ExecutionContext",
-    ) -> Any:
+    ) -> FieldValue:
         """Holt AI-Feld aus Kontext."""
         ai_data = context.data.get("ai", {})
         if not path:
@@ -293,7 +296,7 @@ class ConditionEvaluator:
         self,
         path: List[str],
         context: "ExecutionContext",
-    ) -> Any:
+    ) -> FieldValue:
         """Holt Workflow-Variable aus Kontext."""
         if not path:
             return context.variables
@@ -303,7 +306,7 @@ class ConditionEvaluator:
         self,
         path: List[str],
         context: "ExecutionContext",
-    ) -> Any:
+    ) -> FieldValue:
         """Holt Trigger-Feld aus Kontext."""
         trigger_data = context.trigger_data or {}
         if not path:
@@ -314,7 +317,7 @@ class ConditionEvaluator:
         self,
         path: List[str],
         context: "ExecutionContext",
-    ) -> Any:
+    ) -> FieldValue:
         """Holt Output eines vorherigen Steps."""
         if not path:
             return context.step_outputs
@@ -377,7 +380,7 @@ def _safe_float(value: Any) -> float:
         return 0.0
 
 
-def _get_nested_value(data: Dict[str, Any], path: List[str]) -> Any:
+def _get_nested_value(data: Dict[str, FieldValue], path: List[str]) -> FieldValue:
     """Holt verschachtelten Wert aus Dictionary.
 
     Args:

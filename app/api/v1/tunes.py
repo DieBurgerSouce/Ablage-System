@@ -1,4 +1,4 @@
-from typing import List, Any
+from typing import List, Sequence
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Response, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,7 +18,7 @@ async def get_tunes(
     skip: int = Query(0, ge=0, description="Anzahl zu ueberspringender Eintraege"),
     limit: int = Query(100, ge=1, le=200, description="Maximale Anzahl zurueckzugebender Eintraege"),
     active_only: bool = False
-) -> Any:
+) -> Sequence[models.Tune]:
     """
     Alle Tunes abrufen (Authentifizierung erforderlich).
 
@@ -38,7 +38,7 @@ async def get_tune(
     tune_id: UUID,
     db: AsyncSession = Depends(dependencies.get_db),
     current_user: models.User = Depends(dependencies.get_current_superuser)  # Y.3 SECURITY FIX: Admin only
-) -> Any:
+) -> models.Tune:
     """
     Ein einzelnes Tune anhand der ID abrufen (Admin only).
 
@@ -72,7 +72,7 @@ async def create_tune(
     tune_in: TuneCreate,
     db: AsyncSession = Depends(dependencies.get_db),
     current_user: models.User = Depends(dependencies.get_current_superuser)
-) -> Any:
+) -> models.Tune:
     """
     Create new tune (Admin only).
     """
@@ -97,7 +97,7 @@ async def update_tune(
     tune_in: TuneUpdate,
     db: AsyncSession = Depends(dependencies.get_db),
     current_user: models.User = Depends(dependencies.get_current_superuser)
-) -> Any:
+) -> models.Tune:
     """
     Update a tune (Admin only).
     """

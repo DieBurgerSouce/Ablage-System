@@ -6,7 +6,7 @@ All responses in German for user-facing messages.
 """
 
 from datetime import datetime
-from typing import Any, Union
+from typing import Union
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
@@ -397,7 +397,7 @@ async def verify_2fa_login_endpoint(
     data: TwoFactorVerifyRequest,
     request: Request,
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> Token:
     """
     Verifiziere 2FA-Code nach erfolgreicher Passwort-Authentifizierung.
 
@@ -557,7 +557,7 @@ async def refresh_token(
     request: Request,  # SECURITY FIX 27-3: Required for rate limiter
     refresh_data: RefreshTokenRequest,
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> Token:
     """
     Erneuere Access Token mit einem gültigen Refresh Token.
 
@@ -685,7 +685,7 @@ async def logout(
     logout_data: LogoutRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> MessageResponse:
     """
     Melde einen Benutzer ab.
 
@@ -800,7 +800,7 @@ async def logout(
 async def get_current_user_info(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> UserResponse:
     """
     Rufe Informationen über den aktuell angemeldeten Benutzer ab.
 
@@ -861,7 +861,7 @@ async def update_profile(
     user_update: UserCreate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> UserResponse:
     """
     Aktualisiere das Profil des aktuell angemeldeten Benutzers.
 
@@ -909,7 +909,7 @@ async def change_password(
     password_data: UserCreate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> MessageResponse:
     """
     Ändere das Passwort des aktuell angemeldeten Benutzers.
 
@@ -960,7 +960,7 @@ async def request_password_reset(
     request: Request,  # Z.7: Required for rate limiter (moved to first position)
     reset_request: PasswordResetRequest,
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> MessageResponse:
     """
     Fordere einen Link zum Zurücksetzen des Passworts an.
 
@@ -1013,7 +1013,7 @@ async def request_password_reset(
 async def validate_reset_token(
     validate_request: PasswordResetValidate,
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> PasswordResetResponse:
     """
     Validiere einen Password-Reset-Token.
 
@@ -1048,7 +1048,7 @@ async def reset_password(
     request: Request,  # Z.7: Required for rate limiter
     reset_data: PasswordResetConfirm,
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> PasswordResetResponse:
     """
     Setze das Passwort mit einem gültigen Reset-Token zurück.
 
@@ -1111,7 +1111,7 @@ async def list_users(
     limit: int = 100,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> list[UserResponse]:
     """
     Liste alle Benutzer auf.
 
@@ -1678,7 +1678,7 @@ async def revoke_all_sessions(
 async def get_email_verification_status(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> EmailVerificationStatusResponse:
     """
     Prüft den Email-Verifizierungsstatus des aktuellen Benutzers.
 
@@ -1708,7 +1708,7 @@ async def resend_verification_email(
     request: Request,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> EmailVerificationResponse:
     """
     Sendet die Verifizierungs-Email erneut.
 
@@ -1765,7 +1765,7 @@ async def resend_verification_email(
 async def verify_email(
     verify_request: EmailVerifyTokenRequest,
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> EmailVerifyResponse:
     """
     Verifiziert eine Email-Adresse mit dem Token.
 
@@ -1803,7 +1803,7 @@ async def request_email_change(
     change_request: EmailChangeRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> EmailChangeResponse:
     """
     Fordert eine Email-Änderung an.
 

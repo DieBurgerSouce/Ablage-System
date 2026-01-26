@@ -9,7 +9,7 @@ Provides tag management for admins:
 All endpoints require admin/superuser permissions.
 """
 
-from typing import List, Any
+from typing import List
 from uuid import UUID
 
 import structlog
@@ -41,7 +41,7 @@ async def get_tags(
     limit: int = Query(100, ge=1, le=200, description="Maximale Anzahl zurueckzugebender Eintraege"),
     active_only: bool = Query(False, description="Nur aktive Tags anzeigen"),
     system_only: bool = Query(False, description="Nur System-Tags anzeigen"),
-) -> Any:
+) -> List[TagResponse]:
     """
     Ruft alle Tags ab.
 
@@ -84,7 +84,7 @@ async def get_tag(
     tag_id: UUID,
     admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
-) -> Any:
+) -> TagResponse:
     """
     Ruft ein einzelnes Tag anhand der ID ab.
 
@@ -121,7 +121,7 @@ async def create_tag(
     tag_in: TagCreate,
     admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
-) -> Any:
+) -> TagResponse:
     """
     Erstellt ein neues Tag.
 
@@ -175,7 +175,7 @@ async def update_tag(
     tag_in: TagUpdate,
     admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
-) -> Any:
+) -> TagResponse:
     """
     Aktualisiert ein bestehendes Tag.
 

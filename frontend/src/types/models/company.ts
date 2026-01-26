@@ -191,3 +191,141 @@ export const KONTENRAHMEN_OPTIONS = [
   { value: 'SKR03', label: 'SKR03' },
   { value: 'SKR04', label: 'SKR04' },
 ];
+
+// ==================== Company Metrics ====================
+
+/**
+ * Metriken fuer Company Dashboard
+ */
+export interface CompanyMetrics {
+  /** Anzahl aktiver Dokumente */
+  document_count: number;
+  /** Anzahl offener Rechnungen */
+  open_invoice_count: number;
+  /** Gesamtbetrag offener Rechnungen */
+  open_invoice_amount: number;
+  /** Anzahl ueberfaelliger Rechnungen */
+  overdue_invoice_count: number;
+  /** Gesamtbetrag ueberfaelliger Rechnungen */
+  overdue_invoice_amount: number;
+  /** Anzahl Dokumente in Verarbeitung */
+  processing_count: number;
+  /** Anzahl Dokumente mit Fehlern */
+  error_count: number;
+  /** Durchschnittliche OCR-Confidence */
+  average_ocr_confidence: number;
+  /** Anzahl aktiver Benutzer */
+  active_user_count: number;
+  /** Speicherverbrauch in Bytes */
+  storage_used_bytes: number;
+  /** Letzte Aktivitaet */
+  last_activity_at: string | null;
+}
+
+/**
+ * Zeitraum fuer Metriken
+ */
+export type MetricsPeriod = '7d' | '30d' | '90d' | '1y' | 'all';
+
+// ==================== Dashboard Alerts ====================
+
+/**
+ * Schweregrad eines Alerts
+ */
+export type AlertSeverity = 'info' | 'low' | 'medium' | 'high' | 'critical';
+
+/**
+ * Kategorie eines Alerts
+ */
+export type AlertCategory =
+  | 'fraud'
+  | 'risk'
+  | 'compliance'
+  | 'deadline'
+  | 'system'
+  | 'security'
+  | 'quality'
+  | 'workflow';
+
+/**
+ * Status eines Alerts
+ */
+export type AlertStatus = 'new' | 'acknowledged' | 'in_progress' | 'resolved' | 'dismissed' | 'escalated';
+
+/**
+ * Dashboard Alert
+ */
+export interface DashboardAlert {
+  id: string;
+  alert_code: string;
+  title: string;
+  message: string;
+  category: AlertCategory;
+  severity: AlertSeverity;
+  status: AlertStatus;
+  document_id: string | null;
+  entity_id: string | null;
+  metadata: Record<string, unknown>;
+  context: Record<string, unknown>;
+  created_at: string;
+  acknowledged_at: string | null;
+  resolved_at: string | null;
+  auto_dismiss_at: string | null;
+}
+
+/**
+ * Alert-Zusammenfassung fuer Dashboard
+ */
+export interface AlertSummary {
+  total: number;
+  new_count: number;
+  critical_count: number;
+  high_count: number;
+  by_category: Record<AlertCategory, number>;
+  recent: DashboardAlert[];
+}
+
+// ==================== Dashboard Summary ====================
+
+/**
+ * Zusammenfassung fuer Company Dashboard
+ */
+export interface DashboardSummary {
+  /** Firma */
+  company: Company;
+  /** Metriken */
+  metrics: CompanyMetrics;
+  /** Alert-Zusammenfassung */
+  alerts: AlertSummary;
+  /** Aktuelle Periode */
+  period: MetricsPeriod;
+  /** Generiert am */
+  generated_at: string;
+}
+
+/**
+ * Trend-Indikator
+ */
+export type TrendDirection = 'up' | 'down' | 'stable';
+
+/**
+ * Metrik mit Trend
+ */
+export interface TrendMetric {
+  value: number;
+  previous_value: number;
+  change_percent: number;
+  trend: TrendDirection;
+}
+
+/**
+ * Dashboard KPIs mit Trends
+ */
+export interface DashboardKPIs {
+  revenue: TrendMetric;
+  expenses: TrendMetric;
+  outstanding: TrendMetric;
+  documents_processed: TrendMetric;
+  ocr_accuracy: TrendMetric;
+  average_processing_time_ms: TrendMetric;
+}

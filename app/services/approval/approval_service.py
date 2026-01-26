@@ -18,7 +18,7 @@ from decimal import Decimal
 from typing import Any, Optional, Sequence
 from uuid import UUID
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -585,6 +585,8 @@ class ApprovalService:
     async def escalate_overdue(self, company_id: Optional[UUID] = None) -> int:
         """Eskaliert ueberfaellige Genehmigungen.
 
+        Uses bulk UPDATE for performance (avoids N+1 queries).
+
         Args:
             company_id: Optional: Nur fuer diese Firma
 
@@ -593,31 +595,46 @@ class ApprovalService:
         """
         now = utc_now()
 
-        query = select(ApprovalRequest).where(
-            and_(
-                ApprovalRequest.status == ApprovalStatus.PENDING,
-                ApprovalRequest.due_date < now,
-                ApprovalRequest.is_escalated.is_(False),
+        # Build the WHERE conditions
+        conditions = [
+            ApprovalRequest.status == ApprovalStatus.PENDING,
+            ApprovalRequest.due_date < now,
+            ApprovalRequest.is_escalated.is_(False),
+        ]
+
+        if company_id:
+            conditions.append(ApprovalRequest.company_id == company_id)
+
+        # First, get IDs for logging (lightweight query)
+        id_query = select(ApprovalRequest.id, ApprovalRequest.due_date).where(
+            and_(*conditions)
+        )
+        id_result = await self.db.execute(id_query)
+        overdue_info = id_result.all()
+
+        if not overdue_info:
+            return 0
+
+        # Log each escalation
+        for request_id, due_date in overdue_info:
+            logger.warning(
+                f"Genehmigungsanfrage {request_id} eskaliert - "
+                f"Faellig seit {due_date}"
+            )
+
+        # Bulk UPDATE instead of fetch-and-loop pattern
+        stmt = (
+            update(ApprovalRequest)
+            .where(and_(*conditions))
+            .values(
+                is_escalated=True,
+                status=ApprovalStatus.ESCALATED,
+                escalation_date=now,
             )
         )
 
-        if company_id:
-            query = query.where(ApprovalRequest.company_id == company_id)
-
-        result = await self.db.execute(query)
-        overdue_requests = result.scalars().all()
-
-        count = 0
-        for request in overdue_requests:
-            request.is_escalated = True
-            request.status = ApprovalStatus.ESCALATED
-            request.escalation_date = now
-            count += 1
-
-            logger.warning(
-                f"Genehmigungsanfrage {request.id} eskaliert - "
-                f"Faellig seit {request.due_date}"
-            )
+        result = await self.db.execute(stmt)
+        count = result.rowcount
 
         await self.db.commit()
 

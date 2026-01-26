@@ -46,19 +46,55 @@ class CorrelationIdProcessor:
 
 
 class SensitiveDataFilter:
-    """Filter sensitive data from logs (GDPR compliance)."""
+    """Filter sensitive data from logs (GDPR compliance).
 
+    Enhanced to handle Lexware PII fields (customer numbers, IBANs, etc.)
+    and apply pattern-based masking for values that match sensitive patterns.
+    """
+
+    # Fields that should always be masked (by field name)
     SENSITIVE_FIELDS = {
+        # Auth/Security
         "password", "passwort", "token", "access_token", "refresh_token",
-        "api_key", "secret", "email", "iban", "credit_card", "ssn",
-        "hashed_password", "authorization"
+        "api_key", "secret", "hashed_password", "authorization",
+        "mfa_secret", "backup_codes",
+
+        # Financial identifiers (Lexware PII)
+        "iban", "bic", "swift", "bank_account", "kontonummer",
+        "bankleitzahl", "blz", "credit_card", "kreditkarte",
+
+        # Customer/Supplier identifiers (Lexware PII)
+        "kd_nr", "kundennummer", "customer_number", "kunden_nr",
+        "lief_nr", "lieferantennummer", "supplier_number",
+        "matchcode", "debitoren_nr", "kreditoren_nr",
+
+        # Tax identifiers
+        "vat_id", "ust_id", "steuernummer", "tax_number", "tax_id",
+
+        # Personal identifiers
+        "ssn", "sozialversicherungsnummer", "personalausweis",
+
+        # Contact data
+        "email", "phone", "telefon", "mobile",
     }
 
+    # Mask value helper
+    @staticmethod
+    def _mask_value(value: Any) -> str:
+        """Mask a value, keeping first 2 and last 2 characters."""
+        if value is None:
+            return "***ZENSIERT***"
+        str_val = str(value)
+        if len(str_val) <= 4:
+            return "****"
+        return f"{str_val[:2]}{'*' * (len(str_val) - 4)}{str_val[-2:]}"
+
     def __call__(self, logger: Any, method_name: str, event_dict: Dict[str, Any]) -> Dict[str, Any]:
-        """Redact sensitive fields."""
+        """Redact sensitive fields with partial masking."""
         for key in list(event_dict.keys()):
-            if any(sensitive in key.lower() for sensitive in self.SENSITIVE_FIELDS):
-                event_dict[key] = "***ZENSIERT***"
+            key_lower = key.lower().replace("-", "_").replace(" ", "_")
+            if any(sensitive in key_lower for sensitive in self.SENSITIVE_FIELDS):
+                event_dict[key] = self._mask_value(event_dict[key])
         return event_dict
 
 

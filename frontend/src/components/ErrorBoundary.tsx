@@ -1,3 +1,16 @@
+/**
+ * @deprecated Diese Komponente ist veraltet. Bitte stattdessen UnifiedErrorBoundary verwenden:
+ *
+ * ```tsx
+ * import { UnifiedErrorBoundary } from '@/components/errors/UnifiedErrorBoundary';
+ *
+ * <UnifiedErrorBoundary variant="default" context="general">
+ *   {children}
+ * </UnifiedErrorBoundary>
+ * ```
+ *
+ * Migration wird empfohlen bis Q2 2026.
+ */
 import { Component, type ReactNode, type ErrorInfo, useState } from 'react'
 import { AlertTriangle, RefreshCw, Home, Bug, Send, CheckCircle } from 'lucide-react'
 import { logger } from '@/lib/logger'
@@ -7,6 +20,7 @@ import { cn } from '@/lib/utils'
 
 /**
  * Error details captured by the ErrorBoundary
+ * @deprecated Use UnifiedErrorBoundary from '@/components/errors/UnifiedErrorBoundary'
  */
 interface ErrorDetails {
     error: Error

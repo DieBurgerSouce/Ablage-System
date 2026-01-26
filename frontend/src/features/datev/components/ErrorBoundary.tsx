@@ -1,6 +1,18 @@
 /**
  * DATEV Error Boundary
  *
+ * @deprecated Diese Komponente ist veraltet. Bitte stattdessen UnifiedErrorBoundary verwenden:
+ *
+ * ```tsx
+ * import { UnifiedErrorBoundary } from '@/components/errors/UnifiedErrorBoundary';
+ *
+ * <UnifiedErrorBoundary variant="card" context="datev">
+ *   {children}
+ * </UnifiedErrorBoundary>
+ * ```
+ *
+ * Migration wird empfohlen bis Q2 2026.
+ *
  * Faengt JavaScript-Fehler in Child-Komponenten ab und zeigt
  * eine benutzerfreundliche Fehler-UI mit Retry-Option.
  */

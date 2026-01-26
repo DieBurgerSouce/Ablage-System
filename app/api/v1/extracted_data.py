@@ -12,8 +12,10 @@ Feinpoliert und durchdacht - Deutsche Dokumente mit hoechster Genauigkeit.
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
+
+from sqlalchemy.sql.elements import ColumnElement
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -406,7 +408,7 @@ async def list_invoices(
     - Skonto laeuft bald ab: `?skonto_expiring_soon=true`
     """
     # Helper fuer JSONB Text-Extraktion (PostgreSQL-kompatibel)
-    def jsonb_text(field: str, *path: str) -> Any:
+    def jsonb_text(field: str, *path: str) -> ColumnElement[str]:
         """Extrahiert Text aus JSONB-Feld mit PostgreSQL jsonb_extract_path_text."""
         return func.jsonb_extract_path_text(
             cast(models.Document.extracted_data, JSONB),

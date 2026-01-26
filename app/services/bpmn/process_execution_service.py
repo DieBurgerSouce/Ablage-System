@@ -9,10 +9,13 @@ Fuehrt BPMN Prozesse aus:
 """
 
 from datetime import datetime, timezone
-from typing import Optional, List, Dict, Any, Set
+from typing import Optional, List, Dict, Any, Set, Union
 from uuid import UUID
 import re
 import structlog
+
+# Type alias for BPMN process variable values
+ProcessVariableValue = Union[str, int, float, bool, None, Dict[str, Any], List[Any]]
 
 from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,6 +32,11 @@ from app.db.bpmn_models.bpmn import (
     TaskType,
 )
 from app.services.bpmn.bpmn_parser import BPMNProcess, BPMNElement, ElementType
+from app.core.security.safe_expression_evaluator import (
+    SafeExpressionEvaluator as ASTEvaluator,
+    ExpressionEvaluationError,
+    ExpressionSecurityError,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -40,16 +48,26 @@ class ExpressionEvaluator:
     - Variable References: ${variableName}
     - Vergleiche: ${amount > 1000}
     - Logische Operatoren: ${approved && amount < 5000}
+
+    SECURITY: Uses AST-based SafeExpressionEvaluator instead of eval()
+    to prevent arbitrary code execution (CWE-94, CWE-95).
     """
 
     VARIABLE_PATTERN = re.compile(r'\$\{([^}]+)\}')
+
+    def __init__(self) -> None:
+        """Initialize with AST-based safe evaluator."""
+        self._safe_evaluator = ASTEvaluator(
+            max_length=500,
+            max_depth=10,
+        )
 
     def evaluate_condition(
         self,
         expression: Optional[str],
         variables: Dict[str, Any]
     ) -> bool:
-        """Evaluiert eine Bedingung.
+        """Evaluiert eine Bedingung sicher via AST-Parsing.
 
         Args:
             expression: Bedingungs-Ausdruck (z.B. "${amount > 1000}")
@@ -69,35 +87,27 @@ class ExpressionEvaluator:
 
         inner_expression = match.group(1)
 
-        # Variablen ersetzen
-        for var_name, var_value in variables.items():
-            if isinstance(var_value, str):
-                inner_expression = inner_expression.replace(
-                    var_name, f"'{var_value}'"
-                )
-            else:
-                inner_expression = inner_expression.replace(
-                    var_name, str(var_value)
-                )
+        # Convert && and || to Python operators
+        inner_expression = inner_expression.replace("&&", " and ")
+        inner_expression = inner_expression.replace("||", " or ")
 
-        # Sichere Evaluation (nur erlaubte Operatoren)
+        # Use safe AST-based evaluation instead of eval()
         try:
-            # Erlaubte Namen fuer eval
-            allowed_names = {
-                "True": True,
-                "False": False,
-                "None": None,
-            }
-            # Kopie der Variablen fuer eval
-            eval_vars = {**variables, **allowed_names}
-
-            # Nur einfache Ausdruecke erlauben
-            result = eval(inner_expression, {"__builtins__": {}}, eval_vars)
-            return bool(result)
-        except Exception as e:
+            return self._safe_evaluator.evaluate_condition(
+                inner_expression,
+                variables
+            )
+        except (ExpressionEvaluationError, ExpressionSecurityError) as e:
             logger.warning(
                 "expression_evaluation_failed",
-                expression=expression,
+                expression=expression[:100],  # Truncate for security
+                error=str(e)
+            )
+            return False
+        except Exception as e:
+            logger.warning(
+                "expression_evaluation_unexpected_error",
+                expression=expression[:100],
                 error=str(e)
             )
             return False
@@ -105,8 +115,8 @@ class ExpressionEvaluator:
     def resolve_variable(
         self,
         expression: str,
-        variables: Dict[str, Any]
-    ) -> Any:
+        variables: Dict[str, ProcessVariableValue]
+    ) -> ProcessVariableValue:
         """Loest einen Variablen-Ausdruck auf.
 
         Args:

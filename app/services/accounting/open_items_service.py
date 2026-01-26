@@ -265,6 +265,9 @@ class OpenItemsService:
         """
         Holt offene Forderungen.
 
+        Performance: entity_id und overdue_only werden auf SQL-Ebene gefiltert.
+        priority erfordert Python-Filter (berechnetes Feld).
+
         Args:
             company_id: Firma
             entity_id: Optional - nur fuer bestimmten Debitor
@@ -274,14 +277,16 @@ class OpenItemsService:
         Returns:
             Liste offener Posten
         """
-        items = await self._get_open_receivables(company_id, date.today())
+        today = date.today()
+        # Pass filters to SQL query for performance
+        items = await self._get_open_receivables(
+            company_id=company_id,
+            as_of_date=today,
+            entity_id=entity_id,
+            overdue_before_date=today if overdue_only else None,
+        )
 
-        if entity_id:
-            items = [i for i in items if i.entity_id == entity_id]
-
-        if overdue_only:
-            items = [i for i in items if i.days_overdue > 0]
-
+        # Priority filter must be Python (calculated field)
         if priority:
             items = [i for i in items if i.payment_priority == priority]
 
@@ -296,6 +301,8 @@ class OpenItemsService:
         """
         Holt offene Verbindlichkeiten.
 
+        Performance: entity_id und due_within_days werden auf SQL-Ebene gefiltert.
+
         Args:
             company_id: Firma
             entity_id: Optional - nur fuer bestimmten Kreditor
@@ -304,17 +311,20 @@ class OpenItemsService:
         Returns:
             Liste offener Posten
         """
-        items = await self._get_open_payables(company_id, date.today())
+        today = date.today()
+        due_within_date = (
+            today + timedelta(days=due_within_days)
+            if due_within_days is not None
+            else None
+        )
 
-        if entity_id:
-            items = [i for i in items if i.entity_id == entity_id]
-
-        if due_within_days is not None:
-            cutoff = date.today() + timedelta(days=due_within_days)
-            items = [
-                i for i in items
-                if i.due_date and i.due_date <= cutoff
-            ]
+        # Pass filters to SQL query for performance
+        items = await self._get_open_payables(
+            company_id=company_id,
+            as_of_date=today,
+            entity_id=entity_id,
+            due_within_date=due_within_date,
+        )
 
         return items
 
@@ -322,25 +332,43 @@ class OpenItemsService:
         self,
         company_id: uuid.UUID,
         as_of_date: date,
+        entity_id: Optional[uuid.UUID] = None,
+        overdue_before_date: Optional[date] = None,
     ) -> List[OpenItem]:
-        """Holt offene Forderungen aus der DB."""
+        """Holt offene Forderungen aus der DB.
+
+        Args:
+            company_id: Firma
+            as_of_date: Stichtag fuer Berechnungen
+            entity_id: Optional - nur fuer bestimmten Debitor (SQL-Filter)
+            overdue_before_date: Optional - nur ueberfaellige (due_date < date)
+        """
+        # Base conditions
+        conditions = [
+            Document.company_id == company_id,
+            Document.deleted_at.is_(None),
+            Document.document_type.in_(["invoice", "ausgangsrechnung"]),
+            InvoiceTracking.deleted_at.is_(None),
+            InvoiceTracking.status.notin_([
+                InvoiceStatus.PAID.value,
+                InvoiceStatus.CANCELLED.value,
+            ]),
+        ]
+
+        # SQL-level entity filter (N+1 optimization)
+        if entity_id:
+            conditions.append(Document.entity_id == entity_id)
+
+        # SQL-level overdue filter (N+1 optimization)
+        if overdue_before_date:
+            conditions.append(InvoiceTracking.due_date < overdue_before_date)
+
         # Ausgangsrechnungen mit offenen Betraegen
         query = (
             select(InvoiceTracking, Document, BusinessEntity)
             .join(Document, InvoiceTracking.document_id == Document.id)
             .outerjoin(BusinessEntity, Document.entity_id == BusinessEntity.id)
-            .where(
-                and_(
-                    Document.company_id == company_id,
-                    Document.deleted_at.is_(None),
-                    Document.document_type.in_(["invoice", "ausgangsrechnung"]),
-                    InvoiceTracking.deleted_at.is_(None),
-                    InvoiceTracking.status.notin_([
-                        InvoiceStatus.PAID.value,
-                        InvoiceStatus.CANCELLED.value,
-                    ]),
-                )
-            )
+            .where(and_(*conditions))
         )
 
         result = await self.db.execute(query)
@@ -397,25 +425,43 @@ class OpenItemsService:
         self,
         company_id: uuid.UUID,
         as_of_date: date,
+        entity_id: Optional[uuid.UUID] = None,
+        due_within_date: Optional[date] = None,
     ) -> List[OpenItem]:
-        """Holt offene Verbindlichkeiten aus der DB."""
+        """Holt offene Verbindlichkeiten aus der DB.
+
+        Args:
+            company_id: Firma
+            as_of_date: Stichtag fuer Berechnungen
+            entity_id: Optional - nur fuer bestimmten Kreditor (SQL-Filter)
+            due_within_date: Optional - nur faellig bis Datum (SQL-Filter)
+        """
+        # Base conditions
+        conditions = [
+            Document.company_id == company_id,
+            Document.deleted_at.is_(None),
+            Document.document_type.in_(["eingangsrechnung", "supplier_invoice", "purchase_invoice"]),
+            InvoiceTracking.deleted_at.is_(None),
+            InvoiceTracking.status.notin_([
+                InvoiceStatus.PAID.value,
+                InvoiceStatus.CANCELLED.value,
+            ]),
+        ]
+
+        # SQL-level entity filter (N+1 optimization)
+        if entity_id:
+            conditions.append(Document.entity_id == entity_id)
+
+        # SQL-level due date filter (N+1 optimization)
+        if due_within_date:
+            conditions.append(InvoiceTracking.due_date <= due_within_date)
+
         # Eingangsrechnungen mit offenen Betraegen
         query = (
             select(InvoiceTracking, Document, BusinessEntity)
             .join(Document, InvoiceTracking.document_id == Document.id)
             .outerjoin(BusinessEntity, Document.entity_id == BusinessEntity.id)
-            .where(
-                and_(
-                    Document.company_id == company_id,
-                    Document.deleted_at.is_(None),
-                    Document.document_type.in_(["eingangsrechnung", "supplier_invoice", "purchase_invoice"]),
-                    InvoiceTracking.deleted_at.is_(None),
-                    InvoiceTracking.status.notin_([
-                        InvoiceStatus.PAID.value,
-                        InvoiceStatus.CANCELLED.value,
-                    ]),
-                )
-            )
+            .where(and_(*conditions))
         )
 
         result = await self.db.execute(query)

@@ -779,35 +779,126 @@ class RateLimitError(AblageSystemException):
         self.retry_after = retry_after
 
 
-# Error Code Registry (from ERROR_PATTERNS.md)
-ERROR_CODE_REGISTRY = {
-    "E001": "GPU Out of Memory",
-    "E002": "GPU Not Available",
-    "E003": "Invalid German Text Encoding",
-    "E004": "OCR Backend Timeout",
-    "E005": "Database Connection Failed",
-    "E006": "Redis Connection Failed",
-    "E007": "Document Format Invalid",
-    "E008": "File Size Exceeded",
-    "E009": "GDPR Violation Detected",
-    "E010": "Backend Selection Failed",
-    "E011": "GDPR Operation Error",
-    "E012": "User Not Found",
-    "E013": "Data Export Error",
-    "E014": "Email Verification Error",
-    "E015": "Storage Error (MinIO/S3)",
-    "E016": "Webhook Error",
-    "E017": "Backup Error",
-    "E018": "ML/AI Processing Error",
-    "E019": "Search Error",
-    "E020": "Embedding Error",
-    "E021": "Notification Error",
-    "E022": "Authentication Error",
-    "E023": "Rate Limit Exceeded",
-    "E024": "GoBD Archive Error",
+# =============================================================================
+# ERROR CODE REGISTRY (Enterprise Standard Format: [DOMAIN]_[NUMBER])
+# =============================================================================
+# Domain prefixes:
+#   GPU_  - GPU/CUDA related errors
+#   OCR_  - OCR processing errors
+#   VAL_  - Validation errors
+#   AUTH_ - Authentication/Authorization errors
+#   DB_   - Database errors
+#   STOR_ - Storage/MinIO errors
+#   NET_  - Network/Redis errors
+#   GDPR_ - GDPR/Compliance errors
+#   DOC_  - Document processing errors
+#   ML_   - ML/AI errors
+#   NOTIF_- Notification errors
+#   ARCH_ - Archive/Backup errors
+
+ERROR_CODE_REGISTRY: dict[str, str] = {
+    # GPU Domain
+    "GPU_001": "GPU Out of Memory",
+    "GPU_002": "GPU Not Available",
+    "GPU_003": "CUDA Initialization Failed",
+
+    # OCR Domain
+    "OCR_001": "OCR Backend Timeout",
+    "OCR_002": "Backend Selection Failed",
+    "OCR_003": "Invalid German Text Encoding",
+    "OCR_004": "OCR Processing Failed",
+
+    # Validation Domain
+    "VAL_001": "Document Format Invalid",
+    "VAL_002": "File Size Exceeded",
+    "VAL_003": "Input Validation Failed",
+
+    # Authentication Domain
+    "AUTH_001": "Authentication Failed",
+    "AUTH_002": "User Not Found",
+    "AUTH_003": "Email Verification Error",
+    "AUTH_004": "Rate Limit Exceeded",
+    "AUTH_005": "Token Expired",
+
+    # Database Domain
+    "DB_001": "Database Connection Failed",
+    "DB_002": "Query Timeout",
+    "DB_003": "Transaction Failed",
+
+    # Storage Domain
+    "STOR_001": "Storage Error (MinIO/S3)",
+    "STOR_002": "File Upload Failed",
+    "STOR_003": "File Not Found",
+
+    # Network Domain
+    "NET_001": "Redis Connection Failed",
+    "NET_002": "Webhook Error",
+    "NET_003": "External API Error",
+
+    # GDPR/Compliance Domain
+    "GDPR_001": "GDPR Violation Detected",
+    "GDPR_002": "GDPR Operation Error",
+    "GDPR_003": "Data Retention Violation",
+
+    # Document Domain
+    "DOC_001": "Document Processing Failed",
+    "DOC_002": "Data Export Error",
+    "DOC_003": "Document Not Found",
+
+    # ML/AI Domain
+    "ML_001": "ML/AI Processing Error",
+    "ML_002": "Search Error",
+    "ML_003": "Embedding Error",
+    "ML_004": "Model Loading Failed",
+
+    # Notification Domain
+    "NOTIF_001": "Notification Error",
+    "NOTIF_002": "Email Delivery Failed",
+    "NOTIF_003": "Slack Integration Error",
+
+    # Archive Domain
+    "ARCH_001": "Backup Error",
+    "ARCH_002": "GoBD Archive Error",
+    "ARCH_003": "Restore Failed",
+}
+
+# Legacy mapping for backward compatibility (DEPRECATED - use new codes)
+LEGACY_ERROR_CODE_MAP: dict[str, str] = {
+    "E001": "GPU_001",
+    "E002": "GPU_002",
+    "E003": "OCR_003",
+    "E004": "OCR_001",
+    "E005": "DB_001",
+    "E006": "NET_001",
+    "E007": "VAL_001",
+    "E008": "VAL_002",
+    "E009": "GDPR_001",
+    "E010": "OCR_002",
+    "E011": "GDPR_002",
+    "E012": "AUTH_002",
+    "E013": "DOC_002",
+    "E014": "AUTH_003",
+    "E015": "STOR_001",
+    "E016": "NET_002",
+    "E017": "ARCH_001",
+    "E018": "ML_001",
+    "E019": "ML_002",
+    "E020": "ML_003",
+    "E021": "NOTIF_001",
+    "E022": "AUTH_001",
+    "E023": "AUTH_004",
+    "E024": "ARCH_002",
 }
 
 
 def get_error_description(error_code: str) -> str:
-    """Get human-readable error description"""
+    """Get human-readable error description.
+
+    Supports both new domain-based codes (GPU_001) and legacy codes (E001).
+    Legacy codes are automatically mapped to new format.
+    """
+    # Check if legacy code, map to new format
+    if error_code in LEGACY_ERROR_CODE_MAP:
+        error_code = LEGACY_ERROR_CODE_MAP[error_code]
+
     return ERROR_CODE_REGISTRY.get(error_code, "Unknown Error")

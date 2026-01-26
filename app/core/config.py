@@ -148,9 +148,9 @@ class Settings(BaseSettings):
     DATABASE_URL: Optional[str] = None
 
     # Database Connection Pool Settings
-    # API Pool (optimiert für 100+ concurrent users)
-    DB_POOL_SIZE: int = Field(default=50, description="Database connection pool size for API")
-    DB_MAX_OVERFLOW: int = Field(default=150, description="Maximum overflow connections for API")
+    # API Pool (optimiert - Query Performance durch Composite Indexes verbessert)
+    DB_POOL_SIZE: int = Field(default=15, description="Database connection pool size for API")
+    DB_MAX_OVERFLOW: int = Field(default=10, description="Maximum overflow connections for API")
     DB_POOL_RECYCLE: int = Field(default=1800, description="Connection recycle time in seconds (30 min)")
     # PERFORMANCE FIX: 10s statt 60s - schnelleres Fail-Fast bei Pool-Erschöpfung
     DB_POOL_TIMEOUT: int = Field(default=10, description="Pool connection timeout in seconds")

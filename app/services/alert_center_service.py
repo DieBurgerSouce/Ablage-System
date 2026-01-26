@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
 import structlog
-from sqlalchemy import select, func, and_, or_, desc, asc
+from sqlalchemy import select, func, and_, or_, desc, asc, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -806,27 +806,28 @@ Ablage-System Alert Center
         """
         Cleanup alerts that have passed their auto-dismiss time.
 
+        Uses bulk UPDATE for performance optimization (avoids N+1 queries).
+
         Returns:
             Number of alerts dismissed
         """
         now = datetime.now(timezone.utc)
 
+        # Bulk UPDATE instead of fetch-and-loop pattern
         stmt = (
-            select(Alert)
+            update(Alert)
             .where(Alert.auto_dismiss_at <= now)
             .where(Alert.status.in_([AlertStatus.NEW.value, AlertStatus.ACKNOWLEDGED.value]))
+            .values(
+                status=AlertStatus.DISMISSED.value,
+                resolution_note="Automatisch verworfen nach Zeitablauf",
+                resolution_action="auto_dismissed",
+                resolved_at=now,
+            )
         )
 
         result = await self.session.execute(stmt)
-        alerts = result.scalars().all()
-
-        count = 0
-        for alert in alerts:
-            alert.status = AlertStatus.DISMISSED.value
-            alert.resolution_note = "Automatisch verworfen nach Zeitablauf"
-            alert.resolution_action = "auto_dismissed"
-            alert.resolved_at = now
-            count += 1
+        count = result.rowcount
 
         await self.session.flush()
 

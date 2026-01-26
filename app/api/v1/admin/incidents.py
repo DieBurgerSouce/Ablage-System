@@ -8,7 +8,7 @@ Nur für Administratoren zugänglich.
 Alle Antworten auf Deutsch.
 """
 
-from typing import Any, List, Optional
+from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -141,7 +141,7 @@ async def list_incidents(
         None,
         description="Filtere nach Incident-Typ"
     )
-) -> Any:
+) -> IncidentListResponse:
     """
     Listet alle aktiven Sicherheitsvorfälle auf.
 
@@ -184,7 +184,7 @@ async def list_incidents(
 )
 async def get_incident_stats(
     admin: User = Depends(get_current_superuser)
-) -> Any:
+) -> IncidentStatsResponse:
     """
     Gibt Statistiken über aktuelle Sicherheitsvorfälle zurück.
 
@@ -228,7 +228,7 @@ async def analyze_security_events(
     request: AnalyzeRequest,
     admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db)
-) -> Any:
+) -> AnalyzeResponse:
     """
     Führt eine manuelle Sicherheitsanalyse durch.
 
@@ -285,7 +285,7 @@ async def analyze_security_events(
 )
 async def list_blocked_ips(
     admin: User = Depends(get_current_superuser)
-) -> Any:
+) -> BlockedIPListResponse:
     """
     Listet alle aktuell blockierten IP-Adressen auf.
 
@@ -333,7 +333,7 @@ async def list_blocked_ips(
 async def block_ip_manually(
     request: ManualBlockRequest,
     admin: User = Depends(get_current_superuser)
-) -> Any:
+) -> ManualBlockResponse:
     """
     Sperrt eine IP-Adresse manuell.
 
@@ -383,7 +383,7 @@ async def block_ip_manually(
 async def unblock_ip(
     ip_address: str,
     admin: User = Depends(get_current_superuser)
-) -> Any:
+) -> UnblockResponse:
     """
     Hebt die Sperre einer IP-Adresse auf.
 
@@ -434,7 +434,7 @@ async def unblock_ip(
 async def get_incident_details(
     incident_id: str,
     admin: User = Depends(get_current_superuser)
-) -> Any:
+) -> IncidentResponse:
     """
     Gibt Details zu einem spezifischen Sicherheitsvorfall zurück.
 
@@ -462,7 +462,7 @@ async def get_incident_details(
 async def close_incident(
     incident_id: str,
     admin: User = Depends(get_current_superuser)
-) -> Any:
+) -> UnblockResponse:
     """
     Schließt einen Incident und entfernt ihn aus der aktiven Liste.
 
@@ -500,7 +500,7 @@ async def close_incident(
 )
 async def get_security_config(
     admin: User = Depends(get_current_superuser)
-) -> Any:
+) -> dict:
     """
     Zeigt die aktuelle Sicherheits-Konfiguration an.
 
