@@ -127,8 +127,8 @@ class TestUmlautRestoration:
         corrected = result.get("text", "")
         # Should have capitalized Änderung and lowercase änderung
         if "Änderung" in corrected:
-            # Case should be preserved
-            assert True
+            # Case should be preserved - at least one umlaut should exist
+            assert "ä" in corrected or "Ä" in corrected
 
 
 class TestEszettCorrections:

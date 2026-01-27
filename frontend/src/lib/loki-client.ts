@@ -21,6 +21,11 @@ const BATCH_INTERVAL_MS = 5000;
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
 
+// Warne wenn keine LOKI_URL konfiguriert ist
+if (!import.meta.env.VITE_LOKI_URL && LOKI_ENABLED) {
+  console.warn('[Loki] Keine LOKI_URL konfiguriert - verwende Fallback: http://localhost:3100');
+}
+
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 interface LogEntry {

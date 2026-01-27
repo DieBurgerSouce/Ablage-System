@@ -27,6 +27,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 import { EmailConfigList } from '../components/EmailConfigList';
 import { EmailConfigForm } from '../components/EmailConfigForm';
@@ -285,15 +286,19 @@ export function ImportsPage() {
   }
 
   return (
-    <div className="p-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Import-Verwaltung</h1>
-          <p className="text-muted-foreground">
-            Konfigurieren Sie automatische Dokumenten-Importe aus Email und Ordnern.
-          </p>
+    <ErrorBoundary
+      errorTitle="Fehler in der Import-Verwaltung"
+      errorDescription="Die Import-Konfigurationen konnten nicht geladen werden. Bitte versuchen Sie es erneut."
+    >
+      <div className="p-8 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Import-Verwaltung</h1>
+            <p className="text-muted-foreground">
+              Konfigurieren Sie automatische Dokumenten-Importe aus Email und Ordnern.
+            </p>
+          </div>
         </div>
-      </div>
 
       <ImportStatsCards />
 
@@ -366,7 +371,8 @@ export function ImportsPage() {
           <ImportLogTable maxItems={100} />
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }
 

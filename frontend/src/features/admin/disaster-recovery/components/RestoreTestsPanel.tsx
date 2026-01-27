@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   TrendingUp,
   TrendingDown,
+  type LucideIcon,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -55,7 +56,7 @@ const formatDuration = (seconds?: number) => {
 const getStatusBadge = (status: RestoreTestResult['status']) => {
   const statusConfig: Record<
     RestoreTestResult['status'],
-    { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: any }
+    { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: LucideIcon }
   > = {
     success: { label: 'Erfolgreich', variant: 'default', icon: CheckCircle2 },
     failed: { label: 'Fehlgeschlagen', variant: 'destructive', icon: XCircle },

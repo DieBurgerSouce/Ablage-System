@@ -11,7 +11,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import structlog
 from sqlalchemy import and_, cast, desc, func, or_, select, String
@@ -434,8 +434,12 @@ class ReportBuilderService:
         else:
             return "Sonstige"
 
-    def _get_model_column(self, model: Type, field_path: str) -> Any:
-        """Holt die SQLAlchemy-Spalte fuer ein Feld."""
+    def _get_model_column(self, model: Type, field_path: str) -> Optional[object]:
+        """Holt die SQLAlchemy-Spalte fuer ein Feld.
+
+        Returns:
+            SQLAlchemy column object or None if not found
+        """
         field_def = FIELD_DEFINITIONS.get("documents", {}).get(field_path, {})
         path = field_def.get("path", field_path)
         json_key = field_def.get("json_key")
@@ -455,8 +459,12 @@ class ReportBuilderService:
         model: Type,
         filter_obj: ReportFilter,
         runtime_filters: Optional[Dict[str, Any]] = None,
-    ) -> Any:
-        """Baut eine Filter-Bedingung."""
+    ) -> Optional[object]:
+        """Baut eine Filter-Bedingung.
+
+        Returns:
+            SQLAlchemy filter condition or None if field not found
+        """
         column = self._get_model_column(model, filter_obj.field_path)
         if column is None:
             logger.warning(f"Unknown filter field: {filter_obj.field_path}")
@@ -507,8 +515,12 @@ class ReportBuilderService:
         self,
         dynamic_source: str,
         runtime_filters: Optional[Dict[str, Any]] = None,
-    ) -> Any:
-        """Loest dynamische Werte auf."""
+    ) -> Optional[Union[date, List[date], Any]]:
+        """Loest dynamische Werte auf.
+
+        Returns:
+            Resolved value (date, list of dates, or runtime filter value)
+        """
         now = datetime.now(timezone.utc)
         today = now.date()
 
@@ -542,8 +554,12 @@ class ReportBuilderService:
         row: Any,
         field_path: str,
         data_source: str,
-    ) -> Any:
-        """Extrahiert einen Feldwert aus einer Zeile."""
+    ) -> Union[str, int, float, bool, None]:
+        """Extrahiert einen Feldwert aus einer Zeile.
+
+        Returns:
+            Extracted value (serializable types for JSON response)
+        """
         field_defs = FIELD_DEFINITIONS.get(data_source, {})
         field_def = field_defs.get(field_path, {})
 

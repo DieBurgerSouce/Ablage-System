@@ -301,7 +301,7 @@ class BackupRestoreTestService:
             if should_cleanup:
                 await self._cleanup_temp_database(temp_db_name, result)
 
-        except Exception as e:
+        except (IOError, OSError, subprocess.SubprocessError, asyncio.TimeoutError) as e:
             logger.exception("restore_test_error", test_id=str(result.test_id))
             result.status = RestoreTestStatus.FAILED
             result.errors.append(f"Unerwarteter Fehler: {str(e)}")
@@ -356,7 +356,7 @@ class BackupRestoreTestService:
 
             return temp_db_name
 
-        except Exception as e:
+        except (subprocess.SubprocessError, OSError) as e:
             result.errors.append(f"Temp-DB Erstellung Fehler: {str(e)}")
             result.status = RestoreTestStatus.FAILED
             return None
@@ -394,7 +394,7 @@ class BackupRestoreTestService:
                 temp_db_name=temp_db_name,
             )
 
-        except Exception as e:
+        except (subprocess.SubprocessError, OSError) as e:
             result.warnings.append(f"Temp-DB Cleanup Fehler: {str(e)}")
 
     # -------------------------------------------------------------------------
@@ -479,7 +479,7 @@ class BackupRestoreTestService:
             result.errors.append("Restore Timeout (10 Minuten ueberschritten)")
             result.status = RestoreTestStatus.FAILED
             return False
-        except Exception as e:
+        except (subprocess.SubprocessError, IOError, OSError) as e:
             result.errors.append(f"Restore Fehler: {str(e)}")
             result.status = RestoreTestStatus.FAILED
             return False
@@ -534,7 +534,7 @@ class BackupRestoreTestService:
 
                 result.schema_results.append(schema_result)
 
-        except Exception as e:
+        except (IOError, OSError) as e:  # Catch-all: DB connection errors possible
             result.errors.append(f"Schema-Validierung Fehler: {str(e)}")
 
     async def _get_schema_info(

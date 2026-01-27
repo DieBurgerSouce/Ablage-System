@@ -17,11 +17,12 @@ from typing import Optional, List, Dict, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
+from app.core.jsonb_validators import validate_jsonb_payload
 from app.db.models import User
 
 logger = logging.getLogger(__name__)
@@ -104,6 +105,20 @@ class RuleCreateRequest(BaseModel):
     valid_from: Optional[datetime] = None
     valid_until: Optional[datetime] = None
 
+    @model_validator(mode="after")
+    def validate_jsonb_payloads(self) -> "RuleCreateRequest":
+        """Validate JSONB payloads for size, depth, and injection patterns."""
+        if self.condition:
+            validate_jsonb_payload(self.condition, max_depth=5)
+        for action in self.actions:
+            if action.params:
+                validate_jsonb_payload(action.params, max_depth=3)
+        if self.else_actions:
+            for action in self.else_actions:
+                if action.params:
+                    validate_jsonb_payload(action.params, max_depth=3)
+        return self
+
 
 class RuleUpdateRequest(BaseModel):
     """Request zum Aktualisieren einer Regel."""
@@ -121,6 +136,21 @@ class RuleUpdateRequest(BaseModel):
     applies_to_sources: Optional[List[str]] = None
     valid_from: Optional[datetime] = None
     valid_until: Optional[datetime] = None
+
+    @model_validator(mode="after")
+    def validate_jsonb_payloads(self) -> "RuleUpdateRequest":
+        """Validate JSONB payloads for size, depth, and injection patterns."""
+        if self.condition:
+            validate_jsonb_payload(self.condition, max_depth=5)
+        if self.actions:
+            for action in self.actions:
+                if action.params:
+                    validate_jsonb_payload(action.params, max_depth=3)
+        if self.else_actions:
+            for action in self.else_actions:
+                if action.params:
+                    validate_jsonb_payload(action.params, max_depth=3)
+        return self
 
 
 class RuleResponse(BaseModel):

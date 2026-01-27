@@ -16,6 +16,8 @@ GoBD-Compliance:
 - Verfügbarkeit: Jederzeit lesbar während Aufbewahrungsfrist
 """
 
+from __future__ import annotations
+
 import hashlib
 import json
 import uuid
@@ -23,7 +25,7 @@ from dataclasses import dataclass
 from datetime import datetime, date, timedelta, timezone
 from enum import Enum
 from io import BytesIO
-from typing import Optional, List, Dict, Any, Tuple
+from typing import TYPE_CHECKING, Optional, List, Dict, Any, Tuple
 
 import structlog
 from sqlalchemy import select, func, and_, update
@@ -36,6 +38,9 @@ from app.core.audit_logger import (
     decrypt_audit_metadata,
     GENESIS_HASH,
 )
+
+if TYPE_CHECKING:
+    from minio import Minio
 
 logger = structlog.get_logger(__name__)
 
@@ -103,11 +108,11 @@ class AuditArchiveService:
 
     def __init__(self) -> None:
         """Initialisiert den Archive Service."""
-        self._minio_client: Optional[Any] = None
+        self._minio_client: Optional[Minio] = None
         self._bucket_initialized = False
 
     @property
-    def minio_client(self) -> Any:
+    def minio_client(self) -> Optional[Minio]:
         """Lazy-Initialisierung des MinIO-Clients."""
         if self._minio_client is None:
             try:

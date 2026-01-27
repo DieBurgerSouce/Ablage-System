@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from app.core.datetime_utils import utc_now
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import structlog
 
@@ -233,7 +233,7 @@ class BackupService:
         except FileNotFoundError:
             self._encryption_validation_error = "GPG nicht installiert"
             logger.error("gpg_nicht_gefunden")
-        except Exception as e:
+        except (subprocess.SubprocessError, OSError, ValueError) as e:
             self._encryption_validation_error = f"GPG-Validierung Fehler: {str(e)}"
             logger.exception("gpg_validation_fehler")
 
@@ -341,7 +341,7 @@ class BackupService:
                 backup_type="postgres",
                 error=error_msg,
             )
-        except Exception as e:
+        except (IOError, OSError, asyncio.TimeoutError) as e:
             logger.exception("postgres_backup_fehler")
             return BackupResult(
                 success=False,
@@ -464,7 +464,7 @@ class BackupService:
                 backup_type="redis",
                 error=error_msg,
             )
-        except Exception as e:
+        except (IOError, OSError, asyncio.TimeoutError) as e:
             logger.exception("redis_backup_fehler")
             return BackupResult(
                 success=False,
@@ -575,7 +575,7 @@ class BackupService:
                 backup_type="minio",
                 error=error_msg,
             )
-        except Exception as e:
+        except (IOError, OSError, tarfile.TarError) as e:
             logger.exception("minio_backup_fehler")
             return BackupResult(
                 success=False,
@@ -635,7 +635,7 @@ class BackupService:
                 encrypted=self.config.encryption_enabled,
             )
 
-        except Exception as e:
+        except (tarfile.TarError, IOError, OSError) as e:
             logger.exception("config_backup_fehler")
             return BackupResult(
                 success=False,
@@ -771,7 +771,7 @@ class BackupService:
             logger.error("gpg_nicht_gefunden")
             self.metrics.record_encryption_failure(error_msg)
             return None
-        except Exception as e:
+        except (subprocess.SubprocessError, IOError, OSError) as e:
             logger.exception("verschluesselung_fehler")
             self.metrics.record_encryption_failure(str(e))
             # Aufraumen bei Fehler
@@ -783,7 +783,7 @@ class BackupService:
         self,
         encrypted_path: Path,
         original_size: int,
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """
         Validiere verschluesselte Datei nach Erstellung.
 
@@ -840,7 +840,7 @@ class BackupService:
 
         return {"valid": True}
 
-    def get_encryption_status(self) -> Dict[str, any]:
+    def get_encryption_status(self) -> Dict[str, Any]:
         """
         Hole aktuellen Encryption-Status (fuer Health-Checks).
 
@@ -1189,7 +1189,7 @@ class BackupService:
             with gzip.open(output_path, "wb") as f_out:
                 shutil.copyfileobj(f_in, f_out)
 
-    def list_backups(self, backup_type: Optional[str] = None) -> List[Dict[str, any]]:
+    def list_backups(self, backup_type: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Liste lokale Backups auf.
 
@@ -1199,7 +1199,7 @@ class BackupService:
         Returns:
             Liste von Backup-Informationen
         """
-        backups: List[Dict[str, any]] = []
+        backups: List[Dict[str, Any]] = []
         types = [backup_type] if backup_type else ["postgres", "redis", "minio", "config"]
 
         for btype in types:

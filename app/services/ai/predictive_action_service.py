@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 import asyncio
 
 import structlog
@@ -33,6 +33,10 @@ from sqlalchemy import select, and_, or_, func, case, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import utc_now
+
+if TYPE_CHECKING:
+    from app.services.notification_service import NotificationService
+    from app.services.slack_service import SlackService
 
 logger = structlog.get_logger(__name__)
 
@@ -231,8 +235,8 @@ class PredictiveActionService:
 
     def __init__(
         self,
-        notification_service: Optional[Any] = None,
-        slack_service: Optional[Any] = None,
+        notification_service: Optional[NotificationService] = None,
+        slack_service: Optional[SlackService] = None,
     ) -> None:
         """Initialisiere PredictiveActionService.
 
@@ -244,7 +248,7 @@ class PredictiveActionService:
         self._slack_service = slack_service
 
     @property
-    def notification_service(self) -> Any:
+    def notification_service(self) -> NotificationService:
         """Lazy-Load NotificationService."""
         if self._notification_service is None:
             from app.services.notification_service import get_notification_service
@@ -252,7 +256,7 @@ class PredictiveActionService:
         return self._notification_service
 
     @property
-    def slack_service(self) -> Any:
+    def slack_service(self) -> Optional[SlackService]:
         """Lazy-Load SlackService."""
         if self._slack_service is None:
             try:

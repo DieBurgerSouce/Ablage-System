@@ -11,7 +11,7 @@ Provides high-level interface for:
 import structlog
 from datetime import datetime, timezone
 from app.core.datetime_utils import utc_now
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Union
 from uuid import UUID
 
 from celery.result import AsyncResult
@@ -270,7 +270,7 @@ class TaskService:
                 "state": task_result.state,
             }
 
-    def get_task_result(self, task_id: str, timeout: Optional[float] = None) -> Any:
+    def get_task_result(self, task_id: str, timeout: Optional[float] = None) -> Union[Dict[str, Any], List[Any], str, int, float, bool, None]:
         """Get task result (blocks until complete if timeout specified).
 
         Args:
@@ -278,7 +278,7 @@ class TaskService:
             timeout: Optional timeout in seconds
 
         Returns:
-            Task result
+            Task result (type depends on the task, commonly Dict or serializable types)
 
         Raises:
             TimeoutError: If timeout is reached

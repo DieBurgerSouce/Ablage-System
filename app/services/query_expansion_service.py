@@ -8,7 +8,7 @@ Erweitert Suchanfragen mit deutschen Geschaeftsbegriff-Synonymen.
 import json
 import re
 from pathlib import Path
-from typing import List, Dict, Set, Optional, Tuple
+from typing import Any, List, Dict, Set, Optional, Tuple
 from functools import lru_cache
 
 import structlog
@@ -126,7 +126,7 @@ class QueryExpansionService:
         self,
         query: str,
         max_expansions_per_term: int = 3
-    ) -> Tuple[str, List[Dict[str, any]]]:
+    ) -> Tuple[str, List[Dict[str, Any]]]:
         """
         Erweitert eine Suchanfrage mit Synonymen.
 
@@ -193,7 +193,7 @@ class QueryExpansionService:
 
         return " ".join(all_terms)
 
-    def get_expansion_preview(self, query: str) -> Dict[str, any]:
+    def get_expansion_preview(self, query: str) -> Dict[str, Any]:
         """
         Gibt eine Vorschau der Query-Expansion zurueck.
 

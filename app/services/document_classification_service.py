@@ -18,7 +18,7 @@ Feinpoliert und durchdacht - Deutsche Dokumente mit hoechster Genauigkeit.
 import re
 import structlog
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from app.api.schemas.extracted_data import (
     DocumentClassificationResult,
@@ -611,7 +611,7 @@ class DocumentClassificationService:
         """
         return [self.classify(text) for text in texts]
 
-    def get_stats(self) -> Dict[str, any]:
+    def get_stats(self) -> Dict[str, Any]:
         """Gibt Klassifizierungs-Statistiken zurueck."""
         return self._stats.copy()
 

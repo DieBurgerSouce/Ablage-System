@@ -14,7 +14,9 @@ Features:
 Feinpoliert und durchdacht.
 """
 
-from typing import Optional, List, Dict, Any, Tuple
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Optional, List, Dict, Any, Tuple
 from enum import Enum
 import asyncio
 import threading
@@ -24,6 +26,9 @@ import torch
 import numpy as np
 
 from app.core.config import settings
+
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
 
 logger = structlog.get_logger(__name__)
 
@@ -92,7 +97,7 @@ class EmbeddingFactory:
 
     def __init__(self):
         """Initialisiere EmbeddingFactory."""
-        self._models: Dict[str, Any] = {}
+        self._models: Dict[str, SentenceTransformer] = {}
         self._current_model: Optional[str] = None
         self._device: Optional[str] = None
         self._model_lock = asyncio.Lock()
@@ -136,7 +141,7 @@ class EmbeddingFactory:
         )
         return MODEL_CONFIGS[EmbeddingModel.E5_LARGE]
 
-    async def _load_model(self, model_name: str) -> Any:
+    async def _load_model(self, model_name: str) -> SentenceTransformer:
         """
         Lade Modell (lazy loading mit GPU Memory Management).
 

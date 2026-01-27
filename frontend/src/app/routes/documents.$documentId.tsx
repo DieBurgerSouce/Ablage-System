@@ -11,7 +11,7 @@ export const Route = createFileRoute('/documents/$documentId')({
 function DocumentViewerPage() {
     const { documentId } = Route.useParams()
 
-    const { data: document, isLoading } = useQuery({
+    const { data: document, isLoading, isError } = useQuery({
         queryKey: ['document', documentId],
         queryFn: () => documentsService.getById(documentId)
     });
@@ -20,6 +20,21 @@ function DocumentViewerPage() {
         return (
             <div className="h-full flex items-center justify-center">
                 <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            </div>
+        )
+    }
+
+    if (isError) {
+        return (
+            <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                    <p className="text-destructive text-lg font-medium">
+                        Fehler beim Laden des Dokuments
+                    </p>
+                    <p className="text-muted-foreground mt-2">
+                        Das Dokument konnte nicht geladen werden. Bitte versuchen Sie es erneut.
+                    </p>
+                </div>
             </div>
         )
     }

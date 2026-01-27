@@ -17,13 +17,18 @@ import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Tuple, Union
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import redis.asyncio as aioredis
 import structlog
 
 from app.core.config import settings
+
+if TYPE_CHECKING:
+    from app.services.embedding_service import EmbeddingService
 
 logger = structlog.get_logger(__name__)
 
@@ -152,7 +157,7 @@ class SemanticCacheService:
         self._cache_ttl = cache_ttl
         self._redis_url = redis_url or settings.REDIS_URL
         self._redis: Optional[aioredis.Redis] = None
-        self._embedding_service = None
+        self._embedding_service: Optional[EmbeddingService] = None
         self._initialized = False
 
         # Lokaler In-Memory Cache fuer Hot-Entries
@@ -175,7 +180,7 @@ class SemanticCacheService:
                 self._redis = None
         return self._redis
 
-    async def _get_embedding_service(self) -> Any:
+    async def _get_embedding_service(self) -> Optional[EmbeddingService]:
         """Gibt Embedding-Service zurueck (Lazy-Loading)."""
         if self._embedding_service is None:
             try:

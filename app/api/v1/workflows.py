@@ -18,10 +18,11 @@ from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status, Response
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db, require_admin
+from app.core.jsonb_validators import validate_jsonb_payload
 from app.db.models import User, UserCompany, Company
 from app.services.workflow import (
     ConditionEvaluator,
@@ -98,6 +99,21 @@ class WorkflowCreate(BaseModel):
     timeout_seconds: int = Field(default=3600, ge=60, le=86400)
     retry_config: Optional[Dict[str, Any]] = None
 
+    @model_validator(mode="after")
+    def validate_jsonb_payloads(self) -> "WorkflowCreate":
+        """Validate JSONB payloads for size, depth, and injection patterns."""
+        if self.trigger_config:
+            validate_jsonb_payload(self.trigger_config, max_depth=3)
+        if self.nodes:
+            validate_jsonb_payload(self.nodes, max_depth=5)
+        if self.edges:
+            validate_jsonb_payload(self.edges, max_depth=3)
+        if self.variables:
+            validate_jsonb_payload(self.variables, max_depth=3)
+        if self.retry_config:
+            validate_jsonb_payload(self.retry_config, max_depth=3)
+        return self
+
 
 class WorkflowUpdate(BaseModel):
     """Schema fuer Workflow-Update."""
@@ -113,6 +129,21 @@ class WorkflowUpdate(BaseModel):
     max_concurrent_executions: Optional[int] = Field(None, ge=1, le=100)
     timeout_seconds: Optional[int] = Field(None, ge=60, le=86400)
     retry_config: Optional[Dict[str, Any]] = None
+
+    @model_validator(mode="after")
+    def validate_jsonb_payloads(self) -> "WorkflowUpdate":
+        """Validate JSONB payloads for size, depth, and injection patterns."""
+        if self.trigger_config:
+            validate_jsonb_payload(self.trigger_config, max_depth=3)
+        if self.nodes:
+            validate_jsonb_payload(self.nodes, max_depth=5)
+        if self.edges:
+            validate_jsonb_payload(self.edges, max_depth=3)
+        if self.variables:
+            validate_jsonb_payload(self.variables, max_depth=3)
+        if self.retry_config:
+            validate_jsonb_payload(self.retry_config, max_depth=3)
+        return self
 
 
 class WorkflowResponse(BaseModel):

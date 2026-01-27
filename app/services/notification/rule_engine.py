@@ -21,7 +21,7 @@ import threading
 from dataclasses import dataclass, field
 from datetime import datetime, time, timezone, timedelta
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 from uuid import UUID
 import json
 
@@ -146,7 +146,8 @@ class RuleConditionMatcher:
     - Logische Operatoren: AND, OR, NOT
     """
 
-    OPERATORS: Dict[str, Callable[[Any, Any], bool]] = {
+    # Type annotation: operator functions accept comparable types and return bool
+    OPERATORS: Dict[str, Callable[[Union[str, int, float, bool, None], Union[str, int, float, bool, List, Tuple, Set, None]], bool]] = {
         "eq": operator.eq,
         "ne": operator.ne,
         "gt": operator.gt,

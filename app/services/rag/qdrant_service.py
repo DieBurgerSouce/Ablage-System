@@ -12,7 +12,9 @@ Enterprise-grade Vector-DB-Integration mit:
 Feinpoliert und durchdacht - Production-ready Vector Search.
 """
 
-from typing import List, Optional, Dict, Any, TypedDict, Callable, TypeVar
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, List, Optional, Dict, Any, TypedDict, Callable, TypeVar
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from uuid import UUID
@@ -23,6 +25,9 @@ import asyncio
 import structlog
 
 from app.core.config import settings
+
+if TYPE_CHECKING:
+    from qdrant_client import QdrantClient, AsyncQdrantClient
 
 logger = structlog.get_logger(__name__)
 
@@ -163,8 +168,8 @@ class QdrantService:
 
     _instance: Optional['QdrantService'] = None
     _lock = threading.Lock()
-    _client: Optional[Any] = None  # QdrantClient
-    _async_client: Optional[Any] = None  # AsyncQdrantClient
+    _client: Optional[QdrantClient] = None
+    _async_client: Optional[AsyncQdrantClient] = None
     _initialized = False
 
     def __new__(cls) -> 'QdrantService':
@@ -218,7 +223,7 @@ class QdrantService:
         """Gibt zurueck ob Qdrant aktiviert ist."""
         return self._enabled
 
-    def _get_sync_client(self) -> Any:
+    def _get_sync_client(self) -> QdrantClient:
         """Lazy-load synchronen Qdrant Client."""
         if not self._enabled:
             raise RuntimeError("Qdrant ist nicht aktiviert")
@@ -226,6 +231,7 @@ class QdrantService:
         if self._client is None:
             with self._lock:
                 if self._client is None:
+                    from qdrant_client import QdrantClient
                     self._client = QdrantClient(
                         host=self._host,
                         port=self._grpc_port if self._prefer_grpc else self._http_port,
@@ -237,7 +243,7 @@ class QdrantService:
                     logger.info("qdrant_sync_client_created")
         return self._client
 
-    async def _get_async_client(self) -> Any:
+    async def _get_async_client(self) -> AsyncQdrantClient:
         """Lazy-load asynchronen Qdrant Client."""
         if not self._enabled:
             raise RuntimeError("Qdrant ist nicht aktiviert")
@@ -245,6 +251,7 @@ class QdrantService:
         if self._async_client is None:
             with self._lock:
                 if self._async_client is None:
+                    from qdrant_client import AsyncQdrantClient
                     self._async_client = AsyncQdrantClient(
                         host=self._host,
                         port=self._grpc_port if self._prefer_grpc else self._http_port,

@@ -6,6 +6,7 @@ from decimal import Decimal
 from typing import Optional, List, Dict, Any, Tuple
 from enum import Enum
 from pathlib import Path
+import os
 import uuid
 from uuid import UUID  # Import UUID type explicitly for type annotations
 
@@ -571,13 +572,17 @@ class UploadCompleteRequest(BaseModel):
     @field_validator("final_filename")
     @classmethod
     def validate_filename(cls, v: str) -> str:
-        """Validate and sanitize filename."""
+        """Validate and sanitize filename against path traversal (CWE-22)."""
+        # Reject null bytes (CWE-158)
+        if "\x00" in v:
+            raise ValueError("Ungueltiger Dateiname - Nullbytes nicht erlaubt")
+
         # Prevent path traversal
         if ".." in v or "/" in v or "\\" in v:
             raise ValueError("Ungueltiger Dateiname - Pfad-Traversal nicht erlaubt")
 
-        # Sanitize filename
-        v = v.strip()
+        # Normalize to basename only (defense in depth)
+        v = os.path.basename(v).strip()
         if not v:
             raise ValueError("Dateiname darf nicht leer sein")
 

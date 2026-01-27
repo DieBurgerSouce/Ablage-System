@@ -145,7 +145,7 @@ class BackupValidator:
             with open(self.checksum_cache_path, "r") as f:
                 self._checksum_cache = json.load(f)
             logger.debug("checksum_cache_geladen", anzahl=len(self._checksum_cache))
-        except Exception as e:
+        except (IOError, OSError, json.JSONDecodeError, ValueError) as e:
             logger.warning("checksum_cache_laden_fehlgeschlagen", error=str(e))
 
     def _save_checksum_cache(self) -> None:
@@ -157,7 +157,7 @@ class BackupValidator:
             with open(self.checksum_cache_path, "w") as f:
                 json.dump(self._checksum_cache, f, indent=2)
             logger.debug("checksum_cache_gespeichert")
-        except Exception as e:
+        except (IOError, OSError, TypeError) as e:
             logger.warning("checksum_cache_speichern_fehlgeschlagen", error=str(e))
 
     # =========================================================================
@@ -397,7 +397,7 @@ class BackupValidator:
                     message="Backup enthaelt keine INSERT Statements (leer?)",
                 ))
 
-        except Exception as e:
+        except (IOError, OSError, UnicodeDecodeError, gzip.BadGzipFile) as e:
             issues.append(ValidationIssue(
                 severity="error",
                 code="READ_ERROR",
@@ -532,7 +532,7 @@ class BackupValidator:
                     except ValueError as e:
                         logger.debug("rdb_version_parse_failed", error_type=type(e).__name__, version=version)
 
-        except Exception as e:
+        except (IOError, OSError) as e:
             issues.append(ValidationIssue(
                 severity="error",
                 code="READ_ERROR",
@@ -558,7 +558,7 @@ class BackupValidator:
 
                     metadata["total_size"] = total_size
 
-            except Exception as e:
+            except (IOError, OSError) as e:
                 issues.append(ValidationIssue(
                     severity="warning",
                     code="EOF_CHECK_FAILED",
@@ -640,7 +640,7 @@ class BackupValidator:
                             details={"missing": list(missing_buckets)},
                         ))
 
-            except Exception as e:
+            except (tarfile.TarError, IOError, OSError) as e:
                 issues.append(ValidationIssue(
                     severity="error",
                     code="TAR_ERROR",
@@ -749,7 +749,7 @@ class BackupValidator:
                         message=f"Fehlende Konfigurationen: {missing}",
                     ))
 
-        except Exception as e:
+        except (tarfile.TarError, IOError, OSError) as e:
             issues.append(ValidationIssue(
                 severity="error",
                 code="TAR_ERROR",
@@ -823,7 +823,7 @@ class BackupValidator:
 
                     metadata["gpg_format"] = "binary" if header[0] >= 0x80 else "ascii"
 
-            except Exception as e:
+            except (IOError, OSError) as e:
                 issues.append(ValidationIssue(
                     severity="warning",
                     code="GPG_CHECK_FAILED",

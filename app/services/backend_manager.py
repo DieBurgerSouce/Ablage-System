@@ -584,21 +584,21 @@ class BackendManager:
                 self.backends["surya_gpu"] = SuryaGPUAgent()
                 gpu_surya_initialized = True
                 logger.info("surya_gpu_backend_initialized", device=torch.cuda.get_device_name(0))
-            except Exception as e:
+            except (RuntimeError, MemoryError, OSError, ImportError) as e:
                 logger.info("surya_gpu_backend_unavailable", error=str(e))
 
         # Always initialize CPU Surya as fallback
         try:
             self.backends["surya"] = SuryaDoclingAgent()
             logger.info("surya_cpu_backend_initialized")
-        except Exception as e:
+        except (RuntimeError, ImportError, OSError) as e:
             logger.error("surya_cpu_backend_init_failed", error=str(e))
 
         # Initialize Enhanced Surya+Docling (CPU-only with layout analysis)
         try:
             self.backends["surya_enhanced"] = SuryaDoclingEnhancedAgent()
             logger.info("surya_enhanced_backend_initialized")
-        except Exception as e:
+        except (RuntimeError, ImportError, OSError) as e:
             logger.warning("surya_enhanced_backend_unavailable", error=str(e))
 
         # Try to initialize GPU-based backends if PyTorch and GPU are available
@@ -607,14 +607,14 @@ class BackendManager:
             try:
                 self.backends["deepseek"] = DeepSeekAgent()
                 logger.info("deepseek_backend_initialized")
-            except Exception as e:
+            except (RuntimeError, MemoryError, OSError, ImportError) as e:
                 logger.warning("deepseek_backend_unavailable", error=str(e))
 
             # Initialize GOT-OCR (requires GPU)
             try:
                 self.backends["got_ocr"] = GOTOCRAgent()
                 logger.info("got_ocr_backend_initialized")
-            except Exception as e:
+            except (RuntimeError, MemoryError, OSError, ImportError) as e:
                 logger.warning("got_ocr_backend_unavailable", error=str(e))
 
             # Initialize DONUT for multilingual document understanding (8GB VRAM)
@@ -622,7 +622,7 @@ class BackendManager:
                 try:
                     self.backends["donut"] = DonutOCRAgent()
                     logger.info("donut_backend_initialized")
-                except Exception as e:
+                except (RuntimeError, MemoryError, OSError, ImportError) as e:
                     logger.warning("donut_backend_unavailable", error=str(e))
 
             # Initialize Hybrid Agent for maximum accuracy (combines multiple backends)
@@ -634,7 +634,7 @@ class BackendManager:
                     self.backends["hybrid"] = HybridOCRAgent()
                     logger.info("hybrid_backend_initialized",
                                available_engines=available_for_hybrid)
-                except Exception as e:
+                except (RuntimeError, MemoryError, ImportError) as e:
                     logger.warning("hybrid_backend_unavailable", error=str(e))
         else:
             logger.info("gpu_unavailable_cpu_only")
@@ -759,7 +759,7 @@ class BackendManager:
                                 available=available_backends,
                                 experiment_id=experiment.experiment_id
                             )
-            except Exception as e:
+            except (KeyError, ValueError, RuntimeError) as e:  # Catch-all: A/B test API errors possible
                 # Don't fail if A/B testing has issues - fall back to normal selection
                 logger.warning("ab_test_check_failed", error=str(e))
 
@@ -957,7 +957,7 @@ class BackendManager:
 
             return {"healthy": True, "status": status}
 
-        except Exception as e:
+        except (RuntimeError, AttributeError, KeyError) as e:  # Catch-all: various backend status API errors possible
             logger.warning("backend_health_check_failed", backend=backend_name, error=str(e))
             # Invalidate cache on error
             self._health_cache.invalidate(backend_name)
@@ -966,7 +966,7 @@ class BackendManager:
             try:
                 metrics = get_ml_metrics()
                 metrics.set_backend_healthy(backend_name, False)
-            except Exception as e2:
+            except (AttributeError, RuntimeError) as e2:
                 logger.debug(
                     "backend_health_metrics_failed",
                     backend=backend_name,
@@ -1114,7 +1114,7 @@ class BackendManager:
 
                 return result
 
-            except Exception as e:
+            except (RuntimeError, MemoryError, OSError, ValueError) as e:  # Catch-all: OCR processing can fail in many ways
                 last_error = e
                 latency_ms = (time.monotonic() - start_time) * 1000
 
@@ -1229,7 +1229,7 @@ class BackendManager:
                 calibration_sample_added=backend_name is not None,
             )
 
-        except Exception as e:
+        except (KeyError, ValueError, RuntimeError) as e:  # Catch-all: A/B test recording errors
             # Don't fail processing if A/B recording fails
             logger.warning("ab_test_recording_failed", error=str(e))
 
@@ -1277,7 +1277,7 @@ class BackendManager:
                 document_type=document_type,
             )
 
-        except Exception as e:
+        except (KeyError, ValueError, RuntimeError) as e:  # Catch-all: drift detection API errors
             # Don't fail processing if drift recording fails
             logger.debug("drift_sample_recording_failed", error=str(e))
 
@@ -1320,7 +1320,7 @@ class BackendManager:
             try:
                 await backend.cleanup()
                 logger.info("backend_cleaned_up", backend=name)
-            except Exception as e:
+            except (RuntimeError, AttributeError) as e:  # Catch-all: cleanup can fail in various ways
                 logger.error("backend_cleanup_failed", backend=name, error=str(e))
 
         # Clear health cache
@@ -1548,7 +1548,7 @@ class BackendManager:
             try:
                 gpu_status = self._gpu_manager.get_detailed_status()
                 vram_percent = gpu_status.get("vram_used_percent", 0.0)
-            except Exception as e:
+            except (RuntimeError, AttributeError, KeyError) as e:
                 # GPU-Status kann fehlschlagen wenn GPU nicht verfügbar
                 logger.debug("gpu_status_check_failed", error=str(e))
 
@@ -1602,7 +1602,7 @@ class BackendManager:
             try:
                 gpu_status = self._gpu_manager.get_detailed_status()
                 vram_percent = gpu_status.get("vram_used_percent", 0.0)
-            except Exception as e:
+            except (RuntimeError, AttributeError, KeyError) as e:
                 # GPU-Status kann fehlschlagen wenn GPU nicht verfügbar
                 logger.debug("gpu_status_check_failed", error=str(e))
 

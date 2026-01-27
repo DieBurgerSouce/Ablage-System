@@ -4,10 +4,13 @@
  * Hauptseite fuer den Dokumentenvergleich.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
 import { GitCompare, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { apiClient } from '@/lib/api/client';
 import type { ComparisonType } from './types';
 import { useDiffReport } from './hooks';
 import { CompareSelector, DocumentCompareView } from './components';
@@ -18,13 +21,16 @@ interface DocumentSelection {
   documentType?: string | null;
 }
 
-// Mock-Daten fuer verfuegbare Dokumente (in Production durch API ersetzen)
-const mockDocuments: DocumentSelection[] = [
-  { id: '1', filename: 'Rechnung_2026_001.pdf', documentType: 'invoice' },
-  { id: '2', filename: 'Rechnung_2026_002.pdf', documentType: 'invoice' },
-  { id: '3', filename: 'Lieferschein_A123.pdf', documentType: 'delivery_note' },
-  { id: '4', filename: 'Angebot_XYZ.pdf', documentType: 'quote' },
-];
+interface DocumentListResponse {
+  documents: Array<{
+    id: string;
+    filename: string;
+    document_type: string | null;
+  }>;
+  total: number;
+  page: number;
+  per_page: number;
+}
 
 export function ComparePage() {
   // URL-Parameter fuer Deep-Linking
@@ -32,14 +38,50 @@ export function ComparePage() {
   const initialDoc1 = searchParams.doc1 as string | undefined;
   const initialDoc2 = searchParams.doc2 as string | undefined;
 
-  const [document1, setDocument1] = useState<DocumentSelection | null>(
-    initialDoc1 ? mockDocuments.find((d) => d.id === initialDoc1) ?? null : null
-  );
-  const [document2, setDocument2] = useState<DocumentSelection | null>(
-    initialDoc2 ? mockDocuments.find((d) => d.id === initialDoc2) ?? null : null
-  );
+  // Dokumente von API laden
+  const {
+    data: documentsResponse,
+    isLoading: isLoadingDocuments,
+    isError: isDocumentsError,
+  } = useQuery({
+    queryKey: ['documents', 'compare'],
+    queryFn: async () => {
+      const response = await apiClient.get<DocumentListResponse>('/documents', {
+        params: {
+          page: 1,
+          per_page: 100, // Genug Dokumente fuer Vergleich
+        },
+      });
+      return response.data;
+    },
+  });
+
+  // Dokumente in das erwartete Format konvertieren
+  const availableDocuments: DocumentSelection[] =
+    documentsResponse?.documents.map((doc) => ({
+      id: doc.id,
+      filename: doc.filename,
+      documentType: doc.document_type,
+    })) ?? [];
+
+  const [document1, setDocument1] = useState<DocumentSelection | null>(null);
+  const [document2, setDocument2] = useState<DocumentSelection | null>(null);
   const [comparisonType, setComparisonType] = useState<ComparisonType>('hybrid');
   const [shouldCompare, setShouldCompare] = useState(false);
+
+  // Initialisiere ausgewaehlte Dokumente basierend auf URL-Parametern
+  useEffect(() => {
+    if (availableDocuments.length > 0) {
+      if (initialDoc1 && !document1) {
+        const doc = availableDocuments.find((d) => d.id === initialDoc1);
+        if (doc) setDocument1(doc);
+      }
+      if (initialDoc2 && !document2) {
+        const doc = availableDocuments.find((d) => d.id === initialDoc2);
+        if (doc) setDocument2(doc);
+      }
+    }
+  }, [availableDocuments, initialDoc1, initialDoc2, document1, document2]);
 
   // Diff Report Query
   const {
@@ -70,34 +112,60 @@ export function ComparePage() {
   };
 
   return (
-    <div className="container py-8 max-w-7xl">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-8">
-        <div className="p-2 bg-primary/10 rounded-lg">
-          <GitCompare className="h-6 w-6 text-primary" />
+    <ErrorBoundary
+      errorTitle="Fehler beim Dokumentenvergleich"
+      errorDescription="Der Dokumentenvergleich konnte nicht geladen werden. Bitte versuchen Sie es erneut."
+    >
+      <div className="container py-8 max-w-7xl">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-8">
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <GitCompare className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Dokumentenvergleich</h1>
+            <p className="text-muted-foreground">
+              Vergleichen Sie zwei Dokumente und finden Sie Unterschiede
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold">Dokumentenvergleich</h1>
-          <p className="text-muted-foreground">
-            Vergleichen Sie zwei Dokumente und finden Sie Unterschiede
-          </p>
+
+      {/* Loading State */}
+      {isLoadingDocuments && (
+        <div className="flex items-center justify-center py-16">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+            <p className="text-muted-foreground">Dokumente werden geladen...</p>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Error State */}
+      {isDocumentsError && (
+        <Alert variant="destructive" className="mb-8">
+          <AlertTitle>Fehler beim Laden der Dokumente</AlertTitle>
+          <AlertDescription>
+            Die verfuegbaren Dokumente konnten nicht geladen werden. Bitte versuchen Sie es spaeter erneut.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Selector */}
-      <div className="mb-8">
-        <CompareSelector
-          document1={document1}
-          document2={document2}
-          comparisonType={comparisonType}
-          onDocument1Change={handleDocument1Change}
-          onDocument2Change={handleDocument2Change}
-          onComparisonTypeChange={setComparisonType}
-          onCompare={handleCompare}
-          isComparing={isLoading}
-          availableDocuments={mockDocuments}
-        />
-      </div>
+      {!isLoadingDocuments && !isDocumentsError && (
+        <div className="mb-8">
+          <CompareSelector
+            document1={document1}
+            document2={document2}
+            comparisonType={comparisonType}
+            onDocument1Change={handleDocument1Change}
+            onDocument2Change={handleDocument2Change}
+            onComparisonTypeChange={setComparisonType}
+            onCompare={handleCompare}
+            isComparing={isLoading}
+            availableDocuments={availableDocuments}
+          />
+        </div>
+      )}
 
       {/* Loading */}
       {isLoading && (
@@ -142,6 +210,7 @@ export function ComparePage() {
           </p>
         </div>
       )}
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }

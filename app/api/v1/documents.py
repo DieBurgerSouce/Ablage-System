@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 import io
 import asyncio
+import os
 import re
 from urllib.parse import quote
 
@@ -552,7 +553,9 @@ async def upload_complete(
         # Fallback: User-basierter Pfad
         storage_base = f"users/{current_user.id}/{request.folder_id}/{request.category}"
 
-    storage_path = f"{storage_base}/{request.final_filename}"
+    # Defense-in-depth: normalize filename even after schema validation (CWE-22)
+    safe_filename = os.path.basename(request.final_filename)
+    storage_path = f"{storage_base}/{safe_filename}"
 
     # 4. In MinIO hochladen
     storage = get_storage_service()
@@ -560,7 +563,7 @@ async def upload_complete(
     try:
         upload_result = await storage.upload_document(
             file_data=temp_file.content,
-            filename=request.final_filename,
+            filename=safe_filename,
             content_type=temp_file.mime_type,
             user_id=str(current_user.id),
             metadata={

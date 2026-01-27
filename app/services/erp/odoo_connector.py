@@ -83,6 +83,13 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
             database=config.database,
         )
 
+    def _sanitize_error(self, error: Exception) -> str:
+        """Sanitize error message to prevent API key leakage (PII)."""
+        msg = str(error)
+        if self.config.api_key and self.config.api_key in msg:
+            msg = msg.replace(self.config.api_key, "[REDACTED]")
+        return msg
+
     async def _run_blocking(self, func: Any, *args: Any, **kwargs: Any) -> Any:
         """Fuehrt blocking Funktion im ThreadPool aus."""
         loop = asyncio.get_event_loop()
@@ -148,11 +155,11 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
 
         except Exception as e:
             self._status = ERPConnectionStatus.ERROR
-            self._last_error = str(e)
+            self._last_error = self._sanitize_error(e)
             logger.exception(
                 "odoo_connection_error",
                 url=self.config.url,
-                error=str(e),
+                error=self._sanitize_error(e),
             )
             return False
 
@@ -181,7 +188,7 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
             return result == 1
 
         except Exception as e:
-            logger.warning("odoo_connection_test_failed", error=str(e))
+            logger.warning("odoo_connection_test_failed", error=self._sanitize_error(e))
             return False
 
     async def get_version(self) -> str:
@@ -196,7 +203,7 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
             return version_info.get("server_version", "Unknown")
 
         except Exception as e:
-            logger.error("odoo_version_error", error=str(e))
+            logger.error("odoo_version_error", error=self._sanitize_error(e))
             return "Unknown"
 
     # ==========================================================================
@@ -246,7 +253,7 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
                 "odoo_execute_error",
                 model=model,
                 method=method,
-                error=str(e),
+                error=self._sanitize_error(e),
             )
             raise
 
@@ -285,8 +292,8 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
 
         except Exception as e:
             result.success = False
-            result.error_message = str(e)
-            logger.exception("odoo_sync_customers_error", error=str(e))
+            result.error_message = self._sanitize_error(e)
+            logger.exception("odoo_sync_customers_error", error=self._sanitize_error(e))
 
         return self._complete_sync_result(result)
 
@@ -338,7 +345,7 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
             return result[0] if result else None
 
         except Exception as e:
-            logger.error("odoo_get_customer_error", erp_id=erp_id, error=str(e))
+            logger.error("odoo_get_customer_error", erp_id=erp_id, error=self._sanitize_error(e))
             return None
 
     async def create_customer(self, data: Dict[str, Any]) -> Optional[str]:
@@ -358,7 +365,7 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
             return str(customer_id)
 
         except Exception as e:
-            logger.error("odoo_create_customer_error", error=str(e))
+            logger.error("odoo_create_customer_error", error=self._sanitize_error(e))
             return None
 
     async def update_customer(self, erp_id: str, data: Dict[str, Any]) -> bool:
@@ -376,7 +383,7 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
             return True
 
         except Exception as e:
-            logger.error("odoo_update_customer_error", erp_id=erp_id, error=str(e))
+            logger.error("odoo_update_customer_error", erp_id=erp_id, error=self._sanitize_error(e))
             return False
 
     def _map_customer_to_odoo(self, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -422,8 +429,8 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
 
         except Exception as e:
             result.success = False
-            result.error_message = str(e)
-            logger.exception("odoo_sync_suppliers_error", error=str(e))
+            result.error_message = self._sanitize_error(e)
+            logger.exception("odoo_sync_suppliers_error", error=self._sanitize_error(e))
 
         return self._complete_sync_result(result)
 
@@ -480,7 +487,7 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
             return str(supplier_id)
 
         except Exception as e:
-            logger.error("odoo_create_supplier_error", error=str(e))
+            logger.error("odoo_create_supplier_error", error=self._sanitize_error(e))
             return None
 
     async def update_supplier(self, erp_id: str, data: Dict[str, Any]) -> bool:
@@ -515,8 +522,8 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
 
         except Exception as e:
             result.success = False
-            result.error_message = str(e)
-            logger.exception("odoo_sync_invoices_error", error=str(e))
+            result.error_message = self._sanitize_error(e)
+            logger.exception("odoo_sync_invoices_error", error=self._sanitize_error(e))
 
         return self._complete_sync_result(result)
 
@@ -570,7 +577,7 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
             return result[0] if result else None
 
         except Exception as e:
-            logger.error("odoo_get_invoice_error", erp_id=erp_id, error=str(e))
+            logger.error("odoo_get_invoice_error", erp_id=erp_id, error=self._sanitize_error(e))
             return None
 
     async def update_payment_status(
@@ -597,7 +604,7 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
             logger.error(
                 "odoo_update_payment_status_error",
                 erp_id=erp_id,
-                error=str(e)
+                error=self._sanitize_error(e)
             )
             return False
 
@@ -660,7 +667,7 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
                 "odoo_attach_document_error",
                 entity=entity.value,
                 erp_id=erp_id,
-                error=str(e)
+                error=self._sanitize_error(e)
             )
             return False
 
@@ -699,7 +706,7 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
                 "odoo_get_attachments_error",
                 entity=entity.value,
                 erp_id=erp_id,
-                error=str(e)
+                error=self._sanitize_error(e)
             )
             return []
 
@@ -719,7 +726,7 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
             return companies[0] if companies else None
 
         except Exception as e:
-            logger.error("odoo_get_company_error", error=str(e))
+            logger.error("odoo_get_company_error", error=self._sanitize_error(e))
             return None
 
     async def search_partners(
@@ -745,7 +752,7 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
             return partners
 
         except Exception as e:
-            logger.error("odoo_search_partners_error", query=query, error=str(e))
+            logger.error("odoo_search_partners_error", query=query, error=self._sanitize_error(e))
             return []
 
     async def get_currencies(self) -> List[Dict[str, Any]]:
@@ -760,5 +767,5 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
             return currencies
 
         except Exception as e:
-            logger.error("odoo_get_currencies_error", error=str(e))
+            logger.error("odoo_get_currencies_error", error=self._sanitize_error(e))
             return []

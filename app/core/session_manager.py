@@ -11,7 +11,7 @@ Alle Antworten auf Deutsch.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional, List, Dict
+from typing import Any, Optional, List, Dict
 from uuid import UUID, uuid4
 
 from sqlalchemy import select, and_, update, delete
@@ -61,7 +61,7 @@ class SessionManager:
         ip_address: str,
         user_agent: Optional[str] = None,
         location: Optional[str] = None
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """
         Erstellt eine neue Session beim Login.
 
@@ -143,7 +143,7 @@ class SessionManager:
         )
 
         # Erstelle Response-Dict
-        result: Dict[str, any] = {
+        result: Dict[str, Any] = {
             "session": session,
             "revoked_sessions": revoked_sessions,
             "warning": None

@@ -69,7 +69,7 @@ export async function setSkonto(
     params.append('net_days', data.netDays.toString());
   }
 
-  const response = await apiClient.patch<any>(
+  const response = await apiClient.patch<InvoiceTrackingResponse>(
     `/invoices/${invoiceId}/skonto?${params.toString()}`
   );
 
@@ -95,7 +95,7 @@ export async function applySkonto(
     params.append('force_apply', data.forceApply.toString());
   }
 
-  const response = await apiClient.post<any>(
+  const response = await apiClient.post<InvoiceTrackingResponse>(
     `/invoices/${invoiceId}/apply-skonto?${params.toString()}`
   );
 
@@ -306,7 +306,7 @@ export async function exportMissedSkonto(
 /**
  * Transform Backend snake_case Response to Frontend camelCase
  */
-function transformInvoiceResponse(data: any): InvoiceTrackingResponse {
+function transformInvoiceResponse(data: InvoiceTrackingResponse): InvoiceTrackingResponse {
   return {
     id: data.id,
     documentId: data.document_id,

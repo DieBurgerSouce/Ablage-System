@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from functools import wraps
 from pathlib import Path
-from typing import Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 import structlog
 
@@ -702,7 +702,7 @@ class BackupMetrics:
         else:
             return "text/plain"
 
-    def get_summary(self) -> Dict[str, any]:
+    def get_summary(self) -> Dict[str, Any]:
         """
         Hole Zusammenfassung aller Backup-Metriken als Dict.
 

@@ -100,16 +100,16 @@ export async function offlineRequest<T>(
       if (cacheResponse && method === 'GET' && response.data) {
         // For document endpoints, cache in IndexedDB
         if (endpoint.includes('/documents/') && typeof response.data === 'object') {
-          const doc = response.data as any;
-          if (doc.id) {
+          const doc = response.data as Record<string, unknown>;
+          if (doc.id && typeof doc.id === 'string') {
             await cacheDocument(
               {
                 id: doc.id,
-                title: doc.title || doc.filename || 'Unbenannt',
-                content: doc.content || '',
-                extractedText: doc.extracted_text || doc.ocr_text,
-                metadata: doc.metadata || {},
-                thumbnailUrl: doc.thumbnail_url,
+                title: (doc.title as string) || (doc.filename as string) || 'Unbenannt',
+                content: (doc.content as string) || '',
+                extractedText: (doc.extracted_text as string) || (doc.ocr_text as string),
+                metadata: (doc.metadata as Record<string, unknown>) || {},
+                thumbnailUrl: doc.thumbnail_url as string | undefined,
               },
               cacheTtlMs
             );

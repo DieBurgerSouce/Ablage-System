@@ -11,11 +11,14 @@ from pathlib import Path
 from typing import Optional
 from datetime import datetime, timezone
 
+import structlog
 from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_async_session_context
 from app.db.models import OCRTrainingSample, TrainingSampleStatus
+
+logger = structlog.get_logger(__name__)
 
 
 # =============================================================================
@@ -32,7 +35,7 @@ def load_surya_models() -> dict:
     if _surya_models:
         return _surya_models
 
-    print("[INIT] Lade Surya 0.17.0 Modelle...", flush=True)
+    logger.info("surya_models_loading")
 
     from surya.detection import DetectionPredictor
     from surya.recognition import RecognitionPredictor
@@ -40,17 +43,17 @@ def load_surya_models() -> dict:
     from surya.common.surya.schema import TaskNames
 
     _surya_models["foundation"] = FoundationPredictor()
-    print("  -> Foundation Predictor geladen", flush=True)
+    logger.info("foundation_predictor_loaded")
 
     _surya_models["detection"] = DetectionPredictor()
-    print("  -> Detection Predictor geladen", flush=True)
+    logger.info("detection_predictor_loaded")
 
     _surya_models["recognition"] = RecognitionPredictor(_surya_models["foundation"])
-    print("  -> Recognition Predictor geladen", flush=True)
+    logger.info("recognition_predictor_loaded")
 
     _surya_models["task_name"] = TaskNames.ocr_with_boxes
 
-    print("[INIT] Surya Modelle bereit!\n", flush=True)
+    logger.info("surya_models_ready")
     return _surya_models
 
 
@@ -116,7 +119,7 @@ def run_surya_ocr(file_path: Path) -> tuple[bool, str, float]:
         return True, text, avg_confidence
 
     except Exception as e:
-        print(f"    OCR Error: {e}")
+        logger.error("ocr_error", error=str(e))
         return False, "", 0.0
 
 
@@ -156,10 +159,10 @@ async def process_batch(limit: int = 50) -> tuple[int, int, int]:
         samples = result.scalars().all()
 
         if not samples:
-            print("Keine leeren Samples gefunden.")
+            logger.info("no_empty_samples_found")
             return 0, 0, 0
 
-        print(f"Verarbeite {len(samples)} Samples...\n")
+        logger.info("processing_samples", count=len(samples))
 
         processed = 0
         auto_accepted = 0
@@ -170,17 +173,17 @@ async def process_batch(limit: int = 50) -> tuple[int, int, int]:
 
             # Pruefe ob Datei existiert
             if not file_path.exists():
-                print(f"  [{processed+1}] SKIP: {file_path.name} nicht gefunden")
+                logger.warning("file_not_found", index=processed+1, filename=file_path.name)
                 processed += 1
                 continue
 
-            print(f"  [{processed+1}/{len(samples)}] {file_path.name}...", end=" ", flush=True)
+            logger.info("processing_file", index=processed+1, total=len(samples), filename=file_path.name)
 
             # OCR ausfuehren
             success, text, confidence = run_surya_ocr(file_path)
 
             if not success or not text:
-                print("OCR FEHLER")
+                logger.error("ocr_failed", filename=file_path.name)
                 processed += 1
                 continue
 
@@ -199,18 +202,18 @@ async def process_batch(limit: int = 50) -> tuple[int, int, int]:
                 sample.auto_accepted = True
                 sample.verified_at = datetime.now(timezone.utc)
                 auto_accepted += 1
-                print(f"VERIFIED ({confidence:.1%}, {doc_type})")
+                logger.info("sample_verified", confidence=confidence, doc_type=doc_type)
             else:
                 sample.status = TrainingSampleStatus.PENDING.value
                 sample.auto_accepted = False
                 needs_review += 1
-                print(f"PENDING ({confidence:.1%}, {doc_type})")
+                logger.info("sample_pending_review", confidence=confidence, doc_type=doc_type)
 
             processed += 1
 
             # Commit nach jedem Sample (wichtig bei langen OCR-Tasks)
             await db.commit()
-            print(f"    [Saved to DB]")
+            logger.debug("sample_saved_to_db")
 
         return processed, auto_accepted, needs_review
 
@@ -219,9 +222,7 @@ async def main():
     """Hauptfunktion."""
     limit = int(sys.argv[1]) if len(sys.argv) > 1 else 50
 
-    print("\n" + "=" * 60)
-    print("  TRAINING SAMPLES POPULATION")
-    print("=" * 60)
+    logger.info("training_samples_population_starting")
 
     # Zaehle leere Samples
     async with get_async_session_context() as db:
@@ -235,18 +236,14 @@ async def main():
             )
         )
         empty_count = count_result.scalar() or 0
-        print(f"\n  Leere pending Samples: {empty_count}")
-        print(f"  Verarbeite: {limit} Samples\n")
+        logger.info("empty_pending_samples_count", count=empty_count, limit=limit)
 
     processed, accepted, review = await process_batch(limit)
 
-    print("\n" + "=" * 60)
-    print("  ERGEBNIS")
-    print("=" * 60)
-    print(f"  Verarbeitet:    {processed}")
-    print(f"  Auto-Accepted:  {accepted}")
-    print(f"  Needs Review:   {review}")
-    print()
+    logger.info("training_samples_population_completed",
+                processed=processed,
+                auto_accepted=accepted,
+                needs_review=review)
 
 
 if __name__ == "__main__":
