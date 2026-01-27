@@ -893,8 +893,12 @@ async def _async_quick_classify(task, document_id: str) -> Dict[str, Any]:
                 doc.quick_classification_status = "failed"
                 doc.quick_classification_result = {"error": sanitized_error}
                 await db.commit()
-            except Exception:
-                pass
+            except Exception as db_error:
+                logger.debug(
+                    "quick_classification_status_update_failed",
+                    document_id=document_id,
+                    error_type=type(db_error).__name__,
+                )
 
             return {
                 "error": sanitized_error,

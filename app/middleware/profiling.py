@@ -112,8 +112,12 @@ class ProfilingMiddleware:
             try:
                 import psutil
                 memory_before = psutil.Process().memory_info().rss / (1024 * 1024)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(
+                    "memory_profiling_failed",
+                    phase="before_request",
+                    error_type=type(e).__name__,
+                )
 
         # Start Timer
         start_time = time.perf_counter()
@@ -160,8 +164,12 @@ class ProfilingMiddleware:
             try:
                 import psutil
                 memory_after = psutil.Process().memory_info().rss / (1024 * 1024)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(
+                    "memory_profiling_failed",
+                    phase="after_request",
+                    error_type=type(e).__name__,
+                )
 
         # Request aufzeichnen
         service.record_request(

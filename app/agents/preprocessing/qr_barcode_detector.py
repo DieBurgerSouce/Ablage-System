@@ -284,8 +284,11 @@ class SEPAQRParser:
                 amount_str = amount_str.replace(",", ".")
                 amount = float(amount_str)
 
-        except (ValueError, IndexError):
-            pass
+        except (ValueError, IndexError) as e:
+            self.logger.debug(
+                "amount_parse_failed",
+                error_type=type(e).__name__,
+            )
 
         return amount, currency
 

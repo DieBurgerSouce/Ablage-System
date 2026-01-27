@@ -732,8 +732,8 @@ class QdrantService:
             if self._client:
                 try:
                     self._client.close()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("qdrant_sync_client_close_failed", error_type=type(e).__name__)
                 self._client = None
 
             if self._async_client:
@@ -744,8 +744,8 @@ class QdrantService:
                         asyncio.create_task(self._async_client.close())
                     else:
                         loop.run_until_complete(self._async_client.close())
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("qdrant_async_client_close_failed", error_type=type(e).__name__)
                 self._async_client = None
 
             logger.info("qdrant_service_closed")

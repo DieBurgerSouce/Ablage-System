@@ -24,7 +24,7 @@ import re
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, date, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -213,7 +213,11 @@ class NLQService:
 
             self.enabled = settings.AUTONOMY_NLQ_ENABLED
             self.max_results = settings.AUTONOMY_NLQ_MAX_RESULTS
-        except Exception:
+        except Exception as e:
+            logger.debug(
+                "nlq_settings_load_failed",
+                error_type=type(e).__name__,
+            )
             # Fallback-Defaults
             self.enabled = True
             self.max_results = 100
@@ -436,8 +440,12 @@ class NLQService:
                     original_text=match,
                     confidence=0.95,
                 ))
-            except Exception:
-                pass
+            except (ValueError, InvalidOperation) as e:
+                logger.debug(
+                    "nlq_amount_parsing_skipped",
+                    amount_str=amount_str[:20],
+                    error_type=type(e).__name__,
+                )
 
         # Pattern: "ueber X", "mehr als X", "unter X"
         comparison_pattern = r'(ueber|mehr als|mindestens|unter|weniger als|maximal|bis)\s+(\d+)'
@@ -453,8 +461,13 @@ class NLQService:
                     original_text=f"{operator} {value}",
                     confidence=0.90,
                 ))
-            except Exception:
-                pass
+            except (ValueError, InvalidOperation) as e:
+                logger.debug(
+                    "nlq_comparison_amount_skipped",
+                    operator=operator,
+                    value=value,
+                    error_type=type(e).__name__,
+                )
 
         return entities
 
@@ -490,8 +503,12 @@ class NLQService:
                     original_text=f"{day}.{month}.{year}",
                     confidence=0.90,
                 ))
-            except Exception:
-                pass
+            except (ValueError, TypeError) as e:
+                logger.debug(
+                    "nlq_date_parsing_skipped",
+                    date_str=f"{day}.{month}.{year}",
+                    error_type=type(e).__name__,
+                )
 
         # "Letzten X Tage/Wochen/Monate"
         period_pattern = r'letzte[n]?\s+(\d+)\s+(tag|tage|woche|wochen|monat|monate)'

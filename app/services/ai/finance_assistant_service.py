@@ -1820,8 +1820,11 @@ _Hinweis: Dies ist eine vereinfachte Trendfortschreibung._"""
                     success=True,
                     confidence=0.6,
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(
+                "assistant_intent_fallback_failed",
+                error_type=type(e).__name__,
+            )
 
         return AssistantResponse(
             message="Ich bin mir nicht sicher, wie ich Ihnen helfen kann. "

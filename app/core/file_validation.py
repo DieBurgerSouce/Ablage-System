@@ -286,8 +286,8 @@ def validate_pdf_security(
                 # Extrahiere Text um dekomprimierte Größe zu schätzen
                 text = page.extract_text() or ""
                 estimated_decompressed += len(text.encode('utf-8'))
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("pdf_text_extraction_failed", error_type=type(e).__name__)
 
         if estimated_decompressed > 0 and total_compressed > 0:
             # Schätze Verhältnis basierend auf Sample

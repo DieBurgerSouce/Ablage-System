@@ -318,10 +318,11 @@ class AIDecisionService:
                         is_enabled=t.is_enabled if t.is_enabled is not None else True,
                         allow_auto_apply=t.allow_auto_apply if t.allow_auto_apply is not None else True,
                     )
-            except ValueError:
+            except ValueError as e:
                 logger.warning(
                     "unknown_decision_type",
                     decision_type=t.decision_type,
+                    error_type=type(e).__name__,
                 )
 
         # Update Cache
@@ -762,8 +763,8 @@ class AIDecisionService:
                 counts[dt] = row[1]
                 # Update Prometheus Gauge
                 AI_PENDING_REVIEWS.labels(decision_type=dt.value).set(row[1])
-            except ValueError:
-                pass
+            except ValueError as e:
+                logger.debug("skip_invalid_decision_type", error_type=type(e).__name__, decision_type_value=row[0])
 
         return counts
 

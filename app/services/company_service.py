@@ -182,8 +182,8 @@ class CompanyService:
             company = await self.get_company_by_id(db, company_id)
             if company:
                 return company
-        except ValueError:
-            pass
+        except ValueError as e:
+            logger.debug("company_identifier_uuid_parse_failed", identifier=identifier, error_type=type(e).__name__)
 
         # 2. short_name versuchen
         company = await self.get_company_by_short_name(db, identifier)

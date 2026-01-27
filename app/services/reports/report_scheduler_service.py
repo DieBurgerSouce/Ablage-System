@@ -180,8 +180,8 @@ class ReportSchedulerService:
                         next_run = datetime.fromisoformat(next_run_str.replace("Z", "+00:00"))
                         if next_run <= now:
                             due_reports.append(template)
-                    except ValueError:
-                        pass
+                    except ValueError as e:
+                        logger.debug("next_run_parse_failed", error_type=type(e).__name__)
 
         return due_reports
 

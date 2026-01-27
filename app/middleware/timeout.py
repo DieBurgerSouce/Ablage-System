@@ -150,8 +150,12 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
                 try:
                     timeout = float(header_timeout)
                     return min(timeout, self.max_timeout)
-                except ValueError:
-                    pass
+                except ValueError as e:
+                    logger.debug(
+                        "timeout_header_parse_failed",
+                        error_type=type(e).__name__,
+                        header_value=header_timeout
+                    )
 
         # Exakter Match
         if path in self.endpoint_timeouts:

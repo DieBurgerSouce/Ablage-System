@@ -1086,8 +1086,11 @@ class DocumentProcessingOrchestrator(OrchestrationAgent):
             if is_gpu_backend and self._gpu_recovery_manager:
                 try:
                     await self._gpu_recovery_manager.clear_cache()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(
+                        "gpu_cache_clear_failed",
+                        error_type=type(e).__name__,
+                    )
 
     async def _execute_ocr_with_recovery(
         self,
@@ -1851,7 +1854,12 @@ Metadaten:
                             "failure_count": circuit.failure_count,
                             "last_failure": circuit.last_failure_time.isoformat() if circuit.last_failure_time else None,
                         }
-                except Exception:
+                except Exception as e:
+                    logger.debug(
+                        "circuit_breaker_status_check_failed",
+                        circuit_name=name,
+                        error_type=type(e).__name__,
+                    )
                     circuit_status[name] = {"state": "unknown"}
             health["error_recovery"]["circuit_breakers"] = circuit_status
         else:

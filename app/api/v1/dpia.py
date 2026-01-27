@@ -159,8 +159,8 @@ async def check_dpia_required(
         for dc in op.data_categories:
             try:
                 data_cats.append(DataCategory(dc))
-            except ValueError:
-                pass
+            except ValueError as e:
+                logger.debug("invalid_data_category_skipped", category=dc, error_type=type(e).__name__)
 
         operations.append(ProcessingOperation(
             name=op.name,
@@ -266,8 +266,8 @@ async def list_dpias(
     if status_filter:
         try:
             status_enum = DPIAStatus(status_filter)
-        except ValueError:
-            pass
+        except ValueError as e:
+            logger.debug("invalid_dpia_status_filter_skipped", status=status_filter, error_type=type(e).__name__)
 
     dpias = await service.list_dpias(
         db=db,

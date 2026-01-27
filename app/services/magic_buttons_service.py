@@ -17,7 +17,7 @@ Jede Magic-Button-Aktion:
 
 from dataclasses import dataclass, field
 from datetime import datetime, date, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from enum import Enum
 from typing import Optional, Dict, Any, List
 from uuid import UUID
@@ -401,8 +401,12 @@ class MagicButtonsService:
                 if amount:
                     try:
                         total += Decimal(str(amount))
-                    except:
-                        pass
+                    except (ValueError, InvalidOperation, TypeError) as e:
+                        logger.debug(
+                            "amount_parsing_skipped",
+                            document_id=str(doc.id),
+                            error_type=type(e).__name__,
+                        )
 
         preview.estimated_amount = total
 

@@ -147,8 +147,11 @@ class QwenOCRAgent(OCRAgent):
                 try:
                     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
                     sys.stderr.reconfigure(encoding='utf-8', errors='replace')
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(
+                        "windows_encoding_reconfigure_failed",
+                        error_type=type(e).__name__,
+                    )
 
             logger.info(
                 "qwen_loading_models",

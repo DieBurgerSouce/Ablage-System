@@ -15,6 +15,7 @@ SECURITY UTILITIES (Phase 10):
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 import asyncio
+import hashlib
 import secrets
 import re
 from urllib.parse import quote
@@ -876,8 +877,12 @@ def validate_password_strength(password: str) -> tuple[bool, Optional[str]]:
 
 import ipaddress
 import socket
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from urllib.parse import urlparse
 from typing import Tuple
+
+# DNS resolution timeout in seconds (prevents slow/hanging DNS)
+DNS_RESOLUTION_TIMEOUT_SECONDS = 3.0
 
 # M.1 CRITICAL: Liste der blockierten IP-Ranges fuer SSRF-Schutz
 SSRF_BLOCKED_IP_RANGES = [
@@ -958,7 +963,12 @@ def validate_url_for_ssrf(url: str) -> Tuple[bool, str]:
     # Parse URL
     try:
         parsed = urlparse(url)
-    except Exception:
+    except Exception as e:
+        logger.debug(
+            "ssrf_url_parse_failed",
+            url_prefix=url[:50] if len(url) > 50 else url,
+            error_type=type(e).__name__,
+        )
         return False, "Ungueltige URL-Syntax"
 
     # Protokoll pruefen
@@ -985,10 +995,28 @@ def validate_url_for_ssrf(url: str) -> Tuple[bool, str]:
     if hostname_lower in dangerous_hostnames:
         return False, f"Hostname '{hostname}' ist nicht erlaubt (Sicherheitsrisiko)"
 
-    # DNS-Aufloesung und IP-Pruefung
+    # DNS-Aufloesung und IP-Pruefung mit Timeout
+    # SECURITY FIX: ThreadPoolExecutor mit Timeout verhindert DNS-basierte DoS
     try:
-        # Alle IP-Adressen fuer den Hostname abrufen
-        ip_addresses = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
+        # DNS-Aufloesung in Thread mit Timeout (socket.getaddrinfo hat kein Timeout)
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(
+                socket.getaddrinfo,
+                hostname,
+                None,
+                socket.AF_UNSPEC,
+                socket.SOCK_STREAM
+            )
+            try:
+                ip_addresses = future.result(timeout=DNS_RESOLUTION_TIMEOUT_SECONDS)
+            except FuturesTimeoutError:
+                logger.warning(
+                    "ssrf_dns_timeout",
+                    url=url,
+                    hostname=hostname,
+                    timeout_seconds=DNS_RESOLUTION_TIMEOUT_SECONDS,
+                )
+                return False, f"DNS-Timeout fuer '{hostname}' (>{DNS_RESOLUTION_TIMEOUT_SECONDS}s)"
 
         for addr_info in ip_addresses:
             ip_str = addr_info[4][0]
@@ -1151,26 +1179,90 @@ def sanitize_email_header(value: str) -> str:
 TOTP_REPLAY_PREFIX = "totp_used:"
 TOTP_REPLAY_TTL_SECONDS = 90  # 30s Intervall + 30s Window + 30s Puffer
 _totp_used_fallback: Dict[str, datetime] = {}
+_totp_fallback_lock = asyncio.Lock()
 
 
-async def check_totp_replay(user_id: str, code: str) -> bool:
+async def check_and_mark_totp_used(user_id: str, code: str) -> bool:
     """
-    Prueft ob ein TOTP-Code bereits verwendet wurde (Replay-Schutz).
+    Atomare Pruefung und Markierung eines TOTP-Codes (SETNX-Pattern).
+
+    SECURITY FIX: Ersetzt das vorherige check-then-mark Pattern, das eine
+    Race-Condition bei parallelen Requests ermoeglichte.
 
     Args:
         user_id: Benutzer-ID
         code: Der zu pruefende TOTP-Code
 
     Returns:
-        True wenn der Code bereits verwendet wurde (REPLAY!)
-        False wenn der Code noch nicht verwendet wurde
+        True wenn der Code BEREITS verwendet wurde (REPLAY - Ablehnen!)
+        False wenn der Code ERSTMALIG verwendet wird (Akzeptieren + markiert)
 
     Security:
-        - Verhindert Replay-Angriffe bei gestohlenem TOTP-Code
+        - Atomare Operation verhindert Race-Conditions
+        - SETNX (SET if Not eXists) mit TTL
         - Jeder Code kann nur EINMAL verwendet werden
         - TTL von 90 Sekunden deckt das Gueltigkeitsfenster ab
     """
     # Hash des Codes mit User-ID fuer Eindeutigkeit
+    code_hash = hashlib.sha256(f"{user_id}:{code}".encode()).hexdigest()[:32]
+    key = f"{TOTP_REPLAY_PREFIX}{code_hash}"
+
+    redis = await _get_redis_client()
+
+    if redis is not None:
+        try:
+            # SETNX mit TTL: Setzt nur wenn Key nicht existiert
+            # Atomare Operation verhindert Race-Condition
+            was_set = await redis.set(
+                key,
+                "1",
+                ex=TOTP_REPLAY_TTL_SECONDS,
+                nx=True  # Only set if Not eXists
+            )
+            if was_set:
+                # Key wurde gesetzt = Code war noch nicht verwendet
+                logger.debug(
+                    "totp_code_marked_used",
+                    user_id=user_id[:8] + "..." if len(user_id) > 8 else user_id,
+                    ttl_seconds=TOTP_REPLAY_TTL_SECONDS
+                )
+                return False  # Kein Replay, Code akzeptiert
+            else:
+                # Key existierte bereits = Code war schon verwendet
+                logger.warning(
+                    "totp_replay_detected",
+                    user_id=user_id[:8] + "..." if len(user_id) > 8 else user_id,
+                )
+                return True  # REPLAY! Code ablehnen
+        except Exception as e:
+            logger.warning(
+                "totp_atomic_check_redis_failed",
+                error_type=type(e).__name__,
+                user_id=user_id[:8] + "..." if len(user_id) > 8 else user_id
+            )
+            # Fallback zu In-Memory bei Redis-Fehler
+
+    # Fallback: In-Memory mit Lock fuer Atomizitaet
+    async with _totp_fallback_lock:
+        _cleanup_totp_fallback()
+        if key in _totp_used_fallback:
+            logger.warning(
+                "totp_replay_detected_fallback",
+                user_id=user_id[:8] + "..." if len(user_id) > 8 else user_id,
+            )
+            return True  # REPLAY!
+        _totp_used_fallback[key] = datetime.now(tz=timezone.utc)
+        return False  # Erstmalige Verwendung
+
+
+# Legacy functions for backwards compatibility
+async def check_totp_replay(user_id: str, code: str) -> bool:
+    """
+    DEPRECATED: Nutze check_and_mark_totp_used() fuer atomare Operation.
+
+    Prueft ob ein TOTP-Code bereits verwendet wurde (Replay-Schutz).
+    WARNUNG: Diese Funktion allein ist NICHT race-condition-sicher!
+    """
     code_hash = hashlib.sha256(f"{user_id}:{code}".encode()).hexdigest()[:32]
     key = f"{TOTP_REPLAY_PREFIX}{code_hash}"
 
@@ -1187,26 +1279,16 @@ async def check_totp_replay(user_id: str, code: str) -> bool:
                 user_id=user_id[:8] + "..." if len(user_id) > 8 else user_id
             )
 
-    # Fallback: In-Memory Check
     _cleanup_totp_fallback()
     return key in _totp_used_fallback
 
 
 async def mark_totp_used(user_id: str, code: str) -> bool:
     """
+    DEPRECATED: Nutze check_and_mark_totp_used() fuer atomare Operation.
+
     Markiert einen TOTP-Code als verwendet.
-
-    Args:
-        user_id: Benutzer-ID
-        code: Der verwendete TOTP-Code
-
-    Returns:
-        True wenn erfolgreich markiert
-        False bei Fehler (aber Login wird NICHT blockiert)
-
-    Security:
-        - Muss NACH erfolgreicher Verifikation aufgerufen werden
-        - Speichert nur Hash, nicht den Code selbst
+    WARNUNG: Diese Funktion allein ist NICHT race-condition-sicher!
     """
     code_hash = hashlib.sha256(f"{user_id}:{code}".encode()).hexdigest()[:32]
     key = f"{TOTP_REPLAY_PREFIX}{code_hash}"

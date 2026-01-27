@@ -336,8 +336,11 @@ class DeepSeekAgent(OCRAgent):
                 try:
                     free_mem = torch.cuda.mem_get_info()[0] / (1024**3)
                     available_gb = round(free_mem, 2)
-                except Exception:
-                    pass
+                except Exception as e:
+                    self.logger.debug(
+                        "gpu_mem_info_failed",
+                        error_type=type(e).__name__,
+                    )
 
             # Raise specific exception that signals fallback availability
             raise OCRGPUOutOfMemoryError(
@@ -674,7 +677,11 @@ class DeepSeekAgent(OCRAgent):
                             trust_remote_code=True,
                             use_safetensors=True
                         )
-                    except Exception:
+                    except Exception as e:
+                        self.logger.debug(
+                            "gptq_load_failed_fallback_bfloat16",
+                            error_type=type(e).__name__,
+                        )
                         quantization_method = "bfloat16"
                         self.model = AutoModelForCausalLM.from_pretrained(
                             self.MODEL_NAME,
@@ -691,7 +698,11 @@ class DeepSeekAgent(OCRAgent):
                             device_map="auto",
                             trust_remote_code=True
                         )
-                    except Exception:
+                    except Exception as e:
+                        self.logger.debug(
+                            "awq_load_failed_fallback_bfloat16",
+                            error_type=type(e).__name__,
+                        )
                         quantization_method = "bfloat16"
                         self.model = AutoModelForCausalLM.from_pretrained(
                             self.MODEL_NAME,

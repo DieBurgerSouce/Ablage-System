@@ -724,8 +724,8 @@ class CalendarService:
                                 "steuerart": extracted.get("steuerart"),
                             },
                         ))
-                except (ValueError, TypeError):
-                    pass
+                except (ValueError, TypeError) as e:
+                    logger.debug("tax_deadline_einspruchsfrist_parse_failed", document_id=str(doc.id), error_type=type(e).__name__)
 
             # Zahlungsfrist
             zahlungsfrist_str = extracted.get("zahlungsfrist")
@@ -757,8 +757,8 @@ class CalendarService:
                                 "steuerart": extracted.get("steuerart"),
                             },
                         ))
-                except (ValueError, TypeError):
-                    pass
+                except (ValueError, TypeError) as e:
+                    logger.debug("tax_deadline_zahlungsfrist_parse_failed", document_id=str(doc.id), error_type=type(e).__name__)
 
         # 2. Standard-Steuertermine (wiederkehrend)
         for tax_deadline in self.STANDARD_TAX_DEADLINES:
@@ -805,8 +805,8 @@ class CalendarService:
                                            "quarterly" if tax_deadline.get("quarterly") else "annual",
                                 },
                             ))
-                    except (ValueError, TypeError):
-                        pass
+                    except (ValueError, TypeError) as e:
+                        logger.debug("tax_deadline_recurring_parse_failed", deadline_name=tax_deadline.get('name'), error_type=type(e).__name__)
 
                 # Naechster Monat
                 if current.month == 12:
@@ -877,8 +877,8 @@ class CalendarService:
                                 "partner": extracted.get("vertragspartner"),
                             },
                         ))
-                except (ValueError, TypeError):
-                    pass
+                except (ValueError, TypeError) as e:
+                    logger.debug("contract_deadline_kuendigungsfrist_parse_failed", document_id=str(doc.id), error_type=type(e).__name__)
 
             # Vertragsende/Verlaengerung
             vertragsende_str = extracted.get("vertragsende") or extracted.get("contract_end")
@@ -908,8 +908,8 @@ class CalendarService:
                                 "auto_renewal": extracted.get("auto_verlaengerung", False),
                             },
                         ))
-                except (ValueError, TypeError):
-                    pass
+                except (ValueError, TypeError) as e:
+                    logger.debug("contract_deadline_vertragsende_parse_failed", document_id=str(doc.id), error_type=type(e).__name__)
 
         return deadlines
 

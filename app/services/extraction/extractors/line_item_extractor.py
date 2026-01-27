@@ -294,7 +294,8 @@ class EnhancedLineItemExtractor:
                 )
                 if item.is_complete():
                     items.append(item)
-            except (ValueError, IndexError):
+            except (ValueError, IndexError) as e:
+                logger.debug("line_item_extraction_parse_error", error_type=type(e).__name__)
                 continue
 
         # Try Pattern 2: Article numbers (if no items found)
@@ -319,7 +320,8 @@ class EnhancedLineItemExtractor:
                     if item.is_complete():
                         items.append(item)
                         position_counter += 1
-                except (ValueError, IndexError):
+                except (ValueError, IndexError) as e:
+                    logger.debug("article_number_extraction_parse_error", error_type=type(e).__name__)
                     continue
 
         # Try Pattern 3: Description-first (if no items found)
@@ -339,7 +341,8 @@ class EnhancedLineItemExtractor:
                     if item.is_complete():
                         items.append(item)
                         position_counter += 1
-                except (ValueError, IndexError):
+                except (ValueError, IndexError) as e:
+                    logger.debug("description_first_extraction_parse_error", error_type=type(e).__name__)
                     continue
 
         # Try Pattern 4: Simple format (if no items found)
@@ -362,7 +365,8 @@ class EnhancedLineItemExtractor:
                     if item.is_complete():
                         items.append(item)
                         position_counter += 1
-                except (ValueError, IndexError):
+                except (ValueError, IndexError) as e:
+                    logger.debug("simple_format_extraction_parse_error", error_type=type(e).__name__)
                     continue
 
         # Pattern 5: Fragmented OCR - reconstruct from scattered lines
@@ -868,8 +872,12 @@ class EnhancedLineItemExtractor:
                 if qty_text:
                     try:
                         item.quantity = parse_german_decimal(qty_text)
-                    except ValueError:
-                        pass
+                    except ValueError as e:
+                        logger.debug(
+                            "quantity_parse_failed",
+                            error_type=type(e).__name__,
+                            qty_text=qty_text,
+                        )
 
             # Unit
             if "unit" in column_map:
@@ -883,8 +891,12 @@ class EnhancedLineItemExtractor:
                 if price_text:
                     try:
                         item.unit_price = parse_german_decimal(price_text)
-                    except ValueError:
-                        pass
+                    except ValueError as e:
+                        logger.debug(
+                            "unit_price_parse_failed",
+                            error_type=type(e).__name__,
+                            price_text=price_text,
+                        )
 
             # Total price
             if "total_price" in column_map:
@@ -892,8 +904,12 @@ class EnhancedLineItemExtractor:
                 if total_text:
                     try:
                         item.total_price = parse_german_decimal(total_text)
-                    except ValueError:
-                        pass
+                    except ValueError as e:
+                        logger.debug(
+                            "total_price_parse_failed",
+                            error_type=type(e).__name__,
+                            total_text=total_text,
+                        )
 
             # VAT rate
             if "vat_rate" in column_map:
@@ -947,8 +963,12 @@ class EnhancedLineItemExtractor:
                 try:
                     total_text = row[rightmost].strip()
                     item.total_price = parse_german_decimal(total_text)
-                except (ValueError, IndexError):
-                    pass
+                except (ValueError, IndexError) as e:
+                    logger.debug(
+                        "heuristic_total_price_parse_failed",
+                        error_type=type(e).__name__,
+                        rightmost_col=rightmost,
+                    )
 
             if item.is_complete():
                 items.append(item)

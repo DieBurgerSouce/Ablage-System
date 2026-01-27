@@ -227,6 +227,161 @@ Standardisierte Fehlerresponses für alle API-Endpoints der Ablage-System OCR Pl
 | `SYS_MAINTENANCE` | 503 | Wartungsmodus |
 | `SYS_OVERLOADED` | 503 | System überlastet |
 
+### 9. Parsing (PARSE_*)
+
+| Code | HTTP | Beschreibung |
+|------|------|--------------|
+| `PARSE_AMOUNT_FAILED` | 422 | Betrag konnte nicht geparst werden |
+| `PARSE_DATE_FAILED` | 422 | Datum konnte nicht geparst werden |
+| `PARSE_VAT_RATE_FAILED` | 422 | MwSt-Satz konnte nicht geparst werden |
+| `PARSE_CURRENCY_FAILED` | 422 | Währung konnte nicht erkannt werden |
+
+**Beispiel**:
+```json
+{
+  "error": {
+    "code": "PARSE_AMOUNT_FAILED",
+    "message": "Betrag konnte nicht geparst werden: Ungültiges Format",
+    "details": {
+      "raw_value": "12,34,56",
+      "reason": "Mehrfache Dezimaltrenner"
+    }
+  }
+}
+```
+
+### 10. Cache/Metrics (CACHE_*)
+
+| Code | HTTP | Beschreibung |
+|------|------|--------------|
+| `CACHE_OPERATION_FAILED` | 503 | Cache-Operation fehlgeschlagen |
+| `CACHE_METRICS_FAILED` | 503 | Metrik-Aufzeichnung fehlgeschlagen |
+| `CACHE_POOL_EXHAUSTED` | 503 | Redis Connection Pool erschöpft |
+
+**Hinweis**: Diese Fehler sind oft nicht-kritisch und werden nur geloggt.
+
+### 11. Sicherheit (SEC_*)
+
+| Code | HTTP | Beschreibung |
+|------|------|--------------|
+| `SEC_REDOS_BLOCKED` | 400 | Gefährliches Regex-Pattern blockiert |
+| `SEC_MODULE_NOT_ALLOWED` | 403 | Modul nicht in Whitelist |
+| `SEC_FUNCTION_NOT_ALLOWED` | 403 | Funktion nicht in Whitelist |
+| `SEC_REGISTRATION_LOCKED` | 403 | BPMN-Registrierung gesperrt |
+| `SEC_INVALID_COMPANY` | 400 | Ungültige Firmen-ID (JSONB) |
+| `SEC_INVALID_FIELD` | 400 | Ungültiges Feld (JSONB) |
+
+**Beispiel**:
+```json
+{
+  "error": {
+    "code": "SEC_REDOS_BLOCKED",
+    "message": "Gefährliches Regex-Pattern blockiert (ReDoS-Schutz)",
+    "details": {
+      "pattern_length": 250,
+      "reason": "Regex zu lang (max. 200 Zeichen)"
+    }
+  }
+}
+```
+
+### 12. Fraud Detection (FRAUD_*)
+
+| Code | HTTP | Beschreibung |
+|------|------|--------------|
+| `FRAUD_DOCUMENT_NOT_FOUND` | 404 | Dokument für Analyse nicht gefunden |
+| `FRAUD_ENTITY_NOT_FOUND` | 404 | Geschäftspartner nicht gefunden |
+| `FRAUD_ANALYSIS_FAILED` | 500 | Fraud-Analyse fehlgeschlagen |
+| `FRAUD_CONFIG_INVALID` | 422 | Ungültige Fraud-Konfiguration |
+| `FRAUD_ALERT_NOT_FOUND` | 404 | Fraud-Alert nicht gefunden |
+
+**Beispiel**:
+```json
+{
+  "error": {
+    "code": "FRAUD_ANALYSIS_FAILED",
+    "message": "Fraud-Analyse konnte nicht durchgeführt werden",
+    "details": {
+      "document_id": "550e8400-e29b-41d4-a716-446655440000",
+      "reason": "Timeout bei ML-Modell"
+    }
+  }
+}
+```
+
+### 13. Alert Center (ALERT_*)
+
+| Code | HTTP | Beschreibung |
+|------|------|--------------|
+| `ALERT_NOT_FOUND` | 404 | Alert nicht gefunden |
+| `ALERT_ALREADY_RESOLVED` | 409 | Alert bereits gelöst |
+| `ALERT_INVALID_TRANSITION` | 422 | Ungültiger Statusübergang |
+| `ALERT_BULK_PARTIAL_FAILURE` | 207 | Massenaktion teilweise fehlgeschlagen |
+| `ALERT_ASSIGN_FAILED` | 400 | Zuweisung fehlgeschlagen |
+
+### 14. Document Chains (CHAIN_*)
+
+| Code | HTTP | Beschreibung |
+|------|------|--------------|
+| `CHAIN_NOT_FOUND` | 404 | Dokumentenkette nicht gefunden |
+| `CHAIN_DOCUMENT_NOT_FOUND` | 404 | Dokument nicht gefunden |
+| `CHAIN_DOCUMENT_ALREADY_LINKED` | 409 | Dokument bereits verknüpft |
+| `CHAIN_INVALID_RELATIONSHIP` | 422 | Ungültige Beziehung |
+| `CHAIN_SEQUENCE_ERROR` | 422 | Ungültige Dokumentenreihenfolge |
+| `CHAIN_DISCREPANCY_NOT_FOUND` | 404 | Abweichung nicht gefunden |
+
+### 15. Import (IMPORT_*)
+
+| Code | HTTP | Beschreibung |
+|------|------|--------------|
+| `IMPORT_CONFIG_NOT_FOUND` | 404 | Import-Konfiguration nicht gefunden |
+| `IMPORT_CONNECTION_FAILED` | 503 | Verbindung fehlgeschlagen (IMAP/Folder) |
+| `IMPORT_RULE_NOT_FOUND` | 404 | Import-Regel nicht gefunden |
+| `IMPORT_RULE_INVALID` | 422 | Ungültige Regel-Definition |
+| `IMPORT_FILE_TOO_LARGE` | 413 | Datei zu groß |
+| `IMPORT_UNSUPPORTED_FORMAT` | 415 | Nicht unterstütztes Format |
+
+### 16. MLOps (MLOPS_*)
+
+| Code | HTTP | Beschreibung |
+|------|------|--------------|
+| `MLOPS_MODEL_NOT_FOUND` | 404 | Modell-Version nicht gefunden |
+| `MLOPS_TRAINING_FAILED` | 500 | Training fehlgeschlagen |
+| `MLOPS_EVALUATION_FAILED` | 500 | Evaluation fehlgeschlagen |
+| `MLOPS_ROLLBACK_FAILED` | 500 | Rollback fehlgeschlagen |
+| `MLOPS_NO_ACTIVE_MODEL` | 404 | Kein aktives Modell vorhanden |
+
+### 17. DLP (DLP_*)
+
+| Code | HTTP | Beschreibung |
+|------|------|--------------|
+| `DLP_POLICY_NOT_FOUND` | 404 | DLP-Policy nicht gefunden |
+| `DLP_POLICY_EXISTS` | 409 | Policy-Name existiert bereits |
+| `DLP_ACCESS_DENIED` | 403 | Zugriff durch DLP-Policy verweigert |
+| `DLP_SCAN_FAILED` | 500 | Sensible-Daten-Scan fehlgeschlagen |
+| `DLP_INVALID_CONDITIONS` | 422 | Ungültige Policy-Bedingungen |
+
+### 18. Shipment Tracking (SHIP_*)
+
+| Code | HTTP | Beschreibung |
+|------|------|--------------|
+| `SHIP_NOT_FOUND` | 404 | Sendung nicht gefunden |
+| `SHIP_TRACKING_FAILED` | 503 | Carrier-API nicht erreichbar |
+| `SHIP_INVALID_NUMBER` | 422 | Ungültige Sendungsnummer |
+| `SHIP_CARRIER_UNKNOWN` | 400 | Carrier nicht erkannt |
+
+### 19. OCR Learning (LEARNING_*)
+
+| Code | HTTP | Beschreibung |
+|------|------|--------------|
+| `LEARNING_INVALID_BACKEND` | 400 | Backend nicht in Whitelist |
+| `LEARNING_INVALID_FIELD` | 400 | Feldname ungültig |
+| `LEARNING_INVALID_CONFIDENCE` | 422 | Confidence außerhalb 0.0-1.0 |
+| `LEARNING_TEST_NOT_FOUND` | 404 | A/B-Test nicht gefunden |
+| `LEARNING_TEST_ALREADY_EXISTS` | 409 | Test-ID existiert bereits |
+| `LEARNING_TEST_ALREADY_ENDED` | 409 | Test bereits beendet |
+| `LEARNING_INVALID_MODE` | 400 | Ungültiger Lernmodus |
+
 ---
 
 ## Fehlerbehandlung im Frontend
@@ -338,4 +493,6 @@ raise ApiException(
 
 | Datum | Version | Änderung |
 |-------|---------|----------|
+| 2026-01-27 | 1.2 | Neue Kategorien: FRAUD, ALERT, CHAIN, IMPORT, MLOPS, DLP, SHIP, LEARNING |
+| 2026-01-27 | 1.1 | Neue Kategorien: PARSE, CACHE, SEC |
 | 2024-12-18 | 1.0 | Initial Release |

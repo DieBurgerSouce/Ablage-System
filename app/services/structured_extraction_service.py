@@ -999,8 +999,11 @@ class StructuredExtractionService:
                 try:
                     invoice.currency = Currency(currency_code)
                     logger.debug("currency_extracted_fallback", currency=currency_code)
-                except ValueError:
-                    pass
+                except ValueError as e:
+                    logger.debug(
+                        "currency_code_parse_failed",
+                        error_type=type(e).__name__,
+                    )
 
         # === ZAHLUNGSBEDINGUNGEN (KRITISCH!) ===
 

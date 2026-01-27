@@ -940,8 +940,8 @@ class ReconciliationService:
             # German Format
             elif "." in date_str:
                 return datetime.strptime(date_str[:10], "%d.%m.%Y").date()
-        except (ValueError, TypeError):
-            pass
+        except (ValueError, TypeError) as e:
+            logger.debug("reconciliation_date_parse_failed", error_type=type(e).__name__, date_str=str(date_str))
 
         return None
 

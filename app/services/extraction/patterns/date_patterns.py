@@ -15,7 +15,11 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any, Dict, List, Optional, Pattern as RePattern
 
+import structlog
+
 from app.services.extraction.base import Pattern
+
+logger = structlog.get_logger(__name__)
 
 
 @dataclass
@@ -292,8 +296,8 @@ def parse_german_date(
             if year < 100:
                 year = 2000 + year if year <= 30 else 1900 + year
             return date(year, month, day)
-        except ValueError:
-            pass
+        except ValueError as e:
+            logger.debug("german_date_parse_failed", error_type=type(e).__name__)
 
     # Try named month format
     match = patterns.GERMAN_DATE_NAMED.search(text)
@@ -307,8 +311,8 @@ def parse_german_date(
             if year < 100:
                 year = 2000 + year if year <= 30 else 1900 + year
             return date(year, month, day)
-        except (ValueError, KeyError):
-            pass
+        except (ValueError, KeyError) as e:
+            logger.debug("named_month_date_parse_failed", error_type=type(e).__name__)
 
     # Try ISO format
     match = patterns.ISO_DATE.search(text)
@@ -318,8 +322,8 @@ def parse_german_date(
             month = int(match.group("month"))
             day = int(match.group("day"))
             return date(year, month, day)
-        except ValueError:
-            pass
+        except ValueError as e:
+            logger.debug("iso_date_parse_failed", error_type=type(e).__name__)
 
     # Try dashed format: "02-04-20", "6-4-2020"
     match = patterns.DASHED_DATE.search(text)
@@ -331,8 +335,8 @@ def parse_german_date(
             if year < 100:
                 year = 2000 + year if year <= 30 else 1900 + year
             return date(year, month, day)
-        except ValueError:
-            pass
+        except ValueError as e:
+            logger.debug("dashed_date_parse_failed", error_type=type(e).__name__)
 
     return None
 
@@ -350,8 +354,8 @@ def extract_invoice_date(text: str) -> Optional[date]:
             if year < 100:
                 year = 2000 + year
             return date(year, month, day)
-        except ValueError:
-            pass
+        except ValueError as e:
+            logger.debug("invoice_date_extraction_failed", error_type=type(e).__name__)
 
     return None
 
@@ -369,7 +373,7 @@ def extract_due_date(text: str) -> Optional[date]:
             if year < 100:
                 year = 2000 + year
             return date(year, month, day)
-        except ValueError:
-            pass
+        except ValueError as e:
+            logger.debug("due_date_extraction_failed", error_type=type(e).__name__)
 
     return None

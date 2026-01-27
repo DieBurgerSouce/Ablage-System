@@ -1328,8 +1328,11 @@ class NotificationWebSocketManager:
             if user_id in self._connections:
                 try:
                     self._connections[user_id].remove(websocket)
-                except ValueError:
-                    pass
+                except ValueError as e:
+                    logger.debug(
+                        "websocket_remove_failed",
+                        error_type=type(e).__name__,
+                    )
 
                 # Leere Liste entfernen
                 if not self._connections[user_id]:
@@ -1385,8 +1388,11 @@ class NotificationWebSocketManager:
                     for dead_ws in dead_connections:
                         try:
                             self._connections[user_id].remove(dead_ws)
-                        except ValueError:
-                            pass
+                        except ValueError as e:
+                            logger.debug(
+                                "dead_websocket_remove_failed",
+                                error_type=type(e).__name__,
+                            )
 
         return sent_count
 

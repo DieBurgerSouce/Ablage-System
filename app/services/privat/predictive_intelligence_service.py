@@ -1134,15 +1134,15 @@ class PredictiveIntelligenceService:
                     try:
                         dti = Decimal(dti_str) / 100
                         kpis_to_record.append(("dti_ratio", dti, KPIUnit.PERCENTAGE))
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug("dti_ratio_extraction_failed", error_type=type(e).__name__)
 
                 if dim.name == "liquidity" and "months_covered" in dim.details:
                     try:
                         months = Decimal(str(dim.details["months_covered"]))
                         kpis_to_record.append(("emergency_fund_months", months, KPIUnit.NUMBER))
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug("emergency_fund_months_extraction_failed", error_type=type(e).__name__)
 
             # Sparquote
             if health_score.monthly_savings_rate is not None:

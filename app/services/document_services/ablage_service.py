@@ -1015,15 +1015,23 @@ class AblageService(DocumentServiceBase):
         if extracted.get("document_date"):
             try:
                 doc_date = datetime.fromisoformat(extracted["document_date"])
-            except (ValueError, TypeError):
-                pass
+            except (ValueError, TypeError) as e:
+                logger.debug(
+                    "document_date_parse_failed",
+                    error_type=type(e).__name__,
+                    document_id=str(doc.id),
+                )
 
         due_date = None
         if extracted.get("due_date"):
             try:
                 due_date = datetime.fromisoformat(extracted["due_date"])
-            except (ValueError, TypeError):
-                pass
+            except (ValueError, TypeError) as e:
+                logger.debug(
+                    "due_date_parse_failed",
+                    error_type=type(e).__name__,
+                    document_id=str(doc.id),
+                )
 
         # Skonto-Daten aus invoice-Daten extrahieren
         invoice_data = extracted.get("invoice", {}) or {}
@@ -1034,8 +1042,12 @@ class AblageService(DocumentServiceBase):
         if invoice_data.get("discount_due_date"):
             try:
                 skonto_deadline = datetime.fromisoformat(invoice_data["discount_due_date"])
-            except (ValueError, TypeError):
-                pass
+            except (ValueError, TypeError) as e:
+                logger.debug(
+                    "skonto_deadline_parse_failed",
+                    error_type=type(e).__name__,
+                    document_id=str(doc.id),
+                )
 
         return CategoryDocumentResponse(
             id=doc.id,

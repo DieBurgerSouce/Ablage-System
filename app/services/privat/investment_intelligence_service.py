@@ -376,7 +376,8 @@ class InvestmentIntelligenceService:
                         cagr = (Decimal(str(cagr_float)) * 100).quantize(
                             Decimal("0.01"), rounding=ROUND_HALF_UP
                         )
-                except (ValueError, ZeroDivisionError, OverflowError):
+                except (ValueError, ZeroDivisionError, OverflowError) as e:
+                    logger.debug("cagr_calculation_failed", error_type=type(e).__name__)
                     cagr = None
 
         # Risiko-Einordnung
@@ -874,8 +875,8 @@ class InvestmentIntelligenceService:
                     if ratio > 0:
                         cagr_float = (ratio ** (1 / float(years))) - 1
                         portfolio_cagr = (Decimal(str(cagr_float)) * 100).quantize(Decimal("0.01"))
-                except (ValueError, ZeroDivisionError, OverflowError):
-                    pass
+                except (ValueError, ZeroDivisionError, OverflowError) as e:
+                    logger.debug("portfolio_cagr_calculation_failed", error_type=type(e).__name__)
 
         # Allokation, Diversifikation, Risiko parallel berechnen
         allocation = await self.calculate_allocation(db, space_id)

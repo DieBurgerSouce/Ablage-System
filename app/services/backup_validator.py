@@ -529,8 +529,8 @@ class BackupValidator:
                                 code="OLD_RDB_VERSION",
                                 message=f"Alte RDB Version: {version}",
                             ))
-                    except ValueError:
-                        pass
+                    except ValueError as e:
+                        logger.debug("rdb_version_parse_failed", error_type=type(e).__name__, version=version)
 
         except Exception as e:
             issues.append(ValidationIssue(

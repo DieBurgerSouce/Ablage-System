@@ -980,16 +980,25 @@ class FinanceService(DocumentServiceBase):
                 einspruchsfrist = datetime.fromisoformat(
                     extracted_data["einspruchsfrist"].replace("Z", "+00:00")
                 )
-            except (ValueError, AttributeError):
-                pass
+            except (ValueError, AttributeError) as e:
+                logger.debug(
+                    "einspruchsfrist_parse_failed",
+                    error_type=type(e).__name__,
+                    document_id=str(doc.id),
+                )
 
         # Steuerart parsen
         steuerart = None
         if extracted_data.get("steuerart"):
             try:
                 steuerart = TaxType(extracted_data["steuerart"])
-            except ValueError:
-                pass
+            except ValueError as e:
+                logger.debug(
+                    "steuerart_parse_failed",
+                    error_type=type(e).__name__,
+                    document_id=str(doc.id),
+                    value=extracted_data.get("steuerart"),
+                )
 
         return FinanceCategoryDocumentResponse(
             id=doc.id,

@@ -10,7 +10,7 @@ Ermoeglicht:
 - Feedback fuer Online-Learning
 """
 
-import logging
+import structlog
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -27,7 +27,7 @@ from app.ml.routing_predictor import (
     RoutingTarget,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/routing", tags=["Predictive Routing"])
 
@@ -272,7 +272,7 @@ async def predict_routing(
             confidences.append(prediction.confidence)
 
         except Exception as e:
-            logger.warning(f"Vorhersage fuer {target} fehlgeschlagen: {e}")
+            logger.debug("prediction_failed", target=target, error_type=type(e).__name__, error=str(e))
             continue
 
     overall_confidence = sum(confidences) / len(confidences) if confidences else 0.0
@@ -576,8 +576,11 @@ async def get_quick_suggestions(
                     )
                 elif amount_value > 5000:
                     suggestions["suggested_priority"] = "medium"
-            except (ValueError, TypeError):
-                pass
+            except (ValueError, TypeError) as e:
+                logger.debug(
+                    "amount_parse_for_priority_failed",
+                    error_type=type(e).__name__,
+                )
 
     # Tags basierend auf Dokumenttyp
     if document.document_type:
@@ -666,6 +669,7 @@ async def auto_route_document(
                     }
                 )
         except Exception as e:
+            logger.debug("assigned_to_prediction_failed", document_id=str(document_id), error_type=type(e).__name__)
             skipped.append({"field": "assigned_to_id", "reason": str(e)})
 
     # Prioritaet
@@ -692,6 +696,7 @@ async def auto_route_document(
                     }
                 )
         except Exception as e:
+            logger.debug("priority_prediction_failed", document_id=str(document_id), error_type=type(e).__name__)
             skipped.append({"field": "priority", "reason": str(e)})
 
     # Tags
@@ -717,6 +722,7 @@ async def auto_route_document(
                     }
                 )
         except Exception as e:
+            logger.debug("tags_prediction_failed", document_id=str(document_id), error_type=type(e).__name__)
             skipped.append({"field": "tags", "reason": str(e)})
 
     # Speichere Aenderungen

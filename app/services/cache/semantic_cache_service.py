@@ -361,8 +361,8 @@ class SemanticCacheService:
                         "last_hit_at",
                         datetime.now(timezone.utc).isoformat(),
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("cache_hit_count_update_failed", error_type=type(e).__name__)
 
             await self._update_stats("hit", best_similarity)
 

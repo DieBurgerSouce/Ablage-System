@@ -1405,8 +1405,12 @@ async def get_document_thumbnail(
                         "Cache-Control": "public, max-age=86400"  # 24h cache
                     }
                 )
-        except Exception:
-            pass  # Cache miss, generate thumbnail
+        except Exception as e:
+            logger.debug(
+                "thumbnail_cache_miss",
+                document_id=str(document_id)[:8],
+                error_type=type(e).__name__,
+            )
 
         # Load original file
         file_content = await storage.download_document(document.file_path)

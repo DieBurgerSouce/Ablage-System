@@ -13,7 +13,7 @@ GoBD-konform mit ELSTER-Export-Format.
 import uuid
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -579,8 +579,13 @@ class VATService:
             if value is not None:
                 try:
                     return Decimal(str(value).replace(",", ".").replace(" ", ""))
-                except:
-                    pass
+                except (ValueError, InvalidOperation, TypeError) as e:
+                    logger.debug(
+                        "amount_parsing_skipped",
+                        key=key,
+                        value_type=type(value).__name__,
+                        error_type=type(e).__name__,
+                    )
         return Decimal("0")
 
     def _detect_vat_rate(
@@ -602,8 +607,12 @@ class VATService:
                     return "7"
                 elif rate == 0:
                     return "0"
-            except:
-                pass
+            except (ValueError, TypeError) as e:
+                logger.debug(
+                    "vat_rate_parsing_skipped",
+                    explicit_rate=str(explicit_rate)[:50],
+                    error_type=type(e).__name__,
+                )
 
         # Aus Betraegen berechnen
         if net > 0 and gross > 0:

@@ -136,8 +136,8 @@ async def send_chat_message(
         if request.context_type == RAGContextType.DOCUMENT and request.context_id:
             try:
                 document_ids = [UUID(request.context_id)]
-            except ValueError:
-                pass
+            except ValueError as e:
+                logger.debug("invalid_context_id_uuid_skipped", context_id=request.context_id, error_type=type(e).__name__)
 
         chunks = await search_service.search_for_context(
             db=db,

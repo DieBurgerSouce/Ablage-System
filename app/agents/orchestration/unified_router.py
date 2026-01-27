@@ -682,8 +682,11 @@ class UnifiedOCRRouter(OrchestrationAgent):
                         routing_method=RoutingMethod.USER_PREFERENCE,
                         fallback_chain=self._get_fallback_chain(backend),
                     )
-            except ValueError:
-                pass
+            except ValueError as e:
+                self.logger.debug(
+                    "user_preference_backend_parse_failed",
+                    error_type=type(e).__name__,
+                )
 
         # Priority 2: Language-based routing for non-DE/EN documents
         lang_result = self._detect_document_language(analysis)

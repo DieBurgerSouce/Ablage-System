@@ -306,8 +306,11 @@ async def set_rls_company_context(db: AsyncSession, company_id: UUID) -> None:
         # Bei Fehler: Session zurückrollen um "aborted transaction" zu vermeiden
         try:
             await db.rollback()
-        except Exception:
-            pass
+        except Exception as rollback_err:
+            logger.debug(
+                "rls_context_rollback_failed",
+                error_type=type(rollback_err).__name__,
+            )
         logger.debug(
             "rls_context_skip",
             reason=str(e)

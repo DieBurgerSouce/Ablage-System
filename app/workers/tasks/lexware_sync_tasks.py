@@ -703,8 +703,8 @@ def update_payment_status_task(
                     payment_dt = datetime.fromisoformat(
                         payment_date.replace("Z", "+00:00")
                     )
-                except ValueError:
-                    pass
+                except ValueError as e:
+                    logger.debug("parse_payment_date", error_type=type(e).__name__)
 
             success = await connector.update_payment_status(
                 erp_id=invoice_erp_id,

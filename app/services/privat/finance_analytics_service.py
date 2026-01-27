@@ -735,8 +735,8 @@ class FinanceAnalyticsService:
             target = from_date.replace(day=min(day, 28))
             if target > from_date:
                 return target
-        except ValueError:
-            pass
+        except ValueError as e:
+            logger.debug("monthly_occurrence_current_month_failed", error_type=type(e).__name__)
 
         # Naechster Monat
         if from_date.month == 12:
@@ -777,8 +777,11 @@ class FinanceAnalyticsService:
                         target = from_date.replace(month=qm, day=min(day, 28))
                         if target > from_date:
                             return target
-                    except ValueError:
-                        pass
+                    except ValueError as e:
+                        logger.debug(
+                            "quarterly_date_calculation_failed",
+                            error_type=type(e).__name__,
+                        )
             # Naechstes Jahr
             return from_date.replace(year=from_date.year + 1, month=1, day=min(day, 28))
 

@@ -1291,8 +1291,11 @@ async def export_missed_skonto(
                     try:
                         if len(str(cell.value)) > max_length:
                             max_length = len(str(cell.value))
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(
+                            "excel_cell_length_calculation_failed",
+                            error_type=type(e).__name__,
+                        )
                 ws.column_dimensions[column].width = min(max_length + 2, 50)
 
             output = io.BytesIO()

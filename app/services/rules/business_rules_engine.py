@@ -13,24 +13,110 @@ Phase 4 der Strategischen Roadmap (Januar 2026).
 """
 
 from datetime import datetime, date
-from typing import Optional, List, Dict, Any, Union, Callable
-
-# Type alias for nested values from dictionaries
-NestedValue = Union[str, int, float, bool, list, dict, Decimal, datetime, date, None]
+from typing import Optional, List, Dict, Union, Callable
 from uuid import UUID, uuid4
 from enum import Enum
 import re
 import logging
 import operator
 from decimal import Decimal
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Document, User
+from app.core.types import NestedValue, RuleContextDict, ConditionEvaluationDetails
 
 logger = logging.getLogger(__name__)
+
+# =============================================================================
+# Security: ReDoS Prevention Constants (CWE-95)
+# =============================================================================
+
+# Maximum length for regex patterns to prevent resource exhaustion
+MAX_REGEX_LENGTH: int = 200
+
+# Maximum time (seconds) for regex matching
+REGEX_TIMEOUT_SECONDS: float = 1.0
+
+# Dangerous regex patterns that can cause ReDoS
+DANGEROUS_REGEX_PATTERNS: tuple[str, ...] = (
+    r"\(\.\*\)\+",      # (.*)+
+    r"\(\.\+\)\+",      # (.+)+
+    r"\(\.\*\)\*",      # (.*)*
+    r"\(\.\+\)\*",      # (.+)*
+    r"\+\+",            # ++
+    r"\*\*",            # **
+    r"\{\d+,\}\+",      # {n,}+
+    r"\(\[.+\]\+\)\+",  # ([...]+)+
+    r"\(\w\+\)\+",      # (\w+)+
+    r"\(\d\+\)\+",      # (\d+)+
+    r"\(\s\+\)\+",      # (\s+)+
+)
+
+
+def _is_regex_safe(pattern: str) -> tuple[bool, str]:
+    """
+    Validates regex pattern against ReDoS attacks.
+
+    Args:
+        pattern: The regex pattern to validate
+
+    Returns:
+        Tuple of (is_safe, error_message)
+    """
+    if len(pattern) > MAX_REGEX_LENGTH:
+        return False, f"Regex zu lang (max {MAX_REGEX_LENGTH} Zeichen)"
+
+    for dangerous in DANGEROUS_REGEX_PATTERNS:
+        if re.search(dangerous, pattern):
+            return False, "Gefaehrliches Regex-Pattern erkannt (ReDoS-Risiko)"
+
+    # Try to compile to catch syntax errors
+    try:
+        re.compile(pattern)
+    except re.error as e:
+        return False, f"Ungueltiges Regex-Pattern: {e}"
+
+    return True, ""
+
+
+def _safe_regex_match(
+    pattern: str,
+    text: str,
+    flags: int = 0,
+    timeout: float = REGEX_TIMEOUT_SECONDS,
+) -> Optional[re.Match[str]]:
+    """
+    Performs regex match with timeout protection.
+
+    Args:
+        pattern: Regex pattern
+        text: Text to match against
+        flags: Regex flags
+        timeout: Maximum execution time in seconds
+
+    Returns:
+        Match object or None if no match or timeout
+    """
+    def _do_match() -> Optional[re.Match[str]]:
+        return re.match(pattern, text, flags)
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(_do_match)
+        try:
+            return future.result(timeout=timeout)
+        except FuturesTimeoutError:
+            logger.warning(
+                "regex_timeout",
+                pattern_length=len(pattern),
+                text_length=len(text),
+            )
+            return None
+        except re.error:
+            return None
 
 
 # =============================================================================
@@ -613,11 +699,20 @@ class BusinessRulesEngine:
         if op == ConditionOperator.ENDS_WITH:
             return actual.endswith(expected)
         if op == ConditionOperator.MATCHES:
-            try:
-                flags = 0 if case_sensitive else re.IGNORECASE
-                return bool(re.match(expected, actual, flags))
-            except re.error:
+            # Security: Validate regex pattern against ReDoS (CWE-95)
+            is_safe, error_msg = _is_regex_safe(expected)
+            if not is_safe:
+                logger.warning(
+                    "unsafe_regex_pattern_rejected",
+                    reason=error_msg,
+                    pattern_length=len(expected),
+                )
                 return False
+
+            # Execute with timeout protection
+            flags = 0 if case_sensitive else re.IGNORECASE
+            match = _safe_regex_match(expected, actual, flags)
+            return match is not None
 
         return False
 
@@ -652,8 +747,8 @@ class BusinessRulesEngine:
             if period == "weekend":
                 return actual.weekday() >= 5  # Samstag oder Sonntag
 
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("time_period_check_failed: %s", type(e).__name__)
 
         return False
 
@@ -675,8 +770,8 @@ class BusinessRulesEngine:
             if op == ConditionOperator.AFTER:
                 return actual > expected
 
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("date_comparison_failed: %s", type(e).__name__)
 
         return False
 
@@ -687,8 +782,8 @@ class BusinessRulesEngine:
                 lower, upper = expected
                 actual = self._to_number(actual)
                 return lower <= actual <= upper
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("between_check_failed: %s", type(e).__name__)
         return False
 
     # =========================================================================

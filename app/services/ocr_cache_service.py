@@ -118,7 +118,11 @@ class TTLCache:
                 # String memory is already captured by getsizeof
                 pass
             return base_size
-        except Exception:
+        except Exception as e:
+            logger.debug(
+                "cache_size_estimation_failed",
+                error_type=type(e).__name__,
+            )
             # Fallback: assume 1KB per item
             return 1024
 
@@ -454,8 +458,13 @@ class OCRCacheService:
             from app.services.gpu_metrics_service import get_gpu_metrics_service
             metrics = get_gpu_metrics_service()
             metrics.record_cache_operation(operation="hit", level=level)
-        except Exception:
-            pass  # Non-critical - don't fail on metrics recording
+        except Exception as e:
+            logger.debug(
+                "cache_metrics_recording_failed",
+                operation="hit",
+                level=level,
+                error_type=type(e).__name__,
+            )
 
     def _record_backend_miss(self, backend: str) -> None:
         """Record cache miss for specific backend."""
@@ -473,8 +482,13 @@ class OCRCacheService:
             from app.services.gpu_metrics_service import get_gpu_metrics_service
             metrics = get_gpu_metrics_service()
             metrics.record_cache_operation(operation="miss", level="l2")
-        except Exception:
-            pass  # Non-critical - don't fail on metrics recording
+        except Exception as e:
+            logger.debug(
+                "cache_metrics_recording_failed",
+                operation="miss",
+                level="l2",
+                error_type=type(e).__name__,
+            )
 
     async def cache_result(
         self,

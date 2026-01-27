@@ -1026,7 +1026,11 @@ def detect_concept_drift(
                     row = result.one()
                     total = row.total or 0
                     corrected = row.corrected or 0
-                except Exception:
+                except Exception as e:
+                    logger.debug(
+                        "ml_drift_query_failed",
+                        error_type=type(e).__name__,
+                    )
                     # Fallback: Alle Dokumente als korrekt annehmen
                     total = 100
                     corrected = 5  # 5% default Korrekturrate

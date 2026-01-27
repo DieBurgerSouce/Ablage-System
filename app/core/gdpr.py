@@ -752,8 +752,12 @@ class GDPRComplianceManager:
             try:
                 doc_uuid = UUID(document_id)
                 query = query.where(GDPRProcessingActivity.document_id == doc_uuid)
-            except (ValueError, TypeError):
-                pass
+            except (ValueError, TypeError) as e:
+                logger.debug(
+                    "document_id_parse_failed",
+                    error_type=type(e).__name__,
+                    document_id=document_id
+                )
 
         if subject_id:
             hashed_subject = self.pseudonymize_identifier(subject_id)

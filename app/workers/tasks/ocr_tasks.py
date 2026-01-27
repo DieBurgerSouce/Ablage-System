@@ -12,6 +12,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Union
 from uuid import UUID
+
+from app.core.types import OCRTaskResult, OCRBatchResult
 import asyncio
 import os
 import psutil
@@ -150,7 +152,12 @@ def secure_delete_file(file_path: Union[str, Path], passes: int = 1) -> bool:
         try:
             path.unlink()
             return True
-        except Exception:
+        except Exception as e:
+            logger.debug(
+                "secure_delete_fallback_failed",
+                path=str(path),
+                error_type=type(e).__name__,
+            )
             return False
 
 
@@ -292,7 +299,7 @@ def process_document_task(
     detect_layout: bool = True,
     detect_fraktur: bool = False,
     priority: str = "normal"
-) -> Dict[str, Any]:
+) -> OCRTaskResult:
     """Process a single document with OCR.
 
     This is the main OCR processing task that handles document recognition.
@@ -307,7 +314,7 @@ def process_document_task(
         priority: Task priority (high, normal, low)
 
     Returns:
-        Dictionary with OCR results, metadata, and processing information
+        OCRTaskResult with success, text, confidence, backend_used, and processing information
     """
     start_time = datetime.now(timezone.utc)
     doc_uuid = UUID(document_id)
@@ -759,8 +766,12 @@ def process_document_task(
                                     processing_time_ms=float(fallback_time),
                                     document_type="unknown",
                                 )
-                            except Exception:
-                                pass  # Non-critical
+                            except Exception as e:
+                                logger.debug(
+                                    "ocr_metrics_recording_failed",
+                                    backend="surya_cpu_fallback",
+                                    error_type=type(e).__name__,
+                                )
 
                             return {
                                 "success": True,
@@ -933,7 +944,7 @@ def batch_process_task(
     batch_job_id: Optional[str] = None,
     user_id: Optional[str] = None,
     resume_from_index: int = 0
-) -> Dict[str, Any]:
+) -> OCRBatchResult:
     """Process multiple documents in batch.
 
     Args:
@@ -946,7 +957,7 @@ def batch_process_task(
         resume_from_index: Index to resume from (for paused jobs)
 
     Returns:
-        Dictionary with batch processing results
+        OCRBatchResult with processing results and statistics
     """
     # Validate batch size to prevent resource abuse
     MAX_BATCH_SIZE = 500
@@ -1013,7 +1024,12 @@ def batch_process_task(
                     )
                     batch_job = result.scalar_one_or_none()
                     return batch_job.is_paused if batch_job else False
-            except Exception:
+            except Exception as e:
+                logger.debug(
+                    "batch_pause_check_failed",
+                    batch_job_id=batch_job_id,
+                    error_type=type(e).__name__,
+                )
                 return False
 
         # Helper to clear GPU memory

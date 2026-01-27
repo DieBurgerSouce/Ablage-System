@@ -342,8 +342,12 @@ def redis_cache(
                         record_api_cache_latency,
                     )
                     record_api_cache_latency("read", read_latency)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(
+                        "metrics_recording_failed",
+                        operation="cache_read_latency",
+                        error_type=type(e).__name__,
+                    )
 
                 if cached_value is not None:
                     logger.debug(
@@ -354,8 +358,12 @@ def redis_cache(
                     # Record cache hit
                     try:
                         record_api_cache_operation("hit", func.__name__)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(
+                            "metrics_recording_failed",
+                            operation="cache_hit",
+                            error_type=type(e).__name__,
+                        )
                     return _deserialize_value(cached_value)
 
                 logger.debug(
@@ -366,8 +374,12 @@ def redis_cache(
                 # Record cache miss
                 try:
                     record_api_cache_operation("miss", func.__name__)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(
+                        "metrics_recording_failed",
+                        operation="cache_miss",
+                        error_type=type(e).__name__,
+                    )
 
             except Exception as e:
                 # Redis nicht verfuegbar - continue without cache
@@ -396,8 +408,12 @@ def redis_cache(
                 try:
                     from app.core.business_metrics import record_api_cache_latency
                     record_api_cache_latency("write", write_latency)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(
+                        "metrics_recording_failed",
+                        operation="cache_write_latency",
+                        error_type=type(e).__name__,
+                    )
 
                 logger.debug(
                     "cache_set",

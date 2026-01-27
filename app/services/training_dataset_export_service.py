@@ -25,6 +25,7 @@ from uuid import uuid4
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+import structlog
 
 from app.db.models import (
     OCRDocumentOutput,
@@ -32,7 +33,7 @@ from app.db.models import (
     VerificationStatus,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class TrainingExportFormat(str, Enum):
@@ -889,8 +890,8 @@ class TrainingDatasetExportService:
                             "total_samples": metadata.get("stats", {}).get("total_samples", 0),
                             "output_dir": str(export_dir)
                         })
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("load_export_metadata", error_type=type(e).__name__)
 
         return exports
 

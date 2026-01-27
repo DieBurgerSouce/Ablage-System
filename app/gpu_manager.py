@@ -175,7 +175,7 @@ class GPUManager:
                 torch.cuda.empty_cache()
                 torch.cuda.synchronize()
             except RuntimeError as e:
-                logger.warning("cuda_cache_clear_failed", error=str(e))
+                logger.debug("cuda_cache_clear_failed", error_type=type(e).__name__)
 
             # Re-check
             status = self.check_availability()
@@ -1246,7 +1246,7 @@ class GPUMemoryGuard:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.debug("memory_monitor_check_error", error=str(e))
+                logger.debug("memory_monitor_check_error", error_type=type(e).__name__)
 
             try:
                 await asyncio.sleep(self.MONITOR_INTERVAL_SECONDS)
@@ -1301,7 +1301,7 @@ class GPUMemoryGuard:
                 )
 
         except Exception as e:
-            logger.debug("proactive_memory_check_error", error=str(e))
+            logger.debug("proactive_memory_check_error", error_type=type(e).__name__)
 
 
 # Context Manager für Memory-geschützte Operations

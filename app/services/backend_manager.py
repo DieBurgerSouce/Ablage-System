@@ -926,8 +926,13 @@ class BackendManager:
                     try:
                         metrics = get_ml_metrics()
                         metrics.set_backend_healthy(backend_name, False)
-                    except Exception:
-                        pass  # Metriken sind optional
+                    except Exception as e:
+                        logger.debug(
+                            "backend_health_metrics_failed",
+                            backend=backend_name,
+                            healthy=False,
+                            error_type=type(e).__name__,
+                        )
                     return result
 
             # Backend is healthy - cache positive result
@@ -942,8 +947,13 @@ class BackendManager:
             try:
                 metrics = get_ml_metrics()
                 metrics.set_backend_healthy(backend_name, True)
-            except Exception:
-                pass  # Metriken sind optional
+            except Exception as e:
+                logger.debug(
+                    "backend_health_metrics_failed",
+                    backend=backend_name,
+                    healthy=True,
+                    error_type=type(e).__name__,
+                )
 
             return {"healthy": True, "status": status}
 
@@ -956,8 +966,13 @@ class BackendManager:
             try:
                 metrics = get_ml_metrics()
                 metrics.set_backend_healthy(backend_name, False)
-            except Exception:
-                pass  # Metriken sind optional
+            except Exception as e2:
+                logger.debug(
+                    "backend_health_metrics_failed",
+                    backend=backend_name,
+                    healthy=False,
+                    error_type=type(e2).__name__,
+                )
 
             return {"healthy": False, "reason": str(e)}
 
@@ -1079,8 +1094,13 @@ class BackendManager:
                     try:
                         metrics = get_ml_metrics()
                         metrics.record_backend_fallback(backend_name, current_backend)
-                    except Exception:
-                        pass  # Metriken sind optional
+                    except Exception as e:
+                        logger.debug(
+                            "backend_fallback_metrics_failed",
+                            original_backend=backend_name,
+                            fallback_backend=current_backend,
+                            error_type=type(e).__name__,
+                        )
 
                 # Record A/B test result if experiment tracking enabled
                 if experiment_info and document_id:

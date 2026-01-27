@@ -130,8 +130,8 @@ class GermanDateParser:
                     int(iso_match.group(2)),
                     int(iso_match.group(3)),
                 )
-            except ValueError:
-                pass
+            except ValueError as e:
+                logger.debug("iso_date_parse_failed", text=text, error_type=type(e).__name__)
 
         # Deutsches Format (DD.MM.YYYY)
         de_match = re.search(r"(\d{1,2})\.(\d{1,2})\.(\d{2,4})", text)
@@ -143,8 +143,8 @@ class GermanDateParser:
                 if year < 100:
                     year += 2000
                 return date(year, month, day)
-            except ValueError:
-                pass
+            except ValueError as e:
+                logger.debug("german_date_parse_failed", text=text, error_type=type(e).__name__)
 
         # Deutsches Format mit Monatsnamen (DD. Monat YYYY)
         month_match = re.search(
@@ -168,8 +168,8 @@ class GermanDateParser:
                     if date(year, month, day) < reference:
                         year += 1
                 return date(year, month, day)
-            except ValueError:
-                pass
+            except ValueError as e:
+                logger.debug("month_name_date_parse_failed", text=text, error_type=type(e).__name__)
 
         # Relative Zeitangaben
         for pattern, (unit, multiplier) in cls.RELATIVE_PATTERNS.items():
@@ -211,8 +211,8 @@ class GermanDateParser:
                         ) - timedelta(days=1)
                     elif unit == "year_end":
                         return date(reference.year, 12, 31)
-                except ValueError:
-                    pass
+                except ValueError as e:
+                    logger.debug("relative_date_parse_failed", text=text, unit=unit, error_type=type(e).__name__)
 
         return None
 

@@ -764,6 +764,106 @@ class RetentionPolicyError(ArchiveError):
         self.user_message_de = f"Aufbewahrungsfrist-Verletzung: {reason}"
 
 
+# ==================== Parsing Exceptions (E025) ====================
+
+class ParsingException(AblageSystemException):
+    """Base class for parsing-related errors (amounts, dates, VAT rates)"""
+
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            message=message,
+            error_code="E025",
+            details=details or {},
+            user_message_de="Parsing-Fehler aufgetreten"
+        )
+
+
+class AmountParsingError(ParsingException):
+    """Failed to parse monetary amount from text"""
+
+    def __init__(self, raw_value: str, reason: str):
+        super().__init__(
+            message=f"Failed to parse amount from '{raw_value}': {reason}",
+            details={
+                "raw_value": raw_value[:100] if raw_value else "",
+                "reason": reason
+            }
+        )
+        self.user_message_de = f"Betrag konnte nicht geparst werden: {reason}"
+        self.raw_value = raw_value
+        self.reason = reason
+
+
+class DateParsingError(ParsingException):
+    """Failed to parse date from text"""
+
+    def __init__(self, raw_value: str, reason: str, expected_formats: Optional[list[str]] = None):
+        super().__init__(
+            message=f"Failed to parse date from '{raw_value}': {reason}",
+            details={
+                "raw_value": raw_value[:100] if raw_value else "",
+                "reason": reason,
+                "expected_formats": expected_formats or ["DD.MM.YYYY", "YYYY-MM-DD"]
+            }
+        )
+        self.user_message_de = f"Datum konnte nicht geparst werden: {reason}"
+        self.raw_value = raw_value
+        self.reason = reason
+
+
+class VATRateParsingError(ParsingException):
+    """Failed to parse VAT rate from text"""
+
+    def __init__(self, raw_value: str, reason: str):
+        super().__init__(
+            message=f"Failed to parse VAT rate from '{raw_value}': {reason}",
+            details={
+                "raw_value": raw_value[:100] if raw_value else "",
+                "reason": reason,
+                "valid_rates": ["0%", "7%", "19%"]
+            }
+        )
+        self.user_message_de = f"MwSt-Satz konnte nicht geparst werden: {reason}"
+        self.raw_value = raw_value
+        self.reason = reason
+
+
+# ==================== Metrics/Cache Exceptions (E026) ====================
+
+class MetricsRecordingError(AblageSystemException):
+    """Non-critical error when recording metrics fails"""
+
+    def __init__(self, metric_name: str, reason: str):
+        super().__init__(
+            message=f"Failed to record metric '{metric_name}': {reason}",
+            error_code="E026",
+            details={
+                "metric_name": metric_name,
+                "reason": reason
+            },
+            user_message_de="Metrik-Aufzeichnung fehlgeschlagen"
+        )
+        self.metric_name = metric_name
+
+
+class CacheOperationError(AblageSystemException):
+    """Non-critical error when cache operation fails"""
+
+    def __init__(self, operation: str, key: str, reason: str):
+        super().__init__(
+            message=f"Cache {operation} failed for key '{key}': {reason}",
+            error_code="E026",
+            details={
+                "operation": operation,
+                "cache_key": key[:100] if key else "",
+                "reason": reason
+            },
+            user_message_de="Cache-Operation fehlgeschlagen"
+        )
+        self.operation = operation
+        self.cache_key = key
+
+
 # ==================== Rate Limiting Exceptions (E023) ====================
 
 class RateLimitError(AblageSystemException):
@@ -860,6 +960,17 @@ ERROR_CODE_REGISTRY: dict[str, str] = {
     "ARCH_001": "Backup Error",
     "ARCH_002": "GoBD Archive Error",
     "ARCH_003": "Restore Failed",
+
+    # Parsing Domain (E025)
+    "PARSE_001": "Amount Parsing Failed",
+    "PARSE_002": "Date Parsing Failed",
+    "PARSE_003": "VAT Rate Parsing Failed",
+    "PARSE_004": "Currency Parsing Failed",
+
+    # Metrics/Cache Domain (E026)
+    "CACHE_001": "Cache Operation Failed",
+    "CACHE_002": "Metrics Recording Failed",
+    "CACHE_003": "Redis Connection Pool Exhausted",
 }
 
 # Legacy mapping for backward compatibility (DEPRECATED - use new codes)
@@ -888,6 +999,8 @@ LEGACY_ERROR_CODE_MAP: dict[str, str] = {
     "E022": "AUTH_001",
     "E023": "AUTH_004",
     "E024": "ARCH_002",
+    "E025": "PARSE_001",
+    "E026": "CACHE_001",
 }
 
 

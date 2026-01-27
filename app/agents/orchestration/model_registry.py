@@ -120,8 +120,11 @@ def get_git_commit() -> str:
         )
         if result.returncode == 0:
             return result.stdout.strip()[:12]
-    except (subprocess.SubprocessError, FileNotFoundError):
-        pass
+    except (subprocess.SubprocessError, FileNotFoundError) as e:
+        logger.debug(
+            "git_commit_hash_failed",
+            error_type=type(e).__name__,
+        )
     return "unknown"
 
 

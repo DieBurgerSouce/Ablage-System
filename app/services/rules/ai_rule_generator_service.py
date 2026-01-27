@@ -15,11 +15,12 @@ import re
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
+import structlog
 
 from app.core.config import settings
 from app.services.ai.ollama_service import OllamaService, get_ollama_service
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class GeneratedRule(BaseModel):
@@ -218,16 +219,16 @@ WICHTIG:
         # Versuche direktes Parsing
         try:
             return json.loads(text.strip())
-        except json.JSONDecodeError:
-            pass
+        except json.JSONDecodeError as e:
+            logger.debug("parse_json_direct", error_type=type(e).__name__)
 
         # Suche nach JSON-Block in Markdown
         json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
         if json_match:
             try:
                 return json.loads(json_match.group(1))
-            except json.JSONDecodeError:
-                pass
+            except json.JSONDecodeError as e:
+                logger.debug("parse_json_markdown", error_type=type(e).__name__)
 
         # Suche nach erstem { bis letztem }
         start = text.find('{')
@@ -235,16 +236,16 @@ WICHTIG:
         if start != -1 and end != -1 and end > start:
             try:
                 return json.loads(text[start:end+1])
-            except json.JSONDecodeError:
-                pass
+            except json.JSONDecodeError as e:
+                logger.debug("parse_json_braces", error_type=type(e).__name__)
 
         # Letzte Option: Multi-Line Matching
         json_match = re.search(r'\{[\s\S]*\}', text)
         if json_match:
             try:
                 return json.loads(json_match.group())
-            except json.JSONDecodeError:
-                pass
+            except json.JSONDecodeError as e:
+                logger.debug("parse_json_multiline", error_type=type(e).__name__)
 
         raise ValueError(
             f"Konnte kein gueltiges JSON aus Antwort extrahieren. "

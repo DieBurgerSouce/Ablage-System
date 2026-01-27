@@ -581,8 +581,8 @@ class ProcessExecutionService:
             if isinstance(assignee_value, str):
                 try:
                     assignee_id = UUID(assignee_value)
-                except ValueError:
-                    pass
+                except ValueError as e:
+                    logger.debug("assignee_uuid_parse_failed", assignee_value=assignee_value, error_type=type(e).__name__)
 
         task = ProcessTask(
             instance_id=instance.id,

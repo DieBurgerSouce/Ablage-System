@@ -202,7 +202,8 @@ class ReferenceParser:
                             parsed_date = date(year, month, day)
                             if parsed_date not in dates:
                                 dates.append(parsed_date)
-                except (ValueError, IndexError):
+                except (ValueError, IndexError) as e:
+                    logger.debug("reference_parser_date_extraction_failed", error_type=type(e).__name__)
                     continue
         return sorted(dates)
 
@@ -217,8 +218,8 @@ class ReferenceParser:
                 to_date = self._parse_simple_date(to_str)
                 if from_date and to_date:
                     return (from_date, to_date)
-            except (ValueError, TypeError):
-                pass
+            except (ValueError, TypeError) as e:
+                logger.debug("reference_parser_period_extraction_failed", error_type=type(e).__name__)
         return None
 
     def _parse_simple_date(self, date_str: str) -> Optional[date]:
@@ -232,8 +233,8 @@ class ReferenceParser:
                 if year < 100:
                     year += 2000
                 return date(year, month, day)
-            except (ValueError, IndexError):
-                pass
+            except (ValueError, IndexError) as e:
+                logger.debug("reference_parser_simple_date_parse_failed", error_type=type(e).__name__, date_str=date_str)
         return None
 
     def _detect_purpose(self, text: str) -> Optional[str]:

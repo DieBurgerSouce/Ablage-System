@@ -160,9 +160,12 @@ async def _process_deletion_requests_async() -> Dict[str, Any]:
                             request_id=str(request.id),
                             error=str(e),
                         )
-            except Exception:
+            except Exception as e:
                 # GDPRDeletionRequest-Tabelle existiert möglicherweise nicht
-                pass
+                logger.debug(
+                    "gdpr_deletion_request_table_missing",
+                    error_type=type(e).__name__,
+                )
 
             await db.commit()
 
@@ -684,7 +687,11 @@ async def _generate_compliance_report_async() -> Dict[str, Any]:
                 "pending": pending_requests.scalar() or 0,
                 "completed": completed_requests.scalar() or 0,
             }
-        except Exception:
+        except Exception as e:
+            logger.debug(
+                "gdpr_deletion_requests_table_missing",
+                error_type=type(e).__name__,
+            )
             report["deletion_requests"] = {"note": "Table not yet created"}
 
         # Breach-Historie
@@ -693,7 +700,11 @@ async def _generate_compliance_report_async() -> Dict[str, Any]:
             report["breaches"] = {
                 "total": breach_count.scalar() or 0,
             }
-        except Exception:
+        except Exception as e:
+            logger.debug(
+                "gdpr_breach_log_table_missing",
+                error_type=type(e).__name__,
+            )
             report["breaches"] = {"note": "Table not yet created"}
 
     # GDPR Manager Status

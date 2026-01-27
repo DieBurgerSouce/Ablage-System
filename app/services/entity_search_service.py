@@ -7,6 +7,10 @@ Erweiterte Suchfunktionen für BusinessEntity mit Lexware-Integration:
 - Suche nach Matchcode
 - Fuzzy-Name-Suche
 - IBAN/VAT-ID Suche
+
+Security Notes (Phase 2 Enterprise Quality):
+- JSONB column/key names are validated against whitelists (CWE-89)
+- PII is never logged (GDPR compliance)
 """
 
 import re
@@ -21,10 +25,90 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import BusinessEntity, EntityType
 from app.core.security.sensitive_data_filter import get_pii_safe_logger
+from app.core.types import LexwareIdsDict
 
 # SECURITY: Use PII-safe logger for GDPR compliance
 # Never log customer numbers, IBANs, VAT-IDs, or other PII
 logger = get_pii_safe_logger(__name__)
+
+# =============================================================================
+# Security: JSONB Whitelist Validation (CWE-89 Prevention)
+# =============================================================================
+
+# Valid company identifiers for Lexware integration
+VALID_COMPANIES: frozenset[str] = frozenset({"folie", "messer"})
+
+# Valid Lexware JSONB field names that can be queried
+VALID_LEXWARE_FIELDS: frozenset[str] = frozenset({
+    "kd_nr",          # Kundennummer
+    "lief_nr",        # Lieferantennummer
+    "matchcode",      # Matchcode
+    "debitor_konto",  # Debitorenkonto
+    "kreditor_konto", # Kreditorenkonto
+})
+
+
+class InvalidCompanyError(ValueError):
+    """Raised when an invalid company identifier is provided."""
+    pass
+
+
+class InvalidLexwareFieldError(ValueError):
+    """Raised when an invalid Lexware field name is provided."""
+    pass
+
+
+def _validate_company(company: Optional[str]) -> Optional[str]:
+    """
+    Validates company identifier against whitelist.
+
+    Args:
+        company: Company identifier to validate (or None)
+
+    Returns:
+        Normalized (lowercase) company name or None
+
+    Raises:
+        InvalidCompanyError: If company is not in whitelist
+    """
+    if company is None:
+        return None
+
+    company_lower = company.lower().strip()
+    if company_lower not in VALID_COMPANIES:
+        logger.warning(
+            "invalid_company_rejected",
+            reason="Company not in whitelist",
+        )
+        raise InvalidCompanyError(
+            f"Ungueltige Firma: {company}. Erlaubt: {', '.join(sorted(VALID_COMPANIES))}"
+        )
+    return company_lower
+
+
+def _validate_lexware_field(field: str) -> str:
+    """
+    Validates Lexware field name against whitelist.
+
+    Args:
+        field: Field name to validate
+
+    Returns:
+        The validated field name
+
+    Raises:
+        InvalidLexwareFieldError: If field is not in whitelist
+    """
+    field_lower = field.lower().strip()
+    if field_lower not in VALID_LEXWARE_FIELDS:
+        logger.warning(
+            "invalid_lexware_field_rejected",
+            reason="Field not in whitelist",
+        )
+        raise InvalidLexwareFieldError(
+            f"Ungueltiges Lexware-Feld: {field}. Erlaubt: {', '.join(sorted(VALID_LEXWARE_FIELDS))}"
+        )
+    return field_lower
 
 
 def normalize_text(text: str) -> str:
@@ -77,10 +161,16 @@ class EntitySearchService:
 
         Returns:
             BusinessEntity oder None
+
+        Raises:
+            InvalidCompanyError: If company is not valid
         """
         kd_nr_clean = str(kd_nr).strip()
         if not kd_nr_clean:
             return None
+
+        # Security: Validate company against whitelist (CWE-89)
+        validated_company = _validate_company(company)
 
         # 1. Suche in primary_customer_number
         stmt = select(BusinessEntity).where(
@@ -94,20 +184,19 @@ class EntitySearchService:
         if entity:
             return entity
 
-        # 2. Suche in lexware_ids JSONB
-        if company:
-            # Spezifische Firma
-            jsonb_path = f"lexware_ids->'{company}'->>'kd_nr'"
+        # 2. Suche in lexware_ids JSONB (using validated company names)
+        if validated_company:
+            # Spezifische Firma (validated against whitelist)
             stmt = select(BusinessEntity).where(
                 and_(
                     func.json_extract_path_text(
-                        BusinessEntity.lexware_ids, company, "kd_nr"
+                        BusinessEntity.lexware_ids, validated_company, "kd_nr"
                     ) == kd_nr_clean,
                     BusinessEntity.deleted_at.is_(None),
                 )
             )
         else:
-            # Beide Firmen durchsuchen
+            # Beide Firmen durchsuchen (hardcoded valid companies)
             stmt = select(BusinessEntity).where(
                 and_(
                     or_(
@@ -172,10 +261,16 @@ class EntitySearchService:
 
         Returns:
             BusinessEntity oder None
+
+        Raises:
+            InvalidCompanyError: If company is not valid
         """
         lief_nr_clean = str(lief_nr).strip()
         if not lief_nr_clean:
             return None
+
+        # Security: Validate company against whitelist (CWE-89)
+        validated_company = _validate_company(company)
 
         # Suche in primary_supplier_number
         stmt = select(BusinessEntity).where(
@@ -189,17 +284,18 @@ class EntitySearchService:
         if entity:
             return entity
 
-        # Suche in lexware_ids
-        if company:
+        # Suche in lexware_ids (using validated company names)
+        if validated_company:
             stmt = select(BusinessEntity).where(
                 and_(
                     func.json_extract_path_text(
-                        BusinessEntity.lexware_ids, company, "lief_nr"
+                        BusinessEntity.lexware_ids, validated_company, "lief_nr"
                     ) == lief_nr_clean,
                     BusinessEntity.deleted_at.is_(None),
                 )
             )
         else:
+            # Beide Firmen durchsuchen (hardcoded valid companies)
             stmt = select(BusinessEntity).where(
                 and_(
                     or_(
@@ -381,22 +477,28 @@ class EntitySearchService:
 
         Returns:
             Liste von (BusinessEntity, confidence, match_type) Tupeln
+
+        Raises:
+            InvalidCompanyError: If company is not valid
         """
         query_clean = query.strip()
         if not query_clean:
             return []
 
+        # Security: Validate company against whitelist (CWE-89)
+        validated_company = _validate_company(company)
+
         results: list[tuple[BusinessEntity, float, str]] = []
 
         # 1. Prüfe auf Kundennummer (nur Ziffern)
         if query_clean.isdigit():
-            entity = await self.find_by_customer_number(query_clean, company)
+            entity = await self.find_by_customer_number(query_clean, validated_company)
             if entity:
                 results.append((entity, 1.0, "customer_number"))
                 return results[:limit]
 
             # Auch als Lieferantennummer versuchen
-            entity = await self.find_by_supplier_number(query_clean, company)
+            entity = await self.find_by_supplier_number(query_clean, validated_company)
             if entity:
                 results.append((entity, 1.0, "supplier_number"))
                 return results[:limit]
@@ -423,9 +525,9 @@ class EntitySearchService:
         )
 
         for entity, similarity in matches[:limit]:
-            # Optional nach Company filtern
-            if company and entity.company_presence:
-                if company not in entity.company_presence:
+            # Optional nach Company filtern (using validated company)
+            if validated_company and entity.company_presence:
+                if validated_company not in entity.company_presence:
                     continue
             results.append((entity, similarity, "matchcode"))
 
@@ -453,11 +555,19 @@ class EntitySearchService:
 
         Returns:
             Liste von BusinessEntity
+
+        Raises:
+            InvalidCompanyError: If company is not valid
         """
-        # JSONB contains check
+        # Security: Validate company against whitelist (CWE-89)
+        validated_company = _validate_company(company)
+        if validated_company is None:
+            raise InvalidCompanyError("Firma muss angegeben werden")
+
+        # JSONB contains check (using validated company)
         stmt = select(BusinessEntity).where(
             and_(
-                BusinessEntity.company_presence.contains([company]),
+                BusinessEntity.company_presence.contains([validated_company]),
                 BusinessEntity.deleted_at.is_(None),
             )
         )

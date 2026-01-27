@@ -373,8 +373,11 @@ class DonutOCRAgent(OCRAgent):
                 max_probs = probs.max(dim=-1).values
                 confidence = max_probs.mean().item()
                 return min(max(confidence, 0.0), 1.0)
-        except Exception:
-            pass
+        except Exception as e:
+            self.logger.debug(
+                "confidence_calculation_failed",
+                error_type=type(e).__name__,
+            )
 
         return 0.85  # Default confidence
 
@@ -392,8 +395,11 @@ class DonutOCRAgent(OCRAgent):
                 json_match = re.search(r"\{.*\}", text, re.DOTALL)
                 if json_match:
                     structure["parsed"] = json.loads(json_match.group())
-            except (json.JSONDecodeError, AttributeError):
-                pass
+            except (json.JSONDecodeError, AttributeError) as e:
+                self.logger.debug(
+                    "json_parse_structure_failed",
+                    error_type=type(e).__name__,
+                )
 
         return structure
 

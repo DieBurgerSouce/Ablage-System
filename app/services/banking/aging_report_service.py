@@ -364,8 +364,8 @@ class AgingReportService:
                 if amount:
                     try:
                         total_revenue += Decimal(str(amount))
-                    except (ValueError, TypeError, InvalidOperation):
-                        pass
+                    except (ValueError, TypeError, InvalidOperation) as e:
+                        logger.debug("dso_calculation_invalid_amount", error_type=type(e).__name__, amount_value=str(amount))
 
         # DSO berechnen
         if total_revenue > 0:
@@ -434,7 +434,8 @@ class AgingReportService:
 
             try:
                 amount = Decimal(str(amount))
-            except (ValueError, TypeError, InvalidOperation):
+            except (ValueError, TypeError, InvalidOperation) as e:
+                logger.debug("aging_report_invalid_amount", error_type=type(e).__name__, amount_value=str(amount))
                 continue
 
             # Counterparty
@@ -450,7 +451,8 @@ class AgingReportService:
                         due_date = datetime.fromisoformat(due_date_str).date()
                     else:
                         due_date = due_date_str
-                except (ValueError, TypeError):
+                except (ValueError, TypeError) as e:
+                    logger.debug("aging_report_invalid_due_date", error_type=type(e).__name__, due_date_value=str(due_date_str))
                     due_date = None
             else:
                 due_date = None
@@ -463,7 +465,8 @@ class AgingReportService:
                         invoice_date = datetime.fromisoformat(invoice_date_str).date()
                     else:
                         invoice_date = invoice_date_str
-                except (ValueError, TypeError):
+                except (ValueError, TypeError) as e:
+                    logger.debug("aging_report_invalid_invoice_date", error_type=type(e).__name__, invoice_date_value=str(invoice_date_str))
                     invoice_date = None
             else:
                 invoice_date = None

@@ -1511,8 +1511,11 @@ STRUKTURIERTE DATEN:
             try:
                 document_ids = [UUID(request.context_id)]
                 search_threshold = 0.0
-            except ValueError:
-                pass
+            except ValueError as e:
+                logger.debug(
+                    "context_id_uuid_parse_failed",
+                    error_type=type(e).__name__,
+                )
 
         search_response = await search_service.semantic_search(
             db=db,

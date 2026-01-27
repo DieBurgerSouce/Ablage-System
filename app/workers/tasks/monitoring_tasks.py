@@ -199,7 +199,12 @@ def check_queue_backpressure() -> Dict[str, Any]:
                 length = redis_client.llen(queue_name)
                 queue_lengths[queue_name] = length
                 total_length += length
-            except Exception:
+            except Exception as e:
+                logger.debug(
+                    "queue_length_check_failed",
+                    queue_name=queue_name,
+                    error_type=type(e).__name__,
+                )
                 queue_lengths[queue_name] = -1  # Error indicator
 
         # Backpressure-Thresholds

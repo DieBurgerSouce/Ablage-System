@@ -108,8 +108,13 @@ def setup_db_metrics(engine: Engine) -> None:
                 duration_seconds=duration,
                 status="success"
             )
-        except Exception:
-            pass  # Non-critical
+        except Exception as e:
+            logger.debug(
+                "db_metrics_recording_failed",
+                operation=operation,
+                table=table,
+                error_type=type(e).__name__,
+            )
 
         # Log slow queries (>100ms)
         if duration > 0.1:
@@ -145,8 +150,14 @@ def setup_db_metrics(engine: Engine) -> None:
                     duration_seconds=duration,
                     status="error"
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(
+                    "db_metrics_recording_failed",
+                    operation=operation,
+                    table=table,
+                    status="error",
+                    error_type=type(e).__name__,
+                )
 
             logger.error(
                 "db_query_error",
@@ -228,8 +239,14 @@ def track_db_operation(operation: str, table: str):
                 duration_seconds=duration,
                 status=status
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(
+                "db_metrics_context_recording_failed",
+                operation=operation,
+                table=table,
+                status=status,
+                error_type=type(e).__name__,
+            )
 
 
 class DBMetricsMiddleware:

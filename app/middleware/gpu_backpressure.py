@@ -82,8 +82,11 @@ class GPUMetrics:
                     self._cached_total = torch.cuda.get_device_properties(0).total_memory
                     self._last_check = now
                     return self._cached_usage / self._cached_total
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(
+                    "pytorch_vram_check_failed",
+                    error_type=type(e).__name__,
+                )
             return 0.0
 
         try:

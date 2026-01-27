@@ -96,15 +96,15 @@ async def list_jobs(
         try:
             jt = RAGBatchJobType(job_type)
             query = query.where(RAGBatchJob.job_type == jt)
-        except ValueError:
-            pass
+        except ValueError as e:
+            logger.debug("invalid_job_type_filter_skipped", job_type=job_type, error_type=type(e).__name__)
 
     if status_filter:
         try:
             st = RAGBatchJobStatus(status_filter)
             query = query.where(RAGBatchJob.status == st)
-        except ValueError:
-            pass
+        except ValueError as e:
+            logger.debug("invalid_status_filter_skipped", status=status_filter, error_type=type(e).__name__)
 
     # Sortierung
     query = query.order_by(desc(RAGBatchJob.created_at))
@@ -123,14 +123,14 @@ async def list_jobs(
         try:
             jt = RAGBatchJobType(job_type)
             count_query = count_query.where(RAGBatchJob.job_type == jt)
-        except ValueError:
-            pass
+        except ValueError as e:
+            logger.debug("invalid_job_type_count_filter_skipped", job_type=job_type, error_type=type(e).__name__)
     if status_filter:
         try:
             st = RAGBatchJobStatus(status_filter)
             count_query = count_query.where(RAGBatchJob.status == st)
-        except ValueError:
-            pass
+        except ValueError as e:
+            logger.debug("invalid_status_count_filter_skipped", status=status_filter, error_type=type(e).__name__)
 
     total = await db.scalar(count_query) or 0
 

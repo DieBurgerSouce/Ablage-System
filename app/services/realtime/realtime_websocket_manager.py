@@ -153,8 +153,8 @@ class RealtimeWebSocketManager:
             for conn in self._connections.values():
                 try:
                     await conn.websocket.close(code=1001, reason="Server shutdown")
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("websocket_close_on_shutdown_failed", error_type=type(e).__name__)
             self._connections.clear()
             self._company_users.clear()
 
@@ -193,8 +193,8 @@ class RealtimeWebSocketManager:
                         code=1000,
                         reason="Neue Verbindung aufgebaut"
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("old_websocket_close_failed", error_type=type(e).__name__)
 
             # Neue Verbindung speichern
             now = datetime.now(timezone.utc)
@@ -350,8 +350,8 @@ class RealtimeWebSocketManager:
                 try:
                     event_type = RealtimeEventType(event_type_str)
                     connection.subscribed_events.discard(event_type)
-                except ValueError:
-                    pass
+                except ValueError as e:
+                    logger.debug("invalid_event_type_on_unsubscribe", error_type=type(e).__name__)
 
         await self._send_to_user(
             user_id=user_id,
@@ -367,8 +367,11 @@ class RealtimeWebSocketManager:
         if since:
             try:
                 since_dt = datetime.fromisoformat(since)
-            except ValueError:
-                pass
+            except ValueError as e:
+                logger.debug(
+                    "since_timestamp_parse_failed",
+                    error_type=type(e).__name__,
+                )
 
         # Get company_id for filtering
         company_id = None
@@ -530,7 +533,8 @@ class RealtimeWebSocketManager:
                                     payload={"server_time": now.isoformat()},
                                 ).to_json()
                             )
-                        except Exception:
+                        except Exception as e:
+                            logger.debug("ping_send_failed", error_type=type(e).__name__)
                             disconnected_users.append(user_id)
 
                 # Cleanup disconnected users

@@ -192,8 +192,12 @@ def release_gpu_lock(lock_value: str) -> bool:
             redis = _get_redis_lock_client()
             redis.delete(_GPU_LOCK_KEY)
             logger.warning("gpu_lock_force_released", lock_value=lock_value)
-        except RedisError:
-            pass
+        except RedisError as re:
+            logger.warning(
+                "gpu_lock_force_release_failed",
+                lock_value=lock_value,
+                error_type=type(re).__name__,
+            )
         return False
 
 
@@ -2273,6 +2277,11 @@ def _record_oom_event(task_name: str, freed_gb: float) -> None:
             freed_gb=freed_gb,
             processor_stats=processor.get_stats()
         )
-    except Exception:
-        # Metrics not available - just log
-        pass
+    except Exception as e:
+        # Metrics not available - log for debugging
+        logger.debug(
+            "oom_metrics_recording_failed",
+            task_name=task_name,
+            freed_gb=freed_gb,
+            error_type=type(e).__name__,
+        )

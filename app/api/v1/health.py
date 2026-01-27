@@ -643,8 +643,12 @@ async def _check_celery_workers() -> WorkerHealthResponse:
                     consumers=0,  # Will be updated from worker info
                 ))
                 tasks_wartend += length
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(
+                    "queue_length_fetch_failed",
+                    queue=queue_name,
+                    error_type=type(e).__name__,
+                )
 
         await redis_client.close()
 
@@ -693,8 +697,12 @@ async def _check_celery_workers() -> WorkerHealthResponse:
                 if torch.cuda.is_available():
                     mem_used = torch.cuda.memory_allocated() / torch.cuda.get_device_properties(0).total_memory * 100
                     gpu_mem = round(mem_used, 1)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(
+                    "gpu_memory_fetch_failed",
+                    worker=worker_name,
+                    error_type=type(e).__name__,
+                )
 
             workers_list.append(WorkerInfo(
                 name=worker_name,
@@ -1930,8 +1938,11 @@ async def cache_stats() -> CacheStatsResponse:
             db_info = await client.info(section="keyspace")
             if "db0" in db_info:
                 redis_info["total_keys"] = db_info["db0"].get("keys", 0)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(
+                "redis_keyspace_info_failed",
+                error_type=type(e).__name__,
+            )
 
         await client.close()
 
@@ -1948,9 +1959,12 @@ async def cache_stats() -> CacheStatsResponse:
 
         session_cache_stats = get_session_stats()
     except ImportError:
-        pass
-    except Exception:
-        pass
+        pass  # Module not installed
+    except Exception as e:
+        logger.debug(
+            "session_cache_stats_failed",
+            error_type=type(e).__name__,
+        )
 
     return CacheStatsResponse(
         zeitstempel=datetime.now(timezone.utc).isoformat(),

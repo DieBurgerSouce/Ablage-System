@@ -802,8 +802,11 @@ class HandwritingDetectorAgent(PreprocessingAgent):
             if texture_score > 0.6:
                 features.append(HandwritingFeature.IRREGULAR_SPACING)
 
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(
+                "handwriting_feature_detection_failed",
+                error_type=type(e).__name__,
+            )
 
         return features
 

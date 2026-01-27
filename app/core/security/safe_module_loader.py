@@ -12,13 +12,65 @@ Example:
     loader = SafeModuleLoader()
     func = loader.load_function("app.services.bpmn.notifications.send_approval_email")
     await func(instance_id=..., variables=...)
+
+Security Note (Phase 2 Enterprise Quality):
+    The module registration is locked after application startup to prevent
+    runtime whitelist modification attacks. Call lock_bpmn_registration()
+    in your application startup sequence.
 """
 
 import importlib
-from typing import Callable, Any, Optional, Dict, FrozenSet
+import threading
+from types import ModuleType
+from typing import Callable, Dict, Optional, FrozenSet
 import structlog
 
 logger = structlog.get_logger(__name__)
+
+# =============================================================================
+# Security: Registration Lock (CWE-470 Prevention)
+# =============================================================================
+
+# Thread-safe lock for registration operations
+_registration_lock = threading.Lock()
+
+# Flag to permanently lock registration after startup
+_registration_locked: bool = False
+
+
+class RegistrationLockedError(Exception):
+    """Raised when attempting to modify whitelists after registration is locked."""
+    pass
+
+
+def lock_bpmn_registration() -> None:
+    """
+    Permanently locks BPMN function registration after application startup.
+
+    This should be called in the application startup sequence (e.g., in main.py)
+    after all legitimate registrations are complete. Once locked, no new modules
+    or functions can be registered, preventing runtime whitelist modification attacks.
+
+    This is a one-way operation and cannot be undone without restarting the application.
+
+    Example in main.py:
+        @app.on_event("startup")
+        async def startup():
+            # ... other startup code ...
+            lock_bpmn_registration()
+    """
+    global _registration_locked
+    with _registration_lock:
+        _registration_locked = True
+        logger.info(
+            "bpmn_registration_locked",
+            message="BPMN function registration permanently locked",
+        )
+
+
+def is_registration_locked() -> bool:
+    """Check if BPMN registration is currently locked."""
+    return _registration_locked
 
 
 class ModuleLoadingError(Exception):
@@ -199,7 +251,7 @@ class SafeModuleLoader:
             return False
         return function_name in self.allowed_functions[module_path]
 
-    def load_module(self, module_path: str) -> Any:
+    def load_module(self, module_path: str) -> ModuleType:
         """Safely load a whitelisted module.
 
         Args:
@@ -234,7 +286,7 @@ class SafeModuleLoader:
                 f"Modul konnte nicht geladen werden: {module_path}"
             ) from e
 
-    def load_function(self, full_path: str) -> Callable[..., Any]:
+    def load_function(self, full_path: str) -> Callable[..., object]:
         """Safely load a whitelisted function.
 
         Args:
@@ -337,7 +389,7 @@ def get_default_loader() -> SafeModuleLoader:
     return _default_loader
 
 
-def safe_load_function(full_path: str) -> Callable[..., Any]:
+def safe_load_function(full_path: str) -> Callable[..., object]:
     """Safely load a function using the default loader.
 
     Args:
@@ -381,26 +433,45 @@ def is_function_allowed(full_path: str) -> bool:
 def register_bpmn_function(module_path: str, function_name: str) -> None:
     """Register an additional BPMN function at runtime.
 
-    This should only be called during application startup.
+    This should only be called during application startup, BEFORE
+    lock_bpmn_registration() is called.
 
     Args:
         module_path: Module path to register
         function_name: Function name to allow
 
+    Raises:
+        RegistrationLockedError: If registration has been locked
+
     Note:
         This modifies the global whitelist. Use with caution.
+        After lock_bpmn_registration() is called, this function will raise.
     """
     global ALLOWED_BPMN_MODULES, ALLOWED_BPMN_FUNCTIONS, _default_loader
 
-    # Add to module whitelist
-    ALLOWED_BPMN_MODULES = frozenset(ALLOWED_BPMN_MODULES | {module_path})
+    # Security: Check if registration is locked (CWE-470)
+    with _registration_lock:
+        if _registration_locked:
+            logger.warning(
+                "bpmn_registration_blocked",
+                module_path=module_path,
+                function_name=function_name,
+                reason="Registration locked after startup",
+            )
+            raise RegistrationLockedError(
+                "BPMN-Registrierung ist nach Anwendungsstart gesperrt. "
+                "Neue Funktionen können nicht mehr hinzugefügt werden."
+            )
 
-    # Add to function whitelist
-    existing = ALLOWED_BPMN_FUNCTIONS.get(module_path, frozenset())
-    ALLOWED_BPMN_FUNCTIONS[module_path] = frozenset(existing | {function_name})
+        # Add to module whitelist
+        ALLOWED_BPMN_MODULES = frozenset(ALLOWED_BPMN_MODULES | {module_path})
 
-    # Reset default loader to pick up changes
-    _default_loader = None
+        # Add to function whitelist
+        existing = ALLOWED_BPMN_FUNCTIONS.get(module_path, frozenset())
+        ALLOWED_BPMN_FUNCTIONS[module_path] = frozenset(existing | {function_name})
+
+        # Reset default loader to pick up changes
+        _default_loader = None
 
     logger.info(
         "bpmn_function_registered",

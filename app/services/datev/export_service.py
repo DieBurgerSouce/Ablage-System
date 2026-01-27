@@ -510,8 +510,8 @@ class DATEVExportService:
         if date_str:
             try:
                 return date.fromisoformat(date_str)
-            except (ValueError, TypeError):
-                pass
+            except (ValueError, TypeError) as e:
+                logger.debug("invoice_date_parse_failed", document_id=str(doc.id), date_str=date_str, error_type=type(e).__name__)
         return None
 
     def _get_kontenrahmen(self, kontenrahmen_name: str) -> BaseKontenrahmen:

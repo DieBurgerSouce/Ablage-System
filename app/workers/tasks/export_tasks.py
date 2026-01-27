@@ -423,7 +423,12 @@ def check_scheduled_exports() -> Dict:
                         import pytz
                         tz = pytz.timezone(scheduled_export.timezone)
                         tz_now = datetime.now(tz)
-                    except Exception:
+                    except Exception as e:
+                        logger.debug(
+                            "timezone_parse_failed",
+                            timezone=scheduled_export.timezone,
+                            error_type=type(e).__name__,
+                        )
                         tz_now = now
 
                     cron = croniter(scheduled_export.cron_expression, tz_now)

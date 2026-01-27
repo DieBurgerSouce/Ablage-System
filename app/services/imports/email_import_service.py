@@ -470,8 +470,11 @@ class EmailImportService:
             if client:
                 try:
                     client.logout()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(
+                        "imap_logout_failed",
+                        error_type=type(e).__name__,
+                    )
 
         return result
 
@@ -502,7 +505,12 @@ class EmailImportService:
         if date_str:
             try:
                 date = parsedate_to_datetime(date_str)
-            except Exception:
+            except Exception as e:
+                logger.debug(
+                    "email_date_parsing_fallback",
+                    uid=uid,
+                    error_type=type(e).__name__,
+                )
                 date = datetime.now(timezone.utc)
 
         # Body und Anhaenge extrahieren
@@ -520,8 +528,12 @@ class EmailImportService:
                     body_text = part.get_payload(decode=True).decode(
                         part.get_content_charset() or "utf-8", errors="replace"
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(
+                        "email_text_body_decode_failed",
+                        uid=uid,
+                        error_type=type(e).__name__,
+                    )
 
             # HTML-Body
             elif content_type == "text/html" and "attachment" not in content_disposition:
@@ -529,8 +541,12 @@ class EmailImportService:
                     body_html = part.get_payload(decode=True).decode(
                         part.get_content_charset() or "utf-8", errors="replace"
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(
+                        "email_html_body_decode_failed",
+                        uid=uid,
+                        error_type=type(e).__name__,
+                    )
 
             # Anhang
             elif "attachment" in content_disposition or part.get_filename():

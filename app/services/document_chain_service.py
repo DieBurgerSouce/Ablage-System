@@ -381,8 +381,8 @@ class DocumentChainService:
                     amount_str = extracted.get("total_amount", extracted.get("amount"))
                     if amount_str:
                         amount = Decimal(str(amount_str))
-                except (ValueError, TypeError):
-                    pass
+                except (ValueError, TypeError) as e:
+                    logger.debug("chain_document_amount_parse_failed", document_id=str(doc.id), error_type=type(e).__name__)
 
             chain_documents.append(ChainDocument(
                 id=doc.id,
@@ -490,8 +490,8 @@ class DocumentChainService:
             customer_number = extracted.get("customer_number")
             try:
                 amount = Decimal(str(extracted.get("total_amount", 0)))
-            except (ValueError, TypeError):
-                pass
+            except (ValueError, TypeError) as e:
+                logger.debug("auto_match_amount_parse_failed", document_id=str(document_id), error_type=type(e).__name__)
 
         if customer_number and amount:
             amount_matches = await self._match_by_customer_amount(
@@ -663,8 +663,8 @@ class DocumentChainService:
                         "diff_pct": float(diff_pct),
                         "severity": severity,
                     })
-            except (ValueError, TypeError):
-                pass
+            except (ValueError, TypeError) as e:
+                logger.debug("amount_discrepancy_check_failed", source_id=str(source.id), target_id=str(target.id), error_type=type(e).__name__)
 
         # Kundennummer-Check
         source_customer = source_data.get("customer_number")
@@ -804,7 +804,8 @@ class DocumentChainService:
                             matched_documents=[doc.id],
                             match_reason=f"Gleicher Kunde {customer_number}, aehnlicher Betrag",
                         ))
-                except (ValueError, TypeError):
+                except (ValueError, TypeError) as e:
+                    logger.debug("customer_amount_match_parse_failed", document_id=str(doc.id), error_type=type(e).__name__)
                     continue
 
         return matches

@@ -178,8 +178,11 @@ class SuryaGPUAgent(OCRAgent):
             with torch.no_grad():
                 try:
                     _ = self._det_predictor([dummy_image])
-                except Exception:
-                    pass  # Ignore errors during warmup
+                except Exception as e:
+                    logger.debug(
+                        "warmup_detection_failed",
+                        error_type=type(e).__name__,
+                    )
 
             # Synchronize CUDA to ensure kernels are compiled
             torch.cuda.synchronize()

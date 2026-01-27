@@ -221,8 +221,11 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             try:
                 form = await request.form()
                 return form.get(CSRF_FORM_FIELD)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(
+                    "csrf_form_parsing_failed",
+                    error_type=type(e).__name__,
+                )
 
         return None
 

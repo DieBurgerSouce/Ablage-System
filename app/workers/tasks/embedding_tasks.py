@@ -1004,7 +1004,11 @@ def migrate_embeddings_to_qdrant(
                                         failed += 1
                                 else:
                                     failed += 1
-                            except Exception:
+                            except Exception as e:
+                                logger.debug(
+                                    "embedding_document_process_failed",
+                                    error_type=type(e).__name__,
+                                )
                                 await _cleanup_gpu_memory()
                                 failed += 1
                         await session.commit()

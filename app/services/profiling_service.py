@@ -352,8 +352,8 @@ class ProfilingService:
 
             if torch.cuda.is_available():
                 gpu_used_mb = torch.cuda.memory_allocated() / (1024 * 1024)
-        except ImportError:
-            pass
+        except ImportError as e:
+            logger.debug("torch_import_failed_for_memory_snapshot", error_type=type(e).__name__)
 
         snapshot = MemorySnapshot(
             timestamp=datetime.now(timezone.utc),
@@ -657,8 +657,8 @@ class ProfileBlock:
                 import psutil
 
                 self.memory_before = psutil.Process().memory_info().rss / (1024 * 1024)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("memory_before_capture_failed", error_type=type(e).__name__)
 
         return self
 
@@ -672,8 +672,8 @@ class ProfileBlock:
                 import psutil
 
                 memory_after = psutil.Process().memory_info().rss / (1024 * 1024)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("memory_after_capture_failed", error_type=type(e).__name__)
 
         service = get_profiling_service()
         service.record_request(

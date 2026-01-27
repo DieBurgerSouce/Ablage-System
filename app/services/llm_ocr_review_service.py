@@ -545,8 +545,11 @@ class LLMOCRReviewService:
                 try:
                     score = float(result["quality_score"])
                     quality_scores.append(score)
-                except (TypeError, ValueError):
-                    pass
+                except (TypeError, ValueError) as e:
+                    logger.debug(
+                        "quality_score_parse_failed",
+                        error_type=type(e).__name__,
+                    )
 
         avg_quality = sum(quality_scores) / len(quality_scores) if quality_scores else None
 

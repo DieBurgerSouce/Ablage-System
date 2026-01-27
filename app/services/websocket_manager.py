@@ -115,8 +115,8 @@ class ChatWebSocketManager:
                 old_conn = self._connections[session_id][user_id]
                 try:
                     await old_conn.websocket.close()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("close_old_websocket_connection", error_type=type(e).__name__)
 
             # Neue Verbindung speichern
             conn_info = ConnectionInfo(

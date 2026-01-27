@@ -365,8 +365,8 @@ class SupplierRankingService:
                             delivery_scores.append(20)
 
                         data_points += 1
-                    except (ValueError, TypeError):
-                        pass
+                    except (ValueError, TypeError) as e:
+                        logger.debug("parse_delivery_date", error_type=type(e).__name__)
 
         # Rechnungs-Timing auswerten
         invoice_timing_scores = []

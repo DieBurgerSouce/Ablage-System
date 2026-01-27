@@ -10,6 +10,7 @@ Enterprise Feature: Verwaltet Genehmigungsanfragen mit:
 from __future__ import annotations
 
 import logging
+import structlog
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -34,7 +35,7 @@ from app.db.models import (
 )
 from app.services.approval.approval_rule_service import ApprovalRuleService
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @dataclass
@@ -155,8 +156,8 @@ class ApprovalService:
             if step.approver_type == "user":
                 try:
                     step.assigned_user_id = UUID(step.approver_value)
-                except ValueError:
-                    pass
+                except ValueError as e:
+                    logger.debug("invalid_user_id_in_approval_chain", error_type=type(e).__name__, approver_value=step.approver_value)
 
             self.db.add(step)
 

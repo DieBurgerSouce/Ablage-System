@@ -226,8 +226,8 @@ class RoutingFeatureExtractor:
                     amount = float(total)
                     features.total_amount = amount
                     features.amount_category = self._categorize_amount(amount)
-                except (ValueError, TypeError):
-                    pass
+                except (ValueError, TypeError) as e:
+                    logger.debug("amount_extraction_failed", error_type=type(e).__name__)
 
         # Zeit-Features
         features.day_of_week = timestamp.weekday()

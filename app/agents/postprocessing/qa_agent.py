@@ -1146,8 +1146,11 @@ class QAAgent(PostprocessingAgent):
                                     "end_date": end["value"],
                                 },
                             )
-                    except (ValueError, TypeError):
-                        pass
+                    except (ValueError, TypeError) as e:
+                        logger.debug(
+                            "date_sequence_parse_failed",
+                            error_type=type(e).__name__,
+                        )
 
         return SemanticCheck(
             check_name="date_sequence",
@@ -1322,8 +1325,11 @@ class QAAgent(PostprocessingAgent):
                         },
                     )
 
-            except (ValueError, TypeError):
-                pass
+            except (ValueError, TypeError) as e:
+                logger.debug(
+                    "contract_dates_parse_failed",
+                    error_type=type(e).__name__,
+                )
 
         return SemanticCheck(
             check_name="contract_dates",

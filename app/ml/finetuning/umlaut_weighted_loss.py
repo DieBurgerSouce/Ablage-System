@@ -180,7 +180,7 @@ class UmlautWeightedCrossEntropy(nn.Module):
                             weight=weight
                         )
             except Exception as e:
-                logger.warning(f"Konnte Gewicht für '{char}' nicht setzen: {e}")
+                logger.debug("umlaut_weight_set_failed", char=char, error_type=type(e).__name__)
 
         return weights
 
@@ -202,8 +202,8 @@ class UmlautWeightedCrossEntropy(nn.Module):
                 for uid in umlaut_ids:
                     self._confusion_indices[uid] = confusion_ids
 
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("confusion_indices_build_failed", umlaut=umlaut, error_type=type(e).__name__)
 
     def forward(
         self,

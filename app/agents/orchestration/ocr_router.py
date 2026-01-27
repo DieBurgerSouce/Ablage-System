@@ -310,8 +310,12 @@ class OCRBackendRouter(OrchestrationAgent):
             learned_weights = {}
             try:
                 learned_weights = await self.get_learned_backend_weights()
-            except Exception:
-                pass  # Use defaults if weights not available
+            except Exception as e:
+                logger.debug(
+                    "learned_weights_fetch_failed",
+                    error_type=type(e).__name__,
+                    fallback="using_defaults",
+                )
 
             if gpu_available:
                 # Rank fast GPU backends by learned weights
@@ -416,8 +420,11 @@ class OCRBackendRouter(OrchestrationAgent):
                     confidence=load_balanced_result.get("confidence", 0.8),
                     latency_seconds=latency,
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(
+                    "load_balanced_metrics_failed",
+                    error_type=type(e).__name__,
+                )
             # Audit-Log für Load-Balanced Routing
             self._audit_log_routing_decision(
                 result=load_balanced_result,
@@ -468,8 +475,11 @@ class OCRBackendRouter(OrchestrationAgent):
                 confidence=result.get("confidence", 0.0),
                 latency_seconds=latency,
             )
-        except Exception:
-            pass  # Metriken sind nicht kritisch
+        except Exception as e:
+            logger.debug(
+                "routing_metrics_recording_failed",
+                error_type=type(e).__name__,
+            )
 
         # Audit-Logging für Nachvollziehbarkeit
         # Hole verwendete Learned Weights falls vorhanden
@@ -477,8 +487,11 @@ class OCRBackendRouter(OrchestrationAgent):
         try:
             if result.get("learned_weights_applied"):
                 learned_weights_used = await self.get_learned_backend_weights()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(
+                "audit_learned_weights_fetch_failed",
+                error_type=type(e).__name__,
+            )
 
         self._audit_log_routing_decision(
             result=result,

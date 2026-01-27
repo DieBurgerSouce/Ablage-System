@@ -17,6 +17,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import hashlib
 import logging
 
+import structlog
+
 from lxml import etree
 
 # R.1 SECURITY FIX: Sicherer XMLParser gegen XXE-Angriffe
@@ -42,7 +44,7 @@ from app.api.schemas.extracted_data import (
     TaxBreakdownItem,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 # =============================================================================
@@ -302,8 +304,12 @@ class ZUGFeRDMapper:
         if currency_code:
             try:
                 currency = Currency(currency_code)
-            except ValueError:
-                pass
+            except ValueError as e:
+                logger.debug(
+                    "currency_code_parse_failed",
+                    error_type=type(e).__name__,
+                    currency_code=currency_code,
+                )
 
         # MwSt-Aufschluesselung
         tax_breakdown = self._parse_tax_breakdown(root)

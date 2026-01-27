@@ -90,8 +90,10 @@ class OllamaService:
             self.config.default_model = getattr(
                 settings, "OLLAMA_MODEL", self.config.default_model
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(
+                "ollama_settings_override_failed: %s", type(e).__name__
+            )
 
         self._client: Optional[httpx.AsyncClient] = None
 

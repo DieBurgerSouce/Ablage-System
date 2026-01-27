@@ -532,8 +532,8 @@ class SkontoService:
         if match:
             try:
                 percentage = float(match.group(1).replace(",", "."))
-            except ValueError:
-                pass
+            except ValueError as e:
+                logger.debug("skonto_auto_detect_percentage_parse_failed", error_type=type(e).__name__, percentage_value=match.group(1))
 
         # Skonto-Tage suchen (im Kontext von Skonto)
         # Suche nach "skonto" und dann nach Tagen davor oder danach
@@ -544,16 +544,16 @@ class SkontoService:
             if days_match:
                 try:
                     skonto_days = int(days_match.group(1))
-                except ValueError:
-                    pass
+                except ValueError as e:
+                    logger.debug("skonto_auto_detect_days_parse_failed", error_type=type(e).__name__, days_value=days_match.group(1))
 
         # Netto-Zahlungsziel suchen
         netto_match = re.search(netto_pattern, text_lower)
         if netto_match:
             try:
                 net_days = int(netto_match.group(1))
-            except ValueError:
-                pass
+            except ValueError as e:
+                logger.debug("skonto_auto_detect_net_days_parse_failed", error_type=type(e).__name__, net_days_value=netto_match.group(1))
 
         # Nur zurueckgeben wenn mindestens Prozent gefunden
         if percentage and percentage > 0 and percentage < 10:  # Plausibilitaet

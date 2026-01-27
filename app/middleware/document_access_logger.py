@@ -254,8 +254,8 @@ class DocumentAccessLoggingMiddleware(BaseHTTPMiddleware):
         if content_length:
             try:
                 return int(content_length)
-            except ValueError:
-                pass
+            except ValueError as e:
+                logger.debug("content_length_parse_failed", error_type=type(e).__name__)
         return None
 
 

@@ -58,8 +58,7 @@ from app.core.security import (
     blacklist_token,
     create_2fa_temp_token,
     verify_2fa_temp_token,
-    check_totp_replay,
-    mark_totp_used,
+    check_and_mark_totp_used,
 )
 from app.core.totp import (
     check_totp_available,
@@ -429,25 +428,28 @@ async def verify_2fa_login_endpoint(
     # Clean up code (remove spaces/dashes)
     clean_code = data.code.replace(" ", "").replace("-", "")
 
-    # SECURITY FIX: Replay-Schutz - pruefe ob Code bereits verwendet wurde
-    # Gilt nur fuer TOTP-Codes (6 Stellen), nicht fuer Backup-Codes (8 Stellen)
+    # Detect code type: TOTP (6 Stellen) vs Backup (8 Stellen)
     is_totp_code = len(clean_code) == 6 and clean_code.isdigit()
-    if is_totp_code:
-        is_replay = await check_totp_replay(str(user.id), clean_code)
-        if is_replay:
-            logger.warning(
-                "2fa_replay_attack_detected",
-                user_id=str(user.id),
-                message="TOTP-Code wurde bereits verwendet (Replay-Angriff?)"
-            )
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Dieser Code wurde bereits verwendet. Bitte warten Sie auf den naechsten Code.",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
 
     # Verify TOTP code or backup code
     try:
+        # SECURITY FIX: Atomare Replay-Pruefung VOR Verifikation
+        # Verhindert Timing-Attack bei parallelen Requests mit gleichem Code.
+        # SETNX stellt sicher, dass nur ein Request pro Code durchkommt.
+        if is_totp_code:
+            is_replay = await check_and_mark_totp_used(str(user.id), clean_code)
+            if is_replay:
+                logger.warning(
+                    "2fa_replay_attack_detected",
+                    user_id=str(user.id),
+                    message="TOTP-Code wurde bereits verwendet (Replay-Angriff?)"
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Dieser Code wurde bereits verwendet. Bitte warten Sie auf den naechsten Code.",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+
         is_valid, used_backup, backup_index = verify_2fa_login_encrypted(
             encrypted_secret=user.totp_secret,
             user_id=str(user.id),
@@ -466,10 +468,6 @@ async def verify_2fa_login_endpoint(
                 detail="Ungueltiger 2FA-Code",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-
-        # SECURITY FIX: Nach erfolgreicher Verifikation - Code als verwendet markieren
-        if is_totp_code:
-            await mark_totp_used(str(user.id), clean_code)
 
         # If backup code was used, remove it from the list
         if used_backup and backup_index is not None:
@@ -1638,8 +1636,11 @@ async def revoke_all_sessions(
                 token = auth_header.split(" ")[1]
                 payload = await decode_token(token)
                 current_jti = payload.get("jti")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(
+                    "current_token_extraction_failed",
+                    error_type=type(e).__name__,
+                )
 
     count = await session_manager.revoke_all_sessions(
         db,

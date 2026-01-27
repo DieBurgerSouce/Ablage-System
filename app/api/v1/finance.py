@@ -1180,8 +1180,8 @@ async def list_finance_deadlines(
                         aktenzeichen=doc.extracted_data.get("aktenzeichen"),
                         days_until=days_until,
                     ))
-                except (ValueError, TypeError):
-                    pass  # Ungueliges Datum ignorieren
+                except (ValueError, TypeError) as e:
+                    logger.debug("invalid_einspruchsfrist_date_skipped", document_id=str(doc.id), error_type=type(e).__name__)
 
             # Zahlungsfrist pruefen (falls vorhanden)
             zahlungsfrist = doc.extracted_data.get("zahlungsfrist")
@@ -1216,8 +1216,8 @@ async def list_finance_deadlines(
                         aktenzeichen=doc.extracted_data.get("aktenzeichen"),
                         days_until=days_until,
                     ))
-                except (ValueError, TypeError):
-                    pass
+                except (ValueError, TypeError) as e:
+                    logger.debug("invalid_zahlungsfrist_date_skipped", document_id=str(doc.id), error_type=type(e).__name__)
 
         # Sortieren: Ueberfaellig zuerst, dann nach Datum
         deadline_items.sort(key=lambda x: (x.days_until >= 0, x.days_until))

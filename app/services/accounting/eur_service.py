@@ -14,7 +14,7 @@ GoBD-konform mit Anlage EÜR-Export.
 import uuid
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -569,8 +569,13 @@ class EURService:
                     return Decimal(str(value).replace(",", ".").replace(" ", "")).quantize(
                         Decimal("0.01"), rounding=ROUND_HALF_UP
                     )
-                except:
-                    pass
+                except (ValueError, InvalidOperation, TypeError) as e:
+                    logger.debug(
+                        "amount_parsing_skipped",
+                        key=key,
+                        value_type=type(value).__name__,
+                        error_type=type(e).__name__,
+                    )
         return Decimal("0.00")
 
     def _categorize_income(

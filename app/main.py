@@ -60,6 +60,7 @@ from app.core.backpressure import (
 from app.api.dependencies import get_current_active_user, get_current_superuser, get_db
 from app.db.models import User
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.security.safe_module_loader import lock_bpmn_registration
 
 logger = structlog.get_logger(__name__)
 
@@ -299,6 +300,17 @@ async def lifespan(app: FastAPI):
         logger.info("realtime_services_started")
     except Exception as e:
         logger.warning("realtime_services_startup_failed", error=str(e))
+
+    # SECURITY (CWE-470): Lock BPMN module registration after startup
+    # Prevents runtime whitelist modification attacks
+    try:
+        lock_bpmn_registration()
+        logger.info("bpmn_registration_locked", message="BPMN-Modul-Registrierung gesperrt")
+    except Exception as e:
+        logger.error("bpmn_registration_lock_failed", error=str(e))
+        raise RuntimeError(
+            "SICHERHEITSFEHLER: BPMN-Registrierungssperre konnte nicht aktiviert werden!"
+        )
 
     logger.info("api_started")
 

@@ -15,10 +15,12 @@ from app.core.datetime_utils import utc_now
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
+import structlog
 
 from app.api.dependencies import get_db, get_current_superuser
 from app.db.models import User
 
+logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/queues", tags=["Admin - Warteschlangen"])
 
@@ -171,8 +173,11 @@ async def list_queues(
                             queue.processing += 1
                             total_processing += 1
                             break
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(
+                "celery_reserved_tasks_fetch_failed",
+                error_type=type(e).__name__,
+            )
 
         # Sort by priority (highest first)
         queues.sort(key=lambda q: q.priority, reverse=True)
@@ -235,8 +240,12 @@ async def get_queue_stats(
                     task_queue = task.get("delivery_info", {}).get("routing_key", "celery")
                     if task_queue == queue_name:
                         processing += 1
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(
+                "celery_active_tasks_fetch_failed",
+                queue=queue_name,
+                error_type=type(e).__name__,
+            )
 
         # Get stats from database for jobs that went through this queue
         # Note: This is approximate as we don't track queue per job currently
@@ -459,8 +468,11 @@ async def _get_gpu_status() -> GPUStatus:
             lock_status = check_gpu_lock_health()
             lock_held = lock_status.get("locked", False)
             lock_holder = lock_status.get("owner")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(
+                "gpu_lock_health_check_failed",
+                error_type=type(e).__name__,
+            )
 
         return GPUStatus(
             available=True,

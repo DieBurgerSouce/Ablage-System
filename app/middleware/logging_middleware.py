@@ -94,8 +94,11 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             if hasattr(request.state, 'user'):
                 user_id = str(request.state.user.id)
                 user_email = request.state.user.email
-        except Exception:
-            pass
+        except (AttributeError, TypeError) as e:
+            logger.debug(
+                "user_context_extraction_failed",
+                error_type=type(e).__name__,
+            )
 
         # Log request (German)
         client_host = request.client.host if request.client else "unknown"

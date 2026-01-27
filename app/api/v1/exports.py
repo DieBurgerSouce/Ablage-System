@@ -604,8 +604,11 @@ class ExportConnectionManager:
                 for connection in self.active_connections[job_id]:
                     try:
                         await connection.send_json(message)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(
+                            "websocket_send_failed",
+                            error_type=type(e).__name__,
+                        )
 
     async def start_pubsub_listener(self):
         """Startet Redis Pub/Sub Listener fuer diesen Worker."""

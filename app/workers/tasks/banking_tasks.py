@@ -133,8 +133,11 @@ async def _match_transaction_to_document(
                                 "method": "customer_number_amount",
                                 "invoice_number": doc.extracted_data.get("invoice_number"),
                             }
-                    except (ValueError, TypeError):
-                        pass
+                    except (ValueError, TypeError) as e:
+                        logger.debug(
+                            "doc_amount_parse_for_customer_match_failed",
+                            error_type=type(e).__name__,
+                        )
 
     # Strategie 3: Fuzzy Betrag + Datum-Naehe
     if transaction.amount and transaction.booking_date:
@@ -199,8 +202,11 @@ async def _match_transaction_to_document(
                     best_score = total_score
                     best_match = doc
 
-            except (ValueError, TypeError):
-                pass
+            except (ValueError, TypeError) as e:
+                logger.debug(
+                    "doc_amount_parse_for_fuzzy_match_failed",
+                    error_type=type(e).__name__,
+                )
 
         if best_match:
             logger.info(

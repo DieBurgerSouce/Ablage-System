@@ -559,8 +559,8 @@ class AvailabilityChecker:
                     paddleocr.version,
                     self.MIN_VERSIONS["paddleocr"]
                 )
-            except ValueError:
-                pass
+            except ValueError as e:
+                logger.debug("version_requirement_check_failed", error_type=type(e).__name__)
 
         # Bestimme ob alle Anforderungen erfüllt sind
         all_satisfied = (

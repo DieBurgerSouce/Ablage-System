@@ -57,8 +57,8 @@ def _get_encryption_key() -> bytes:
             # Pruefe ob bereits valides Fernet-Format (32 Bytes Base64)
             if len(base64.urlsafe_b64decode(key_value)) == 32:
                 return key_value.encode()
-        except (ValueError, TypeError, UnicodeDecodeError):
-            pass
+        except (ValueError, TypeError, UnicodeDecodeError) as e:
+            logger.debug("encryption_key_not_valid_fernet_format", error_type=type(e).__name__)
         # Sonst: Derive 32-Byte Key aus dem gegebenen Key
         derived = hashlib.sha256(key_value.encode()).digest()
         return base64.urlsafe_b64encode(derived)

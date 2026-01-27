@@ -433,8 +433,8 @@ class SEPAQRParserService:
                 elif amount > 999999999.99:  # EPC Max
                     amount = None
 
-            except ValueError:
-                pass
+            except ValueError as e:
+                logger.debug("parse_sepa_amount", error_type=type(e).__name__)
 
         return amount, currency
 

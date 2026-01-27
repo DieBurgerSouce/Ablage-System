@@ -134,8 +134,8 @@ async def extract_document_text(
                     # Temporaere Datei aufraeumen
                     try:
                         os.unlink(local_path)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug("temp_file_cleanup_failed", path=local_path, error_type=type(e).__name__)
                 else:
                     ocr_error = "Datei nicht im Storage gefunden"
                     logger.warning("ocr_file_not_found", document_id=document_id)
@@ -471,13 +471,13 @@ async def extract_entities(
                     value = value.replace('.', '').replace(',', '.')
                     try:
                         entities[field_name] = float(value)
-                    except ValueError:
-                        pass
+                    except ValueError as e:
+                        logger.debug("entity_float_parse_failed", field_name=field_name, value=value, error_type=type(e).__name__)
                 else:
                     try:
                         entities[field_name] = float(value.replace(',', '.'))
-                    except ValueError:
-                        pass
+                    except ValueError as e:
+                        logger.debug("vat_rate_float_parse_failed", field_name=field_name, value=value, error_type=type(e).__name__)
 
         # Dokumenttyp-spezifische Felder
         if document_type == "quote" and "quote_number" not in entities:

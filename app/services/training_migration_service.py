@@ -524,8 +524,11 @@ class TrainingMigrationService:
                     for chunk in iter(lambda: f.read(8192), b""):
                         hasher.update(chunk)
                 return hasher.hexdigest()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(
+                "file_hash_calculation_failed",
+                error_type=type(e).__name__,
+            )
 
         # Fallback: Hash basierend auf Pfad
         return hashlib.sha256(file_path.encode()).hexdigest()
@@ -541,13 +544,19 @@ class TrainingMigrationService:
         if isinstance(value, str):
             try:
                 return datetime.fromisoformat(value.replace("Z", "+00:00"))
-            except ValueError:
-                pass
+            except ValueError as e:
+                logger.debug(
+                    "datetime_isoformat_parse_failed",
+                    error_type=type(e).__name__,
+                )
 
             try:
                 return datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
-            except ValueError:
-                pass
+            except ValueError as e:
+                logger.debug(
+                    "datetime_strptime_parse_failed",
+                    error_type=type(e).__name__,
+                )
 
         return datetime.now(timezone.utc)
 
