@@ -114,6 +114,13 @@ from app.services.compliance.tax_authority_export_service import (
     MAX_FIELD_LENGTH,
     GDPDU_NAMESPACE,
 )
+from app.services.compliance.gobd_service import (
+    GoBDComplianceService,
+    gobd_compliance_service,
+    CheckResult,
+    ComplianceDashboard,
+    RemediationAction,
+)
 
 __all__ = [
     # Audit Chain
@@ -206,4 +213,10 @@ __all__ = [
     "ENCODING",
     "MAX_FIELD_LENGTH",
     "GDPDU_NAMESPACE",
+    # GoBD Compliance Checks (Vision 2026)
+    "GoBDComplianceService",
+    "gobd_compliance_service",
+    "CheckResult",
+    "ComplianceDashboard",
+    "RemediationAction",
 ]

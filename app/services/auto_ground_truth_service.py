@@ -21,7 +21,6 @@ from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any, Tuple
 from uuid import UUID
 import hashlib
-import random
 import re
 
 from sqlalchemy import select, func
@@ -486,8 +485,11 @@ class AutoGroundTruthService:
         if not file_hash and file_path:
             file_hash = hashlib.sha256(file_path.encode()).hexdigest()
 
-        # Entscheide ob Stichprobe
-        needs_spot_check = random.random() < self.SPOT_CHECK_RATE
+        # Entscheide ob Stichprobe - DETERMINISTIC: Hash-basiert fuer Reproduzierbarkeit
+        # Verwende file_hash oder document_id fuer deterministische Entscheidung
+        spot_check_seed = file_hash or str(document_id) or ""
+        spot_check_hash = int(hashlib.md5(spot_check_seed.encode()).hexdigest()[:8], 16)
+        needs_spot_check = (spot_check_hash % 100) < (self.SPOT_CHECK_RATE * 100)
 
         # Erkenne Umlaute im Text
         has_umlauts = self._detect_umlauts(ocr_text)

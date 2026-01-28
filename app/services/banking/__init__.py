@@ -75,6 +75,23 @@ from .payment_automation_service import (
     PaymentSchedule,
     AutomationConfig,
 )
+from .smart_reconciliation_service import (
+    SmartReconciliationService,
+    get_smart_reconciliation_service,
+    ReconciliationStrategy,
+    ReconciliationAction,
+    ReconciliationMatch,
+    ReconciliationResult as SmartReconciliationResult,
+)
+from .proactive_dunning_service import (
+    ProactiveDunningService,
+    get_proactive_dunning_service,
+    DunningLevel as ProactiveDunningLevel,
+    DunningAction as ProactiveDunningAction,
+    DunningDecision,
+    PaymentHistory,
+    DunningProcessResult,
+)
 
 __all__ = [
     # Enums
@@ -151,4 +168,19 @@ __all__ = [
     "PaymentBatch",
     "PaymentSchedule",
     "AutomationConfig",
+    # Vision 2026: Smart Reconciliation
+    "SmartReconciliationService",
+    "get_smart_reconciliation_service",
+    "ReconciliationStrategy",
+    "ReconciliationAction",
+    "ReconciliationMatch",
+    "SmartReconciliationResult",
+    # Vision 2026: Proactive Dunning
+    "ProactiveDunningService",
+    "get_proactive_dunning_service",
+    "ProactiveDunningLevel",
+    "ProactiveDunningAction",
+    "DunningDecision",
+    "PaymentHistory",
+    "DunningProcessResult",
 ]

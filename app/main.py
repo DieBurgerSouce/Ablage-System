@@ -796,6 +796,13 @@ from app.api.v1.accounting import router as accounting_router
 from app.api.v1.calendar import router as calendar_router
 from app.api.v1.magic_buttons import router as magic_buttons_router
 from app.api.v1.contracts import router as contracts_router
+from app.api.v1.projects import router as projects_router
+from app.api.v1.gobd_compliance import router as gobd_compliance_router
+from app.api.v1.ai_decisions import router as ai_decisions_router
+from app.api.v1.daily_insights import router as daily_insights_router
+from app.api.v1.steuerberater_packages import router as steuerberater_packages_router
+from app.api.v1.enhanced_banking import router as enhanced_banking_router
+from app.api.v1.handelsregister_monitoring import router as handelsregister_monitoring_router
 from app.api.v1.document_templates import router as document_templates_router
 from app.api.v1.supplier_ranking import router as supplier_ranking_router
 from app.api.v1.payment_behavior import router as payment_behavior_router
@@ -978,6 +985,13 @@ app.include_router(compliance_autopilot_router, prefix="/api/v1")  # Vision 2.0:
 app.include_router(annotations_router, prefix="/api/v1")  # Vision 2.0: Annotations
 app.include_router(visual_diff_router, prefix="/api/v1")  # Vision 2.0: Visual Diff
 app.include_router(life_events_router, prefix="/api/v1")  # Vision 2.0: Life Events
+app.include_router(projects_router, prefix="/api/v1")  # Vision 2026: Project Management
+app.include_router(gobd_compliance_router, prefix="/api/v1")  # Vision 2026: GoBD Compliance
+app.include_router(ai_decisions_router, prefix="/api/v1")  # Vision 2026: AI Decision Explorer
+app.include_router(daily_insights_router, prefix="/api/v1")  # Vision 2026 Q4: Daily Insights Engine
+app.include_router(steuerberater_packages_router, prefix="/api/v1")  # Vision 2026 Q4: Steuerberater Packages
+app.include_router(enhanced_banking_router, prefix="/api/v1")  # Vision 2026 Q4: Enhanced Banking
+app.include_router(handelsregister_monitoring_router, prefix="/api/v1")  # Vision 2026 Q4: Handelsregister Monitoring
 
 
 # ==================== Health & Status Endpoints ====================

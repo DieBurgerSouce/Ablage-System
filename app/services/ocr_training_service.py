@@ -630,11 +630,14 @@ class OCRTrainingService:
         result = await db.execute(base_query)
         all_samples = list(result.scalars().all())
 
-        # Stratifizierte Zufallsauswahl
+        # Stratifizierte Zufallsauswahl mit deterministischem Seed
+        # Seed basiert auf batch.id fuer Reproduzierbarkeit
+        random.seed(str(batch.id))
         if len(all_samples) > target_size:
             selected_samples = random.sample(all_samples, target_size)
         else:
             selected_samples = all_samples
+        random.seed()  # Reset seed nach Verwendung
 
         # Batch Items erstellen
         for idx, sample in enumerate(selected_samples, 1):

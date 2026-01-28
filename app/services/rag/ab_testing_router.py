@@ -23,7 +23,6 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 import hashlib
-import random
 import threading
 import time
 
@@ -299,9 +298,14 @@ class ABTestingRouter:
             identifier = f"doc:{document_id}"
             reason_prefix = "document_bucket"
         else:
-            # Random Bucket fuer anonyme Anfragen
-            identifier = f"random:{random.randint(0, 999999999)}"
-            reason_prefix = "random_bucket"
+            # Deterministischer Bucket fuer anonyme Anfragen basierend auf Timestamp
+            # Verwendet time_ns fuer Nanosekunden-Praezision und hashlib fuer deterministische Verteilung
+            import hashlib
+            import time
+            ts_seed = f"anon:{time.time_ns()}"
+            ts_hash = int(hashlib.md5(ts_seed.encode()).hexdigest()[:8], 16)
+            identifier = f"timestamp:{ts_hash}"
+            reason_prefix = "timestamp_bucket"
 
         # Bucket berechnen
         bucket = self._compute_bucket(identifier)

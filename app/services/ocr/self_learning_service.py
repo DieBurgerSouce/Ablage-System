@@ -794,30 +794,49 @@ class SelfLearningOCRService:
     def select_model_version(
         self,
         test_id: Optional[str] = None,
+        document_id: Optional[UUID] = None,
     ) -> ModelVersion:
         """
         Waehle Modell-Version (fuer A/B Testing).
 
+        Verwendet deterministisches Hashing basierend auf document_id,
+        um konsistente A/B-Zuweisung pro Dokument zu gewaehrleisten.
+        Dies ermoeglicht reproduzierbare Tests.
+
         Args:
             test_id: Optional - Spezifischer Test
+            document_id: Optional - Dokument-ID fuer deterministisches Routing
 
         Returns:
             Zu verwendende Modell-Version
         """
-        import random
+        import hashlib
 
         if self._active_ab_tests is None:
             return ModelVersion.BASELINE
 
+        # Erzeuge deterministischen Hash-Wert (0-99) basierend auf document_id
+        # Dies stellt sicher, dass dasselbe Dokument immer dieselbe Variante bekommt
+        if document_id:
+            hash_input = str(document_id).encode()
+            hash_value = int(hashlib.md5(hash_input).hexdigest()[:8], 16) % 100
+        else:
+            # Fallback: Hash basierend auf aktuellem Timestamp (weniger deterministisch)
+            # Nur verwenden wenn keine document_id verfuegbar
+            import time
+            hash_input = f"{time.time_ns()}".encode()
+            hash_value = int(hashlib.md5(hash_input).hexdigest()[:8], 16) % 100
+
         if test_id and test_id in self._active_ab_tests:
             config = self._active_ab_tests[test_id]
-            if random.random() < config.traffic_split:
+            # traffic_split ist 0.0-1.0, hash_value ist 0-99
+            if hash_value < (config.traffic_split * 100):
                 return config.candidate_version
 
         # Default: Baseline oder aktiver Test
         for config in self._active_ab_tests.values():
             if not config.is_expired:
-                if random.random() < config.traffic_split:
+                if hash_value < (config.traffic_split * 100):
                     return config.candidate_version
 
         return ModelVersion.BASELINE

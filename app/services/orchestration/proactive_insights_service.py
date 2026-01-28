@@ -1089,8 +1089,19 @@ class ProactiveInsightsService:
         entity: ExtractedEntity,
         context_data: Dict[str, Any],
     ) -> Dict[str, Any]:
-        """Reichert Kontext mit simulierten Daten an (fuer Demo)."""
+        """Reichert Kontext mit simulierten Daten an (fuer Demo).
+
+        Verwendet deterministisches Hashing basierend auf entity_id,
+        um konsistente Mock-Daten pro Entity zu gewaehrleisten.
+        Dies ermoeglicht reproduzierbare Tests.
+        """
+        import hashlib
+
         # In Produktion wuerden diese Daten aus der DB kommen
+
+        # Erzeuge deterministischen Hash-Wert (0-99) basierend auf entity_id
+        entity_seed = str(entity.entity_id or entity.entity_name or "default")
+        hash_value = int(hashlib.md5(entity_seed.encode()).hexdigest()[:8], 16) % 100
 
         if entity.entity_type == EntityType.SUPPLIER:
             context_data.setdefault("price_vs_average", 15)  # 15% teurer
@@ -1103,13 +1114,14 @@ class ProactiveInsightsService:
             context_data.setdefault("property_id", str(entity.entity_id or uuid4()))
 
         elif entity.entity_type == EntityType.INSURANCE:
-            # Zufaellig Insights generieren fuer Demo
-            import random
-            if random.random() > 0.5:
+            # Deterministisch Insights generieren basierend auf entity_id
+            # hash_value 0-99: >50 bedeutet ~50% der Entities bekommen coverage gap
+            if hash_value > 50:
                 context_data.setdefault("has_coverage_gap", True)
                 context_data.setdefault("missing_coverage", "Elementarschadenversicherung")
                 context_data.setdefault("asset_type", "Immobilie")
-            if random.random() > 0.7:
+            # hash_value >70 bedeutet ~30% der Entities bekommen overlapping policies
+            if hash_value > 70:
                 context_data.setdefault("overlapping_policies", ["Policy A", "Policy B"])
                 context_data.setdefault("potential_premium_savings", 200)
 

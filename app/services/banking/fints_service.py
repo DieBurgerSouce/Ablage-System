@@ -836,9 +836,11 @@ class FinTSService:
         date_from: date,
         date_to: date,
     ) -> List[FinTSTransaction]:
-        """Generiere Mock-Transaktionen fuer Tests."""
-        import random
+        """
+        Generiere Mock-Transaktionen fuer Tests.
 
+        DETERMINISTIC: Verwendet hash-basiertes Seeding fuer Reproduzierbarkeit.
+        """
         transactions = []
         current_date = date_from
 
@@ -850,18 +852,39 @@ class FinTSService:
             ("Stadtwerke Koeln", "DE89370400440532013003"),
         ]
 
+        # Deterministisches Seeding basierend auf IBAN + Datumsbereich
+        seed_str = f"{iban}:{date_from}:{date_to}"
+        base_seed = int(hashlib.md5(seed_str.encode()).hexdigest()[:8], 16)
+        tx_counter = 0
+
         while current_date <= date_to:
-            # 1-3 Transaktionen pro Tag
-            for _ in range(random.randint(0, 3)):
-                cp_name, cp_iban = random.choice(counterparties)
-                is_credit = random.random() > 0.3  # 70% Ausgaben
-                amount = Decimal(str(random.uniform(10, 500))).quantize(Decimal("0.01"))
+            # Deterministisch: Anzahl Transaktionen basierend auf Datum
+            day_seed = base_seed + current_date.toordinal()
+            num_transactions = day_seed % 4  # 0-3 Transaktionen
+
+            for i in range(num_transactions):
+                tx_seed = day_seed * 100 + i
+                tx_counter += 1
+
+                # Deterministischer Counterparty
+                cp_idx = tx_seed % len(counterparties)
+                cp_name, cp_iban = counterparties[cp_idx]
+
+                # Deterministisch: 70% Ausgaben (is_credit wenn tx_seed % 10 < 3)
+                is_credit = (tx_seed % 10) < 3
+
+                # Deterministischer Betrag
+                amount_raw = 10 + (tx_seed % 490)  # 10-500
+                amount = Decimal(str(amount_raw)).quantize(Decimal("0.01"))
                 if not is_credit:
                     amount = -amount
 
+                # Deterministische Referenznummer
+                ref_number = 1000 + (tx_seed % 9000)
+
                 tx = FinTSTransaction(
                     transaction_id=hashlib.md5(
-                        f"{iban}{current_date}{amount}{cp_name}".encode()
+                        f"{iban}{current_date}{tx_counter}".encode()
                     ).hexdigest()[:16],
                     booking_date=current_date,
                     value_date=current_date,
@@ -870,9 +893,9 @@ class FinTSService:
                     counterparty_name=cp_name,
                     counterparty_iban=cp_iban,
                     counterparty_bic=None,
-                    reference_text=f"Rechnung {random.randint(1000, 9999)}",
+                    reference_text=f"Rechnung {ref_number}",
                     booking_text="SEPA-Ueberweisung" if amount > 0 else "SEPA-Lastschrift",
-                    end_to_end_reference=f"E2E-{uuid4().hex[:8].upper()}",
+                    end_to_end_reference=f"E2E-{hashlib.md5(f'{tx_seed}'.encode()).hexdigest()[:8].upper()}",
                     mandate_reference=None,
                     creditor_id=None,
                 )

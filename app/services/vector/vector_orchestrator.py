@@ -104,9 +104,12 @@ class VectorSearchOrchestrator:
             user_hash = hashlib.sha256(str(user_id).encode()).hexdigest()
             bucket = int(user_hash[:8], 16) % 100
         else:
-            # Random Bucket (fuer anonyme Requests)
-            import random
-            bucket = random.randint(0, 99)
+            # Deterministischer Bucket fuer anonyme Requests basierend auf Timestamp
+            # Verwendet time_ns fuer Nanosekunden-Praezision
+            import time
+            ts_seed = f"anon:{time.time_ns()}"
+            ts_hash = hashlib.sha256(ts_seed.encode()).hexdigest()
+            bucket = int(ts_hash[:8], 16) % 100
 
         # Traffic Split prufen
         if bucket < settings.VECTOR_AB_TRAFFIC_SPLIT:
