@@ -832,6 +832,22 @@ from app.api.v1.alerts import router as alerts_router
 from app.api.v1.inventory import router as inventory_router
 from app.api.v1.finance_assistant import router as finance_assistant_router
 from app.api.v1.ai_conversations import router as ai_conversations_router
+from app.api.v1.zero_touch import router as zero_touch_router
+from app.api.v1.nlq import router as nlq_router
+from app.api.v1.smart_inbox import router as smart_inbox_router
+from app.api.v1.ceo_dashboard import router as ceo_dashboard_router
+from app.api.v1.knowledge_graph import router as knowledge_graph_router
+from app.api.v1.audit_chain import router as audit_chain_router
+from app.api.v1.ai_ethics import router as ai_ethics_router
+from app.api.v1.event_sourcing import router as event_sourcing_router
+from app.api.v1.graphql_api import router as graphql_api_router
+from app.api.v1.sync import router as sync_router
+from app.api.v1.template_engine import router as template_engine_router
+from app.api.v1.enrichment import router as enrichment_router
+from app.api.v1.compliance_autopilot import router as compliance_autopilot_router
+from app.api.v1.annotations import router as annotations_router
+from app.api.v1.visual_diff import router as visual_diff_router
+from app.api.v1.life_events import router as life_events_router
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -946,6 +962,22 @@ app.include_router(alerts_router, prefix="/api/v1")
 app.include_router(inventory_router, prefix="/api/v1")
 app.include_router(finance_assistant_router, prefix="/api/v1")  # Vision 2.0: KI-Finanzassistent
 app.include_router(ai_conversations_router, prefix="/api/v1")  # Vision 2.0: KI-Konversationen Persistenz
+app.include_router(zero_touch_router, prefix="/api/v1")  # Vision 2.0: Zero-Touch OCR
+app.include_router(nlq_router, prefix="/api/v1")  # Vision 2.0: NLQ 2.0
+app.include_router(smart_inbox_router, prefix="/api/v1")  # Vision 2.0: Smart Inbox
+app.include_router(ceo_dashboard_router, prefix="/api/v1")  # Vision 2.0: CEO Dashboard
+app.include_router(knowledge_graph_router, prefix="/api/v1")  # Vision 2.0: Knowledge Graph
+app.include_router(audit_chain_router, prefix="/api/v1")  # Vision 2.0: Merkle Audit Trail
+app.include_router(ai_ethics_router, prefix="/api/v1")  # Vision 2.0: KI-Ethik-Layer
+app.include_router(event_sourcing_router, prefix="/api/v1")  # Vision 2.0: Event Sourcing
+app.include_router(graphql_api_router, prefix="/api/v1")  # Vision 2.0: GraphQL
+app.include_router(sync_router, prefix="/api/v1")  # Vision 2.0: Offline Sync
+app.include_router(template_engine_router, prefix="/api/v1")  # Vision 2.0: Template Engine
+app.include_router(enrichment_router, prefix="/api/v1")  # Vision 2.0: External Enrichment
+app.include_router(compliance_autopilot_router, prefix="/api/v1")  # Vision 2.0: Compliance Autopilot
+app.include_router(annotations_router, prefix="/api/v1")  # Vision 2.0: Annotations
+app.include_router(visual_diff_router, prefix="/api/v1")  # Vision 2.0: Visual Diff
+app.include_router(life_events_router, prefix="/api/v1")  # Vision 2.0: Life Events
 
 
 # ==================== Health & Status Endpoints ====================

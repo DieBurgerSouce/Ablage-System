@@ -1209,6 +1209,156 @@ celery_app.conf.update(
             "schedule": crontab(day_of_week=0, hour=5, minute=30),
             "kwargs": {"archive_older_than_days": 90},
         },
+        # =================================================================
+        # Zero-Touch OCR Tasks (F1 - Vollautomatische Dokumentenverarbeitung)
+        # =================================================================
+        # Alle 10 Sekunden: Neue Uploads auf Zero-Touch pruefen
+        "zero-touch-process-pending": {
+            "task": "app.workers.tasks.zero_touch_tasks.process_pending_uploads",
+            "schedule": 10.0,  # Alle 10 Sekunden
+        },
+        # Taeglich: Schwellenwerte auf Basis historischer Daten neu berechnen
+        "zero-touch-recalculate-thresholds": {
+            "task": "app.workers.tasks.zero_touch_tasks.recalculate_thresholds",
+            "schedule": crontab(hour=3, minute=0),  # Taeglich um 03:00 Uhr
+        },
+        # Taeglich: Zero-Touch Metriken und Statistiken aktualisieren
+        "zero-touch-daily-stats": {
+            "task": "app.workers.tasks.zero_touch_tasks.generate_zero_touch_stats",
+            "schedule": crontab(hour=1, minute=30),  # Taeglich um 01:30 Uhr
+        },
+        # =================================================================
+        # Natural Language Query 2.0 Tasks (F2 - LLM-basierte SQL-Generation)
+        # =================================================================
+        # Taeglich: Alte Query-Logs bereinigen (>90 Tage)
+        "nlq-cleanup-old-logs": {
+            "task": "app.workers.tasks.nlq_tasks.cleanup_old_query_logs",
+            "schedule": crontab(hour=3, minute=30),  # Taeglich um 03:30 Uhr
+            "kwargs": {"retention_days": 90},
+        },
+        # Taeglich: Query-Suggestions Cache auffrischen
+        "nlq-refresh-suggestions": {
+            "task": "app.workers.tasks.nlq_tasks.refresh_query_suggestions",
+            "schedule": crontab(hour=4, minute=15),  # Taeglich um 04:15 Uhr
+        },
+        # =================================================================
+        # Smart Inbox Tasks (F3 - KI-priorisierte Aufgabenliste)
+        # =================================================================
+        # Alle 5 Minuten: Inbox-Items aus allen Quellen aggregieren
+        "smart-inbox-aggregate": {
+            "task": "app.workers.tasks.smart_inbox_tasks.aggregate_inbox_items",
+            "schedule": 300.0,  # Alle 5 Minuten
+        },
+        # Alle 15 Minuten: ML-basierte Prioritaeten neu berechnen
+        "smart-inbox-recalculate-priorities": {
+            "task": "app.workers.tasks.smart_inbox_tasks.recalculate_priorities",
+            "schedule": 900.0,  # Alle 15 Minuten
+        },
+        # Woechentlich: Behavior-Model trainieren (Sonntag 04:00)
+        "smart-inbox-train-behavior-model": {
+            "task": "app.workers.tasks.smart_inbox_tasks.train_behavior_model",
+            "schedule": crontab(day_of_week=0, hour=4, minute=0),  # Sonntag 04:00 Uhr
+        },
+        # Taeglich: Abgelaufene Snooze-Items reaktivieren
+        "smart-inbox-reactivate-snoozed": {
+            "task": "app.workers.tasks.smart_inbox_tasks.reactivate_snoozed_items",
+            "schedule": crontab(hour=7, minute=0),  # Taeglich um 07:00 Uhr
+        },
+        # =================================================================
+        # CEO Dashboard / Digital Twin Tasks (F4 - Health Score Tracking)
+        # =================================================================
+        # Taeglich: Company Health Snapshot erstellen
+        "ceo-dashboard-daily-snapshot": {
+            "task": "app.workers.tasks.ceo_dashboard_tasks.create_daily_snapshot",
+            "schedule": crontab(hour=1, minute=45),  # Taeglich um 01:45 Uhr
+        },
+        # Alle 30 Minuten: Anomalie-Erkennung
+        "ceo-dashboard-anomaly-detection": {
+            "task": "app.workers.tasks.ceo_dashboard_tasks.detect_anomalies",
+            "schedule": 1800.0,  # Alle 30 Minuten
+        },
+        # =================================================================
+        # Knowledge Graph Tasks (F5 - Entity-Relationship-Explorer)
+        # =================================================================
+        # Taeglich: Graph-Daten aus neuen Dokumenten/Entities aktualisieren
+        "knowledge-graph-build-daily": {
+            "task": "app.workers.tasks.knowledge_graph_tasks.build_graph_incremental",
+            "schedule": crontab(hour=2, minute=50),  # Taeglich um 02:50 Uhr
+        },
+        # =================================================================
+        # Kryptografischer Audit-Trail Tasks (F6 - Merkle Trees)
+        # =================================================================
+        # Taeglich: Integritaets-Check der Audit-Kette
+        "audit-chain-integrity-check": {
+            "task": "app.workers.tasks.audit_chain_tasks.verify_integrity",
+            "schedule": crontab(hour=4, minute=45),  # Taeglich um 04:45 Uhr
+        },
+        # Woechentlich: Neuen Merkle-Tree-Block erstellen
+        "audit-chain-merkle-build": {
+            "task": "app.workers.tasks.audit_chain_tasks.build_merkle_tree",
+            "schedule": crontab(day_of_week=0, hour=3, minute=30),  # Sonntag 03:30 Uhr
+        },
+        # =================================================================
+        # KI-Ethik-Layer Tasks (F7 - Bias-Detection & Fairness)
+        # =================================================================
+        # Woechentlich: Bias-Report generieren
+        "ai-ethics-weekly-bias-report": {
+            "task": "app.workers.tasks.ai_ethics_tasks.generate_bias_report",
+            "schedule": crontab(day_of_week=1, hour=5, minute=30),  # Montag 05:30 Uhr
+        },
+        # Taeglich: Fairness-Metriken aktualisieren
+        "ai-ethics-fairness-metrics": {
+            "task": "app.workers.tasks.ai_ethics_tasks.update_fairness_metrics",
+            "schedule": crontab(hour=5, minute=15),  # Taeglich um 05:15 Uhr
+        },
+        # =================================================================
+        # Event-Sourcing Tasks (F8 - Domain Event Management)
+        # =================================================================
+        # Alle 30 Minuten: Event-Snapshots erstellen
+        "event-sourcing-snapshot": {
+            "task": "app.workers.tasks.event_sourcing_tasks.create_snapshots",
+            "schedule": 1800.0,  # Alle 30 Minuten
+        },
+        # Woechentlich: Alte Events archivieren
+        "event-sourcing-archive": {
+            "task": "app.workers.tasks.event_sourcing_tasks.archive_old_events",
+            "schedule": crontab(day_of_week=0, hour=2, minute=30),  # Sonntag 02:30 Uhr
+            "kwargs": {"retention_days": 180},
+        },
+        # =================================================================
+        # Compliance Autopilot Tasks (F13 - Automatische Compliance)
+        # =================================================================
+        # Taeglich: Compliance-Scan durchfuehren
+        "compliance-autopilot-daily-scan": {
+            "task": "app.workers.tasks.compliance_autopilot_tasks.run_daily_scan",
+            "schedule": crontab(hour=6, minute=30),  # Taeglich um 06:30 Uhr
+        },
+        # Woechentlich: Audit-Vorbereitung
+        "compliance-autopilot-weekly-audit": {
+            "task": "app.workers.tasks.compliance_autopilot_tasks.prepare_audit_report",
+            "schedule": crontab(day_of_week=1, hour=6, minute=45),  # Montag 06:45 Uhr
+        },
+        # Monatlich: DSGVO-Compliance-Check
+        "compliance-autopilot-monthly-gdpr": {
+            "task": "app.workers.tasks.compliance_autopilot_tasks.run_gdpr_check",
+            "schedule": crontab(day_of_month=1, hour=7, minute=0),  # Monatlich am 1. um 07:00 Uhr
+        },
+        # =================================================================
+        # External Enrichment Tasks (F12 - Handelsregister/Bundesanzeiger)
+        # =================================================================
+        # Taeglich: Cache abgelaufener Enrichment-Daten bereinigen
+        "enrichment-cleanup-expired": {
+            "task": "app.workers.tasks.enrichment_tasks.cleanup_expired_cache",
+            "schedule": crontab(hour=5, minute=45),  # Taeglich um 05:45 Uhr
+        },
+        # =================================================================
+        # Life Event Engine Tasks (F16 - Proaktiver Lebensberater)
+        # =================================================================
+        # Taeglich: Life-Event-Erkennung aus neuen Dokumenten
+        "life-events-detect-daily": {
+            "task": "app.workers.tasks.life_event_tasks.detect_life_events",
+            "schedule": crontab(hour=6, minute=15),  # Taeglich um 06:15 Uhr
+        },
     },
 
     # Queue routing
@@ -1454,6 +1604,66 @@ celery_app.conf.update(
         "contracts.check_renewal_option_expiry": {"queue": "maintenance", "priority": 3},
         # Taeglich: Ueberfaellige Meilensteine pruefen
         "contracts.check_overdue_milestones": {"queue": "maintenance", "priority": 4},
+        # =================================================================
+        # Zero-Touch OCR Tasks (F1 - Vollautomatische Dokumentenverarbeitung)
+        # =================================================================
+        "app.workers.tasks.zero_touch_tasks.process_pending_uploads": {"queue": "ocr_high", "priority": 8},
+        "app.workers.tasks.zero_touch_tasks.process_single_document": {"queue": "ocr_high", "priority": 9},
+        "app.workers.tasks.zero_touch_tasks.process_batch": {"queue": "ocr_normal", "priority": 6},
+        "app.workers.tasks.zero_touch_tasks.recalculate_thresholds": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.zero_touch_tasks.generate_zero_touch_stats": {"queue": "metrics", "priority": 1},
+        # =================================================================
+        # Natural Language Query 2.0 Tasks (F2 - LLM-basierte SQL-Generation)
+        # =================================================================
+        "app.workers.tasks.nlq_tasks.execute_nlq_query": {"queue": "default", "priority": 7},
+        "app.workers.tasks.nlq_tasks.cleanup_old_query_logs": {"queue": "maintenance", "priority": 1},
+        "app.workers.tasks.nlq_tasks.refresh_query_suggestions": {"queue": "maintenance", "priority": 2},
+        # =================================================================
+        # Smart Inbox Tasks (F3 - KI-priorisierte Aufgabenliste)
+        # =================================================================
+        "app.workers.tasks.smart_inbox_tasks.aggregate_inbox_items": {"queue": "default", "priority": 5},
+        "app.workers.tasks.smart_inbox_tasks.recalculate_priorities": {"queue": "default", "priority": 4},
+        "app.workers.tasks.smart_inbox_tasks.train_behavior_model": {"queue": "maintenance", "priority": 3},
+        "app.workers.tasks.smart_inbox_tasks.reactivate_snoozed_items": {"queue": "default", "priority": 4},
+        # =================================================================
+        # CEO Dashboard Tasks (F4 - Digital Twin / Health Score)
+        # =================================================================
+        "app.workers.tasks.ceo_dashboard_tasks.create_daily_snapshot": {"queue": "maintenance", "priority": 3},
+        "app.workers.tasks.ceo_dashboard_tasks.detect_anomalies": {"queue": "metrics", "priority": 4},
+        # =================================================================
+        # Knowledge Graph Tasks (F5 - Entity-Relationship-Explorer)
+        # =================================================================
+        "app.workers.tasks.knowledge_graph_tasks.build_graph_incremental": {"queue": "metadata", "priority": 3},
+        # =================================================================
+        # Audit Chain Tasks (F6 - Merkle Trees)
+        # =================================================================
+        "app.workers.tasks.audit_chain_tasks.verify_integrity": {"queue": "maintenance", "priority": 3},
+        "app.workers.tasks.audit_chain_tasks.build_merkle_tree": {"queue": "maintenance", "priority": 2},
+        # =================================================================
+        # KI-Ethik Tasks (F7 - Bias-Detection & Fairness)
+        # =================================================================
+        "app.workers.tasks.ai_ethics_tasks.generate_bias_report": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.ai_ethics_tasks.update_fairness_metrics": {"queue": "metrics", "priority": 2},
+        # =================================================================
+        # Event-Sourcing Tasks (F8 - Domain Event Management)
+        # =================================================================
+        "app.workers.tasks.event_sourcing_tasks.create_snapshots": {"queue": "maintenance", "priority": 3},
+        "app.workers.tasks.event_sourcing_tasks.archive_old_events": {"queue": "maintenance", "priority": 1},
+        # =================================================================
+        # Compliance Autopilot Tasks (F13)
+        # =================================================================
+        "app.workers.tasks.compliance_autopilot_tasks.run_daily_scan": {"queue": "maintenance", "priority": 4},
+        "app.workers.tasks.compliance_autopilot_tasks.prepare_audit_report": {"queue": "maintenance", "priority": 3},
+        "app.workers.tasks.compliance_autopilot_tasks.run_gdpr_check": {"queue": "maintenance", "priority": 3},
+        # =================================================================
+        # External Enrichment Tasks (F12)
+        # =================================================================
+        "app.workers.tasks.enrichment_tasks.enrich_entity": {"queue": "default", "priority": 5},
+        "app.workers.tasks.enrichment_tasks.cleanup_expired_cache": {"queue": "maintenance", "priority": 1},
+        # =================================================================
+        # Life Event Tasks (F16)
+        # =================================================================
+        "app.workers.tasks.life_event_tasks.detect_life_events": {"queue": "maintenance", "priority": 3},
     },
 
     # Priority settings
