@@ -666,6 +666,7 @@ class TableExtractionService:
 
         try:
             from app.db.models import Document
+
             doc_query = select(Document).where(Document.id == document_id)
             result = await self.db.execute(doc_query)
             document = result.scalar_one_or_none()
@@ -686,7 +687,7 @@ class TableExtractionService:
             logger.error(
                 "layout_load_error",
                 document_id=document_id,
-                error=str(e)
+                **safe_error_log(e)
             )
             return None
 

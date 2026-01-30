@@ -663,6 +663,7 @@ class EnsembleVotingService:
         try:
             from app.services.german_text_postprocessor import get_german_postprocessor
 
+
             postprocessor = get_german_postprocessor()
 
             # Wort-weise Prüfung
@@ -694,7 +695,7 @@ class EnsembleVotingService:
             logger.debug("german_postprocessor_not_available_for_plausibility_check")
             return text
         except Exception as e:
-            logger.warning("plausibility_check_failed", error=str(e))
+            logger.warning("plausibility_check_failed", **safe_error_log(e))
             return text
 
     def record_feedback(

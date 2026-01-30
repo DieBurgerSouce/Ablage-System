@@ -23,6 +23,7 @@ from app.db.models import User
 from app.db.session import get_async_session_context
 from app.api.dependencies import get_current_user, get_current_superuser, get_db
 from app.core.german_messages import StatusMessages, HTTPErrors
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -66,10 +67,10 @@ async def _authenticate_websocket_user(token: str) -> tuple[User | None, str | N
             return user, None
 
     except JWTError as e:
-        logger.warning("websocket_auth_failed", error=str(e))
+        logger.warning("websocket_auth_failed", **safe_error_log(e))
         return None, "Token ungültig oder abgelaufen"
     except Exception as e:
-        logger.error("websocket_auth_error", error=str(e))
+        logger.error("websocket_auth_error", **safe_error_log(e))
         return None, "Authentifizierungsfehler"
 
 
@@ -107,7 +108,7 @@ class ConnectionManager:
             logger.info("websocket_connected", task_id=task_id, connections=len(self.active_connections.get(task_id, [])))
             return True
         except Exception as e:
-            logger.error("websocket_connect_error", task_id=task_id, error=str(e))
+            logger.error("websocket_connect_error", task_id=task_id, **safe_error_log(e))
             return False
 
     async def disconnect(self, task_id: str, websocket: WebSocket):
@@ -139,7 +140,7 @@ class ConnectionManager:
             try:
                 await websocket.send_json(message)
             except Exception as e:
-                logger.error("websocket_broadcast_error", task_id=task_id, error=str(e))
+                logger.error("websocket_broadcast_error", task_id=task_id, **safe_error_log(e))
                 disconnected.add(websocket)
 
         # Clean up disconnected clients
@@ -161,7 +162,7 @@ class ConnectionManager:
             await websocket.send_json(message)
             return True
         except Exception as e:
-            logger.error("websocket_send_error", task_id=task_id, error=str(e))
+            logger.error("websocket_send_error", task_id=task_id, **safe_error_log(e))
             await self.disconnect(task_id, websocket)
             return False
 
@@ -231,7 +232,7 @@ async def get_task_status(
         raise
     except Exception as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.error("task_status_error", task_id=task_id, error=str(e))
+        logger.error("task_status_error", task_id=task_id, **safe_error_log(e))
         raise HTTPException(
             status_code=500,
             detail="Verarbeitung fehlgeschlagen. Bitte erneut versuchen."
@@ -294,7 +295,7 @@ async def cancel_task(
         raise
     except Exception as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.error("task_cancellation_error", task_id=task_id, error=str(e))
+        logger.error("task_cancellation_error", task_id=task_id, **safe_error_log(e))
         raise HTTPException(
             status_code=500,
             detail="Verarbeitung fehlgeschlagen. Bitte erneut versuchen."
@@ -334,7 +335,7 @@ async def list_user_tasks(
 
     except Exception as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.error("list_tasks_error", user_id=str(current_user.id), error=str(e))
+        logger.error("list_tasks_error", user_id=str(current_user.id), **safe_error_log(e))
         raise HTTPException(
             status_code=500,
             detail="Verarbeitung fehlgeschlagen. Bitte erneut versuchen."
@@ -393,7 +394,7 @@ async def get_task_result(
         raise
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("task_result_validation_error", task_id=task_id, error=str(e))
+        logger.warning("task_result_validation_error", task_id=task_id, **safe_error_log(e))
         raise HTTPException(
             status_code=400,
             detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
@@ -405,7 +406,7 @@ async def get_task_result(
         )
     except Exception as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.error("task_result_error", task_id=task_id, error=str(e))
+        logger.error("task_result_error", task_id=task_id, **safe_error_log(e))
         raise HTTPException(
             status_code=500,
             detail="Verarbeitung fehlgeschlagen. Bitte erneut versuchen."
@@ -501,7 +502,7 @@ async def task_progress_websocket(
     except WebSocketDisconnect:
         logger.info("websocket_client_disconnected", task_id=task_id)
     except Exception as e:
-        logger.error("websocket_error", task_id=task_id, error=str(e))
+        logger.error("websocket_error", task_id=task_id, **safe_error_log(e))
         try:
             await websocket.close(code=1011, reason=str(e))
         except Exception as close_error:

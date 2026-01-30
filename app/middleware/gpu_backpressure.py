@@ -58,7 +58,7 @@ class GPUMetrics:
         except Exception as e:
             logger.warning(
                 "gpu_metrics_unavailable",
-                error=str(e),
+                **safe_error_log(e),
                 hint="Install pynvml: pip install pynvml"
             )
 
@@ -98,7 +98,7 @@ class GPUMetrics:
             return info.used / info.total
 
         except Exception as e:
-            logger.warning("vram_check_failed", error=str(e))
+            logger.warning("vram_check_failed", **safe_error_log(e))
             return 0.0
 
     def get_vram_info(self) -> dict:
@@ -245,6 +245,7 @@ class GPUBackpressureMiddleware(BaseHTTPMiddleware):
 
                 # Kurz warten und erneut pruefen
                 import asyncio
+
                 await asyncio.sleep(VRAM_CHECK_INTERVAL)
                 waited = time.time() - wait_start
                 vram_usage = self.metrics.get_vram_usage()

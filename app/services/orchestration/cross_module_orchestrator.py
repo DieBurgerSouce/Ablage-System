@@ -29,6 +29,7 @@ from sqlalchemy import select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.services.events.event_bus import (
     EventBus,
     Event,
@@ -355,7 +356,7 @@ class CrossModuleOrchestrator:
             logger.error(
                 "orchestration_event_handler_error",
                 event_type=event.event_type.value,
-                error=str(e),
+                **safe_error_log(e),
                 exc_info=True
             )
 
@@ -956,7 +957,7 @@ class CrossModuleOrchestrator:
                 logger.error(
                     "critical_action_execution_failed",
                     action_id=str(action.id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
     async def _execute_action(self, action: OrchestrationAction) -> bool:
@@ -993,11 +994,11 @@ class CrossModuleOrchestrator:
 
         except Exception as e:
             action.status = "failed"
-            action.error = str(e)
+            action.error = safe_error_detail(e, "Orchestration")
             logger.error(
                 "action_execution_failed",
                 action_id=str(action.id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 
@@ -1105,7 +1106,7 @@ class CrossModuleOrchestrator:
         except Exception as e:
             logger.error(
                 "recommendation_persistence_failed",
-                error=str(e),
+                **safe_error_log(e),
                 category=data.get("category"),
                 title=data.get("title"),
             )
@@ -1190,7 +1191,7 @@ class CrossModuleOrchestrator:
                 "workflow_trigger_failed",
                 workflow_id=str(workflow_id) if workflow_id else None,
                 action_id=str(action.id),
-                error=str(e),
+                **safe_error_log(e),
             )
 
     async def _execute_create_task(self, action: OrchestrationAction) -> None:
@@ -1201,6 +1202,7 @@ class CrossModuleOrchestrator:
         """
         from app.db.session import get_async_session_context
         from app.db.models import PrivatTask
+
 
         data = action.action_data
 
@@ -1261,7 +1263,7 @@ class CrossModuleOrchestrator:
             logger.error(
                 "task_creation_failed",
                 action_id=str(action.id),
-                error=str(e),
+                **safe_error_log(e),
             )
 
     # =========================================================================

@@ -24,6 +24,7 @@ import httpx
 import structlog
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -256,7 +257,7 @@ class DHLProvider(BaseCarrierProvider):
             logger.error("dhl_api_error", status_code=e.response.status_code)
             raise
         except Exception as e:
-            logger.error("dhl_tracking_failed", error=str(e))
+            logger.error("dhl_tracking_failed", **safe_error_log(e))
             raise
 
     def _parse_response(self, tracking_number: str, data: Dict[str, Any]) -> TrackingResult:
@@ -391,7 +392,7 @@ class DPDProvider(BaseCarrierProvider):
             data = response.json()
             return self._parse_response(validated_number, data)
         except Exception as e:
-            logger.error("dpd_tracking_failed", error=str(e))
+            logger.error("dpd_tracking_failed", **safe_error_log(e))
             return self._create_mock_result(validated_number)
 
     def _parse_response(self, tracking_number: str, data: Dict[str, Any]) -> TrackingResult:
@@ -496,7 +497,7 @@ class HermesProvider(BaseCarrierProvider):
             data = response.json()
             return self._parse_response(validated_number, data)
         except Exception as e:
-            logger.error("hermes_tracking_failed", error=str(e))
+            logger.error("hermes_tracking_failed", **safe_error_log(e))
             return self._create_mock_result(validated_number)
 
     def _parse_response(self, tracking_number: str, data: Dict[str, Any]) -> TrackingResult:
@@ -614,7 +615,7 @@ class UPSProvider(BaseCarrierProvider):
             data = response.json()
             return self._parse_response(validated_number, data)
         except Exception as e:
-            logger.error("ups_tracking_failed", error=str(e))
+            logger.error("ups_tracking_failed", **safe_error_log(e))
             return self._create_mock_result(validated_number)
 
     async def _get_access_token(self, client_id: str, client_secret: str) -> Optional[str]:
@@ -628,7 +629,7 @@ class UPSProvider(BaseCarrierProvider):
             response.raise_for_status()
             return response.json().get("access_token")
         except Exception as e:
-            logger.error("ups_auth_failed", error=str(e))
+            logger.error("ups_auth_failed", **safe_error_log(e))
             return None
 
     def _parse_response(self, tracking_number: str, data: Dict[str, Any]) -> TrackingResult:
@@ -746,7 +747,7 @@ class GLSProvider(BaseCarrierProvider):
             data = response.json()
             return self._parse_response(validated_number, data)
         except Exception as e:
-            logger.error("gls_tracking_failed", error=str(e))
+            logger.error("gls_tracking_failed", **safe_error_log(e))
             return self._create_mock_result(validated_number)
 
     def _parse_response(self, tracking_number: str, data: Dict[str, Any]) -> TrackingResult:
@@ -872,7 +873,7 @@ class FedExProvider(BaseCarrierProvider):
             data = response.json()
             return self._parse_response(validated_number, data)
         except Exception as e:
-            logger.error("fedex_tracking_failed", error=str(e))
+            logger.error("fedex_tracking_failed", **safe_error_log(e))
             return self._create_mock_result(validated_number)
 
     async def _get_access_token(self, client_id: str, client_secret: str) -> Optional[str]:
@@ -889,7 +890,7 @@ class FedExProvider(BaseCarrierProvider):
             response.raise_for_status()
             return response.json().get("access_token")
         except Exception as e:
-            logger.error("fedex_auth_failed", error=str(e))
+            logger.error("fedex_auth_failed", **safe_error_log(e))
             return None
 
     def _parse_response(self, tracking_number: str, data: Dict[str, Any]) -> TrackingResult:
@@ -1007,7 +1008,7 @@ class DeutschePostProvider(BaseCarrierProvider):
             data = response.json()
             return self._parse_response(validated_number, data)
         except Exception as e:
-            logger.error("deutsche_post_tracking_failed", error=str(e))
+            logger.error("deutsche_post_tracking_failed", **safe_error_log(e))
             return self._create_mock_result(validated_number)
 
     def _parse_response(self, tracking_number: str, data: Dict[str, Any]) -> TrackingResult:

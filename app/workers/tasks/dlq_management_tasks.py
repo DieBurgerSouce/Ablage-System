@@ -23,6 +23,7 @@ from redis import Redis
 from redis.exceptions import RedisError
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 from app.workers.celery_app import celery_app, CPUTask
 
 
@@ -176,11 +177,11 @@ def get_dlq_stats() -> Dict[str, Any]:
         return result
 
     except RedisError as e:
-        logger.error("dlq_stats_redis_error", error=str(e))
+        logger.error("dlq_stats_redis_error", **safe_error_log(e))
         return {
             "count": -1,
             "status": "error",
-            "error": str(e),
+            "error": safe_error_detail(e, "Vorgang"),
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -225,8 +226,8 @@ def get_dlq_tasks(limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
         return tasks
 
     except RedisError as e:
-        logger.error("dlq_get_tasks_error", error=str(e))
-        return [{"error": str(e)}]
+        logger.error("dlq_get_tasks_error", **safe_error_log(e))
+        return [{"error": safe_error_detail(e, "Vorgang")}]
 
 
 # =============================================================================
@@ -302,8 +303,8 @@ def retry_dlq_task(task_index: int = 0) -> Dict[str, Any]:
         }
 
     except (json.JSONDecodeError, RedisError) as e:
-        logger.error("dlq_retry_error", error=str(e))
-        return {"success": False, "error": str(e)}
+        logger.error("dlq_retry_error", **safe_error_log(e))
+        return {"success": False, **safe_error_log(e)}
 
 
 def retry_all_dlq_tasks(max_tasks: int = 100) -> Dict[str, Any]:
@@ -378,8 +379,8 @@ def purge_dlq(confirm: bool = False) -> Dict[str, Any]:
         }
 
     except RedisError as e:
-        logger.error("dlq_purge_error", error=str(e))
-        return {"success": False, "error": str(e)}
+        logger.error("dlq_purge_error", **safe_error_log(e))
+        return {"success": False, **safe_error_log(e)}
 
 
 def remove_poison_pill(task_id: str) -> Dict[str, Any]:
@@ -420,8 +421,8 @@ def remove_poison_pill(task_id: str) -> Dict[str, Any]:
         }
 
     except RedisError as e:
-        logger.error("poison_pill_remove_error", task_id=task_id, error=str(e))
-        return {"success": False, "error": str(e)}
+        logger.error("poison_pill_remove_error", task_id=task_id, **safe_error_log(e))
+        return {"success": False, **safe_error_log(e)}
 
 
 # =============================================================================
@@ -514,8 +515,8 @@ def cleanup_old_dlq_tasks(max_age_days: int = 7) -> Dict[str, Any]:
         }
 
     except RedisError as e:
-        logger.error("dlq_cleanup_error", error=str(e))
-        return {"success": False, "error": str(e)}
+        logger.error("dlq_cleanup_error", **safe_error_log(e))
+        return {"success": False, **safe_error_log(e)}
 
 
 # =============================================================================

@@ -16,6 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, date, timedelta
 from app.core.datetime_utils import utc_now
+from app.core.safe_errors import safe_error_log
 from enum import Enum
 from typing import Optional, List, Tuple, Dict, Any
 from uuid import UUID, uuid4
@@ -454,7 +455,7 @@ class MahnTaskService:
                 await self.complete_task(db, user_id, task_id, notes)
                 successful.append(str(task_id))
             except Exception as e:
-                failed.append({"id": str(task_id), "error": str(e)})
+                failed.append({"id": str(task_id), **safe_error_log(e)})
 
         logger.info(
             "mahn_tasks_bulk_completed",

@@ -33,6 +33,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import NotificationRule, User, UserNotification
 from app.services.events.event_bus import Event, EventBus, get_event_bus
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -239,7 +240,7 @@ class RuleConditionMatcher:
                 "condition_evaluation_error",
                 field=field_path,
                 op=op_name,
-                error=str(e)
+                **safe_error_log(e)
             )
             return False
 
@@ -482,7 +483,7 @@ class NotificationRuleEngine:
                 return now >= start or now <= end
 
         except Exception as e:
-            logger.warning("quiet_hours_check_error", rule_id=str(rule.id), error=str(e))
+            logger.warning("quiet_hours_check_error", rule_id=str(rule.id), **safe_error_log(e))
             return False
 
     def _is_rate_limited(self, rule: NotificationRule) -> bool:
@@ -658,6 +659,7 @@ class NotificationRuleEngine:
         from app.services.notification_service import NotificationService
         from app.services.push_notification_service import PushNotificationService
 
+
         results = {t.value: 0 for t in ActionType}
 
         for action in actions:
@@ -674,7 +676,7 @@ class NotificationRuleEngine:
                         logger.error(
                             "in_app_action_error",
                             rule_id=str(action.rule_id),
-                            error=str(e)
+                            **safe_error_log(e)
                         )
                         continue
 
@@ -745,7 +747,7 @@ class NotificationRuleEngine:
                     "action_execution_error",
                     action_type=action.action_type.value,
                     rule_id=str(action.rule_id),
-                    error=str(e)
+                    **safe_error_log(e)
                 )
 
         return results

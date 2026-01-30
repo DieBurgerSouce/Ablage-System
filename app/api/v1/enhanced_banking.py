@@ -40,9 +40,10 @@ from app.services.banking.enhanced_fints_service import (
     BankConnection,
     ConnectionHealth,
     ReconciliationResult,
-    ReconciliationStrategy,
     SyncResult,
 )
+from app.services.banking.smart_reconciliation_service import ReconciliationStrategy
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -351,7 +352,7 @@ async def get_connection(
             connection_id=str(connection_id),
             user_id=str(current_user.id),
             company_id=str(company_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -460,7 +461,7 @@ async def delete_connection(
             connection_id=str(connection_id),
             user_id=str(current_user.id),
             company_id=str(company_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

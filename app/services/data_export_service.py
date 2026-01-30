@@ -26,6 +26,7 @@ from sqlalchemy import select
 
 from app.db.models import User, Document, DataExport, ExportStatus, ExportFormat, AuditLog
 from app.core.exceptions import ExportError, UserNotFoundError
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -186,12 +187,12 @@ class DataExportService:
             raise
         except Exception as e:
             export.status = ExportStatus.FAILED
-            export.error_message = str(e)[:500]
+            export.error_message = safe_error_detail(e, "Export")
             await db.commit()
             logger.error(
                 "data_export_failed",
                 export_id=str(export_id),
-                error=str(e)
+                **safe_error_log(e)
             )
             raise ExportError(f"Export fehlgeschlagen: {str(e)}")
 
@@ -415,7 +416,7 @@ Feinpoliert und durchdacht.
                     logger.warning(
                         "export_file_delete_failed",
                         export_id=str(export.id),
-                        error=str(e)
+                        **safe_error_log(e)
                     )
 
             export.status = ExportStatus.EXPIRED

@@ -23,7 +23,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import User
-from app.api.dependencies import get_db, get_current_active_user
+from app.api.dependencies import get_db, get_current_active_user, validate_company_access
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.services.accounting import (
     get_open_items_service,
     get_vat_service,
@@ -323,6 +324,7 @@ async def get_open_items_report(
     - Netto-Position
     - Altersstruktur (0-30, 31-60, 61-90, 90+ Tage)
     """
+    validate_company_access(company_id, current_user)
     logger.info(
         "open_items_report_requested",
         company_id=str(company_id),
@@ -377,6 +379,7 @@ async def get_open_receivables(
     - **urgent**: Ueberfaellig
     - **critical**: Stark ueberfaellig (90+ Tage)
     """
+    validate_company_access(company_id, current_user)
     service = get_open_items_service(db)
     items = await service.get_open_receivables(
         company_id=company_id,
@@ -433,6 +436,7 @@ async def get_open_payables(
     - Skonto-Optimierung
     - Liquiditaetsmanagement
     """
+    validate_company_access(company_id, current_user)
     service = get_open_items_service(db)
     items = await service.get_open_payables(
         company_id=company_id,
@@ -484,6 +488,7 @@ async def get_debtor_balances(
 
     Sortiert nach Ausstand (hoechster zuerst).
     """
+    validate_company_access(company_id, current_user)
     service = get_open_items_service(db)
     balances = await service.get_debtor_balances(
         company_id=company_id,
@@ -529,6 +534,7 @@ async def get_creditor_balances(
 
     Sortiert nach Ausstand (hoechster zuerst).
     """
+    validate_company_access(company_id, current_user)
     service = get_open_items_service(db)
     balances = await service.get_creditor_balances(
         company_id=company_id,
@@ -578,6 +584,7 @@ async def get_payment_suggestions(
     - **cashflow**: Minimiere Zahlungsausgang
     - **priority**: Zahle nach Dringlichkeit
     """
+    validate_company_access(company_id, current_user)
     service = get_open_items_service(db)
     suggestions = await service.get_payment_suggestions(
         company_id=company_id,
@@ -628,6 +635,7 @@ async def get_monthly_vat_report(
     - Zahllast / Erstattungsanspruch
     - Kennziffern nach ELSTER-Format
     """
+    validate_company_access(company_id, current_user)
     logger.info(
         "vat_monthly_report_requested",
         company_id=str(company_id),
@@ -666,6 +674,7 @@ async def get_quarterly_vat_report(
 
     Fuer Unternehmen mit quartalsweiser Abgabepflicht.
     """
+    validate_company_access(company_id, current_user)
     logger.info(
         "vat_quarterly_report_requested",
         company_id=str(company_id),
@@ -702,6 +711,7 @@ async def export_vat_elster_xml(
 
     Die XML-Datei kann direkt in ElsterOnline importiert werden.
     """
+    validate_company_access(company_id, current_user)
     logger.info(
         "vat_elster_export_requested",
         company_id=str(company_id),
@@ -725,7 +735,7 @@ async def export_vat_elster_xml(
         content=xml_content,
         media_type="application/xml",
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Disposition": build_content_disposition(filename, "attachment"),
         },
     )
 
@@ -765,6 +775,7 @@ async def get_annual_eur_report(
     - Fahrzeuge
     - Und weitere...
     """
+    validate_company_access(company_id, current_user)
     logger.info(
         "eur_annual_report_requested",
         company_id=str(company_id),
@@ -803,6 +814,7 @@ async def get_monthly_eur_report(
     - Liquiditaetsplanung
     - Trend-Analyse
     """
+    validate_company_access(company_id, current_user)
     logger.info(
         "eur_monthly_report_requested",
         company_id=str(company_id),
@@ -841,6 +853,7 @@ async def get_ytd_summary(
     - Durchschnittliche monatliche Werte
     - Monat-fuer-Monat Entwicklung
     """
+    validate_company_access(company_id, current_user)
     logger.info(
         "eur_ytd_requested",
         company_id=str(company_id),
@@ -882,6 +895,7 @@ async def export_anlage_eur(
 
     Die Daten sind nach den offiziellen Zeilen der Anlage EUER strukturiert.
     """
+    validate_company_access(company_id, current_user)
     logger.info(
         "eur_anlage_export_requested",
         company_id=str(company_id),
@@ -931,6 +945,7 @@ async def get_accounting_statistics(
     - EUER Year-to-Date
     - Trend-Indikatoren
     """
+    validate_company_access(company_id, current_user)
     current_year = year or date.today().year
 
     # Services initialisieren
@@ -1085,6 +1100,7 @@ async def suggest_booking(
     - **LOW** (50-70%): Vorschlag mit Warnung
     - **UNCERTAIN** (<50%): Manuelle Kontierung
     """
+    validate_company_access(company_id, current_user)
     logger.info(
         "auto_booking_suggest_requested",
         document_id=str(document_id),
@@ -1172,6 +1188,7 @@ async def learn_booking(
     - Nach Korrektur eines Vorschlags
     - Nach Bestaetigung eines Auto-Bookings
     """
+    validate_company_access(company_id, current_user)
     logger.info(
         "auto_booking_learn_requested",
         document_id=str(request.document_id),
@@ -1219,6 +1236,7 @@ async def get_booking_patterns(
     - Nach Entity-ID (exakt)
     - Mindestanzahl Vorkommen
     """
+    validate_company_access(company_id, current_user)
     logger.info(
         "auto_booking_patterns_requested",
         company_id=str(company_id),
@@ -1277,6 +1295,7 @@ async def apply_booking(
     **Hinweis:** Bei auto_export_datev=true wird die Buchung direkt
     in den naechsten DATEV-Buchungsstapel aufgenommen.
     """
+    validate_company_access(company_id, current_user)
     logger.info(
         "auto_booking_apply_requested",
         document_id=str(request.document_id),
@@ -1325,17 +1344,17 @@ async def apply_booking(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Buchung"),
         )
     except Exception as e:
         logger.error(
             "auto_booking_apply_failed",
             document_id=str(request.document_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Buchung konnte nicht angewendet werden",
+            detail=safe_error_detail(e, "Buchung"),
         )
 
 
@@ -1359,6 +1378,7 @@ async def get_auto_booking_statistics(
     - Top-Konten nach Haeufigkeit
     - Lernfortschritt ueber Zeit
     """
+    validate_company_access(company_id, current_user)
     logger.info(
         "auto_booking_statistics_requested",
         company_id=str(company_id),

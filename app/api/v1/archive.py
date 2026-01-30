@@ -27,6 +27,8 @@ from app.core.exceptions import (
     ArchiveError,
     ImmutabilityViolationError,
 )
+from app.core.safe_errors import safe_error_detail, safe_error_log
+from app.core.security_auth import build_content_disposition
 from app.db.models import User, RetentionCategory
 from app.middleware.company_context import require_company, Company
 from app.services.archive_service import archive_service
@@ -751,13 +753,13 @@ async def export_procedure_documentation_markdown(
             content=markdown,
             media_type="text/markdown",
             headers={
-                "Content-Disposition": f"attachment; filename=verfahrensdokumentation_{version_id}.md"
+                "Content-Disposition": build_content_disposition(f"verfahrensdokumentation_{version_id}.md", "attachment")
             }
         )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
+            detail=safe_error_detail(e, "Export")
         )
 
 
@@ -888,13 +890,13 @@ async def create_gdpdu_export(
             content=zip_content,
             media_type="application/zip",
             headers={
-                "Content-Disposition": f'attachment; filename="{filename}"'
+                "Content-Disposition": build_content_disposition(filename, "attachment")
             }
         )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Export")
         )
 
 
@@ -1108,7 +1110,7 @@ async def create_tax_authority_export(
                 content=zip_content,
                 media_type="application/zip",
                 headers={
-                    "Content-Disposition": f'attachment; filename="{filename}"'
+                    "Content-Disposition": build_content_disposition(filename, "attachment")
                 }
             )
 
@@ -1130,12 +1132,12 @@ async def create_tax_authority_export(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Export")
         )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Export fehlgeschlagen: {str(e)}"
+            detail=safe_error_detail(e, "Export")
         )
 
 
@@ -1625,7 +1627,7 @@ async def export_compliance_report_pdf(
         content=markdown,
         media_type="text/markdown",
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"'
+            "Content-Disposition": build_content_disposition(filename, "attachment")
         }
     )
 

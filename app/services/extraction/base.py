@@ -15,6 +15,7 @@ from enum import Enum
 from typing import Any, Dict, Generic, List, Optional, Pattern as RePattern, Tuple, TypeVar
 
 import structlog
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -260,7 +261,7 @@ class Pattern(ABC, Generic[T]):
                     "pattern_normalization_failed",
                     pattern=self.name,
                     value=match.group(),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 continue
 

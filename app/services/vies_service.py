@@ -20,6 +20,7 @@ from defusedxml.ElementTree import fromstring as safe_xml_fromstring
 
 import httpx
 import structlog
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -232,7 +233,7 @@ class VIESService:
                 valid=False,
                 status=VIESValidationStatus.ERROR,
                 request_date=request_date,
-                error_message=str(e),
+                error_message=safe_error_detail(e, "VIES"),
             )
 
         # Nicht-EU Land
@@ -333,7 +334,7 @@ class VIESService:
             logger.warning(
                 "vies_connection_error",
                 vat_id=vat_id[:8] + "***",
-                error=str(e),
+                **safe_error_log(e),
             )
             return VIESValidationResult(
                 vat_id=vat_id,
@@ -492,7 +493,7 @@ class VIESService:
         except ElementTree.ParseError as e:
             logger.warning(
                 "vies_xml_parse_error",
-                error=str(e),
+                **safe_error_log(e),
                 response_preview=response_text[:200],
             )
             return VIESValidationResult(

@@ -666,7 +666,7 @@ Ablage-System
             logger.error(
                 "package_send_failed",
                 package_id=str(package.id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 
@@ -732,7 +732,7 @@ Ablage-System
             logger.error(
                 "missing_documents_notification_failed",
                 package_id=str(package.id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 
@@ -762,6 +762,7 @@ Ablage-System
 
         from app.services.notification_service import NotificationService
         from app.services.push_notification_service import PushNotificationService
+
 
         try:
             # E-Mail
@@ -814,7 +815,7 @@ Bitte laden Sie die fehlenden Dokumente zeitnah hoch.
             logger.error(
                 "reminder_notification_failed",
                 company_id=str(company_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 

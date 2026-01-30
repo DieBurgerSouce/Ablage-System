@@ -24,6 +24,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import PrivatInsurance
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -622,7 +623,7 @@ class InsuranceKPIService:
                 logger.error(
                     "insurance_kpi_calculation_failed",
                     insurance_id=str(insurance.id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 error_count += 1
 

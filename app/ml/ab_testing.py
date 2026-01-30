@@ -455,7 +455,7 @@ class Experiment:
                 )
 
         except Exception as e:
-            logger.debug("signifikanz_test_fehlgeschlagen", error=str(e))
+            logger.debug("signifikanz_test_fehlgeschlagen", **safe_error_log(e))
 
     def _two_proportion_z_test(
         self,
@@ -849,21 +849,21 @@ class ABTestManager:
                 "experiment_speichern_fehlgeschlagen_io",
                 experiment_id=experiment.experiment_id,
                 filepath=str(filepath),
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
         except json.JSONDecodeError as e:
             logger.error(
                 "experiment_speichern_fehlgeschlagen_json",
                 experiment_id=experiment.experiment_id,
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
         except Exception as e:
             logger.exception(
                 "experiment_speichern_fehlgeschlagen_unbekannt",
                 experiment_id=experiment.experiment_id,
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 
@@ -899,6 +899,7 @@ class ABTestManager:
 
                 # Pydantic-Validierung fuer sichere JSON-Deserialisierung
                 from pydantic import ValidationError as PydanticValidationError
+
                 try:
                     validated_data = validate_experiment_json(data)
                 except PydanticValidationError as e:
@@ -951,14 +952,14 @@ class ABTestManager:
                 logger.warning(
                     "experiment_laden_fehlgeschlagen_json_ungueltig",
                     filepath=str(filepath),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 skipped_count += 1
             except Exception as e:
                 logger.warning(
                     "experiment_laden_fehlgeschlagen",
                     filepath=str(filepath),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 skipped_count += 1
 

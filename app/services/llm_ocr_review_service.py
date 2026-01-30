@@ -35,7 +35,9 @@ from tenacity import (
 import httpx
 
 from app.db.models import OCRTrainingSample, TrainingSampleStatus
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.services.rag.llm_service import (
+
     LLMService,
     LLMMessage,
     LLMContextType,
@@ -370,13 +372,13 @@ class LLMOCRReviewService:
             logger.error(
                 "llm_ocr_review_error",
                 sample_id=str(sample.id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return LLMReviewResult(
                 quality_score=0.0,
                 issues_found=[f"LLM-Review fehlgeschlagen: {str(e)}"],
                 recommendation="needs_human",
-                reasoning=f"Technischer Fehler bei der LLM-Review: {str(e)}",
+                reasoning=safe_error_detail(e, "LLM-Review"),
                 confidence=0.0,
             )
 
@@ -479,7 +481,7 @@ class LLMOCRReviewService:
                 logger.error(
                     "llm_batch_review_sample_error",
                     sample_id=str(sample.id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 result.errors += 1
 
@@ -713,7 +715,7 @@ class LLMOCRReviewService:
             logger.error(
                 "llm_review_unexpected_error",
                 doc_type=doc_type,
-                error=str(e),
+                **safe_error_log(e),
                 circuit_state=self._circuit_state,
                 failure_count=self._failure_count,
             )
@@ -721,7 +723,7 @@ class LLMOCRReviewService:
                 quality_score=0.0,
                 issues_found=[f"Unerwarteter Fehler: {str(e)}"],
                 recommendation="needs_human",
-                reasoning=f"Technischer Fehler bei der LLM-Review: {str(e)}",
+                reasoning=safe_error_detail(e, "LLM-Review"),
                 confidence=0.0,
             )
 

@@ -25,6 +25,7 @@ import re
 
 from app.api.dependencies import get_current_active_user
 from app.core.rate_limiting import limiter, get_user_identifier
+from app.core.safe_errors import safe_error_detail
 from app.db.models import User
 from app.services.orchestration import (
     get_cross_module_orchestrator,
@@ -2279,7 +2280,7 @@ async def set_user_threshold(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Orchestrierung"),
         )
 
     return UserThresholdResponse(

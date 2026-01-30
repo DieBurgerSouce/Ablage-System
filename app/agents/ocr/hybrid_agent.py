@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Tuple
 
 from app.agents.base import OCRAgent
 from app.gpu_manager import GPUManager
+from app.core.safe_errors import safe_error_log
 
 from .deepseek_agent import DeepSeekAgent
 from .got_ocr_agent import GOTOCRAgent
@@ -213,9 +214,9 @@ class HybridOCRAgent(OCRAgent):
                 self.logger.warning(
                     "hybrid_parallel_failed",
                     engine=name,
-                    error=str(e)
+                    **safe_error_log(e)
                 )
-                return {"engine": name, "error": str(e), "confidence": 0.0}
+                return {"engine": name, "error": safe_error_detail(e, "Vorgang"), "confidence": 0.0}
 
         # Alle parallel starten
         tasks = [process_engine(name, engine) for name, engine in engines]
@@ -270,7 +271,7 @@ class HybridOCRAgent(OCRAgent):
                 self.logger.warning(
                     "hybrid_sequential_failed",
                     engine=engine_name,
-                    error=str(e)
+                    **safe_error_log(e)
                 )
             finally:
                 # Memory Cleanup nach jedem Backend
@@ -300,7 +301,7 @@ class HybridOCRAgent(OCRAgent):
             return safe_free / (1024**3)
 
         except Exception as e:
-            self.logger.warning("vram_check_failed", error=str(e))
+            self.logger.warning("vram_check_failed", **safe_error_log(e))
             return 0.0
 
     def _cleanup_gpu_memory(self, torch_available: bool) -> None:
@@ -322,7 +323,7 @@ class HybridOCRAgent(OCRAgent):
                 allocated_gb=round(allocated_gb, 2)
             )
         except Exception as e:
-            self.logger.warning("memory_cleanup_failed", error=str(e))
+            self.logger.warning("memory_cleanup_failed", **safe_error_log(e))
 
     # Confidence-Differenz Schwellenwert fuer Ensemble Voting
     CONFIDENCE_DIFF_THRESHOLD = 0.15

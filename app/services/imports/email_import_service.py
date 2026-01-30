@@ -26,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.encryption import encrypt_data, decrypt_data, EncryptionError
 from app.core.config import settings
 from app.core.malware_scanner import scan_content
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -206,7 +207,7 @@ class EmailImportService:
                 "imap_connection_failed",
                 server=server,
                 port=port,
-                error=str(e),
+                **safe_error_log(e),
             )
             raise ConnectionError(f"IMAP-Verbindung fehlgeschlagen: {e}")
 
@@ -276,7 +277,7 @@ class EmailImportService:
             }
         except Exception as e:
             await self._update_connection_status(
-                config_id, "error", str(e)
+                config_id, "error", safe_error_detail(e, "Email-Import")
             )
             return {
                 "success": False,
@@ -455,15 +456,15 @@ class EmailImportService:
             )
 
         except Exception as e:
-            await self._update_connection_status(config_id, "error", str(e))
+            await self._update_connection_status(config_id, "error", safe_error_detail(e, "Email-Import"))
             result.errors.append({
                 "type": "sync_error",
-                "message": str(e),
+                "message": safe_error_detail(e, "Email"),
             })
             logger.error(
                 "email_sync_failed",
                 config_id=str(config_id),
-                error=str(e),
+                **safe_error_log(e),
             )
 
         finally:
@@ -768,10 +769,10 @@ class EmailImportService:
 
         except Exception as e:
             import_log.status = "failed"
-            import_log.error_message = str(e)[:500]
+            import_log.error_message = safe_error_detail(e, "Email")
             await self.db.commit()
 
-            return {"success": False, "error": str(e)}
+            return {"success": False, **safe_error_log(e)}
 
     async def _check_duplicate_by_hash(
         self, user_id: UUID, file_hash: str
@@ -817,7 +818,7 @@ class EmailImportService:
             logger.warning(
                 "malware_scan_failed",
                 filename=attachment.filename,
-                error=str(e),
+                **safe_error_log(e),
             )
             # Bei Scan-Fehler: Konservativ ablehnen
             return False
@@ -981,7 +982,7 @@ class EmailImportService:
             logger.warning(
                 "email_entity_matching_failed",
                 document_id=str(document_id),
-                error=str(e),
+                **safe_error_log(e),
             )
 
     async def _apply_import_rules(
@@ -1056,7 +1057,7 @@ class EmailImportService:
             logger.warning(
                 "import_rules_execution_failed",
                 document_id=str(document_id),
-                error=str(e),
+                **safe_error_log(e),
             )
 
     async def _execute_rule_actions(
@@ -1549,6 +1550,7 @@ class EmailImportService:
     ) -> None:
         """Aktualisiert die Statistiken."""
         from app.db.models import EmailImportConfig
+
 
         await self.db.execute(
             update(EmailImportConfig)

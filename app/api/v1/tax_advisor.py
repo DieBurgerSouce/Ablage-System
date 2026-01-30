@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
 from app.api.dependencies import get_db, get_current_user, get_current_superuser
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User, TaxAdvisorInvite, TaxAdvisorAccessLog
 from app.middleware.company_context import require_company
 from app.services.tax_advisor_service import tax_advisor_service
@@ -187,9 +188,10 @@ async def create_invite(
         )
 
     except ValueError as e:
+        logger.error("tax_advisor_invite_creation_failed", **safe_error_log(e, context="Steuerberater-Einladung"))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Steuerberater-Einladung")
         )
 
 
@@ -261,9 +263,10 @@ async def revoke_invite(
         return MessageResponse(message="Einladung wurde widerrufen")
 
     except ValueError as e:
+        logger.error("tax_advisor_invite_revoke_failed", **safe_error_log(e, context="Einladung widerrufen"))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Einladung widerrufen")
         )
 
 
@@ -317,9 +320,10 @@ async def extend_access(
         return TaxAdvisorUserResponse.model_validate(user)
 
     except ValueError as e:
+        logger.error("tax_advisor_extend_access_failed", **safe_error_log(e, context="Zugang verlaengern"))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Zugang verlaengern")
         )
 
 
@@ -352,9 +356,10 @@ async def revoke_access(
         return MessageResponse(message="Zugang wurde widerrufen")
 
     except ValueError as e:
+        logger.error("tax_advisor_revoke_access_failed", **safe_error_log(e, context="Zugang widerrufen"))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Zugang widerrufen")
         )
 
 
@@ -444,9 +449,10 @@ async def accept_invite(
         return TaxAdvisorUserResponse.model_validate(user)
 
     except ValueError as e:
+        logger.error("tax_advisor_accept_invite_failed", **safe_error_log(e, context="Einladung akzeptieren"))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Einladung akzeptieren")
         )
 
 

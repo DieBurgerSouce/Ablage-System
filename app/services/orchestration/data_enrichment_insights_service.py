@@ -289,7 +289,7 @@ class DataEnrichmentInsightsService:
             logger.warning(
                 "missing_data_detection_failed",
                 company_id=str(company_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return []
 
@@ -395,7 +395,7 @@ class DataEnrichmentInsightsService:
             logger.warning(
                 "duplicate_detection_failed",
                 company_id=str(company_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return []
 
@@ -509,7 +509,7 @@ class DataEnrichmentInsightsService:
             logger.warning(
                 "inconsistency_detection_failed",
                 company_id=str(company_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return []
 
@@ -603,7 +603,7 @@ class DataEnrichmentInsightsService:
             logger.warning(
                 "outdated_data_detection_failed",
                 company_id=str(company_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return []
 
@@ -623,6 +623,7 @@ class DataEnrichmentInsightsService:
             Liste von ProactiveInsights fuer nicht verknuepfte Dokumente
         """
         from app.db.models import Document
+
 
         try:
             # Dokumente ohne Entity-Link zaehlen
@@ -684,7 +685,7 @@ class DataEnrichmentInsightsService:
             logger.warning(
                 "unlinked_documents_detection_failed",
                 company_id=str(company_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return []
 

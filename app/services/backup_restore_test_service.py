@@ -38,6 +38,7 @@ from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
 from app.core.datetime_utils import utc_now
 from app.services.backup_service import BackupService, get_backup_service
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -304,7 +305,7 @@ class BackupRestoreTestService:
         except (IOError, OSError, subprocess.SubprocessError, asyncio.TimeoutError) as e:
             logger.exception("restore_test_error", test_id=str(result.test_id))
             result.status = RestoreTestStatus.FAILED
-            result.errors.append(f"Unerwarteter Fehler: {str(e)}")
+            result.errors.append(safe_error_detail(e, "Backup-Test"))
 
         return self._finalize_result(result)
 
@@ -357,7 +358,7 @@ class BackupRestoreTestService:
             return temp_db_name
 
         except (subprocess.SubprocessError, OSError) as e:
-            result.errors.append(f"Temp-DB Erstellung Fehler: {str(e)}")
+            result.errors.append(safe_error_detail(e, "Temp-DB"))
             result.status = RestoreTestStatus.FAILED
             return None
 
@@ -395,7 +396,7 @@ class BackupRestoreTestService:
             )
 
         except (subprocess.SubprocessError, OSError) as e:
-            result.warnings.append(f"Temp-DB Cleanup Fehler: {str(e)}")
+            result.warnings.append(safe_error_detail(e, "Temp-DB Cleanup"))
 
     # -------------------------------------------------------------------------
     # Backup finden und wiederherstellen
@@ -480,7 +481,7 @@ class BackupRestoreTestService:
             result.status = RestoreTestStatus.FAILED
             return False
         except (subprocess.SubprocessError, IOError, OSError) as e:
-            result.errors.append(f"Restore Fehler: {str(e)}")
+            result.errors.append(safe_error_detail(e, "Restore"))
             result.status = RestoreTestStatus.FAILED
             return False
 
@@ -535,7 +536,7 @@ class BackupRestoreTestService:
                 result.schema_results.append(schema_result)
 
         except (IOError, OSError) as e:  # Catch-all: DB connection errors possible
-            result.errors.append(f"Schema-Validierung Fehler: {str(e)}")
+            result.errors.append(safe_error_detail(e, "Schema"))
 
     async def _get_schema_info(
         self,
@@ -623,7 +624,7 @@ class BackupRestoreTestService:
                 ) * 100
 
         except Exception as e:
-            result.errors.append(f"Record Count Vergleich Fehler: {str(e)}")
+            result.errors.append(safe_error_detail(e, "Record-Count"))
 
     async def _get_record_counts(
         self,
@@ -644,6 +645,7 @@ class BackupRestoreTestService:
             async with engine.connect() as conn:
                 for table_name in self.CRITICAL_TABLES:
                     try:
+                        # SECURITY: table_name is from hardcoded CRITICAL_TABLES (not user input)
                         query = text(f"SELECT COUNT(*) FROM {table_name}")
                         result = await conn.execute(query)
                         counts[table_name] = result.scalar() or 0
@@ -698,7 +700,7 @@ class BackupRestoreTestService:
                 result.sample_results.append(sample_result)
 
         except Exception as e:
-            result.warnings.append(f"Stichproben-Validierung Fehler: {str(e)}")
+            result.warnings.append(safe_error_detail(e, "Stichprobe"))
 
     async def _get_data_samples(
         self,
@@ -762,7 +764,7 @@ class BackupRestoreTestService:
 
         return RestoreTestStatus.PASSED
 
-    def _finalize_result(
+    async def _finalize_result(
         self,
         result: RestoreTestResult,
         cleanup: bool = False,
@@ -859,6 +861,7 @@ class BackupRestoreTestService:
         try:
             from app.services.slack_service import slack_service
 
+
             message = (
                 f"🚨 *Backup Restore Test fehlgeschlagen*\n\n"
                 f"*Test-ID:* {result.test_id}\n"
@@ -892,7 +895,7 @@ class BackupRestoreTestService:
             logger.warning(
                 "restore_test_notification_failed",
                 test_id=str(result.test_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 
@@ -951,7 +954,7 @@ class BackupRestoreTestService:
                     logger.warning(
                         "restore_test_history_parse_error",
                         key=key,
-                        error=str(e),
+                        **safe_error_log(e),
                     )
                     continue
 
@@ -1014,7 +1017,7 @@ class BackupRestoreTestService:
             logger.warning(
                 "restore_test_store_error",
                 test_id=str(result.test_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 

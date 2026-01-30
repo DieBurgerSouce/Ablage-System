@@ -24,6 +24,7 @@ import threading
 from types import ModuleType
 from typing import Callable, Dict, Optional, FrozenSet
 import structlog
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -280,7 +281,7 @@ class SafeModuleLoader:
             logger.error(
                 "module_import_failed",
                 module_path=module_path,
-                error=str(e),
+                **safe_error_log(e),
             )
             raise ModuleLoadingError(
                 f"Modul konnte nicht geladen werden: {module_path}"

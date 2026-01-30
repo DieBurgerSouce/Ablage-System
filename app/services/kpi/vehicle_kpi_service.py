@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.models import PrivatVehicle, PrivatFuelLog
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -415,7 +416,7 @@ class VehicleKPIService:
                 logger.error(
                     "vehicle_kpi_calculation_failed",
                     vehicle_id=str(vehicle.id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 error_count += 1
 

@@ -37,6 +37,7 @@ from app.db.bpmn_models.bpmn import (
     TaskStatus,
     ProcessStatus,
 )
+from app.core.safe_errors import safe_error_detail, safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -142,7 +143,7 @@ def escalate_overdue_tasks(self, company_id: Optional[str] = None):
                     logger.error(
                         "task_escalation_failed",
                         task_id=str(task.id),
-                        error=str(e)
+                        **safe_error_log(e, context="BPMN-Task")
                     )
 
             await db.commit()
@@ -259,7 +260,7 @@ def execute_service_task(
                         logger.error(
                             "service_task_security_violation",
                             implementation=implementation,
-                            error=str(e),
+                            **safe_error_log(e, context="BPMN-Task"),
                         )
                         raise ValueError(
                             f"Funktion nicht erlaubt: {module_func}"
@@ -287,7 +288,7 @@ def execute_service_task(
                     logger.error(
                         "service_task_implementation_failed",
                         implementation=implementation,
-                        error=str(e)
+                        **safe_error_log(e, context="BPMN-Task")
                     )
                     raise self.retry(exc=e)
 

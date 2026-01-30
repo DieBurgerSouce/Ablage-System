@@ -21,6 +21,7 @@ from sqlalchemy import select, func, and_, or_, update, delete
 from sqlalchemy.orm import selectinload
 
 from app.core.encryption import encrypt_data, decrypt_data, EncryptionError
+from app.core.safe_errors import safe_error_detail, safe_error_log
 
 from app.db.models import (
     User,
@@ -309,12 +310,12 @@ async def create_connection(
     except EncryptionError as e:
         logger.error(
             "erp_api_key_encryption_failed",
-            error=str(e),
+            **safe_error_log(e),
             user_id=str(current_user.id),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="API-Key Verschluesselung fehlgeschlagen",
+            detail=safe_error_detail(e, "ERP-Verschluesselung"),
         )
 
     connection = ERPConnection(
@@ -393,12 +394,12 @@ async def update_connection(
         except EncryptionError as e:
             logger.error(
                 "erp_api_key_encryption_failed",
-                error=str(e),
+                **safe_error_log(e),
                 connection_id=str(connection_id),
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="API-Key Verschluesselung fehlgeschlagen",
+                detail=safe_error_detail(e, "ERP-Verschluesselung"),
             )
 
     for key, value in update_data.items():
@@ -500,12 +501,12 @@ async def test_connection(
         return ERPConnectionTestResult(**result_data)
 
     except Exception as e:
-        logger.exception("erp_test_connection_failed", error=str(e))
+        logger.exception("erp_test_connection_failed", **safe_error_log(e))
         return ERPConnectionTestResult(
             success=False,
             connected=False,
             erp_type=connection.erp_type,
-            error=str(e),
+            error=safe_error_detail(e, "ERP-Verbindungstest"),
         )
 
 

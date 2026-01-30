@@ -49,6 +49,7 @@ from app.db import models
 from app.db.database import get_async_db
 from app.services.einvoice.generator_service import get_generator_service
 from app.services.einvoice.parser_service import get_parser_service
+from app.core.safe_errors import safe_error_log
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +124,7 @@ async def parse_einvoice(
                     }
                 )
             except Exception as e:
-                logger.error("einvoice_storage_upload_failed", error=str(e))
+                logger.error("einvoice_storage_upload_failed", **safe_error_log(e))
                 raise HTTPException(
                     status_code=500,
                     detail="Speicherung fehlgeschlagen. E-Rechnung wurde geparst aber nicht gespeichert."
@@ -188,12 +189,12 @@ async def parse_einvoice(
         # SECURITY FIX 28-19: Generische Fehlermeldung - keine internen Details
         logger.warning(
             "einvoice_parse_validation_error",
-            extra={"filename": file.filename, "error": str(e)}
+            extra={"filename": file.filename, **safe_error_log(e)}
         )
         raise HTTPException(status_code=400, detail="Ungueltige E-Rechnung. Bitte Format pruefen.")
 
     except ImportError as e:
-        logger.error("einvoice_parse_import_error", extra={"error": str(e)})
+        logger.error("einvoice_parse_import_error", **safe_error_log(e))
         raise HTTPException(
             status_code=501,
             detail="factur-x Bibliothek nicht installiert"
@@ -266,12 +267,12 @@ async def generate_zugferd(
         # SECURITY FIX 28-19: Generische Fehlermeldung
         logger.warning(
             "einvoice_generate_zugferd_validation_error",
-            extra={"document_id": str(document_id), "error": str(e)}
+            extra={"document_id": str(document_id), **safe_error_log(e)}
         )
         raise HTTPException(status_code=400, detail="Ungueltige Daten fuer ZUGFeRD-Generierung.")
 
     except ImportError as e:
-        logger.error("einvoice_generate_import_error", extra={"error": str(e)})
+        logger.error("einvoice_generate_import_error", **safe_error_log(e))
         raise HTTPException(
             status_code=501,
             detail="factur-x Bibliothek nicht installiert"
@@ -339,14 +340,14 @@ async def generate_xrechnung(
 
     except NotImplementedError as e:
         # SECURITY FIX 28-19: Generische Fehlermeldung
-        logger.warning("einvoice_xrechnung_not_implemented", extra={"error": str(e)})
+        logger.warning("einvoice_xrechnung_not_implemented", **safe_error_log(e))
         raise HTTPException(status_code=501, detail="Diese XRechnung-Funktion ist nicht implementiert.")
 
     except ValueError as e:
         # SECURITY FIX 28-19: Generische Fehlermeldung
         logger.warning(
             "einvoice_generate_xrechnung_validation_error",
-            extra={"document_id": str(document_id), "error": str(e)}
+            extra={"document_id": str(document_id), **safe_error_log(e)}
         )
         raise HTTPException(status_code=400, detail="Ungueltige Daten fuer XRechnung-Generierung.")
 
@@ -562,6 +563,7 @@ async def get_formats() -> EInvoiceFormatsResponse:
 async def check_mustang_health() -> dict:
     """Prueft Mustang Service Verfuegbarkeit."""
     from app.services.einvoice.mustang_client import (
+
         get_mustang_client,
         MustangConnectionError,
     )
@@ -600,19 +602,19 @@ async def check_mustang_health() -> dict:
             "status": "error",
             "service": "mustang",
             "available": False,
-            "error": str(e),
+            "error": safe_error_detail(e, "Vorgang"),
         }
 
     except Exception as e:
         logger.warning(
             "mustang_health_check_error",
-            extra={"error": str(e)}
+            **safe_error_log(e)
         )
         return {
             "status": "error",
             "service": "mustang",
             "available": False,
-            "error": str(e),
+            "error": safe_error_detail(e, "Vorgang"),
         }
 
 

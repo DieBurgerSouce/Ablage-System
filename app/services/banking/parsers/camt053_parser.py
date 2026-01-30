@@ -11,6 +11,7 @@ from decimal import Decimal
 from typing import Optional, List, Union, Dict, Any
 import structlog
 import re
+from app.core.safe_errors import safe_error_detail, safe_error_log
 
 # S.2 SECURITY FIX: defusedxml gegen XXE-Angriffe bei User-supplied Bank-Dateien
 from defusedxml.ElementTree import fromstring as safe_xml_fromstring
@@ -180,7 +181,7 @@ class CAMT053Parser(BaseParser):
             logger.exception(f"Fehler beim Parsen des CAMT.053: {e}")
             result.errors.append({
                 "type": "parse_error",
-                "message": str(e),
+                "message": safe_error_detail(e, "CAMT053"),
             })
 
         return result

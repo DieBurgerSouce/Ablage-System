@@ -26,6 +26,7 @@ from app.core.rate_limiting import limiter, get_user_identifier
 
 from app.db.models import User, WebhookSubscription, WebhookDelivery
 from app.api.dependencies import get_current_user, get_db
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.core.webhook_signature import (
     generate_signature_header,
     SIGNATURE_HEADER_NAME,
@@ -371,6 +372,7 @@ async def test_webhook(
 
     # M.1 CRITICAL: SSRF-Schutz - URL validieren BEVOR HTTP-Request gemacht wird
     from app.core.security import validate_url_for_ssrf_async
+
     is_valid, ssrf_error = await validate_url_for_ssrf_async(webhook.url)
     if not is_valid:
         logger.warning(
@@ -422,21 +424,21 @@ async def test_webhook(
         )
 
     except httpx.ConnectError as e:
-        logger.warning("webhook_test_connection_error", webhook_id=str(webhook_id), error=str(e))
+        logger.warning("webhook_test_connection_error", webhook_id=str(webhook_id), **safe_error_log(e))
         return WebhookTestResponse(
             success=False,
             status_code=None,
             response_time_ms=None,
-            error=f"Verbindungsfehler: {str(e)}"
+            error=safe_error_detail(e, "Vorgang")
         )
 
     except Exception as e:
-        logger.error("webhook_test_error", webhook_id=str(webhook_id), error=str(e))
+        logger.error("webhook_test_error", webhook_id=str(webhook_id), **safe_error_log(e))
         return WebhookTestResponse(
             success=False,
             status_code=None,
             response_time_ms=None,
-            error=f"Fehler: {str(e)}"
+            error=safe_error_detail(e, "Vorgang")
         )
 
 

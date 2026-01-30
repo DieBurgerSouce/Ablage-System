@@ -24,6 +24,7 @@ from app.workers.celery_metrics import (
     record_task_succeeded,
     record_task_failed,
 )
+from app.core.safe_errors import safe_error_log
 from app.db.session import get_async_session_context
 from app.db.models import (
     SmartInboxItem,
@@ -145,7 +146,7 @@ def aggregate_inbox_items(
                     stats["errors"].append({
                         "source_type": "document",
                         "source_id": str(doc.id),
-                        "error": str(e),
+                        **safe_error_log(e),
                     })
 
             # 2. Offene Approval-Requests ohne Inbox-Item
@@ -205,7 +206,7 @@ def aggregate_inbox_items(
                     stats["errors"].append({
                         "source_type": "approval_request",
                         "source_id": str(approval.id),
-                        "error": str(e),
+                        **safe_error_log(e),
                     })
 
             # 3. Ueberfaellige Rechnungen ohne Inbox-Item
@@ -263,7 +264,7 @@ def aggregate_inbox_items(
                     stats["errors"].append({
                         "source_type": "invoice_overdue",
                         "source_id": str(invoice.id),
-                        "error": str(e),
+                        **safe_error_log(e),
                     })
 
             # Commit aller neuen Items
@@ -291,7 +292,7 @@ def aggregate_inbox_items(
         return result
     except Exception as e:
         record_task_failed("smart_inbox.aggregate", str(e))
-        logger.error("smart_inbox_aggregation_failed", error=str(e))
+        logger.error("smart_inbox_aggregation_failed", **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -387,7 +388,7 @@ def recalculate_priorities(
                 except Exception as e:
                     stats["errors"].append({
                         "item_id": str(item.id),
-                        "error": str(e),
+                        "error": safe_error_detail(e, "Vorgang"),
                     })
 
             await db.commit()
@@ -404,7 +405,7 @@ def recalculate_priorities(
         return result
     except Exception as e:
         record_task_failed("smart_inbox.recalculate_priorities", str(e))
-        logger.error("smart_inbox_priority_recalculation_failed", error=str(e))
+        logger.error("smart_inbox_priority_recalculation_failed", **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -561,7 +562,7 @@ def train_behavior_model(
         return result
     except Exception as e:
         record_task_failed("smart_inbox.train_behavior_model", str(e))
-        logger.error("smart_inbox_behavior_training_failed", error=str(e))
+        logger.error("smart_inbox_behavior_training_failed", **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -632,5 +633,5 @@ def cleanup_completed_items(
         return result
     except Exception as e:
         record_task_failed("smart_inbox.cleanup_completed", str(e))
-        logger.error("smart_inbox_cleanup_failed", error=str(e))
+        logger.error("smart_inbox_cleanup_failed", **safe_error_log(e))
         raise self.retry(exc=e)

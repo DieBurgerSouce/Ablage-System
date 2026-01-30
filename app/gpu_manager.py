@@ -20,6 +20,7 @@ import threading
 import asyncio
 from functools import wraps
 from contextlib import contextmanager
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -108,10 +109,10 @@ class GPUManager:
             }
 
         except Exception as e:
-            logger.error("gpu_check_failed", error=str(e))
+            logger.error("gpu_check_failed", **safe_error_log(e))
             return {
                 "available": False,
-                "reason": f"GPU check failed: {str(e)}",
+                "reason": safe_error_detail(e, "GPU-Check"),
                 "fallback": "cpu"
             }
 
@@ -412,10 +413,10 @@ class GPUManager:
                 }
 
         except Exception as e:
-            logger.critical("gpu_recovery_catastrophic_failure", error=str(e))
+            logger.critical("gpu_recovery_catastrophic_failure", **safe_error_log(e))
             return {
                 "recovered": False,
-                "error": str(e),
+                "error": safe_error_detail(e, "Vorgang"),
                 "fallback": "cpu_only"
             }
 
@@ -958,12 +959,10 @@ class GPUMemoryGuard:
             return status
 
         except Exception as e:
-            logger.error("gpu_memory_check_failed", error=str(e))
+            logger.error("gpu_memory_check_failed", **safe_error_log(e))
             return {
                 "available": False,
-                "enforced": False,
-                "error": str(e)
-            }
+                "enforced": False, **safe_error_log(e)}
 
     def can_allocate(self, required_gb: float) -> Dict:
         """
@@ -1048,6 +1047,7 @@ class GPUMemoryGuard:
 
             # Garbage Collection
             import gc
+
             gc.collect()
 
             after = torch.cuda.memory_allocated(0)
@@ -1064,7 +1064,7 @@ class GPUMemoryGuard:
             return max(0, freed)
 
         except Exception as e:
-            logger.error("gpu_cache_cleanup_failed", error=str(e))
+            logger.error("gpu_cache_cleanup_failed", **safe_error_log(e))
             return 0
 
     def enforce_limit(self) -> Dict:
@@ -1556,7 +1556,7 @@ class AdaptiveBatchProcessor:
                     new_batch_size=batch_size // 2,
                     new_effective_max=self._stats["current_effective_max_batch"],
                     hysteresis_reset=True,
-                    error=str(e),
+                    **safe_error_log(e),
                     backend=backend
                 )
 
@@ -1587,7 +1587,7 @@ class AdaptiveBatchProcessor:
                 # Andere Fehler - nicht recoverable durch Batch-Size Reduktion
                 logger.error(
                     "batch_processing_error",
-                    error=str(e),
+                    **safe_error_log(e),
                     backend=backend,
                     batch_size=batch_size
                 )

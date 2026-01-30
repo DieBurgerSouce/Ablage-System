@@ -23,6 +23,7 @@ import numpy as np
 import structlog
 
 from app.agents.base import PreprocessingAgent
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -344,7 +345,7 @@ class PageSegmentationAgent(PreprocessingAgent):
             self.logger.error(
                 "pdf_extraction_failed",
                 file_path=str(file_path),
-                error=str(e),
+                **safe_error_log(e),
             )
 
         return pages
@@ -375,7 +376,7 @@ class PageSegmentationAgent(PreprocessingAgent):
             self.logger.error(
                 "image_extraction_failed",
                 file_path=str(file_path),
-                error=str(e),
+                **safe_error_log(e),
             )
             return []
 
@@ -425,7 +426,7 @@ class PageSegmentationAgent(PreprocessingAgent):
             self.logger.error(
                 "region_detection_failed",
                 page_num=page.page_num,
-                error=str(e),
+                **safe_error_log(e),
             )
 
         return regions
@@ -501,7 +502,7 @@ class PageSegmentationAgent(PreprocessingAgent):
         except Exception as e:
             self.logger.warning(
                 "text_block_detection_failed",
-                error=str(e),
+                **safe_error_log(e),
             )
 
         return regions
@@ -579,7 +580,7 @@ class PageSegmentationAgent(PreprocessingAgent):
         except Exception as e:
             self.logger.warning(
                 "table_detection_failed",
-                error=str(e),
+                **safe_error_log(e),
             )
 
         return regions
@@ -663,7 +664,7 @@ class PageSegmentationAgent(PreprocessingAgent):
         except Exception as e:
             self.logger.warning(
                 "image_detection_failed",
-                error=str(e),
+                **safe_error_log(e),
             )
 
         return regions

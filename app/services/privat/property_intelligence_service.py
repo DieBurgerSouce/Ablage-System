@@ -15,6 +15,7 @@ Enterprise Feature - KEINE externen APIs, alles lokal berechnet.
 from __future__ import annotations
 
 import threading
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, date, timedelta
 from decimal import Decimal, ROUND_HALF_UP
@@ -755,6 +756,7 @@ class PropertyIntelligenceService:
         """
         from app.db.models import PrivatProperty
 
+
         PROPERTY_INTEL_CALCULATIONS.labels(calculation_type="batch_all").inc()
 
         query = select(PrivatProperty).where(PrivatProperty.deleted_at.is_(None))
@@ -782,11 +784,11 @@ class PropertyIntelligenceService:
 
             except Exception as e:
                 stats["skipped"] += 1
-                stats["errors"].append(f"{prop.id}: {str(e)}")
+                stats["errors"].append(f"{prop.id}: {safe_error_detail(e, 'Immobilie')}")
                 logger.warning(
                     "property_analytics_failed",
                     property_id=str(prop.id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         # Prometheus Gauge aktualisieren

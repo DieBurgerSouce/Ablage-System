@@ -26,6 +26,7 @@ from app.db.schemas import (
     SystemDashboard,
 )
 from app.core.config import settings
+from app.core.safe_errors import safe_error_detail,  safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -75,7 +76,7 @@ class SystemStatusService:
                 recommendations=recommendations,
             )
         except Exception as e:
-            logger.warning("gpu_status_failed", error=str(e))
+            logger.warning("gpu_status_failed", **safe_error_log(e))
             return GPUStatusAdmin(
                 available=False,
                 gpu_name=None,
@@ -221,7 +222,7 @@ class SystemStatusService:
                 name="PostgreSQL",
                 status="unhealthy",
                 latency_ms=None,
-                message=f"Fehler: {str(e)[:100]}",
+                message=safe_error_detail(e, "Fehler: "),
                 last_check=datetime.now(timezone.utc),
             )
 
@@ -252,7 +253,7 @@ class SystemStatusService:
                 name="Redis",
                 status="unhealthy",
                 latency_ms=None,
-                message=f"Fehler: {str(e)[:100]}",
+                message=safe_error_detail(e, "Fehler: "),
                 last_check=datetime.now(timezone.utc),
             )
 
@@ -292,7 +293,7 @@ class SystemStatusService:
                 name="MinIO",
                 status="unhealthy",
                 latency_ms=None,
-                message=f"Fehler: {str(e)[:100]}",
+                message=safe_error_detail(e, "Fehler: "),
                 last_check=datetime.now(timezone.utc),
             )
 
@@ -306,6 +307,7 @@ class SystemStatusService:
         start_time = datetime.now(timezone.utc)
         try:
             from app.workers.celery_app import celery_app
+
 
             # Try to ping workers
             inspect = celery_app.control.inspect()
@@ -334,7 +336,7 @@ class SystemStatusService:
                 name="Celery",
                 status="unknown",
                 latency_ms=None,
-                message=f"Status unbekannt: {str(e)[:100]}",
+                message=safe_error_detail(e, "Status unbekannt: "),
                 last_check=datetime.now(timezone.utc),
             )
 
@@ -569,5 +571,5 @@ class SystemStatusService:
                 return True
             return False
         except Exception as e:
-            logger.error("gpu_cache_clear_failed", error=str(e))
+            logger.error("gpu_cache_clear_failed", **safe_error_log(e))
             return False

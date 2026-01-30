@@ -15,6 +15,7 @@ from typing import Optional
 from uuid import UUID
 import json
 import re
+from app.core.safe_errors import safe_error_detail, safe_error_log
 
 from sqlalchemy import select, update, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -322,7 +323,7 @@ class PushNotificationService:
             return True
 
         except WebPushException as e:
-            error_msg = str(e)
+            error_msg = safe_error_detail(e, "Push")
             subscription.error_count += 1
             subscription.last_error = error_msg
 

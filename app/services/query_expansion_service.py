@@ -12,6 +12,7 @@ from typing import Any, List, Dict, Set, Optional, Tuple
 from functools import lru_cache
 
 import structlog
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -65,7 +66,7 @@ class QueryExpansionService:
                 logger.warning("synonyms_file_not_found", path=str(synonyms_path))
 
         except Exception as e:
-            logger.error("synonyms_load_error", error=str(e))
+            logger.error("synonyms_load_error", **safe_error_log(e))
             self._synonyms = {}
 
     def _build_reverse_index(self) -> None:

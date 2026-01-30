@@ -27,6 +27,7 @@ from app.db.models import (
     ImportLog,
     ImportRule,
 )
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -110,12 +111,12 @@ def sync_all_email_configs(self) -> Dict[str, Any]:
                 except Exception as e:
                     stats["errors"].append({
                         "config_id": str(config.id),
-                        "error": str(e),
+                        "error": safe_error_detail(e, "Vorgang"),
                     })
                     logger.error(
                         "email_config_sync_failed",
                         config_id=str(config.id),
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
         return stats
@@ -130,7 +131,7 @@ def sync_all_email_configs(self) -> Dict[str, Any]:
         )
         return result
     except Exception as e:
-        logger.error("email_sync_batch_failed", error=str(e))
+        logger.error("email_sync_batch_failed", **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -177,7 +178,7 @@ def sync_email_config(self, config_id: str, user_id: str, max_emails: int = 100)
         logger.error(
             "email_sync_task_failed",
             config_id=config_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -263,12 +264,12 @@ def poll_all_folder_configs(self) -> Dict[str, Any]:
                 except Exception as e:
                     stats["errors"].append({
                         "config_id": str(config.id),
-                        "error": str(e),
+                        "error": safe_error_detail(e, "Vorgang"),
                     })
                     logger.error(
                         "folder_config_poll_failed",
                         config_id=str(config.id),
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
         return stats
@@ -283,7 +284,7 @@ def poll_all_folder_configs(self) -> Dict[str, Any]:
         )
         return result
     except Exception as e:
-        logger.error("folder_poll_batch_failed", error=str(e))
+        logger.error("folder_poll_batch_failed", **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -326,7 +327,7 @@ def poll_folder_config(self, config_id: str, user_id: str) -> Dict[str, Any]:
         logger.error(
             "folder_poll_task_failed",
             config_id=config_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -428,7 +429,7 @@ def retry_failed_imports(self) -> Dict[str, Any]:
                     logger.warning(
                         "import_retry_failed",
                         log_id=str(log.id),
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
         return stats
@@ -436,8 +437,8 @@ def retry_failed_imports(self) -> Dict[str, Any]:
     try:
         return asyncio.get_event_loop().run_until_complete(_retry_all())
     except Exception as e:
-        logger.error("retry_failed_imports_error", error=str(e))
-        return {"error": str(e)}
+        logger.error("retry_failed_imports_error", **safe_error_log(e))
+        return {"error": safe_error_detail(e, "Vorgang")}
 
 
 @celery_app.task(name="import.retry_import")
@@ -648,17 +649,17 @@ def retry_single_email(
 
             except Exception as e:
                 log.status = "failed"
-                log.error_message = f"Retry fehlgeschlagen: {str(e)}"
+                log.error_message = safe_error_detail(e, "Import-Retry")
                 await db.commit()
 
                 logger.error(
                     "email_retry_failed",
                     log_id=log_id,
                     email_uid=email_uid,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
-                return {"success": False, "error": str(e)}
+                return {"success": False, **safe_error_log(e)}
 
     return asyncio.get_event_loop().run_until_complete(_retry_email())
 
@@ -798,17 +799,17 @@ def retry_single_file(
 
             except Exception as e:
                 log.status = "failed"
-                log.error_message = f"Retry fehlgeschlagen: {str(e)}"
+                log.error_message = safe_error_detail(e, "Import-Retry")
                 await db.commit()
 
                 logger.error(
                     "file_retry_failed",
                     log_id=log_id,
                     file_path=file_path,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
-                return {"success": False, "error": str(e)}
+                return {"success": False, **safe_error_log(e)}
 
     return asyncio.get_event_loop().run_until_complete(_retry_file())
 
@@ -960,7 +961,7 @@ def check_email_connection_health() -> Dict[str, Any]:
                     stats["errors"].append({
                         "config_id": str(config.id),
                         "name": config.name,
-                        "error": str(e),
+                        "error": safe_error_detail(e, "Vorgang"),
                     })
 
         return stats

@@ -19,12 +19,14 @@ from typing import List, Optional
 import structlog
 
 from app.services.extraction.base import DiscountTier, ExtractionConfig
+from app.core.safe_errors import safe_error_log
 from app.services.extraction.config import (
     MAX_PAYMENT_DAYS,
     MAX_SKONTO_DAYS,
     MAX_SKONTO_PERCENT,
 )
 from app.services.extraction.patterns.payment_patterns import (
+
     PaymentPatterns,
     calculate_end_of_month,
     extract_all_discount_tiers,
@@ -222,7 +224,7 @@ class PaymentTermsExtractor:
             result.confidence = self._calculate_confidence(result)
 
         except Exception as e:
-            logger.exception("payment_extraction_error", error=str(e))
+            logger.exception("payment_extraction_error", **safe_error_log(e))
             result.extraction_warnings.append(f"Extraktionsfehler: {e}")
             result.needs_review = True
 

@@ -21,6 +21,7 @@ from sqlalchemy import select, and_, func
 from app.workers.celery_app import celery_app
 from app.db.session import get_async_session_context
 from app.db.models import Document, BusinessEntity
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -86,7 +87,7 @@ def link_all_documents_task(
         )
         return result
     except Exception as e:
-        logger.error("document_entity_linking_failed", error=str(e))
+        logger.error("document_entity_linking_failed", **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -162,7 +163,7 @@ def link_single_document_task(
         logger.error(
             "document_linking_task_failed",
             document_id=document_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -259,7 +260,7 @@ def post_lexware_import_linking_task(self) -> Dict[str, Any]:
 
         return result
     except Exception as e:
-        logger.error("post_import_linking_failed", error=str(e))
+        logger.error("post_import_linking_failed", **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -429,7 +430,7 @@ def reprocess_low_confidence_documents_task(
 
         return result
     except Exception as e:
-        logger.error("low_confidence_reprocessing_failed", error=str(e))
+        logger.error("low_confidence_reprocessing_failed", **safe_error_log(e))
         raise self.retry(exc=e)
 
 

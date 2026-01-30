@@ -30,6 +30,7 @@ _shap_explainer_lock = threading.Lock()
 SHAP_AVAILABLE = False
 try:
     import shap
+
     SHAP_AVAILABLE = True
 except ImportError:
     logger.info("SHAP nicht installiert - verwende eingebaute Feature Importance")
@@ -208,7 +209,7 @@ class SHAPExplainer:
             self._shap_explainer = shap.TreeExplainer(self.model)
             logger.info("SHAP TreeExplainer initialisiert")
         except Exception as e:
-            logger.warning("shap_explainer_init_fehlgeschlagen", error=str(e))
+            logger.warning("shap_explainer_init_fehlgeschlagen", **safe_error_log(e))
 
     def set_model(self, model: Any, feature_names: List[str]) -> None:
         """
@@ -395,7 +396,7 @@ class SHAPExplainer:
                 contributions.append(contribution)
 
         except Exception as e:
-            logger.warning("shap_berechnung_fehlgeschlagen", error=str(e))
+            logger.warning("shap_berechnung_fehlgeschlagen", **safe_error_log(e))
             contributions = self._calculate_heuristic_contributions(
                 features, selected_backend
             )

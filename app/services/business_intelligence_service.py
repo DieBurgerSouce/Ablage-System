@@ -31,6 +31,7 @@ from app.db.models import (
     User,
 )
 from app.core.config import settings
+from app.core.safe_errors import safe_error_detail,  safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -934,10 +935,10 @@ class BusinessIntelligenceService:
                     db, user_id, company_id
                 )
         except Exception as e:
-            logger.error("bi_query_failed", error=str(e), query_type=query_type.value)
+            logger.error("bi_query_failed", **safe_error_log(e), query_type=query_type.value)
             return BusinessIntelligenceResponse(
                 query_type=query_type,
-                summary=f"Fehler bei der Analyse: {str(e)}",
+                summary=safe_error_detail(e, "Analyse"),
                 data=None,
                 suggestions=["Versuchen Sie eine andere Frage"],
                 query_time_ms=0,

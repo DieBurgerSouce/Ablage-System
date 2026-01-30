@@ -170,7 +170,7 @@ async def create_user(
         return UserAdminView.from_orm_with_computed(user)
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("user_admin_validation_error", error=str(e))
+        logger.warning("user_admin_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ungueltige Anfrage. Bitte Eingaben pruefen.",
@@ -259,7 +259,7 @@ async def deactivate_user(
 
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("user_admin_validation_error", error=str(e))
+        logger.warning("user_admin_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ungueltige Anfrage. Bitte Eingaben pruefen.",
@@ -387,7 +387,7 @@ async def change_role(
 
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("user_admin_validation_error", error=str(e))
+        logger.warning("user_admin_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ungueltige Anfrage. Bitte Eingaben pruefen.",
@@ -465,7 +465,7 @@ async def delete_user(
 
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("user_admin_validation_error", error=str(e))
+        logger.warning("user_admin_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ungueltige Anfrage. Bitte Eingaben pruefen.",
@@ -569,6 +569,7 @@ async def get_account_lockout_status(
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select, update
 from app.db.models import RateLimitOverride
+from app.core.safe_errors import safe_error_log
 
 
 class UserQuotasResponse(BaseModel):
@@ -787,6 +788,7 @@ async def update_user_quotas(
 
     # Log the action
     from app.core.audit_logger import AuditLogger
+
     ip_address = request.client.host if request.client else None
     await AuditLogger.log_admin_action(
         db=db,

@@ -10,7 +10,8 @@ from pydantic import BaseModel, Field, validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, desc, asc
 
-from app.core.deps import get_db, get_current_user
+from app.api.dependencies import get_db, get_current_user
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 
 logger = structlog.get_logger(__name__)
@@ -205,11 +206,23 @@ class QueryBuilder:
         count_result = await db.execute(count_stmt)
         total_count = count_result.scalar() or 0
 
-        # Sortierung
+        # SECURITY: Whitelist fuer Sortierfelder pro Entity-Typ (CWE-89)
+        ALLOWED_ORDER_FIELDS = {
+            "document": {"id", "filename", "status", "created_at", "updated_at", "ocr_confidence"},
+            "entity": {"id", "name", "entity_type", "risk_score", "created_at", "payment_delay_days"},
+            "invoice": {"id", "invoice_number", "amount", "status", "due_date", "paid_date", "dunning_level"},
+            "alert": {"id", "alert_code", "title", "category", "severity", "status", "created_at"},
+            "workflow": {"id", "name", "status", "created_at", "updated_at"},
+            "payment": {"id", "amount", "status", "created_at"},
+        }
+        # Sortierung mit Whitelist-Validierung
         if request.order_by:
-            order_field = getattr(model_class, request.order_by, None)
-            if order_field is not None:
-                stmt = stmt.order_by(desc(order_field) if request.order_desc else asc(order_field))
+            entity_fields = ALLOWED_ORDER_FIELDS.get(request.entity_type, set())
+            if request.order_by in entity_fields:
+                order_field = getattr(model_class, request.order_by, None)
+                if order_field is not None:
+                    stmt = stmt.order_by(desc(order_field) if request.order_desc else asc(order_field))
+            # Ungueltige Felder werden ignoriert (Silent Fallback auf Default)
         else:
             # Standard: Nach created_at absteigend
             if hasattr(model_class, "created_at"):
@@ -349,10 +362,10 @@ async def execute_query(
         )
 
     except ValueError as e:
-        logger.warning("graphql_query_fehler", error=str(e))
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.warning("graphql_query_fehler", **safe_error_log(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "GraphQL-Abfrage"))
     except Exception as e:
-        logger.error("graphql_query_fehler", error=str(e), exc_info=True)
+        logger.error("graphql_query_fehler", **safe_error_log(e), exc_info=True)
         raise HTTPException(status_code=500, detail="Fehler bei der Query-Ausführung")
 
 
@@ -384,5 +397,5 @@ async def get_schema(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("schema_abruf_fehler", error=str(e))
+        logger.error("schema_abruf_fehler", **safe_error_log(e))
         raise HTTPException(status_code=500, detail="Fehler beim Schema-Abruf")

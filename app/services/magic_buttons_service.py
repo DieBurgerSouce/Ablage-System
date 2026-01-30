@@ -22,6 +22,7 @@ from enum import Enum
 from typing import Optional, Dict, Any, List
 from uuid import UUID
 import structlog
+from app.core.safe_errors import safe_error_detail, safe_error_log
 
 from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -298,7 +299,7 @@ class MagicButtonsService:
                         if link_result and link_result.get("linked"):
                             linked_count += 1
                     except Exception as e:
-                        result.errors.append(f"Dokument {doc.id}: {str(e)}")
+                        result.errors.append(f"Dokument {doc.id}: {safe_error_detail(e, 'Magic-Button')}")
 
                 result.details.append({
                     "step": "auto_assign",
@@ -319,8 +320,8 @@ class MagicButtonsService:
 
         except Exception as e:
             result.status = MagicButtonStatus.FAILED
-            result.message = f"Tages-Abschluss fehlgeschlagen: {str(e)}"
-            result.errors.append(str(e))
+            result.message = safe_error_detail(e, "Tages-Abschluss")
+            result.errors.append(safe_error_detail(e, "Magic-Button"))
             logger.exception("daily_close_failed", company_id=str(company_id))
 
         result.duration_ms = int((time.time() - start_time) * 1000)
@@ -495,8 +496,8 @@ class MagicButtonsService:
 
         except Exception as e:
             result.status = MagicButtonStatus.FAILED
-            result.message = f"Monats-Report fehlgeschlagen: {str(e)}"
-            result.errors.append(str(e))
+            result.message = safe_error_detail(e, "Monats-Report")
+            result.errors.append(safe_error_detail(e, "Magic-Button"))
             logger.exception("monthly_report_failed", company_id=str(company_id))
 
         result.duration_ms = int((time.time() - start_time) * 1000)
@@ -687,8 +688,8 @@ class MagicButtonsService:
 
         except Exception as e:
             result.status = MagicButtonStatus.FAILED
-            result.message = f"Bereinigung fehlgeschlagen: {str(e)}"
-            result.errors.append(str(e))
+            result.message = safe_error_detail(e, "Bereinigung")
+            result.errors.append(safe_error_detail(e, "Magic-Button"))
             logger.exception("clear_open_items_failed", company_id=str(company_id))
 
         result.duration_ms = int((time.time() - start_time) * 1000)
@@ -869,8 +870,8 @@ class MagicButtonsService:
 
         except Exception as e:
             result.status = MagicButtonStatus.FAILED
-            result.message = f"Kontakt-Erstellung fehlgeschlagen: {str(e)}"
-            result.errors.append(str(e))
+            result.message = safe_error_detail(e, "Kontakt")
+            result.errors.append(safe_error_detail(e, "Magic-Button"))
             logger.exception("create_contact_failed", document_id=str(document_id))
 
         result.duration_ms = int((time.time() - start_time) * 1000)

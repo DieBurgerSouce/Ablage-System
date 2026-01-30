@@ -25,6 +25,7 @@ from app.services.websocket_manager import (
 )
 from app.services.chat_sharing_service import get_chat_sharing_service
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -63,10 +64,10 @@ async def authenticate_websocket(token: str) -> tuple[User | None, str | None]:
             return user, None
 
     except JWTError as e:
-        logger.warning("websocket_auth_failed", error=str(e))
+        logger.warning("websocket_auth_failed", **safe_error_log(e))
         return None, "Token ungültig oder abgelaufen"
     except Exception as e:
-        logger.error("websocket_auth_error", error=str(e))
+        logger.error("websocket_auth_error", **safe_error_log(e))
         return None, "Authentifizierungsfehler"
 
 
@@ -218,7 +219,7 @@ async def chat_websocket(
             "chat_websocket_error",
             session_id=session_id,
             user_id=str(user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
     finally:
         await ws_manager.disconnect(

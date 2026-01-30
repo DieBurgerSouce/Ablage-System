@@ -197,7 +197,7 @@ class BusinessContract(Base):
 
     # Metadata
     tags: Mapped[List[str]] = mapped_column(JSONB, default=list)
-    metadata: Mapped[dict] = mapped_column(JSONB, default=dict)
+    contract_metadata: Mapped[dict] = mapped_column(JSONB, default=dict)  # Renamed: 'metadata' is reserved in SQLAlchemy
     key_contacts: Mapped[List[dict]] = mapped_column(JSONB, default=list)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 

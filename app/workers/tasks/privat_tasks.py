@@ -24,6 +24,7 @@ import structlog
 
 from app.workers.celery_app import celery_app, CPUTask
 from app.core.celery_idempotency import idempotent_task, IdempotencyKey
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -170,7 +171,7 @@ def send_deadline_reminders(self) -> Dict[str, Any]:
                         logger.warning(
                             "deadline_reminder_failed",
                             deadline_id=str(deadline.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
                 return {
@@ -192,7 +193,7 @@ def send_deadline_reminders(self) -> Dict[str, Any]:
         logger.error(
             "deadline_reminders_task_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -300,7 +301,7 @@ Ihr Ablage-System
                         logger.warning(
                             "auto_approval_owner_notification_failed",
                             request_id=str(request.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
                 await db.commit()
@@ -359,7 +360,7 @@ Ihr Ablage-System
                         logger.warning(
                             "expiring_warning_notification_failed",
                             request_id=str(request.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
                     logger.info(
@@ -387,7 +388,7 @@ Ihr Ablage-System
         logger.error(
             "emergency_access_check_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -462,7 +463,7 @@ def cleanup_expired_access(self) -> Dict[str, Any]:
         logger.error(
             "cleanup_expired_access_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -589,7 +590,7 @@ def generate_deadline_report(self) -> Dict[str, Any]:
                         logger.warning(
                             "deadline_report_failed",
                             user_email=user.email,
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
                 return {"reports_sent": reports_sent}
@@ -608,7 +609,7 @@ def generate_deadline_report(self) -> Dict[str, Any]:
         logger.error(
             "deadline_report_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -658,9 +659,9 @@ def cleanup_orphaned_privat_files(self) -> Dict[str, Any]:
                 except Exception as e:
                     logger.warning(
                         "orphaned_cleanup_minio_list_failed",
-                        error=str(e),
+                        **safe_error_log(e),
                     )
-                    return {"deleted": 0, "checked": 0, "error": str(e)}
+                    return {"deleted": 0, "checked": 0, **safe_error_log(e)}
 
                 # Hole alle file_paths aus der DB
                 stmt = select(PrivatDocument.file_path).where(
@@ -700,7 +701,7 @@ def cleanup_orphaned_privat_files(self) -> Dict[str, Any]:
                         logger.warning(
                             "orphaned_file_delete_failed",
                             file_path=file_path,
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
                 return {
@@ -722,7 +723,7 @@ def cleanup_orphaned_privat_files(self) -> Dict[str, Any]:
         logger.error(
             "cleanup_orphaned_files_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -827,7 +828,7 @@ def calculate_property_kpis(
                         logger.warning(
                             "property_kpi_calculation_failed",
                             property_id=str(prop.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
                 return {
@@ -850,7 +851,7 @@ def calculate_property_kpis(
         logger.error(
             "property_kpi_calculation_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -949,7 +950,7 @@ def calculate_vehicle_tco(
                         logger.warning(
                             "vehicle_tco_calculation_failed",
                             vehicle_id=str(vehicle.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
                 return {
@@ -972,7 +973,7 @@ def calculate_vehicle_tco(
         logger.error(
             "vehicle_tco_calculation_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -1070,7 +1071,7 @@ def analyze_insurance_coverage(
                         logger.warning(
                             "insurance_coverage_analysis_failed",
                             space_id=str(space.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
                 return {
@@ -1093,7 +1094,7 @@ def analyze_insurance_coverage(
         logger.error(
             "insurance_coverage_analysis_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -1197,7 +1198,7 @@ def generate_loan_amortization(
                         logger.warning(
                             "loan_amortization_generation_failed",
                             loan_id=str(loan.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
                 return {
@@ -1220,7 +1221,7 @@ def generate_loan_amortization(
         logger.error(
             "loan_amortization_generation_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -1306,7 +1307,7 @@ def run_finance_analytics(
                         logger.warning(
                             "finance_analytics_failed_for_space",
                             space_id=str(space.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
                 return {
@@ -1328,7 +1329,7 @@ def run_finance_analytics(
         logger.error(
             "finance_analytics_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -1390,7 +1391,7 @@ def daily_kpi_recalculation(self) -> Dict[str, Any]:
         logger.error(
             "daily_kpi_recalculation_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -1511,7 +1512,7 @@ def recalculate_property_intelligence(
         logger.error(
             "property_intelligence_recalculation_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -1574,7 +1575,7 @@ def recalculate_all_property_intelligence(
                         logger.warning(
                             "property_intelligence_failed",
                             property_id=str(prop.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
                 return {
@@ -1597,7 +1598,7 @@ def recalculate_all_property_intelligence(
         logger.error(
             "all_property_intelligence_recalculation_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -1665,7 +1666,7 @@ def recalculate_vehicle_intelligence(
         logger.error(
             "vehicle_intelligence_recalculation_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -1728,7 +1729,7 @@ def recalculate_all_vehicle_intelligence(
                         logger.warning(
                             "vehicle_intelligence_failed",
                             vehicle_id=str(vehicle.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
                 return {
@@ -1751,7 +1752,7 @@ def recalculate_all_vehicle_intelligence(
         logger.error(
             "all_vehicle_intelligence_recalculation_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -1825,7 +1826,7 @@ def recalculate_investment_intelligence(
                         logger.warning(
                             "investment_intelligence_failed_for_space",
                             space_id=str(space.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
                 return {
@@ -1847,7 +1848,7 @@ def recalculate_investment_intelligence(
         logger.error(
             "investment_intelligence_recalculation_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -1924,7 +1925,7 @@ def calculate_financial_health(
                         logger.warning(
                             "financial_health_calculation_failed_for_space",
                             space_id=str(space.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
                 return {
@@ -1946,7 +1947,7 @@ def calculate_financial_health(
         logger.error(
             "financial_health_calculation_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -2027,7 +2028,7 @@ def generate_smart_recommendations(
                         logger.warning(
                             "recommendations_generation_failed_for_space",
                             space_id=str(space.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
                 return {
@@ -2051,7 +2052,7 @@ def generate_smart_recommendations(
         logger.error(
             "smart_recommendations_generation_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -2113,7 +2114,7 @@ def daily_intelligence_recalculation(self) -> Dict[str, Any]:
         logger.error(
             "daily_intelligence_recalculation_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -2211,7 +2212,7 @@ def orchestrate_all_kpis(
             "orchestrate_all_kpis_failed",
             task_id=self.request.id,
             space_id=space_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -2285,7 +2286,7 @@ def recalculate_entity_kpi(
             task_id=self.request.id,
             entity_type=entity_type,
             entity_id=entity_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -2406,7 +2407,7 @@ def update_privat_metrics(self) -> Dict[str, Any]:
         logger.error(
             "update_privat_metrics_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -2482,7 +2483,7 @@ def create_monthly_portfolio_snapshot(
         logger.error(
             "create_monthly_portfolio_snapshot_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -2555,7 +2556,7 @@ def recalculate_financial_goals(
         logger.error(
             "recalculate_financial_goals_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -2618,7 +2619,7 @@ def check_goals_at_risk(self) -> dict:
         logger.error(
             "check_goals_at_risk_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -2694,7 +2695,7 @@ def record_kpi_history(
                     logger.error(
                         "record_kpi_history_space_failed",
                         space_id=space_id,
-                        error=str(e),
+                        **safe_error_log(e),
                     )
                     error_count = 1
             else:
@@ -2716,7 +2717,7 @@ def record_kpi_history(
                         logger.warning(
                             "record_kpi_history_space_error",
                             space_id=str(space.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
                         error_count += 1
                         continue
@@ -2742,7 +2743,7 @@ def record_kpi_history(
         logger.error(
             "record_kpi_history_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -2828,7 +2829,7 @@ def generate_predictive_alerts(
                     logger.error(
                         "generate_predictive_alerts_space_failed",
                         space_id=space_id,
-                        error=str(e),
+                        **safe_error_log(e),
                     )
                     error_count = 1
             else:
@@ -2858,7 +2859,7 @@ def generate_predictive_alerts(
                         logger.warning(
                             "generate_predictive_alerts_space_error",
                             space_id=str(space.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
                         error_count += 1
                         continue
@@ -2893,7 +2894,7 @@ def generate_predictive_alerts(
         logger.error(
             "generate_predictive_alerts_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -2986,7 +2987,7 @@ def cleanup_old_projections(
         logger.error(
             "cleanup_old_projections_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -3065,6 +3066,6 @@ def get_predictive_insights_summary(
             "get_predictive_insights_summary_failed",
             task_id=self.request.id,
             space_id=space_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)

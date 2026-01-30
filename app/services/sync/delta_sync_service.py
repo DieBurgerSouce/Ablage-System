@@ -218,7 +218,7 @@ class DeltaSyncService:
                     "change_apply_error",
                     entity_type=change.entity_type,
                     entity_id=str(change.entity_id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 rejected += 1
 
@@ -323,6 +323,7 @@ class DeltaSyncService:
         """Gibt Model-Klasse für Entity-Typ zurück."""
         from app.db.models import Document, BusinessEntity, InvoiceTracking
         from app.db.models_alert import Alert
+
 
         mapping = {
             "document": Document,

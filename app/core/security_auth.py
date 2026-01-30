@@ -34,6 +34,7 @@ except ImportError:
     CACHETOOLS_AVAILABLE = False
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 
 logger = structlog.get_logger(__name__)
@@ -102,6 +103,7 @@ async def _get_redis_client() -> Optional[Any]:
 
     try:
         from app.core.redis_state import RedisStateManager
+
         manager = RedisStateManager.get_instance()
         await manager.connect()
 
@@ -286,7 +288,7 @@ async def get_blacklist_stats() -> Dict[str, Any]:
                     break
             stats["redis_count"] = count
         except Exception as e:
-            stats["redis_error"] = str(e)
+            stats["redis_error"] = safe_error_detail(e, "Redis")
 
     return stats
 
@@ -775,7 +777,7 @@ async def verify_2fa_temp_token(token: str) -> str:
         return user_id
 
     except JWTError as e:
-        logger.warning("2fa_temp_token_invalid", error=str(e))
+        logger.warning("2fa_temp_token_invalid", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="2FA-Token ungueltig oder abgelaufen",
@@ -1039,7 +1041,7 @@ def validate_url_for_ssrf(url: str) -> Tuple[bool, str]:
         logger.error(
             "ssrf_validation_error",
             url=url,
-            error=str(e)
+            **safe_error_log(e)
         )
         return False, "Fehler bei URL-Validierung"
 

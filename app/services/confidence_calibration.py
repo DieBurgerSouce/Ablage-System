@@ -87,6 +87,7 @@ class CalibrationData:
             Tuple (confidences, actuals) der neueren Samples
         """
         import time
+
         cutoff = time.time() - (max_age_days * 24 * 60 * 60)
 
         recent_conf = []
@@ -1075,7 +1076,7 @@ class ConfidenceCalibrationService:
             return True
 
         except Exception as e:
-            logger.error("calibration_save_failed", error=str(e))
+            logger.error("calibration_save_failed", **safe_error_log(e))
             return False
 
     def load(self, path: Optional[Path] = None) -> bool:
@@ -1103,7 +1104,7 @@ class ConfidenceCalibrationService:
             return True
 
         except Exception as e:
-            logger.error("calibration_load_failed", error=str(e))
+            logger.error("calibration_load_failed", **safe_error_log(e))
             return False
 
 

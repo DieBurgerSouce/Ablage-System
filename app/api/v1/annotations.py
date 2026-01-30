@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import get_current_user
+from app.api.dependencies import get_current_user
 from app.db.session import get_async_session
 from app.services.annotations.annotation_service import AnnotationService
 
@@ -140,12 +140,12 @@ async def update_annotation(
     return annotation
 
 
-@router.delete("/{annotation_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{annotation_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def delete_annotation(
     annotation_id: UUID,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session),
-) -> None:
+):
     """Loescht eine Annotation (nur eigene)."""
     service = AnnotationService(db)
     deleted = await service.delete_annotation(

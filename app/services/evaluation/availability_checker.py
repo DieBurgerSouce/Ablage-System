@@ -17,6 +17,7 @@ Feinpoliert und durchdacht - Enterprise-grade Availability Checking.
 import re
 import subprocess
 import sys
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
@@ -435,12 +436,12 @@ class AvailabilityChecker:
             logger.warning(
                 "pypi_check_failed",
                 package=package_name,
-                error=str(e)
+                **safe_error_log(e)
             )
             return AvailabilityResult(
                 package_name=package_name,
                 available=False,
-                error_message=f"PyPI-Prüfung fehlgeschlagen: {str(e)}"
+                error_message=safe_error_detail(e, "PyPI-Prüfung")
             )
 
     def _check_paddlepaddle_repo(self, package_name: str) -> AvailabilityResult:
@@ -498,6 +499,7 @@ class AvailabilityChecker:
         """Prüft CUDA-Verfügbarkeit."""
         try:
             import torch
+
             if torch.cuda.is_available():
                 cuda_version = torch.version.cuda
                 device_name = torch.cuda.get_device_name(0)
@@ -530,7 +532,7 @@ class AvailabilityChecker:
             return AvailabilityResult(
                 package_name="cuda",
                 available=False,
-                error_message=f"CUDA-Prüfung fehlgeschlagen: {str(e)}"
+                error_message=safe_error_detail(e, "CUDA-Prüfung")
             )
 
     def get_dependency_report(self) -> DependencyReport:

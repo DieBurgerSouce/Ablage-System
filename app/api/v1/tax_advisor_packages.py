@@ -22,6 +22,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
 from app.api.dependencies import get_db, get_current_user, get_current_superuser
+from app.core.safe_errors import safe_error_detail, safe_error_log
+from app.core.security_auth import build_content_disposition
 from app.db.models import User
 from app.middleware.company_context import require_company
 from app.services.tax_advisor_package_service import (
@@ -365,7 +367,7 @@ async def create_package(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Steuerberater-Paket")
         )
 
     # In-Memory speichern (in Produktion: DB)
@@ -659,7 +661,7 @@ async def download_package(
         content=f"Download fuer {filename} (Pfad: {file_path})",
         media_type="text/plain",
         headers={
-            "Content-Disposition": f"attachment; filename={filename}",
+            "Content-Disposition": build_content_disposition(filename, "attachment"),
         }
     )
 

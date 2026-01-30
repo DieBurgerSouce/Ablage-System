@@ -43,6 +43,7 @@ from app.db.models import (
     NotificationType as DBNotificationType,
 )
 from app.db.schemas import MentionSchema
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -255,7 +256,7 @@ class CommentService:
                     )
         except Exception as e:
             # WebSocket-Fehler sollen nicht den Kommentar-Flow blockieren
-            logger.warning("websocket_broadcast_failed", error=str(e), comment_id=str(comment.id))
+            logger.warning("websocket_broadcast_failed", **safe_error_log(e), comment_id=str(comment.id))
 
         return comment
 
@@ -372,7 +373,7 @@ class CommentService:
                 company_id=str(company_id),
             )
         except Exception as e:
-            logger.warning("websocket_broadcast_failed", error=str(e), comment_id=str(comment_id))
+            logger.warning("websocket_broadcast_failed", **safe_error_log(e), comment_id=str(comment_id))
 
         return comment
 
@@ -439,7 +440,7 @@ class CommentService:
                 company_id=str(company_id),
             )
         except Exception as e:
-            logger.warning("websocket_broadcast_failed", error=str(e), comment_id=str(comment_id))
+            logger.warning("websocket_broadcast_failed", **safe_error_log(e), comment_id=str(comment_id))
 
         return True
 
@@ -659,7 +660,7 @@ class CommentService:
                 logger.warning(
                     "mention_notification_failed",
                     comment_id=str(comment.id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 continue
 
@@ -944,7 +945,7 @@ class CommentService:
                 company_id=str(company_id),
             )
         except Exception as e:
-            logger.warning("websocket_broadcast_failed", error=str(e), comment_id=str(comment_id))
+            logger.warning("websocket_broadcast_failed", **safe_error_log(e), comment_id=str(comment_id))
 
         return comment
 
@@ -1006,7 +1007,7 @@ class CommentService:
                 company_id=str(company_id),
             )
         except Exception as e:
-            logger.warning("websocket_broadcast_failed", error=str(e), comment_id=str(comment_id))
+            logger.warning("websocket_broadcast_failed", **safe_error_log(e), comment_id=str(comment_id))
 
         return comment
 

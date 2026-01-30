@@ -49,6 +49,7 @@ from app.middleware.company_context import (
     require_expense_approval_permission,
 )
 from app.services.expense_service import ExpenseService
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -186,7 +187,7 @@ async def update_report(
         )
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("expense_validation_error", error=str(e))
+        logger.warning("expense_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
@@ -225,7 +226,7 @@ async def delete_report(
         )
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("expense_validation_error", error=str(e))
+        logger.warning("expense_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
@@ -270,7 +271,7 @@ async def add_item(
         )
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("expense_validation_error", error=str(e))
+        logger.warning("expense_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
@@ -304,7 +305,7 @@ async def update_item(
         )
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("expense_validation_error", error=str(e))
+        logger.warning("expense_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
@@ -343,7 +344,7 @@ async def delete_item(
         )
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("expense_validation_error", error=str(e))
+        logger.warning("expense_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
@@ -385,7 +386,7 @@ async def submit_report(
         )
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("expense_validation_error", error=str(e))
+        logger.warning("expense_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
@@ -422,7 +423,7 @@ async def approve_report(
         )
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("expense_validation_error", error=str(e))
+        logger.warning("expense_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
@@ -458,7 +459,7 @@ async def reject_report(
         )
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("expense_validation_error", error=str(e))
+        logger.warning("expense_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
@@ -495,7 +496,7 @@ async def pay_report(
         )
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("expense_validation_error", error=str(e))
+        logger.warning("expense_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ungueltige Anfrage. Bitte Eingaben pruefen."

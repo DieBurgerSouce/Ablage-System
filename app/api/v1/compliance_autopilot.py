@@ -15,6 +15,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
+from app.core.safe_errors import safe_error_log
+from app.core.security_auth import build_content_disposition
 from app.db.models import User
 from app.services.compliance.autopilot_service import (
     ComplianceAutopilotService,
@@ -155,7 +157,7 @@ async def run_compliance_scan(
         )
 
     except Exception as e:
-        logger.error("compliance_scan_failed", error=str(e))
+        logger.error("compliance_scan_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler beim Compliance-Scan",
@@ -204,7 +206,7 @@ async def get_retention_report(
         )
 
     except Exception as e:
-        logger.error("retention_report_failed", error=str(e))
+        logger.error("retention_report_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler beim Abrufen des Retention-Reports",
@@ -253,11 +255,11 @@ async def prepare_audit_package(
         return StreamingResponse(
             io.BytesIO(package.zip_content),
             media_type="application/zip",
-            headers={"Content-Disposition": f"attachment; filename={package.filename}"},
+            headers={"Content-Disposition": build_content_disposition(package.filename, "attachment")},
         )
 
     except Exception as e:
-        logger.error("audit_preparation_failed", error=str(e))
+        logger.error("audit_preparation_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler bei der Audit-Vorbereitung",
@@ -305,7 +307,7 @@ async def run_gdpr_check(
         )
 
     except Exception as e:
-        logger.error("gdpr_check_failed", error=str(e))
+        logger.error("gdpr_check_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler beim GDPR-Check",
@@ -361,7 +363,7 @@ async def get_last_scan_status(
         )
 
     except Exception as e:
-        logger.error("compliance_status_failed", error=str(e))
+        logger.error("compliance_status_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler beim Abrufen des Compliance-Status",

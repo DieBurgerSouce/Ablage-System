@@ -22,6 +22,7 @@ from app.db.models import User, Role, Permission
 from app.services.permission_service import PermissionService
 from app.core.rbac import require_permission, require_any_permission
 from app.core.audit_logger import AuditLogger, AuditEventType
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/roles", tags=["Rollen"])
@@ -257,7 +258,7 @@ async def create_role(
         )
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("role_admin_validation_error", error=str(e))
+        logger.warning("role_admin_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
@@ -345,7 +346,7 @@ async def update_role(
         )
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("role_admin_validation_error", error=str(e))
+        logger.warning("role_admin_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
@@ -425,7 +426,7 @@ async def delete_role(
         await service.delete_role(role)
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("role_admin_validation_error", error=str(e))
+        logger.warning("role_admin_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
@@ -616,6 +617,7 @@ async def list_users_with_role(
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
     from app.db.models import User as UserModel, user_roles
+
 
     service = PermissionService(db)
 

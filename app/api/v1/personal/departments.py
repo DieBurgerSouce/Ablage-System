@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
 from app.api.dependencies import get_db, check_rate_limit
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User, Company
 from app.middleware.company_context import require_company
 from app.core.rbac import (
@@ -304,11 +305,11 @@ async def create_department(
         error_status, safe_message = _get_safe_error_response(e)
         logger.warning(
             "department_validation_error",
-            error_detail=str(e),
+            **safe_error_log(e),
             user_id=str(current_user.id),
             company_id=str(company.id),
         )
-        raise HTTPException(status_code=error_status, detail=safe_message)
+        raise HTTPException(status_code=error_status, detail=safe_error_detail(e, "Vorgang"))
 
 
 @router.get(
@@ -400,12 +401,12 @@ async def update_department(
         error_status, safe_message = _get_safe_error_response(e)
         logger.warning(
             "department_update_error",
-            error_detail=str(e),
+            **safe_error_log(e),
             user_id=str(current_user.id),
             company_id=str(company.id),
             department_id=str(department_id),
         )
-        raise HTTPException(status_code=error_status, detail=safe_message)
+        raise HTTPException(status_code=error_status, detail=safe_error_detail(e, "Vorgang"))
 
 
 @router.delete(
@@ -454,12 +455,12 @@ async def delete_department(
         error_status, safe_message = _get_safe_error_response(e)
         logger.warning(
             "department_delete_error",
-            error_detail=str(e),
+            **safe_error_log(e),
             user_id=str(current_user.id),
             company_id=str(company.id),
             department_id=str(department_id),
         )
-        raise HTTPException(status_code=error_status, detail=safe_message)
+        raise HTTPException(status_code=error_status, detail=safe_error_detail(e, "Vorgang"))
 
 
 # ==================== Helper Functions ====================

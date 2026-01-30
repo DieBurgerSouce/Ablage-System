@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
 from app.api.dependencies import get_db, get_current_active_user
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.services.banking.fints_service import (
     fints_service,
@@ -452,7 +453,7 @@ async def create_credit_transfer(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "SEPA-Überweisung"),
         )
 
 
@@ -478,7 +479,7 @@ async def create_batch_transfer(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "SEPA-Sammelüberweisung"),
         )
 
 

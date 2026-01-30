@@ -52,6 +52,7 @@ from app.services.collaboration.document_task_service import (
     get_document_task_service,
 )
 from app.core.datetime_utils import utc_now
+from app.core.safe_errors import safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -231,7 +232,7 @@ async def create_task(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Dokument-Aufgabe")
         )
 
 
@@ -442,7 +443,7 @@ async def update_task(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Dokument-Aufgabe")
         )
 
 
@@ -525,7 +526,7 @@ async def start_task(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Dokument-Aufgabe")
         )
 
 
@@ -571,7 +572,7 @@ async def complete_task(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Dokument-Aufgabe")
         )
 
 
@@ -615,7 +616,7 @@ async def cancel_task(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Dokument-Aufgabe")
         )
 
 
@@ -659,7 +660,7 @@ async def block_task(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Dokument-Aufgabe")
         )
 
 
@@ -701,7 +702,7 @@ async def unblock_task(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Dokument-Aufgabe")
         )
 
 
@@ -752,7 +753,7 @@ async def assign_task(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Dokument-Aufgabe")
         )
 
 

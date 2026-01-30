@@ -3,6 +3,7 @@
 
 import structlog
 from app.workers.celery_app import celery_app
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -22,7 +23,7 @@ def verify_integrity() -> dict:
         logger.info("audit_chain_integrity_check_complete")
         return {"status": "success", "entries_verified": 0, "errors_found": 0}
     except Exception as e:
-        logger.error("audit_chain_integrity_check_error", error=str(e))
+        logger.error("audit_chain_integrity_check_error", **safe_error_log(e))
         raise
 
 
@@ -35,5 +36,5 @@ def build_merkle_tree() -> dict:
         logger.info("audit_chain_merkle_build_complete")
         return {"status": "success", "tree_id": None}
     except Exception as e:
-        logger.error("audit_chain_merkle_build_error", error=str(e))
+        logger.error("audit_chain_merkle_build_error", **safe_error_log(e))
         raise

@@ -23,6 +23,7 @@ import structlog
 from app.agents.base import OrchestrationAgent
 from app.gpu_manager import GPUManager
 from app.ml.metrics import get_ml_metrics
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 audit_logger = structlog.get_logger("audit.ocr_routing")
@@ -153,10 +154,10 @@ class OCRBackendRouter(OrchestrationAgent):
                 logger.info("ML-Routing initialisiert - Modell wird trainiert wenn Daten verfügbar")
 
         except ImportError as e:
-            logger.warning("ml_routing_nicht_verfuegbar", error=str(e))
+            logger.warning("ml_routing_nicht_verfuegbar", **safe_error_log(e))
             self.use_ml_routing = False
         except Exception as e:
-            logger.error("ml_routing_init_fehler", error=str(e))
+            logger.error("ml_routing_init_fehler", **safe_error_log(e))
             self.use_ml_routing = False
 
     def _audit_log_routing_decision(
@@ -208,7 +209,7 @@ class OCRBackendRouter(OrchestrationAgent):
             )
         except Exception as e:
             # Audit-Logging darf die Haupt-Logik nie unterbrechen
-            logger.debug("audit_log_failed", error=str(e))
+            logger.debug("audit_log_failed", **safe_error_log(e))
 
     def _get_resource_status(self) -> Dict[str, Any]:
         """Get current resource availability status (sync, without queue lengths)."""
@@ -234,7 +235,7 @@ class OCRBackendRouter(OrchestrationAgent):
             queue_lengths = await redis_manager.get_queue_lengths()
             queue_length = sum(queue_lengths.values())
         except Exception as e:
-            logger.warning("queue_length_fetch_failed", error=str(e))
+            logger.warning("queue_length_fetch_failed", **safe_error_log(e))
 
         return {
             "gpu_available": gpu_status.get("available", False),
@@ -443,7 +444,7 @@ class OCRBackendRouter(OrchestrationAgent):
                 )
                 self._routing_stats["ml_predictions"] += 1
             except Exception as e:
-                logger.warning("ml_routing_failed_fallback", error=str(e))
+                logger.warning("ml_routing_failed_fallback", **safe_error_log(e))
                 self._routing_stats["rule_fallbacks"] += 1
 
         # Fallback to rule-based selection
@@ -530,7 +531,7 @@ class OCRBackendRouter(OrchestrationAgent):
             try:
                 learned_weights = await self.get_learned_backend_weights()
             except Exception as e:
-                logger.debug("learned_weights_not_applied", error=str(e))
+                logger.debug("learned_weights_not_applied", **safe_error_log(e))
 
         def apply_weight(backend: str, base_confidence: float) -> float:
             """Apply learned weight to confidence score."""
@@ -785,7 +786,7 @@ class OCRBackendRouter(OrchestrationAgent):
 
                 learned_weights_applied = True
         except Exception as e:
-            logger.debug("ml_learned_weights_not_applied", error=str(e))
+            logger.debug("ml_learned_weights_not_applied", **safe_error_log(e))
 
         # Check resource constraints
         backend_requirements = self.BACKEND_CAPABILITIES[backend]
@@ -877,7 +878,7 @@ class OCRBackendRouter(OrchestrationAgent):
                 )
 
         except Exception as e:
-            logger.warning("training_feedback_collection_failed", error=str(e))
+            logger.warning("training_feedback_collection_failed", **safe_error_log(e))
 
     async def train_model(self, force: bool = False) -> Dict[str, Any]:
         """
@@ -1057,6 +1058,7 @@ class OCRBackendRouter(OrchestrationAgent):
             from app.services.feedback_learning_service import get_feedback_learning_service
             from app.db.session import get_async_session_context
 
+
             async with get_async_session_context() as session:
                 feedback_service = get_feedback_learning_service()
                 learned_weights = await feedback_service.get_learned_weights(
@@ -1081,7 +1083,7 @@ class OCRBackendRouter(OrchestrationAgent):
                 return learned_weights.weights
 
         except Exception as e:
-            logger.warning("learned_weights_fetch_failed", error=str(e))
+            logger.warning("learned_weights_fetch_failed", **safe_error_log(e))
             # Return neutral weights on error
             return {
                 "deepseek": 1.0,
@@ -1136,7 +1138,7 @@ class OCRBackendRouter(OrchestrationAgent):
                 recommendations["learning_applied"] = True
 
         except Exception as e:
-            logger.warning("learned_weight_application_failed", error=str(e))
+            logger.warning("learned_weight_application_failed", **safe_error_log(e))
             recommendations["learning_applied"] = False
 
         return recommendations

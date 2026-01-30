@@ -21,6 +21,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from app.db.models import SearchAnalytics, User
 from app.db.schemas import SearchFilters, SearchType
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -503,7 +504,7 @@ class SearchAnalyticsService:
         except Exception as e:
             logger.warning(
                 "materialized_view_error",
-                error=str(e),
+                **safe_error_log(e),
                 fallback="direct_query",
             )
 
@@ -655,7 +656,7 @@ class SearchAnalyticsService:
             logger.info("search_analytics_daily_refreshed")
             return True
         except Exception as e:
-            logger.error("refresh_daily_statistics_error", error=str(e))
+            logger.error("refresh_daily_statistics_error", **safe_error_log(e))
             return False
 
     # =========================================================================
@@ -878,8 +879,8 @@ class SearchAnalyticsService:
             )
 
         except Exception as e:
-            logger.error("weighted_ctr_statistics_error", error=str(e), exc_info=True)
-            result["error"] = f"Fehler bei der Berechnung: {str(e)}"
+            logger.error("weighted_ctr_statistics_error", **safe_error_log(e), exc_info=True)
+            result["error"] = safe_error_detail(e, "Analytics")
 
         return result
 

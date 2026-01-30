@@ -21,6 +21,7 @@ from sqlalchemy import select, and_, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import BusinessEntity, EntityType
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -699,6 +700,7 @@ async def get_email_sender_matcher(
         try:
             from app.db.models import UserPreferences
 
+
             stmt = select(UserPreferences).where(
                 UserPreferences.user_id == user_id
             )
@@ -720,7 +722,7 @@ async def get_email_sender_matcher(
             logger.warning(
                 "failed_to_load_user_email_settings",
                 user_id=str(user_id),
-                error=str(e),
+                **safe_error_log(e),
             )
 
     return EmailSenderMatcherService(

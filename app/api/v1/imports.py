@@ -16,6 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db, get_current_user
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.services.imports import (
     EmailImportService,
@@ -382,10 +383,10 @@ async def create_email_config(
         )
         return {"id": config_id, "message": "Konfiguration erstellt"}
     except Exception as e:
-        logger.error("email_config_create_failed", error=str(e))
+        logger.error("email_config_create_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Konfiguration konnte nicht erstellt werden: {e}"
+            detail=safe_error_detail(e, "Import")
         )
 
 
@@ -530,13 +531,13 @@ async def create_folder_config(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Import")
         )
     except Exception as e:
-        logger.error("folder_config_create_failed", error=str(e))
+        logger.error("folder_config_create_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Konfiguration konnte nicht erstellt werden: {e}"
+            detail=safe_error_detail(e, "Import")
         )
 
 
@@ -587,7 +588,7 @@ async def update_folder_config(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Import")
         )
 
 
@@ -692,7 +693,7 @@ async def create_import_rule(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Import")
         )
 
 
@@ -743,7 +744,7 @@ async def update_import_rule(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Import")
         )
 
 

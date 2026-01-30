@@ -27,6 +27,7 @@ import structlog
 
 from app.agents.base import OrchestrationAgent
 from app.gpu_manager import GPUManager
+from app.core.safe_errors import safe_error_log
 from .language_detector import (
     LanguageDetector,
     LanguageDetectionResult,
@@ -383,10 +384,10 @@ class UnifiedOCRRouter(OrchestrationAgent):
                 logger.info("ML-Routing: Modell nicht trainiert, nutze Regeln")
 
         except ImportError as e:
-            logger.warning("ml_routing_nicht_verfuegbar", error=str(e))
+            logger.warning("ml_routing_nicht_verfuegbar", **safe_error_log(e))
             self.use_ml_routing = False
         except Exception as e:
-            logger.error("ml_routing_init_fehler", error=str(e))
+            logger.error("ml_routing_init_fehler", **safe_error_log(e))
             self.use_ml_routing = False
 
     def _detect_document_language(
@@ -506,7 +507,7 @@ class UnifiedOCRRouter(OrchestrationAgent):
             queue_lengths = await redis_manager.get_queue_lengths()
             queue_length = sum(queue_lengths.values())
         except Exception as e:
-            logger.warning("queue_length_fetch_failed", error=str(e))
+            logger.warning("queue_length_fetch_failed", **safe_error_log(e))
 
         return {
             "gpu_available": gpu_status.get("available", False),
@@ -707,7 +708,7 @@ class UnifiedOCRRouter(OrchestrationAgent):
                 self._stats["ml_predictions"] += 1
                 return result
             except Exception as e:
-                logger.warning("ml_routing_fehlgeschlagen", error=str(e))
+                logger.warning("ml_routing_fehlgeschlagen", **safe_error_log(e))
                 self._stats["rule_fallbacks"] += 1
 
         # Priority 4: Rule-based selection
@@ -931,7 +932,7 @@ class UnifiedOCRRouter(OrchestrationAgent):
                 return ocr_result
 
             except Exception as e:
-                logger.error("backend_failed", backend=backend_type.value, error=str(e))
+                logger.error("backend_failed", backend=backend_type.value, **safe_error_log(e))
                 last_error = e
                 continue
 
@@ -992,6 +993,7 @@ class UnifiedOCRRouter(OrchestrationAgent):
 
             from app.agents.orchestration.ml_trainer import TrainingSample
 
+
             sample = TrainingSample(
                 sample_id=document_id,
                 document_metadata=analysis.to_metadata_dict(),
@@ -1014,7 +1016,7 @@ class UnifiedOCRRouter(OrchestrationAgent):
                 )
 
         except Exception as e:
-            logger.warning("training_feedback_fehler", error=str(e))
+            logger.warning("training_feedback_fehler", **safe_error_log(e))
 
     # =========================================================================
     # INFO & STATS

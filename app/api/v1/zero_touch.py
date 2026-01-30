@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user, get_db
 from app.db.models import User
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -319,11 +320,11 @@ async def process_document(
         logger.warning(
             "zero_touch_validation_error",
             document_id=str(request.document_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Validierungsfehler: {str(e)}"
+            detail=safe_error_detail(e, "Vorgang")
         )
     except PermissionError as e:
         logger.warning(
@@ -339,7 +340,7 @@ async def process_document(
         logger.error(
             "zero_touch_processing_failed",
             document_id=str(request.document_id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise HTTPException(
@@ -399,7 +400,7 @@ async def process_batch(
         logger.error(
             "zero_touch_batch_failed",
             batch_size=len(request.document_ids),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise HTTPException(
@@ -447,7 +448,7 @@ async def get_result(
         logger.error(
             "zero_touch_result_fetch_failed",
             document_id=str(document_id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise HTTPException(
@@ -482,7 +483,7 @@ async def get_stats(
         logger.error(
             "zero_touch_stats_failed",
             company_id=str(company_id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise HTTPException(
@@ -547,7 +548,7 @@ async def update_thresholds(
         logger.error(
             "zero_touch_threshold_update_failed",
             company_id=str(company_id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise HTTPException(
@@ -594,7 +595,7 @@ async def get_pending_review(
         logger.error(
             "zero_touch_pending_review_failed",
             company_id=str(company_id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise HTTPException(
@@ -631,6 +632,7 @@ async def submit_review(
     try:
         from app.services.zero_touch.zero_touch_orchestrator import ZeroTouchOrchestrator
 
+
         orchestrator = ZeroTouchOrchestrator()
 
         result = await orchestrator.submit_review(
@@ -656,11 +658,11 @@ async def submit_review(
         logger.warning(
             "zero_touch_review_validation_error",
             document_id=str(document_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Validierungsfehler: {str(e)}"
+            detail=safe_error_detail(e, "Vorgang")
         )
     except PermissionError:
         raise HTTPException(
@@ -671,7 +673,7 @@ async def submit_review(
         logger.error(
             "zero_touch_review_failed",
             document_id=str(document_id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise HTTPException(

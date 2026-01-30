@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db, get_current_active_user
 from app.middleware.company_context import require_company
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.api.schemas.contract import (
     # Contract schemas
     ContractCreate,
@@ -940,3 +941,618 @@ async def delete_amendment(
 
     await db.delete(amendment)
     await db.commit()
+
+
+# =============================================================================
+# Contract AI - NLP Extraction & Analysis Endpoints
+# =============================================================================
+
+@router.post("/analyze", response_model=dict, status_code=status.HTTP_200_OK)
+async def analyze_contract_text(
+    document_id: Optional[UUID] = None,
+    text: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> dict:
+    """
+    Analysiere Vertragstext mit NLP und extrahiere Klauseln.
+
+    Entweder document_id ODER text muss angegeben werden.
+
+    Extrahiert:
+    - Vertragstyp
+    - Laufzeit und Kuendigungsfristen
+    - Zahlungsbedingungen (inkl. Skonto)
+    - Haftungsklauseln
+    - Gewaehrleistung
+    - Gerichtsstand
+    - Vertragsparteien
+    - Vertragswert
+    """
+    from app.services.contracts import ContractExtractionService
+
+    # Text beschaffen
+    if document_id:
+        from app.db.models import Document
+        doc = await db.get(Document, document_id)
+        if not doc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Dokument nicht gefunden",
+            )
+        if not doc.extracted_text:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Dokument hat keinen extrahierten Text. Bitte OCR durchfuehren.",
+            )
+        text = doc.extracted_text
+    elif not text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Entweder document_id oder text muss angegeben werden",
+        )
+
+    extraction_service = ContractExtractionService(db)
+    result = await extraction_service.extract_from_text(
+        text=text,
+        document_id=document_id,
+        company_id=company.company_id,
+    )
+
+    return result
+
+
+@router.post("/analyze/create", response_model=ContractResponse, status_code=status.HTTP_201_CREATED)
+async def analyze_and_create_contract(
+    document_id: UUID,
+    title: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> ContractResponse:
+    """
+    Analysiere Dokument und erstelle automatisch Vertrag.
+
+    Kombiniert NLP-Extraktion mit Vertragserstellung:
+    1. Extrahiert Klauseln aus OCR-Text
+    2. Erstellt Vertrag mit extrahierten Daten
+    3. Generiert automatische Deadlines
+    4. Berechnet Risiko-Score
+    """
+    from app.services.contracts import ContractExtractionService
+    from app.db.models import Document
+
+    # Dokument laden
+    doc = await db.get(Document, document_id)
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dokument nicht gefunden",
+        )
+    if not doc.extracted_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Dokument hat keinen extrahierten Text",
+        )
+
+    extraction_service = ContractExtractionService(db)
+
+    # Extrahiere
+    extraction = await extraction_service.extract_from_text(
+        text=doc.extracted_text,
+        document_id=document_id,
+        company_id=company.company_id,
+    )
+
+    # Erstelle Contract
+    contract = await extraction_service.create_contract_from_extraction(
+        extraction=extraction,
+        document_id=document_id,
+        company_id=company.company_id,
+        created_by_id=current_user.id,
+        title=title,
+    )
+
+    # Konvertiere zu Response (vereinfacht)
+    return ContractResponse(
+        id=contract.id,
+        company_id=contract.company_id,
+        contract_number=contract.contract_number,
+        title=contract.title,
+        contract_type=ContractType(contract.contract_type) if contract.contract_type else ContractType.OTHER,
+        description=contract.description,
+        status=ContractStatus(contract.status) if contract.status else ContractStatus.DRAFT,
+        party_a_id=None,
+        party_a_name=None,
+        party_a_signatory=None,
+        party_a=None,
+        party_b_id=contract.counterparty_entity_id,
+        party_b_name=None,
+        party_b_signatory=None,
+        party_b=None,
+        contract_date=None,
+        start_date=contract.effective_date,
+        end_date=contract.expiration_date,
+        duration_months=None,
+        notice_period_days=contract.notice_period_days,
+        notice_deadline=None,
+        auto_renewal=contract.auto_renewal,
+        renewal_period_months=contract.renewal_period_months,
+        max_renewals=None,
+        current_renewal_count=0,
+        total_value=contract.total_value,
+        monthly_value=None,
+        currency=contract.currency,
+        payment_terms=str(contract.payment_terms) if contract.payment_terms else None,
+        price_adjustment_clause=bool(contract.clauses.get("price_adjustment")),
+        price_adjustment_index=None,
+        price_adjustment_date=None,
+        price_adjustment_percent=None,
+        governing_law="German",
+        jurisdiction=contract.clauses.get("jurisdiction", {}).get("court"),
+        arbitration_clause=False,
+        document_id=contract.document_id,
+        signed_date=contract.signed_date,
+        terminated_date=contract.termination_date,
+        termination_reason=contract.termination_reason,
+        reminder_days=[90, 60, 30, 14, 7],
+        notification_emails=[],
+        last_reminder_sent=None,
+        tags=contract.tags or [],
+        metadata={"risk_score": contract.risk_score, "clauses": contract.clauses},
+        key_contacts=[],
+        notes=contract.notes,
+        days_until_end=None,
+        days_until_notice_deadline=None,
+        is_expiring_soon=False,
+        is_notice_deadline_critical=False,
+        created_at=contract.created_at,
+        updated_at=contract.updated_at,
+        created_by_id=contract.created_by_id,
+    )
+
+
+@router.get("/{contract_id}/risks", response_model=dict)
+async def get_contract_risks(
+    contract_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> dict:
+    """
+    Risiko-Analyse fuer einen Vertrag.
+
+    Bewertet:
+    - Finanzielle Exposition
+    - Kuendigungsflexibilitaet
+    - Haftungsabdeckung
+    - Vertragslaufzeit
+    - Gegenpartei-Risiko
+    - Klausel-Komplexitaet
+    - Verlaengerungsrisiko
+
+    Liefert Score (0-100) und Empfehlungen.
+    """
+    from app.services.contracts import ContractRiskScorer
+    from app.db.models_contract import Contract
+
+    contract = await db.get(Contract, contract_id)
+    if not contract:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vertrag nicht gefunden",
+        )
+
+    if contract.company_id != company.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Zugriff verweigert",
+        )
+
+    scorer = ContractRiskScorer(db)
+    result = await scorer.calculate_risk_score(contract, include_factors=True)
+
+    return result
+
+
+@router.post("/{contract_id}/risks/recalculate", response_model=dict)
+async def recalculate_contract_risks(
+    contract_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> dict:
+    """
+    Risiko-Score neu berechnen und speichern.
+    """
+    from app.services.contracts import ContractRiskScorer
+    from app.db.models_contract import Contract
+
+    contract = await db.get(Contract, contract_id)
+    if not contract:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vertrag nicht gefunden",
+        )
+
+    if contract.company_id != company.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Zugriff verweigert",
+        )
+
+    scorer = ContractRiskScorer(db)
+    updated_contract = await scorer.update_contract_risk_score(contract_id)
+
+    return {
+        "contract_id": str(contract_id),
+        "risk_score": updated_contract.risk_score,
+        "risk_factors": updated_contract.risk_factors,
+    }
+
+
+@router.get("/risks/high", response_model=List[dict])
+async def get_high_risk_contracts(
+    threshold: int = Query(70, ge=0, le=100, description="Risiko-Schwellenwert"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> List[dict]:
+    """
+    Liste aller Vertraege mit hohem Risiko.
+    """
+    from app.services.contracts import ContractRiskScorer
+
+    scorer = ContractRiskScorer(db)
+    contracts = await scorer.get_high_risk_contracts(
+        company_id=company.company_id,
+        threshold=threshold,
+    )
+
+    return [
+        {
+            "id": str(c.id),
+            "title": c.title,
+            "contract_type": c.contract_type,
+            "risk_score": c.risk_score,
+            "total_value": float(c.total_value) if c.total_value else None,
+            "expiration_date": c.expiration_date.isoformat() if c.expiration_date else None,
+        }
+        for c in contracts
+    ]
+
+
+@router.get("/risks/distribution", response_model=dict)
+async def get_risk_distribution(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> dict:
+    """
+    Risiko-Verteilung ueber alle Vertraege.
+    """
+    from app.services.contracts import ContractRiskScorer
+
+    scorer = ContractRiskScorer(db)
+    distribution = await scorer.get_risk_distribution(company_id=company.company_id)
+    metrics = await scorer.get_aggregate_risk_metrics(company_id=company.company_id)
+
+    return {
+        "distribution": distribution,
+        "metrics": metrics,
+    }
+
+
+@router.post("/compare", response_model=dict)
+async def compare_contracts(
+    contract_a_id: UUID,
+    contract_b_id: UUID,
+    save_comparison: bool = True,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> dict:
+    """
+    Vergleiche zwei Vertraege.
+
+    Identifiziert:
+    - Geaenderte Felder
+    - Hinzugefuegte/Entfernte Klauseln
+    - Modifizierte Klauseln
+    - Risiko-Impact der Aenderungen
+
+    Nuetzlich fuer:
+    - Versionsvergleich
+    - Benchmarking
+    - Due Diligence
+    """
+    from app.services.contracts import ContractComparisonService
+
+    comparison_service = ContractComparisonService(db)
+
+    try:
+        result = await comparison_service.compare_contracts(
+            contract_a_id=contract_a_id,
+            contract_b_id=contract_b_id,
+            company_id=company.company_id,
+            created_by_id=current_user.id,
+            save_comparison=save_comparison,
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=safe_error_detail(e, "Vertragsvergleich"),
+        )
+
+
+@router.get("/{contract_id}/comparisons", response_model=List[dict])
+async def get_contract_comparisons(
+    contract_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> List[dict]:
+    """
+    Alle Vergleiche fuer einen Vertrag.
+    """
+    from app.services.contracts import ContractComparisonService
+    from app.db.models_contract import Contract
+
+    # Verify contract access
+    contract = await db.get(Contract, contract_id)
+    if not contract or contract.company_id != company.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vertrag nicht gefunden",
+        )
+
+    comparison_service = ContractComparisonService(db)
+    comparisons = await comparison_service.get_comparisons_for_contract(contract_id)
+
+    return [
+        {
+            "id": str(c.id),
+            "contract_a_id": str(c.contract_a_id),
+            "contract_b_id": str(c.contract_b_id),
+            "similarity_score": float(c.similarity_score) if c.similarity_score else None,
+            "risk_impact": c.risk_impact,
+            "risk_summary": c.risk_summary,
+            "created_at": c.created_at.isoformat() if c.created_at else None,
+        }
+        for c in comparisons
+    ]
+
+
+# =============================================================================
+# Contract AI - Obligations Endpoints
+# =============================================================================
+
+@router.get("/{contract_id}/ai-obligations", response_model=List[dict])
+async def get_contract_ai_obligations(
+    contract_id: UUID,
+    status_filter: Optional[str] = None,
+    include_completed: bool = False,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> List[dict]:
+    """
+    Vertragspflichten aus Contract AI abrufen.
+    """
+    from app.services.contracts import ContractObligationTracker
+    from app.db.models_contract import Contract, ObligationStatus
+
+    # Verify contract access
+    contract = await db.get(Contract, contract_id)
+    if not contract or contract.company_id != company.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vertrag nicht gefunden",
+        )
+
+    tracker = ContractObligationTracker(db)
+    status_enum = ObligationStatus(status_filter) if status_filter else None
+
+    obligations = await tracker.get_obligations_for_contract(
+        contract_id=contract_id,
+        status=status_enum,
+        include_completed=include_completed,
+    )
+
+    return [o.to_dict() for o in obligations]
+
+
+@router.get("/ai-obligations/upcoming", response_model=List[dict])
+async def get_upcoming_ai_obligations(
+    days_ahead: int = Query(30, ge=1, le=365),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> List[dict]:
+    """
+    Bevorstehende Pflichten aus allen Vertraegen.
+    """
+    from app.services.contracts import ContractObligationTracker
+
+    tracker = ContractObligationTracker(db)
+    obligations = await tracker.get_upcoming_obligations(
+        company_id=company.company_id,
+        days_ahead=days_ahead,
+    )
+
+    return [o.to_dict() for o in obligations]
+
+
+@router.get("/ai-obligations/overdue", response_model=List[dict])
+async def get_overdue_ai_obligations(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> List[dict]:
+    """
+    Ueberfaellige Pflichten.
+    """
+    from app.services.contracts import ContractObligationTracker
+
+    tracker = ContractObligationTracker(db)
+    obligations = await tracker.get_overdue_obligations(
+        company_id=company.company_id,
+    )
+
+    return [o.to_dict() for o in obligations]
+
+
+@router.post("/ai-obligations/{obligation_id}/fulfill", response_model=dict)
+async def fulfill_ai_obligation(
+    obligation_id: UUID,
+    notes: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> dict:
+    """
+    Pflicht als erfuellt markieren.
+    """
+    from app.services.contracts import ContractObligationTracker
+
+    tracker = ContractObligationTracker(db)
+
+    try:
+        obligation = await tracker.mark_as_fulfilled(
+            obligation_id=obligation_id,
+            completed_by_id=current_user.id,
+            notes=notes,
+        )
+        return obligation.to_dict()
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=safe_error_detail(e, "Pflicht-Erfuellung"),
+        )
+
+
+# =============================================================================
+# Contract AI - Deadlines Endpoints
+# =============================================================================
+
+@router.get("/{contract_id}/ai-deadlines", response_model=List[dict])
+async def get_contract_ai_deadlines(
+    contract_id: UUID,
+    include_completed: bool = False,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> List[dict]:
+    """
+    Vertragsfristen aus Contract AI abrufen.
+    """
+    from app.services.contracts import ContractDeadlineService
+    from app.db.models_contract import Contract
+
+    # Verify contract access
+    contract = await db.get(Contract, contract_id)
+    if not contract or contract.company_id != company.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vertrag nicht gefunden",
+        )
+
+    deadline_service = ContractDeadlineService(db)
+    deadlines = await deadline_service.get_deadlines_for_contract(
+        contract_id=contract_id,
+        include_completed=include_completed,
+    )
+
+    return [d.to_dict() for d in deadlines]
+
+
+@router.get("/ai-deadlines/upcoming", response_model=List[dict])
+async def get_upcoming_ai_deadlines(
+    days_ahead: int = Query(90, ge=1, le=365),
+    priority: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> List[dict]:
+    """
+    Bevorstehende Fristen aus allen Vertraegen.
+    """
+    from app.services.contracts import ContractDeadlineService
+
+    deadline_service = ContractDeadlineService(db)
+    deadlines = await deadline_service.get_upcoming_deadlines(
+        company_id=company.company_id,
+        days_ahead=days_ahead,
+        priority=priority,
+    )
+
+    return [d.to_dict() for d in deadlines]
+
+
+@router.get("/expiring", response_model=List[dict])
+async def get_expiring_contracts(
+    days_ahead: int = Query(90, ge=1, le=365),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> List[dict]:
+    """
+    Ablaufende Vertraege.
+    """
+    from app.services.contracts import ContractDeadlineService
+
+    deadline_service = ContractDeadlineService(db)
+    expiring = await deadline_service.get_expiring_contracts(
+        company_id=company.company_id,
+        days_ahead=days_ahead,
+    )
+
+    return expiring
+
+
+@router.post("/ai-deadlines/{deadline_id}/complete", response_model=dict)
+async def complete_ai_deadline(
+    deadline_id: UUID,
+    action_taken: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> dict:
+    """
+    Frist als erledigt markieren.
+    """
+    from app.services.contracts import ContractDeadlineService
+
+    deadline_service = ContractDeadlineService(db)
+
+    try:
+        deadline = await deadline_service.mark_as_completed(
+            deadline_id=deadline_id,
+            completed_by_id=current_user.id,
+            action_taken=action_taken,
+        )
+        return deadline.to_dict()
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=safe_error_detail(e, "Fristen-Vervollstaendigung"),
+        )
+
+
+@router.get("/ai-deadlines/statistics", response_model=dict)
+async def get_ai_deadline_statistics(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> dict:
+    """
+    Fristen-Statistiken.
+    """
+    from app.services.contracts import ContractDeadlineService
+
+    deadline_service = ContractDeadlineService(db)
+    stats = await deadline_service.get_statistics(company_id=company.company_id)
+
+    return stats

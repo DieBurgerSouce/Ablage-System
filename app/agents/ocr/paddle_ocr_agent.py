@@ -22,6 +22,7 @@ import pypdfium2 as pdfium
 import numpy as np
 
 from app.agents.base import OCRAgent, OCRResult
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -112,13 +113,13 @@ class PaddleOCRAgent(OCRAgent):
             logger.info("PaddleOCR PP-OCRv5 model loaded successfully (3.3.2 API, CPU mode)")
 
         except ImportError as e:
-            logger.error("paddle_ocr_import_failed", error=str(e))
+            logger.error("paddle_ocr_import_failed", **safe_error_log(e))
             raise ImportError(
                 "PaddleOCR nicht installiert. "
                 "Installation: pip install paddlepaddle paddleocr"
             ) from e
         except Exception as e:
-            logger.error("paddle_ocr_model_load_failed", error=str(e))
+            logger.error("paddle_ocr_model_load_failed", **safe_error_log(e))
             raise
 
     def _load_image(self, image_path: str) -> List[np.ndarray]:
@@ -155,7 +156,7 @@ class PaddleOCRAgent(OCRAgent):
                     logger.debug("paddle_ocr_pdf_page_loaded", page=page_num + 1, total=len(pdf))
                 pdf.close()
             except Exception as e:
-                logger.error("paddle_ocr_pdf_load_failed", error=str(e))
+                logger.error("paddle_ocr_pdf_load_failed", **safe_error_log(e))
                 raise
         else:
             # Handle image files (PNG, JPG, TIFF, etc.)
@@ -167,7 +168,7 @@ class PaddleOCRAgent(OCRAgent):
                     image = image.convert('RGB')
                 images.append(np.array(image))
             except Exception as e:
-                logger.error("paddle_ocr_image_load_failed", error=str(e))
+                logger.error("paddle_ocr_image_load_failed", **safe_error_log(e))
                 raise
 
         return images
@@ -225,8 +226,8 @@ class PaddleOCRAgent(OCRAgent):
             }
 
         except Exception as e:
-            logger.error("paddle_ocr_image_processing_failed", error=str(e))
-            return {"text_blocks": [], "full_text": "", "error": str(e)}
+            logger.error("paddle_ocr_image_processing_failed", **safe_error_log(e))
+            return {"text_blocks": [], "full_text": "", **safe_error_log(e)}
 
     async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """Process document with PaddleOCR.
@@ -373,13 +374,13 @@ class PaddleOCRAgent(OCRAgent):
             processing_time_ms = int((time.perf_counter() - start_time) * 1000)
             logger.error(
                 "paddle_ocr_processing_error",
-                error=str(e),
+                **safe_error_log(e),
                 exc_info=True
             )
 
             # Create standardized error result
             result = self.create_error_result(
-                error=str(e),
+                **safe_error_log(e),
                 error_code="PADDLE_OCR_ERROR",
                 processing_time_ms=processing_time_ms,
             )

@@ -31,6 +31,7 @@ from app.services.erp.base_connector import (
     ERPConflict,
 )
 from app.services.erp.field_mapping import EntityMappingService, get_mapping_service
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -181,11 +182,11 @@ class SyncEngine:
 
         except Exception as e:
             result.success = False
-            result.error_message = str(e)
+            result.error_message = safe_error_detail(e, "ERP-Sync")
             logger.exception(
                 "sync_entity_failed",
                 entity=entity.value,
-                error=str(e),
+                **safe_error_log(e),
             )
 
         return self.connector._complete_sync_result(result)

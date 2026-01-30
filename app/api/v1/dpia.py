@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.services.compliance.dpia_service import (
     DataCategory,
@@ -240,7 +241,7 @@ async def create_dpia_from_template(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "DSFA"),
         )
 
     logger.info(
@@ -344,7 +345,7 @@ async def update_dpia_status(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "DSFA"),
         )
 
     logger.info(
@@ -384,7 +385,7 @@ async def add_dpo_consultation(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "DSFA"),
         )
 
     logger.info(

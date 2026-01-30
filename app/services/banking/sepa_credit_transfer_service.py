@@ -13,6 +13,8 @@ SECURITY:
 """
 
 import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as DefusedET
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from datetime import datetime, date, timedelta
 from decimal import Decimal
 from enum import Enum
@@ -705,7 +707,8 @@ class SEPACreditTransferService:
         errors = []
 
         try:
-            root = ET.fromstring(xml_content)
+            # SECURITY: Use defusedxml to prevent XXE attacks (CWE-611)
+            root = DefusedET.fromstring(xml_content)
 
             # Pruefe Namespace
             if not root.tag.endswith("Document"):
@@ -719,7 +722,7 @@ class SEPACreditTransferService:
             # Weitere Validierungen...
 
         except ET.ParseError as e:
-            errors.append(f"XML Parse-Fehler: {str(e)}")
+            errors.append(safe_error_detail(e, "XML-Parsing"))
 
         return errors
 

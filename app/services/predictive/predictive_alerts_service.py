@@ -261,6 +261,7 @@ class PredictiveAlertsService:
                 if prediction.severity in (PredictionSeverity.WARNING, PredictionSeverity.CRITICAL):
                     # Bestimme Alert-Typ
                     from app.services.predictive.system_health_predictor import MetricType
+
                     type_mapping = {
                         MetricType.GPU_VRAM: PredictiveAlertType.GPU_VRAM_OVERFLOW,
                         MetricType.QUEUE_DEPTH: PredictiveAlertType.QUEUE_OVERFLOW,
@@ -276,7 +277,7 @@ class PredictiveAlertsService:
                     new_alerts.append(alert)
 
         except Exception as e:
-            logger.error("health_prediction_failed", error=str(e))
+            logger.error("health_prediction_failed", **safe_error_log(e))
 
         # OCR Quality Degradation
         try:
@@ -288,7 +289,7 @@ class PredictiveAlertsService:
                     new_alerts.append(alert)
 
         except Exception as e:
-            logger.error("quality_forecast_failed", error=str(e))
+            logger.error("quality_forecast_failed", **safe_error_log(e))
 
         # Speichere neue Alerts
         for alert in new_alerts:

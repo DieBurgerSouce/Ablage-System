@@ -15,6 +15,7 @@ import time
 from collections import defaultdict
 from datetime import datetime, timedelta
 from app.core.datetime_utils import utc_now
+from app.core.safe_errors import safe_error_log
 from typing import Tuple, Optional, Dict, List
 
 from cryptography.hazmat.primitives import hashes
@@ -184,6 +185,7 @@ class DecryptAttemptTracker:
         if self._redis is None:
             try:
                 from app.core.redis_state import RedisStateManager
+
                 manager = RedisStateManager.get_instance()
                 await manager.connect()
                 self._redis = manager._redis
@@ -192,7 +194,7 @@ class DecryptAttemptTracker:
             except Exception as e:
                 logger.warning(
                     "privat_brute_force_tracker_redis_unavailable",
-                    error=str(e),
+                    **safe_error_log(e),
                     fallback="in_memory",
                 )
                 self._redis_available = False
@@ -267,7 +269,7 @@ class DecryptAttemptTracker:
                 # da sonst Multi-Worker Brute-Force moeglich ist
                 logger.error(
                     "privat_brute_force_redis_check_failed_critical",
-                    error=str(e),
+                    **safe_error_log(e),
                     action="blocking_request",
                 )
                 # SICHERHEIT: Im Zweifel blockieren - besser DoS als Brute-Force
@@ -368,7 +370,7 @@ class DecryptAttemptTracker:
             except Exception as e:
                 logger.warning(
                     "privat_brute_force_redis_record_failed",
-                    error=str(e),
+                    **safe_error_log(e),
                     fallback="in_memory",
                 )
 
@@ -400,7 +402,7 @@ class DecryptAttemptTracker:
             except Exception as e:
                 logger.warning(
                     "privat_brute_force_redis_clear_failed",
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         # Fallback zu In-Memory
@@ -447,7 +449,7 @@ class DecryptAttemptTracker:
             except Exception as e:
                 logger.warning(
                     "privat_brute_force_redis_get_remaining_failed",
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         # Fallback zu In-Memory
@@ -475,7 +477,7 @@ class DecryptAttemptTracker:
             except Exception as e:
                 logger.warning(
                     "privat_brute_force_redis_get_attempts_failed",
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         # Fallback zu In-Memory

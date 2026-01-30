@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.services.ensemble_voting import (
+
     OCRResult,
     EnsembleResult,
     EnsembleVotingService,
@@ -615,7 +616,7 @@ class CrossBackendConsistencyService:
                     logger.error(
                         "third_backend_trigger_failed",
                         backend=preferred,
-                        error=str(e),
+                        **safe_error_log(e),
                     )
                     continue
 

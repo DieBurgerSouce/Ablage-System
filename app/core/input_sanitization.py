@@ -537,7 +537,7 @@ def create_safe_highlight(text: str, query: str, tag: str = "mark") -> str:
         return result
 
     except re.error as e:
-        logger.warning("highlight_regex_error", error=str(e), query=query[:50])
+        logger.warning("highlight_regex_error", **safe_error_log(e), query=query[:50])
         return html.escape(text)
 
 
@@ -684,6 +684,7 @@ def create_sql_safe_query_dependency():
 
     Verwendung in Endpoints:
         from app.core.input_sanitization import SQLSafeQuery
+
 
         @router.get("/search")
         async def search(

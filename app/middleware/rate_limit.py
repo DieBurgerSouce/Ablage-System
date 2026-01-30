@@ -29,6 +29,7 @@ from app.core.rate_limiting import (
     RateLimitStorageError
 )
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -200,7 +201,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             )
         except RateLimitStorageError as e:
             # Fail-closed: Return 503 Service Unavailable
-            return self._create_fail_closed_error_response(request, str(e))
+            return self._create_fail_closed_error_response(request, safe_error_detail(e, "Rate-Limit"))
 
         if not is_allowed:
             rate_limit_metrics.record_rate_limited()
@@ -611,7 +612,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 logger.error(
                     "rate_limit_check_error",
                     key=rate_limit_key,
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 rate_limit_metrics.record_error()
                 if fail_closed:
@@ -962,16 +963,14 @@ class RoleBasedRateLimitChecker:
                 "quota_check_failed",
                 user_id=user_id,
                 quota_type=quota_type,
-                error=str(e)
+                **safe_error_log(e)
             )
             # Fail-open: allow request on error
             return {
                 "allowed": True,
                 "remaining": max_quota,
                 "limit": max_quota,
-                "reason": "quota_check_error",
-                "error": str(e)
-            }
+                "reason": "quota_check_error", **safe_error_log(e)}
 
     async def _get_quota_usage(self, quota_key: str) -> int:
         """
@@ -995,7 +994,7 @@ class RoleBasedRateLimitChecker:
             logger.warning(
                 "quota_usage_query_failed",
                 key=quota_key,
-                error=str(e)
+                **safe_error_log(e)
             )
 
         return 0
@@ -1045,7 +1044,7 @@ class RoleBasedRateLimitChecker:
                 "quota_increment_failed",
                 user_id=user_id,
                 quota_type=quota_type,
-                error=str(e)
+                **safe_error_log(e)
             )
             return False
 

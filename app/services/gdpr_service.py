@@ -23,12 +23,14 @@ from sqlalchemy.orm import selectinload
 
 from app.db.models import User, Document, APIKey, AuditLog
 from app.core.exceptions import GDPRError, UserNotFoundError
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
 # Import Storage Service für MinIO-Löschung
 try:
     from app.services.storage_service import get_storage_service
+
     STORAGE_AVAILABLE = True
 except ImportError:
     STORAGE_AVAILABLE = False
@@ -216,7 +218,7 @@ class GDPRService:
             except Exception as e:
                 logger.warning(
                     "storage_service_init_failed",
-                    error=str(e),
+                    **safe_error_log(e),
                     message="MinIO-Löschung wird übersprungen"
                 )
 
@@ -236,7 +238,7 @@ class GDPRService:
                         logger.error(
                             "minio_deletion_failed",
                             document_id=str(doc.id)[:8] + "...",
-                            error=str(e)
+                            **safe_error_log(e)
                         )
                         # Fortfahren mit DB-Löschung auch wenn MinIO fehlschlägt
                 await db.delete(doc)

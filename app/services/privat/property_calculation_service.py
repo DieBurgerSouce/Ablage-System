@@ -14,6 +14,7 @@ Enterprise Feature - feinpoliert und durchdacht.
 from __future__ import annotations
 
 import threading
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, date, timedelta
 from decimal import Decimal
@@ -511,11 +512,11 @@ class PropertyCalculationService:
 
             except Exception as e:
                 stats["skipped"] += 1
-                stats["errors"].append(f"{prop.id}: {str(e)}")
+                stats["errors"].append(f"{prop.id}: {safe_error_detail(e, 'Immobilie')}")
                 logger.warning(
                     "property_kpi_calculation_failed",
                     property_id=str(prop.id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         logger.info(
@@ -594,7 +595,7 @@ class PropertyCalculationService:
             logger.error(
                 "annual_costs_calculation_error",
                 property_id=str(property_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return None
 
@@ -614,6 +615,7 @@ class PropertyCalculationService:
             Gesamtkosten als Decimal
         """
         from app.db.models import PrivatProperty, PrivatUtilityStatement
+
 
         try:
             # Property laden
@@ -672,7 +674,7 @@ class PropertyCalculationService:
             logger.error(
                 "total_costs_calculation_error",
                 property_id=str(property_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return Decimal("0")
 

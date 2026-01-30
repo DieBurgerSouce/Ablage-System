@@ -28,6 +28,7 @@ from sqlalchemy import select, and_, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import utc_now
+from app.core.safe_errors import safe_error_log
 from app.db.models import (
     Document,
     BusinessEntity,
@@ -165,6 +166,7 @@ def create_autonomy_config() -> AutonomyConfig:
     try:
         from app.core.config import settings
 
+
         return AutonomyConfig(
             # Confidence Thresholds
             document_classification_threshold=settings.AUTONOMY_DOCUMENT_CLASSIFICATION_THRESHOLD,
@@ -196,7 +198,7 @@ def create_autonomy_config() -> AutonomyConfig:
     except Exception as e:
         logger.warning(
             "autonomy_config_fallback",
-            error=str(e),
+            **safe_error_log(e),
             message="Konnte Settings nicht laden, nutze Defaults",
         )
         return AutonomyConfig()

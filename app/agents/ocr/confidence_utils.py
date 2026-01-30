@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 import torch
 import torch.nn.functional as F
 import structlog
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -104,7 +105,7 @@ def calculate_token_confidence(
             )
 
     except Exception as e:
-        logger.warning("confidence_calculation_error", error=str(e))
+        logger.warning("confidence_calculation_error", **safe_error_log(e))
         return {
             "mean_confidence": 0.80,
             "min_confidence": 0.60,
@@ -196,7 +197,7 @@ def _calculate_vectorized(
         }
 
     except Exception as e:
-        logger.warning("vectorized_confidence_error", error=str(e))
+        logger.warning("vectorized_confidence_error", **safe_error_log(e))
         # Fallback to iterative
         return _calculate_iterative(
             scores, generated_ids, input_length,

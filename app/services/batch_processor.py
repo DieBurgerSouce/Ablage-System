@@ -161,6 +161,7 @@ def get_batch_size_cache() -> BatchSizeCache:
 # Import AdaptiveBatchProcessor from gpu_manager for enhanced batch sizing
 try:
     from app.gpu_manager import get_gpu_manager, get_batch_processor as get_adaptive_batch_processor
+    from app.core.safe_errors import safe_error_log
     ADAPTIVE_BATCH_AVAILABLE = True
 except ImportError:
     ADAPTIVE_BATCH_AVAILABLE = False
@@ -396,7 +397,7 @@ class BatchProcessor:
                 self._gpu_manager = get_gpu_manager()
                 logger.info("adaptive_batch_processor_enabled")
             except Exception as e:
-                logger.warning("adaptive_batch_processor_init_failed", error=str(e))
+                logger.warning("adaptive_batch_processor_init_failed", **safe_error_log(e))
                 self._use_adaptive = False
 
         # Dynamic Batch Sizer fuer Real-Time VRAM Monitoring
@@ -469,7 +470,7 @@ class BatchProcessor:
                 )
                 return min(optimal, self.max_batch_size)
             except Exception as e:
-                logger.warning("adaptive_batch_size_failed", error=str(e))
+                logger.warning("adaptive_batch_size_failed", **safe_error_log(e))
                 # Fall through to legacy calculation
 
         # Legacy calculation for fallback
@@ -650,7 +651,7 @@ class BatchProcessor:
                         errors.append({"file": file_path, "error": str(e2)})
 
             except Exception as e:
-                logger.error("chunk_processing_unexpected_error", error_type=type(e).__name__, error=str(e))
+                logger.error("chunk_processing_unexpected_error", error_type=type(e).__name__, **safe_error_log(e))
                 # Process remaining documents individually
                 for file_path in chunk:
                     try:
@@ -750,13 +751,11 @@ class BatchProcessor:
             return result
 
         except Exception as e:
-            logger.error("document_processing_error", file_path=file_path, error=str(e))
+            logger.error("document_processing_error", file_path=file_path, **safe_error_log(e))
             return {
                 "success": False,
                 "file": file_path,
-                "file_name": Path(file_path).name,
-                "error": str(e)
-            }
+                "file_name": Path(file_path).name, **safe_error_log(e)}
 
     async def process_directory(
         self,

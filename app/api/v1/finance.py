@@ -59,6 +59,7 @@ from app.db.schemas import (
     FinanceHistoryAction,
 )
 from app.api.dependencies import get_db, get_current_active_user, check_rate_limit
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.core.rbac import (
     require_finance_read,
     require_finance_write,
@@ -549,7 +550,7 @@ async def upload_finance_document(
         )
     except Exception as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.error("finance_upload_storage_failed", error=str(e), filename=file.filename)
+        logger.error("finance_upload_storage_failed", **safe_error_log(e), filename=file.filename)
         raise HTTPException(status_code=500, detail="Upload fehlgeschlagen. Bitte erneut versuchen.")
 
     # 8. Datenbank-Eintrag
@@ -604,7 +605,7 @@ async def upload_finance_document(
                 category=category,
             )
         except Exception as e:
-            logger.warning("finance_ocr_queue_failed", error=str(e))
+            logger.warning("finance_ocr_queue_failed", **safe_error_log(e))
 
     logger.info(
         "finance_document_uploaded",
@@ -830,11 +831,11 @@ async def bulk_delete_finance_documents(
                 errors.append(f"{doc_id}: Nicht gefunden oder keine Berechtigung")
         except Exception as e:
             failed_ids.append(doc_id)
-            errors.append(f"{doc_id}: {str(e)}")
+            errors.append(f"{doc_id}: {safe_error_detail(e, 'Loeschen')}")
             logger.warning(
                 "bulk_delete_document_failed",
                 document_id=str(doc_id),
-                error=str(e),
+                **safe_error_log(e),
             )
 
     logger.info(
@@ -918,11 +919,11 @@ async def bulk_update_finance_documents(
                 errors.append(f"{doc_id}: Nicht gefunden oder keine Berechtigung")
         except Exception as e:
             failed_ids.append(doc_id)
-            errors.append(f"{doc_id}: {str(e)}")
+            errors.append(f"{doc_id}: {safe_error_detail(e, 'Loeschen')}")
             logger.warning(
                 "bulk_update_document_failed",
                 document_id=str(doc_id),
-                error=str(e),
+                **safe_error_log(e),
             )
 
     logger.info(
@@ -2192,6 +2193,7 @@ async def detect_payment_anomalies(
     - < 0.5: Niedrige Konfidenz
     """
     from app.services.banking.liquidity_forecast_service import get_liquidity_forecast_service
+
 
     service = get_liquidity_forecast_service()
 

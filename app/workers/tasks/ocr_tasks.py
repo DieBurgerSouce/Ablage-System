@@ -27,6 +27,7 @@ from sqlalchemy import select, delete
 
 from app.workers.celery_app import celery_app, GPUTask, CPUTask, gpu_memory_guard
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.db.session import get_async_session_context
 from app.db.models import Document, ProcessingJob, OCRResult, ProcessingStatus, SystemMetrics, BatchJob
 from app.services.ocr_service import OCRService
@@ -145,8 +146,7 @@ def secure_delete_file(file_path: Union[str, Path], passes: int = 1) -> bool:
         logger.warning(
             "secure_delete_failed",
             file_path=str(path),
-            error=str(e),
-            error_type=type(e).__name__
+            **safe_error_log(e)
         )
         # Fallback: Normales Loeschen
         try:
@@ -195,7 +195,7 @@ async def _periodic_lock_refresh(
         logger.debug("gpu_lock_background_refresh_stopped", **log_ctx)
         raise
     except Exception as e:
-        logger.error("gpu_lock_background_refresh_error", error=str(e), **log_ctx)
+        logger.error("gpu_lock_background_refresh_error", **safe_error_log(e), **log_ctx)
 
 
 # ==================== Helper Functions ====================
@@ -595,7 +595,7 @@ def process_document_task(
                             "embedding_task_queue_failed",
                             task_id=task_id,
                             document_id=document_id,
-                            error=str(e)
+                            **safe_error_log(e)
                         )
 
                 # Queue RAG chunking as background task (fuer Chat/Suche)
@@ -622,7 +622,7 @@ def process_document_task(
                             "rag_chunking_task_queue_failed",
                             task_id=task_id,
                             document_id=document_id,
-                            error=str(e)
+                            **safe_error_log(e)
                         )
 
                 # Queue structured data extraction (Invoice/Order parsing)
@@ -649,7 +649,7 @@ def process_document_task(
                             "extraction_task_queue_failed",
                             task_id=task_id,
                             document_id=document_id,
-                            error=str(e)
+                            **safe_error_log(e)
                         )
 
                     # Quick Classification nach OCR starten (nutzt vorhandenen OCR-Text)
@@ -673,7 +673,7 @@ def process_document_task(
                             "quick_classification_task_queue_failed",
                             task_id=task_id,
                             document_id=document_id,
-                            error=str(e)
+                            **safe_error_log(e)
                         )
 
                 # Workflow-Trigger: Document Processed Event
@@ -858,7 +858,7 @@ def process_document_task(
                     "ocr_task_failed",
                     task_id=task_id,
                     document_id=document_id,
-                    error=str(e)
+                    **safe_error_log(e)
                 )
 
                 # Track failed OCR for A/B testing and metrics
@@ -877,7 +877,7 @@ def process_document_task(
                     session,
                     doc_uuid,
                     ProcessingStatus.FAILED,
-                    error_message=str(e)
+                    error_message=safe_error_detail(e, "OCR")
                 )
 
                 # Workflow-Trigger: Document Failed Event
@@ -892,7 +892,7 @@ def process_document_task(
                         on_document_failed.delay(
                             document_id=document_id,
                             user_id=str(owner_id),
-                            error=str(e)
+                            **safe_error_log(e)
                         )
                 except Exception as workflow_error:
                     logger.warning(
@@ -904,7 +904,7 @@ def process_document_task(
                 raise OCRProcessingError(
                     document_id=document_id,
                     backend=backend,
-                    reason=str(e)
+                    reason=safe_error_detail(e, "OCR")
                 )
 
             finally:
@@ -1011,7 +1011,7 @@ def batch_process_task(
                             current_document=current_doc
                         )
                 except Exception as e:
-                    logger.warning("batch_job_progress_update_failed", error=str(e))
+                    logger.warning("batch_job_progress_update_failed", **safe_error_log(e))
 
         # Helper to check if batch is paused
         async def is_batch_paused() -> bool:
@@ -1039,7 +1039,7 @@ def batch_process_task(
                     gpu_manager = get_worker_gpu_recovery_manager()
                     await gpu_manager.clear_gpu_memory()
                 except Exception as cleanup_error:
-                    logger.warning("batch_gpu_cleanup_failed", error=str(cleanup_error))
+                    logger.warning("batch_gpu_cleanup_failed", **safe_error_log(cleanup_error))
 
         for idx, doc_id in enumerate(document_ids[start_index:], start=start_index):
             # Check if batch was paused
@@ -1092,7 +1092,7 @@ def batch_process_task(
                         "batch_document_gpu_oom",
                         task_id=task_id,
                         document_id=doc_id,
-                        error=str(e)
+                        **safe_error_log(e)
                     )
 
                     # GPU-Speicher aufräumen vor nächstem Dokument
@@ -1102,7 +1102,7 @@ def batch_process_task(
                     results.append({
                         "success": False,
                         "document_id": doc_id,
-                        "error": f"GPU Out of Memory: {str(e)}",
+                        "error": safe_error_detail(e, "GPU OOM"),
                         "error_type": "gpu_oom"
                     })
                 else:
@@ -1110,13 +1110,13 @@ def batch_process_task(
                         "batch_document_failed",
                         task_id=task_id,
                         document_id=doc_id,
-                        error=str(e)
+                        **safe_error_log(e)
                     )
                     failed += 1
                     results.append({
                         "success": False,
                         "document_id": doc_id,
-                        "error": str(e),
+                        "error": safe_error_detail(e, "Vorgang"),
                         "error_type": "processing_error"
                     })
 
@@ -1169,7 +1169,7 @@ def batch_process_task(
                         }
                     )
             except Exception as e:
-                logger.warning("batch_job_completion_failed", error=str(e))
+                logger.warning("batch_job_completion_failed", **safe_error_log(e))
 
         asyncio.run(complete_batch())
 
@@ -1182,7 +1182,7 @@ def batch_process_task(
             gpu_recovery_stats = gpu_manager.get_stats()
         except Exception as e:
             # GPU-Stats nicht kritisch für Batch-Ergebnis
-            logger.debug("gpu_recovery_stats_failed", error=str(e))
+            logger.debug("gpu_recovery_stats_failed", **safe_error_log(e))
 
     return {
         "success": True,
@@ -1285,7 +1285,7 @@ def validate_german_text_task(
             "validation_task_failed",
             task_id=task_id,
             document_id=document_id,
-            error=str(e)
+            **safe_error_log(e)
         )
         raise
 
@@ -1506,7 +1506,7 @@ def process_document_workflow(
                 "workflow_metadata_extraction_failed",
                 task_id=task_id,
                 document_id=document_id,
-                error=str(e)
+                **safe_error_log(e)
             )
             result["metadata"] = None
 

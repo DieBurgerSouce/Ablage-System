@@ -106,6 +106,7 @@ reportlab==4.0.9  # PDF generation for document export
 # E-Invoicing (ZUGFeRD / XRechnung)
 factur-x>=3.0.0  # ZUGFeRD 2.x / Factur-X PDF generation and parsing
 lxml>=4.9.0  # XML processing for e-invoices
+defusedxml>=0.7.1  # SECURITY: Safe XML parsing to prevent XXE attacks (CWE-611)
 
 # Spreadsheet Export
 openpyxl>=3.1.5  # Excel (.xlsx) export for extracted data

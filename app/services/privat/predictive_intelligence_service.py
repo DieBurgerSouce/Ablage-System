@@ -896,7 +896,7 @@ class PredictiveIntelligenceService:
                     "warning_generation_failed",
                     space_id=str(space_id),
                     kpi_name=kpi_name,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         # Nach Severity und Datum sortieren
@@ -956,7 +956,7 @@ class PredictiveIntelligenceService:
                 logger.warning(
                     "projection_failed",
                     kpi_name=kpi_name,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         # Early Warnings generieren
@@ -1113,6 +1113,7 @@ class PredictiveIntelligenceService:
         """
         from app.services.privat.financial_health_service import get_financial_health_service
 
+
         health_service = get_financial_health_service()
         recorded = 0
         errors = 0
@@ -1165,7 +1166,7 @@ class PredictiveIntelligenceService:
                         "kpi_recording_failed",
                         space_id=str(space_id),
                         kpi_name=kpi_name,
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
         except Exception as e:
@@ -1173,7 +1174,7 @@ class PredictiveIntelligenceService:
             logger.error(
                 "space_kpi_recording_failed",
                 space_id=str(space_id),
-                error=str(e),
+                **safe_error_log(e),
             )
 
         return {"recorded": recorded, "errors": errors}

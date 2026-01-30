@@ -119,6 +119,7 @@ from app.services.document_service import get_document_service
 from app.services.archive_service import archive_service
 from app.core.exceptions import ImmutabilityViolationError
 from app.services.document_services.ablage_service import CATEGORY_TO_DOCTYPE
+from app.core.safe_errors import safe_error_detail, safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -424,7 +425,7 @@ async def upload_document(
             logger.warning(
                 "ocr_job_queue_failed",
                 document_id=str(doc_id),
-                error=str(e)
+                **safe_error_log(e)
             )
             # Dokument bleibt gespeichert, OCR kann spaeter gestartet werden
 
@@ -449,7 +450,7 @@ async def upload_document(
         logger.warning(
             "workflow_trigger_failed",
             document_id=str(doc_id),
-            error=str(e)
+            **safe_error_log(e)
         )
 
     return DocumentCreateResponse(
@@ -693,7 +694,7 @@ async def upload_complete(
         logger.warning(
             "workflow_trigger_failed",
             document_id=str(doc_id),
-            error=str(e)
+            **safe_error_log(e)
         )
 
     return UploadCompleteResponse(
@@ -886,8 +887,7 @@ async def search_documents(
         # Don't fail the search if analytics logging fails
         logger.warning(
             "analytics_logging_failed",
-            error=str(e),
-            error_type=type(e).__name__,
+            **safe_error_log(e),
             exc_info=True  # Include full traceback for debugging
         )
 
@@ -1009,7 +1009,7 @@ async def get_category_documents(
             "category_documents_error",
             user_id=str(current_user.id),
             category=category,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True
         )
         raise HTTPException(
@@ -1064,7 +1064,7 @@ async def get_category_aggregations(
         logger.error(
             "category_aggregations_error",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True
         )
         raise HTTPException(
@@ -1178,7 +1178,7 @@ async def download_document(
             "document_download_storage_error",
             document_id=str(document_id),
             file_path=document.file_path,
-            error=str(e)
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=500,
@@ -1267,7 +1267,7 @@ async def preview_document(
         logger.error(
             "document_preview_storage_error",
             document_id=str(document_id),
-            error=str(e)
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=500,
@@ -1313,7 +1313,7 @@ async def preview_document(
             logger.error(
                 "document_preview_conversion_error",
                 document_id=str(document_id),
-                error=str(e)
+                **safe_error_log(e)
             )
             raise HTTPException(
                 status_code=500,
@@ -1486,7 +1486,7 @@ async def get_document_thumbnail(
         logger.error(
             "thumbnail_generation_error",
             document_id=str(document_id),
-            error=str(e)
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=500,
@@ -1563,7 +1563,7 @@ async def stream_document_download(
         logger.error(
             "document_stream_info_error",
             document_id=str(document_id),
-            error=str(e)
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=500,
@@ -1763,7 +1763,7 @@ async def download_document_as_pdf(
     except ImportError as e:
         logger.warning(
             "pdf_export_missing_dependency",
-            error=str(e)
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=501,
@@ -1773,7 +1773,7 @@ async def download_document_as_pdf(
         logger.error(
             "pdf_export_error",
             document_id=str(document_id),
-            error=str(e)
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=500,
@@ -2874,7 +2874,7 @@ async def confirm_document_rename(
             "document_rename_failed",
             document_id=str(document_id),
             user_id=str(current_user.id),
-            error=str(e)
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=500,
@@ -2980,8 +2980,8 @@ async def cleanup_document_resources(
             )
             cleanup_results["cache_cleared"] = True
         except Exception as e:
-            cleanup_results["errors"].append(f"Cache-Bereinigung fehlgeschlagen: {str(e)}")
-            logger.warning("cleanup_cache_failed", document_id=str(document_id), error=str(e))
+            cleanup_results["errors"].append("Cache-Bereinigung fehlgeschlagen")
+            logger.warning("cleanup_cache_failed", document_id=str(document_id), **safe_error_log(e))
 
     # 2. Temporaere Dateien loeschen
     if clear_temp_files:
@@ -2996,8 +2996,8 @@ async def cleanup_document_resources(
             else:
                 cleanup_results["temp_files_cleared"] = True  # Keine temp files = bereits bereinigt
         except Exception as e:
-            cleanup_results["errors"].append(f"Temp-Bereinigung fehlgeschlagen: {str(e)}")
-            logger.warning("cleanup_temp_failed", document_id=str(document_id), error=str(e))
+            cleanup_results["errors"].append("Temp-Bereinigung fehlgeschlagen")
+            logger.warning("cleanup_temp_failed", document_id=str(document_id), **safe_error_log(e))
 
     # 3. GPU-Speicher freigeben (optional, globale Auswirkung)
     if clear_gpu_memory:
@@ -3020,8 +3020,8 @@ async def cleanup_document_resources(
                 cleanup_results["gpu_memory_cleared"] = False
                 cleanup_results["errors"].append("GPU nicht verfuegbar")
         except Exception as e:
-            cleanup_results["errors"].append(f"GPU-Bereinigung fehlgeschlagen: {str(e)}")
-            logger.warning("cleanup_gpu_failed", document_id=str(document_id), error=str(e))
+            cleanup_results["errors"].append("GPU-Bereinigung fehlgeschlagen")
+            logger.warning("cleanup_gpu_failed", document_id=str(document_id), **safe_error_log(e))
 
     cleanup_results["success"] = len(cleanup_results["errors"]) == 0
 
@@ -3288,7 +3288,7 @@ async def get_document_stats(
 
     except Exception as e:
         # Redis nicht verfuegbar - kein Caching
-        logger.debug("document_stats_cache_unavailable", error=str(e))
+        logger.debug("document_stats_cache_unavailable", **safe_error_log(e))
 
     # Cache Miss - Daten aus DB holen
     result = await _fetch_document_stats_uncached(db, user_id)
@@ -3308,7 +3308,7 @@ async def get_document_stats(
         logger.debug("document_stats_cached", user_id=user_id, ttl=CacheConfig.STATS_TTL)
 
     except Exception as e:
-        logger.debug("document_stats_cache_write_failed", error=str(e))
+        logger.debug("document_stats_cache_write_failed", **safe_error_log(e))
 
     return result
 
@@ -3570,7 +3570,7 @@ async def get_document_access_log(
         logger.error(
             "document_access_log_error",
             document_id=str(document_id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True
         )
         raise HTTPException(
@@ -3642,7 +3642,7 @@ async def bulk_download_zip(
         logger.error(
             "bulk_zip_download_error",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True
         )
         raise HTTPException(
@@ -3720,7 +3720,7 @@ async def bulk_export_csv(
         logger.error(
             "bulk_csv_export_error",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True
         )
         raise HTTPException(
@@ -3794,7 +3794,7 @@ async def update_payment_status(
         logger.error(
             "payment_status_update_error",
             document_id=str(document_id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True
         )
         raise HTTPException(
@@ -3855,7 +3855,7 @@ async def bulk_mark_as_paid(
         logger.error(
             "bulk_mark_as_paid_error",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True
         )
         raise HTTPException(
@@ -3919,7 +3919,7 @@ async def bulk_move_category(
         logger.error(
             "bulk_move_category_error",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True
         )
         raise HTTPException(
@@ -3988,7 +3988,7 @@ async def bulk_set_tags(
         logger.error(
             "bulk_set_tags_error",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True
         )
         raise HTTPException(
@@ -4057,7 +4057,7 @@ async def bulk_delete_documents(
         logger.error(
             "bulk_delete_error",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True
         )
         raise HTTPException(

@@ -21,6 +21,7 @@ import torch
 
 from app.workers.celery_app import celery_app, GPUTask, CPUTask
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 from app.db.models import Document, ProcessingStatus
 from app.db.session import get_async_session_context
 from app.services.embedding_service import get_embedding_service
@@ -62,7 +63,7 @@ async def _cleanup_gpu_memory() -> None:
             torch.cuda.synchronize()
             logger.debug("gpu_memory_cleaned_embedding_tasks")
         except Exception as e:
-            logger.warning("gpu_cleanup_failed_embedding_tasks", error=str(e))
+            logger.warning("gpu_cleanup_failed_embedding_tasks", **safe_error_log(e))
 
 # Type variable for async return type
 T = TypeVar('T')
@@ -211,7 +212,7 @@ def generate_document_embedding(
                     logger.warning(
                         "embedding_cache_invalidation_failed",
                         document_id=document_id,
-                        error=str(cache_error)
+                        **safe_error_log(cache_error)
                     )
 
                 processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
@@ -251,7 +252,7 @@ def generate_document_embedding(
                         "embedding_task_oom",
                         task_id=task_id,
                         document_id=document_id,
-                        error=str(e)
+                        **safe_error_log(e)
                     )
                     await _cleanup_gpu_memory()
 
@@ -263,7 +264,7 @@ def generate_document_embedding(
                     "embedding_task_failed",
                     task_id=task_id,
                     document_id=document_id,
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 raise
 
@@ -415,7 +416,7 @@ def batch_generate_embeddings(
                                 task_id=task_id,
                                 batch_start=batch_start,
                                 batch_size=len(texts_to_embed),
-                                error=str(e)
+                                **safe_error_log(e)
                             )
                             await _cleanup_gpu_memory()
 
@@ -456,16 +457,14 @@ def batch_generate_embeddings(
                                 "batch_embedding_error",
                                 task_id=task_id,
                                 batch_start=batch_start,
-                                error=str(e)
+                                **safe_error_log(e)
                             )
                             # Mark all as failed
                             for doc_id in doc_ids_to_embed:
                                 failed += 1
                                 results.append({
                                     "document_id": doc_id,
-                                    "success": False,
-                                    "error": str(e)
-                                })
+                                    "success": False, **safe_error_log(e)})
 
             processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
 
@@ -813,9 +812,9 @@ def sync_document_to_qdrant(
 
             except Exception as e:
                 if _is_oom_error(e):
-                    logger.warning("qdrant_sync_oom", document_id=document_id, error=str(e))
+                    logger.warning("qdrant_sync_oom", document_id=document_id, **safe_error_log(e))
                     await _cleanup_gpu_memory()
-                logger.exception("qdrant_sync_failed", document_id=document_id, error=str(e))
+                logger.exception("qdrant_sync_failed", document_id=document_id, **safe_error_log(e))
                 raise
 
             finally:
@@ -975,7 +974,7 @@ def migrate_embeddings_to_qdrant(
                             "qdrant_migration_oom",
                             task_id=task_id,
                             batch_start=batch_start,
-                            error=str(e)
+                            **safe_error_log(e)
                         )
                         await _cleanup_gpu_memory()
                         # Bei OOM: Einzeln verarbeiten
@@ -1017,7 +1016,7 @@ def migrate_embeddings_to_qdrant(
                             "qdrant_migration_batch_error",
                             task_id=task_id,
                             batch_start=batch_start,
-                            error=str(e)
+                            **safe_error_log(e)
                         )
                         failed += len(batch)
 
@@ -1161,9 +1160,9 @@ def generate_jina_embedding(
 
             except Exception as e:
                 if _is_oom_error(e):
-                    logger.warning("jina_embedding_oom", document_id=document_id, error=str(e))
+                    logger.warning("jina_embedding_oom", document_id=document_id, **safe_error_log(e))
                     await _cleanup_gpu_memory()
-                logger.exception("jina_embedding_failed", document_id=document_id, error=str(e))
+                logger.exception("jina_embedding_failed", document_id=document_id, **safe_error_log(e))
                 raise
 
             finally:
@@ -1259,7 +1258,7 @@ def analyze_ab_test_metrics(
                 }
 
             except Exception as e:
-                logger.exception("ab_test_analysis_failed", task_id=task_id, error=str(e))
+                logger.exception("ab_test_analysis_failed", task_id=task_id, **safe_error_log(e))
                 raise
 
     return run_async_task(process_async())
@@ -1403,7 +1402,7 @@ def refresh_search_analytics(self) -> Dict[str, Any]:
                 logger.exception(
                     "refresh_search_analytics_error",
                     task_id=task_id,
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 raise
 

@@ -21,6 +21,7 @@ import structlog
 
 from app.api.dependencies import get_db, get_current_active_user
 from app.db.models import User, Company, UserCompany
+from app.core.safe_errors import safe_error_log
 from app.db.schemas import (
     CompanyCreate,
     CompanyUpdate,
@@ -38,6 +39,7 @@ from app.middleware.company_context import (
     set_company_context,
 )
 from app.services.company_metrics_service import (
+
     company_metrics_service,
     CompanyMetrics,
     DashboardSummary,
@@ -245,7 +247,7 @@ async def switch_current_company(
         await switch_company(current_user.id, company_id, db)
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("company_switch_failed", error=str(e))
+        logger.warning("company_switch_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Firmenwechsel nicht erlaubt."

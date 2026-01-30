@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Document, InvoiceTracking, InvoiceStatus
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -109,13 +110,13 @@ class BusinessObjectFactory:
                 "business_object_creation_failed",
                 document_id=str(document_id),
                 type=classification_type,
-                error=str(e),
+                **safe_error_log(e),
                 exc_info=True,
             )
             return BusinessObjectResult(
                 success=False,
                 object_type=classification_type,
-                error=f"Fehler beim Erstellen des Business-Objekts: {str(e)}",
+                error=safe_error_detail(e, "Business-Object"),
             )
 
     async def _create_invoice_tracking(
@@ -211,7 +212,7 @@ class BusinessObjectFactory:
                 logger.warning(
                     "amount_conversion_failed",
                     amount=amount,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 amount_float = 0.0
 

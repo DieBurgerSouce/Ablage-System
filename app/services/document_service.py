@@ -32,6 +32,7 @@ from app.db.schemas import (
 from datetime import timedelta
 from app.core.config import settings
 from app.core.cache import invalidate_on_document_change
+from app.core.safe_errors import safe_error_log
 
 # Split Service imports - using consolidated services from document_services module
 from app.services.document_services.gdpr_service import (
@@ -74,13 +75,14 @@ def _get_search_service() -> Optional["SearchService"]:
     if service is None:
         try:
             from app.services.search_service import get_search_service
+
             service = get_search_service()
             _search_service_ctx.set(service)
         except ImportError as e:
             logger.warning(
                 "search_service_import_failed",
                 error_type="ImportError",
-                error=str(e)
+                **safe_error_log(e)
             )
             return None
     return service
@@ -268,7 +270,7 @@ class DocumentService:
             logger.warning(
                 "cache_invalidation_on_update_failed",
                 document_id=str(document_id),
-                error=str(e)
+                **safe_error_log(e)
             )
 
         return self._to_detail_response(doc)
@@ -356,7 +358,7 @@ class DocumentService:
             logger.warning(
                 "cache_invalidation_failed",
                 document_id=str(document_id),
-                error=str(e)
+                **safe_error_log(e)
             )
 
         return self._to_detail_response(doc)
@@ -423,7 +425,7 @@ class DocumentService:
             logger.warning(
                 "cache_invalidation_on_delete_failed",
                 document_id=str(document_id),
-                error=str(e)
+                **safe_error_log(e)
             )
 
         # Zentrale Cache-Invalidation (Cascade: doc, search, facets, stats)
@@ -433,7 +435,7 @@ class DocumentService:
             logger.warning(
                 "central_cache_invalidation_failed",
                 document_id=str(document_id),
-                error=str(e)
+                **safe_error_log(e)
             )
 
         return True

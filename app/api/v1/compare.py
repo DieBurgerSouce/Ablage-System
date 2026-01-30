@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.services.document_comparison_service import (
     ComparisonType,
@@ -202,15 +203,15 @@ async def compare_documents(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Dokumentenvergleich"),
         )
     except PermissionError as e:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=str(e),
+            detail=safe_error_detail(e, "Dokumentenvergleich"),
         )
     except Exception as e:
-        logger.error(f"Fehler beim Dokumentenvergleich: {e}")
+        logger.error("Fehler beim Dokumentenvergleich", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Vergleich fehlgeschlagen",
@@ -302,15 +303,15 @@ async def get_diff_report(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Differenzanalyse"),
         )
     except PermissionError as e:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=str(e),
+            detail=safe_error_detail(e, "Differenzanalyse"),
         )
     except Exception as e:
-        logger.error(f"Fehler bei Diff-Report-Generierung: {e}")
+        logger.error("Fehler bei Diff-Report-Generierung", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Report-Generierung fehlgeschlagen",
@@ -381,15 +382,15 @@ async def find_similar_documents(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Aehnlichkeitssuche"),
         )
     except PermissionError as e:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=str(e),
+            detail=safe_error_detail(e, "Aehnlichkeitssuche"),
         )
     except Exception as e:
-        logger.error(f"Fehler bei Aehnlichkeitssuche: {e}")
+        logger.error("Fehler bei Aehnlichkeitssuche", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Aehnlichkeitssuche fehlgeschlagen",
@@ -476,10 +477,10 @@ async def batch_compare_documents(
                 )
             )
         except (ValueError, PermissionError) as e:
-            logger.warning(f"Ueberspringe Dokument {compare_id}: {e}")
+            logger.warning("Ueberspringe Dokument im Batch-Vergleich", **safe_error_log(e))
             continue
         except Exception as e:
-            logger.error(f"Fehler bei Vergleich mit {compare_id}: {e}")
+            logger.error("Fehler bei Batch-Vergleich", **safe_error_log(e))
             continue
 
     return results
@@ -588,7 +589,7 @@ async def find_potential_duplicates(
                         break
 
             except Exception as e:
-                logger.debug(f"Fehler bei Duplikat-Check: {e}")
+                logger.debug("Fehler bei Duplikat-Check", **safe_error_log(e))
                 continue
 
         if len(duplicates) >= limit:

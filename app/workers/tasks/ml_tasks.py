@@ -21,6 +21,7 @@ import structlog
 
 from app.workers.celery_app import celery_app, CPUTask
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -79,7 +80,7 @@ class MLTracker:
             )
 
         except Exception as e:
-            logger.warning("ml_tracking_failed", error=str(e))
+            logger.warning("ml_tracking_failed", **safe_error_log(e))
 
     @staticmethod
     def track_ocr_result(
@@ -147,7 +148,7 @@ class MLTracker:
                     )
 
         except Exception as e:
-            logger.warning("ocr_result_tracking_failed", error=str(e))
+            logger.warning("ocr_result_tracking_failed", **safe_error_log(e))
 
     @staticmethod
     def get_routing_explanation(
@@ -185,7 +186,7 @@ class MLTracker:
             return explanation.to_dict()
 
         except Exception as e:
-            logger.warning("shap_explanation_failed", error=str(e))
+            logger.warning("shap_explanation_failed", **safe_error_log(e))
             return None
 
 
@@ -251,7 +252,7 @@ def run_drift_detection(self) -> Dict[str, Any]:
         return report.to_dict()
 
     except Exception as e:
-        logger.exception("drift_detection_failed", task_id=task_id, error=str(e))
+        logger.exception("drift_detection_failed", task_id=task_id, **safe_error_log(e))
         raise
 
 
@@ -311,8 +312,8 @@ def update_ml_metrics(self) -> Dict[str, Any]:
         return result
 
     except Exception as e:
-        logger.warning("ml_metrics_update_failed", error=str(e))
-        return {"error": str(e)}
+        logger.warning("ml_metrics_update_failed", **safe_error_log(e))
+        return {"error": safe_error_detail(e, "Vorgang")}
 
 
 @celery_app.task(
@@ -389,7 +390,7 @@ def check_experiment_completion(self) -> Dict[str, Any]:
         }
 
     except Exception as e:
-        logger.exception("experiment_check_failed", task_id=task_id, error=str(e))
+        logger.exception("experiment_check_failed", task_id=task_id, **safe_error_log(e))
         raise
 
 
@@ -471,7 +472,7 @@ def trigger_model_retrain(
         return result
 
     except Exception as e:
-        logger.exception("retrain_check_failed", task_id=task_id, error=str(e))
+        logger.exception("retrain_check_failed", task_id=task_id, **safe_error_log(e))
         raise
 
 
@@ -567,7 +568,7 @@ def generate_ml_report(self) -> Dict[str, Any]:
         return report
 
     except Exception as e:
-        logger.exception("ml_report_failed", task_id=task_id, error=str(e))
+        logger.exception("ml_report_failed", task_id=task_id, **safe_error_log(e))
         raise
 
 
@@ -627,7 +628,7 @@ def check_drift_and_respond(self) -> Dict[str, Any]:
         return result
 
     except Exception as e:
-        logger.exception("drift_response_check_failed", task_id=task_id, error=str(e))
+        logger.exception("drift_response_check_failed", task_id=task_id, **safe_error_log(e))
         raise
 
 
@@ -677,7 +678,7 @@ def generate_monthly_drift_report(self) -> Dict[str, Any]:
         return report
 
     except Exception as e:
-        logger.exception("monthly_drift_report_failed", task_id=task_id, error=str(e))
+        logger.exception("monthly_drift_report_failed", task_id=task_id, **safe_error_log(e))
         raise
 
 
@@ -728,7 +729,7 @@ def apply_ab_test_winners(self) -> Dict[str, Any]:
         return result
 
     except Exception as e:
-        logger.exception("apply_ab_winners_failed", task_id=task_id, error=str(e))
+        logger.exception("apply_ab_winners_failed", task_id=task_id, **safe_error_log(e))
         raise
 
 
@@ -994,12 +995,12 @@ def detect_concept_drift(
                 }
 
             except Exception as e:
-                logger.warning("ocr_drift_calculation_failed", error=str(e))
+                logger.warning("ocr_drift_calculation_failed", **safe_error_log(e))
                 return {
                     "drift_score": 0.0,
                     "accuracy": 1.0,
                     "sample_count": 0,
-                    "error": str(e),
+                    "error": safe_error_detail(e, "Vorgang"),
                 }
 
         async def _calculate_classification_drift(db, cutoff_date) -> Dict[str, Any]:
@@ -1053,12 +1054,12 @@ def detect_concept_drift(
                 }
 
             except Exception as e:
-                logger.warning("classification_drift_calculation_failed", error=str(e))
+                logger.warning("classification_drift_calculation_failed", **safe_error_log(e))
                 return {
                     "drift_score": 0.0,
                     "accuracy": 0.95,  # Konservative Schaetzung
                     "sample_count": 0,
-                    "error": str(e),
+                    "error": safe_error_detail(e, "Vorgang"),
                 }
 
         async def _calculate_routing_drift(db, cutoff_date) -> Dict[str, Any]:
@@ -1098,13 +1099,13 @@ def detect_concept_drift(
                 }
 
             except Exception as e:
-                logger.warning("routing_drift_calculation_failed", error=str(e))
+                logger.warning("routing_drift_calculation_failed", **safe_error_log(e))
                 return {
                     "drift_score": 0.0,
                     "accuracy": 0.95,
                     "sample_count": 0,
                     "suboptimal_rate": 0.05,
-                    "error": str(e),
+                    "error": safe_error_detail(e, "Vorgang"),
                 }
 
         def _calculate_cer(reference: str, hypothesis: str) -> float:
@@ -1157,7 +1158,7 @@ def detect_concept_drift(
         logger.exception(
             "concept_drift_detection_failed",
             task_id=task_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise
 
@@ -1217,8 +1218,8 @@ Recommendations:
         except Exception as notify_error:
             logger.warning(
                 "concept_drift_notification_failed",
-                error=str(notify_error),
+                **safe_error_log(notify_error),
             )
 
     except Exception as e:
-        logger.warning("drift_alert_send_failed", error=str(e))
+        logger.warning("drift_alert_send_failed", **safe_error_log(e))

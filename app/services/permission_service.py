@@ -78,6 +78,7 @@ class PermissionService:
         if self._redis_client is None:
             try:
                 from app.core.redis_state import get_redis
+
                 self._redis_client = await get_redis()
                 # Redis ist verfuegbar - Fallback-Modus zuruecksetzen
                 if self._redis_fallback_mode:
@@ -92,7 +93,7 @@ class PermissionService:
                 if not self._redis_fallback_logged:
                     logger.warning(
                         "permission_cache_redis_fallback",
-                        error=str(e),
+                        **safe_error_log(e),
                         message="Redis nicht verfuegbar - Fallback auf In-Memory Cache. "
                                 "WARNUNG: Bei Multi-Worker-Deployment koennen Permission-Updates "
                                 "zwischen Workern bis zu 30s inkonsistent sein!",
@@ -144,7 +145,7 @@ class PermissionService:
             if data:
                 return set(json.loads(data))
         except Exception as e:
-            logger.warning("permission_cache_redis_read_error", error=str(e))
+            logger.warning("permission_cache_redis_read_error", **safe_error_log(e))
         return None
 
     async def _set_cached_permissions_redis(
@@ -161,7 +162,7 @@ class PermissionService:
             key = self._build_cache_key(user_id, company_id)
             await redis.setex(key, PERMISSION_CACHE_TTL, json.dumps(list(permissions)))
         except Exception as e:
-            logger.warning("permission_cache_redis_write_error", error=str(e))
+            logger.warning("permission_cache_redis_write_error", **safe_error_log(e))
 
     async def _invalidate_cache_redis(
         self, user_id: Optional[str] = None, company_id: Optional[str] = None
@@ -194,7 +195,7 @@ class PermissionService:
                 async for key in redis.scan_iter(match=pattern):
                     await redis.delete(key)
         except Exception as e:
-            logger.warning("permission_cache_redis_invalidate_error", error=str(e))
+            logger.warning("permission_cache_redis_invalidate_error", **safe_error_log(e))
 
     async def has_permission(
         self,

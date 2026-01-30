@@ -39,6 +39,7 @@ except ImportError:
 
 try:
     import cv2
+
     CV2_AVAILABLE = True
 except ImportError:
     pass
@@ -286,7 +287,7 @@ class DocumentFeatureClassifier:
             img.close()
 
         except Exception as e:
-            logger.warning("image_analysis_failed", path=image_path, error=str(e))
+            logger.warning("image_analysis_failed", path=image_path, **safe_error_log(e))
 
     def _detect_table_patterns(self, img_array: "np.ndarray") -> bool:
         """Erkenne Tabellen-Patterns im Bild."""

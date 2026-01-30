@@ -29,6 +29,7 @@ from app.db.models import (
     OCRValidationCorrection,
 )
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -96,7 +97,7 @@ class TrainingMigrationService:
                 sources["sqlite_legacy"]["tables"] = [row[0] for row in cursor.fetchall()]
                 conn.close()
             except Exception as e:
-                sources["sqlite_legacy"]["error"] = str(e)
+                sources["sqlite_legacy"]["error"] = safe_error_detail(e, "Migration")
 
         # Prüfe Training Data Verzeichnis
         if sources["training_data_dir"]["available"]:
@@ -110,7 +111,7 @@ class TrainingMigrationService:
                 sources["training_data_dir"]["file_count"] = sum(file_types.values())
                 sources["training_data_dir"]["file_types"] = file_types
             except Exception as e:
-                sources["training_data_dir"]["error"] = str(e)
+                sources["training_data_dir"]["error"] = safe_error_detail(e, "Migration")
 
         return sources
 
@@ -172,10 +173,10 @@ class TrainingMigrationService:
             }
 
         except Exception as e:
-            logger.exception("sqlite_migration_failed", error=str(e))
+            logger.exception("sqlite_migration_failed", **safe_error_log(e))
             return {
                 "success": False,
-                "error": str(e),
+                "error": safe_error_detail(e, "Vorgang"),
                 "stats": dict(self._stats),
             }
 
@@ -280,7 +281,7 @@ class TrainingMigrationService:
 
             except Exception as e:
                 self._stats["errors"].append(f"Sample migration error: {e}")
-                logger.warning("sample_migration_error", error=str(e))
+                logger.warning("sample_migration_error", **safe_error_log(e))
 
     def _map_status(self, sqlite_status: Optional[str]) -> str:
         """Map SQLite Status auf PostgreSQL TrainingSampleStatus."""
@@ -338,7 +339,7 @@ class TrainingMigrationService:
 
             except Exception as e:
                 self._stats["errors"].append(f"Benchmark migration error: {e}")
-                logger.warning("benchmark_migration_error", error=str(e))
+                logger.warning("benchmark_migration_error", **safe_error_log(e))
 
     async def _migrate_sqlite_corrections(
         self,
@@ -378,7 +379,7 @@ class TrainingMigrationService:
 
             except Exception as e:
                 self._stats["errors"].append(f"Correction migration error: {e}")
-                logger.warning("correction_migration_error", error=str(e))
+                logger.warning("correction_migration_error", **safe_error_log(e))
 
     async def discover_training_files(
         self,
@@ -491,7 +492,7 @@ class TrainingMigrationService:
 
             except Exception as e:
                 errors.append(f"{file_info['name']}: {e}")
-                logger.warning("file_import_error", file=file_info["name"], error=str(e))
+                logger.warning("file_import_error", file=file_info["name"], **safe_error_log(e))
 
         if not dry_run:
             await self.session.commit()

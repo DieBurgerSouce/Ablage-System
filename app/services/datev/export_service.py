@@ -49,6 +49,7 @@ from app.api.schemas.datev import (
 )
 from app.api.schemas.extracted_data import ExtractedInvoiceData, InvoiceDirection
 from app.db import models
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 from .buchungsstapel_writer import BuchungsstapelWriter
 from .kontenrahmen import SKR03, SKR04, BaseKontenrahmen
@@ -663,9 +664,9 @@ class DATEVExportService:
             logger.warning(
                 "datev_invoice_parse_error",
                 document_id=str(doc_data["id"]),
-                error=str(e)
+                **safe_error_log(e)
             )
-            return (None, f"Fehler beim Parsen: {str(e)}", [])
+            return (None, safe_error_detail(e, "DATEV-Parsing"), [])
 
         # Vendor-Mapping suchen
         vendor_mapping = self._find_vendor_mapping(invoice, vendor_mappings)
@@ -732,9 +733,9 @@ class DATEVExportService:
             logger.warning(
                 "datev_invoice_parse_error",
                 document_id=str(doc.id),
-                error=str(e)
+                **safe_error_log(e)
             )
-            return (None, f"Fehler beim Parsen: {str(e)}", [])
+            return (None, safe_error_detail(e, "DATEV-Parsing"), [])
 
         # Vendor-Mapping suchen
         vendor_mapping = self._find_vendor_mapping(invoice, vendor_mappings)

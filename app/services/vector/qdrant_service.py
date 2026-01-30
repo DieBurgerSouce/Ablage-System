@@ -24,6 +24,7 @@ import structlog
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -160,7 +161,7 @@ class QdrantService:
             logger.error("qdrant_import_error", message="qdrant-client nicht installiert")
             return False
         except Exception as e:
-            logger.error("qdrant_connection_error", error=str(e))
+            logger.error("qdrant_connection_error", **safe_error_log(e))
             return False
 
     async def _ensure_collections(self) -> None:
@@ -253,7 +254,7 @@ class QdrantService:
             logger.error(
                 "qdrant_collection_create_error",
                 collection=name,
-                error=str(e)
+                **safe_error_log(e)
             )
             return False
 
@@ -305,7 +306,7 @@ class QdrantService:
             logger.error(
                 "qdrant_upsert_error",
                 document_id=str(document_id),
-                error=str(e)
+                **safe_error_log(e)
             )
             return False
 
@@ -357,7 +358,7 @@ class QdrantService:
             logger.error(
                 "qdrant_chunk_upsert_error",
                 chunk_id=chunk_id,
-                error=str(e)
+                **safe_error_log(e)
             )
             return False
 
@@ -409,7 +410,7 @@ class QdrantService:
                     "qdrant_batch_upsert_error",
                     batch_start=i,
                     batch_size=len(batch),
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 failed += len(batch)
 
@@ -508,7 +509,7 @@ class QdrantService:
             logger.error(
                 "qdrant_search_error",
                 collection=collection_name,
-                error=str(e)
+                **safe_error_log(e)
             )
             return []
 
@@ -561,7 +562,7 @@ class QdrantService:
             logger.error(
                 "qdrant_delete_error",
                 document_id=str(document_id),
-                error=str(e)
+                **safe_error_log(e)
             )
             return False
 
@@ -601,7 +602,7 @@ class QdrantService:
             logger.error(
                 "qdrant_collection_info_error",
                 collection=collection_name,
-                error=str(e)
+                **safe_error_log(e)
             )
             return None
 

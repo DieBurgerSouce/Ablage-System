@@ -45,6 +45,7 @@ class IdempotencyService:
         """Get Redis client, lazy loading if needed."""
         if self._redis is None:
             from app.core.rate_limiting import get_redis_storage
+
             self._redis = await get_redis_storage()
         return self._redis
 
@@ -95,7 +96,7 @@ class IdempotencyService:
                 )
                 return data
         except Exception as e:
-            logger.warning("idempotency_cache_get_error", error=str(e))
+            logger.warning("idempotency_cache_get_error", **safe_error_log(e))
 
         return None
 
@@ -142,7 +143,7 @@ class IdempotencyService:
             )
             return True
         except Exception as e:
-            logger.warning("idempotency_cache_set_error", error=str(e))
+            logger.warning("idempotency_cache_set_error", **safe_error_log(e))
             return False
 
     async def is_request_in_progress(
@@ -172,7 +173,7 @@ class IdempotencyService:
             exists = await redis.exists(lock_key)
             return bool(exists)
         except Exception as e:
-            logger.warning("idempotency_lock_check_error", error=str(e))
+            logger.warning("idempotency_lock_check_error", **safe_error_log(e))
             return False
 
     async def acquire_lock(
@@ -205,7 +206,7 @@ class IdempotencyService:
                 logger.debug("idempotency_lock_acquired", key=idempotency_key)
             return bool(acquired)
         except Exception as e:
-            logger.warning("idempotency_lock_acquire_error", error=str(e))
+            logger.warning("idempotency_lock_acquire_error", **safe_error_log(e))
             return True  # Bei Fehler, erlaube Verarbeitung
 
     async def release_lock(
@@ -230,7 +231,7 @@ class IdempotencyService:
             await redis.delete(lock_key)
             logger.debug("idempotency_lock_released", key=idempotency_key)
         except Exception as e:
-            logger.warning("idempotency_lock_release_error", error=str(e))
+            logger.warning("idempotency_lock_release_error", **safe_error_log(e))
 
 
 # Singleton instance

@@ -19,6 +19,7 @@ import numpy as np
 import structlog
 
 from app.agents.base import AgentCategory, PreprocessingAgent
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -285,7 +286,7 @@ class FrakturDetectorAgent(PreprocessingAgent):
             return np.mean(scores) if scores else 0.5
 
         except Exception as e:
-            logger.warning("visual_analysis_error", error=str(e))
+            logger.warning("visual_analysis_error", **safe_error_log(e))
             return 0.5  # Neutral bei Fehler
 
     def _analyze_stroke_patterns(self, image: np.ndarray) -> float:

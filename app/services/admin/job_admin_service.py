@@ -18,6 +18,7 @@ from sqlalchemy.orm import selectinload
 import structlog
 
 from app.db.models import ProcessingJob, Document, User, ProcessingStatus, AdminAction
+from app.core.safe_errors import safe_error_log
 from app.db.schemas import (
     JobAdminView,
     JobListFilters,
@@ -303,7 +304,7 @@ class JobAdminService:
                 "cancel_job_failed",
                 job_id=str(job_id),
                 admin_id=str(admin.id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return JobActionResponse(
                 success=False,
@@ -409,7 +410,7 @@ class JobAdminService:
                 "retry_job_failed",
                 job_id=str(job_id),
                 admin_id=str(admin.id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return JobActionResponse(
                 success=False,
@@ -503,7 +504,7 @@ class JobAdminService:
                 admin_id=str(admin.id),
                 status=status_value,
                 target_count=count,
-                error=str(e),
+                **safe_error_log(e),
             )
             return QueueClearResponse(
                 success=False,
@@ -795,7 +796,7 @@ class JobAdminService:
                 logger.error(
                     "celery_revoke_failed",
                     task_id=job.worker_id,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         # Update job status
@@ -929,6 +930,7 @@ class JobAdminService:
             Action response
         """
         from app.db.schemas import JobActionResponse
+
 
         result = await db.execute(
             select(ProcessingJob).where(ProcessingJob.id == job_id)

@@ -29,10 +29,26 @@ from jinja2 import (
     select_autoescape,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
-from weasyprint import HTML
-from docx import Document as DocxDocument
-from docx.shared import Inches, Pt
-from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+
+# Optional imports for PDF/DOCX generation
+try:
+    from weasyprint import HTML
+    WEASYPRINT_AVAILABLE = True
+except ImportError:
+    HTML = None  # type: ignore
+    WEASYPRINT_AVAILABLE = False
+    structlog.get_logger(__name__).warning("weasyprint not installed - PDF generation disabled")
+
+try:
+    from docx import Document as DocxDocument
+    from docx.shared import Inches, Pt
+    from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+    DOCX_AVAILABLE = True
+except ImportError:
+    DocxDocument = None  # type: ignore
+    Inches = Pt = WD_PARAGRAPH_ALIGNMENT = None  # type: ignore
+    DOCX_AVAILABLE = False
+    structlog.get_logger(__name__).warning("python-docx not installed - DOCX generation disabled")
 
 from app.core.security.sensitive_data_filter import get_pii_safe_logger
 

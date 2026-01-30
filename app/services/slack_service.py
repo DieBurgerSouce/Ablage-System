@@ -23,6 +23,7 @@ import structlog
 from pydantic import BaseModel, Field
 
 from app.core.config import settings as app_settings
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -329,7 +330,7 @@ class SlackService:
             except httpx.RequestError as e:
                 logger.error(
                     "slack_webhook_request_error",
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 if attempt < retry_count - 1:
                     await asyncio.sleep(1 * (attempt + 1))
@@ -434,7 +435,7 @@ class SlackService:
             except httpx.RequestError as e:
                 logger.error(
                     "slack_bot_request_error",
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 if attempt < retry_count - 1:
                     await asyncio.sleep(1 * (attempt + 1))
@@ -682,7 +683,7 @@ class SlackService:
                 success = await self.send_webhook_message(test_msg, retry_count=1)
                 result["webhook_test"] = "success" if success else "failed"
             except Exception as e:
-                result["webhook_test"] = f"error: {str(e)}"
+                result["webhook_test"] = f"error: {safe_error_detail(e, 'Slack')}"
 
         # Bot testen
         if self._bot_token:
@@ -702,7 +703,7 @@ class SlackService:
                 else:
                     result["bot_test"] = {"status": "failed", "error": data.get("error")}
             except Exception as e:
-                result["bot_test"] = {"status": "error", "error": str(e)}
+                result["bot_test"] = {"status": "error", **safe_error_log(e)}
 
         return result
 

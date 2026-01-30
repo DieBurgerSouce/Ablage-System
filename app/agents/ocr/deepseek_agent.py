@@ -57,6 +57,7 @@ from app.agents.base import AgentResourceError, OCRAgent, OCRResult
 from app.gpu_manager import GPUManager
 from app.core.exceptions import OCRGPUOutOfMemoryError, InferenceTimeoutError
 from app.services.circuit_breaker import circuit_breaker_protected, get_circuit_breaker_registry
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from transformers import LogitsProcessor
 
 # Platform detection
@@ -247,7 +248,7 @@ class DeepSeekAgent(OCRAgent):
             self.logger.debug("spacy_not_installed")
             DeepSeekAgent._spacy_nlp = None
         except Exception as e:
-            self.logger.warning("spacy_init_error", error=str(e))
+            self.logger.warning("spacy_init_error", **safe_error_log(e))
             DeepSeekAgent._spacy_nlp = None
 
     @circuit_breaker_protected("deepseek")
@@ -319,7 +320,7 @@ class DeepSeekAgent(OCRAgent):
             self.logger.error(
                 "deepseek_gpu_oom",
                 document_id=document_id,
-                error=str(e),
+                **safe_error_log(e),
                 fallback_backends=self.FALLBACK_BACKENDS,
             )
             # Record OOM metric
@@ -359,7 +360,7 @@ class DeepSeekAgent(OCRAgent):
             self.logger.error(
                 "deepseek_processing_error",
                 document_id=document_id,
-                error=str(e),
+                **safe_error_log(e),
                 exc_info=True,
             )
             raise
@@ -504,10 +505,10 @@ class DeepSeekAgent(OCRAgent):
             except Exception as e:
                 # Mark as permanently failed to prevent infinite retry loops
                 DeepSeekAgent._model_load_failed = True
-                DeepSeekAgent._model_load_error = str(e)
+                DeepSeekAgent._model_load_error = safe_error_detail(e, "DeepSeek")
                 self.logger.error(
                     "deepseek_model_load_failed",
-                    error=str(e),
+                    **safe_error_log(e),
                     exc_info=True,
                     permanent_failure=True
                 )
@@ -926,7 +927,7 @@ class DeepSeekAgent(OCRAgent):
         except Exception as e:
             self.logger.warning(
                 "confidence_calculation_error",
-                error=str(e),
+                **safe_error_log(e),
                 fallback="heuristic"
             )
             return {
@@ -1231,7 +1232,7 @@ class DeepSeekAgent(OCRAgent):
                 # Log error and track metric for postprocessor failure
                 self.logger.warning(
                     "deepseek_german_postprocessing_error",
-                    error=str(e),
+                    **safe_error_log(e),
                     error_type=type(e).__name__
                 )
                 # Track postprocessor error in metrics
@@ -1290,6 +1291,7 @@ class DeepSeekAgent(OCRAgent):
         # Import GermanValidator for pattern matching and validation
         try:
             from app.german_validator import GermanValidator
+
             validator = GermanValidator()
             has_validator = True
         except ImportError:
@@ -1476,7 +1478,7 @@ class DeepSeekAgent(OCRAgent):
 
         except Exception as e:
             # Pre-loaded model should not fail, but log if it does
-            self.logger.warning("spacy_ner_error", error=str(e))
+            self.logger.warning("spacy_ner_error", **safe_error_log(e))
 
         # Sort entities by position in text
         entities.sort(key=lambda x: x.get("start", 0))

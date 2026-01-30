@@ -980,6 +980,7 @@ class InvestmentIntelligenceService:
         """Berechnet alle Portfolio-Analysen neu (fuer Celery Beat)."""
         from app.db.models import PrivatSpace
 
+
         result = await db.execute(
             select(PrivatSpace.id).where(PrivatSpace.is_active == True)
         )
@@ -997,7 +998,7 @@ class InvestmentIntelligenceService:
                 logger.error(
                     "portfolio_recalculation_failed",
                     space_id=str(space_id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         logger.info(

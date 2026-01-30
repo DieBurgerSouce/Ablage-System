@@ -21,6 +21,8 @@ from app.api.dependencies import get_current_active_user, get_db
 from app.db.models import User
 from app.services.ocr import quick_ocr_preview
 from app.core.file_validation import sanitize_filename, PathTraversalError
+from app.core.safe_errors import safe_error_log, safe_error_detail
+from app.core.security_auth import build_content_disposition
 
 logger = structlog.get_logger(__name__)
 
@@ -180,7 +182,7 @@ async def ocr_preview_upload(
             "ocr_preview_upload_fehler",
             user_id=str(current_user.id),
             filename=file.filename,
-            error=str(e),
+            **safe_error_log(e),
         )
         # SECURITY FIX 30: Generic error message - no exception details to client
         return OCRPreviewResponse(
@@ -199,7 +201,7 @@ async def ocr_preview_upload(
             try:
                 tmp_path.unlink()
             except OSError as e:
-                logger.debug("temp_file_cleanup_failed", path=str(tmp_path), error=str(e))
+                logger.debug("temp_file_cleanup_failed", path=str(tmp_path), **safe_error_log(e))
 
 
 @router.post(
@@ -296,7 +298,7 @@ async def ocr_preview_document(
             "ocr_preview_document_fehler",
             user_id=str(current_user.id),
             dokument_id=str(request.dokument_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         # SECURITY FIX 30: Generic error message - no exception details to client
         return OCRPreviewResponse(
@@ -315,7 +317,7 @@ async def ocr_preview_document(
             try:
                 file_path.unlink()
             except OSError as e:
-                logger.debug("temp_file_cleanup_failed", path=str(file_path), error=str(e))
+                logger.debug("temp_file_cleanup_failed", path=str(file_path), **safe_error_log(e))
 
 
 @router.get(
@@ -348,7 +350,7 @@ async def ocr_status(
         pytesseract.get_tesseract_version()
         tesseract_verfuegbar = True
     except (ImportError, OSError) as e:
-        logger.debug("tesseract_not_available", error=str(e))
+        logger.debug("tesseract_not_available", **safe_error_log(e))
         tesseract_verfuegbar = False
 
     # GPU pruefen
@@ -383,7 +385,7 @@ async def ocr_status(
             "gpu_erforderlich": True,
         }
     except ImportError as e:
-        logger.warning("deepseek_import_failed", error=str(e))
+        logger.warning("deepseek_import_failed", **safe_error_log(e))
         backends["deepseek"] = {
             "verfuegbar": False,
             "beschreibung": "GPU-OCR (nicht installiert)",
@@ -588,7 +590,7 @@ async def start_ocr_processing(
         logger.error(
             "ocr_start_failed",
             document_id=str(document_id),
-            error=str(e)
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=500,
@@ -674,7 +676,7 @@ async def cancel_ocr_processing(
         logger.error(
             "ocr_cancel_failed",
             document_id=str(document_id),
-            error=str(e)
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=500,
@@ -855,7 +857,7 @@ async def get_ocr_cache_status(
                 }
                 cache_status["cache_entries"].append(entry)
             except Exception as e:
-                logger.warning("cache_key_inspection_failed", key=str(key), error=str(e))
+                logger.warning("cache_key_inspection_failed", key=str(key), **safe_error_log(e))
 
         cache_status["total_cached"] = len(cache_keys)
 
@@ -886,13 +888,13 @@ async def get_ocr_cache_status(
                         cache_status["cache_entries"].append(entry)
                         cache_status["total_cached"] += 1
                     except Exception as e:
-                        logger.warning("hash_cache_inspection_failed", key=str(key), error=str(e))
+                        logger.warning("hash_cache_inspection_failed", key=str(key), **safe_error_log(e))
                 if cursor == 0:
                     break
 
     except Exception as e:
-        logger.warning("cache_status_error", document_id=str(document_id), error=str(e))
-        cache_status["error"] = f"Cache-Abfrage fehlgeschlagen: {str(e)}"
+        logger.warning("cache_status_error", document_id=str(document_id), **safe_error_log(e))
+        cache_status["error"] = safe_error_detail(e, "Vorgang")
 
     # Dokument-Metadaten hinzufuegen
     cache_status["document_info"] = {
@@ -985,7 +987,7 @@ async def invalidate_ocr_cache(
 
     except Exception as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.error("cache_invalidation_error", document_id=str(document_id), error=str(e))
+        logger.error("cache_invalidation_error", document_id=str(document_id), **safe_error_log(e))
         raise HTTPException(
             status_code=500,
             detail="Cache-Invalidierung fehlgeschlagen. Bitte erneut versuchen."
@@ -1213,12 +1215,12 @@ async def batch_reprocess_ocr(
             logger.error(
                 "batch_ocr_document_error",
                 document_id=str(doc_id),
-                error=str(e)
+                **safe_error_log(e)
             )
             details.append({
                 "document_id": str(doc_id),
                 "status": "failed",
-                "reason": f"Fehler: {str(e)}"
+                "reason": safe_error_detail(e, "OCR")
             })
             failed += 1
 
@@ -1553,7 +1555,7 @@ async def batch_semantic_validate(
             logger.error(
                 "batch_validation_error",
                 document_id=str(doc_id),
-                error=str(e)
+                **safe_error_log(e)
             )
             results.append({
                 "document_id": str(doc_id),
@@ -1717,11 +1719,11 @@ async def analyze_document_handwriting(
         logger.error(
             "handwriting_image_load_error",
             document_id=str(document_id),
-            error=str(e)
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=500,
-            detail=f"Fehler beim Laden des Dokument-Bildes: {str(e)}"
+            detail=safe_error_detail(e, "Vorgang")
         )
 
     # Handschrift-Analyse durchfuehren
@@ -1735,11 +1737,11 @@ async def analyze_document_handwriting(
         logger.error(
             "handwriting_analysis_error",
             document_id=str(document_id),
-            error=str(e)
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=500,
-            detail=f"Handschrift-Analyse fehlgeschlagen: {str(e)}"
+            detail=safe_error_detail(e, "Vorgang")
         )
 
     # Ergebnis in metadata speichern
@@ -1923,7 +1925,7 @@ async def analyze_upload_handwriting(
     except Exception as e:
         raise HTTPException(
             status_code=400,
-            detail=f"Fehler beim Laden der Datei: {str(e)}"
+            detail=safe_error_detail(e, "Vorgang")
         )
 
     # Analyse durchfuehren
@@ -1937,11 +1939,11 @@ async def analyze_upload_handwriting(
         logger.error(
             "handwriting_upload_analysis_error",
             filename=file.filename,
-            error=str(e)
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=500,
-            detail=f"Handschrift-Analyse fehlgeschlagen: {str(e)}"
+            detail=safe_error_detail(e, "Vorgang")
         )
 
     logger.info(
@@ -2095,7 +2097,7 @@ async def extract_document_tables(
             logger.warning(
                 "layout_parse_error",
                 document_id=str(document_id),
-                error=str(e),
+                **safe_error_log(e),
             )
 
     # Tabellen extrahieren
@@ -2326,7 +2328,7 @@ async def export_document_table(
         content=exported,
         media_type=content_type,
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Disposition": build_content_disposition(filename, "attachment"),
         },
     )
 
@@ -2382,7 +2384,7 @@ async def extract_upload_tables(
         logger.error(
             "layout_analysis_failed",
             filename=file.filename,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -2564,7 +2566,7 @@ async def export_all_document_tables(
         content=exported,
         media_type=content_type,
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Disposition": build_content_disposition(filename, "attachment"),
         },
     )
 
@@ -3129,7 +3131,7 @@ async def extract_formulas(
         logger.exception(
             "formula_extraction_fehler",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         return FormulaExtractionResponse(
             erfolg=False,
@@ -3188,7 +3190,7 @@ async def parse_formula(
         logger.exception(
             "formula_parse_fehler",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -3224,6 +3226,7 @@ async def validate_formula(
     try:
         from app.services.ocr.formula_extraction_service import get_formula_extraction_service
 
+
         service = get_formula_extraction_service()
         is_valid, issues = service.validate_formula(request.formula)
 
@@ -3257,7 +3260,7 @@ async def validate_formula(
         logger.exception(
             "formula_validate_fehler",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

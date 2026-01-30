@@ -32,6 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.datetime_utils import utc_now
+from app.core.safe_errors import safe_error_detail,  safe_error_log
 from app.db.models import (
     Document,
     BusinessEntity,
@@ -510,6 +511,7 @@ class FinanceAssistantService:
         """Lazy-Loading für NLQService."""
         if self._nlq_service is None:
             from app.services.ai.nlq_service import NLQService
+
             self._nlq_service = NLQService(db=self.db)
         return self._nlq_service
 
@@ -615,18 +617,18 @@ class FinanceAssistantService:
             logger.error(
                 "finance_assistant_error",
                 message=message[:100],
-                error=str(e),
+                **safe_error_log(e),
             )
             # Rollback bei Fehler
             if persist:
                 await self.db.rollback()
 
             return AssistantResponse(
-                message=f"Entschuldigung, ein Fehler ist aufgetreten: {str(e)}",
+                message=safe_error_detail(e, "Entschuldigung, ein Fehler ist aufgetreten: "),
                 intent=AssistantIntent.CHAT,
                 success=False,
                 processing_time_ms=int((time.time() - start_time) * 1000),
-                error_message=str(e),
+                error_message=safe_error_detail(e, "KI-Assistent"),
             )
 
     # ========================================================================
@@ -1068,22 +1070,22 @@ class FinanceAssistantService:
             logger.error(
                 "action_execution_error",
                 action_type=action.action_type.value,
-                error=str(e),
+                **safe_error_log(e),
             )
             # Fehler-Status speichern
             if action_id:
                 await self.update_action_status(
                     action_id=action_id,
                     status=AIActionStatus.FAILED,
-                    error_message=str(e),
+                    error_message=safe_error_detail(e, "KI-Assistent"),
                 )
                 await self.db.commit()
 
             return AssistantResponse(
-                message=f"Fehler bei der Ausführung: {str(e)}",
+                message=safe_error_detail(e, "Fehler bei der Ausführung: "),
                 intent=AssistantIntent.EXECUTE_ACTION,
                 success=False,
-                error_message=str(e),
+                error_message=safe_error_detail(e, "KI-Assistent"),
             )
 
     async def _handle_payment_run(
@@ -1429,13 +1431,13 @@ Halte dich kurz und praxisorientiert."""
             )
 
         except Exception as e:
-            logger.error("llm_explanation_error", error=str(e))
+            logger.error("llm_explanation_error", **safe_error_log(e))
             return AssistantResponse(
                 message="Ich konnte Ihre Frage leider nicht beantworten. "
                        "Bitte formulieren Sie sie anders.",
                 intent=AssistantIntent.EXPLAIN,
                 success=False,
-                error_message=str(e),
+                error_message=safe_error_detail(e, "KI-Assistent"),
             )
 
     # ========================================================================
@@ -1598,12 +1600,12 @@ BEGRÜNDUNG: [Kurze Erklärung]"""
             )
 
         except Exception as e:
-            logger.error("llm_booking_error", error=str(e))
+            logger.error("llm_booking_error", **safe_error_log(e))
             return AssistantResponse(
                 message="Buchungsvorschlag konnte nicht erstellt werden.",
                 intent=AssistantIntent.SUGGEST_BOOKING,
                 success=False,
-                error_message=str(e),
+                error_message=safe_error_detail(e, "KI-Assistent"),
             )
 
     # ========================================================================
@@ -1946,7 +1948,7 @@ _Hinweis: Dies ist eine vereinfachte Trendfortschreibung._"""
                 conversation_id=str(context.conversation_id) if context.conversation_id else None,
             )
         except Exception as e:
-            logger.error("audit_log_error", error=str(e))
+            logger.error("audit_log_error", **safe_error_log(e))
 
 
 # ============================================================================

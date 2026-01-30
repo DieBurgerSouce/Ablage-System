@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user, get_db
+from app.core.safe_errors import safe_error_detail
 from app.db.models import User
 from app.services.ai.smart_inbox.smart_inbox_service import SmartInboxService
 
@@ -167,7 +168,7 @@ async def get_smart_inbox(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Inbox konnte nicht abgerufen werden: {str(e)}",
+            detail=safe_error_detail(e, "Vorgang"),
         )
 
 
@@ -205,17 +206,17 @@ async def perform_inbox_action(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Inbox Item nicht gefunden: {str(e)}",
+            detail=safe_error_detail(e, "Vorgang"),
         )
     except PermissionError as e:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Keine Berechtigung: {str(e)}",
+            detail=safe_error_detail(e, "Vorgang"),
         )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Aktion konnte nicht ausgeführt werden: {str(e)}",
+            detail=safe_error_detail(e, "Vorgang"),
         )
 
 
@@ -259,19 +260,19 @@ async def snooze_inbox_item(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Inbox Item nicht gefunden: {str(e)}",
+            detail=safe_error_detail(e, "Vorgang"),
         )
     except PermissionError as e:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Keine Berechtigung: {str(e)}",
+            detail=safe_error_detail(e, "Vorgang"),
         )
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Snooze konnte nicht gesetzt werden: {str(e)}",
+            detail=safe_error_detail(e, "Vorgang"),
         )
 
 
@@ -304,17 +305,17 @@ async def dismiss_inbox_item(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Inbox Item nicht gefunden: {str(e)}",
+            detail=safe_error_detail(e, "Vorgang"),
         )
     except PermissionError as e:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Keine Berechtigung: {str(e)}",
+            detail=safe_error_detail(e, "Vorgang"),
         )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Item konnte nicht verworfen werden: {str(e)}",
+            detail=safe_error_detail(e, "Vorgang"),
         )
 
 
@@ -362,7 +363,7 @@ async def get_inbox_insights(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Insights konnten nicht generiert werden: {str(e)}",
+            detail=safe_error_detail(e, "Vorgang"),
         )
 
 
@@ -402,7 +403,7 @@ async def trigger_manual_aggregation(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Aggregation konnte nicht gestartet werden: {str(e)}",
+            detail=safe_error_detail(e, "Vorgang"),
         )
 
 
@@ -446,5 +447,5 @@ async def get_inbox_stats(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Statistiken konnten nicht abgerufen werden: {str(e)}",
+            detail=safe_error_detail(e, "Vorgang"),
         )

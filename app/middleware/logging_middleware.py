@@ -12,6 +12,7 @@ import structlog
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -129,7 +130,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 logger.warning(
                     "fehler_beim_lesen_anfrage_koerper",
                     correlation_id=correlation_id,
-                    error=str(e)
+                    **safe_error_log(e)
                 )
 
         # Process request
@@ -141,7 +142,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
         except Exception as e:
             error_occurred = True
-            error_message = str(e)
+            error_message = safe_error_detail(e, "Request")
 
             # Log error
             logger.error(
@@ -199,7 +200,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                         logger.warning(
                             "fehler_beim_lesen_antwort_koerper",
                             correlation_id=correlation_id,
-                            error=str(e)
+                            **safe_error_log(e)
                         )
 
             # Log slow requests
@@ -252,7 +253,7 @@ class ErrorLoggingMiddleware(BaseHTTPMiddleware):
             logger.error(
                 "validierungsfehler",
                 path=request.url.path,
-                error=str(e),
+                **safe_error_log(e),
                 error_type="validierung",
                 exc_info=True
             )
@@ -261,7 +262,7 @@ class ErrorLoggingMiddleware(BaseHTTPMiddleware):
             logger.error(
                 "berechtigungsfehler",
                 path=request.url.path,
-                error=str(e),
+                **safe_error_log(e),
                 error_type="berechtigung",
                 exc_info=True
             )
@@ -270,7 +271,7 @@ class ErrorLoggingMiddleware(BaseHTTPMiddleware):
             logger.error(
                 "verbindungsfehler",
                 path=request.url.path,
-                error=str(e),
+                **safe_error_log(e),
                 error_type="verbindung",
                 exc_info=True
             )
@@ -279,7 +280,7 @@ class ErrorLoggingMiddleware(BaseHTTPMiddleware):
             logger.error(
                 "zeitueberschreitung",
                 path=request.url.path,
-                error=str(e),
+                **safe_error_log(e),
                 error_type="timeout",
                 exc_info=True
             )
@@ -288,7 +289,7 @@ class ErrorLoggingMiddleware(BaseHTTPMiddleware):
             logger.critical(
                 "unerwarteter_fehler",
                 path=request.url.path,
-                error=str(e),
+                **safe_error_log(e),
                 error_type="unbekannt",
                 exc_info=True
             )

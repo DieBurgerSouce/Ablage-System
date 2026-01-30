@@ -19,6 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.safe_errors import safe_error_detail
 from app.api.dependencies import (
     get_current_active_user,
     get_db,
@@ -239,7 +240,7 @@ async def create_shipment(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Sendung konnte nicht erstellt werden: {str(e)}"
+            detail=safe_error_detail(e, "Vorgang")
         )
 
 
@@ -402,7 +403,7 @@ async def track_shipment(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Tracking-Abfrage fehlgeschlagen: {str(e)}"
+            detail=safe_error_detail(e, "Vorgang")
         )
 
 
@@ -495,7 +496,7 @@ async def refresh_shipment_tracking(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Tracking-Update fehlgeschlagen: {str(e)}"
+            detail=safe_error_detail(e, "Vorgang")
         )
 
 

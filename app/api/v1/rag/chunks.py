@@ -23,6 +23,7 @@ from app.api.schemas.rag import (
     RAGBulkChunkRequest,
 )
 from app.services.rag.chunking_service import get_chunking_service, DocumentChunkingService
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -106,7 +107,7 @@ async def chunk_document(
         logger.exception(
             "chunk_document_failed",
             document_id=str(document_id),
-            error=str(e)
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -155,7 +156,7 @@ async def get_document_chunks(
         logger.exception(
             "get_document_chunks_failed",
             document_id=str(document_id),
-            error=str(e)
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -199,7 +200,7 @@ async def delete_document_chunks(
         logger.exception(
             "delete_document_chunks_failed",
             document_id=str(document_id),
-            error=str(e)
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -269,7 +270,7 @@ async def rechunk_document(
         logger.exception(
             "rechunk_document_failed",
             document_id=str(document_id),
-            error=str(e)
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -346,6 +347,7 @@ async def get_chunk_stats(
     from sqlalchemy import select, func
     from app.db.models import RAGDocumentChunk, Document
 
+
     try:
         # Gesamtanzahl Chunks
         total_chunks = await db.scalar(
@@ -397,7 +399,7 @@ async def get_chunk_stats(
 
     except Exception as e:
         # SECURITY FIX 28-25: Generische Fehlermeldung
-        logger.exception("get_chunk_stats_failed", error=str(e))
+        logger.exception("get_chunk_stats_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Statistiken fehlgeschlagen. Bitte versuchen Sie es erneut."

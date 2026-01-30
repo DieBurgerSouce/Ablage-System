@@ -90,7 +90,7 @@ async def quick_ocr_preview(
         logger.error(
             "quick_ocr_preview_failed",
             file_path=str(file_path),
-            error=str(e)
+            **safe_error_log(e)
         )
         return ""
 
@@ -136,7 +136,7 @@ async def _extract_pdf_text(
                         if sum(len(t) for t in text_parts) >= max_chars:
                             break
             except Exception as e:
-                logger.warning("pdfplumber_extraction_failed", error=str(e))
+                logger.warning("pdfplumber_extraction_failed", **safe_error_log(e))
                 return ""
             return "\n".join(text_parts).strip()
 
@@ -203,7 +203,7 @@ async def _ocr_pdf_first_page(file_path: Path, max_chars: int) -> str:
             logger.warning("tesseract_not_available")
             return ""
         except Exception as e:
-            logger.error("pdf_ocr_failed", error=str(e))
+            logger.error("pdf_ocr_failed", **safe_error_log(e))
             return ""
 
     loop = asyncio.get_event_loop()
@@ -231,7 +231,7 @@ async def _extract_image_text(file_path: Path, max_chars: int) -> str:
         img = Image.open(str(file_path))
         return await _ocr_image(img, max_chars)
     except Exception as e:
-        logger.error("image_ocr_failed", error=str(e))
+        logger.error("image_ocr_failed", **safe_error_log(e))
         return ""
 
 
@@ -254,6 +254,7 @@ async def _ocr_image(img: "Image.Image", max_chars: int) -> str:
     try:
         import pytesseract
 
+
         def _run_ocr() -> str:
             # German + English for best results on German documents
             text = pytesseract.image_to_string(img, lang='deu+eng')
@@ -269,5 +270,5 @@ async def _ocr_image(img: "Image.Image", max_chars: int) -> str:
         logger.warning("tesseract_not_available_for_preview")
         return ""
     except Exception as e:
-        logger.error("tesseract_ocr_failed", error=str(e))
+        logger.error("tesseract_ocr_failed", **safe_error_log(e))
         return ""

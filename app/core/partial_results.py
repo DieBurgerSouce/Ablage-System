@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import structlog
 
 from app.core.redis_state import RedisStateManager
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -387,7 +388,7 @@ class PartialResultHandler:
                 "partial_result_parse_error",
                 document_id=document_id,
                 phase=phase,
-                error=str(e),
+                **safe_error_log(e),
             )
             return None
 

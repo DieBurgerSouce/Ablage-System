@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
+from app.core.safe_errors import safe_error_log
 from app.workers.celery_app import celery_app
 from app.db.session import get_async_session_context
 
@@ -184,7 +185,7 @@ def auto_link_document_task(
         logger.error(
             "document_chain_auto_link_failed",
             document_id=document_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -296,7 +297,7 @@ def auto_link_all_documents_task(
                     logger.warning(
                         "document_chain_batch_error",
                         document_id=str(doc.id),
-                        error=str(e),
+                        **safe_error_log(e),
                     )
                     stats["errors"] += 1
 
@@ -327,7 +328,7 @@ def auto_link_all_documents_task(
 
         return result
     except Exception as e:
-        logger.error("document_chain_batch_failed", error=str(e))
+        logger.error("document_chain_batch_failed", **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -400,7 +401,7 @@ def check_chain_discrepancies_task(
         logger.error(
             "chain_discrepancy_check_failed",
             chain_id=chain_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 

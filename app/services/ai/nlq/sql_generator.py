@@ -7,6 +7,8 @@ from typing import Any, Dict
 import httpx
 import structlog
 
+from app.core.safe_errors import safe_error_log, safe_error_detail
+
 logger = structlog.get_logger(__name__)
 
 
@@ -112,7 +114,7 @@ class SQLGenerator:
         except httpx.HTTPError as e:
             logger.error(
                 "ollama_connection_failed",
-                error=str(e),
+                **safe_error_log(e),
                 url=self.OLLAMA_BASE_URL,
             )
             raise RuntimeError(
@@ -120,9 +122,9 @@ class SQLGenerator:
             ) from e
 
         except Exception as e:
-            logger.error("sql_generation_failed", error=str(e))
+            logger.error("sql_generation_failed", **safe_error_log(e))
             raise RuntimeError(
-                f"SQL-Generierung fehlgeschlagen: {str(e)}"
+                safe_error_detail(e, "SQL-Generierung")
             ) from e
 
     def _build_prompt(self, query: str, schema_context: str) -> str:
@@ -178,6 +180,7 @@ Erklärung:
 
         # Extract SQL from code block
         import re
+
 
         sql_match = re.search(
             r"```sql\s*\n(.*?)\n```", raw_response, re.DOTALL | re.IGNORECASE
@@ -281,5 +284,5 @@ Erklärung:
                 return model_available
 
         except Exception as e:
-            logger.error("ollama_health_check_failed", error=str(e))
+            logger.error("ollama_health_check_failed", **safe_error_log(e))
             return False

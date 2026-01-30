@@ -22,6 +22,7 @@ from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Document, BusinessContact, DocumentContact, ContactType
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -251,6 +252,7 @@ def _get_entity_extraction_agent() -> "EntityExtractionAgent":
     global _entity_extraction_agent
     if _entity_extraction_agent is None:
         from app.agents.postprocessing.entity_extraction_agent import EntityExtractionAgent
+
         _entity_extraction_agent = EntityExtractionAgent()
         logger.info("entity_extraction_agent_initialized", spacy_loaded=True)
     return _entity_extraction_agent
@@ -307,7 +309,7 @@ def extract_name_from_text(text: str) -> Optional[Dict[str, Any]]:
         return None
 
     except Exception as e:
-        logger.warning("name_extraction_error", error=str(e))
+        logger.warning("name_extraction_error", **safe_error_log(e))
         return None
 
 

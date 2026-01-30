@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.services.external.enrichment_orchestrator import (
     EnrichmentOrchestrator,
@@ -123,13 +124,13 @@ async def enrich_entity(
         # Entity nicht gefunden
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Datenanreicherung"),
         )
     except Exception as e:
         logger.error(
             "enrich_entity_failed",
-            error=str(e),
             entity_id=str(entity_id),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -170,7 +171,7 @@ async def get_available_sources(
         ]
 
     except Exception as e:
-        logger.error("get_sources_failed", error=str(e))
+        logger.error("get_sources_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler beim Abrufen der Datenquellen",
@@ -252,8 +253,8 @@ async def get_cached_enrichment(
     except Exception as e:
         logger.error(
             "get_cached_enrichment_failed",
-            error=str(e),
             entity_id=str(entity_id),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

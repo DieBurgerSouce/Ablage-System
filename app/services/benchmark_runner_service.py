@@ -35,6 +35,7 @@ from app.db.schemas import (
 )
 from app.ml.quality_metrics import OCRQualityCalculator, OCRQualityMetrics
 from app.agents.base import OCRResult
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -185,21 +186,21 @@ class BenchmarkRunnerService:
             from app.agents.ocr import SuryaDoclingAgent
             self._agents["surya"] = SuryaDoclingAgent()
         except ImportError as e:
-            logger.warning("surya_agent_not_available", error=str(e))
+            logger.warning("surya_agent_not_available", **safe_error_log(e))
 
         try:
             # PaddleOCR PP-OCRv5 (CPU) - immer verfügbar
             from app.agents.ocr.paddle_ocr_agent import PaddleOCRAgent
             self._agents["paddle-ocr-v5"] = PaddleOCRAgent()
         except ImportError as e:
-            logger.warning("paddle_ocr_agent_not_available", error=str(e))
+            logger.warning("paddle_ocr_agent_not_available", **safe_error_log(e))
 
         try:
             # docTR (CPU) - deutsches Modell von Mindee
             from app.agents.ocr.doctr_agent import DocTRAgent
             self._agents["doctr"] = DocTRAgent()
         except ImportError as e:
-            logger.warning("doctr_agent_not_available", error=str(e))
+            logger.warning("doctr_agent_not_available", **safe_error_log(e))
 
         try:
             import torch
@@ -209,41 +210,42 @@ class BenchmarkRunnerService:
                     from app.agents.ocr import DeepSeekAgent
                     self._agents["deepseek-janus-pro"] = DeepSeekAgent()
                 except ImportError as e:
-                    logger.warning("deepseek_agent_not_available", error=str(e))
+                    logger.warning("deepseek_agent_not_available", **safe_error_log(e))
 
                 try:
                     from app.agents.ocr import GOTOCRAgent
                     self._agents["got-ocr-2.0"] = GOTOCRAgent()
                 except ImportError as e:
-                    logger.warning("got_ocr_agent_not_available", error=str(e))
+                    logger.warning("got_ocr_agent_not_available", **safe_error_log(e))
 
                 try:
                     from app.agents.ocr.surya_gpu_agent import SuryaGPUAgent
                     self._agents["surya-gpu"] = SuryaGPUAgent()
                 except ImportError as e:
-                    logger.warning("surya_gpu_agent_not_available", error=str(e))
+                    logger.warning("surya_gpu_agent_not_available", **safe_error_log(e))
 
                 try:
                     from app.agents.ocr.qwen_ocr_agent import QwenOCRAgent
                     self._agents["qwen-ocr"] = QwenOCRAgent()
                 except ImportError as e:
-                    logger.warning("qwen_ocr_agent_not_available", error=str(e))
+                    logger.warning("qwen_ocr_agent_not_available", **safe_error_log(e))
 
                 try:
                     from app.agents.ocr.chandra_agent import ChandraOCRAgent
                     self._agents["chandra-ocr"] = ChandraOCRAgent()
                 except ImportError as e:
-                    logger.warning("chandra_ocr_agent_not_available", error=str(e))
+                    logger.warning("chandra_ocr_agent_not_available", **safe_error_log(e))
 
                 try:
                     from app.agents.ocr.olmocr_agent import OlmOCRAgent
                     self._agents["olmocr-2"] = OlmOCRAgent()
                 except ImportError as e:
-                    logger.warning("olmocr_agent_not_available", error=str(e))
+                    logger.warning("olmocr_agent_not_available", **safe_error_log(e))
 
                 # Experimental: PaddleOCR-VL 0.9B (evaluation only)
                 try:
                     from app.agents.ocr.paddle_ocr_vl_agent_experimental import (
+
                         PaddleOCRVLAgentExperimental
                     )
                     self._agents["paddle-ocr-vl-09b"] = PaddleOCRVLAgentExperimental()
@@ -254,7 +256,7 @@ class BenchmarkRunnerService:
                 except ImportError as e:
                     logger.warning(
                         "paddleocr_vl_experimental_not_available",
-                        error=str(e),
+                        **safe_error_log(e),
                         message="PaddleOCR-VL 0.9B not available (experimental)"
                     )
         except ImportError:
@@ -462,14 +464,14 @@ class BenchmarkRunnerService:
                 "benchmark_backend_failed",
                 backend=backend_name,
                 sample_id=str(sample.id)[:8],
-                error=str(e),
+                **safe_error_log(e),
                 exc_info=True
             )
             return BenchmarkResult(
                 backend_name=backend_name,
                 success=False,
                 processing_time_ms=processing_time,
-                error=str(e)
+                **safe_error_log(e)
             )
 
     async def _save_benchmark_result(

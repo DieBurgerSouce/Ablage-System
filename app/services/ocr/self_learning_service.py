@@ -35,6 +35,7 @@ from app.db.models_ocr_feedback import (
     FeedbackStatus,
 )
 from app.core.redis_state import RedisStateManager
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -244,7 +245,7 @@ class SelfLearningOCRService:
                 self._active_ab_tests = {}
 
             except Exception as e:
-                logger.warning("failed_to_load_learning_state", error=str(e))
+                logger.warning("failed_to_load_learning_state", **safe_error_log(e))
                 self._backend_adjustments = {}
                 self._field_adjustments = {}
                 self._model_metrics = {
@@ -283,7 +284,7 @@ class SelfLearningOCRService:
             )
 
         except Exception as e:
-            logger.error("failed_to_persist_adjustments", error=str(e))
+            logger.error("failed_to_persist_adjustments", **safe_error_log(e))
 
     # =========================================================================
     # FEEDBACK INTEGRATION (Aggressive Learning)
@@ -358,9 +359,9 @@ class SelfLearningOCRService:
             )
 
         except Exception as e:
-            logger.error("correction_processing_failed", error=str(e))
+            logger.error("correction_processing_failed", **safe_error_log(e))
             result["processed"] = False
-            result["error"] = str(e)
+            result["error"] = safe_error_detail(e, "OCR-Learning")
 
         return result
 
@@ -464,7 +465,7 @@ class SelfLearningOCRService:
             return feedback_id or feedback.document_id
 
         except Exception as e:
-            logger.warning("failed_to_queue_training_feedback", error=str(e))
+            logger.warning("failed_to_queue_training_feedback", **safe_error_log(e))
             return feedback_id  # Rueckgabe DB-ID wenn verfuegbar
 
     async def _persist_feedback_to_db(
@@ -563,7 +564,7 @@ class SelfLearningOCRService:
         except Exception as e:
             logger.error(
                 "failed_to_persist_feedback_to_db",
-                error=str(e),
+                **safe_error_log(e),
                 document_id=str(feedback.document_id),
             )
             return None
@@ -1138,7 +1139,7 @@ class SelfLearningOCRService:
             return backend_stats
 
         except Exception as e:
-            logger.warning("failed_to_get_backend_stats", error=str(e))
+            logger.warning("failed_to_get_backend_stats", **safe_error_log(e))
             return {}
 
     async def calculate_backend_performance(
@@ -1279,7 +1280,7 @@ class SelfLearningOCRService:
             return performance_records
 
         except Exception as e:
-            logger.error("failed_to_calculate_backend_performance", error=str(e))
+            logger.error("failed_to_calculate_backend_performance", **safe_error_log(e))
             await self._db.rollback()
             return []
 
@@ -1320,7 +1321,7 @@ class SelfLearningOCRService:
             return result.rowcount
 
         except Exception as e:
-            logger.error("failed_to_mark_feedbacks_processed", error=str(e))
+            logger.error("failed_to_mark_feedbacks_processed", **safe_error_log(e))
             await self._db.rollback()
             return 0
 
@@ -1354,7 +1355,7 @@ class SelfLearningOCRService:
             return list(result.scalars().all())
 
         except Exception as e:
-            logger.error("failed_to_get_pending_feedbacks", error=str(e))
+            logger.error("failed_to_get_pending_feedbacks", **safe_error_log(e))
             return []
 
 

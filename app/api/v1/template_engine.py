@@ -14,6 +14,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
+from app.core.safe_errors import safe_error_detail, safe_error_log
+from app.core.security_auth import build_content_disposition
 from app.db.models import User
 from app.services.templates.template_engine import (
     TemplateEngineService,
@@ -114,10 +116,10 @@ async def list_templates(
         ]
 
     except Exception as e:
-        logger.error("list_templates_failed", error=str(e))
+        logger.error("list_templates_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Fehler beim Abrufen der Templates",
+            detail=safe_error_detail(e, "Template-Engine"),
         )
 
 
@@ -170,10 +172,10 @@ async def get_template(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("get_template_failed", error=str(e), template_id=template_id)
+        logger.error("get_template_failed", template_id=template_id, **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Fehler beim Abrufen des Templates",
+            detail=safe_error_detail(e, "Template-Engine"),
         )
 
 
@@ -219,17 +221,17 @@ async def get_template_variables(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Template-Engine"),
         )
     except Exception as e:
         logger.error(
             "get_template_variables_failed",
-            error=str(e),
             template_id=template_id,
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Fehler beim Abrufen der Template-Variablen",
+            detail=safe_error_detail(e, "Template-Engine"),
         )
 
 
@@ -279,14 +281,14 @@ async def render_template(
             io.BytesIO(rendered.content),
             media_type=rendered.mime_type,
             headers={
-                "Content-Disposition": f"attachment; filename={rendered.filename}"
+                "Content-Disposition": build_content_disposition(rendered.filename, "attachment")
             },
         )
 
     except ValueError as e:
         # Template nicht gefunden oder Validierungsfehler
-        error_msg = str(e)
-        if "nicht gefunden" in error_msg:
+        error_msg = safe_error_detail(e, "Template-Engine")
+        if "nicht gefunden" in str(e):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=error_msg,
@@ -299,10 +301,10 @@ async def render_template(
     except Exception as e:
         logger.error(
             "render_template_failed",
-            error=str(e),
             template_id=template_id,
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Fehler beim Rendern des Templates",
+            detail=safe_error_detail(e, "Template-Engine"),
         )

@@ -30,11 +30,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies import get_current_active_user, get_db
 from app.core.rate_limiting import limiter
 from app.db.models import User
+from app.core.safe_errors import safe_error_log
 from app.services.external.handelsregister_monitoring_service import (
+
     get_handelsregister_monitoring_service,
     CompanyValidation,
     ValidationResult,
-    InsolvencyStatus,
+    InsolvencyType,
     InsolvencyRecord,
     MonitoringAlert,
     MonitoringEvent,
@@ -305,7 +307,7 @@ async def acknowledge_alert(
             alert_id=str(alert_id),
             user_id=str(current_user.id),
             company_id=str(company_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

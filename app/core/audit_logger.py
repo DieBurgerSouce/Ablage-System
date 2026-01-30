@@ -213,7 +213,7 @@ def encrypt_audit_metadata(
                 logger.warning(
                     "audit_metadata_encryption_failed",
                     field=key,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 encrypted[key] = "[ENCRYPTION_FAILED]"
         else:
@@ -250,7 +250,7 @@ def decrypt_audit_metadata(
                 logger.warning(
                     "audit_metadata_decryption_failed",
                     field=key,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 decrypted[key] = "[DECRYPTION_FAILED]"
         else:
@@ -517,7 +517,7 @@ async def get_next_sequence_number(db: AsyncSession) -> int:
             # SEQUENCE existiert noch nicht - Fallback mit Warnung
             logger.warning(
                 "audit_log_sequence_not_found",
-                error=str(e),
+                **safe_error_log(e),
                 message="Fallback auf MAX()+1 - bitte Migration 019 ausführen!"
             )
 
@@ -617,7 +617,7 @@ class SecurityAuditLogger:
             except Exception as e:
                 logger.error(
                     "audit_log_db_error",
-                    error=str(e),
+                    **safe_error_log(e),
                     event_type=event_type.value,
                 )
 
@@ -1002,6 +1002,7 @@ async def get_audit_logs_for_export(
         Liste von Audit-Log-Dicts
     """
     from app.db.models import AuditLog
+
 
     result = await db.execute(
         select(AuditLog)

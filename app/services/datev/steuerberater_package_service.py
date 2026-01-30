@@ -18,6 +18,7 @@ import asyncio
 import hashlib
 import io
 import zipfile
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -595,6 +596,7 @@ class SteuerberaterPackageService:
             Export-Ergebnis mit ZIP-Bytes
         """
         import time
+
         start_time = time.time()
 
         package = self._packages.get(package_id)
@@ -672,11 +674,11 @@ class SteuerberaterPackageService:
             logger.error(
                 "package_export_failed",
                 package_id=str(package_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return PackageExportResult(
                 success=False,
-                error=f"Export fehlgeschlagen: {str(e)}",
+                error=safe_error_detail(e, "Steuerberater"),
             )
 
     def _generate_buchungsstapel_csv(self, package: SteuerberaterPackage) -> str:

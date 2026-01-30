@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.workers.celery_app import celery_app, CPUTask
 from app.db.session import get_async_session_context
 from app.db.models import User, Document, UserNotification
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -332,7 +333,7 @@ def send_daily_digest(self) -> Dict[str, Any]:
                     logger.error(
                         "daily_digest_user_error",
                         user_id=str(user.id),
-                        error=str(e)
+                        **safe_error_log(e)
                     )
                     results["fehlgeschlagen"] += 1
 
@@ -351,7 +352,7 @@ def send_daily_digest(self) -> Dict[str, Any]:
         logger.error(
             "daily_digest_task_fehler",
             task_id=self.request.id,
-            error=str(e)
+            **safe_error_log(e)
         )
         raise self.retry(exc=e)
 
@@ -449,7 +450,7 @@ def send_weekly_digest(self) -> Dict[str, Any]:
                     logger.error(
                         "weekly_digest_user_error",
                         user_id=str(user.id),
-                        error=str(e)
+                        **safe_error_log(e)
                     )
                     results["fehlgeschlagen"] += 1
 
@@ -468,7 +469,7 @@ def send_weekly_digest(self) -> Dict[str, Any]:
         logger.error(
             "weekly_digest_task_fehler",
             task_id=self.request.id,
-            error=str(e)
+            **safe_error_log(e)
         )
         raise self.retry(exc=e)
 
@@ -597,7 +598,7 @@ def send_dunning_email_with_retry(
                 "dunning_email_failed",
                 notification_id=notification_id,
                 attempt=attempt,
-                error=str(e),
+                **safe_error_log(e)
             )
             raise
 
@@ -611,7 +612,7 @@ def send_dunning_email_with_retry(
                 "dunning_email_final_failure",
                 notification_id=notification_id,
                 total_attempts=attempt,
-                error=str(e),
+                **safe_error_log(e),
             )
             # Markiere als endgueltig fehlgeschlagen
             async def mark_failed():
@@ -626,7 +627,7 @@ def send_dunning_email_with_retry(
                         .values(
                             status=NotificationStatus.FAILED,
                             retry_count=attempt,
-                            error_message=f"Max Retries erreicht: {str(e)[:200]}",
+                            error_message=safe_error_detail(e, "Notification-Retry"),
                         )
                     )
                     await db.commit()
@@ -635,7 +636,7 @@ def send_dunning_email_with_retry(
 
             return {
                 "success": False,
-                "error": str(e),
+                "error": safe_error_detail(e, "Vorgang"),
                 "attempt": attempt,
                 "final_failure": True,
             }
@@ -739,7 +740,7 @@ def retry_failed_dunning_emails(self) -> Dict[str, Any]:
                     logger.warning(
                         "retry_dunning_email_error",
                         notification_id=str(notif.id),
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
         return stats
@@ -757,7 +758,7 @@ def retry_failed_dunning_emails(self) -> Dict[str, Any]:
         logger.error(
             "retry_failed_dunning_emails_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise
 
@@ -831,6 +832,6 @@ def cleanup_old_notifications(self, days: int = 90) -> Dict[str, Any]:
         logger.error(
             "cleanup_notifications_task_fehler",
             task_id=self.request.id,
-            error=str(e)
+            **safe_error_log(e)
         )
         raise self.retry(exc=e)

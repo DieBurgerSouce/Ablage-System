@@ -19,6 +19,7 @@ from sqlalchemy import and_, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Document, Workflow
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 if TYPE_CHECKING:
     from app.services.workflow.workflow_execution_service import WorkflowExecutionService
@@ -157,7 +158,7 @@ class WorkflowTriggerService:
                 logger.error(
                     "workflow_trigger_error",
                     workflow_id=str(workflow.id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         return execution_ids
@@ -325,7 +326,7 @@ class WorkflowTriggerService:
                 logger.error(
                     "scheduled_workflow_trigger_error",
                     workflow_id=str(workflow.id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         return execution_ids
@@ -369,7 +370,7 @@ class WorkflowTriggerService:
                 "cron_parse_error",
                 workflow_id=str(workflow.id),
                 cron=cron_expression,
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 
@@ -410,7 +411,7 @@ class WorkflowTriggerService:
             croniter(cron_expression)
             return True, None
         except Exception as e:
-            return False, str(e)
+            return False, safe_error_detail(e, "Workflow-Trigger")
 
     # =========================================================================
     # Manual Triggers
@@ -746,7 +747,7 @@ class WorkflowTriggerService:
                 logger.error(
                     "condition_trigger_error",
                     workflow_id=str(workflow.id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         return execution_ids
@@ -855,6 +856,7 @@ class WorkflowTriggerService:
         advanced_conditions = conditions.get("rules")
         if advanced_conditions and document:
             from app.services.workflow.condition_evaluator import ConditionEvaluator
+
             from dataclasses import dataclass, field as dataclass_field
             from typing import Optional as Opt
             from uuid import UUID as UUIDType

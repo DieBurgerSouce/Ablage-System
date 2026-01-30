@@ -21,6 +21,7 @@ import structlog
 
 from app.core.config import settings
 from app.db.models import RAGLLMModel, RAGLLMModelType
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -312,7 +313,7 @@ class LLMService:
                         attempt=attempt + 1,
                         max_retries=MAX_RETRIES,
                         delay_seconds=delay,
-                        error=str(e)
+                        **safe_error_log(e)
                     )
                     await asyncio.sleep(delay)
                     continue
@@ -322,7 +323,7 @@ class LLMService:
                     "llm_generate_max_retries",
                     model=model_config.name,
                     attempts=MAX_RETRIES + 1,
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 raise RuntimeError(
                     f"LLM Fehler nach {MAX_RETRIES + 1} Versuchen: {e}"
@@ -354,7 +355,7 @@ class LLMService:
                 logger.exception(
                     "llm_generate_error",
                     model=model_config.name,
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 raise
 
@@ -439,7 +440,7 @@ class LLMService:
             logger.exception(
                 "llm_stream_error",
                 model=model_config.name,
-                error=str(e)
+                **safe_error_log(e)
             )
             raise
 
@@ -468,7 +469,7 @@ class LLMService:
         except Exception as e:
             return {
                 "status": "unhealthy",
-                "error": str(e),
+                "error": safe_error_detail(e, "Vorgang"),
                 "ollama_url": self.base_url
             }
 
@@ -487,7 +488,7 @@ class LLMService:
             return [m.get("name") for m in data.get("models", [])]
 
         except Exception as e:
-            logger.error("llm_list_models_error", error=str(e))
+            logger.error("llm_list_models_error", **safe_error_log(e))
             return []
 
     async def pull_model(self, model_name: str) -> bool:
@@ -512,7 +513,7 @@ class LLMService:
             return True
 
         except Exception as e:
-            logger.error("llm_pull_model_error", model=model_name, error=str(e))
+            logger.error("llm_pull_model_error", model=model_name, **safe_error_log(e))
             return False
 
 

@@ -20,6 +20,7 @@ import redis.asyncio as redis
 from pydantic import BaseModel
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = logging.getLogger(__name__)
 
@@ -160,7 +161,7 @@ class PrivacyBudgetTracker:
                 value = await self.redis.get(key)
                 return float(value) if value else 0.0
             except Exception as e:
-                logger.warning("redis_get_failed", key=key, error=str(e))
+                logger.warning("redis_get_failed", key=key, **safe_error_log(e))
 
         # Fallback zu Local Cache
         return self._local_cache.get(key, 0.0)
@@ -174,7 +175,7 @@ class PrivacyBudgetTracker:
                 # TTL: 24 Stunden + Puffer
                 await self.redis.set(key, str(value), ex=90000)
             except Exception as e:
-                logger.warning("redis_set_failed", key=key, error=str(e))
+                logger.warning("redis_set_failed", key=key, **safe_error_log(e))
 
         # Immer auch Local Cache updaten
         self._local_cache[key] = value
@@ -262,7 +263,7 @@ class PrivacyBudgetTracker:
                 await self.redis.incr(key)
                 await self.redis.expire(key, 90000)
             except Exception as e:
-                logger.warning("redis_incr_failed", key=key, error=str(e))
+                logger.warning("redis_incr_failed", key=key, **safe_error_log(e))
 
     async def _get_query_count(self, company_id: UUID) -> int:
         """Liest Query-Zaehler."""
@@ -273,7 +274,7 @@ class PrivacyBudgetTracker:
                 value = await self.redis.get(key)
                 return int(value) if value else 0
             except Exception as e:
-                logger.warning("redis_get_failed", key=key, error=str(e))
+                logger.warning("redis_get_failed", key=key, **safe_error_log(e))
 
         return 0
 
@@ -301,7 +302,7 @@ class PrivacyBudgetTracker:
             await self.redis.rpush(key, json.dumps(entry))
             await self.redis.expire(key, self.config.history_retention_days * 86400)
         except Exception as e:
-            logger.warning("redis_history_log_failed", error=str(e))
+            logger.warning("redis_history_log_failed", **safe_error_log(e))
 
     async def get_status(self, company_id: UUID) -> BudgetStatus:
         """
@@ -381,7 +382,7 @@ class PrivacyBudgetTracker:
                 for entry in entries
             ]
         except Exception as e:
-            logger.warning("redis_history_read_failed", error=str(e))
+            logger.warning("redis_history_read_failed", **safe_error_log(e))
             return []
 
     async def reset_budget(self, company_id: UUID) -> None:
@@ -398,7 +399,7 @@ class PrivacyBudgetTracker:
             try:
                 await self.redis.delete(key)
             except Exception as e:
-                logger.warning("redis_delete_failed", key=key, error=str(e))
+                logger.warning("redis_delete_failed", key=key, **safe_error_log(e))
 
         logger.info(
             "privacy_budget_reset",
@@ -422,7 +423,7 @@ async def get_budget_tracker() -> PrivacyBudgetTracker:
             if redis_url:
                 redis_client = redis.from_url(redis_url)
         except Exception as e:
-            logger.warning("redis_connection_failed", error=str(e))
+            logger.warning("redis_connection_failed", **safe_error_log(e))
 
         _budget_tracker = PrivacyBudgetTracker(redis_client=redis_client)
 

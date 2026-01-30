@@ -17,6 +17,7 @@ from typing import Optional
 import structlog
 from celery import shared_task
 
+from app.core.safe_errors import safe_error_log
 from app.db.database import async_session_factory
 from app.db.models import Company
 from app.workers.celery_app import celery_app
@@ -75,7 +76,7 @@ def verify_audit_chain_task(
     except Exception as e:
         logger.error(
             "audit_chain_verification_failed",
-            error=str(e),
+            **safe_error_log(e),
             company_id=company_id
         )
         raise self.retry(exc=e)
@@ -134,12 +135,12 @@ async def _verify_audit_chains(
             results["failed_companies"] += 1
             results["failures"].append({
                 "company_id": str(cid),
-                "error": str(e),
+                "error": safe_error_detail(e, "Vorgang"),
             })
             logger.error(
                 "audit_chain_verification_error",
                 company_id=str(cid),
-                error=str(e),
+                **safe_error_log(e),
             )
 
     return results
@@ -193,7 +194,7 @@ def batch_integrity_check_task(
     except Exception as e:
         logger.error(
             "batch_integrity_check_failed",
-            error=str(e),
+            **safe_error_log(e),
             company_id=company_id
         )
         raise self.retry(exc=e)
@@ -274,12 +275,12 @@ async def _batch_integrity_check(
             failed += 1
             errors.append({
                 "archive_id": str(archive.id),
-                "error": str(e),
+                "error": safe_error_detail(e, "Vorgang"),
             })
             logger.error(
                 "archive_integrity_check_error",
                 archive_id=str(archive.id),
-                error=str(e),
+                **safe_error_log(e),
             )
 
     await db.commit()
@@ -327,7 +328,7 @@ def generate_chain_statistics_task(self, company_id: str) -> dict:
     except Exception as e:
         logger.error(
             "chain_statistics_failed",
-            error=str(e),
+            **safe_error_log(e),
             company_id=company_id
         )
         raise self.retry(exc=e)
@@ -362,7 +363,7 @@ def check_retention_warnings_task(self) -> dict:
         logger.info("retention_warnings_checked", **result)
         return result
     except Exception as e:
-        logger.error("retention_warnings_check_failed", error=str(e))
+        logger.error("retention_warnings_check_failed", **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -403,7 +404,7 @@ async def _check_retention_warnings(db) -> dict:
             logger.error(
                 "retention_warning_check_error",
                 company_id=str(cid),
-                error=str(e),
+                **safe_error_log(e),
             )
 
     return results
@@ -457,7 +458,7 @@ def check_breach_deadlines_task(self) -> dict:
         return result
 
     except Exception as e:
-        logger.error("breach_deadline_check_failed", error=str(e))
+        logger.error("breach_deadline_check_failed", **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -514,7 +515,7 @@ async def _send_breach_deadline_notification(db, alert: dict) -> None:
         logger.warning(
             "breach_deadline_notification_failed",
             breach_id=alert.get("breach_id"),
-            error=str(e),
+            **safe_error_log(e),
         )
 
 
@@ -549,7 +550,7 @@ def daily_breach_report_task(self) -> dict:
         logger.info("daily_breach_report_generated", **result)
         return result
     except Exception as e:
-        logger.error("daily_breach_report_failed", error=str(e))
+        logger.error("daily_breach_report_failed", **safe_error_log(e))
         raise self.retry(exc=e)
 
 

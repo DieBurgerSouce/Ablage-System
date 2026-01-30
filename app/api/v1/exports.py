@@ -28,6 +28,7 @@ from app.core.config import settings
 from app.db.models import User, BatchJob, ProcessingStatus
 from app.db.schemas import ExportFormat
 from app.db.session import get_async_session_context
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -358,7 +359,7 @@ async def cancel_export_job(
             logger.warning(
                 "celery_task_revoke_failed",
                 task_id=job.celery_task_id,
-                error=str(e),
+                **safe_error_log(e),
             )
 
     logger.info(
@@ -588,7 +589,7 @@ class ExportConnectionManager:
             logger.warning(
                 "redis_pubsub_broadcast_failed",
                 job_id=job_id,
-                error=str(e),
+                **safe_error_log(e),
             )
 
     async def _handle_redis_message(self, channel: str, data: dict):
@@ -619,6 +620,7 @@ class ExportConnectionManager:
             try:
                 from app.core.redis_state import get_redis
 
+
                 redis = await get_redis()
                 await redis.subscribe_to_events(
                     patterns=[f"{self.CHANNEL_PREFIX}*"],
@@ -626,7 +628,7 @@ class ExportConnectionManager:
                     stop_event=self._stop_event,
                 )
             except Exception as e:
-                logger.error("export_pubsub_listener_error", error=str(e))
+                logger.error("export_pubsub_listener_error", **safe_error_log(e))
 
         self._pubsub_task = asyncio.create_task(listener())
         logger.info("export_pubsub_listener_started")
@@ -682,10 +684,10 @@ async def _authenticate_websocket_user(token: str) -> tuple[User | None, str | N
             return user, None
 
     except JWTError as e:
-        logger.warning("websocket_auth_failed", error=str(e))
+        logger.warning("websocket_auth_failed", **safe_error_log(e))
         return None, "Token ungültig oder abgelaufen"
     except Exception as e:
-        logger.error("websocket_auth_error", error=str(e))
+        logger.error("websocket_auth_error", **safe_error_log(e))
         return None, "Authentifizierungsfehler"
 
 

@@ -32,6 +32,7 @@ import pypdfium2 as pdfium
 import numpy as np
 
 from app.agents.base import OCRAgent, OCRResult
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -168,7 +169,7 @@ class PaddleOCRVLAgentExperimental(OCRAgent):
                 except Exception as e:
                     logger.error(
                         "paddleocr_fallback_failed",
-                        error=str(e),
+                        **safe_error_log(e),
                         message="Failed to initialize PaddleOCR 3.3.2"
                     )
                     raise
@@ -189,14 +190,14 @@ class PaddleOCRVLAgentExperimental(OCRAgent):
             logger.info("PaddleOCR-VL 0.9B model loaded successfully")
 
         except ImportError as e:
-            logger.error("paddleocr_vl_import_failed", error=str(e))
+            logger.error("paddleocr_vl_import_failed", **safe_error_log(e))
             raise ImportError(
                 "PaddleOCR-VL nicht installiert oder nicht verfügbar. "
                 "Installation: pip install paddlepaddle-gpu paddleocr "
                 "Oder: PaddleOCR-VL 0.9B ist möglicherweise noch nicht öffentlich verfügbar."
             ) from e
         except Exception as e:
-            logger.error("paddleocr_vl_model_load_failed", error=str(e), exc_info=True)
+            logger.error("paddleocr_vl_model_load_failed", **safe_error_log(e), exc_info=True)
             raise
 
     def _load_image(self, image_path: str) -> List[np.ndarray]:
@@ -233,7 +234,7 @@ class PaddleOCRVLAgentExperimental(OCRAgent):
                     logger.debug("paddleocr_vl_pdf_page_loaded", page=page_num + 1, total=len(pdf))
                 pdf.close()
             except Exception as e:
-                logger.error("paddleocr_vl_pdf_load_failed", error=str(e))
+                logger.error("paddleocr_vl_pdf_load_failed", **safe_error_log(e))
                 raise
         else:
             # Handle image files (PNG, JPG, TIFF, etc.)
@@ -245,7 +246,7 @@ class PaddleOCRVLAgentExperimental(OCRAgent):
                     image = image.convert('RGB')
                 images.append(np.array(image))
             except Exception as e:
-                logger.error("paddleocr_vl_image_load_failed", error=str(e))
+                logger.error("paddleocr_vl_image_load_failed", **safe_error_log(e))
                 raise
 
         return images
@@ -375,7 +376,7 @@ class PaddleOCRVLAgentExperimental(OCRAgent):
         except torch.cuda.OutOfMemoryError as e:
             logger.error(
                 "paddleocr_vl_oom",
-                error=str(e),
+                **safe_error_log(e),
                 message="Out of Memory - VRAM exceeded"
             )
             return {
@@ -386,13 +387,11 @@ class PaddleOCRVLAgentExperimental(OCRAgent):
                 "error_code": "PADDLEOCR_VL_OOM"
             }
         except Exception as e:
-            logger.error("paddleocr_vl_image_processing_failed", error=str(e), exc_info=True)
+            logger.error("paddleocr_vl_image_processing_failed", **safe_error_log(e), exc_info=True)
             return {
                 "text_blocks": [],
                 "full_text": "",
-                "structured_data": {},
-                "error": str(e)
-            }
+                "structured_data": {}, **safe_error_log(e)}
 
     async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """Process document with PaddleOCR-VL.
@@ -570,14 +569,14 @@ class PaddleOCRVLAgentExperimental(OCRAgent):
             processing_time_ms = int((time.perf_counter() - start_time) * 1000)
             logger.error(
                 "paddleocr_vl_processing_error",
-                error=str(e),
+                **safe_error_log(e),
                 exc_info=True,
                 experimental=True
             )
 
             # Create standardized error result
             result = self.create_error_result(
-                error=str(e),
+                **safe_error_log(e),
                 error_code="PADDLEOCR_VL_ERROR",
                 processing_time_ms=processing_time_ms,
             )
@@ -635,15 +634,13 @@ class PaddleOCRVLAgentExperimental(OCRAgent):
                 "exceeded_threshold": exceeded_threshold
             }
         except Exception as e:
-            logger.error("vram_usage_check_failed", error=str(e))
+            logger.error("vram_usage_check_failed", **safe_error_log(e))
             return {
                 "allocated_gb": 0.0,
                 "reserved_gb": 0.0,
                 "total_gb": 0.0,
                 "usage_percent": 0.0,
-                "exceeded_threshold": False,
-                "error": str(e)
-            }
+                "exceeded_threshold": False, **safe_error_log(e)}
 
     def get_status(self) -> Dict[str, Any]:
         """Get agent status."""

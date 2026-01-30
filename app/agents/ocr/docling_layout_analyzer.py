@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional, Union
 import structlog
 
 from app.agents.ocr.models.layout_models import (
+
     BoundingBox,
     DocumentLayout,
     LayoutElement,
@@ -116,7 +117,7 @@ class DoclingLayoutAnalyzer:
             )
 
         except ImportError as e:
-            logger.error("Docling Import fehlgeschlagen", error=str(e))
+            logger.error("Docling Import fehlgeschlagen", **safe_error_log(e))
             raise ImportError(
                 "Docling nicht installiert. Bitte 'pip install docling' ausführen."
             ) from e
@@ -172,7 +173,7 @@ class DoclingLayoutAnalyzer:
             return layout
 
         except Exception as e:
-            logger.error("Layout-Analyse fehlgeschlagen", error=str(e), exc_info=True)
+            logger.error("Layout-Analyse fehlgeschlagen", **safe_error_log(e), exc_info=True)
             # Minimales Layout bei Fehler zurückgeben
             return DocumentLayout(pages=[], reading_order_valid=False)
 
@@ -456,7 +457,7 @@ class DoclingLayoutAnalyzer:
             )
 
         except Exception as e:
-            logger.warning("Tabellen-Extraktion fehlgeschlagen", error=str(e))
+            logger.warning("Tabellen-Extraktion fehlgeschlagen", **safe_error_log(e))
             return None
 
     def _detect_columns(self, elements: List[LayoutElement]) -> int:

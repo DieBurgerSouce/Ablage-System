@@ -26,6 +26,7 @@ from sqlalchemy import select, update, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
+
     AIConfidenceThreshold,
     AIDecision,
     AILearningFeedback,
@@ -454,7 +455,7 @@ class AIDecisionService:
                 logger.error(
                     "ai_decision_auto_apply_failed",
                     decision_id=str(decision.id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 # Bei Fehler: Nicht als applied markieren
                 decision.auto_applied = False

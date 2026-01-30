@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.workers.celery_app import celery_app, CPUTask
+from app.core.safe_errors import safe_error_log
 from app.db.session import get_async_session_context
 from app.db.models import (
     DigestFrequency,
@@ -37,6 +38,7 @@ from app.db.models import (
     UserNotification,
 )
 from app.core.datetime_utils import utc_now
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -143,7 +145,7 @@ def process_hourly_digests(self) -> Dict[str, Any]:
                     logger.error(
                         "hourly_digest_user_error",
                         user_id=str(user_id),
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
             return results
@@ -161,7 +163,7 @@ def process_hourly_digests(self) -> Dict[str, Any]:
         logger.error(
             "hourly_digest_task_fehler",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -246,7 +248,7 @@ def process_daily_digests(self) -> Dict[str, Any]:
                     logger.error(
                         "daily_digest_user_error",
                         user_id=str(user_id),
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
             return results
@@ -264,7 +266,7 @@ def process_daily_digests(self) -> Dict[str, Any]:
         logger.error(
             "daily_digest_task_fehler",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -348,7 +350,7 @@ def process_weekly_digests(self) -> Dict[str, Any]:
                     logger.error(
                         "weekly_digest_user_error",
                         user_id=str(user_id),
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
             return results
@@ -366,7 +368,7 @@ def process_weekly_digests(self) -> Dict[str, Any]:
         logger.error(
             "weekly_digest_task_fehler",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -472,7 +474,7 @@ def check_overdue_tasks(self) -> Dict[str, Any]:
                     logger.error(
                         "task_reminder_error",
                         task_id=str(task.id),
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
             await db.commit()
@@ -491,7 +493,7 @@ def check_overdue_tasks(self) -> Dict[str, Any]:
         logger.error(
             "check_overdue_tasks_fehler",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -624,7 +626,7 @@ def escalate_overdue_tasks(
                     logger.error(
                         "task_escalation_error",
                         task_id=str(task.id),
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
             await db.commit()
@@ -643,7 +645,7 @@ def escalate_overdue_tasks(
         logger.error(
             "escalate_overdue_tasks_fehler",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -707,7 +709,7 @@ def cleanup_old_digest_entries(
         logger.error(
             "cleanup_old_digest_entries_fehler",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -812,7 +814,7 @@ def send_task_due_soon_reminders(
                     logger.error(
                         "due_soon_reminder_error",
                         task_id=str(task.id),
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
             await db.commit()
@@ -831,7 +833,7 @@ def send_task_due_soon_reminders(
         logger.error(
             "send_task_due_soon_reminders_fehler",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 

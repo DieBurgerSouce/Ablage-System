@@ -47,6 +47,7 @@ from app.services.historical_german_normalizer import (
     normalize_historical
 )
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 # Lazy import for entity extraction to avoid circular imports
 EntityExtractionService = None
@@ -246,7 +247,7 @@ class OCRPipeline:
             except ImportError as e:
                 logger.warning(
                     "german_correction_agent_unavailable",
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 self.enable_german_correction = False
         return self._german_agent
@@ -273,7 +274,7 @@ class OCRPipeline:
             except Exception as e:
                 logger.warning(
                     "historical_normalizer_unavailable",
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 self.enable_historical_normalization = False
         return self._historical_normalizer
@@ -297,13 +298,13 @@ class OCRPipeline:
             except ImportError as e:
                 logger.warning(
                     "entity_extraction_service_unavailable",
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 self.enable_entity_extraction = False
             except Exception as e:
                 logger.warning(
                     "entity_extraction_service_init_error",
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 self.enable_entity_extraction = False
         return self._entity_extraction_service
@@ -313,6 +314,7 @@ class OCRPipeline:
         if self._structured_extraction_service is None and self.enable_structured_extraction:
             try:
                 from app.services.structured_extraction_service import (
+
                     StructuredExtractionService,
                     get_structured_extraction_service,
                 )
@@ -321,13 +323,13 @@ class OCRPipeline:
             except ImportError as e:
                 logger.warning(
                     "structured_extraction_service_unavailable",
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 self.enable_structured_extraction = False
             except Exception as e:
                 logger.warning(
                     "structured_extraction_service_init_error",
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 self.enable_structured_extraction = False
         return self._structured_extraction_service
@@ -404,7 +406,7 @@ class OCRPipeline:
             logger.error(
                 "ocr_pipeline_gpu_oom",
                 document_id=document_id,
-                error=str(e),
+                **safe_error_log(e),
                 recoverable=False
             )
             if torch.cuda.is_available():
@@ -427,7 +429,7 @@ class OCRPipeline:
             logger.warning(
                 "ocr_pipeline_timeout",
                 document_id=document_id,
-                error=str(e),
+                **safe_error_log(e),
                 recoverable=True
             )
             return OCRPipelineResult(
@@ -449,7 +451,7 @@ class OCRPipeline:
                 "ocr_pipeline_processing_error",
                 document_id=document_id,
                 error_type=type(e).__name__,
-                error=str(e)
+                **safe_error_log(e)
             )
             return OCRPipelineResult(
                 success=False,
@@ -462,7 +464,7 @@ class OCRPipeline:
                 corrections_applied=0,
                 processing_time_ms=int((time.perf_counter() - start_time) * 1000),
                 german_correction_applied=False,
-                error=str(e)
+                **safe_error_log(e)
             )
         except Exception as e:
             # Unexpected error - log with full context
@@ -470,7 +472,7 @@ class OCRPipeline:
                 "ocr_pipeline_unexpected_error",
                 document_id=document_id,
                 error_type=type(e).__name__,
-                error=str(e),
+                **safe_error_log(e),
                 exc_info=True
             )
             return OCRPipelineResult(
@@ -484,7 +486,7 @@ class OCRPipeline:
                 corrections_applied=0,
                 processing_time_ms=int((time.perf_counter() - start_time) * 1000),
                 german_correction_applied=False,
-                error=str(e)
+                **safe_error_log(e)
             )
 
         if not fallback_result.success:
@@ -567,7 +569,7 @@ class OCRPipeline:
                         logger.warning(
                             "ocr_pipeline_confidence_fallback_error",
                             document_id=document_id,
-                            error=str(e)
+                            **safe_error_log(e)
                         )
 
             # Setze needs_review wenn Confidence immer noch niedrig
@@ -634,7 +636,7 @@ class OCRPipeline:
                     logger.warning(
                         "ocr_pipeline_german_correction_error",
                         document_id=document_id,
-                        error=str(e)
+                        **safe_error_log(e)
                     )
                     # Verwende unkorrigierten Text bei Fehler
 
@@ -677,7 +679,7 @@ class OCRPipeline:
                     logger.warning(
                         "ocr_pipeline_historical_normalization_error",
                         document_id=document_id,
-                        error=str(e)
+                        **safe_error_log(e)
                     )
                     # Verwende Text ohne Historical Normalization bei Fehler
 
@@ -740,7 +742,7 @@ class OCRPipeline:
                     logger.warning(
                         "ocr_pipeline_entity_extraction_error",
                         document_id=document_id,
-                        error=str(e)
+                        **safe_error_log(e)
                     )
                     # Fortfahren ohne Entity Extraction bei Fehler
 
@@ -822,7 +824,7 @@ class OCRPipeline:
                     logger.warning(
                         "ocr_pipeline_structured_extraction_error",
                         document_id=document_id,
-                        error=str(e)
+                        **safe_error_log(e)
                     )
                     # Fortfahren ohne Structured Extraction bei Fehler
 

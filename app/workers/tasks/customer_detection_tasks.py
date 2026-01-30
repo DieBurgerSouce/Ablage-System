@@ -16,6 +16,7 @@ from sqlalchemy import select
 
 from app.workers.celery_app import celery_app, CPUTask
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 from app.db.models import Document, BusinessContact, DocumentContact
 from app.services.customer_detection_service import get_customer_detection_service
 
@@ -156,7 +157,7 @@ def detect_contacts_task(
                     "contact_detection_failed",
                     task_id=task_id,
                     document_id=document_id,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 raise
 
@@ -209,12 +210,12 @@ def batch_detect_contacts_task(
             logger.warning(
                 "batch_detection_single_failure",
                 document_id=doc_id,
-                error=str(e),
+                **safe_error_log(e),
             )
             results.append({
                 "success": False,
                 "document_id": doc_id,
-                "error": str(e),
+                "error": "Verarbeitung fehlgeschlagen",
             })
 
     successful = sum(1 for r in results if r.get("success", False))

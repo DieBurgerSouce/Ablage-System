@@ -21,6 +21,7 @@ from app.core.config import settings
 from app.db.models import RAGDocumentChunk, Document, RAGSectionType
 from app.services.embedding_service import get_embedding_service
 from app.api.schemas.rag import RAGChunkSearchResult, RAGSearchType
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -530,6 +531,7 @@ class RAGSearchService:
         try:
             from app.services.reranker_service import get_reranker_service
 
+
             reranker = get_reranker_service()
             documents = [r.chunk_text for r in results]
 
@@ -565,7 +567,7 @@ class RAGSearchService:
         except Exception as e:
             logger.warning(
                 "rerank_failed",
-                error=str(e),
+                **safe_error_log(e),
                 fallback="using_original_scores"
             )
             return results[:top_k]

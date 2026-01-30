@@ -24,6 +24,7 @@ from app.api.dependencies import (
     check_rate_limit,
 )
 from app.db.models import User
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -190,7 +191,7 @@ async def get_drift_status(
         logger.error(
             "drift_status_fehler",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise HTTPException(
@@ -250,7 +251,7 @@ async def run_drift_detection(
         logger.error(
             "drift_detection_fehler",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise HTTPException(
@@ -309,7 +310,7 @@ async def get_drift_history(
         logger.error(
             "drift_history_fehler",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise HTTPException(
@@ -349,7 +350,7 @@ async def reset_drift_reference(
         logger.error(
             "drift_reset_fehler",
             admin_user_id=str(admin_user.id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise HTTPException(
@@ -364,8 +365,8 @@ async def reset_drift_reference(
 
 @router.post("/explain/routing", response_model=RoutingExplanationResponse)
 async def explain_routing_decision(
-    http_request: Request,
-    request: ExplainRoutingRequest,
+    request: Request,
+    body: ExplainRoutingRequest,
     current_user: User = Depends(check_rate_limit),
 ) -> RoutingExplanationResponse:
     """
@@ -384,11 +385,11 @@ async def explain_routing_decision(
 
         explainer = get_shap_explainer()
         explanation = explainer.explain_routing(
-            document_id=request.document_id,
-            features=request.features,
-            selected_backend=request.selected_backend,
-            confidence=request.confidence,
-            all_probabilities=request.all_probabilities,
+            document_id=body.document_id,
+            features=body.features,
+            selected_backend=body.selected_backend,
+            confidence=body.confidence,
+            all_probabilities=body.all_probabilities,
         )
 
         return RoutingExplanationResponse(
@@ -415,8 +416,8 @@ async def explain_routing_decision(
         logger.error(
             "routing_erklaerung_fehler",
             user_id=str(current_user.id),
-            document_id=request.document_id,
-            error=str(e),
+            document_id=body.document_id,
+            **safe_error_log(e),
             exc_info=True,
         )
         raise HTTPException(
@@ -481,7 +482,7 @@ async def get_routing_explanation(
             "erklaerung_abruf_fehler",
             user_id=str(current_user.id),
             document_id=document_id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise HTTPException(
@@ -515,7 +516,7 @@ async def get_global_feature_importance(
         logger.error(
             "feature_importance_fehler",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise HTTPException(
@@ -530,8 +531,8 @@ async def get_global_feature_importance(
 
 @router.post("/experiments", response_model=ExperimentResponse)
 async def create_experiment(
-    http_request: Request,
-    request: CreateExperimentRequest,
+    request: Request,
+    body: CreateExperimentRequest,
     current_user: User = Depends(check_rate_limit),
 ) -> ExperimentResponse:
     """
@@ -558,23 +559,23 @@ async def create_experiment(
                 "weight": v.weight,
                 "config": v.config,
             }
-            for v in request.variants
+            for v in body.variants
         ]
 
         experiment = manager.create_experiment(
-            name=request.name,
-            description=request.description,
+            name=body.name,
+            description=body.description,
             variants=variants_dict,
-            allocation_method=request.allocation_method,
-            min_samples=request.min_samples,
-            duration_days=request.duration_days,
+            allocation_method=body.allocation_method,
+            min_samples=body.min_samples,
+            duration_days=body.duration_days,
         )
 
         logger.info(
             "experiment_erstellt",
             user_id=str(current_user.id),
-            experiment_name=request.name,
-            variant_count=len(request.variants),
+            experiment_name=body.name,
+            variant_count=len(body.variants),
         )
 
         summary = experiment.get_summary()
@@ -587,7 +588,7 @@ async def create_experiment(
         logger.error(
             "experiment_erstellung_fehler",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise HTTPException(
@@ -640,7 +641,7 @@ async def start_experiment(
             "experiment_start_fehler",
             admin_user_id=str(admin_user.id),
             experiment_id=experiment_id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise HTTPException(
@@ -691,7 +692,7 @@ async def get_experiment(
             "experiment_abruf_fehler",
             user_id=str(current_user.id),
             experiment_id=experiment_id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise HTTPException(
@@ -746,7 +747,7 @@ async def list_experiments(
         logger.error(
             "experiment_liste_fehler",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise HTTPException(
@@ -757,9 +758,9 @@ async def list_experiments(
 
 @router.post("/experiments/{experiment_id}/record")
 async def record_experiment_result(
-    http_request: Request,
+    request: Request,
     experiment_id: str,
-    request: RecordResultRequest,
+    body: RecordResultRequest,
     current_user: User = Depends(check_rate_limit),
 ) -> Dict[str, str]:
     """
@@ -780,10 +781,10 @@ async def record_experiment_result(
         manager = get_ab_test_manager()
         manager.record_result(
             experiment_id=experiment_id,
-            variant_name=request.variant_name,
-            success=request.success,
-            latency_ms=request.latency_ms,
-            accuracy=request.accuracy,
+            variant_name=body.variant_name,
+            success=body.success,
+            latency_ms=body.latency_ms,
+            accuracy=body.accuracy,
         )
 
         return {"message": "Ergebnis erfasst"}
@@ -796,7 +797,7 @@ async def record_experiment_result(
             "experiment_ergebnis_fehler",
             user_id=str(current_user.id),
             experiment_id=experiment_id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise HTTPException(
@@ -848,7 +849,7 @@ async def conclude_experiment(
             "experiment_abschluss_fehler",
             admin_user_id=str(admin_user.id),
             experiment_id=experiment_id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise HTTPException(
@@ -892,7 +893,7 @@ async def get_prometheus_metrics(
         logger.error(
             "metriken_abruf_fehler",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise HTTPException(
@@ -917,6 +918,7 @@ async def get_metrics_summary(
     try:
         from app.ml.drift_detector import get_drift_detector
         from app.ml.ab_testing import get_ab_test_manager
+
 
         drift_detector = get_drift_detector()
         ab_manager = get_ab_test_manager()
@@ -955,7 +957,7 @@ async def get_metrics_summary(
         logger.error(
             "metriken_zusammenfassung_fehler",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise HTTPException(

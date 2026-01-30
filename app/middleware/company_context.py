@@ -313,7 +313,7 @@ async def set_rls_company_context(db: AsyncSession, company_id: UUID) -> None:
             )
         logger.debug(
             "rls_context_skip",
-            reason=str(e)
+            reason=safe_error_detail(e, "Company-Context")
         )
 
 
@@ -332,7 +332,7 @@ async def enable_rls_bypass(db: AsyncSession) -> None:
         )
         logger.debug("rls_bypass_enabled")
     except Exception as e:
-        logger.warning("rls_bypass_enable_failed", error=str(e))
+        logger.warning("rls_bypass_enable_failed", **safe_error_log(e))
 
 
 async def disable_rls_bypass(db: AsyncSession) -> None:
@@ -349,7 +349,7 @@ async def disable_rls_bypass(db: AsyncSession) -> None:
         )
         logger.debug("rls_bypass_disabled")
     except Exception as e:
-        logger.warning("rls_bypass_disable_failed", error=str(e))
+        logger.warning("rls_bypass_disable_failed", **safe_error_log(e))
 
 
 from contextlib import asynccontextmanager
@@ -378,6 +378,7 @@ async def rls_bypass_context(db: AsyncSession):
 
 
 from app.api.dependencies import get_current_active_user
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 
 async def require_company(

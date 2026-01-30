@@ -19,7 +19,9 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 import structlog
 
 from app.services.extraction.base import ExtractionConfig, parse_german_decimal
+from app.core.safe_errors import safe_error_log
 from app.services.extraction.config import (
+
     MAX_DESCRIPTION_LENGTH,
     MAX_QUANTITY,
     MAX_UNIT_PRICE,
@@ -921,7 +923,7 @@ class EnhancedLineItemExtractor:
             return item
 
         except Exception as e:
-            logger.debug("row_extraction_error", error=str(e), row=row)
+            logger.debug("row_extraction_error", **safe_error_log(e), row=row)
             return None
 
     def _extract_heuristic(self, table: TableStructure) -> List[ExtractedLineItem]:

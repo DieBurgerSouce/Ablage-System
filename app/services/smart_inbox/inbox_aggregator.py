@@ -27,6 +27,7 @@ from app.db.models import (
     SmartInboxItemSource,
 )
 from app.db.models_alert import Alert, AlertSeverity, AlertStatus
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -102,7 +103,7 @@ class InboxAggregator:
                 self.logger.error(
                     "source_aggregation_failed",
                     source_type=source_type.value,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 # Weiter mit nächster Quelle
 

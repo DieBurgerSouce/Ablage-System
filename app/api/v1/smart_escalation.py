@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user, get_db
 from app.middleware.company_context import require_company
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User, Company
 from app.services.collaboration.smart_escalation_service import (
     AssignmentFactor,
@@ -398,7 +399,7 @@ async def get_user_scores(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "User-Score-Abruf"),
         )
 
     return CandidateScoreResponse.from_domain(scores)

@@ -459,7 +459,7 @@ class ModelRegistry:
                     self.delete_version(version)
                     deleted += 1
                 except Exception as e:
-                    logger.warning("version_loeschen_fehlgeschlagen", version=version, error=str(e))
+                    logger.warning("version_loeschen_fehlgeschlagen", version=version, **safe_error_log(e))
 
         return deleted
 
@@ -509,6 +509,7 @@ def migrate_pickle_to_registry(
 
     import pickle
     import warnings
+
 
     # Audit Log - wer hat wann eine pickle-Migration durchgeführt?
     logger.warning(
@@ -572,7 +573,7 @@ def migrate_pickle_to_registry(
     except Exception as e:
         logger.exception(
             "pickle_migration_failed",
-            error=str(e),
+            **safe_error_log(e),
             pickle_path=str(pickle_path),
         )
         return None

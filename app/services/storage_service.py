@@ -16,6 +16,7 @@ import mimetypes
 import hashlib
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 try:
     from minio import Minio
@@ -96,7 +97,7 @@ class StorageService:
                 self._initialize_client()
                 self._ensure_buckets()
             except Exception as e:
-                logger.error("minio_init_failed", error=str(e))
+                logger.error("minio_init_failed", **safe_error_log(e))
                 self.available = False
 
     async def close(self) -> None:
@@ -109,7 +110,7 @@ class StorageService:
                     self.client._http.clear()
                 logger.info("minio_client_closed")
             except Exception as e:
-                logger.warning("minio_close_error", error=str(e))
+                logger.warning("minio_close_error", **safe_error_log(e))
             finally:
                 self.client = None
                 self.available = False
@@ -142,7 +143,7 @@ class StorageService:
             )
 
         except Exception as e:
-            logger.error("minio_initialization_failed", error=str(e), exc_info=True)
+            logger.error("minio_initialization_failed", **safe_error_log(e), exc_info=True)
             raise
 
     def _ensure_buckets(self):
@@ -159,7 +160,7 @@ class StorageService:
                     self.client.make_bucket(bucket)
                     logger.info("bucket_created", bucket=bucket)
             except Exception as e:
-                logger.error("bucket_creation_failed", bucket=bucket, error=str(e))
+                logger.error("bucket_creation_failed", bucket=bucket, **safe_error_log(e))
 
     # ========================================================================
     # UPLOAD OPERATIONS
@@ -237,10 +238,10 @@ class StorageService:
             }
 
         except S3Error as e:
-            logger.error("minio_upload_failed", error=str(e), exc_info=True)
+            logger.error("minio_upload_failed", **safe_error_log(e), exc_info=True)
             raise
         except Exception as e:
-            logger.error("upload_failed", error=str(e), exc_info=True)
+            logger.error("upload_failed", **safe_error_log(e), exc_info=True)
             raise
 
     async def upload_thumbnail(
@@ -268,7 +269,7 @@ class StorageService:
             return object_key
 
         except Exception as e:
-            logger.error("thumbnail_upload_failed", error=str(e), exc_info=True)
+            logger.error("thumbnail_upload_failed", **safe_error_log(e), exc_info=True)
             raise
 
     # ========================================================================
@@ -301,10 +302,10 @@ class StorageService:
             return data
 
         except S3Error as e:
-            logger.error("minio_download_failed", error=str(e), exc_info=True)
+            logger.error("minio_download_failed", **safe_error_log(e), exc_info=True)
             raise
         except Exception as e:
-            logger.error("download_failed", error=str(e), exc_info=True)
+            logger.error("download_failed", **safe_error_log(e), exc_info=True)
             raise
 
     async def stream_document(
@@ -428,7 +429,7 @@ class StorageService:
                 "etag": stat.etag,
             }
         except S3Error as e:
-            logger.error("stat_object_failed", error=str(e), object_key=object_key)
+            logger.error("stat_object_failed", **safe_error_log(e), object_key=object_key)
             raise
 
     async def get_presigned_url(
@@ -455,7 +456,7 @@ class StorageService:
             return url
 
         except Exception as e:
-            logger.error("presigned_url_generation_failed", error=str(e), exc_info=True)
+            logger.error("presigned_url_generation_failed", **safe_error_log(e), exc_info=True)
             raise
 
     # ========================================================================
@@ -479,10 +480,10 @@ class StorageService:
             return True
 
         except S3Error as e:
-            logger.error("minio_delete_failed", error=str(e), exc_info=True)
+            logger.error("minio_delete_failed", **safe_error_log(e), exc_info=True)
             return False
         except Exception as e:
-            logger.error("delete_failed", error=str(e), exc_info=True)
+            logger.error("delete_failed", **safe_error_log(e), exc_info=True)
             return False
 
     async def delete_user_documents(self, user_id: str) -> int:
@@ -520,7 +521,7 @@ class StorageService:
             return deleted_count
 
         except Exception as e:
-            logger.error("batch_delete_failed", error=str(e), exc_info=True)
+            logger.error("batch_delete_failed", **safe_error_log(e), exc_info=True)
             raise
 
     # ========================================================================
@@ -547,11 +548,9 @@ class StorageService:
             }
 
         except Exception as e:
-            logger.error("minio_health_check_failed", error=str(e), exc_info=True)
+            logger.error("minio_health_check_failed", **safe_error_log(e), exc_info=True)
             return {
-                "status": "unhealthy",
-                "error": str(e)
-            }
+                "status": "unhealthy", **safe_error_log(e)}
 
     async def get_storage_stats(self) -> Dict[str, Any]:
         """Get storage usage statistics"""
@@ -596,8 +595,8 @@ class StorageService:
             return stats
 
         except Exception as e:
-            logger.error("storage_stats_failed", error=str(e), exc_info=True)
-            return {"error": str(e)}
+            logger.error("storage_stats_failed", **safe_error_log(e), exc_info=True)
+            return {"error": safe_error_detail(e, "Vorgang")}
 
     # ========================================================================
     # OBJECT VERSIONING
@@ -643,7 +642,7 @@ class StorageService:
             logger.error(
                 "enable_versioning_failed",
                 bucket=bucket_name,
-                error=str(e)
+                **safe_error_log(e)
             )
             raise
 
@@ -678,9 +677,9 @@ class StorageService:
             logger.error(
                 "get_versioning_status_failed",
                 bucket=bucket_name,
-                error=str(e)
+                **safe_error_log(e)
             )
-            return {"enabled": False, "error": str(e)}
+            return {"enabled": False, **safe_error_log(e)}
 
     async def list_object_versions(
         self,
@@ -747,7 +746,7 @@ class StorageService:
             logger.error(
                 "list_versions_failed",
                 object_key=object_key,
-                error=str(e)
+                **safe_error_log(e)
             )
             raise
 
@@ -805,7 +804,7 @@ class StorageService:
                 "download_version_failed",
                 object_key=object_key,
                 version_id=version_id,
-                error=str(e)
+                **safe_error_log(e)
             )
             raise
 
@@ -852,7 +851,7 @@ class StorageService:
                 "delete_version_failed",
                 object_key=object_key,
                 version_id=version_id,
-                error=str(e)
+                **safe_error_log(e)
             )
             raise
 
@@ -920,7 +919,7 @@ class StorageService:
                 "restore_version_failed",
                 object_key=object_key,
                 version_id=version_id,
-                error=str(e)
+                **safe_error_log(e)
             )
             raise
 

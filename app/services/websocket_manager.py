@@ -17,6 +17,7 @@ from enum import Enum
 
 from fastapi import WebSocket, WebSocketDisconnect
 import structlog
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -240,7 +241,7 @@ class ChatWebSocketManager:
                     "websocket_send_failed",
                     session_id=session_id,
                     user_id=user_id,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
     async def send_to_user(
@@ -276,7 +277,7 @@ class ChatWebSocketManager:
                 "websocket_send_to_user_failed",
                 session_id=session_id,
                 user_id=user_id,
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 

@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Document, RAGDocumentChunk, RAGSectionType
 from app.services.embedding_service import get_embedding_service
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -83,7 +84,7 @@ class DocumentChunkingService:
                     self._config = yaml.safe_load(f)
                 logger.info("chunking_config_loaded", path=str(config_path))
             except Exception as e:
-                logger.error("chunking_config_load_failed", error=str(e))
+                logger.error("chunking_config_load_failed", **safe_error_log(e))
                 self._config = self._default_config()
         else:
             logger.warning("chunking_config_not_found", path=str(config_path))

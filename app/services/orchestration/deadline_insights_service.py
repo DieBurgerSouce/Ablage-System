@@ -372,7 +372,7 @@ class DeadlineInsightsService:
             logger.warning(
                 "skonto_deadline_check_failed",
                 company_id=str(company_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return []
 
@@ -457,7 +457,7 @@ class DeadlineInsightsService:
             logger.warning(
                 "contract_deadline_check_failed",
                 company_id=str(company_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return []
 
@@ -537,7 +537,7 @@ class DeadlineInsightsService:
             logger.warning(
                 "payment_deadline_check_failed",
                 company_id=str(company_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return []
 
@@ -559,6 +559,7 @@ class DeadlineInsightsService:
             Liste von ProactiveInsights fuer Aufbewahrungs-Deadlines
         """
         from app.db.models import Document
+
 
         try:
             now = datetime.now(timezone.utc)
@@ -647,7 +648,7 @@ class DeadlineInsightsService:
             logger.warning(
                 "retention_deadline_check_failed",
                 company_id=str(company_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return []
 

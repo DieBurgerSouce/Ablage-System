@@ -26,6 +26,7 @@ from app.core.config import settings
 from app.services.vector.qdrant_service import QdrantService, get_qdrant_service, QdrantSearchResult
 from app.services.vector.embedding_factory import EmbeddingFactory, get_embedding_factory, EmbeddingModel
 from app.services.vector.reranker_service import RerankerService, get_reranker_service
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -210,8 +211,8 @@ class VectorSearchOrchestrator:
                 ]
 
             except Exception as e:
-                logger.error("qdrant_search_error", error=str(e))
-                search_error = str(e)
+                logger.error("qdrant_search_error", **safe_error_log(e))
+                search_error = safe_error_detail(e, "Vector")
                 # Fallback zu pgvector
                 backend = VectorBackend.PGVECTOR
 

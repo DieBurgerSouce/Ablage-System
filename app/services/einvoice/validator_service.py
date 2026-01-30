@@ -24,6 +24,7 @@ from typing import List, Optional, Dict, Any
 from lxml import etree
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 # R.1 SECURITY FIX: Sicherer XMLParser gegen XXE-Angriffe
 # - resolve_entities=False: Externe Entities werden nicht aufgeloest
@@ -227,7 +228,7 @@ class EInvoiceValidatorService:
             result.add_error(
                 code="XML_PARSE_ERROR",
                 location="root",
-                message=f"XML konnte nicht geparst werden: {str(e)}"
+                message=safe_error_detail(e, "XML-Parsing")
             )
             result.schema_valid = False
             return result
@@ -332,7 +333,7 @@ class EInvoiceValidatorService:
             result.add_error(
                 code="PDF_VALIDATION_ERROR",
                 location="pdf",
-                message=str(e)
+                message=safe_error_detail(e, "E-Invoice")
             )
 
         return result
@@ -351,7 +352,7 @@ class EInvoiceValidatorService:
             result.add_error(
                 code="XML_SYNTAX_ERROR",
                 location=f"line {e.lineno}",
-                message=str(e)
+                message=safe_error_detail(e, "E-Invoice")
             )
             result.schema_valid = False
             raise
@@ -407,7 +408,7 @@ class EInvoiceValidatorService:
                 result.add_error(
                     code="XSD_VALIDATION_ERROR",
                     location="schema",
-                    message=str(e)
+                    message=safe_error_detail(e, "E-Invoice")
                 )
                 result.schema_valid = False
                 return
@@ -455,7 +456,7 @@ class EInvoiceValidatorService:
         except MustangConnectionError as e:
             logger.warning(
                 "mustang_validation_fallback",
-                extra={"error": str(e)}
+                **safe_error_log(e)
             )
             # Fallback zu lokaler Validierung
             await self._validate_with_facturx(xml_content, result)

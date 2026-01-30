@@ -2,6 +2,7 @@
 """Compliance Autopilot periodic tasks (F13)."""
 
 import structlog
+from app.core.safe_errors import safe_error_log
 from app.workers.celery_app import celery_app
 
 logger = structlog.get_logger(__name__)
@@ -23,7 +24,7 @@ def run_daily_scan() -> dict:
         logger.info("compliance_autopilot_daily_scan_complete")
         return {"status": "success", "violations_found": 0}
     except Exception as e:
-        logger.error("compliance_autopilot_daily_scan_error", error=str(e))
+        logger.error("compliance_autopilot_daily_scan_error", **safe_error_log(e))
         raise
 
 
@@ -36,7 +37,7 @@ def prepare_audit_report() -> dict:
         logger.info("compliance_autopilot_audit_report_complete")
         return {"status": "success"}
     except Exception as e:
-        logger.error("compliance_autopilot_audit_report_error", error=str(e))
+        logger.error("compliance_autopilot_audit_report_error", **safe_error_log(e))
         raise
 
 
@@ -56,5 +57,5 @@ def run_gdpr_check() -> dict:
         logger.info("compliance_autopilot_gdpr_check_complete")
         return {"status": "success", "gdpr_issues": 0}
     except Exception as e:
-        logger.error("compliance_autopilot_gdpr_check_error", error=str(e))
+        logger.error("compliance_autopilot_gdpr_check_error", **safe_error_log(e))
         raise

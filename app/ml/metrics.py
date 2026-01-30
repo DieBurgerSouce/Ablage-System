@@ -962,6 +962,7 @@ class MLMetrics:
         try:
             import torch
 
+
             if torch.cuda.is_available():
                 for device_id in range(torch.cuda.device_count()):
                     device = f"cuda:{device_id}"
@@ -980,7 +981,7 @@ class MLMetrics:
         except ImportError:
             pass
         except Exception as e:
-            logger.debug("gpu_metriken_update_fehlgeschlagen", error=str(e))
+            logger.debug("gpu_metriken_update_fehlgeschlagen", **safe_error_log(e))
 
     # -------------------------------------------------------------------------
     # Surya Continuous Improvement Metriken

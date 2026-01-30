@@ -152,7 +152,7 @@ class DocumentTemplate(Base):
 
     # Metadaten
     tags: Mapped[list[str]] = mapped_column(JSONB, default=list)
-    metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    template_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)  # Renamed: 'metadata' is reserved in SQLAlchemy
 
     # Audit
     created_at: Mapped[datetime] = mapped_column(
@@ -273,7 +273,7 @@ class GeneratedDocument(Base):
     sent_to: Mapped[list[str]] = mapped_column(JSONB, default=list)  # Email-Adressen
 
     # Metadaten
-    metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    gen_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)  # Renamed: 'metadata' is reserved in SQLAlchemy
 
     # Audit
     created_at: Mapped[datetime] = mapped_column(

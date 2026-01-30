@@ -2,6 +2,7 @@
 """Event-Sourcing periodic tasks (F8)."""
 
 import structlog
+from app.core.safe_errors import safe_error_log
 from app.workers.celery_app import celery_app
 
 logger = structlog.get_logger(__name__)
@@ -21,7 +22,7 @@ def create_snapshots() -> dict:
         logger.info("event_sourcing_snapshot_complete")
         return {"status": "success", "snapshots_created": 0}
     except Exception as e:
-        logger.error("event_sourcing_snapshot_error", error=str(e))
+        logger.error("event_sourcing_snapshot_error", **safe_error_log(e))
         raise
 
 
@@ -34,5 +35,5 @@ def archive_old_events(retention_days: int = 180) -> dict:
         logger.info("event_sourcing_archive_complete")
         return {"status": "success", "events_archived": 0}
     except Exception as e:
-        logger.error("event_sourcing_archive_error", error=str(e))
+        logger.error("event_sourcing_archive_error", **safe_error_log(e))
         raise

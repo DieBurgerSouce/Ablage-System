@@ -22,6 +22,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Optional, List, Dict, Any, Tuple
 from app.core.datetime_utils import utc_now
+from app.core.safe_errors import safe_error_log
 
 import structlog
 from sqlalchemy import select, func, and_, or_, update
@@ -29,6 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.models import (
+
     ValidationQueueItem,
     Document,
     BusinessEntity,
@@ -264,12 +266,12 @@ class OneClickValidationService:
                 logger.error(
                     "batch_decision_error",
                     item_id=str(decision.item_id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 error_count += 1
                 results.append({
                     "success": False,
-                    "error": str(e),
+                    "error": safe_error_detail(e, "Vorgang"),
                     "item_id": str(decision.item_id),
                 })
 

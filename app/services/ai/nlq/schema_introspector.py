@@ -7,6 +7,7 @@ from sqlalchemy import MetaData, Table, inspect
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.services.ai.nlq.sql_sanitizer import ALLOWED_TABLES, PII_COLUMNS
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -111,7 +112,7 @@ class SchemaIntrospector:
             return self._schema_cache
 
         except Exception as e:
-            logger.error("schema_introspection_failed", error=str(e))
+            logger.error("schema_introspection_failed", **safe_error_log(e))
             # Return minimal schema on error
             return self._get_minimal_schema()
 

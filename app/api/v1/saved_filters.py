@@ -25,6 +25,7 @@ from app.api.dependencies import get_current_user, get_db
 from app.db.models import User, SavedFilter
 from app.services.saved_filter_service import SavedFilterService, ALLOWED_FEATURES
 from app.core.exceptions import NotFoundError, ForbiddenError, ValidationError
+from app.core.safe_errors import safe_error_detail
 
 
 router = APIRouter(prefix="/saved-filters", tags=["Saved Filters"])
@@ -143,7 +144,7 @@ async def list_saved_filters(
     except ValidationError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Filter"),
         )
 
     filter_responses = [
@@ -179,12 +180,12 @@ async def get_saved_filter(
     except NotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Filter"),
         )
     except ForbiddenError as e:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=str(e),
+            detail=safe_error_detail(e, "Filter"),
         )
 
     return _filter_to_response(saved_filter, current_user.id)
@@ -218,7 +219,7 @@ async def create_saved_filter(
     except ValidationError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Filter"),
         )
 
     return _filter_to_response(saved_filter, current_user.id)
@@ -252,17 +253,17 @@ async def update_saved_filter(
     except NotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Filter"),
         )
     except ForbiddenError as e:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=str(e),
+            detail=safe_error_detail(e, "Filter"),
         )
     except ValidationError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Filter"),
         )
 
     return _filter_to_response(saved_filter, current_user.id)
@@ -292,12 +293,12 @@ async def delete_saved_filter(
     except NotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Filter"),
         )
     except ForbiddenError as e:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=str(e),
+            detail=safe_error_detail(e, "Filter"),
         )
 
 
@@ -324,12 +325,12 @@ async def record_filter_usage(
     except NotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Filter"),
         )
     except ForbiddenError as e:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=str(e),
+            detail=safe_error_detail(e, "Filter"),
         )
 
 
@@ -359,17 +360,17 @@ async def duplicate_saved_filter(
     except NotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Filter"),
         )
     except ForbiddenError as e:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=str(e),
+            detail=safe_error_detail(e, "Filter"),
         )
     except ValidationError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Filter"),
         )
 
     return _filter_to_response(new_filter, current_user.id)
@@ -398,12 +399,12 @@ async def set_default_filter(
     except NotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Filter"),
         )
     except ForbiddenError as e:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=str(e),
+            detail=safe_error_detail(e, "Filter"),
         )
 
     return _filter_to_response(saved_filter, current_user.id)
@@ -430,7 +431,7 @@ async def clear_default_filter(
     except ValidationError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Filter"),
         )
 
 

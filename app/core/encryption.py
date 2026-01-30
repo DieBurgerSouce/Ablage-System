@@ -25,6 +25,7 @@ from cryptography.exceptions import InvalidTag
 import structlog
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -132,7 +133,7 @@ def _get_encryption_key() -> bytes:
         except Exception as e:
             logger.warning(
                 "encryption_key_decode_failed",
-                error=str(e)
+                **safe_error_log(e)
             )
 
     # Fallback: Ableitung aus SECRET_KEY
@@ -210,7 +211,7 @@ def encrypt_data(plaintext: str, associated_data: Optional[str] = None) -> str:
     except KeyNotConfiguredError:
         raise
     except Exception as e:
-        logger.error("encryption_failed", error=str(e))
+        logger.error("encryption_failed", **safe_error_log(e))
         raise EncryptionError(
             f"Encryption failed: {e}",
             "Verschlüsselung fehlgeschlagen"
@@ -264,7 +265,7 @@ def decrypt_data(ciphertext: str, associated_data: Optional[str] = None) -> str:
         logger.warning("decryption_failed_invalid_tag")
         raise DecryptionError("Invalid authentication tag")
     except Exception as e:
-        logger.error("decryption_failed", error=str(e))
+        logger.error("decryption_failed", **safe_error_log(e))
         raise DecryptionError(str(e))
 
 
@@ -635,7 +636,7 @@ class KeyRotationService:
             self._rotation_stats["failed"] += 1
             logger.error(
                 "key_rotation_failed",
-                error=str(e),
+                **safe_error_log(e),
                 ciphertext_preview=ciphertext[:20] + "..."
             )
             raise
@@ -691,6 +692,7 @@ async def rotate_user_secrets(
     try:
         from app.db.models import User
 
+
         for user_id in user_ids:
             try:
                 # User laden
@@ -721,13 +723,11 @@ async def rotate_user_secrets(
             except Exception as e:
                 results["failed"] += 1
                 results["errors"].append({
-                    "user_id": str(user_id),
-                    "error": str(e)
-                })
+                    "user_id": str(user_id), **safe_error_log(e)})
                 logger.warning(
                     "user_secret_rotation_failed",
                     user_id=str(user_id),
-                    error=str(e)
+                    **safe_error_log(e)
                 )
 
         await db_session.commit()

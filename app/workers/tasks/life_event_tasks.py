@@ -2,6 +2,7 @@
 """Life Event Engine periodic tasks (F16)."""
 
 import structlog
+from app.core.safe_errors import safe_error_log
 from app.workers.celery_app import celery_app
 
 logger = structlog.get_logger(__name__)
@@ -24,5 +25,5 @@ def detect_life_events() -> dict:
         logger.info("life_events_detection_complete")
         return {"status": "success", "events_detected": 0}
     except Exception as e:
-        logger.error("life_events_detection_error", error=str(e))
+        logger.error("life_events_detection_error", **safe_error_log(e))
         raise

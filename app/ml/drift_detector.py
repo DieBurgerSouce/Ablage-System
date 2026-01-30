@@ -937,7 +937,7 @@ class DriftAlertManager:
             try:
                 callback(alert_type, message, details)
             except Exception as e:
-                logger.error("alert_callback_failed", callback=str(callback), error=str(e))
+                logger.error("alert_callback_failed", callback=str(callback), **safe_error_log(e))
 
         return alert_info
 
@@ -955,6 +955,7 @@ class DriftAlertManager:
         """
         try:
             from app.ml.ab_testing import get_ab_test_manager
+
 
             manager = get_ab_test_manager()
 
@@ -1009,7 +1010,7 @@ class DriftAlertManager:
             return experiment.experiment_id
 
         except Exception as e:
-            logger.error("drift_experiment_creation_failed", error=str(e))
+            logger.error("drift_experiment_creation_failed", **safe_error_log(e))
             return None
 
     def _check_quality_degradation(self) -> str:

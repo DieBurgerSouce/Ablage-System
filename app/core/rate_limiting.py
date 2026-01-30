@@ -25,6 +25,7 @@ from slowapi.errors import RateLimitExceeded
 import redis.asyncio as aioredis
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -219,7 +220,7 @@ class RedisRateLimitStorage:
             except Exception as e:
                 logger.warning(
                     "rate_limit_redis_unavailable",
-                    error=str(e),
+                    **safe_error_log(e),
                     fallback="in-memory"
                 )
                 self._available = False
@@ -272,7 +273,7 @@ class RedisRateLimitStorage:
             results = await pipe.execute()
             return int(results[0])
         except Exception as e:
-            logger.error("rate_limit_redis_error", key=key, error=str(e))
+            logger.error("rate_limit_redis_error", key=key, **safe_error_log(e))
             if fail_closed:
                 raise RateLimitStorageError(
                     "Rate-Limiting-Service vorübergehend nicht verfügbar. "
@@ -805,7 +806,7 @@ async def check_rate_limit_budget(
             "rate_limit_check_failed",
             user_id=user_id,
             limit_type=limit_type,
-            error=str(e)
+            **safe_error_log(e)
         )
 
         # SECURITY: Fail-Closed bei Fehler wenn konfiguriert
@@ -818,9 +819,7 @@ async def check_rate_limit_budget(
         # Fail-open: allow request on error (nur wenn RATE_LIMIT_FAIL_CLOSED=False)
         return {
             "available": True,
-            "reason": "check_failed",
-            "error": str(e)
-        }
+            "reason": "check_failed", **safe_error_log(e)}
 
 
 async def increment_rate_limit_usage(
@@ -870,7 +869,7 @@ async def increment_rate_limit_usage(
             "rate_limit_increment_failed",
             user_id=user_id,
             limit_type=limit_type,
-            error=str(e)
+            **safe_error_log(e)
         )
         return False
 

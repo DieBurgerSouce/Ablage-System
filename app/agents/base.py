@@ -12,6 +12,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 import structlog
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -127,7 +128,7 @@ class BaseAgent(ABC):
                     if attempt < self.max_retries - 1:
                         # Retry with exponential backoff
                         delay = self.retry_delay * (2**attempt)
-                        self.logger.warning("agent_task_retry", task_id=task_id, attempt=attempt + 1, max_retries=self.max_retries, delay_seconds=delay, error=str(e))
+                        self.logger.warning("agent_task_retry", task_id=task_id, attempt=attempt + 1, max_retries=self.max_retries, delay_seconds=delay, **safe_error_log(e))
                         # Metrics removed for POC
                         time.sleep(delay)
                     else:
@@ -139,7 +140,7 @@ class BaseAgent(ABC):
             status = AgentStatus.FAILED
             error_type = type(e).__name__
 
-            self.logger.error("agent_task_failed", task_id=task_id, error_type=error_type, error=str(e), exc_info=True)
+            self.logger.error("agent_task_failed", task_id=task_id, error_type=error_type, **safe_error_log(e), exc_info=True)
 
             # Error metrics removed for POC
 

@@ -21,6 +21,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.safe_errors import safe_error_log
 from app.api.schemas.einvoice import (
     EInvoiceGenerateResponse,
     EInvoiceValidationResponse,
@@ -345,7 +346,7 @@ class EInvoiceGeneratorService:
                 except Exception as e:
                     logger.warning(
                         "invoice_data_parse_error",
-                        extra={"document_id": str(document.id), "error": str(e)}
+                        extra={"document_id": str(document.id), **safe_error_log(e)}
                     )
 
         return None

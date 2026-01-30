@@ -23,6 +23,7 @@ from app.api.dependencies import get_db, get_current_active_user, get_current_co
 from app.services.ai_ethics.bias_detector import BiasDetector
 from app.services.ai_ethics.explainability_service import ExplainabilityService
 from app.services.ai_ethics.ethical_guardrails import EthicalGuardrails
+from app.core.safe_errors import safe_error_detail, safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -96,7 +97,7 @@ async def get_dashboard(
             "ai_ethics.dashboard_failed",
             user_id=str(current_user.id),
             company_id=str(company_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -147,7 +148,7 @@ async def get_bias_report(
             "ai_ethics.bias_report_failed",
             user_id=str(current_user.id),
             company_id=str(company_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -218,7 +219,7 @@ async def explain_decision(
             "ai_ethics.explain_failed",
             decision_type=decision_type,
             decision_id=str(decision_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -285,7 +286,7 @@ async def get_fairness_metrics(
             "ai_ethics.fairness_metrics_failed",
             user_id=str(current_user.id),
             company_id=str(company_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -356,7 +357,7 @@ async def guardrail_check(
         logger.error(
             "ai_ethics.guardrail_check_failed",
             action_type=request.action_type,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

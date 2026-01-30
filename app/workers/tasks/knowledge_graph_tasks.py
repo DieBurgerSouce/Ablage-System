@@ -3,6 +3,7 @@
 
 import structlog
 from app.workers.celery_app import celery_app
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -22,5 +23,5 @@ def build_graph_incremental() -> dict:
         logger.info("knowledge_graph_build_complete")
         return {"status": "success", "nodes_added": 0, "edges_added": 0}
     except Exception as e:
-        logger.error("knowledge_graph_build_error", error=str(e))
+        logger.error("knowledge_graph_build_error", **safe_error_log(e))
         raise

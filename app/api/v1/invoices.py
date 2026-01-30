@@ -30,6 +30,8 @@ from app.db.schemas import (
 )
 from app.api.dependencies import get_db, get_current_active_user
 from app.workers.tasks.risk_scoring_tasks import on_invoice_updated_recalculate
+from app.core.safe_errors import safe_error_detail, safe_error_log
+from app.core.security_auth import build_content_disposition
 
 logger = structlog.get_logger(__name__)
 
@@ -1325,7 +1327,7 @@ async def export_missed_skonto(
     return StreamingResponse(
         io.BytesIO(content) if isinstance(content, bytes) else io.BytesIO(content.encode()),
         media_type=media_type,
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
+        headers={"Content-Disposition": build_content_disposition(filename, "attachment")},
     )
 
 
@@ -1414,9 +1416,10 @@ async def record_partial_payment(
             company_id=company_id,
         )
     except ValueError as e:
+        logger.error("payment_recording_failed", **safe_error_log(e, context="Teilzahlung erfassen"))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Teilzahlung erfassen")
         )
 
     await db.commit()
@@ -1493,9 +1496,10 @@ async def get_invoice_payments(
             company_id=current_user.company_id,
         )
     except ValueError as e:
+        logger.error("payment_summary_failed", **safe_error_log(e, context="Zahlungsuebersicht abrufen"))
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
+            detail=safe_error_detail(e, "Zahlungsuebersicht abrufen")
         )
 
     return {

@@ -17,6 +17,7 @@ from sqlalchemy import select, and_, func
 
 from app.db.models import SmartInboxItem, UserBehaviorLog
 from app.services.smart_inbox.behavior_learner import BehaviorLearner, UserPreferences
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -80,7 +81,7 @@ class PriorityScorer:
                 self.logger.error(
                     "scoring_failed",
                     item_id=str(item.id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 # Fallback: Raw Priority verwenden
                 scored_items.append(

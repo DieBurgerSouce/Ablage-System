@@ -87,6 +87,7 @@ from app.services.rag import (
     get_chunking_service,
 )
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -176,7 +177,7 @@ async def search_documents(
 
     except Exception as e:
         # SECURITY FIX 28-18: Generische Fehlermeldung - keine internen Details exponieren
-        logger.error("rag_search_failed", error=str(e), query=request.query[:100])
+        logger.error("rag_search_failed", **safe_error_log(e), query=request.query[:100])
         raise HTTPException(status_code=500, detail="Suche fehlgeschlagen. Bitte versuchen Sie es erneut.")
 
 
@@ -412,7 +413,7 @@ KONTEXT:
         raise
     except Exception as e:
         # SECURITY FIX 28-18: Generische Fehlermeldung - keine internen Details exponieren
-        logger.error("rag_chat_failed", error=str(e))
+        logger.error("rag_chat_failed", **safe_error_log(e))
         raise HTTPException(status_code=500, detail="Chat fehlgeschlagen. Bitte versuchen Sie es erneut.")
 
 
@@ -539,9 +540,9 @@ async def chat_with_documents_stream(
             search_results = list(search_response.results)
 
     except Exception as e:
-        logger.error("rag_chat_stream_setup_failed", error=str(e))
+        logger.error("rag_chat_stream_setup_failed", **safe_error_log(e))
         async def error_stream():
-            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            yield f"data: {json.dumps({'type': 'error', 'error': safe_error_detail(e, 'RAG')})}\n\n"
         return StreamingResponse(
             error_stream(),
             media_type="text/event-stream",
@@ -657,8 +658,8 @@ KONTEXT:
                 )
 
         except Exception as e:
-            logger.error("rag_chat_stream_failed", error=str(e))
-            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            logger.error("rag_chat_stream_failed", **safe_error_log(e))
+            yield f"data: {json.dumps({'type': 'error', 'error': safe_error_detail(e, 'RAG')})}\n\n"
 
     return StreamingResponse(
         generate_stream(),
@@ -962,7 +963,7 @@ async def chunk_document(
 
     except Exception as e:
         # SECURITY FIX 28-18: Generische Fehlermeldung - keine internen Details exponieren
-        logger.error("rag_chunking_failed", document_id=str(request.document_id), error=str(e))
+        logger.error("rag_chunking_failed", document_id=str(request.document_id), **safe_error_log(e))
         raise HTTPException(status_code=500, detail="Chunking fehlgeschlagen. Bitte versuchen Sie es erneut.")
 
 
@@ -1142,7 +1143,7 @@ async def rag_health_check(
         result = await db.execute(text("SELECT 1"))
         health["components"]["database"] = "healthy"
     except Exception as e:
-        health["components"]["database"] = f"unhealthy: {str(e)}"
+        health["components"]["database"] = safe_error_detail(e, "Vorgang")
         health["status"] = "degraded"
 
     # Embedding Service Check
@@ -1156,7 +1157,7 @@ async def rag_health_check(
             "device": info.get("device"),
         }
     except Exception as e:
-        health["components"]["embedding_service"] = f"unhealthy: {str(e)}"
+        health["components"]["embedding_service"] = safe_error_detail(e, "Vorgang")
         health["status"] = "degraded"
 
     # LLM Service Check
@@ -1167,7 +1168,7 @@ async def rag_health_check(
         if not llm_healthy:
             health["status"] = "degraded"
     except Exception as e:
-        health["components"]["llm_service"] = f"unhealthy: {str(e)}"
+        health["components"]["llm_service"] = safe_error_detail(e, "Vorgang")
         health["status"] = "degraded"
 
     return health
@@ -1236,7 +1237,7 @@ async def business_intelligence_query(
         )
 
     except Exception as e:
-        logger.error("bi_query_failed", error=str(e))
+        logger.error("bi_query_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=500,
             detail="Analyse fehlgeschlagen. Bitte versuchen Sie es erneut."
@@ -1647,7 +1648,7 @@ DOKUMENTKONTEXT:
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("bi_chat_failed", error=str(e))
+        logger.error("bi_chat_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=500,
             detail="Chat fehlgeschlagen. Bitte versuchen Sie es erneut."
@@ -1741,6 +1742,7 @@ async def get_ai_context(
     """
     from app.api.schemas.rag import AIContextInfo
     from app.services.rag.ai_action_service import get_ai_action_service
+
 
     action_service = get_ai_action_service()
     return action_service.get_context_info(

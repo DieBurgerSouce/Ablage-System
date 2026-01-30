@@ -24,7 +24,9 @@ from uuid import UUID
 import structlog
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 from app.services.rag.llm_service import (
+
     LLMContextType,
     LLMMessage,
     LLMService,
@@ -295,7 +297,7 @@ class LLMNERService:
         except json.JSONDecodeError as e:
             logger.warning(
                 "json_parse_error",
-                error=str(e),
+                **safe_error_log(e),
                 response_preview=response_text[:200],
             )
             return []
@@ -347,7 +349,7 @@ class LLMNERService:
             )
 
         except Exception as e:
-            logger.warning("entity_creation_error", error=str(e), data=entity_data)
+            logger.warning("entity_creation_error", **safe_error_log(e), data=entity_data)
             return None
 
     def _merge_chunk_entities(
@@ -507,7 +509,7 @@ class LLMNERService:
             logger.exception(
                 "ner_extraction_error",
                 document_id=str(document_id) if document_id else None,
-                error=str(e),
+                **safe_error_log(e),
             )
 
             return NERResult(
@@ -516,7 +518,7 @@ class LLMNERService:
                 processing_time_ms=processing_time,
                 model_used=self._model,
                 text_length=len(text),
-                error=str(e),
+                **safe_error_log(e),
             )
 
     async def extract_deadlines(

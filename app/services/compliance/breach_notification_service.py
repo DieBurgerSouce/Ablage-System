@@ -30,6 +30,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.core.config import settings
 from app.db.models import AuditLog, User, AppConfig
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -561,12 +562,12 @@ class BreachNotificationService:
         except Exception as e:
             logger.error(
                 "breach_report_failed",
-                error=str(e),
+                **safe_error_log(e),
                 breach_type=breach_type.value,
             )
             return CreateBreachResult(
                 success=False,
-                error=f"Fehler beim Melden der Datenschutzverletzung: {str(e)}"
+                error=safe_error_detail(e, "Datenschutzverletzung-Meldung")
             )
 
     async def update_breach_status(
@@ -1104,6 +1105,7 @@ class BreachNotificationService:
         try:
             from app.services.notification_service import NotificationService
 
+
             service = NotificationService()
 
             # Admin-Alert
@@ -1123,7 +1125,7 @@ Bitte pruefen Sie den Vorfall und leiten Sie die erforderlichen Massnahmen ein.
             )
 
         except Exception as e:
-            logger.warning("breach_alert_failed", breach_id=breach.id, error=str(e))
+            logger.warning("breach_alert_failed", breach_id=breach.id, **safe_error_log(e))
 
     async def _persist_breach(
         self,

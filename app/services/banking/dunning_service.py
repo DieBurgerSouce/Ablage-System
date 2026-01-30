@@ -27,6 +27,7 @@ from datetime import datetime, date, timedelta
 from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 
 from app.core.datetime_utils import utc_now
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from enum import Enum
 from typing import Optional, Dict, Any, List, Tuple
 from uuid import UUID, uuid4
@@ -692,7 +693,7 @@ class DunningService:
                             )
                             action_info["executed"] = True
                 except Exception as e:
-                    action_info["error"] = str(e)
+                    action_info["error"] = safe_error_detail(e, "Mahnung")
 
             actions.append(action_info)
 
@@ -1294,7 +1295,7 @@ class DunningService:
                     outcome="success",
                 )
             except Exception as e:
-                failed.append({"id": str(dunning_id), "error": str(e)})
+                failed.append({"id": str(dunning_id), **safe_error_log(e)})
 
         logger.info(
             "bulk_escalation_completed",

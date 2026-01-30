@@ -19,6 +19,7 @@ from sqlalchemy import func, select, case, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
+
     Company,
     Document,
     BusinessEntity,
@@ -259,7 +260,7 @@ class CompanyMetricsService:
                 logger.warning(
                     "company_metrics_error",
                     company_id=str(company.id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         # Sortiere nach Health Score (schlechteste zuerst fuer Attention)

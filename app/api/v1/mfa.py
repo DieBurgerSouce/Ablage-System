@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
+from app.core.safe_errors import safe_error_detail
 from app.db.models import User
 from app.services.auth.mfa_service import (
     MFAService,
@@ -117,7 +118,7 @@ async def get_mfa_status(
     except MFAServiceError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            detail=safe_error_detail(e, "MFA")
         )
 
 
@@ -155,7 +156,7 @@ async def setup_mfa(
     except MFAServiceError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            detail=safe_error_detail(e, "MFA")
         )
 
 
@@ -196,7 +197,7 @@ async def verify_mfa_setup(
     except MFAServiceError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "MFA")
         )
 
 
@@ -237,7 +238,7 @@ async def validate_totp(
     except MFAServiceError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            detail=safe_error_detail(e, "MFA")
         )
 
 
@@ -278,7 +279,7 @@ async def use_backup_code(
     except MFAServiceError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            detail=safe_error_detail(e, "MFA")
         )
 
 
@@ -319,7 +320,7 @@ async def disable_mfa(
     except MFAServiceError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            detail=safe_error_detail(e, "MFA")
         )
 
 
@@ -361,5 +362,5 @@ async def regenerate_backup_codes(
     except MFAServiceError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            detail=safe_error_detail(e, "MFA")
         )

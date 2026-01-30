@@ -22,6 +22,7 @@ from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
+from app.core.safe_errors import safe_error_detail
 from app.core.jsonb_validators import validate_jsonb_payload
 from app.db.models import User
 
@@ -1064,11 +1065,11 @@ async def generate_rule_from_prompt(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"KI konnte keine gueltige Regel generieren: {str(e)}"
+            detail=safe_error_detail(e, "Vorgang")
         )
     except Exception as e:
         logger.error(f"Fehler bei Regelgenerierung: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Fehler bei der Regelgenerierung: {str(e)}"
+            detail=safe_error_detail(e, "Vorgang")
         )

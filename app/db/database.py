@@ -16,6 +16,7 @@ import structlog
 import os
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -140,7 +141,7 @@ class DatabaseManager:
             )
 
         except Exception as e:
-            logger.error("database_initialization_failed", error=str(e), exc_info=True)
+            logger.error("database_initialization_failed", **safe_error_log(e), exc_info=True)
             raise
 
     @property
@@ -183,11 +184,9 @@ class DatabaseManager:
             }
 
         except Exception as e:
-            logger.error("database_health_check_failed", error=str(e), exc_info=True)
+            logger.error("database_health_check_failed", **safe_error_log(e), exc_info=True)
             return {
-                "status": "unhealthy",
-                "error": str(e)
-            }
+                "status": "unhealthy", **safe_error_log(e)}
 
     @asynccontextmanager
     async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
@@ -198,7 +197,7 @@ class DatabaseManager:
             await session.commit()
         except Exception as e:
             await session.rollback()
-            logger.error("database_session_error", error=str(e), exc_info=True)
+            logger.error("database_session_error", **safe_error_log(e), exc_info=True)
             raise
         finally:
             await session.close()
@@ -241,9 +240,7 @@ async def get_pool_status() -> dict:
         return await db_manager.health_check()
     except Exception as e:
         return {
-            "status": "error",
-            "error": str(e)
-        }
+            "status": "error", **safe_error_log(e)}
 
 
 # ============================================================================

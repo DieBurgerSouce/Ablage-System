@@ -20,6 +20,7 @@ import asyncio
 import hashlib
 import threading
 import time
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from collections import OrderedDict
 from dataclasses import dataclass
 from enum import Enum
@@ -259,10 +260,10 @@ class TranslationService:
                 "translation_failed",
                 provider=self.provider.value,
                 source_language=source_language,
-                error=str(e),
+                **safe_error_log(e),
             )
             # Fallback: Original zurueckgeben
-            return self._create_skip_result(text, source_language, f"error:{str(e)}")
+            return self._create_skip_result(text, source_language, f"error:{safe_error_detail(e, 'Uebersetzung')}")
 
         duration_ms = int((time.monotonic() - start) * 1000)
 
@@ -383,7 +384,7 @@ class TranslationService:
                     "Installiere mit: pip install argostranslate"
                 )
             except Exception as e:
-                logger.error("argos_initialization_failed", error=str(e))
+                logger.error("argos_initialization_failed", **safe_error_log(e))
                 raise
 
     async def _translate_libretranslate(self, text: str, source_lang: str) -> str:
@@ -483,6 +484,7 @@ def get_translation_service() -> TranslationService:
             return _translation_service
 
         from app.core.config import settings
+
 
         # Provider aus Config laden (default: argos)
         provider_str = getattr(settings, "TRANSLATION_PROVIDER", "argos")

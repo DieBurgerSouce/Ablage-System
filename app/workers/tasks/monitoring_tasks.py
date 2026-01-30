@@ -14,6 +14,7 @@ from typing import Any, Dict
 
 import structlog
 
+from app.core.safe_errors import safe_error_log
 from app.workers.celery_app import celery_app, CPUTask
 
 logger = structlog.get_logger(__name__)
@@ -69,10 +70,10 @@ def worker_health_check_task() -> Dict[str, Any]:
         }
 
     except Exception as e:
-        logger.error("worker_health_check_task_failed", error=str(e))
+        logger.error("worker_health_check_task_failed", **safe_error_log(e))
         return {
             "success": False,
-            "error": str(e),
+            "error": safe_error_detail(e, "Vorgang"),
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -151,10 +152,10 @@ def cleanup_stuck_tasks() -> Dict[str, Any]:
         return result
 
     except Exception as e:
-        logger.error("cleanup_stuck_tasks_failed", error=str(e))
+        logger.error("cleanup_stuck_tasks_failed", **safe_error_log(e))
         return {
             "success": False,
-            "error": str(e),
+            "error": safe_error_detail(e, "Vorgang"),
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -247,10 +248,10 @@ def check_queue_backpressure() -> Dict[str, Any]:
         return result
 
     except Exception as e:
-        logger.error("backpressure_check_failed", error=str(e))
+        logger.error("backpressure_check_failed", **safe_error_log(e))
         return {
             "success": False,
-            "error": str(e),
+            "error": safe_error_detail(e, "Vorgang"),
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -283,4 +284,4 @@ def _update_health_metrics(health: Dict[str, Any]) -> None:
         # Prometheus Metriken nicht verfuegbar
         pass
     except Exception as e:
-        logger.debug("health_metrics_update_failed", error=str(e))
+        logger.debug("health_metrics_update_failed", **safe_error_log(e))

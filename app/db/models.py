@@ -17130,7 +17130,7 @@ class DomainEvent(Base):
     # Event
     event_type = Column(String(100), nullable=False)
     event_data = Column(CrossDBJSON, nullable=False)
-    metadata = Column(CrossDBJSON, default=dict)
+    event_metadata = Column(CrossDBJSON, default=dict)  # Renamed: 'metadata' is reserved in SQLAlchemy
 
     # Causation
     correlation_id = Column(UUID(as_uuid=True), nullable=True)
@@ -17453,7 +17453,7 @@ class DocumentEntityLink(Base):
     # Link metadata
     link_type = Column(String(50), nullable=True)
     confidence = Column(Float, default=1.0)
-    metadata = Column(CrossDBJSON, default=dict)
+    link_metadata = Column(CrossDBJSON, default=dict)  # Renamed: 'metadata' is reserved in SQLAlchemy
 
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -17527,3 +17527,6 @@ class RiskScoreHistory(Base):
 
     def __repr__(self) -> str:
         return f"<RiskScoreHistory entity={self.entity_id} score={self.score} level={self.risk_level}>"
+
+# Aliases for backward compatibility
+Comment = DocumentComment

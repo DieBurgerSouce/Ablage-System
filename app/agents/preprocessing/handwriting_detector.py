@@ -20,6 +20,7 @@ import numpy as np
 import structlog
 
 from app.agents.base import AgentCategory, PreprocessingAgent
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -364,7 +365,7 @@ class HandwritingDetectorAgent(PreprocessingAgent):
                     logger.warning("PIL nicht verfuegbar, Bild konnte nicht geladen werden")
                     return None
                 except Exception as e:
-                    logger.warning("image_load_error", path=image, error=str(e))
+                    logger.warning("image_load_error", path=image, **safe_error_log(e))
                     return None
 
             if isinstance(image, np.ndarray):
@@ -377,7 +378,7 @@ class HandwritingDetectorAgent(PreprocessingAgent):
             return None
 
         except Exception as e:
-            logger.warning("image_preparation_error", error=str(e))
+            logger.warning("image_preparation_error", **safe_error_log(e))
             return None
 
     def _analyze_stroke_characteristics(self, image: np.ndarray) -> float:
@@ -433,7 +434,7 @@ class HandwritingDetectorAgent(PreprocessingAgent):
                 return 0.5
 
         except Exception as e:
-            logger.warning("stroke_analysis_error", error=str(e))
+            logger.warning("stroke_analysis_error", **safe_error_log(e))
             return 0.5
 
     def _analyze_baseline_variance(self, image: np.ndarray) -> float:
@@ -485,7 +486,7 @@ class HandwritingDetectorAgent(PreprocessingAgent):
         except ImportError:
             return 0.5
         except Exception as e:
-            logger.warning("baseline_analysis_error", error=str(e))
+            logger.warning("baseline_analysis_error", **safe_error_log(e))
             return 0.5
 
     def _analyze_slant_variance(self, image: np.ndarray) -> float:
@@ -528,7 +529,7 @@ class HandwritingDetectorAgent(PreprocessingAgent):
             return 0.5
 
         except Exception as e:
-            logger.warning("slant_analysis_error", error=str(e))
+            logger.warning("slant_analysis_error", **safe_error_log(e))
             return 0.5
 
     def _analyze_texture_patterns(self, image: np.ndarray) -> float:
@@ -568,7 +569,7 @@ class HandwritingDetectorAgent(PreprocessingAgent):
                 return 0.5
 
         except Exception as e:
-            logger.warning("texture_analysis_error", error=str(e))
+            logger.warning("texture_analysis_error", **safe_error_log(e))
             return 0.5
 
     def _analyze_position_patterns(self, image: np.ndarray) -> float:
@@ -626,7 +627,7 @@ class HandwritingDetectorAgent(PreprocessingAgent):
             return 0.5
 
         except Exception as e:
-            logger.warning("position_analysis_error", error=str(e))
+            logger.warning("position_analysis_error", **safe_error_log(e))
             return 0.5
 
     async def _detect_handwriting_regions(
@@ -719,7 +720,7 @@ class HandwritingDetectorAgent(PreprocessingAgent):
                 regions = self._detect_regions_simple(gray, h, w)
 
         except Exception as e:
-            logger.warning("region_detection_error", error=str(e))
+            logger.warning("region_detection_error", **safe_error_log(e))
 
         return regions
 

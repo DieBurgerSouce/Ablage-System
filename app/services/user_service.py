@@ -18,6 +18,7 @@ from fastapi import HTTPException, status
 
 from app.db.models import User
 from app.db.schemas import UserCreate, UserUpdate, UserChangePassword, UserResponse
+from app.core.safe_errors import safe_error_log
 from app.core.security import (
     get_password_hash,
     verify_password,
@@ -42,6 +43,7 @@ class UserService:
         """Lazy-load Redis connection."""
         if cls._redis is None:
             from app.core.redis_state import RedisStateManager
+
             cls._redis = RedisStateManager.get_instance()
             await cls._redis.connect()
         return cls._redis
@@ -83,7 +85,7 @@ class UserService:
             )
         except Exception as e:
             # Cache-Fehler sollten nicht den Service unterbrechen
-            logger.debug("user_cache_set_failed", error=str(e))
+            logger.debug("user_cache_set_failed", **safe_error_log(e))
 
     @classmethod
     async def _get_cached_user_by_id(cls, user_id: UUID) -> Optional[dict]:
@@ -94,7 +96,7 @@ class UserService:
             if cached:
                 return json.loads(cached)
         except Exception as e:
-            logger.debug("user_cache_get_failed", error=str(e))
+            logger.debug("user_cache_get_failed", **safe_error_log(e))
         return None
 
     @classmethod
@@ -106,7 +108,7 @@ class UserService:
             if cached:
                 return json.loads(cached)
         except Exception as e:
-            logger.debug("user_cache_get_failed", error=str(e))
+            logger.debug("user_cache_get_failed", **safe_error_log(e))
         return None
 
     @classmethod
@@ -123,7 +125,7 @@ class UserService:
                 await redis._redis.delete(key)
             logger.debug("user_cache_invalidated", user_id=str(user.id))
         except Exception as e:
-            logger.debug("user_cache_invalidation_failed", error=str(e))
+            logger.debug("user_cache_invalidation_failed", **safe_error_log(e))
 
     @staticmethod
     async def create_user(
@@ -347,14 +349,14 @@ class UserService:
                     await redis._redis.delete(f"{USER_CACHE_PREFIX}:email:{old_email.lower()}")
                 except Exception as e:
                     # Cache-Invalidierung nicht kritisch, aber loggen für Debugging
-                    logger.debug("cache_invalidation_failed", cache_type="email", error=str(e))
+                    logger.debug("cache_invalidation_failed", cache_type="email", **safe_error_log(e))
             if old_username != user.username:
                 try:
                     redis = await cls._get_redis()
                     await redis._redis.delete(f"{USER_CACHE_PREFIX}:username:{old_username.lower()}")
                 except Exception as e:
                     # Cache-Invalidierung nicht kritisch, aber loggen für Debugging
-                    logger.debug("cache_invalidation_failed", cache_type="username", error=str(e))
+                    logger.debug("cache_invalidation_failed", cache_type="username", **safe_error_log(e))
 
             return user
         except IntegrityError:

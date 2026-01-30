@@ -26,6 +26,7 @@ import torch
 import numpy as np
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 if TYPE_CHECKING:
     from sentence_transformers import SentenceTransformer
@@ -201,7 +202,7 @@ class EmbeddingFactory:
             logger.error(
                 "embedding_model_load_error",
                 model=model_id,
-                error=str(e)
+                **safe_error_log(e)
             )
             raise
 
@@ -235,7 +236,7 @@ class EmbeddingFactory:
             logger.error(
                 "embedding_model_unload_error",
                 model=model_id,
-                error=str(e)
+                **safe_error_log(e)
             )
 
     async def generate_embedding(
@@ -280,7 +281,7 @@ class EmbeddingFactory:
                     "embedding_generation_error",
                     model=model_name,
                     text_length=len(text),
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 return None
 
@@ -341,7 +342,7 @@ class EmbeddingFactory:
                     "embedding_batch_error",
                     model=model_name,
                     texts_count=len(texts),
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 return [None] * len(texts)
 

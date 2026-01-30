@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.db.models_delegation import (
     DelegationType,
@@ -373,7 +374,7 @@ async def create_delegation(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Delegation"),
         )
 
 
@@ -406,7 +407,7 @@ async def create_delegation_from_template(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Delegation"),
         )
 
 
@@ -576,7 +577,7 @@ async def accept_delegation(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Delegation"),
         )
 
 
@@ -606,7 +607,7 @@ async def decline_delegation(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Delegation"),
         )
 
 
@@ -653,7 +654,7 @@ async def revoke_delegation(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Delegation"),
         )
 
 

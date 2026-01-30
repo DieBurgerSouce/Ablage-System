@@ -25,7 +25,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import BusinessEntity, EntityType
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.core.security.sensitive_data_filter import (
+
     get_pii_safe_logger,
     mask_pii_in_dict,
 )
@@ -216,9 +218,9 @@ class LexwareImportService:
                 except Exception as e:
                     result.error_count += 1
                     kd_nr = entity_data.get("name", "?")
-                    result.errors.append(f"Kunde {kd_nr}: {str(e)}")
+                    result.errors.append(f"Kunde {kd_nr}: {safe_error_detail(e, 'Import')}")
                     logger.error(
-                        "customer_import_error", kd_nr=kd_nr, error=str(e)
+                        "customer_import_error", kd_nr=kd_nr, **safe_error_log(e)
                     )
 
             # Batch-add und commit (oder rollback bei dry_run)
@@ -245,8 +247,8 @@ class LexwareImportService:
         except Exception as e:
             await self.db.rollback()
             result = ImportResult()
-            result.errors.append(f"Import failed: {str(e)}")
-            logger.exception("customer_import_failed", error=str(e))
+            result.errors.append(safe_error_detail(e, "Import"))
+            logger.exception("customer_import_failed", **safe_error_log(e))
 
         return result
 
@@ -325,9 +327,9 @@ class LexwareImportService:
                 entities_data.append(entity_data)
             except Exception as e:
                 result.error_count += 1
-                result.errors.append(f"Kunde {kd_nr_clean}: {str(e)}")
+                result.errors.append(f"Kunde {kd_nr_clean}: {safe_error_detail(e, 'Import')}")
                 logger.error(
-                    "customer_data_prep_error", kd_nr=kd_nr_clean, error=str(e)
+                    "customer_data_prep_error", kd_nr=kd_nr_clean, **safe_error_log(e)
                 )
 
         return entities_data, result
@@ -499,9 +501,9 @@ class LexwareImportService:
                 except Exception as e:
                     result.error_count += 1
                     name = entity_data.get("name", "?")
-                    result.errors.append(f"Lieferant {name}: {str(e)}")
+                    result.errors.append(f"Lieferant: {safe_error_detail(e, 'Import')}")
                     logger.error(
-                        "supplier_import_error", name=name, error=str(e)
+                        "supplier_import_error", name=name, **safe_error_log(e)
                     )
 
             # Batch-add und commit (oder rollback bei dry_run)
@@ -530,8 +532,8 @@ class LexwareImportService:
         except Exception as e:
             await self.db.rollback()
             result = ImportResult()
-            result.errors.append(f"Import failed: {str(e)}")
-            logger.exception("supplier_import_failed", error=str(e))
+            result.errors.append(safe_error_detail(e, "Import"))
+            logger.exception("supplier_import_failed", **safe_error_log(e))
 
         return result
 
@@ -602,9 +604,9 @@ class LexwareImportService:
                 entities_data.append(entity_data)
             except Exception as e:
                 result.error_count += 1
-                result.errors.append(f"Lieferant {name_key}: {str(e)}")
+                result.errors.append(f"Lieferant: {safe_error_detail(e, 'Import')}")
                 logger.error(
-                    "supplier_data_prep_error", name=name_key, error=str(e)
+                    "supplier_data_prep_error", name=name_key, **safe_error_log(e)
                 )
 
         return entities_data, result

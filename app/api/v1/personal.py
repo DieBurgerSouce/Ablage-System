@@ -555,8 +555,11 @@ async def list_employees(
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0
 
-    # Apply sorting
-    sort_column = getattr(Employee, sort_by, Employee.last_name)
+    # SECURITY: Whitelist gegen Reflection-Angriffe (CWE-89)
+    ALLOWED_SORT_FIELDS = {"first_name", "last_name", "email", "employee_number", "created_at", "updated_at", "hire_date", "status"}
+    if sort_by not in ALLOWED_SORT_FIELDS:
+        sort_by = "last_name"
+    sort_column = getattr(Employee, sort_by)
     if sort_order == "desc":
         query = query.order_by(sort_column.desc())
     else:
@@ -831,8 +834,11 @@ async def list_departments(
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0
 
-    # Apply sorting
-    sort_column = getattr(Department, sort_by, Department.name)
+    # SECURITY: Whitelist gegen Reflection-Angriffe (CWE-89)
+    ALLOWED_DEPT_SORT_FIELDS = {"name", "short_name", "created_at", "updated_at", "sort_order", "cost_center"}
+    if sort_by not in ALLOWED_DEPT_SORT_FIELDS:
+        sort_by = "name"
+    sort_column = getattr(Department, sort_by)
     if sort_order == "desc":
         query = query.order_by(sort_column.desc())
     else:
@@ -1247,8 +1253,11 @@ async def list_positions(
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0
 
-    # Apply sorting
-    sort_column = getattr(Position, sort_by, Position.title)
+    # SECURITY: Whitelist gegen Reflection-Angriffe (CWE-89)
+    ALLOWED_POS_SORT_FIELDS = {"title", "created_at", "updated_at", "level", "job_family", "is_active"}
+    if sort_by not in ALLOWED_POS_SORT_FIELDS:
+        sort_by = "title"
+    sort_column = getattr(Position, sort_by)
     if sort_order == "desc":
         query = query.order_by(sort_column.desc())
     else:

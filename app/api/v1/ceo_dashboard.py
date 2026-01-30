@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import User
 from app.api.dependencies import get_db, get_current_active_user, get_current_company_id
 from app.services.ceo_dashboard.digital_twin_service import DigitalTwinService
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -70,7 +71,7 @@ async def get_overview(
             "ceo_dashboard.overview_failed",
             user_id=str(current_user.id),
             company_id=str(company_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -116,7 +117,7 @@ async def get_health_score(
             "ceo_dashboard.health_score_failed",
             user_id=str(current_user.id),
             company_id=str(company_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -167,7 +168,7 @@ async def get_trends(
             "ceo_dashboard.trends_failed",
             user_id=str(current_user.id),
             company_id=str(company_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -215,7 +216,7 @@ async def get_anomalies(
             "ceo_dashboard.anomalies_failed",
             user_id=str(current_user.id),
             company_id=str(company_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

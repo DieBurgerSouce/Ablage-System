@@ -261,7 +261,7 @@ async def dp_count_query(
     except BudgetExhaustedError as e:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=str(e)
+            detail=safe_error_detail(e, "Privacy-Budget")
         )
 
     remaining = await tracker.get_remaining_budget(company_id)

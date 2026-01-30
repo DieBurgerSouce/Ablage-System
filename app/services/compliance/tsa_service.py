@@ -28,6 +28,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.bpmn_models.gobd import TimestampAuthorityConfig
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -182,10 +183,10 @@ class TimestampAuthorityService:
 
         except httpx.RequestError as e:
             duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
-            logger.warning("tsa_connection_error", tsa_url=tsa_url, error=str(e))
+            logger.warning("tsa_connection_error", tsa_url=tsa_url, **safe_error_log(e))
             return TimestampResponse(
                 status=TSAStatus.CONNECTION_ERROR,
-                error_message=str(e),
+                error_message=safe_error_detail(e, "TSA"),
                 response_time_ms=duration_ms,
             )
 
@@ -224,7 +225,7 @@ class TimestampAuthorityService:
         try:
             hash_bytes = bytes.fromhex(data_hash)
         except ValueError as e:
-            logger.warning("tsa_invalid_hash_format", error=str(e))
+            logger.warning("tsa_invalid_hash_format", **safe_error_log(e))
             return TimestampResponse(
                 status=TSAStatus.INVALID_RESPONSE,
                 error_message=f"Ungueltiges Hash-Format: {e}",
@@ -404,7 +405,7 @@ class TimestampAuthorityService:
             return False
 
         except Exception as e:
-            logger.error("timestamp_verification_failed", error=str(e))
+            logger.error("timestamp_verification_failed", **safe_error_log(e))
             return False
 
     def _verify_timestamp_structure(self, token_bytes: bytes) -> bool:
@@ -570,7 +571,7 @@ class TimestampAuthorityService:
         except Exception as e:
             return TimestampResponse(
                 status=TSAStatus.INVALID_RESPONSE,
-                error_message=str(e),
+                error_message=safe_error_detail(e, "TSA"),
                 response_time_ms=duration_ms,
             )
 

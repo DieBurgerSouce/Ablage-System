@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import User
 from app.api.dependencies import get_db, get_current_active_user, get_current_company_id
 from app.services.knowledge_graph.graph_service import KnowledgeGraphService
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -82,7 +83,7 @@ async def get_entity_graph(
         logger.error(
             "knowledge_graph.entity_graph_failed",
             entity_id=str(entity_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -131,7 +132,7 @@ async def explore_graph(
         logger.error(
             "knowledge_graph.explore_failed",
             query=query,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -192,7 +193,7 @@ async def get_shortest_path(
             "knowledge_graph.shortest_path_failed",
             from_id=str(from_id),
             to_id=str(to_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -234,7 +235,7 @@ async def get_communities(
     except Exception as e:
         logger.error(
             "knowledge_graph.communities_failed",
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

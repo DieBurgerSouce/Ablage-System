@@ -24,6 +24,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.workers.celery_app import celery_app, CPUTask
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.db.models import Document
 
 logger = structlog.get_logger(__name__)
@@ -255,7 +256,7 @@ async def _async_reprocess_all(
                             logger.warning(
                                 "anomaly_check_failed_during_extraction",
                                 document_id=str(doc.id),
-                                error=str(anomaly_error),
+                                **safe_error_log(anomaly_error),
                             )
 
                         # ENTERPRISE: Auto-Kategorisierung nach Extraktion
@@ -296,7 +297,7 @@ async def _async_reprocess_all(
                             logger.warning(
                                 "auto_categorization_failed_during_extraction",
                                 document_id=str(doc.id),
-                                error=str(cat_error),
+                                **safe_error_log(cat_error),
                             )
 
                         # ENTERPRISE: LLM-NER fuer erweiterte Entitaetsextraktion
@@ -338,7 +339,7 @@ async def _async_reprocess_all(
                             logger.warning(
                                 "ner_extraction_failed_during_extraction",
                                 document_id=str(doc.id),
-                                error=str(ner_error),
+                                **safe_error_log(ner_error),
                             )
 
                         # ENTERPRISE: Deadline-Extraktion aus OCR-Text
@@ -388,7 +389,7 @@ async def _async_reprocess_all(
                             logger.warning(
                                 "deadline_extraction_failed_during_extraction",
                                 document_id=str(doc.id),
-                                error=str(deadline_error),
+                                **safe_error_log(deadline_error),
                             )
 
                         logger.debug(
@@ -402,13 +403,13 @@ async def _async_reprocess_all(
 
                 except Exception as e:
                     stats["total_failed"] += 1
-                    error_msg = f"Document {doc.id}: {str(e)}"
+                    error_msg = f"Document {doc.id}: {safe_error_detail(e, 'Extraktion')}"
                     if len(stats["errors"]) < 100:  # Max 100 Fehler speichern
                         stats["errors"].append(error_msg)
                     logger.error(
                         "document_extraction_failed",
                         document_id=str(doc.id),
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
             # Batch committen
@@ -552,12 +553,12 @@ async def _async_reprocess_single(document_id: str) -> Dict[str, Any]:
             logger.error(
                 "single_document_reprocess_failed",
                 document_id=document_id,
-                error=str(e),
+                **safe_error_log(e),
             )
             return {
                 "success": False,
                 "document_id": document_id,
-                "error": str(e),
+                "error": safe_error_detail(e, "Vorgang"),
             }
 
 
@@ -884,7 +885,7 @@ async def _async_quick_classify(task, document_id: str) -> Dict[str, Any]:
             logger.error(
                 "quick_classification_failed",
                 document_id=document_id,
-                error=str(e)
+                **safe_error_log(e)
             )
 
             # Status auf "failed" setzen mit sanitierter Fehlermeldung
@@ -959,7 +960,7 @@ async def _run_quick_ocr(image: "Image.Image") -> str:
         logger.warning("surya_not_available_for_quick_ocr")
         return ""
     except Exception as e:
-        logger.error("quick_ocr_failed", error=str(e))
+        logger.error("quick_ocr_failed", **safe_error_log(e))
         return ""
 
 
@@ -1170,7 +1171,7 @@ async def _async_reprocess_quick_classification(
                     "quick_classification_reprocess_failed",
                     document_id=str(doc.id),
                     filename=doc.original_filename,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         # Finales Commit

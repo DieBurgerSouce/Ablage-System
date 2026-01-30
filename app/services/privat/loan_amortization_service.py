@@ -14,6 +14,7 @@ Enterprise Feature - feinpoliert und durchdacht.
 from __future__ import annotations
 
 import threading
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, date, timedelta
 from decimal import Decimal, ROUND_HALF_UP
@@ -569,6 +570,7 @@ class LoanAmortizationService:
         """
         from app.db.models import PrivatLoan
 
+
         LOAN_CALCULATIONS.labels(calculation_type="batch_all").inc()
 
         query = select(PrivatLoan).where(PrivatLoan.is_active == True)
@@ -597,11 +599,11 @@ class LoanAmortizationService:
 
             except Exception as e:
                 stats["skipped"] += 1
-                stats["errors"].append(f"{loan.id}: {str(e)}")
+                stats["errors"].append(f"{loan.id}: {safe_error_detail(e, 'Kredit')}")
                 logger.warning(
                     "loan_kpi_calculation_failed",
                     loan_id=str(loan.id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         logger.info(

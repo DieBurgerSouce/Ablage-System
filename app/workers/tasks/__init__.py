@@ -63,6 +63,23 @@ from app.workers.tasks.chain_tasks import (
     generate_chain_statistics_task,
     CHAIN_BEAT_SCHEDULE,
 )
+from app.workers.tasks.predictive_tasks import (
+    collect_metrics_for_prediction,
+    run_predictions,
+    generate_predictive_alerts,
+    cleanup_old_predictive_alerts,
+)
+from app.workers.tasks.insights_tasks import (
+    generate_daily_cashflow_predictions,
+    generate_cashflow_prediction,
+    run_daily_fraud_scan,
+    scan_company_for_fraud,
+    generate_daily_skonto_recommendations,
+    optimize_skonto_for_company,
+    process_action_queue_timeouts,
+    generate_all_daily_insights,
+    check_urgent_skonto_deadlines,
+)
 
 __all__ = [
     # OCR tasks
@@ -120,4 +137,19 @@ __all__ = [
     "on_ocr_completed_auto_link",
     "generate_chain_statistics_task",
     "CHAIN_BEAT_SCHEDULE",
+    # Predictive Maintenance tasks
+    "collect_metrics_for_prediction",
+    "run_predictions",
+    "generate_predictive_alerts",
+    "cleanup_old_predictive_alerts",
+    # Financial Insights tasks
+    "generate_daily_cashflow_predictions",
+    "generate_cashflow_prediction",
+    "run_daily_fraud_scan",
+    "scan_company_for_fraud",
+    "generate_daily_skonto_recommendations",
+    "optimize_skonto_for_company",
+    "process_action_queue_timeouts",
+    "generate_all_daily_insights",
+    "check_urgent_skonto_deadlines",
 ]

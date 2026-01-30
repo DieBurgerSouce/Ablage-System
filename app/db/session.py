@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, Session
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -228,7 +229,7 @@ def set_rls_company_context_sync(session: Session, company_id: UUID) -> None:
     except Exception as e:
         logger.debug(
             "rls_context_skip_sync",
-            reason=str(e)
+            reason=safe_error_detail(e, "DB-Session")
         )
 
 
@@ -246,7 +247,7 @@ def enable_rls_bypass_sync(session: Session) -> None:
         )
         logger.debug("rls_bypass_enabled_sync")
     except Exception as e:
-        logger.warning("rls_bypass_enable_failed_sync", error=str(e))
+        logger.warning("rls_bypass_enable_failed_sync", **safe_error_log(e))
 
 
 def disable_rls_bypass_sync(session: Session) -> None:
@@ -261,7 +262,7 @@ def disable_rls_bypass_sync(session: Session) -> None:
         )
         logger.debug("rls_bypass_disabled_sync")
     except Exception as e:
-        logger.warning("rls_bypass_disable_failed_sync", error=str(e))
+        logger.warning("rls_bypass_disable_failed_sync", **safe_error_log(e))
 
 
 @contextmanager

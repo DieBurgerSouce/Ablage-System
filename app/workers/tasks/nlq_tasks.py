@@ -27,6 +27,7 @@ from app.workers.celery_metrics import (
 )
 from app.db.session import get_async_session_context
 from app.db.models import NLQLog, AppConfig
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -179,7 +180,7 @@ def cleanup_old_logs(
         return result
     except Exception as e:
         record_task_failed("nlq.cleanup_old_logs", str(e))
-        logger.error("nlq_cleanup_failed", error=str(e))
+        logger.error("nlq_cleanup_failed", **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -284,12 +285,12 @@ def warm_cache(
                     stats["cache_failures"] += 1
                     stats["errors"].append({
                         "query_text": query_text[:100],
-                        "error": str(e),
+                        "error": safe_error_detail(e, "Vorgang"),
                     })
                     logger.warning(
                         "nlq_cache_failed",
                         query_text=query_text[:50],
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
                 # Rate limiting zwischen Queries
@@ -309,7 +310,7 @@ def warm_cache(
         return result
     except Exception as e:
         record_task_failed("nlq.warm_cache", str(e))
-        logger.error("nlq_cache_warming_failed", error=str(e))
+        logger.error("nlq_cache_warming_failed", **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -449,7 +450,7 @@ def analyze_query_patterns(
         return result
     except Exception as e:
         record_task_failed("nlq.analyze_patterns", str(e))
-        logger.error("nlq_pattern_analysis_failed", error=str(e))
+        logger.error("nlq_pattern_analysis_failed", **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -547,7 +548,7 @@ def retry_failed_queries(
                     stats["errors"].append({
                         "log_id": str(log.id),
                         "query_text": log.query_text[:100],
-                        "error": str(e),
+                        "error": safe_error_detail(e, "Vorgang"),
                     })
 
                     # Update Retry-Counter
@@ -573,5 +574,5 @@ def retry_failed_queries(
         return result
     except Exception as e:
         record_task_failed("nlq.retry_failed_queries", str(e))
-        logger.error("nlq_failed_query_retry_failed", error=str(e))
+        logger.error("nlq_failed_query_retry_failed", **safe_error_log(e))
         raise self.retry(exc=e)

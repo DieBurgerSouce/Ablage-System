@@ -19,6 +19,7 @@ import structlog
 
 from app.workers.celery_app import celery_app, CPUTask, GPUTask
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -109,7 +110,7 @@ def run_benchmark_batch(
         return result
 
     except Exception as e:
-        logger.exception("benchmark_batch_failed", task_id=task_id, error=str(e))
+        logger.exception("benchmark_batch_failed", task_id=task_id, **safe_error_log(e))
         raise
 
 
@@ -206,7 +207,7 @@ def run_scheduled_benchmarks(
         return result
 
     except Exception as e:
-        logger.exception("scheduled_benchmarks_failed", task_id=task_id, error=str(e))
+        logger.exception("scheduled_benchmarks_failed", task_id=task_id, **safe_error_log(e))
         raise
 
 
@@ -317,7 +318,7 @@ def generate_daily_stats(self) -> Dict[str, Any]:
         return result
 
     except Exception as e:
-        logger.exception("daily_stats_failed", task_id=task_id, error=str(e))
+        logger.exception("daily_stats_failed", task_id=task_id, **safe_error_log(e))
         raise
 
 
@@ -389,7 +390,7 @@ def process_feedback_queue(
         return result
 
     except Exception as e:
-        logger.exception("feedback_queue_processing_failed", task_id=task_id, error=str(e))
+        logger.exception("feedback_queue_processing_failed", task_id=task_id, **safe_error_log(e))
         raise
 
 
@@ -460,7 +461,7 @@ def update_learned_weights(
         return result
 
     except Exception as e:
-        logger.exception("update_learned_weights_failed", task_id=task_id, error=str(e))
+        logger.exception("update_learned_weights_failed", task_id=task_id, **safe_error_log(e))
         raise
 
 
@@ -597,7 +598,7 @@ def populate_training_batch(
         return result
 
     except Exception as e:
-        logger.exception("populate_batch_failed", task_id=task_id, error=str(e))
+        logger.exception("populate_batch_failed", task_id=task_id, **safe_error_log(e))
         raise
 
 
@@ -710,7 +711,7 @@ def generate_training_report(self) -> Dict[str, Any]:
         return result
 
     except Exception as e:
-        logger.exception("training_report_failed", task_id=task_id, error=str(e))
+        logger.exception("training_report_failed", task_id=task_id, **safe_error_log(e))
         raise
 
 
@@ -863,7 +864,7 @@ def run_bulk_processing_job(
             "bulk_processing_job_failed",
             task_id=task_id,
             job_id=job_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise
 
@@ -983,7 +984,7 @@ def run_bulk_processing_job_cpu(
             "bulk_processing_job_cpu_failed",
             task_id=task_id,
             job_id=job_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise
 
@@ -1058,7 +1059,7 @@ def import_training_files(
         logger.exception(
             "import_training_files_failed",
             task_id=task_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise
 
@@ -1165,7 +1166,7 @@ def process_document_batch(
                         results.append({
                             "sample_id": str(sample.id),
                             "success": False,
-                            "error": str(e),
+                            "error": safe_error_detail(e, "Vorgang"),
                         })
 
                 await session.commit()
@@ -1196,7 +1197,7 @@ def process_document_batch(
             "process_document_batch_failed",
             task_id=task_id,
             backend=backend_name,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise
 
@@ -1331,7 +1332,7 @@ def create_quality_snapshot(
         logger.exception(
             "create_quality_snapshot_failed",
             task_id=task_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise
 
@@ -1440,7 +1441,7 @@ def run_deepseek_lora_training(
         logger.exception(
             "deepseek_lora_training_failed",
             task_id=task_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise
 
@@ -1538,7 +1539,7 @@ def run_surya_hf_training(
         logger.exception(
             "surya_hf_training_failed",
             task_id=task_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise
 
@@ -1605,7 +1606,7 @@ def check_retraining_conditions(self) -> Dict[str, Any]:
         logger.exception(
             "check_retraining_conditions_failed",
             task_id=task_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise
 
@@ -1683,7 +1684,7 @@ def run_quality_monitoring(self) -> Dict[str, Any]:
         logger.exception(
             "run_quality_monitoring_failed",
             task_id=task_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise
 
@@ -1811,7 +1812,7 @@ def process_auto_ground_truth_batch(
                         logger.warning(
                             "auto_ground_truth_doc_failed",
                             doc_id=str(doc.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
                         rejected += 1
 
@@ -1841,7 +1842,7 @@ def process_auto_ground_truth_batch(
         logger.exception(
             "auto_ground_truth_batch_failed",
             task_id=task_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise
 
@@ -1986,7 +1987,7 @@ def generate_coverage_snapshot(self) -> Dict[str, Any]:
         logger.exception(
             "coverage_snapshot_failed",
             task_id=task_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise
 
@@ -2079,7 +2080,7 @@ def llm_review_batch(
         logger.exception(
             "llm_review_batch_failed",
             task_id=task_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise
 

@@ -851,6 +851,7 @@ async def delete_all_notifications(
 from fastapi import WebSocket, WebSocketDisconnect
 from app.core.security import extract_user_id_from_token
 from app.services.notification_service import get_notification_ws_manager
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 
 @router.websocket("/ws")
@@ -906,7 +907,7 @@ async def notification_websocket(
                     return
 
             except Exception as e:
-                logger.warning("notification_ws_auth_failed", error=str(e))
+                logger.warning("notification_ws_auth_failed", **safe_error_log(e))
                 await websocket.close(code=4001)
                 return
 
@@ -936,7 +937,7 @@ async def notification_websocket(
                 except WebSocketDisconnect:
                     break
                 except Exception as e:
-                    logger.warning("notification_ws_message_error", user_id=user_id, error=str(e))
+                    logger.warning("notification_ws_message_error", user_id=user_id, **safe_error_log(e))
                     break
 
         else:
@@ -976,18 +977,18 @@ async def notification_websocket(
                     except Exception as e:
                         await websocket.send_json({
                             "type": "error",
-                            "message": f"Authentifizierung fehlgeschlagen: {str(e)}",
+                            "message": safe_error_detail(e, "Authentifizierung"),
                         })
                         await websocket.close(code=4001)
                         return
 
                 except Exception as e:
-                    logger.warning("notification_ws_auth_failed", error=str(e))
+                    logger.warning("notification_ws_auth_failed", **safe_error_log(e))
                     await websocket.close(code=4001)
                     return
 
             except Exception as e:
-                logger.warning("notification_ws_accept_failed", error=str(e))
+                logger.warning("notification_ws_accept_failed", **safe_error_log(e))
                 return
 
             # Register connection (without calling accept again)
@@ -1023,7 +1024,7 @@ async def notification_websocket(
                     logger.warning(
                         "notification_ws_message_error",
                         user_id=user_id,
-                        error=str(e),
+                        **safe_error_log(e),
                     )
                     break
 

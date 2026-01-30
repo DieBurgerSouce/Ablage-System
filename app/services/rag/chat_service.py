@@ -23,6 +23,7 @@ from app.core.config import settings
 from app.services.search_service import SearchService
 from app.services.embedding_service import get_embedding_service
 from app.db.schemas import SearchType, SearchFilters
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -232,7 +233,7 @@ class RAGChatService:
             return context_docs
 
         except Exception as e:
-            logger.error("context_retrieval_error", error=str(e))
+            logger.error("context_retrieval_error", **safe_error_log(e))
             return []
 
     def build_prompt_with_context(
@@ -354,7 +355,7 @@ Wenn die Dokumente keine relevanten Informationen enthalten, sage das ehrlich.
                     yield data.get("response", "Fehler bei der Antwortgenerierung.")
 
         except Exception as e:
-            logger.error("llm_generation_error", error=str(e))
+            logger.error("llm_generation_error", **safe_error_log(e))
             yield f"Fehler bei der LLM-Verbindung: {str(e)}"
 
     async def chat(

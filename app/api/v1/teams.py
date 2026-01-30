@@ -21,6 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.db.models_team import (
     Team,
@@ -272,7 +273,7 @@ async def create_team(
         return TeamResponse.model_validate(team)
 
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=safe_error_detail(e, "Team-Verwaltung"))
 
 
 @router.get(
@@ -600,7 +601,7 @@ async def add_member(
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=safe_error_detail(e, "Team-Verwaltung"))
 
 
 @router.patch(
@@ -802,7 +803,7 @@ async def create_invitation(
         return TeamInvitationResponse.model_validate(invitation)
 
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=safe_error_detail(e, "Team-Verwaltung"))
 
 
 @router.post(
@@ -841,7 +842,7 @@ async def accept_invitation(
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=safe_error_detail(e, "Team-Verwaltung"))
 
 
 @router.post(
@@ -875,7 +876,7 @@ async def decline_invitation(
         return MessageResponse(message="Einladung abgelehnt")
 
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=safe_error_detail(e, "Team-Verwaltung"))
 
 
 # =============================================================================

@@ -39,7 +39,9 @@ except ImportError:
     QRCODE_AVAILABLE = False
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 from app.core.encryption import (
+
     encrypt_totp_secret,
     decrypt_totp_secret,
     DecryptionError,
@@ -379,7 +381,7 @@ def encrypt_secret(secret: str, user_id: str) -> str:
             "Verschlüsselung nicht konfiguriert. Bitte Administrator kontaktieren."
         )
     except Exception as e:
-        logger.error("totp_secret_encryption_failed", error=str(e))
+        logger.error("totp_secret_encryption_failed", **safe_error_log(e))
         raise TOTPSecretEncryptionError(
             f"Encryption failed: {e}",
             "Verschlüsselung fehlgeschlagen. Bitte später erneut versuchen."
@@ -414,13 +416,13 @@ def decrypt_secret(encrypted_secret: str, user_id: str) -> str:
             "Entschlüsselung nicht konfiguriert. Bitte Administrator kontaktieren."
         )
     except DecryptionError as e:
-        logger.error("totp_secret_decryption_failed", error=str(e))
+        logger.error("totp_secret_decryption_failed", **safe_error_log(e))
         raise TOTPSecretEncryptionError(
             f"Decryption failed: {e}",
             "Entschlüsselung fehlgeschlagen. Secret möglicherweise beschädigt."
         )
     except Exception as e:
-        logger.error("totp_secret_decryption_unexpected_error", error=str(e))
+        logger.error("totp_secret_decryption_unexpected_error", **safe_error_log(e))
         raise TOTPSecretEncryptionError(
             f"Decryption failed: {e}",
             "Entschlüsselung fehlgeschlagen. Bitte Administrator kontaktieren."

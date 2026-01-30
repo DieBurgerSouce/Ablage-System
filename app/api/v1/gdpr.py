@@ -24,6 +24,7 @@ import structlog
 
 # SECURITY FIX 27-7: Rate Limiting fuer GDPR Endpoints
 from app.core.rate_limiting import limiter, get_user_identifier
+from app.core.safe_errors import safe_error_detail, safe_error_log
 
 from app.api.dependencies import get_db, get_current_active_user
 from app.db.models import User
@@ -899,11 +900,11 @@ async def grant_consent(
             "gdpr_consent_grant_failed",
             user_id=str(current_user.id)[:8] + "...",
             scope=consent_request.scope,
-            error=str(e)
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Fehler beim Erteilen der Einwilligung: {str(e)}"
+            detail=safe_error_detail(e, "Fehler beim Erteilen der Einwilligung")
         )
 
 
@@ -984,7 +985,7 @@ async def withdraw_consent(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Fehler beim Widerruf: {str(e)}"
+            detail=safe_error_detail(e, "Fehler beim Widerruf")
         )
 
 
@@ -1164,7 +1165,7 @@ async def create_dsr_request(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Fehler beim Erstellen der Anfrage: {str(e)}"
+            detail=safe_error_detail(e, "Fehler beim Erstellen der Anfrage")
         )
 
 
@@ -1381,7 +1382,7 @@ async def verify_dsr_identity(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Verifikation fehlgeschlagen: {str(e)}"
+            detail=safe_error_detail(e, "Verifikation fehlgeschlagen")
         )
 
 
@@ -1438,13 +1439,13 @@ async def cancel_dsr_request(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Ungültiger Wert")
         )
     except Exception as e:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Stornierung fehlgeschlagen: {str(e)}"
+            detail=safe_error_detail(e, "Stornierung fehlgeschlagen")
         )
 
 
@@ -1505,7 +1506,7 @@ async def get_my_data(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Fehler beim Abrufen der Daten: {str(e)}"
+            detail=safe_error_detail(e, "Fehler beim Abrufen der Daten")
         )
 
 
@@ -1584,7 +1585,7 @@ async def rectify_data(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Berichtigung fehlgeschlagen: {str(e)}"
+            detail=safe_error_detail(e, "Berichtigung fehlgeschlagen")
         )
 
 

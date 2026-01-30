@@ -20,6 +20,7 @@ from PIL import Image
 import pypdfium2 as pdfium
 
 from app.agents.base import OCRAgent, OCRResult
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -302,7 +303,7 @@ class ChandraOCRAgent(OCRAgent):
             self._warmup_model()
 
         except Exception as e:
-            logger.error("chandra_model_load_failed", error=str(e), exc_info=True)
+            logger.error("chandra_model_load_failed", **safe_error_log(e), exc_info=True)
             raise
 
     async def _unload_models(self):
@@ -360,7 +361,7 @@ class ChandraOCRAgent(OCRAgent):
 
         except Exception as e:
             # Warmup-Fehler sind nicht kritisch
-            logger.warning("chandra_warmup_failed", error=str(e))
+            logger.warning("chandra_warmup_failed", **safe_error_log(e))
 
     def _load_image(self, image_path: str) -> List[Image.Image]:
         """
@@ -395,7 +396,7 @@ class ChandraOCRAgent(OCRAgent):
                     )
                 pdf.close()
             except Exception as e:
-                logger.error("chandra_pdf_load_failed", error=str(e))
+                logger.error("chandra_pdf_load_failed", **safe_error_log(e))
                 raise
         else:
             # Bild-Verarbeitung (PNG, JPG, TIF, etc.)
@@ -406,7 +407,7 @@ class ChandraOCRAgent(OCRAgent):
                     image = image.convert('RGB')
                 images.append(image)
             except Exception as e:
-                logger.error("chandra_image_load_failed", error=str(e))
+                logger.error("chandra_image_load_failed", **safe_error_log(e))
                 raise
 
         return images
@@ -510,7 +511,7 @@ class ChandraOCRAgent(OCRAgent):
             }
 
         except torch.cuda.OutOfMemoryError as e:
-            logger.error("chandra_gpu_oom", error=str(e))
+            logger.error("chandra_gpu_oom", **safe_error_log(e))
             torch.cuda.empty_cache()
             return {
                 "text": "",
@@ -522,14 +523,12 @@ class ChandraOCRAgent(OCRAgent):
             }
 
         except Exception as e:
-            logger.error("chandra_image_processing_failed", error=str(e), exc_info=True)
+            logger.error("chandra_image_processing_failed", **safe_error_log(e), exc_info=True)
             return {
                 "text": "",
                 "confidence": 0.0,
                 "text_regions": 0,
-                "german_chars_found": [],
-                "error": str(e)
-            }
+                "german_chars_found": [], **safe_error_log(e)}
 
     async def _process_with_oom_fallback(
         self,
@@ -718,13 +717,13 @@ class ChandraOCRAgent(OCRAgent):
             processing_time_ms = int((time.time() - start_time) * 1000)
             logger.error(
                 "chandra_ocr_failed",
-                error=str(e),
+                **safe_error_log(e),
                 processing_time_ms=processing_time_ms,
                 exc_info=True
             )
 
             result = self.create_error_result(
-                error=str(e),
+                **safe_error_log(e),
                 error_code="CHANDRA_OCR_ERROR",
                 processing_time_ms=processing_time_ms
             )

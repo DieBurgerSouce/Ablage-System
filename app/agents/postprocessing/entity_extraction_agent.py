@@ -26,6 +26,7 @@ import structlog
 
 from app.agents.base import PostprocessingAgent
 from app.german_validator import GermanValidator
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -271,7 +272,7 @@ class EntityExtractionAgent(PostprocessingAgent):
                                     "Installieren mit: python -m spacy download de_core_news_lg",
                         )
         except Exception as e:
-            self.logger.warning("spacy_init_failed", error=str(e))
+            self.logger.warning("spacy_init_failed", **safe_error_log(e))
             self._nlp = None
 
     async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -982,7 +983,7 @@ class EntityExtractionAgent(PostprocessingAgent):
                     })
 
         except Exception as e:
-            self.logger.warning("spacy_ner_error", error=str(e))
+            self.logger.warning("spacy_ner_error", **safe_error_log(e))
 
         return entities
 

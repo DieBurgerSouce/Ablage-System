@@ -26,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.encryption import encrypt_data, decrypt_data, EncryptionError
 from app.core.malware_scanner import scan_file
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -385,13 +386,13 @@ class FolderImportService:
         except ValueError as e:
             return {
                 "success": False,
-                "message": str(e),
+                "message": safe_error_detail(e, "Folder"),
             }
         except Exception as e:
             logger.error(
                 "folder_watcher_start_failed",
                 config_id=str(config_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return {
                 "success": False,
@@ -447,7 +448,7 @@ class FolderImportService:
             logger.error(
                 "folder_watcher_stop_failed",
                 config_id=str(config_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return {
                 "success": False,
@@ -575,17 +576,17 @@ class FolderImportService:
         except ValueError as e:
             result.errors.append({
                 "type": "validation_error",
-                "message": str(e),
+                "message": safe_error_detail(e, "Folder"),
             })
         except Exception as e:
             result.errors.append({
                 "type": "poll_error",
-                "message": str(e),
+                "message": safe_error_detail(e, "Folder"),
             })
             logger.error(
                 "folder_poll_failed",
                 config_id=str(config_id),
-                error=str(e),
+                **safe_error_log(e),
             )
 
         return result
@@ -687,7 +688,7 @@ class FolderImportService:
                 "watchdog_file_processing_failed",
                 config_id=str(config_id),
                 file=file_path,
-                error=str(e),
+                **safe_error_log(e),
             )
 
     async def _process_file(
@@ -819,7 +820,7 @@ class FolderImportService:
 
         except Exception as e:
             import_log.status = "failed"
-            import_log.error_message = str(e)[:500]
+            import_log.error_message = safe_error_detail(e, "Folder")
             await self.db.commit()
 
             # In Error-Ordner verschieben wenn konfiguriert
@@ -830,7 +831,7 @@ class FolderImportService:
                     config.error_subfolder,
                 )
 
-            return {"success": False, "error": str(e)}
+            return {"success": False, **safe_error_log(e)}
 
     async def _check_duplicate_by_hash(
         self, user_id: UUID, file_hash: str
@@ -864,7 +865,7 @@ class FolderImportService:
             logger.warning(
                 "malware_scan_failed",
                 file=str(file_path),
-                error=str(e),
+                **safe_error_log(e),
             )
             # Bei Scan-Fehler: Konservativ ablehnen
             return False
@@ -987,7 +988,7 @@ class FolderImportService:
                 "file_move_failed",
                 source=str(file_path),
                 subfolder=subfolder,
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 
@@ -1294,6 +1295,7 @@ class FolderImportService:
     ) -> None:
         """Aktualisiert die Statistiken."""
         from app.db.models import FolderImportConfig
+
 
         await self.db.execute(
             update(FolderImportConfig)

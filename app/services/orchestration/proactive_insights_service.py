@@ -504,7 +504,7 @@ class InsightRuleEngine:
                     logger.warning(
                         "rule_evaluation_failed",
                         rule_id=rule.rule_id,
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
         return insights
@@ -1096,6 +1096,7 @@ class ProactiveInsightsService:
         Dies ermoeglicht reproduzierbare Tests.
         """
         import hashlib
+
 
         # In Produktion wuerden diese Daten aus der DB kommen
 

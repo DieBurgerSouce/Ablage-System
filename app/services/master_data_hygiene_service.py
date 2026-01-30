@@ -290,7 +290,7 @@ class MasterDataHygieneService:
             )
 
         except Exception as e:
-            logger.exception("hygiene_scan_failed", error=str(e))
+            logger.exception("hygiene_scan_failed", **safe_error_log(e))
             raise
 
         return report
@@ -422,7 +422,7 @@ class MasterDataHygieneService:
             except Exception as e:
                 logger.error(
                     "lexware_delta_record_error",
-                    error=str(e),
+                    **safe_error_log(e),
                     record_keys=list(record.keys()) if isinstance(record, dict) else None,
                 )
                 continue
@@ -527,6 +527,7 @@ class MasterDataHygieneService:
             Liste von erkannten Aenderungen
         """
         from app.services.entity_extraction_service import EntityExtractionService
+
 
         issues: List[HygieneIssue] = []
 
@@ -999,7 +1000,7 @@ class MasterDataHygieneService:
             logger.exception(
                 "correction_failed",
                 issue_id=str(issue_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 
@@ -1049,7 +1050,7 @@ class MasterDataHygieneService:
             logger.exception(
                 "entity_deactivation_failed",
                 entity_id=str(entity_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 

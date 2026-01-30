@@ -320,6 +320,7 @@ class OCRQualityMetricsService:
         try:
             from app.core.redis_state import get_redis
 
+
             redis = await get_redis()
             await redis._ensure_connection()
 
@@ -418,7 +419,7 @@ class OCRQualityMetricsService:
             )
 
         except Exception as e:
-            logger.warning("ocr_metrics_redis_persist_failed", error=str(e))
+            logger.warning("ocr_metrics_redis_persist_failed", **safe_error_log(e))
 
     def get_stats_summary(self) -> Dict[str, Any]:
         """Get summary of all collected stats."""

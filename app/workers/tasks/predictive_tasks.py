@@ -17,7 +17,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import structlog
 
-from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.workers.celery_app import celery_app, CPUTask
 
 logger = structlog.get_logger(__name__)
@@ -128,7 +128,7 @@ def collect_metrics_for_prediction() -> MetricDict:
     except Exception as e:
         logger.error("predictive_metrics_collection_failed", **safe_error_log(e))
         collected["success"] = False
-        collected["error"] = str(e)
+        collected["error"] = safe_error_detail(e, "Prediction")
 
     return collected
 
@@ -211,7 +211,7 @@ def run_predictions() -> MetricDict:
     except Exception as e:
         logger.error("predictions_failed", **safe_error_log(e))
         result["success"] = False
-        result["error"] = str(e)
+        result["error"] = safe_error_detail(e, "Prediction")
 
     return result
 
@@ -284,7 +284,7 @@ def generate_predictive_alerts() -> MetricDict:
     except Exception as e:
         logger.error("predictive_alert_generation_failed", **safe_error_log(e))
         result["success"] = False
-        result["error"] = str(e)
+        result["error"] = safe_error_detail(e, "Prediction")
 
     return result
 
@@ -335,7 +335,7 @@ def cleanup_old_predictive_alerts(max_age_hours: int = 24) -> MetricDict:
     except Exception as e:
         logger.error("predictive_alerts_cleanup_failed", **safe_error_log(e))
         result["success"] = False
-        result["error"] = str(e)
+        result["error"] = safe_error_detail(e, "Prediction")
 
     return result
 
@@ -356,7 +356,7 @@ def _collect_gpu_vram() -> Optional[float]:
     except ImportError:
         pass
     except Exception as e:
-        logger.debug("gpu_vram_collection_failed", error=str(e))
+        logger.debug("gpu_vram_collection_failed", **safe_error_log(e))
     return None
 
 
@@ -375,7 +375,7 @@ def _collect_gpu_utilization() -> Optional[float]:
     except FileNotFoundError:
         pass
     except Exception as e:
-        logger.debug("gpu_utilization_collection_failed", error=str(e))
+        logger.debug("gpu_utilization_collection_failed", **safe_error_log(e))
     return None
 
 
@@ -399,7 +399,7 @@ def _collect_queue_depths() -> Dict[str, int]:
                 except Exception:
                     depths[queue_name] = 0
     except Exception as e:
-        logger.debug("queue_depth_collection_failed", error=str(e))
+        logger.debug("queue_depth_collection_failed", **safe_error_log(e))
 
     return depths
 
@@ -411,7 +411,7 @@ def _collect_disk_usage() -> Optional[float]:
         total, used, free = shutil.disk_usage("/")
         return round((used / total) * 100, 1)
     except Exception as e:
-        logger.debug("disk_usage_collection_failed", error=str(e))
+        logger.debug("disk_usage_collection_failed", **safe_error_log(e))
     return None
 
 
@@ -424,7 +424,7 @@ def _collect_memory_usage() -> Optional[float]:
     except ImportError:
         pass
     except Exception as e:
-        logger.debug("memory_usage_collection_failed", error=str(e))
+        logger.debug("memory_usage_collection_failed", **safe_error_log(e))
     return None
 
 
@@ -436,7 +436,7 @@ def _collect_cpu_usage() -> Optional[float]:
     except ImportError:
         pass
     except Exception as e:
-        logger.debug("cpu_usage_collection_failed", error=str(e))
+        logger.debug("cpu_usage_collection_failed", **safe_error_log(e))
     return None
 
 
@@ -474,6 +474,6 @@ def _collect_ocr_quality_metrics() -> Dict[str, Dict[str, Optional[float]]]:
                 }
 
     except Exception as e:
-        logger.debug("ocr_quality_metrics_collection_failed", error=str(e))
+        logger.debug("ocr_quality_metrics_collection_failed", **safe_error_log(e))
 
     return metrics

@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies import get_current_user, get_db
 from app.core.rbac import require_permission
 from app.db.models import User
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.ml.routing_predictor import (
     PriorityLevel,
     RoutingPredictor,
@@ -272,7 +273,7 @@ async def predict_routing(
             confidences.append(prediction.confidence)
 
         except Exception as e:
-            logger.debug("prediction_failed", target=target, error_type=type(e).__name__, error=str(e))
+            logger.debug("prediction_failed", target=target, error_type=type(e).__name__, **safe_error_log(e))
             continue
 
     overall_confidence = sum(confidences) / len(confidences) if confidences else 0.0
@@ -441,7 +442,7 @@ async def train_routing_model(
         logger.error(f"Modell-Training fehlgeschlagen: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Training fehlgeschlagen: {str(e)}",
+            detail=safe_error_detail(e, "Vorgang"),
         )
 
 
@@ -629,6 +630,7 @@ async def auto_route_document(
 
     from app.db.models import Document
 
+
     # Hole Dokument
     stmt = select(Document).where(
         Document.id == document_id,
@@ -670,7 +672,7 @@ async def auto_route_document(
                 )
         except Exception as e:
             logger.debug("assigned_to_prediction_failed", document_id=str(document_id), error_type=type(e).__name__)
-            skipped.append({"field": "assigned_to_id", "reason": str(e)})
+            skipped.append({"field": "assigned_to_id", "reason": safe_error_detail(e, "Feld")})
 
     # Prioritaet
     if apply_priority:
@@ -697,7 +699,7 @@ async def auto_route_document(
                 )
         except Exception as e:
             logger.debug("priority_prediction_failed", document_id=str(document_id), error_type=type(e).__name__)
-            skipped.append({"field": "priority", "reason": str(e)})
+            skipped.append({"field": "priority", "reason": safe_error_detail(e, "Feld")})
 
     # Tags
     if apply_tags:
@@ -723,7 +725,7 @@ async def auto_route_document(
                 )
         except Exception as e:
             logger.debug("tags_prediction_failed", document_id=str(document_id), error_type=type(e).__name__)
-            skipped.append({"field": "tags", "reason": str(e)})
+            skipped.append({"field": "tags", "reason": safe_error_detail(e, "Feld")})
 
     # Speichere Aenderungen
     if applied_changes:

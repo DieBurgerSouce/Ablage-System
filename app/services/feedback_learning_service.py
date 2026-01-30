@@ -32,6 +32,7 @@ from app.db.models import (
 )
 from app.core.config import settings
 from app.ml.metrics import get_ml_metrics
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -193,7 +194,7 @@ class FeedbackLearningService:
             )
             return bool(acquired)
         except Exception as e:
-            logger.warning("distributed_lock_acquire_failed", lock_key=lock_key, error=str(e))
+            logger.warning("distributed_lock_acquire_failed", lock_key=lock_key, **safe_error_log(e))
             return False
 
     async def _release_distributed_lock(self, lock_key: str) -> None:
@@ -202,7 +203,7 @@ class FeedbackLearningService:
             redis = await self._get_redis()
             await redis._redis.delete(lock_key)
         except Exception as e:
-            logger.warning("distributed_lock_release_failed", lock_key=lock_key, error=str(e))
+            logger.warning("distributed_lock_release_failed", lock_key=lock_key, **safe_error_log(e))
 
     # =========================================================================
     # CORRECTION ANALYSIS
@@ -507,7 +508,7 @@ class FeedbackLearningService:
                 except Exception as e:
                     logger.warning(
                         "surya_training_sample_conversion_failed",
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
             # Markiere alle Korrekturen als verarbeitet
@@ -544,7 +545,7 @@ class FeedbackLearningService:
                     logger.error(
                         "correction_processing_failed",
                         correction_id=str(correction.id)[:8],
-                        error=str(e)
+                        **safe_error_log(e)
                     )
                     # Rollback nur fuer dieses Sample, nicht den ganzen Batch
                     await db.rollback()
@@ -573,7 +574,7 @@ class FeedbackLearningService:
                 except Exception as e:
                     logger.debug(
                         "retraining_check_failed",
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
             # Thread-safe Cache invalidieren
@@ -900,6 +901,7 @@ class FeedbackLearningService:
         """
         from app.db.models import OCRTrainingSample
 
+
         stats = {
             "corrections_processed": 0,
             "samples_created": 0,
@@ -969,12 +971,12 @@ class FeedbackLearningService:
             except Exception as e:
                 stats["errors"].append({
                     "correction_id": str(correction.id),
-                    "error": str(e),
+                    "error": safe_error_detail(e, "Vorgang"),
                 })
                 logger.error(
                     "correction_conversion_failed",
                     correction_id=str(correction.id)[:8],
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         await db.commit()

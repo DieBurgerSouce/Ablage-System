@@ -20,6 +20,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import structlog
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -381,7 +382,7 @@ class FormulaExtractionService:
             return mathml
 
         except Exception as e:
-            logger.warning("MathML-Konvertierung fehlgeschlagen", error=str(e))
+            logger.warning("MathML-Konvertierung fehlgeschlagen", **safe_error_log(e))
             return None
 
     # =========================================================================

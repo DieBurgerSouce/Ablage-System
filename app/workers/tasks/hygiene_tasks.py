@@ -11,6 +11,7 @@ import structlog
 from celery import shared_task
 
 from app.core.database import get_async_session
+from app.core.safe_errors import safe_error_log
 from app.db.models import EntityType
 
 logger = structlog.get_logger(__name__)
@@ -110,7 +111,7 @@ async def _async_run_full_scan(
                         notification_type="hygiene_scan",
                     )
             except Exception as e:
-                logger.error("hygiene_notification_failed", error=str(e))
+                logger.error("hygiene_notification_failed", **safe_error_log(e))
 
         logger.info(
             "hygiene_scan_task_completed",

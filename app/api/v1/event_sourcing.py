@@ -9,7 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_db, get_current_user
+from app.api.dependencies import get_db, get_current_user
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.services.event_sourcing import EventStore, ProjectionService, SnapshotService
 
@@ -124,10 +125,10 @@ async def get_events(
         ]
 
     except ValueError as e:
-        logger.warning("events_abruf_fehler", error=str(e))
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.warning("events_abruf_fehler", **safe_error_log(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "Event-Sourcing"))
     except Exception as e:
-        logger.error("events_abruf_fehler", error=str(e))
+        logger.error("events_abruf_fehler", **safe_error_log(e))
         raise HTTPException(status_code=500, detail="Fehler beim Abrufen der Events")
 
 
@@ -168,7 +169,7 @@ async def get_snapshot(
         )
 
     except Exception as e:
-        logger.error("snapshot_abruf_fehler", error=str(e))
+        logger.error("snapshot_abruf_fehler", **safe_error_log(e))
         raise HTTPException(status_code=500, detail="Fehler beim Abrufen des Snapshots")
 
 
@@ -234,10 +235,10 @@ async def get_projection(
         )
 
     except ValueError as e:
-        logger.warning("projektion_fehler", error=str(e))
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.warning("projektion_fehler", **safe_error_log(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "Event-Sourcing"))
     except Exception as e:
-        logger.error("projektion_fehler", error=str(e))
+        logger.error("projektion_fehler", **safe_error_log(e))
         raise HTTPException(status_code=500, detail="Fehler bei der Projektion")
 
 
@@ -302,5 +303,5 @@ async def get_event_stats(
         )
 
     except Exception as e:
-        logger.error("stats_abruf_fehler", error=str(e))
+        logger.error("stats_abruf_fehler", **safe_error_log(e))
         raise HTTPException(status_code=500, detail="Fehler beim Abrufen der Statistiken")

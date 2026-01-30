@@ -797,6 +797,7 @@ class UnifiedDecisionEngine:
             # Hole Orchestrator und fuehre Source-Actions aus
             from app.services.orchestration import get_cross_module_orchestrator
 
+
             orchestrator = get_cross_module_orchestrator()
 
             for action in decision.source_actions:
@@ -813,7 +814,7 @@ class UnifiedDecisionEngine:
             logger.error(
                 "decision_execution_failed",
                 decision_id=str(decision.id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 

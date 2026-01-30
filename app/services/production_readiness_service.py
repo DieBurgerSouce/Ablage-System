@@ -19,6 +19,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 import structlog
+from app.core.safe_errors import safe_error_detail, safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -216,12 +217,12 @@ class ProductionReadinessService:
                 ))
 
         except Exception as e:
-            logger.warning("security_checks_failed", error=str(e))
+            logger.warning("security_checks_failed", **safe_error_log(e))
             checks.append(ReadinessCheck(
                 name="Security Audit",
                 category=CheckCategory.SECURITY,
                 status=ReadinessStatus.NOT_READY,
-                message=f"Security Audit fehlgeschlagen: {str(e)}",
+                message=safe_error_detail(e, "Security Audit"),
             ))
 
         return checks
@@ -279,7 +280,7 @@ class ProductionReadinessService:
             ))
 
         except Exception as e:
-            logger.warning("performance_checks_failed", error=str(e))
+            logger.warning("performance_checks_failed", **safe_error_log(e))
 
         return checks
 
@@ -306,7 +307,7 @@ class ProductionReadinessService:
                 name="Database Verbindung",
                 category=CheckCategory.HEALTH,
                 status=ReadinessStatus.CRITICAL,
-                message=f"PostgreSQL nicht erreichbar: {str(e)[:100]}",
+                message=safe_error_detail(e, "PostgreSQL"),
                 recommendation="Pruefe DATABASE_URL und PostgreSQL-Status",
             ))
 
@@ -329,7 +330,7 @@ class ProductionReadinessService:
                 name="Redis Verbindung",
                 category=CheckCategory.HEALTH,
                 status=ReadinessStatus.CRITICAL,
-                message=f"Redis nicht erreichbar: {str(e)[:100]}",
+                message=safe_error_detail(e, "Redis"),
                 recommendation="Pruefe REDIS_URL und Redis-Status",
             ))
 
@@ -387,6 +388,7 @@ class ProductionReadinessService:
         try:
             from app.core.config import settings
 
+
             # Debug Mode
             if not settings.DEBUG:
                 checks.append(ReadinessCheck(
@@ -439,7 +441,7 @@ class ProductionReadinessService:
                 ))
 
         except Exception as e:
-            logger.warning("configuration_checks_failed", error=str(e))
+            logger.warning("configuration_checks_failed", **safe_error_log(e))
 
         return checks
 
@@ -517,7 +519,7 @@ class ProductionReadinessService:
             ))
 
         except Exception as e:
-            logger.warning("resource_checks_failed", error=str(e))
+            logger.warning("resource_checks_failed", **safe_error_log(e))
 
         return checks
 

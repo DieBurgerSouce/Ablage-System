@@ -406,7 +406,7 @@ class RecommendationsService:
             logger.warning(
                 "rebalancing_check_failed",
                 space_id=str(space_id),
-                error=str(e),
+                **safe_error_log(e),
             )
 
         return recommendations
@@ -818,6 +818,7 @@ class RecommendationsService:
         """Generiert Empfehlungen fuer alle Spaces (fuer Celery Beat)."""
         from app.db.models import PrivatSpace
 
+
         result = await db.execute(
             select(PrivatSpace.id).where(PrivatSpace.is_active == True)
         )
@@ -837,7 +838,7 @@ class RecommendationsService:
                 logger.error(
                     "recommendations_generation_failed",
                     space_id=str(space_id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         logger.info(

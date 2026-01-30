@@ -20,6 +20,7 @@ import structlog
 from celery import shared_task
 from sqlalchemy import and_, delete, select
 
+from app.core.safe_errors import safe_error_log
 from app.workers.celery_app import celery_app
 
 logger = structlog.get_logger(__name__)
@@ -84,11 +85,11 @@ def execute_workflow_async(
                 logger.exception(
                     "workflow_async_execution_error",
                     workflow_id=workflow_id,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 return {
                     "success": False,
-                    "error": str(e),
+                    "error": safe_error_detail(e, "Vorgang"),
                 }
 
     return asyncio.run(_execute())
@@ -206,11 +207,11 @@ def check_scheduled_workflows(self) -> Dict[str, Any]:
             except Exception as e:
                 logger.exception(
                     "scheduled_workflows_check_error",
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 return {
                     "success": False,
-                    "error": str(e),
+                    "error": safe_error_detail(e, "Vorgang"),
                 }
 
     return asyncio.run(_check_scheduled())
@@ -287,12 +288,12 @@ def cleanup_old_workflow_executions(
             except Exception as e:
                 logger.exception(
                     "workflow_cleanup_error",
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 await db.rollback()
                 return {
                     "success": False,
-                    "error": str(e),
+                    "error": safe_error_detail(e, "Vorgang"),
                 }
 
     return asyncio.run(_cleanup())
@@ -501,11 +502,11 @@ def generate_workflow_report(self) -> Dict[str, Any]:
             except Exception as e:
                 logger.exception(
                     "workflow_report_error",
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 return {
                     "success": False,
-                    "error": str(e),
+                    "error": safe_error_detail(e, "Vorgang"),
                 }
 
     return asyncio.run(_generate_report())
@@ -565,11 +566,11 @@ def on_document_created(
                 logger.exception(
                     "document_created_trigger_error",
                     document_id=document_id,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 return {
                     "success": False,
-                    "error": str(e),
+                    "error": safe_error_detail(e, "Vorgang"),
                 }
 
     return asyncio.run(_trigger())
@@ -627,11 +628,11 @@ def on_document_processed(
                 logger.exception(
                     "document_processed_trigger_error",
                     document_id=document_id,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 return {
                     "success": False,
-                    "error": str(e),
+                    "error": safe_error_detail(e, "Vorgang"),
                 }
 
     return asyncio.run(_trigger())
@@ -689,11 +690,11 @@ def on_document_failed(
                 logger.exception(
                     "document_failed_trigger_error",
                     document_id=document_id,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 return {
                     "success": False,
-                    "error": str(e),
+                    "error": safe_error_detail(e, "Vorgang"),
                 }
 
     return asyncio.run(_trigger())

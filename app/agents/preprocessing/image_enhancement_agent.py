@@ -19,6 +19,7 @@ import numpy as np
 import structlog
 
 from app.agents.base import PreprocessingAgent
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -173,7 +174,7 @@ class ImageEnhancementAgent(PreprocessingAgent):
             self.logger.error(
                 "image_load_failed",
                 file_path=str(file_path),
-                error=str(e),
+                **safe_error_log(e),
             )
             return None
 
@@ -239,7 +240,7 @@ class ImageEnhancementAgent(PreprocessingAgent):
         except Exception as e:
             self.logger.warning(
                 "deskew_failed",
-                error=str(e),
+                **safe_error_log(e),
             )
             return img, 0.0
 
@@ -273,7 +274,7 @@ class ImageEnhancementAgent(PreprocessingAgent):
         except Exception as e:
             self.logger.warning(
                 "denoise_failed",
-                error=str(e),
+                **safe_error_log(e),
             )
             return img
 
@@ -307,7 +308,7 @@ class ImageEnhancementAgent(PreprocessingAgent):
         except Exception as e:
             self.logger.warning(
                 "contrast_enhancement_failed",
-                error=str(e),
+                **safe_error_log(e),
             )
             return img
 
@@ -346,7 +347,7 @@ class ImageEnhancementAgent(PreprocessingAgent):
         except Exception as e:
             self.logger.warning(
                 "binarization_failed",
-                error=str(e),
+                **safe_error_log(e),
             )
             return img
 
@@ -372,7 +373,7 @@ class ImageEnhancementAgent(PreprocessingAgent):
         except Exception as e:
             self.logger.error(
                 "save_enhanced_failed",
-                error=str(e),
+                **safe_error_log(e),
             )
             return original_path
 
@@ -415,7 +416,7 @@ class ImageEnhancementAgent(PreprocessingAgent):
         except Exception as e:
             self.logger.warning(
                 "quality_estimation_failed",
-                error=str(e),
+                **safe_error_log(e),
             )
             # Estimate based on number of enhancements applied
             return min(0.3, len(enhancements) * 0.1)

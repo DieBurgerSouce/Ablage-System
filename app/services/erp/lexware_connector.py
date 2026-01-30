@@ -29,7 +29,9 @@ import structlog
 
 from app.core.config import settings
 from app.core.datetime_utils import utc_now
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.services.erp.base_connector import (
+
     ERPConnectionConfig,
     ERPConnectionStatus,
     ERPConnector,
@@ -281,10 +283,10 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
 
         except Exception as e:
             self._status = ERPConnectionStatus.ERROR
-            self._last_error = str(e)
+            self._last_error = safe_error_detail(e, "Lexware")
             logger.error(
                 "lexware_connection_failed",
-                error=str(e),
+                **safe_error_log(e),
                 organization_id=self.config.organization_id,
             )
             return False
@@ -316,7 +318,7 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
             return response is not None
 
         except Exception as e:
-            logger.error("lexware_connection_test_failed", error=str(e))
+            logger.error("lexware_connection_test_failed", **safe_error_log(e))
             return False
 
     async def get_version(self) -> str:
@@ -398,7 +400,7 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
             return True
 
         except Exception as e:
-            logger.error("lexware_auth_error", error=str(e))
+            logger.error("lexware_auth_error", **safe_error_log(e))
             return False
 
     async def _refresh_token(self) -> bool:
@@ -440,7 +442,7 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
             return True
 
         except Exception as e:
-            logger.error("lexware_refresh_token_error", error=str(e))
+            logger.error("lexware_refresh_token_error", **safe_error_log(e))
             return await self._authenticate()
 
     # =========================================================================
@@ -559,7 +561,7 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
             logger.error(
                 "lexware_request_error",
                 endpoint=endpoint,
-                error=str(e),
+                **safe_error_log(e),
             )
             # Add to offline queue for later retry
             self._offline_queue.append({
@@ -618,10 +620,10 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
 
         except Exception as e:
             result.success = False
-            result.error_message = str(e)
+            result.error_message = safe_error_detail(e, "Lexware")
             logger.error(
                 "lexware_sync_customers_error",
-                error=str(e),
+                **safe_error_log(e),
                 direction=direction.value,
             )
 
@@ -840,10 +842,10 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
 
         except Exception as e:
             result.success = False
-            result.error_message = str(e)
+            result.error_message = safe_error_detail(e, "Lexware")
             logger.error(
                 "lexware_sync_suppliers_error",
-                error=str(e),
+                **safe_error_log(e),
                 direction=direction.value,
             )
 
@@ -1052,10 +1054,10 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
 
         except Exception as e:
             result.success = False
-            result.error_message = str(e)
+            result.error_message = safe_error_detail(e, "Lexware")
             logger.error(
                 "lexware_sync_invoices_error",
-                error=str(e),
+                **safe_error_log(e),
                 direction=direction.value,
             )
 
@@ -1217,7 +1219,7 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
                 "lexware_attach_document_error",
                 entity=entity.value,
                 erp_id=erp_id,
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 
@@ -1304,7 +1306,7 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
                 logger.error(
                     "lexware_webhook_handler_error",
                     event_type=event.event_type,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         # Built-in handling for sync
@@ -1363,7 +1365,7 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
             return True
 
         except Exception as e:
-            logger.error("lexware_webhook_setup_error", error=str(e))
+            logger.error("lexware_webhook_setup_error", **safe_error_log(e))
             return False
 
     # =========================================================================

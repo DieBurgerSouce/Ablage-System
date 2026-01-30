@@ -20,6 +20,7 @@ from sqlalchemy import select, and_, delete, func
 
 from app.workers.celery_app import celery_app
 from app.db.session import get_async_session_context
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -120,7 +121,7 @@ def render_template_batch(
                     result["failed"] += 1
                     error_detail = {
                         "index": index,
-                        "error": str(e),
+                        "error": safe_error_detail(e, "Vorgang"),
                         "data_preview": str(data)[:200],  # Gekuerzter Preview
                     }
                     result["errors"].append(error_detail)
@@ -129,7 +130,7 @@ def render_template_batch(
                         "template_batch_item_failed",
                         template_id=template_id,
                         index=index,
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
             await db.commit()
@@ -152,7 +153,7 @@ def render_template_batch(
         logger.error(
             "template_batch_error",
             template_id=template_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -229,11 +230,11 @@ def render_template_single(
                 logger.error(
                     "template_single_render_failed",
                     template_id=template_id,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 return {
                     "success": False,
-                    "error": str(e),
+                    "error": safe_error_detail(e, "Vorgang"),
                     "template_id": template_id,
                 }
 
@@ -243,7 +244,7 @@ def render_template_single(
         logger.error(
             "template_single_render_error",
             template_id=template_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -345,7 +346,7 @@ def cleanup_temp_files(
                     logger.warning(
                         "temp_file_cleanup_error",
                         document_id=str(doc.id),
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
             await db.commit()
@@ -365,7 +366,7 @@ def cleanup_temp_files(
     try:
         return asyncio.get_event_loop().run_until_complete(_cleanup())
     except Exception as e:
-        logger.error("temp_files_cleanup_error", error=str(e))
+        logger.error("temp_files_cleanup_error", **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -475,7 +476,7 @@ def cleanup_old_template_versions(
                     logger.warning(
                         "template_version_cleanup_error",
                         template_name=template_name,
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
             await db.commit()
@@ -491,7 +492,7 @@ def cleanup_old_template_versions(
     try:
         return asyncio.get_event_loop().run_until_complete(_cleanup_versions())
     except Exception as e:
-        logger.error("template_versions_cleanup_error", error=str(e))
+        logger.error("template_versions_cleanup_error", **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -592,7 +593,7 @@ def collect_template_stats(self) -> Dict[str, Any]:
     try:
         return asyncio.get_event_loop().run_until_complete(_collect_stats())
     except Exception as e:
-        logger.error("template_stats_collection_error", error=str(e))
+        logger.error("template_stats_collection_error", **safe_error_log(e))
         raise self.retry(exc=e)
 
 

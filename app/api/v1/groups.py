@@ -127,8 +127,11 @@ async def list_groups(
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0
 
-    # Sorting
-    sort_column = getattr(DocumentGroup, sort_by, DocumentGroup.created_at)
+    # SECURITY: Whitelist gegen Reflection-Angriffe (CWE-89)
+    ALLOWED_SORT_FIELDS = {"name", "created_at", "updated_at", "detection_confidence", "total_pages", "reference_number"}
+    if sort_by not in ALLOWED_SORT_FIELDS:
+        sort_by = "created_at"
+    sort_column = getattr(DocumentGroup, sort_by)
     if sort_order == SortOrder.DESC:
         sort_column = sort_column.desc()
     query = query.order_by(sort_column)

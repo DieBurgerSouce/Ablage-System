@@ -127,7 +127,12 @@ async def list_entities(
     total = total_result.scalar() or 0
 
     # Sorting
-    sort_column = getattr(BusinessEntity, sort_by, BusinessEntity.name)
+    # SECURITY: Explicit Whitelist gegen Reflection-Angriffe (CWE-89)
+    # Verhindert SQL Injection via dynamischen getattr()-Aufruf
+    ALLOWED_SORT_FIELDS = {"name", "created_at", "document_count", "updated_at"}
+    if sort_by not in ALLOWED_SORT_FIELDS:
+        sort_by = "name"  # Safe default
+    sort_column = getattr(BusinessEntity, sort_by)
     if sort_order == SortOrder.DESC:
         sort_column = sort_column.desc()
     query = query.order_by(sort_column)

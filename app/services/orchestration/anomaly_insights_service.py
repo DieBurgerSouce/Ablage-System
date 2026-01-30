@@ -357,7 +357,7 @@ class AnomalyInsightsService:
             logger.warning(
                 "price_anomaly_detection_failed",
                 company_id=str(company_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return []
 
@@ -488,7 +488,7 @@ class AnomalyInsightsService:
             logger.warning(
                 "volume_anomaly_detection_failed",
                 company_id=str(company_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return []
 
@@ -642,7 +642,7 @@ class AnomalyInsightsService:
             logger.warning(
                 "invoice_pattern_detection_failed",
                 company_id=str(company_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return []
 
@@ -667,6 +667,7 @@ class AnomalyInsightsService:
             Liste von ProactiveInsights fuer Duplikat-Muster
         """
         from app.db.models import Document
+
 
         try:
             now = datetime.now(timezone.utc)
@@ -736,7 +737,7 @@ class AnomalyInsightsService:
             logger.warning(
                 "duplicate_pattern_detection_failed",
                 company_id=str(company_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return []
 

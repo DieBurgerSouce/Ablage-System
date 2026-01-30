@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 
 from app.db.models import User, Document, BusinessEntity, DocumentTag, ProcessingStatus
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.api.schemas.rag import (
     AIActionType,
     AIActionAutonomyLevel,
@@ -289,13 +290,13 @@ class AIActionService:
             logger.error(
                 "ai_action_failed",
                 action_type=request.action_type.value,
-                error=str(e),
+                **safe_error_log(e),
             )
             return AIActionResult(
                 action_id=action_id,
                 action_type=request.action_type,
                 status=AIActionStatus.FAILED,
-                message=f"Aktion fehlgeschlagen: {str(e)}",
+                message=safe_error_detail(e, "RAG-Aktion"),
                 execution_time_ms=int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000),
             )
 
@@ -640,11 +641,11 @@ class AIActionService:
                         user_id=str(user.id),
                     )
                 except Exception as e:
-                    message = f"OCR konnte nicht gestartet werden: {str(e)}"
+                    message = safe_error_detail(e, "OCR-Start")
                     logger.error(
                         "ocr_trigger_failed",
                         document_id=str(doc_uuid),
-                        error=str(e),
+                        **safe_error_log(e),
                     )
             else:
                 message = "Fehler: Keine Dokument-ID angegeben."
@@ -671,6 +672,7 @@ class AIActionService:
             else:
                 # Email-Benachrichtigung (via NotificationService)
                 from app.db.models import Notification
+
                 notification = Notification(
                     id=uuid4(),
                     user_id=user.id,

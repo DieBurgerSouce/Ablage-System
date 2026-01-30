@@ -23,6 +23,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -299,7 +300,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 "http_request_failed",
                 request_id=request_id,
                 error_type=type(e).__name__,
-                error=str(e),
+                **safe_error_log(e),
                 duration_ms=duration_ms,
                 **request_log
             )
@@ -352,7 +353,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                     else:
                         info["body"] = f"[{len(body)} bytes, type: {content_type}]"
             except Exception as e:
-                info["body_error"] = str(e)
+                info["body_error"] = safe_error_detail(e, "Body-Parsing")
 
         return info
 

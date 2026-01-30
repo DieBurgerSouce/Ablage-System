@@ -350,7 +350,7 @@ class LRUTokenCache:
                 if success:
                     added += 1
             except (KeyError, TypeError) as e:
-                logger.warning("warm_up_entry_failed", error=str(e))
+                logger.warning("warm_up_entry_failed", **safe_error_log(e))
 
         logger.info("token_cache_warmed_up", entries_added=added)
         return added
@@ -437,6 +437,7 @@ class WordFrequencyCache:
             Anzahl erfasster Woerter
         """
         import re
+
         words = re.findall(r'\b\w+\b', text)
 
         count = 0

@@ -584,7 +584,7 @@ class GermanTextPostprocessor:
             try:
                 validation_result = self._validator.validate_umlauts(corrected_text)
             except Exception as e:
-                logger.warning("validation_failed", error=str(e))
+                logger.warning("validation_failed", **safe_error_log(e))
                 self._stats["validation_errors"] += 1
 
         # 6. Erstelle Ergebnis
@@ -644,6 +644,7 @@ class GermanTextPostprocessor:
         try:
             from app.services.ocr.industry_vocabulary_service import IndustryType
 
+
             # Branche bestimmen
             industry_type = None
             if industry:
@@ -679,7 +680,7 @@ class GermanTextPostprocessor:
         except Exception as e:
             logger.warning(
                 "industry_correction_failed",
-                error=str(e),
+                **safe_error_log(e),
                 error_type=type(e).__name__
             )
             return text, [], None
@@ -723,7 +724,7 @@ class GermanTextPostprocessor:
         except Exception as e:
             logger.warning(
                 "spelling_correction_failed",
-                error=str(e),
+                **safe_error_log(e),
                 error_type=type(e).__name__
             )
             return text, []

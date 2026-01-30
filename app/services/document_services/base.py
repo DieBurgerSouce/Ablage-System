@@ -23,6 +23,7 @@ from app.db.schemas import (
     TagResponse,
 )
 from app.core.cache import invalidate_on_document_change
+from app.core.safe_errors import safe_error_log
 
 if TYPE_CHECKING:
     from app.services.search_service import SearchService
@@ -45,13 +46,14 @@ def _get_search_service() -> Optional["SearchService"]:
     if service is None:
         try:
             from app.services.search_service import get_search_service
+
             service = get_search_service()
             _search_service_ctx.set(service)
         except ImportError as e:
             logger.warning(
                 "search_service_import_failed",
                 error_type="ImportError",
-                error=str(e)
+                **safe_error_log(e)
             )
             return None
     return service
@@ -185,7 +187,7 @@ class DocumentServiceBase:
                 "cache_invalidation_failed",
                 document_id=str(document_id),
                 reason=reason,
-                error=str(e)
+                **safe_error_log(e)
             )
 
     async def _invalidate_user_cache(
@@ -205,7 +207,7 @@ class DocumentServiceBase:
                 "user_cache_invalidation_failed",
                 user_id=str(user_id),
                 reason=reason,
-                error=str(e)
+                **safe_error_log(e)
             )
 
     async def _invalidate_central_cache(
@@ -221,5 +223,5 @@ class DocumentServiceBase:
                 "central_cache_invalidation_failed",
                 document_id=document_id,
                 change_type=change_type,
-                error=str(e)
+                **safe_error_log(e)
             )

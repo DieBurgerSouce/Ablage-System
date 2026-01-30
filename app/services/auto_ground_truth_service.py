@@ -34,6 +34,7 @@ from app.db.models import (
     TrainingSampleStatus,
 )
 from app.services.umlaut_validation_service import (
+
     UmlautValidationService,
     UmlautValidationResult,
 )
@@ -418,7 +419,7 @@ class AutoGroundTruthService:
                 logger.error(
                     "auto_ground_truth_batch_error",
                     document_id=str(doc_id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 results["errors"] += 1
 

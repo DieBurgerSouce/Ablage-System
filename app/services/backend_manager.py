@@ -144,6 +144,7 @@ logger = structlog.get_logger(__name__)
 
 # Import A/B testing for backend selection experiments
 from app.ml.ab_testing import get_ab_test_manager
+from app.core.safe_errors import safe_error_detail,  safe_error_log
 # GPU-based backends - only import if torch is available
 try:
     import torch
@@ -581,25 +582,26 @@ class BackendManager:
         if TORCH_AVAILABLE:
             try:
                 from app.agents.ocr.surya_gpu_agent import SuryaGPUAgent
+
                 self.backends["surya_gpu"] = SuryaGPUAgent()
                 gpu_surya_initialized = True
                 logger.info("surya_gpu_backend_initialized", device=torch.cuda.get_device_name(0))
             except (RuntimeError, MemoryError, OSError, ImportError) as e:
-                logger.info("surya_gpu_backend_unavailable", error=str(e))
+                logger.info("surya_gpu_backend_unavailable", **safe_error_log(e))
 
         # Always initialize CPU Surya as fallback
         try:
             self.backends["surya"] = SuryaDoclingAgent()
             logger.info("surya_cpu_backend_initialized")
         except (RuntimeError, ImportError, OSError) as e:
-            logger.error("surya_cpu_backend_init_failed", error=str(e))
+            logger.error("surya_cpu_backend_init_failed", **safe_error_log(e))
 
         # Initialize Enhanced Surya+Docling (CPU-only with layout analysis)
         try:
             self.backends["surya_enhanced"] = SuryaDoclingEnhancedAgent()
             logger.info("surya_enhanced_backend_initialized")
         except (RuntimeError, ImportError, OSError) as e:
-            logger.warning("surya_enhanced_backend_unavailable", error=str(e))
+            logger.warning("surya_enhanced_backend_unavailable", **safe_error_log(e))
 
         # Try to initialize GPU-based backends if PyTorch and GPU are available
         if TORCH_AVAILABLE:
@@ -608,14 +610,14 @@ class BackendManager:
                 self.backends["deepseek"] = DeepSeekAgent()
                 logger.info("deepseek_backend_initialized")
             except (RuntimeError, MemoryError, OSError, ImportError) as e:
-                logger.warning("deepseek_backend_unavailable", error=str(e))
+                logger.warning("deepseek_backend_unavailable", **safe_error_log(e))
 
             # Initialize GOT-OCR (requires GPU)
             try:
                 self.backends["got_ocr"] = GOTOCRAgent()
                 logger.info("got_ocr_backend_initialized")
             except (RuntimeError, MemoryError, OSError, ImportError) as e:
-                logger.warning("got_ocr_backend_unavailable", error=str(e))
+                logger.warning("got_ocr_backend_unavailable", **safe_error_log(e))
 
             # Initialize DONUT for multilingual document understanding (8GB VRAM)
             if DONUT_AVAILABLE:
@@ -623,7 +625,7 @@ class BackendManager:
                     self.backends["donut"] = DonutOCRAgent()
                     logger.info("donut_backend_initialized")
                 except (RuntimeError, MemoryError, OSError, ImportError) as e:
-                    logger.warning("donut_backend_unavailable", error=str(e))
+                    logger.warning("donut_backend_unavailable", **safe_error_log(e))
 
             # Initialize Hybrid Agent for maximum accuracy (combines multiple backends)
             # Only if at least 2 other backends are available for meaningful fusion
@@ -635,7 +637,7 @@ class BackendManager:
                     logger.info("hybrid_backend_initialized",
                                available_engines=available_for_hybrid)
                 except (RuntimeError, MemoryError, ImportError) as e:
-                    logger.warning("hybrid_backend_unavailable", error=str(e))
+                    logger.warning("hybrid_backend_unavailable", **safe_error_log(e))
         else:
             logger.info("gpu_unavailable_cpu_only")
 
@@ -761,7 +763,7 @@ class BackendManager:
                             )
             except (KeyError, ValueError, RuntimeError) as e:  # Catch-all: A/B test API errors possible
                 # Don't fail if A/B testing has issues - fall back to normal selection
-                logger.warning("ab_test_check_failed", error=str(e))
+                logger.warning("ab_test_check_failed", **safe_error_log(e))
 
         # Helper to format return value based on return_experiment_info flag
         def _return_backend(backend: str) -> Union[str, Tuple[str, Optional[Dict[str, str]]]]:
@@ -958,7 +960,7 @@ class BackendManager:
             return {"healthy": True, "status": status}
 
         except (RuntimeError, AttributeError, KeyError) as e:  # Catch-all: various backend status API errors possible
-            logger.warning("backend_health_check_failed", backend=backend_name, error=str(e))
+            logger.warning("backend_health_check_failed", backend=backend_name, **safe_error_log(e))
             # Invalidate cache on error
             self._health_cache.invalidate(backend_name)
 
@@ -974,7 +976,7 @@ class BackendManager:
                     error_type=type(e2).__name__,
                 )
 
-            return {"healthy": False, "reason": str(e)}
+            return {"healthy": False, "reason": safe_error_detail(e, "Health-Check")}
 
     def get_fallback_order(self, preferred_backend: str) -> List[str]:
         """
@@ -1133,7 +1135,7 @@ class BackendManager:
                 logger.warning(
                     "backend_processing_failed_trying_fallback",
                     backend=current_backend,
-                    error=str(e),
+                    **safe_error_log(e),
                     remaining_fallbacks=len(fallback_chain) - fallback_chain.index(current_backend) - 1
                 )
                 continue
@@ -1231,7 +1233,7 @@ class BackendManager:
 
         except (KeyError, ValueError, RuntimeError) as e:  # Catch-all: A/B test recording errors
             # Don't fail processing if A/B recording fails
-            logger.warning("ab_test_recording_failed", error=str(e))
+            logger.warning("ab_test_recording_failed", **safe_error_log(e))
 
     async def _record_drift_sample(
         self,
@@ -1279,7 +1281,7 @@ class BackendManager:
 
         except (KeyError, ValueError, RuntimeError) as e:  # Catch-all: drift detection API errors
             # Don't fail processing if drift recording fails
-            logger.debug("drift_sample_recording_failed", error=str(e))
+            logger.debug("drift_sample_recording_failed", **safe_error_log(e))
 
     async def get_backend_status(self, backend_name: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -1321,7 +1323,7 @@ class BackendManager:
                 await backend.cleanup()
                 logger.info("backend_cleaned_up", backend=name)
             except (RuntimeError, AttributeError) as e:  # Catch-all: cleanup can fail in various ways
-                logger.error("backend_cleanup_failed", backend=name, error=str(e))
+                logger.error("backend_cleanup_failed", backend=name, **safe_error_log(e))
 
         # Clear health cache
         self._health_cache.invalidate()
@@ -1550,7 +1552,7 @@ class BackendManager:
                 vram_percent = gpu_status.get("vram_used_percent", 0.0)
             except (RuntimeError, AttributeError, KeyError) as e:
                 # GPU-Status kann fehlschlagen wenn GPU nicht verfügbar
-                logger.debug("gpu_status_check_failed", error=str(e))
+                logger.debug("gpu_status_check_failed", **safe_error_log(e))
 
         estimates = optimizer.get_all_estimates(
             available_backends=list(self.backends.keys()),
@@ -1604,7 +1606,7 @@ class BackendManager:
                 vram_percent = gpu_status.get("vram_used_percent", 0.0)
             except (RuntimeError, AttributeError, KeyError) as e:
                 # GPU-Status kann fehlschlagen wenn GPU nicht verfügbar
-                logger.debug("gpu_status_check_failed", error=str(e))
+                logger.debug("gpu_status_check_failed", **safe_error_log(e))
 
         backend, estimate = optimizer.get_optimal_backend(
             available_backends=list(self.backends.keys()),

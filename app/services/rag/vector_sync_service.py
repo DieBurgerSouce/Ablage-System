@@ -26,12 +26,14 @@ from sqlalchemy import select, func, update
 
 from app.core.config import settings
 from app.db.models import RAGDocumentChunk as DocumentChunk
+from app.core.safe_errors import safe_error_log
 from app.services.rag.qdrant_service import (
     get_qdrant_service,
     QdrantService,
     QdrantPointData
 )
 from app.services.embedding_service import (
+
     get_embedding_provider,
     EmbeddingProvider,
     EmbeddingModelType
@@ -244,7 +246,7 @@ class VectorSyncService:
             logger.error(
                 "chunk_sync_to_qdrant_failed",
                 chunk_id=str(chunk.id),
-                error=str(e)
+                **safe_error_log(e)
             )
             return False
 
@@ -357,7 +359,7 @@ class VectorSyncService:
             logger.error(
                 "chunks_batch_sync_failed",
                 batch_size=len(chunks),
-                error=str(e)
+                **safe_error_log(e)
             )
             return SyncResult(
                 success=False,
@@ -365,7 +367,7 @@ class VectorSyncService:
                 failed_count=len(chunks),
                 skipped_count=0,
                 duration_ms=elapsed,
-                error=str(e)
+                **safe_error_log(e)
             )
 
     async def start_migration(
@@ -510,7 +512,7 @@ class VectorSyncService:
             self._migration_status = MigrationStatus.FAILED
             if self._migration_progress:
                 self._migration_progress["status"] = MigrationStatus.FAILED.value
-            logger.error("migration_failed", error=str(e))
+            logger.error("migration_failed", **safe_error_log(e))
             raise
 
     def cancel_migration(self) -> bool:
@@ -567,7 +569,7 @@ class VectorSyncService:
             logger.error(
                 "chunks_delete_from_qdrant_failed",
                 chunk_ids=chunk_ids[:5],
-                error=str(e)
+                **safe_error_log(e)
             )
             return 0
 
@@ -603,7 +605,7 @@ class VectorSyncService:
                 "enabled": self._enabled,
                 "async_mode": self._async_mode,
                 "qdrant_connected": False,
-                "error": str(e),
+                "error": safe_error_detail(e, "Vorgang"),
                 "migration_status": self._migration_status.value
             }
 

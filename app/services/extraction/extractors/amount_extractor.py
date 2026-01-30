@@ -30,6 +30,7 @@ from app.services.extraction.config import (
     MIN_AMOUNT_VALUE,
 )
 from app.services.extraction.patterns.amount_patterns import (
+
     AmountPatterns,
     extract_all_amounts,
     extract_vat_rate,
@@ -142,7 +143,7 @@ class SmartAmountExtractor:
             self._validate_consistency(result)
 
         except Exception as e:
-            logger.exception("amount_extraction_error", error=str(e))
+            logger.exception("amount_extraction_error", **safe_error_log(e))
             result.extraction_warnings.append(f"Extraktionsfehler: {e}")
 
         return result

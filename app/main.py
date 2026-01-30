@@ -58,6 +58,7 @@ from app.core.backpressure import (
     BackpressureStatus,
 )
 from app.api.dependencies import get_current_active_user, get_current_superuser, get_db
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.db.models import User
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security.safe_module_loader import lock_bpmn_registration
@@ -70,7 +71,7 @@ try:
     initialize_sentry_for_backend()
     logger.info("sentry_initialized")
 except Exception as e:
-    logger.warning("sentry_not_configured", error=str(e))
+    logger.warning("sentry_not_configured", **safe_error_log(e))
 
 # Global instances
 gpu_manager = None
@@ -137,7 +138,7 @@ def validate_file_content_type(content: bytes, filename: str) -> Tuple[bool, str
         try:
             mime_type = magic.from_buffer(content, mime=True)
         except Exception as e:
-            logger.warning("magic_detection_error", error=str(e), filename=filename)
+            logger.warning("magic_detection_error", **safe_error_log(e), filename=filename)
             # On error, use fallback
             mime_type = _detect_mime_basic(content)
 
@@ -235,7 +236,7 @@ async def lifespan(app: FastAPI):
             otlp_enabled=otlp_endpoint is not None
         )
     except Exception as e:
-        logger.warning("telemetry_init_failed", error=str(e))
+        logger.warning("telemetry_init_failed", **safe_error_log(e))
 
     # Initialize Database Query Metrics
     try:
@@ -244,7 +245,7 @@ async def lifespan(app: FastAPI):
         setup_db_metrics(engine)
         logger.info("db_query_metrics_initialized")
     except Exception as e:
-        logger.warning("db_query_metrics_init_failed", error=str(e))
+        logger.warning("db_query_metrics_init_failed", **safe_error_log(e))
 
     # P0: Initialize GPU Memory Guard with proactive monitoring
     # Prevents 80% of OOM errors through proactive cache cleanup
@@ -257,7 +258,7 @@ async def lifespan(app: FastAPI):
             proactive_threshold=memory_guard.PROACTIVE_CLEANUP_THRESHOLD
         )
     except Exception as e:
-        logger.warning("gpu_memory_monitor_start_failed", error=str(e))
+        logger.warning("gpu_memory_monitor_start_failed", **safe_error_log(e))
 
     # Initialize rate limiting Redis storage
     if settings.RATE_LIMIT_ENABLED:
@@ -290,7 +291,7 @@ async def lifespan(app: FastAPI):
                 background=True
             )
         except Exception as e:
-            logger.warning("model_preload_startup_error", error=str(e))
+            logger.warning("model_preload_startup_error", **safe_error_log(e))
     else:
         logger.info("model_preload_disabled_by_config")
 
@@ -299,7 +300,7 @@ async def lifespan(app: FastAPI):
         await startup_realtime_services()
         logger.info("realtime_services_started")
     except Exception as e:
-        logger.warning("realtime_services_startup_failed", error=str(e))
+        logger.warning("realtime_services_startup_failed", **safe_error_log(e))
 
     # SECURITY (CWE-470): Lock BPMN module registration after startup
     # Prevents runtime whitelist modification attacks
@@ -307,7 +308,7 @@ async def lifespan(app: FastAPI):
         lock_bpmn_registration()
         logger.info("bpmn_registration_locked", message="BPMN-Modul-Registrierung gesperrt")
     except Exception as e:
-        logger.error("bpmn_registration_lock_failed", error=str(e))
+        logger.error("bpmn_registration_lock_failed", **safe_error_log(e))
         raise RuntimeError(
             "SICHERHEITSFEHLER: BPMN-Registrierungssperre konnte nicht aktiviert werden!"
         )
@@ -324,7 +325,7 @@ async def lifespan(app: FastAPI):
         await shutdown_realtime_services()
         logger.info("realtime_services_stopped")
     except Exception as e:
-        logger.warning("realtime_services_shutdown_failed", error=str(e))
+        logger.warning("realtime_services_shutdown_failed", **safe_error_log(e))
 
     # P1: Cleanup Model Preloader
     if model_preloader:
@@ -332,7 +333,7 @@ async def lifespan(app: FastAPI):
             await model_preloader.cleanup()
             logger.info("model_preloader_cleanup_complete")
         except Exception as e:
-            logger.warning("model_preloader_cleanup_failed", error=str(e))
+            logger.warning("model_preloader_cleanup_failed", **safe_error_log(e))
 
     # P0: Stop GPU Memory Monitor
     if memory_guard:
@@ -340,7 +341,7 @@ async def lifespan(app: FastAPI):
             await memory_guard.stop_memory_monitor()
             logger.info("gpu_memory_monitor_stopped")
         except Exception as e:
-            logger.warning("gpu_memory_monitor_stop_failed", error=str(e))
+            logger.warning("gpu_memory_monitor_stop_failed", **safe_error_log(e))
 
     if ocr_service:
         await ocr_service.cleanup()
@@ -352,7 +353,7 @@ async def lifespan(app: FastAPI):
         await webhook_dispatcher.close()
         logger.info("webhook_dispatcher_cleanup_complete")
     except Exception as e:
-        logger.warning("webhook_dispatcher_cleanup_failed", error=str(e))
+        logger.warning("webhook_dispatcher_cleanup_failed", **safe_error_log(e))
     # Cleanup storage service (MinIO client)
     await cleanup_storage_service()
     logger.info("api_shutdown_complete")
@@ -855,6 +856,32 @@ from app.api.v1.compliance_autopilot import router as compliance_autopilot_route
 from app.api.v1.annotations import router as annotations_router
 from app.api.v1.visual_diff import router as visual_diff_router
 from app.api.v1.life_events import router as life_events_router
+from app.api.v1.smart_tagging import router as smart_tagging_router  # Vision 2026+ Q1: Smart Auto-Tagging
+from app.api.v1.audit_trail_visualization import router as audit_trail_visualization_router  # Vision 2026+ Q1: Audit Trail Visualization
+from app.api.v1.communication_hub import router as communication_hub_router  # Vision 2026+ Q1: Kommunikations-Hub
+from app.api.v1.supplier_ocr_templates import router as supplier_ocr_templates_router  # Vision 2026+ Q1: Lieferanten OCR-Templates
+from app.api.v1.visual_workflow_builder import router as visual_workflow_builder_router  # Vision 2026+ Q2: Visual Workflow Builder
+from app.api.v1.supplier_verification import router as supplier_verification_router  # Vision 2026+ Q2: Lieferanten-Verifizierung
+from app.api.v1.liquidity_scenarios import router as liquidity_scenarios_router  # Vision 2026+ Q2: Liquiditaets-Szenarien
+from app.api.v1.ai_mentor import router as ai_mentor_router  # Vision 2026+ Q3: AI-Mentor (Feature #9)
+from app.api.v1.industry_benchmarks import router as industry_benchmarks_router  # Vision 2026+ Q3: Branchen-Benchmarks (Feature #10)
+from app.api.v1.onboarding import router as onboarding_router  # Vision 2026+ Q3: Tenant Onboarding Wizard (Feature #11)
+
+# Vision 2.0 Phase 2: Erweiterte Integrationen
+from app.api.v1.process_mining import router as process_mining_router  # Vision 2.0: Process Mining
+from app.api.v1.consent import router as consent_router  # Vision 2.0: Consent Management (DSGVO)
+from app.api.v1.credit import router as credit_router  # Vision 2.0: Creditreform Integration
+from app.api.v1.datev_booking import router as datev_booking_router  # Vision 2.0: DATEV Buchungsvorschlaege
+from app.api.v1.classification import router as classification_router  # Vision 2.0 Phase 3: Multi-Label Classification
+
+# Vision 2.0 Phase 5: Privacy & Predictive Maintenance
+from app.api.v1.privacy_analytics import router as privacy_analytics_router  # Vision 2.0 Phase 5: Differential Privacy
+from app.api.v1.predictive_health import router as predictive_health_router  # Vision 2.0 Phase 5: Predictive Maintenance
+
+# Vision 2.0 Phase 6: Autonomy Framework & Intelligence
+from app.api.v1.action_queue import router as action_queue_router  # Vision 2.0 Phase 6: Action Approval Queue
+from app.api.v1.financial_insights import router as financial_insights_router  # Vision 2.0 Phase 6: Financial Insights
+from app.api.v1.xai import router as xai_router  # Vision 2.0 Phase 6: Explainable AI
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -992,6 +1019,32 @@ app.include_router(daily_insights_router, prefix="/api/v1")  # Vision 2026 Q4: D
 app.include_router(steuerberater_packages_router, prefix="/api/v1")  # Vision 2026 Q4: Steuerberater Packages
 app.include_router(enhanced_banking_router, prefix="/api/v1")  # Vision 2026 Q4: Enhanced Banking
 app.include_router(handelsregister_monitoring_router, prefix="/api/v1")  # Vision 2026 Q4: Handelsregister Monitoring
+app.include_router(smart_tagging_router, prefix="/api/v1")  # Vision 2026+ Q1: Smart Auto-Tagging
+app.include_router(audit_trail_visualization_router, prefix="/api/v1")  # Vision 2026+ Q1: Audit Trail Visualization
+app.include_router(communication_hub_router, prefix="/api/v1")  # Vision 2026+ Q1: Kommunikations-Hub
+app.include_router(supplier_ocr_templates_router, prefix="/api/v1")  # Vision 2026+ Q1: Lieferanten OCR-Templates
+app.include_router(visual_workflow_builder_router, prefix="/api/v1")  # Vision 2026+ Q2: Visual Workflow Builder
+app.include_router(supplier_verification_router, prefix="/api/v1")  # Vision 2026+ Q2: Lieferanten-Verifizierung
+app.include_router(liquidity_scenarios_router, prefix="/api/v1")  # Vision 2026+ Q2: Liquiditaets-Szenarien
+app.include_router(ai_mentor_router, prefix="/api/v1")  # Vision 2026+ Q3: AI-Mentor (Feature #9)
+app.include_router(industry_benchmarks_router, prefix="/api/v1")  # Vision 2026+ Q3: Branchen-Benchmarks (Feature #10)
+app.include_router(onboarding_router, prefix="/api/v1")  # Vision 2026+ Q3: Tenant Onboarding Wizard (Feature #11)
+
+# Vision 2.0 Phase 2: Erweiterte Integrationen
+app.include_router(process_mining_router, prefix="/api/v1")  # Vision 2.0: Process Mining
+app.include_router(consent_router, prefix="/api/v1")  # Vision 2.0: Consent Management (DSGVO)
+app.include_router(credit_router, prefix="/api/v1")  # Vision 2.0: Creditreform Integration
+app.include_router(datev_booking_router, prefix="/api/v1")  # Vision 2.0: DATEV Buchungsvorschlaege
+app.include_router(classification_router, prefix="/api/v1")  # Vision 2.0 Phase 3: Multi-Label Classification
+
+# Vision 2.0 Phase 5: Privacy & Predictive Maintenance (100% Completion)
+app.include_router(privacy_analytics_router, prefix="/api/v1")  # Vision 2.0 Phase 5: Differential Privacy Analytics
+app.include_router(predictive_health_router, prefix="/api/v1")  # Vision 2.0 Phase 5: Predictive Maintenance
+
+# Vision 2.0 Phase 6: Autonomy Framework, Financial Insights & XAI
+app.include_router(action_queue_router, prefix="/api/v1")  # Vision 2.0 Phase 6: Action Approval Queue
+app.include_router(financial_insights_router, prefix="/api/v1")  # Vision 2.0 Phase 6: Financial Insights
+app.include_router(xai_router, prefix="/api/v1")  # Vision 2.0 Phase 6: Explainable AI
 
 
 # ==================== Health & Status Endpoints ====================
@@ -1045,8 +1098,8 @@ async def health_check():
     try:
         backpressure_status = get_backpressure_info()
     except Exception as e:
-        logger.debug("backpressure_info_failed", error=str(e))
-        backpressure_status = {"enabled": False, "error": str(e)}
+        logger.debug("backpressure_info_failed", **safe_error_log(e))
+        backpressure_status = {"enabled": False, **safe_error_log(e)}
 
     health = {
         "status": "healthy",
@@ -1530,12 +1583,12 @@ async def process_document(
         return result
 
     except Exception as e:
-        logger.error("ocr_processing_failed", error=str(e))
+        logger.error("ocr_processing_failed", **safe_error_log(e))
         # Record error metric
         monitor.metrics.record_error("ocr_processing_error")
         raise HTTPException(
             status_code=500,
-            detail=HTTPErrors.PROCESSING_FAILED.format(details=str(e))
+            detail=HTTPErrors.PROCESSING_FAILED.format(details=safe_error_detail(e, "Verarbeitung"))
         )
 
 
@@ -1675,10 +1728,10 @@ async def process_batch(
         }
 
     except Exception as e:
-        logger.error("batch_processing_failed", error=str(e))
+        logger.error("batch_processing_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=500,
-            detail=HTTPErrors.PROCESSING_FAILED.format(details=str(e))
+            detail=HTTPErrors.PROCESSING_FAILED.format(details=safe_error_detail(e, "Verarbeitung"))
         )
 
 
@@ -1845,10 +1898,10 @@ async def get_backpressure_status_endpoint(
             "backpressure": info
         }
     except Exception as e:
-        logger.error("backpressure_status_error", error=str(e))
+        logger.error("backpressure_status_error", **safe_error_log(e))
         return {
             "success": False,
-            "error": str(e),
+            "error": safe_error_detail(e, "Vorgang"),
             "backpressure": {
                 "enabled": False,
                 "current_status": "unknown"

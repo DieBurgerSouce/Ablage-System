@@ -13,6 +13,7 @@ Matching-Strategien (nach Prioritaet):
 from dataclasses import dataclass, field
 from datetime import datetime, date, timedelta
 from app.core.datetime_utils import utc_now
+from app.core.safe_errors import safe_error_log
 from decimal import Decimal, InvalidOperation
 from typing import Optional, List, Dict, Any, Tuple
 from uuid import UUID
@@ -280,7 +281,7 @@ class ReconciliationService:
                 logger.warning(
                     "batch_reconcile_error",
                     transaction_id=str(tx.id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 unmatched_count += 1
 
@@ -814,6 +815,7 @@ class ReconciliationService:
     ) -> List[MatchCandidate]:
         """Match by Fuzzy Name-Matching."""
         from app.db.models import Document
+
 
         tx_name = transaction.counterparty_name
         if not tx_name:

@@ -765,10 +765,11 @@ class HandelsregisterMonitoringService:
                 monitored.next_check_at = now + timedelta(days=1)
 
             except Exception as e:
+                # SECURITY: Keine PII/Exception-Details in Logs (CWE-532)
                 logger.error(
                     "monitoring_check_failed",
                     entity_id=str(monitored.entity_id),
-                    error=str(e),
+                    error_type=type(e).__name__,
                 )
 
         return alerts
@@ -788,15 +789,20 @@ class HandelsregisterMonitoringService:
             )
 
             if insolvency and insolvency.insolvency_type != InsolvencyType.NONE:
+                # SECURITY: Keine PII (Entity-Namen) in Alert-Titles (CWE-532/GDPR)
+                # Entity-ID kann zur Aufloesung verwendet werden, Name nicht in Logs/Titles
                 alert = MonitoringAlert(
                     entity_id=monitored.entity_id,
                     company_id=monitored.company_id,
-                    entity_name=monitored.entity_name,
+                    entity_name=monitored.entity_name,  # Bleibt fuer interne Verarbeitung
                     event_type=MonitoringEvent.INSOLVENCY_NOTICE,
                     severity="critical",
-                    title=f"Insolvenz: {monitored.entity_name}",
+                    title="Insolvenzverfahren gemeldet",  # SECURITY: Generischer Titel
                     message=f"Insolvenzverfahren {insolvency.insolvency_type.value} gemeldet",
-                    details=insolvency.to_dict(),
+                    # SECURITY: Nur nicht-PII Details, keine Firmennamen in details
+                    details=AlertDetailsDict(
+                        source="insolvenzregister",
+                    ),
                 )
                 alerts.append(alert)
                 self._alerts[alert.id] = alert
@@ -816,13 +822,14 @@ class HandelsregisterMonitoringService:
             )
 
             if new_validation.status != monitored.last_validation.status:
+                # SECURITY: Keine PII (Entity-Namen) in Alert-Titles (CWE-532/GDPR)
                 alert = MonitoringAlert(
                     entity_id=monitored.entity_id,
                     company_id=monitored.company_id,
-                    entity_name=monitored.entity_name,
+                    entity_name=monitored.entity_name,  # Bleibt fuer interne Verarbeitung
                     event_type=MonitoringEvent.STATUS_CHANGE,
                     severity="high",
-                    title=f"Status-Aenderung: {monitored.entity_name}",
+                    title="Handelsregister Status-Aenderung",  # SECURITY: Generischer Titel
                     message=f"Status geaendert von {monitored.last_validation.status.value} zu {new_validation.status.value}",
                     old_value=monitored.last_validation.status.value,
                     new_value=new_validation.status.value,

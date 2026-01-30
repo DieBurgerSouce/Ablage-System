@@ -47,6 +47,7 @@ from app.db.schemas import (
     ReactionAdd,
 )
 from app.services.collaboration import CommentService, get_comment_service
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -274,7 +275,7 @@ async def _create_mention_notifications(
             logger.warning(
                 "mention_notification_failed",
                 mention_user_id=str(mention.userId),
-                error=str(e),
+                **safe_error_log(e),
             )
             continue
 
@@ -576,6 +577,7 @@ async def delete_comment(
 
     # Soft-Delete mit Timestamp (Migration 103)
     from app.core.datetime_utils import utc_now
+
     comment.is_deleted = True  # Legacy-Flag
     comment.deleted_at = utc_now()  # Neuer Timestamp
     comment.deleted_by_id = current_user.id  # Wer hat geloescht

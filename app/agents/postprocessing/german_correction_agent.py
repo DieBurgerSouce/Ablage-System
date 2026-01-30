@@ -31,6 +31,7 @@ import structlog
 
 from app.agents.base import PostprocessingAgent
 from app.german_validator import GermanValidator
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -271,7 +272,7 @@ class CustomVocabularyManager:
                 logger.warning(
                     "vocabulary_load_failed",
                     file=str(vocab_file),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
     def _load_vocabulary(self, project_id: str) -> None:
@@ -455,7 +456,7 @@ class HunspellDictionary:
                     logger.warning(
                         "hunspell_init_failed",
                         path=str(dic_path),
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
         # Try system default
@@ -466,7 +467,7 @@ class HunspellDictionary:
         except Exception as e:
             logger.info(
                 "hunspell_not_found",
-                error=str(e),
+                **safe_error_log(e),
                 message="Hunspell DE Dictionary nicht verfügbar",
             )
 
@@ -771,7 +772,7 @@ class GermanCorrectionAgent(PostprocessingAgent):
         except Exception as e:
             self.logger.warning(
                 "language_tool_init_failed",
-                error=str(e),
+                **safe_error_log(e),
             )
             self._language_tool = None
 
@@ -1714,7 +1715,7 @@ class GermanCorrectionAgent(PostprocessingAgent):
         except Exception as e:
             self.logger.warning(
                 "languagetool_error",
-                error=str(e),
+                **safe_error_log(e),
             )
             return text, corrections
 

@@ -11,6 +11,7 @@ from decimal import Decimal
 from typing import Optional, List, Union
 import structlog
 import re
+from app.core.safe_errors import safe_error_detail, safe_error_log
 
 from mt940 import parse as mt940_parse
 from mt940.models import Transaction as MT940Transaction
@@ -151,7 +152,7 @@ class MT940Parser(BaseParser):
             logger.exception(f"Fehler beim Parsen des MT940: {e}")
             result.errors.append({
                 "type": "parse_error",
-                "message": str(e),
+                "message": safe_error_detail(e, "MT940"),
             })
 
         return result

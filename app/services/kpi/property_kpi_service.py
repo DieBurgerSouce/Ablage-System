@@ -27,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.models import PrivatProperty, PrivatRentalIncome, PrivatUtilityStatement, PrivatLoan
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -489,7 +490,7 @@ class PropertyKPIService:
                 logger.warning(
                     "property_kpi_calculation_failed",
                     property_id=str(property_id),
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 continue
 

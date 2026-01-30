@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.db.models import BatchJob, ProcessingStatus
 from app.db.schemas import ExportFormat
 from app.workers.celery_app import celery_app
@@ -299,11 +300,11 @@ def batch_export_task(
                     logger.error(
                         "batch_export_error",
                         batch_start=batch_start,
-                        error=str(e),
+                        **safe_error_log(e),
                     )
                     errors.append({
                         "batch_start": batch_start,
-                        "error": str(e),
+                        "error": safe_error_detail(e, "Vorgang"),
                     })
                     # Continue with next batch on partial failure
 
@@ -342,22 +343,22 @@ def batch_export_task(
             job_uuid,
             success=False,
             result_summary={"cancelled": True},
-            error_message=str(e),
+            error_message=safe_error_detail(e, "Export"),
         ))
-        return {"cancelled": True, "message": str(e)}
+        return {"cancelled": True, "message": safe_error_detail(e, "Export")}
 
     except Exception as e:
         logger.error(
             "batch_export_failed",
             job_id=job_id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         _run_async(_complete_job(
             job_uuid,
             success=False,
-            result_summary={"error": str(e)},
-            error_message=str(e),
+            result_summary={"error": safe_error_detail(e, "Vorgang")},
+            error_message=safe_error_detail(e, "Export"),
         ))
         raise
 
@@ -464,7 +465,7 @@ def check_scheduled_exports() -> Dict:
                     logger.error(
                         "scheduled_export_trigger_failed",
                         export_id=str(scheduled_export.id),
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
         return {"checked": True, "started": started_count, "checked_at": now.isoformat()}
@@ -709,7 +710,7 @@ def run_scheduled_export_task(
         logger.error(
             "run_scheduled_export_failed",
             scheduled_export_id=scheduled_export_id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         # Update failure status
@@ -721,7 +722,7 @@ def run_scheduled_export_task(
                     .values(
                         status=ProcessingStatus.FAILED,
                         completed_at=datetime.now(timezone.utc),
-                        error_message=str(e),
+                        error_message=safe_error_detail(e, "Export"),
                     )
                 )
                 from app.db.models import ScheduledExport

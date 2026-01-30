@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from io import StringIO
 
 import structlog
+from app.core.safe_errors import safe_error_log
 from prometheus_client import (
     Counter,
     Gauge,
@@ -354,7 +355,7 @@ class GPUMetricsService:
                     "cuda_version": "unavailable",
                 })
         except Exception as e:
-            logger.warning("gpu_info_update_failed", error=str(e))
+            logger.warning("gpu_info_update_failed", **safe_error_log(e))
             gpu_available.set(0)
 
     def update_gpu_memory_metrics(self) -> Dict[str, Any]:
@@ -367,6 +368,7 @@ class GPUMetricsService:
         with self._lock:
             try:
                 import torch
+
 
                 if not torch.cuda.is_available():
                     return {"available": False}
@@ -399,8 +401,8 @@ class GPUMetricsService:
                 }
 
             except Exception as e:
-                logger.warning("gpu_memory_metrics_update_failed", error=str(e))
-                return {"available": False, "error": str(e)}
+                logger.warning("gpu_memory_metrics_update_failed", **safe_error_log(e))
+                return {"available": False, **safe_error_log(e)}
 
     def record_ocr_request(
         self,
@@ -619,7 +621,7 @@ class GPUMetricsService:
             try:
                 self.update_gpu_memory_metrics()
             except Exception as e:
-                logger.warning("gpu_metrics_auto_update_error", error=str(e))
+                logger.warning("gpu_metrics_auto_update_error", **safe_error_log(e))
 
             time.sleep(self._update_interval)
 

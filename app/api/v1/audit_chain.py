@@ -23,6 +23,8 @@ from pydantic import BaseModel, Field
 from app.db.models import User
 from app.api.dependencies import get_db, get_current_active_user, get_current_company_id
 from app.services.compliance.merkle_tree_service import MerkleTreeService
+from app.core.safe_errors import safe_error_detail, safe_error_log
+from app.core.security_auth import build_content_disposition
 
 logger = structlog.get_logger(__name__)
 
@@ -93,11 +95,11 @@ async def get_status(
             "audit_chain.status_failed",
             user_id=str(current_user.id),
             company_id=str(company_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Fehler beim Laden des Audit-Chain Status",
+            detail=safe_error_detail(e, "Audit-Chain Status"),
         )
 
 
@@ -157,11 +159,11 @@ async def get_merkle_proof(
         logger.error(
             "audit_chain.merkle_proof_failed",
             entry_hash=entry_hash[:16] + "...",
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Fehler beim Generieren des Merkle Proofs",
+            detail=safe_error_detail(e, "Merkle Proof"),
         )
 
 
@@ -227,11 +229,11 @@ async def verify_proof(
         logger.error(
             "audit_chain.verify_proof_failed",
             entry_hash=request.entry_hash[:16] + "...",
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Fehler bei der Proof-Verifikation",
+            detail=safe_error_detail(e, "Proof-Verifikation"),
         )
 
 
@@ -274,11 +276,11 @@ async def get_integrity_report(
             "audit_chain.integrity_report_failed",
             user_id=str(current_user.id),
             company_id=str(company_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Fehler beim Erstellen des Integritaets-Reports",
+            detail=safe_error_detail(e, "Integritaets-Report"),
         )
 
 
@@ -339,7 +341,7 @@ async def export_chain(
             content=export_data,
             media_type="application/json",
             headers={
-                "Content-Disposition": f"attachment; filename=audit_chain_{company_id}_{now.strftime('%Y%m%d')}.json"
+                "Content-Disposition": build_content_disposition(f"audit_chain_{company_id}_{now.strftime('%Y%m%d')}.json", "attachment")
             },
         )
     except Exception as e:
@@ -347,9 +349,9 @@ async def export_chain(
             "audit_chain.export_failed",
             user_id=str(current_user.id),
             company_id=str(company_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Fehler beim Exportieren der Audit-Chain",
+            detail=safe_error_detail(e, "Audit-Chain Export"),
         )

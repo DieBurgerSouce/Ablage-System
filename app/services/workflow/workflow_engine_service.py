@@ -611,7 +611,7 @@ class WorkflowEngineService:
             logger.error(
                 "escalation_notification_failed",
                 request_id=str(request.id),
-                error=str(e),
+                **safe_error_log(e),
             )
 
     async def _on_request_approved(self, request: ApprovalRequest) -> None:
@@ -727,6 +727,7 @@ class WorkflowEngineService:
         """
         # Importiere die relevanten Models dynamisch
         from app.db.models import (
+
             Invoice,
             Expense,
             Document,

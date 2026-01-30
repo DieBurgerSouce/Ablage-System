@@ -26,6 +26,7 @@ from app.db.models import User, PasswordResetToken
 from app.services.notification_service import NotificationService
 from app.core.config import settings
 from app.core.security import get_password_hash
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -209,7 +210,7 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht darauf.
             return True, standard_message
 
         except Exception as e:
-            logger.error("password_reset_request_failed", error=str(e))
+            logger.error("password_reset_request_failed", **safe_error_log(e))
             await db.rollback()
             # Trotzdem Standard-Antwort (keine Fehlerdetails preisgeben)
             return True, standard_message
@@ -264,7 +265,7 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht darauf.
             return True, user, "Token gültig"
 
         except Exception as e:
-            logger.error("password_reset_validation_failed", error=str(e))
+            logger.error("password_reset_validation_failed", **safe_error_log(e))
             return False, None, "Validierung fehlgeschlagen"
 
     @classmethod
@@ -432,7 +433,7 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht darauf.
             return True, "Passwort erfolgreich zurückgesetzt"
 
         except Exception as e:
-            logger.error("password_reset_failed", error=str(e))
+            logger.error("password_reset_failed", **safe_error_log(e))
             await db.rollback()
             return False, "Passwort konnte nicht zurückgesetzt werden"
 
@@ -467,7 +468,7 @@ Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht darauf.
             return deleted_count
 
         except Exception as e:
-            logger.error("password_reset_cleanup_failed", error=str(e))
+            logger.error("password_reset_cleanup_failed", **safe_error_log(e))
             await db.rollback()
             return 0
 

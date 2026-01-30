@@ -32,6 +32,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple
 
 import structlog
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -388,8 +389,8 @@ class SEPAQRParserService:
                 payment.origin_identification = lines[11].strip()
 
         except Exception as e:
-            payment.parse_errors.append(f"Parse-Fehler: {str(e)}")
-            logger.warning("sepa_qr_parse_exception", error=str(e))
+            payment.parse_errors.append(safe_error_detail(e, "SEPA-QR"))
+            logger.warning("sepa_qr_parse_exception", **safe_error_log(e))
 
         return payment
 

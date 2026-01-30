@@ -27,6 +27,7 @@ from app.agents.base import AgentResourceError, OCRAgent, OCRResult
 from app.gpu_manager import GPUManager
 from app.core.exceptions import OCRGPUOutOfMemoryError, InferenceTimeoutError
 from app.services.circuit_breaker import circuit_breaker_protected, get_circuit_breaker_registry
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 
 class GOTOCRAgent(OCRAgent):
@@ -176,7 +177,7 @@ class GOTOCRAgent(OCRAgent):
             self.logger.error(
                 "got_ocr_gpu_oom",
                 document_id=document_id,
-                error=str(e),
+                **safe_error_log(e),
                 fallback_backends=self.FALLBACK_BACKENDS,
                 supports_cpu=self.SUPPORTS_CPU_FALLBACK,
             )
@@ -212,7 +213,7 @@ class GOTOCRAgent(OCRAgent):
             self.logger.error(
                 "got_ocr_processing_error",
                 document_id=document_id,
-                error=str(e),
+                **safe_error_log(e),
                 exc_info=True,
             )
             raise
@@ -377,10 +378,10 @@ class GOTOCRAgent(OCRAgent):
             except Exception as e:
                 # Mark as permanently failed to prevent infinite retry loops
                 GOTOCRAgent._model_load_failed = True
-                GOTOCRAgent._model_load_error = str(e)
+                GOTOCRAgent._model_load_error = safe_error_detail(e, "GOT-OCR")
                 self.logger.error(
                     "got_ocr_model_load_failed",
-                    error=str(e),
+                    **safe_error_log(e),
                     exc_info=True,
                     permanent_failure=True
                 )
@@ -588,7 +589,7 @@ class GOTOCRAgent(OCRAgent):
         except Exception as e:
             self.logger.warning(
                 "got_confidence_calculation_error",
-                error=str(e),
+                **safe_error_log(e),
                 fallback="heuristic"
             )
             return {
@@ -736,9 +737,9 @@ class GOTOCRAgent(OCRAgent):
             return result
 
         except Exception as e:
-            self.logger.error("got_ocr_inference_error", error=str(e), exc_info=True)
+            self.logger.error("got_ocr_inference_error", **safe_error_log(e), exc_info=True)
             return self.create_error_result(
-                error=str(e),
+                **safe_error_log(e),
                 error_code="OCR_INFERENCE_ERROR",
                 processing_time_ms=int((time.perf_counter() - start_time) * 1000)
             )
@@ -758,6 +759,7 @@ class GOTOCRAgent(OCRAgent):
         # OPTIMIERUNG: Verwende Unified German Postprocessor
         try:
             from app.services.german_text_postprocessor import get_german_postprocessor
+
             postprocessor = get_german_postprocessor()
             german_result = postprocessor.postprocess(result.text, {"validate": True})
 

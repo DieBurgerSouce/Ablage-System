@@ -9,6 +9,7 @@ Orchestriert den Import von Kontoauszuegen:
 
 from datetime import datetime
 from app.core.datetime_utils import utc_now
+from app.core.safe_errors import safe_error_detail
 from decimal import Decimal
 from typing import Optional, List, Tuple, BinaryIO, Union
 from uuid import UUID, uuid4
@@ -326,7 +327,7 @@ class ImportService:
                 error_count += 1
                 errors.append({
                     "transaction_id": tx.transaction_id,
-                    "error": str(e),
+                    "error": safe_error_detail(e, "Vorgang"),
                 })
                 logger.warning(f"Fehler beim Import der Transaktion: {e}")
 

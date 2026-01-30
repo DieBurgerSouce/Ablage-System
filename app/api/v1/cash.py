@@ -60,6 +60,7 @@ from app.middleware.company_context import (
     require_cash_permission,
 )
 from app.services.cash_service import CashService
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -437,7 +438,7 @@ async def create_entry(
         if idempotency_key:
             await idempotency_service.release_lock(idempotency_key, user_id)
         # SECURITY FIX 28-21: Generische Fehlermeldung
-        logger.warning("cash_entry_create_validation_error", error=str(e))
+        logger.warning("cash_entry_create_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ungueltige Kassenbucheingabe. Bitte Eingaben pruefen."
@@ -524,7 +525,7 @@ async def cancel_entry(
         )
     except ValueError as e:
         # SECURITY FIX 28-21: Generische Fehlermeldung
-        logger.warning("cash_entry_cancel_validation_error", error=str(e))
+        logger.warning("cash_entry_cancel_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Stornierung fehlgeschlagen. Bitte Eingaben pruefen."
@@ -687,7 +688,7 @@ async def perform_cash_count(
         )
     except ValueError as e:
         # SECURITY FIX 28-21: Generische Fehlermeldung
-        logger.warning("cash_count_validation_error", error=str(e))
+        logger.warning("cash_count_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Kassensturz fehlgeschlagen. Bitte Eingaben pruefen."

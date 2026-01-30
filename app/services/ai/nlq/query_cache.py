@@ -50,6 +50,9 @@ class QueryCache:
     def _compute_hash(self, natural_query: str, company_id: str) -> str:
         """Compute cache key hash.
 
+        SECURITY: Multi-Tenant Cache Isolation (CWE-639)
+        Der Hash beinhaltet company_id um Cross-Tenant Data Leaks zu verhindern.
+
         Args:
             natural_query: Natural language query
             company_id: Company ID for multi-tenant isolation
@@ -59,14 +62,30 @@ class QueryCache:
         """
         # Normalize query (lowercase, strip whitespace)
         normalized = natural_query.lower().strip()
-        # Include company_id for multi-tenant isolation
+        # SECURITY: company_id im Hash fuer Multi-Tenant Isolation
         key_data = f"{normalized}:{company_id}"
         return hashlib.sha256(key_data.encode()).hexdigest()
+
+    def _get_company_key_prefix(self, company_id: str) -> str:
+        """Get cache key prefix for a specific company.
+
+        SECURITY: Enables per-company cache invalidation (CWE-639).
+
+        Args:
+            company_id: Company ID
+
+        Returns:
+            Key prefix for company-specific cache entries
+        """
+        return f"{self._key_prefix}{company_id}:"
 
     async def get_cached(
         self, natural_query: str, company_id: str
     ) -> Optional[CachedResult]:
         """Get cached query result.
+
+        SECURITY: Multi-Tenant Cache Isolation (CWE-639)
+        Cache keys enthalten company_id fuer sichere Filterung.
 
         Args:
             natural_query: Natural language query
@@ -76,7 +95,8 @@ class QueryCache:
             CachedResult if found, None otherwise
         """
         query_hash = self._compute_hash(natural_query, company_id)
-        cache_key = f"{self._key_prefix}{query_hash}"
+        # SECURITY: Cache-Key enthält company_id für per-Company Invalidation
+        cache_key = f"{self._key_prefix}{company_id}:{query_hash}"
 
         try:
             cached_data = await self.redis.get(cache_key)
@@ -99,7 +119,7 @@ class QueryCache:
             logger.warning(
                 "cache_get_failed",
                 query_hash=query_hash,
-                error=str(e),
+                **safe_error_log(e),
             )
             return None
 
@@ -130,8 +150,10 @@ class QueryCache:
         """
         import time
 
+
         query_hash = self._compute_hash(natural_query, company_id)
-        cache_key = f"{self._key_prefix}{query_hash}"
+        # SECURITY: Cache-Key enthält company_id für per-Company Invalidation
+        cache_key = f"{self._key_prefix}{company_id}:{query_hash}"
 
         # Convert rows to JSON-serializable format
         json_rows: List[List[Any]] = [list(row) for row in rows]
@@ -167,13 +189,16 @@ class QueryCache:
             logger.warning(
                 "cache_set_failed",
                 query_hash=query_hash,
-                error=str(e),
+                **safe_error_log(e),
             )
 
     async def invalidate_cached(
         self, natural_query: str, company_id: str
     ) -> bool:
         """Invalidate cached query result.
+
+        SECURITY: Multi-Tenant Cache Isolation (CWE-639)
+        Invalidiert nur Cache-Einträge der spezifischen Company.
 
         Args:
             natural_query: Natural language query
@@ -183,7 +208,8 @@ class QueryCache:
             True if cache entry was deleted
         """
         query_hash = self._compute_hash(natural_query, company_id)
-        cache_key = f"{self._key_prefix}{query_hash}"
+        # SECURITY: Cache-Key enthält company_id für per-Company Invalidation
+        cache_key = f"{self._key_prefix}{company_id}:{query_hash}"
 
         try:
             deleted = await self.redis.delete(cache_key)
@@ -195,32 +221,36 @@ class QueryCache:
             logger.warning(
                 "cache_invalidate_failed",
                 query_hash=query_hash,
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 
     async def invalidate_all(self, company_id: str) -> int:
-        """Invalidate all cached queries for a company.
+        """Invalidate all cached queries for a SPECIFIC company.
+
+        SECURITY: Multi-Tenant Cache Isolation (CWE-639)
+        Diese Methode loescht NUR Cache-Eintraege der angegebenen company_id,
+        NICHT aller Tenants. Dies verhindert Cross-Tenant Cache-Manipulation.
 
         Args:
-            company_id: Company ID
+            company_id: Company ID - NUR diese Company wird invalidiert
 
         Returns:
-            Number of cache entries deleted
+            Number of cache entries deleted for this company
         """
         try:
-            # Scan for all cache keys (note: this is O(N) operation)
-            pattern = f"{self._key_prefix}*"
+            # SECURITY: Pattern ist company_id-spezifisch (CWE-639)
+            # Verhindert versehentliches Loeschen von Cache anderer Tenants
+            pattern = f"{self._key_prefix}{company_id}:*"
             deleted_count = 0
 
             async for key in self.redis.scan_iter(match=pattern):
-                # Note: We can't filter by company_id in key,
-                # so we delete all NLQ cache entries
+                # SECURITY: Nur Keys dieser Company werden geloescht
                 await self.redis.delete(key)
                 deleted_count += 1
 
             logger.info(
-                "cache_invalidate_all",
+                "cache_invalidate_company",
                 company_id=company_id,
                 deleted_count=deleted_count,
             )
@@ -228,9 +258,9 @@ class QueryCache:
 
         except Exception as e:
             logger.warning(
-                "cache_invalidate_all_failed",
+                "cache_invalidate_company_failed",
                 company_id=company_id,
-                error=str(e),
+                error_type=type(e).__name__,  # SECURITY: Kein str(e) - koennte PII enthalten
             )
             return 0
 
@@ -265,5 +295,5 @@ class QueryCache:
             }
 
         except Exception as e:
-            logger.warning("cache_stats_failed", error=str(e))
+            logger.warning("cache_stats_failed", **safe_error_log(e))
             return {"total_entries": 0, "estimated_size_bytes": 0}

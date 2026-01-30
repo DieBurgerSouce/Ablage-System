@@ -13,6 +13,7 @@ from enum import Enum
 from typing import Any, Callable, Dict, Optional, Set, Type, TypeVar
 
 import structlog
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -263,7 +264,7 @@ class RetryStrategy:
                             "non_retryable_exception",
                             phase=phase.value,
                             exception_type=type(e).__name__,
-                            error=str(e),
+                            **safe_error_log(e),
                         )
                         raise
                     # Max retries reached
@@ -279,7 +280,7 @@ class RetryStrategy:
                     max_retries=retry_config.max_retries,
                     delay_seconds=round(delay, 2),
                     error_type=type(e).__name__,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
                 # Call optional retry callback

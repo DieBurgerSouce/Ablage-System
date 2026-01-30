@@ -20,6 +20,7 @@ from sqlalchemy import select, func
 
 from app.workers.celery_app import celery_app, GPUTask, CPUTask
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.db.session import get_async_session_context
 from app.db.models import (
     Document,
@@ -162,7 +163,7 @@ def chunk_document(
                     "chunk_document_task_failed",
                     task_id=task_id,
                     document_id=document_id,
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 raise
 
@@ -279,13 +280,11 @@ def batch_chunk_documents(
                     failed += 1
                     results.append({
                         "document_id": str(doc.id),
-                        "success": False,
-                        "error": str(e)
-                    })
+                        "success": False, **safe_error_log(e)})
                     logger.error(
                         "batch_chunk_document_failed",
                         document_id=str(doc.id),
-                        error=str(e)
+                        **safe_error_log(e)
                     )
 
             processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
@@ -516,7 +515,7 @@ def run_rag_batch_job(
             except Exception as e:
                 # Job als fehlgeschlagen markieren
                 job.status = RAGJobStatus.FAILED
-                job.error_message = str(e)
+                job.error_message = safe_error_detail(e, "RAG")
                 job.retry_count += 1
                 job.completed_at = datetime.now(timezone.utc)
                 await session.commit()
@@ -525,7 +524,7 @@ def run_rag_batch_job(
                     "rag_batch_job_failed",
                     task_id=task_id,
                     job_id=job_id,
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 raise
 
@@ -589,7 +588,7 @@ async def _run_chunk_documents_job(
         except Exception as e:
             failed += 1
             job.items_failed = failed
-            logger.error("chunk_job_document_failed", document_id=str(doc.id), error=str(e))
+            logger.error("chunk_job_document_failed", document_id=str(doc.id), **safe_error_log(e))
 
     return {
         "total_documents": total,

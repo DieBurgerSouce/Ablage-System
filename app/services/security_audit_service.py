@@ -151,6 +151,7 @@ class SecurityAuditService:
         """
         from app.core.config import settings
 
+
         findings: List[AuditFinding] = []
 
         for check in self._checks:
@@ -162,7 +163,7 @@ class SecurityAuditService:
                 logger.error(
                     "security_check_failed",
                     check=check.__name__,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         # Summary berechnen

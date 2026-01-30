@@ -34,6 +34,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 from app.services.rag.llm_service import (
     LLMService,
     LLMMessage,
@@ -217,7 +218,7 @@ class PrivatKIPromptService:
             logger.error(
                 "template_render_error",
                 template=template_name,
-                error=str(e)
+                **safe_error_log(e)
             )
             raise
 
@@ -286,7 +287,7 @@ class PrivatKIPromptService:
             logger.warning(
                 "json_parse_error",
                 response_preview=text[:200],
-                error=str(e)
+                **safe_error_log(e)
             )
             # Fallback: Leeres Dict
             return {}
@@ -413,7 +414,7 @@ class PrivatKIPromptService:
             logger.warning(
                 "space_context_load_error",
                 space_id=str(space_id),
-                error=str(e)
+                **safe_error_log(e)
             )
             # Bei Fehler: Leere Kontext-Liste zurueckgeben
             return []
@@ -522,7 +523,7 @@ class PrivatKIPromptService:
             logger.error(
                 "property_analysis_error",
                 property_id=str(property_id),
-                error=str(e)
+                **safe_error_log(e)
             )
             raise
 
@@ -615,7 +616,7 @@ class PrivatKIPromptService:
 
         except Exception as e:
             KI_ANALYSIS_REQUESTS.labels(analysis_type="vehicle", status="error").inc()
-            logger.error("vehicle_analysis_error", vehicle_id=str(vehicle_id), error=str(e))
+            logger.error("vehicle_analysis_error", vehicle_id=str(vehicle_id), **safe_error_log(e))
             raise
 
     async def get_investment_advice(
@@ -717,7 +718,7 @@ class PrivatKIPromptService:
 
         except Exception as e:
             KI_ANALYSIS_REQUESTS.labels(analysis_type="investment", status="error").inc()
-            logger.error("investment_advice_error", space_id=str(space_id), error=str(e))
+            logger.error("investment_advice_error", space_id=str(space_id), **safe_error_log(e))
             raise
 
     async def check_insurance_coverage(
@@ -738,6 +739,7 @@ class PrivatKIPromptService:
         """
         import time
         from app.db.models import PrivatInsurance
+
 
         start_time = time.perf_counter()
         cache_key = self._get_cache_key("insurance", space_id)
@@ -814,7 +816,7 @@ class PrivatKIPromptService:
 
         except Exception as e:
             KI_ANALYSIS_REQUESTS.labels(analysis_type="insurance", status="error").inc()
-            logger.error("insurance_check_error", space_id=str(space_id), error=str(e))
+            logger.error("insurance_check_error", space_id=str(space_id), **safe_error_log(e))
             raise
 
     async def financial_qa(
@@ -907,7 +909,7 @@ class PrivatKIPromptService:
 
         except Exception as e:
             KI_ANALYSIS_REQUESTS.labels(analysis_type="qa", status="error").inc()
-            logger.error("financial_qa_error", question=question[:100], error=str(e))
+            logger.error("financial_qa_error", question=question[:100], **safe_error_log(e))
             raise
 
     def clear_cache(self, entity_type: Optional[str] = None, entity_id: Optional[UUID] = None) -> int:

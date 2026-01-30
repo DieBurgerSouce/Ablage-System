@@ -13,6 +13,7 @@ Feinpoliert und durchdacht - Kontinuierliches Lernen für optimale Ergebnisse.
 
 import asyncio
 import json
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -22,6 +23,7 @@ import numpy as np
 import structlog
 
 from app.agents.orchestration.ml_router_model import (
+
     OCRRouterFeatures,
     OCRRouterModel,
 )
@@ -285,7 +287,7 @@ class TrainingDataBuffer:
             logger.info("trainingssamples_geladen", count=len(self.samples))
 
         except Exception as e:
-            logger.error("trainingsdaten_laden_fehler", error=str(e))
+            logger.error("trainingsdaten_laden_fehler", **safe_error_log(e))
             self.samples = []
 
     def get_stats(self) -> Dict[str, Any]:
@@ -397,7 +399,7 @@ class MLRouterTrainer:
             self._current_model = OCRRouterModel(model_path=latest_model)
             logger.info("modell_geladen", model_name=latest_model.name)
         except Exception as e:
-            logger.error("modell_laden_fehler", error=str(e))
+            logger.error("modell_laden_fehler", **safe_error_log(e))
 
     @property
     def model(self) -> Optional[OCRRouterModel]:
@@ -609,16 +611,16 @@ class MLRouterTrainer:
             }
 
         except ValueError as e:
-            logger.warning("training_fehlgeschlagen", error=str(e))
+            logger.warning("training_fehlgeschlagen", **safe_error_log(e))
             return {
                 "status": "failed",
-                "reason": str(e),
+                "reason": safe_error_detail(e, "ML-Training"),
             }
         except Exception as e:
             logger.exception("Unerwarteter Fehler beim Training")
             return {
                 "status": "error",
-                "reason": str(e),
+                "reason": safe_error_detail(e, "ML-Training"),
             }
 
     def evaluate_model(
@@ -755,7 +757,7 @@ class MLRouterTrainer:
                         )
 
             except Exception as e:
-                logger.error("hintergrund_training_fehler", error=str(e))
+                logger.error("hintergrund_training_fehler", **safe_error_log(e))
 
             # Wait for next check
             await asyncio.sleep(check_interval_hours * 3600)

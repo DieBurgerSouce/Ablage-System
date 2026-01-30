@@ -20,7 +20,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
 from app.db.models import BatchJob, Document, ProcessingStatus
+from app.core.safe_errors import safe_error_log
 from app.services.webhook_dispatcher import (
+
     get_webhook_dispatcher,
     WebhookEventType
 )
@@ -240,7 +242,7 @@ class BatchJobService:
             logger.warning(
                 "batch_webhook_dispatch_failed",
                 batch_id=str(batch_id)[:8],
-                error=str(e)
+                **safe_error_log(e)
             )
 
         logger.info(

@@ -29,6 +29,7 @@ from app.services.search_metrics import get_search_metrics
 from app.services.backup_metrics_service import get_backup_metrics
 from app.services.gpu_metrics_service import get_gpu_metrics_service
 from app.services.datev.metrics import get_datev_metrics_service
+from app.core.safe_errors import safe_error_log
 
 router = APIRouter(prefix="/metrics", tags=["metrics"])
 
@@ -407,8 +408,8 @@ async def gpu_metrics_detailed(
         cache_service = get_ocr_cache_service()
         cache_stats = await cache_service.get_stats()
     except Exception as e:
-        logger.warning("gpu_metrics_cache_stats_failed", error=str(e))
-        cache_stats = {"error": str(e)}
+        logger.warning("gpu_metrics_cache_stats_failed", **safe_error_log(e))
+        cache_stats = {"error": safe_error_detail(e, "Vorgang")}
 
     # Get GPU manager stats
     try:
@@ -416,8 +417,8 @@ async def gpu_metrics_detailed(
         gpu_manager = get_gpu_manager()
         manager_stats = gpu_manager.get_detailed_status()
     except Exception as e:
-        logger.warning("gpu_metrics_manager_stats_failed", error=str(e))
-        manager_stats = {"error": str(e)}
+        logger.warning("gpu_metrics_manager_stats_failed", **safe_error_log(e))
+        manager_stats = {"error": safe_error_detail(e, "Vorgang")}
 
     return {
         "gpu_hardware": gpu_summary.get("gpu", {}),
@@ -719,8 +720,8 @@ async def get_cache_hit_rate_metrics(
             "overall": ocr_stats.get("overall", {}),
         }
     except Exception as e:
-        logger.warning("ocr_cache_stats_error", error=str(e))
-        result["ocr_cache"]["error"] = str(e)
+        logger.warning("ocr_cache_stats_error", **safe_error_log(e))
+        result["ocr_cache"]["error"] = safe_error_detail(e, "Vorgang")
 
     # Try to get Prometheus metrics
     try:
@@ -783,8 +784,8 @@ async def get_cache_hit_rate_metrics(
             },
         }
     except Exception as e:
-        logger.warning("prometheus_metrics_error", error=str(e))
-        result["prometheus_metrics"]["error"] = str(e)
+        logger.warning("prometheus_metrics_error", **safe_error_log(e))
+        result["prometheus_metrics"]["error"] = safe_error_detail(e, "Vorgang")
 
     # Generate recommendations
     recommendations = []
@@ -872,8 +873,8 @@ async def get_database_metrics(
                 utilization = pool.checkedout() / total_connections * 100
                 result["connection_pool"]["utilization_percent"] = round(utilization, 2)
     except Exception as e:
-        logger.warning("db_pool_stats_error", error=str(e))
-        result["connection_pool"]["error"] = str(e)
+        logger.warning("db_pool_stats_error", **safe_error_log(e))
+        result["connection_pool"]["error"] = safe_error_detail(e, "Vorgang")
 
     # Get Prometheus metrics for query stats
     try:
@@ -916,8 +917,8 @@ async def get_database_metrics(
         }
 
     except Exception as e:
-        logger.warning("db_prometheus_metrics_error", error=str(e))
-        result["query_stats"]["error"] = str(e)
+        logger.warning("db_prometheus_metrics_error", **safe_error_log(e))
+        result["query_stats"]["error"] = safe_error_detail(e, "Vorgang")
 
     # Generate recommendations
     recommendations = []
@@ -1153,7 +1154,7 @@ async def get_slo_metrics(
             else:
                 sli_values["gpu_vram_usage"] = 0.0
         except Exception as e:
-            logger.warning("slo_gpu_metrics_unavailable", error=str(e))
+            logger.warning("slo_gpu_metrics_unavailable", **safe_error_log(e))
             sli_values["gpu_vram_usage"] = None
 
         # Latenz-Perzentile (aus Redis Histogramm wenn verfuegbar)
@@ -1187,7 +1188,7 @@ async def get_slo_metrics(
             sli_values["umlaut_accuracy"] = None
 
     except Exception as e:
-        logger.error("slo_metrics_collection_error", error=str(e))
+        logger.error("slo_metrics_collection_error", **safe_error_log(e))
 
     # SLO-Status berechnen
     slo_status = {}
@@ -1440,8 +1441,8 @@ async def get_ocr_quality_metrics(
         quality_metrics["sample_count"] = sample_count
 
     except Exception as e:
-        logger.error("ocr_quality_metrics_error", error=str(e))
-        quality_metrics["error"] = str(e)
+        logger.error("ocr_quality_metrics_error", **safe_error_log(e))
+        quality_metrics["error"] = safe_error_detail(e, "Vorgang")
 
     return quality_metrics
 
@@ -1514,8 +1515,8 @@ async def get_webhook_metrics(
             }
         }
     except Exception as e:
-        logger.warning("circuit_breaker_stats_error", error=str(e))
-        result["circuit_breaker"]["error"] = str(e)
+        logger.warning("circuit_breaker_stats_error", **safe_error_log(e))
+        result["circuit_breaker"]["error"] = safe_error_detail(e, "Vorgang")
 
     # Get delivery stats from Prometheus
     try:
@@ -1548,8 +1549,8 @@ async def get_webhook_metrics(
             "success_rate_percent": round(success_rate, 2),
         }
     except Exception as e:
-        logger.warning("webhook_prometheus_metrics_error", error=str(e))
-        result["delivery_stats"]["error"] = str(e)
+        logger.warning("webhook_prometheus_metrics_error", **safe_error_log(e))
+        result["delivery_stats"]["error"] = safe_error_detail(e, "Vorgang")
 
     # Generate recommendations
     recommendations = []
@@ -1800,7 +1801,7 @@ async def get_ab_testing_metrics(
         logger.warning("ab_testing_router_runtime_error", error=str(re))
         result["konfiguration"]["fehler"] = f"Router-Initialisierung fehlgeschlagen: {re}"
     except Exception as e:
-        logger.error("ab_testing_router_error", error=str(e), error_type=type(e).__name__)
+        logger.error("ab_testing_router_error", **safe_error_log(e), error_type=type(e).__name__)
         result["konfiguration"]["fehler"] = "Unerwarteter Fehler beim Abrufen des A/B Testing Status"
 
     # Get Qdrant Status
@@ -1871,7 +1872,7 @@ async def get_ab_testing_metrics(
             "fehler": str(ve)
         }
     except Exception as e:
-        logger.error("qdrant_status_error", error=str(e), error_type=type(e).__name__)
+        logger.error("qdrant_status_error", **safe_error_log(e), error_type=type(e).__name__)
         result["qdrant_status"] = {
             "verfuegbar": False,
             "fehler": "Unerwarteter Fehler beim Qdrant-Statusabruf"
@@ -2007,6 +2008,7 @@ async def reset_ab_testing_metrics(
         Bestaetigung des Resets
     """
     from app.services.rag.ab_testing_router import get_ab_testing_router
+
 
     logger = structlog.get_logger(__name__)
 

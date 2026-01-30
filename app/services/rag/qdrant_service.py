@@ -25,6 +25,7 @@ import asyncio
 import structlog
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 if TYPE_CHECKING:
     from qdrant_client import QdrantClient, AsyncQdrantClient
@@ -82,7 +83,7 @@ def async_retry_with_backoff(
                             attempt=attempt + 1,
                             max_retries=max_retries,
                             delay_seconds=delay,
-                            error=str(e),
+                            **safe_error_log(e),
                         )
                         await asyncio.sleep(delay)
                         delay = min(delay * backoff_multiplier, max_delay)
@@ -91,7 +92,7 @@ def async_retry_with_backoff(
                             "qdrant_operation_failed_after_retries",
                             function=func.__name__,
                             attempts=max_retries + 1,
-                            error=str(e),
+                            **safe_error_log(e),
                         )
                         raise
 
@@ -283,10 +284,10 @@ class QdrantService:
                 "collections": [c.name for c in collections.collections],
             }
         except Exception as e:
-            logger.error("qdrant_health_check_failed", error=str(e))
+            logger.error("qdrant_health_check_failed", **safe_error_log(e))
             return {
                 "status": "unhealthy",
-                "error": str(e),
+                "error": safe_error_detail(e, "Vorgang"),
             }
 
     async def get_collection_info(self, collection_name: str) -> Optional[QdrantCollectionInfo]:
@@ -308,7 +309,7 @@ class QdrantService:
                 }
             )
         except Exception as e:
-            logger.warning("qdrant_get_collection_failed", collection=collection_name, error=str(e))
+            logger.warning("qdrant_get_collection_failed", collection=collection_name, **safe_error_log(e))
             return None
 
     # =========================================================================
@@ -376,7 +377,7 @@ class QdrantService:
             logger.error(
                 "qdrant_ensure_collection_failed",
                 collection=collection_name,
-                error=str(e)
+                **safe_error_log(e)
             )
             return False
 
@@ -391,7 +392,7 @@ class QdrantService:
             logger.info("qdrant_collection_deleted", collection=collection_name)
             return True
         except Exception as e:
-            logger.error("qdrant_delete_collection_failed", collection=collection_name, error=str(e))
+            logger.error("qdrant_delete_collection_failed", collection=collection_name, **safe_error_log(e))
             return False
 
     # =========================================================================
@@ -465,7 +466,7 @@ class QdrantService:
                 "qdrant_upsert_failed",
                 collection=collection_name,
                 count=len(points),
-                error=str(e)
+                **safe_error_log(e)
             )
             return 0
 
@@ -525,7 +526,7 @@ class QdrantService:
             logger.error(
                 "qdrant_delete_failed",
                 collection=collection_name,
-                error=str(e)
+                **safe_error_log(e)
             )
             return 0
 
@@ -646,7 +647,7 @@ class QdrantService:
             logger.error(
                 "qdrant_search_failed",
                 collection=collection_name,
-                error=str(e)
+                **safe_error_log(e)
             )
             return []
 

@@ -32,6 +32,7 @@ from sqlalchemy import select, func, and_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.core.audit_logger import (
     verify_audit_chain,
     get_audit_logs_for_export,
@@ -143,7 +144,7 @@ class AuditArchiveService:
                 logger.warning("minio_library_not_installed")
                 return None
             except Exception as e:
-                logger.error("minio_client_init_failed", error=str(e))
+                logger.error("minio_client_init_failed", **safe_error_log(e))
                 return None
 
         return self._minio_client
@@ -195,7 +196,7 @@ class AuditArchiveService:
         except Exception as e:
             logger.error(
                 "audit_archive_bucket_setup_failed",
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 
@@ -221,6 +222,7 @@ class AuditArchiveService:
             RuntimeError: Bei Archivierungsfehlern
         """
         from app.db.models import AuditLog
+
 
         # 1. Prüfe MinIO-Verfügbarkeit
         if not await self.ensure_bucket_with_object_lock():
@@ -356,7 +358,7 @@ class AuditArchiveService:
         except Exception as e:
             logger.error(
                 "audit_archive_upload_failed",
-                error=str(e),
+                **safe_error_log(e),
                 archive_id=archive_id,
             )
             raise RuntimeError(f"Archivierung fehlgeschlagen: {str(e)}")
@@ -443,7 +445,7 @@ class AuditArchiveService:
             logger.error(
                 "audit_archive_verification_failed",
                 object_key=object_key,
-                error=str(e),
+                **safe_error_log(e),
             )
             return ArchiveVerificationResult(
                 archive_id="",
@@ -453,7 +455,7 @@ class AuditArchiveService:
                 entries_verified=0,
                 chain_intact=False,
                 retention_active=False,
-                error_message=str(e),
+                error_message=safe_error_detail(e, "Audit-Archiv"),
             )
 
     async def list_archives(
@@ -510,7 +512,7 @@ class AuditArchiveService:
             return archives
 
         except Exception as e:
-            logger.error("audit_archive_list_failed", error=str(e))
+            logger.error("audit_archive_list_failed", **safe_error_log(e))
             return []
 
     async def get_archive_content(
@@ -553,7 +555,7 @@ class AuditArchiveService:
             logger.error(
                 "audit_archive_get_failed",
                 object_key=object_key,
-                error=str(e),
+                **safe_error_log(e),
             )
             return None
 
@@ -602,7 +604,7 @@ class AuditArchiveService:
         except Exception as e:
             return {
                 "available": False,
-                "error": str(e),
+                "error": safe_error_detail(e, "Vorgang"),
             }
 
 
@@ -682,7 +684,7 @@ async def verify_all_archives(
         except Exception as e:
             results["errors"].append({
                 "object_key": archive["object_key"],
-                "error": str(e),
+                "error": safe_error_detail(e, "Vorgang"),
             })
 
     return results

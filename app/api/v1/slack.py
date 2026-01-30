@@ -32,7 +32,9 @@ from app.db.models import (
     SlackMessageStatus,
 )
 from app.api.dependencies import get_current_user, get_db, require_admin
+from app.core.safe_errors import safe_error_log
 from app.services.slack_service import (
+
     get_slack_service,
     SlackService,
     SlackNotificationType,
@@ -629,12 +631,12 @@ async def send_test_message(
     except Exception as e:
         logger.error(
             "slack_test_message_failed",
-            error=str(e),
+            **safe_error_log(e),
             user_id=str(current_user.id),
         )
         return SlackTestMessageResponse(
             success=False,
-            error=str(e),
+            **safe_error_log(e),
         )
 
 

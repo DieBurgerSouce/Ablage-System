@@ -36,6 +36,7 @@ except ImportError:
 
 try:
     from app.services.backup_metrics_service import get_backup_metrics
+
     METRICS_AVAILABLE = True
 except ImportError:
     METRICS_AVAILABLE = False
@@ -245,7 +246,7 @@ class BackupReportService:
                 report.encryption_enabled = metrics_data.get("encryption_enabled", False)
 
             except Exception as e:
-                logger.warning("metrics_collection_error", error=str(e))
+                logger.warning("metrics_collection_error", **safe_error_log(e))
 
         # Collect from file system
         self._collect_storage_stats(report)
@@ -275,7 +276,7 @@ class BackupReportService:
             report.total_backup_size_gb = round(total_size / (1024**3), 2)
 
         except Exception as e:
-            logger.warning("storage_stats_error", error=str(e))
+            logger.warning("storage_stats_error", **safe_error_log(e))
 
     def _collect_backup_file_stats(
         self,
@@ -310,7 +311,7 @@ class BackupReportService:
             )
 
         except Exception as e:
-            logger.warning("backup_file_stats_error", error=str(e))
+            logger.warning("backup_file_stats_error", **safe_error_log(e))
 
     def _analyze_issues(self, report: BackupReportData) -> None:
         """Analyze report data and identify issues/recommendations."""

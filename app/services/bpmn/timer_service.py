@@ -123,6 +123,7 @@ class TimerService:
             )
             from app.services.bpmn.bpmn_parser import BPMNProcess
 
+
             execution_service = get_process_execution_service(self.db)
 
             # Definition laden
@@ -196,7 +197,7 @@ class TimerService:
             logger.error(
                 "timer_execution_failed",
                 timer_id=str(timer_id),
-                error=str(e)
+                **safe_error_log(e)
             )
             # Bei Fehler: Timer nicht deaktivieren fuer Retry
             return False
@@ -227,7 +228,7 @@ class TimerService:
                 logger.error(
                     "timer_batch_execution_error",
                     timer_id=str(timer.id),
-                    error=str(e)
+                    **safe_error_log(e)
                 )
 
         return executed

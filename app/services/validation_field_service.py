@@ -32,6 +32,7 @@ from app.db.schemas import (
     ValidationFieldValidateResult,
 )
 from app.services.umlaut_validation_service import get_umlaut_validation_service
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -293,7 +294,7 @@ class ValidationFieldService:
                 if umlaut_result.get("corrected_text"):
                     suggested_correction = umlaut_result["corrected_text"]
         except Exception as e:
-            logger.warning("umlaut_validation_error", error=str(e), field_id=str(field_id))
+            logger.warning("umlaut_validation_error", **safe_error_log(e), field_id=str(field_id))
 
         # 2. Format-Validierung basierend auf Feldtyp
         format_issues = self._validate_format(value, field.field_type, field.field_key)
@@ -349,13 +350,13 @@ class ValidationFieldService:
                 logger.error(
                     "field_validation_failed",
                     field_id=str(field.id),
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 results.append(ValidationFieldValidateResult(
                     field_id=field.id,
                     field_key=field.field_key,
                     is_valid=False,
-                    errors=[{"type": "error", "message": str(e)}],
+                    errors=[{"type": "error", "message": safe_error_detail(e, "Validierung")}],
                     umlaut_issues=[],
                     format_issues=[]
                 ))

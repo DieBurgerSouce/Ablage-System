@@ -29,6 +29,7 @@ import structlog
 
 from app.core.config import settings
 from app.services.backup_metrics_service import get_backup_metrics, track_backup
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -234,7 +235,7 @@ class BackupService:
             self._encryption_validation_error = "GPG nicht installiert"
             logger.error("gpg_nicht_gefunden")
         except (subprocess.SubprocessError, OSError, ValueError) as e:
-            self._encryption_validation_error = f"GPG-Validierung Fehler: {str(e)}"
+            self._encryption_validation_error = safe_error_detail(e, "GPG")
             logger.exception("gpg_validation_fehler")
 
     def _generate_filename(self, backup_type: str, extension: str) -> str:
@@ -346,7 +347,7 @@ class BackupService:
             return BackupResult(
                 success=False,
                 backup_type="postgres",
-                error=str(e),
+                **safe_error_log(e),
             )
 
     # -------------------------------------------------------------------------
@@ -469,7 +470,7 @@ class BackupService:
             return BackupResult(
                 success=False,
                 backup_type="redis",
-                error=str(e),
+                **safe_error_log(e),
             )
 
     # -------------------------------------------------------------------------
@@ -580,7 +581,7 @@ class BackupService:
             return BackupResult(
                 success=False,
                 backup_type="minio",
-                error=str(e),
+                **safe_error_log(e),
             )
 
     # -------------------------------------------------------------------------
@@ -640,7 +641,7 @@ class BackupService:
             return BackupResult(
                 success=False,
                 backup_type="config",
-                error=str(e),
+                **safe_error_log(e),
             )
 
     # -------------------------------------------------------------------------
@@ -773,7 +774,7 @@ class BackupService:
             return None
         except (subprocess.SubprocessError, IOError, OSError) as e:
             logger.exception("verschluesselung_fehler")
-            self.metrics.record_encryption_failure(str(e))
+            self.metrics.record_encryption_failure(safe_error_detail(e, "Encryption"))
             # Aufraumen bei Fehler
             if output_path.exists():
                 output_path.unlink()
@@ -1113,7 +1114,7 @@ class BackupService:
                 return path.stat().st_size > 0
 
             except Exception as e:
-                logger.error("validierung_fehlgeschlagen", pfad=str(path), error=str(e))
+                logger.error("validierung_fehlgeschlagen", pfad=str(path), **safe_error_log(e))
                 return False
 
     # -------------------------------------------------------------------------
@@ -1158,7 +1159,7 @@ class BackupService:
                         deleted[backup_type] += 1
                         logger.debug("backup_geloescht", pfad=str(item))
                 except Exception as e:
-                    logger.error("backup_loeschung_fehler", pfad=str(item), error=str(e))
+                    logger.error("backup_loeschung_fehler", pfad=str(item), **safe_error_log(e))
 
         total_deleted = sum(deleted.values())
         logger.info(
@@ -1220,7 +1221,7 @@ class BackupService:
                         "encrypted": item.suffix == ".gpg",
                     })
                 except Exception as e:
-                    logger.warning("backup_info_fehler", pfad=str(item), error=str(e))
+                    logger.warning("backup_info_fehler", pfad=str(item), **safe_error_log(e))
 
         return backups
 
@@ -1363,7 +1364,7 @@ class BackupService:
             return BackupResult(
                 success=False,
                 backup_type="postgres_restore",
-                error=str(e)[:500],
+                **safe_error_log(e)[:500],
             )
 
     async def restore_redis(
@@ -1481,7 +1482,7 @@ class BackupService:
             return BackupResult(
                 success=False,
                 backup_type="redis_restore",
-                error=str(e)[:500],
+                **safe_error_log(e)[:500],
             )
 
     async def restore_minio(
@@ -1594,7 +1595,7 @@ class BackupService:
             return BackupResult(
                 success=False,
                 backup_type="minio_restore",
-                error=str(e)[:500],
+                **safe_error_log(e)[:500],
             )
 
     async def restore_full(

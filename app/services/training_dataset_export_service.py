@@ -16,6 +16,7 @@ import json
 import logging
 import os
 import shutil
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -266,7 +267,7 @@ class TrainingDatasetExportService:
                 format=config.format,
                 stats=ExportStats(),
                 files_created=[],
-                errors=[str(e)]
+                errors=[safe_error_detail(e, "Training")]
             )
 
     async def export_for_deepseek(

@@ -27,6 +27,7 @@ from app.services.rag.search_service import get_rag_search_service, RAGSearchSer
 from app.services.rag.llm_service import get_llm_service, LLMService, LLMMessage, LLMContextType
 from app.services.rag.prompt_templates import build_customer_card_prompt
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -135,7 +136,7 @@ class CustomerCardService:
                 logger.exception(
                     "customer_card_generation_failed",
                     customer_id=customer_id,
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 return CustomerCardResult(card=None, from_cache=False)
 
@@ -309,7 +310,7 @@ class CustomerCardService:
 
         except Exception as e:
             # Fallback ohne pg_trgm
-            logger.warning("pg_trgm_not_available", error=str(e))
+            logger.warning("pg_trgm_not_available", **safe_error_log(e))
 
             result = await db.execute(
                 select(RAGCustomerCard)
@@ -413,7 +414,7 @@ class CustomerCardService:
                     logger.exception(
                         "customer_card_sync_item_failed",
                         customer_id=customer_id,
-                        error=str(e)
+                        **safe_error_log(e)
                     )
                     stats["failed"] += 1
 

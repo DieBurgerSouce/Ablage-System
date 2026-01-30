@@ -25,6 +25,7 @@ import structlog
 from app.core.config import settings
 from app.core.audit_logger import SecurityEventType
 from app.db.models import AuditLog, User
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -369,7 +370,7 @@ class IncidentResponseService:
                     "response_action_failed",
                     action=action.value,
                     incident_id=incident.id,
-                    error=str(e)
+                    **safe_error_log(e)
                 )
 
         logger.info(
@@ -448,7 +449,7 @@ class IncidentResponseService:
                 details=incident.to_dict()
             )
         except Exception as e:
-            logger.warning("admin_notification_failed", error=str(e))
+            logger.warning("admin_notification_failed", **safe_error_log(e))
 
     async def _block_ip(self, ip_address: str, permanent: bool = False) -> None:
         """Blockiert eine IP-Adresse."""
@@ -469,7 +470,7 @@ class IncidentResponseService:
                 ttl = int((expiry - datetime.now(timezone.utc)).total_seconds())
                 await redis.setex(f"blocked_ip:{ip_address}", ttl, "1")
         except Exception as e:
-            logger.warning("ip_block_redis_failed", ip=ip_address, error=str(e))
+            logger.warning("ip_block_redis_failed", ip=ip_address, **safe_error_log(e))
 
         logger.warning(
             "ip_blocked",
@@ -497,7 +498,7 @@ class IncidentResponseService:
             session_manager = get_session_manager()
             await session_manager.revoke_all_sessions(db, user_id)
         except Exception as e:
-            logger.warning("session_revoke_failed", user_id=str(user_id)[:8], error=str(e))
+            logger.warning("session_revoke_failed", user_id=str(user_id)[:8], **safe_error_log(e))
 
     async def _revoke_api_keys(self, db: AsyncSession, user_id: UUID) -> None:
         """Widerruft alle API-Keys eines Benutzers."""
@@ -507,7 +508,7 @@ class IncidentResponseService:
             service = get_api_key_service()
             await service.revoke_all_keys(db, user_id)
         except Exception as e:
-            logger.warning("api_key_revoke_failed", user_id=str(user_id)[:8], error=str(e))
+            logger.warning("api_key_revoke_failed", user_id=str(user_id)[:8], **safe_error_log(e))
 
     async def _notify_user(self, db: AsyncSession, incident: Incident) -> None:
         """Benachrichtigt den betroffenen Benutzer."""
@@ -530,7 +531,7 @@ class IncidentResponseService:
                     message=f"Wir haben ungewöhnliche Aktivitäten in Ihrem Konto festgestellt: {incident.description}"
                 )
             except Exception as e:
-                logger.warning("user_notification_failed", user_id=str(incident.user_id)[:8], error=str(e))
+                logger.warning("user_notification_failed", user_id=str(incident.user_id)[:8], **safe_error_log(e))
 
     def is_ip_blocked(self, ip_address: str) -> bool:
         """Prüft ob eine IP-Adresse blockiert ist."""
@@ -589,6 +590,7 @@ def report_system_incident(
 
     Example:
         from app.services.incident_response_service import (
+
             report_system_incident, IncidentType, IncidentSeverity
         )
         report_system_incident(

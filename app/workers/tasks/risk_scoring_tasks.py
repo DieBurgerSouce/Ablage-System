@@ -21,6 +21,7 @@ from sqlalchemy import select, and_, or_, func
 from app.workers.celery_app import celery_app
 from app.db.session import get_async_session_context
 from app.db.models import BusinessEntity, Document
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -119,12 +120,12 @@ def calculate_all_risk_scores_task(
                     # SECURITY: Kein entity_name in Fehler-Response (PII)
                     stats["errors"].append({
                         "entity_id": str(entity.id),
-                        "error": str(e),
+                        "error": safe_error_detail(e, "Vorgang"),
                     })
                     logger.warning(
                         "risk_score_calculation_failed",
                         entity_id=str(entity.id),
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
             elapsed = (datetime.now(timezone.utc) - start_time).total_seconds()
@@ -144,7 +145,7 @@ def calculate_all_risk_scores_task(
         )
         return result
     except Exception as e:
-        logger.error("risk_score_batch_failed", error=str(e))
+        logger.error("risk_score_batch_failed", **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -225,7 +226,7 @@ def calculate_single_risk_score_task(
         logger.error(
             "single_risk_score_calculation_failed",
             entity_id=entity_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -314,7 +315,7 @@ def on_invoice_updated_recalculate(
         logger.error(
             "invoice_update_risk_recalculation_failed",
             document_id=document_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -387,7 +388,7 @@ def check_high_risk_entities_task(
             )
         return result
     except Exception as e:
-        logger.error("high_risk_check_failed", error=str(e))
+        logger.error("high_risk_check_failed", **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -476,5 +477,5 @@ def generate_risk_statistics_task(self) -> Dict[str, Any]:
         )
         return result
     except Exception as e:
-        logger.error("risk_statistics_generation_failed", error=str(e))
+        logger.error("risk_statistics_generation_failed", **safe_error_log(e))
         raise self.retry(exc=e)

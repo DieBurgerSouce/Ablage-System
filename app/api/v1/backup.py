@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field, field_validator
 from app.api.dependencies import get_current_superuser
 from app.db.models import User
 from app.services.backup_service import BackupResult, get_backup_service
+from app.core.safe_errors import safe_error_log
 from app.services.backup_validator import (
     BackupValidator,
     ValidationLevel,
@@ -97,7 +98,7 @@ def validate_backup_path(user_path: str, is_directory: bool = False) -> Path:
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("path_validation_error", user_path=user_path, error=str(e))
+        logger.error("path_validation_error", user_path=user_path, **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Ungueltiger Pfad: {user_path}"
@@ -304,6 +305,7 @@ class FullRestoreRequest(BaseModel):
 
         from pathlib import Path as PathLib
         from app.core.config import settings
+
         resolved = PathLib(v).resolve()
 
         allowed_roots = [

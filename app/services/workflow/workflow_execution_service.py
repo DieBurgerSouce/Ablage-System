@@ -26,6 +26,7 @@ from app.db.models import (
     WorkflowStepExecution,
 )
 from app.services.workflow.condition_evaluator import ConditionEvaluator
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 if TYPE_CHECKING:
     from app.services.workflow.workflow_step_executor import WorkflowStepExecutor
@@ -351,7 +352,7 @@ class WorkflowExecutionService:
             logger.exception(
                 "workflow_execution_error",
                 execution_id=str(execution.id),
-                error=str(e),
+                **safe_error_log(e),
             )
             await self._fail_execution(execution, context, str(e))
 
@@ -418,11 +419,11 @@ class WorkflowExecutionService:
         except Exception as e:
             step_execution.status = ExecutionStatus.FAILED.value
             step_execution.completed_at = datetime.now(timezone.utc)
-            step_execution.error_message = str(e)
+            step_execution.error_message = safe_error_detail(e, "Workflow")
 
             await self.db.commit()
 
-            return StepResult(success=False, output={}, error=str(e))
+            return StepResult(success=False, output={}, **safe_error_log(e))
 
     async def _retry_step(
         self,
@@ -441,6 +442,7 @@ class WorkflowExecutionService:
             StepResult
         """
         from app.services.workflow.workflow_step_executor import StepResult
+
 
         logger.info(
             "workflow_step_retry",

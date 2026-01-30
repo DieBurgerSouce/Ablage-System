@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 
 from app.api.dependencies import get_db, get_current_superuser
 from app.db.models import User
+from app.core.safe_errors import safe_error_detail, safe_error_log
 
 
 router = APIRouter(prefix="/dlq", tags=["Admin - Dead Letter Queue"])
@@ -180,11 +181,14 @@ async def get_dlq_stats(
         )
 
     except Exception as e:
+        import structlog
+        logger = structlog.get_logger(__name__)
+        logger.error("dlq_stats_error", **safe_error_log(e))
         return DLQStatsResponse(
             total_tasks=0,
             poison_pills=0,
             status="error",
-            status_message=f"Fehler beim Abrufen der DLQ-Statistiken: {str(e)}",
+            status_message=safe_error_detail(e, "DLQ-Statistiken"),
         )
 
 
@@ -284,10 +288,12 @@ async def list_dlq_tasks(
 
     except Exception as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.exception("dlq_list_error", error=str(e))
+        import structlog
+        logger = structlog.get_logger(__name__)
+        logger.exception("dlq_list_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Fehler beim Auflisten der DLQ-Tasks. Bitte erneut versuchen.",
+            detail=safe_error_detail(e, "DLQ-Taskliste"),
         )
 
 
@@ -378,16 +384,22 @@ async def retry_dlq_task(
             )
 
         except Exception as e:
+            import structlog
+            logger = structlog.get_logger(__name__)
+            logger.error("dlq_retry_send_task_error", task_id=task_id, **safe_error_log(e))
             return DLQActionResponse(
                 success=False,
-                message=f"Fehler beim Wiederholen der Task: {str(e)}",
+                message=safe_error_detail(e, "Task-Wiederholung"),
                 task_id=task_id,
             )
 
     except Exception as e:
+        import structlog
+        logger = structlog.get_logger(__name__)
+        logger.error("dlq_retry_error", task_id=task_id, **safe_error_log(e))
         return DLQActionResponse(
             success=False,
-            message=f"Fehler: {str(e)}",
+            message=safe_error_detail(e, "DLQ-Task-Wiederholung"),
             task_id=task_id,
         )
 
@@ -462,9 +474,12 @@ async def purge_dlq(
         )
 
     except Exception as e:
+        import structlog
+        logger = structlog.get_logger(__name__)
+        logger.error("dlq_purge_error", **safe_error_log(e))
         return DLQActionResponse(
             success=False,
-            message=f"Fehler beim Leeren der DLQ: {str(e)}",
+            message=safe_error_detail(e, "DLQ-Leerung"),
         )
 
 

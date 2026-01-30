@@ -18,7 +18,9 @@ import jwt
 import structlog
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 from app.services.realtime import (
+
     get_event_broadcaster,
     get_realtime_ws_manager,
     RealtimeEventType,
@@ -55,7 +57,7 @@ async def get_user_from_token(token: str) -> Optional[dict]:
         logger.warning("websocket_token_expired")
         return None
     except jwt.InvalidTokenError as e:
-        logger.warning("websocket_invalid_token", error=str(e))
+        logger.warning("websocket_invalid_token", **safe_error_log(e))
         return None
 
 
@@ -210,7 +212,7 @@ async def websocket_realtime_endpoint(
         logger.error(
             "websocket_error",
             user_id=user_id,
-            error=str(e),
+            **safe_error_log(e),
         )
     finally:
         await ws_manager.disconnect(user_id)

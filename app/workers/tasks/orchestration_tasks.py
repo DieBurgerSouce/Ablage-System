@@ -24,6 +24,7 @@ import structlog
 from prometheus_client import Counter, Histogram
 
 from app.workers.celery_app import celery_app, CPUTask
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -145,7 +146,7 @@ def process_pending_orchestration_actions(
         logger.error(
             "process_pending_orchestration_actions_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -238,7 +239,7 @@ def emit_system_event(
             "emit_system_event_failed",
             task_id=self.request.id,
             event_type=event_type,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -364,7 +365,7 @@ def check_and_emit_threshold_events(
         logger.error(
             "check_and_emit_threshold_events_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -420,11 +421,11 @@ def get_orchestration_metrics(self) -> Dict[str, Any]:
         logger.error(
             "get_orchestration_metrics_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
         )
         return {
             "status": "error",
-            "error": str(e),
+            "error": safe_error_detail(e, "Vorgang"),
         }
 
 

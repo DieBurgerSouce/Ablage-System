@@ -3,6 +3,7 @@
 
 import structlog
 from app.workers.celery_app import celery_app
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -23,7 +24,7 @@ def create_daily_snapshot() -> dict:
         logger.info("ceo_dashboard_daily_snapshot_complete")
         return {"status": "success", "message": "Daily snapshot erstellt"}
     except Exception as e:
-        logger.error("ceo_dashboard_daily_snapshot_error", error=str(e))
+        logger.error("ceo_dashboard_daily_snapshot_error", **safe_error_log(e))
         raise
 
 
@@ -36,5 +37,5 @@ def detect_anomalies() -> dict:
         logger.info("ceo_dashboard_anomaly_detection_complete")
         return {"status": "success", "anomalies_found": 0}
     except Exception as e:
-        logger.error("ceo_dashboard_anomaly_detection_error", error=str(e))
+        logger.error("ceo_dashboard_anomaly_detection_error", **safe_error_log(e))
         raise

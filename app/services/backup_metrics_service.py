@@ -16,6 +16,7 @@ import os
 import shutil
 import threading
 import time
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
@@ -378,7 +379,7 @@ class BackupMetrics:
             yield context
         except Exception as e:
             success = False
-            error_msg = str(e)
+            error_msg = safe_error_detail(e, "Backup")
             raise
         finally:
             duration = time.time() - start
@@ -452,7 +453,7 @@ class BackupMetrics:
             yield
         except Exception as e:
             success = False
-            error_msg = str(e)
+            error_msg = safe_error_detail(e, "Backup")
             raise
         finally:
             duration = time.time() - start
@@ -556,7 +557,7 @@ class BackupMetrics:
             yield
         except Exception as e:
             success = False
-            error_msg = str(e)
+            error_msg = safe_error_detail(e, "Backup")
             raise
         finally:
             duration = time.time() - start
@@ -605,7 +606,7 @@ class BackupMetrics:
             return data
 
         except OSError as e:
-            logger.error("speicherplatz_fehler", path=target_path, error=str(e))
+            logger.error("speicherplatz_fehler", path=target_path, **safe_error_log(e))
             return DiskUsageData(
                 total_bytes=0, used_bytes=0, free_bytes=0, usage_percent=0
             )
@@ -645,7 +646,7 @@ class BackupMetrics:
             logger.debug("backup_dateien_gezaehlt", counts=counts)
 
         except OSError as e:
-            logger.error("backup_zaehlung_fehler", error=str(e))
+            logger.error("backup_zaehlung_fehler", **safe_error_log(e))
 
         return counts
 
@@ -776,7 +777,7 @@ def track_backup(backup_type: str = "unknown"):
                 return result
             except Exception as e:
                 success = False
-                error_msg = str(e)
+                error_msg = safe_error_detail(e, "Backup")
                 raise
             finally:
                 duration = time.time() - start
@@ -812,7 +813,7 @@ def track_backup(backup_type: str = "unknown"):
                 return result
             except Exception as e:
                 success = False
-                error_msg = str(e)
+                error_msg = safe_error_detail(e, "Backup")
                 raise
             finally:
                 duration = time.time() - start
@@ -831,6 +832,7 @@ def track_backup(backup_type: str = "unknown"):
 
         # Waehle Wrapper basierend auf Funktionstyp
         import asyncio
+
 
         if asyncio.iscoroutinefunction(func):
             return async_wrapper

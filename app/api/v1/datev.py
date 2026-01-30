@@ -40,6 +40,7 @@ from app.api.schemas.datev import (
 )
 from app.api.dependencies import get_current_active_user, check_datev_export_rate_limit
 from app.core.security import build_content_disposition
+from app.core.safe_errors import safe_error_detail
 from app.db import models
 from app.db.database import get_async_db
 from app.services.datev import get_datev_export_service, SKR03, SKR04
@@ -593,7 +594,7 @@ async def preview_export(
             "datev_preview_validation_error",
             extra={
                 "user_id": str(current_user.id),
-                "error": str(e),
+                "error": safe_error_detail(e, "Vorgang"),
             }
         )
         raise HTTPException(
@@ -662,7 +663,7 @@ async def export_buchungsstapel(
             "datev_export_validation_error",
             extra={
                 "user_id": str(current_user.id),
-                "error": str(e),
+                "error": safe_error_detail(e, "Vorgang"),
             }
         )
         raise HTTPException(

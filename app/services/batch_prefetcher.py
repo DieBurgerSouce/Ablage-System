@@ -208,7 +208,7 @@ class BatchPrefetcher:
             return queue_size
 
         except Exception as e:
-            logger.warning("adaptive_queue_size_failed", error=str(e))
+            logger.warning("adaptive_queue_size_failed", **safe_error_log(e))
             return self.DEFAULT_MAX_QUEUE_SIZE
 
     async def start_prefetching(
@@ -301,7 +301,7 @@ class BatchPrefetcher:
                 self._queue_not_empty.set()
 
         except Exception as e:
-            logger.error("prefetch_loop_error", error=str(e))
+            logger.error("prefetch_loop_error", **safe_error_log(e))
         finally:
             self._prefetch_running = False
             self._prefetch_complete.set()
@@ -360,7 +360,7 @@ class BatchPrefetcher:
                         logger.warning(
                             "custom_preprocessing_failed",
                             file_path=file_path,
-                            error=str(e)
+                            **safe_error_log(e)
                         )
                 else:
                     # Default preprocessing
@@ -381,13 +381,13 @@ class BatchPrefetcher:
             )
 
         except Exception as e:
-            logger.error("prefetch_single_failed", file_path=file_path, error=str(e))
+            logger.error("prefetch_single_failed", file_path=file_path, **safe_error_log(e))
             return PrefetchedDocument(
                 file_path=file_path,
                 file_name=Path(file_path).name,
                 file_size_bytes=0,
                 content=b"",
-                error=str(e)
+                **safe_error_log(e)
             )
 
     def _default_preprocess(
@@ -430,6 +430,7 @@ class BatchPrefetcher:
             import io
             from PIL import Image
 
+
             img = Image.open(io.BytesIO(content))
 
             result = {
@@ -456,7 +457,7 @@ class BatchPrefetcher:
             return result
 
         except Exception as e:
-            logger.warning("image_preprocessing_failed", file_path=file_path, error=str(e))
+            logger.warning("image_preprocessing_failed", file_path=file_path, **safe_error_log(e))
             return None
 
     def _preprocess_pdf(
@@ -481,7 +482,7 @@ class BatchPrefetcher:
             }
 
         except Exception as e:
-            logger.warning("pdf_preprocessing_failed", file_path=file_path, error=str(e))
+            logger.warning("pdf_preprocessing_failed", file_path=file_path, **safe_error_log(e))
             return None
 
     def _update_avg_prefetch_time(self) -> None:

@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
 
 from app.core.datetime_utils import utc_now
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -296,7 +297,7 @@ class FinTSService:
             logger.error(
                 "fints_bank_info_error",
                 blz=blz,
-                error=str(e)
+                **safe_error_log(e)
             )
             return None
 
@@ -377,9 +378,9 @@ class FinTSService:
             logger.error(
                 "fints_connection_error",
                 account_id=str(account_id),
-                error=str(e)
+                **safe_error_log(e)
             )
-            return False, None, f"Verbindungsfehler: {str(e)}"
+            return False, None, safe_error_detail(e, "FinTS-Verbindung")
 
     async def confirm_tan(
         self,
@@ -450,9 +451,9 @@ class FinTSService:
             logger.error(
                 "fints_tan_confirmation_error",
                 challenge_id=challenge_id,
-                error=str(e)
+                **safe_error_log(e)
             )
-            return False, f"TAN-Bestaetigung fehlgeschlagen: {str(e)}"
+            return False, safe_error_detail(e, "TAN-Bestaetigung")
 
     async def sync_transactions(
         self,
@@ -532,13 +533,13 @@ class FinTSService:
             logger.error(
                 "fints_sync_error",
                 account_id=str(account_id),
-                error=str(e)
+                **safe_error_log(e)
             )
             return FinTSSyncResult(
                 success=False,
                 sync_type=FinTSSyncType.STATEMENT,
                 account_iban=account.iban,
-                error_message=str(e),
+                error_message=safe_error_detail(e, "FinTS-Sync"),
             )
 
     async def get_balance(
@@ -589,7 +590,7 @@ class FinTSService:
             logger.error(
                 "fints_balance_error",
                 account_id=str(account_id),
-                error=str(e)
+                **safe_error_log(e)
             )
             return None
 
@@ -686,9 +687,9 @@ class FinTSService:
             logger.error(
                 "fints_sepa_transfer_error",
                 account_id=str(account_id),
-                error=str(e)
+                **safe_error_log(e)
             )
-            return False, None, f"Ueberweisungsfehler: {str(e)}"
+            return False, None, safe_error_detail(e, "SEPA-Ueberweisung")
 
     async def get_available_tan_methods(
         self,
@@ -922,6 +923,7 @@ class FinTSService:
             Anzahl gespeicherter Transaktionen
         """
         from app.db.models import BankTransaction
+
 
         saved = 0
 

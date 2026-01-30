@@ -15,6 +15,7 @@ import pypdfium2 as pdfium
 
 from app.agents.base import OCRAgent, OCRResult
 from app.ml.metrics import get_ml_metrics
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -116,7 +117,7 @@ class SuryaDoclingAgent(OCRAgent):
             logger.info("All Surya 0.17.0 models loaded successfully (CPU mode)")
 
         except Exception as e:
-            logger.error("surya_models_load_failed", error=str(e))
+            logger.error("surya_models_load_failed", **safe_error_log(e))
             raise
 
     def _load_image(self, image_path: str) -> List[Image.Image]:
@@ -140,7 +141,7 @@ class SuryaDoclingAgent(OCRAgent):
                     logger.debug("pdf_page_loaded", page=page_num + 1, total=len(pdf))
                 pdf.close()
             except Exception as e:
-                logger.error("pdf_load_failed", error=str(e))
+                logger.error("pdf_load_failed", **safe_error_log(e))
                 raise
         else:
             # Handle image files (PNG, JPG, etc.)
@@ -152,7 +153,7 @@ class SuryaDoclingAgent(OCRAgent):
                     image = image.convert('RGB')
                 images.append(image)
             except Exception as e:
-                logger.error("image_load_failed", error=str(e))
+                logger.error("image_load_failed", **safe_error_log(e))
                 raise
 
         return images
@@ -200,8 +201,8 @@ class SuryaDoclingAgent(OCRAgent):
             }
 
         except Exception as e:
-            logger.error("image_processing_failed", error=str(e))
-            return {"text_blocks": [], "full_text": "", "error": str(e)}
+            logger.error("image_processing_failed", **safe_error_log(e))
+            return {"text_blocks": [], "full_text": "", **safe_error_log(e)}
 
     async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """Process document with Surya OCR pipeline.
@@ -307,6 +308,7 @@ class SuryaDoclingAgent(OCRAgent):
             if language == "de" and full_text:
                 try:
                     from app.services.german_text_postprocessor import get_german_postprocessor
+
                     postprocessor = get_german_postprocessor()
                     german_result = postprocessor.postprocess(full_text)
                     full_text = german_result["text"]
@@ -331,7 +333,7 @@ class SuryaDoclingAgent(OCRAgent):
                 except Exception as e:
                     logger.warning(
                         "surya_german_postprocessing_error",
-                        error=str(e)
+                        **safe_error_log(e)
                     )
                     # Track postprocessor error in metrics
                     metrics.record_ocr_postprocessor_error(
@@ -363,11 +365,11 @@ class SuryaDoclingAgent(OCRAgent):
             return result.to_dict()
 
         except Exception as e:
-            logger.error("surya_ocr_processing_error", error=str(e), exc_info=True)
+            logger.error("surya_ocr_processing_error", **safe_error_log(e), exc_info=True)
 
             # Erstelle standardisiertes Fehler-Result
             result = self.create_error_result(
-                error=str(e),
+                **safe_error_log(e),
                 error_code="SURYA_DOCLING_ERROR",
             )
             return result.to_dict()

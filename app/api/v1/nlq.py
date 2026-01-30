@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user, get_db, engine
+from app.core.safe_errors import safe_error_detail
 from app.core.redis_state import get_redis
 from app.db.models import User
 from app.services.ai.nlq.nlq_orchestrator import NLQOrchestrator
@@ -126,17 +127,17 @@ async def execute_nlq_query(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungültige Query: {str(e)}",
+            detail=safe_error_detail(e, "Vorgang"),
         )
     except PermissionError as e:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Keine Berechtigung: {str(e)}",
+            detail=safe_error_detail(e, "Vorgang"),
         )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Query-Ausführung fehlgeschlagen: {str(e)}",
+            detail=safe_error_detail(e, "Vorgang"),
         )
 
 
@@ -184,7 +185,7 @@ async def execute_nlq_query_stream(
             yield "data: [DONE]\n\n"
 
         except Exception as e:
-            error_msg = f'{{"error": "Query-Streaming fehlgeschlagen: {str(e)}"}}'
+            error_msg = f'{{"error": "{safe_error_detail(e, "Query-Streaming")}"}}'
             yield f"data: {error_msg}\n\n"
 
     return StreamingResponse(
@@ -228,7 +229,7 @@ async def get_query_suggestions(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Vorschläge konnten nicht generiert werden: {str(e)}",
+            detail=safe_error_detail(e, "Vorgang"),
         )
 
 
@@ -267,10 +268,10 @@ async def submit_query_feedback(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Query nicht gefunden: {str(e)}",
+            detail=safe_error_detail(e, "Vorgang"),
         )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Feedback konnte nicht gespeichert werden: {str(e)}",
+            detail=safe_error_detail(e, "Vorgang"),
         )

@@ -9,7 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_db, get_current_user
+from app.api.dependencies import get_db, get_current_user
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.services.sync import (
     DeltaSyncService,
@@ -155,10 +156,10 @@ async def get_changes(
         )
 
     except ValueError as e:
-        logger.warning("sync_changes_fehler", error=str(e))
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.warning("sync_changes_fehler", **safe_error_log(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "Synchronisierung"))
     except Exception as e:
-        logger.error("sync_changes_fehler", error=str(e), exc_info=True)
+        logger.error("sync_changes_fehler", exc_info=True, **safe_error_log(e))
         raise HTTPException(status_code=500, detail="Fehler beim Abrufen der Änderungen")
 
 
@@ -222,11 +223,11 @@ async def push_changes(
         )
 
     except ValueError as e:
-        logger.warning("sync_push_fehler", error=str(e))
+        logger.warning("sync_push_fehler", **safe_error_log(e))
         await db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "Synchronisierung"))
     except Exception as e:
-        logger.error("sync_push_fehler", error=str(e), exc_info=True)
+        logger.error("sync_push_fehler", exc_info=True, **safe_error_log(e))
         await db.rollback()
         raise HTTPException(status_code=500, detail="Fehler beim Pushen der Änderungen")
 
@@ -272,7 +273,7 @@ async def resolve_conflict(
         }
 
     except Exception as e:
-        logger.error("conflict_resolution_fehler", error=str(e), exc_info=True)
+        logger.error("conflict_resolution_fehler", exc_info=True, **safe_error_log(e))
         raise HTTPException(status_code=500, detail="Fehler bei der Konfliktlösung")
 
 
@@ -311,5 +312,5 @@ async def get_sync_status(
         )
 
     except Exception as e:
-        logger.error("sync_status_fehler", error=str(e))
+        logger.error("sync_status_fehler", **safe_error_log(e))
         raise HTTPException(status_code=500, detail="Fehler beim Abrufen des Sync-Status")

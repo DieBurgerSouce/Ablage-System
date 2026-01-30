@@ -20,7 +20,9 @@ import pypdfium2 as pdfium
 
 from app.agents.base import OCRAgent, OCRResult
 from app.agents.ocr.docling_layout_analyzer import DoclingLayoutAnalyzer
+from app.core.safe_errors import safe_error_log
 from app.agents.ocr.models.layout_models import (
+
     DocumentLayout,
     LayoutElement,
     LayoutElementType,
@@ -139,7 +141,7 @@ class SuryaDoclingEnhancedAgent(OCRAgent):
                 except Exception as e:
                     logger.warning(
                         "Layout-Analyse fehlgeschlagen, fahre nur mit OCR fort",
-                        error=str(e),
+                        **safe_error_log(e),
                     )
                     if not self._fallback_on_error:
                         raise
@@ -184,10 +186,10 @@ class SuryaDoclingEnhancedAgent(OCRAgent):
             return result_dict
 
         except Exception as e:
-            logger.error("Enhanced OCR fehlgeschlagen", error=str(e), exc_info=True)
+            logger.error("Enhanced OCR fehlgeschlagen", **safe_error_log(e), exc_info=True)
             processing_time_ms = int((time.perf_counter() - start_time) * 1000)
             result = self.create_error_result(
-                error=str(e),
+                **safe_error_log(e),
                 error_code="SURYA_DOCLING_ENHANCED_ERROR",
                 processing_time_ms=processing_time_ms,
             )

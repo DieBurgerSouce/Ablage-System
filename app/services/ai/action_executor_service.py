@@ -27,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import utc_now
 from app.db.models import Document, InvoiceTracking, BankTransaction, AuditLog
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -194,14 +195,14 @@ class ActionExecutorService:
                 "action_execution_error",
                 action_id=str(action_id),
                 action_type=action_type,
-                error=str(e),
+                **safe_error_log(e),
             )
             return ActionResult(
                 action_id=action_id,
                 status=ActionStatus.FAILED,
                 success=False,
                 message="Fehler bei der Ausführung",
-                error_details=str(e),
+                error_details=safe_error_detail(e, "Action"),
                 execution_time_ms=int((time.time() - start_time) * 1000),
             )
 
@@ -622,14 +623,14 @@ class ActionExecutorService:
             logger.error(
                 "rollback_error",
                 action_id=str(action_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return ActionResult(
                 action_id=action_id,
                 status=ActionStatus.FAILED,
                 success=False,
                 message="Rollback fehlgeschlagen.",
-                error_details=str(e),
+                error_details=safe_error_detail(e, "Action"),
             )
 
     # ========================================================================

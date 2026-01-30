@@ -21,6 +21,7 @@ from typing import List, Optional
 import structlog
 
 from app.db import models
+from app.core.safe_errors import safe_error_log
 from .constants import (
     BUCHUNGSSTAPEL_COLUMN_COUNT,
     BUCHUNGSSTAPEL_COLUMNS,
@@ -107,7 +108,7 @@ class BuchungsstapelWriter:
             problem_char = e.object[e.start:e.end]
             logger.error(
                 "datev_encoding_error",
-                error=str(e),
+                **safe_error_log(e),
                 problem_char=repr(problem_char),
                 position=e.start,
             )
@@ -117,7 +118,7 @@ class BuchungsstapelWriter:
                 f"Rechnungsdaten oder ersetzen Sie sie durch ASCII-kompatible Zeichen."
             ) from e
         except Exception as e:
-            logger.error("datev_encoding_unexpected_error", error=str(e))
+            logger.error("datev_encoding_unexpected_error", **safe_error_log(e))
             raise ValueError(
                 f"Unerwarteter Fehler beim Kodieren der DATEV-Datei: {type(e).__name__}"
             ) from e

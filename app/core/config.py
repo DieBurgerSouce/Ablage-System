@@ -33,6 +33,7 @@ from app.core.config.validation import (
     MINIO_DEFAULT_PASSWORDS,
 )
 from app.core.config.vault_client import VaultClient, VAULT_AVAILABLE
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -1346,7 +1347,7 @@ def create_settings() -> Settings:
         except Exception as e:
             logger.error(
                 "vault_initialization_failed",
-                error=str(e),
+                **safe_error_log(e),
                 message="Vault-Secrets konnten nicht geladen werden, verwende Umgebungsvariablen",
             )
 

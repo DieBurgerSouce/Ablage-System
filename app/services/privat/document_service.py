@@ -28,6 +28,7 @@ from app.services.privat.encryption_service import (
 )
 from app.core.config import settings
 from app.core.audit_logger import AuditLogger, SecurityEventType
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -180,7 +181,7 @@ def get_audit_logger() -> AuditLogger:
     except Exception as e:
         logger.error(
             "privat_audit_logger_init_failed",
-            error=str(e),
+            **safe_error_log(e),
             error_type=type(e).__name__,
         )
         raise AuditLoggerRequiredError(
@@ -534,7 +535,7 @@ class PrivatDocumentService:
                     logger.info(
                         "orphaned_file_cleaned",
                         file_path=file_path,
-                        reason=str(e)
+                        reason=safe_error_detail(e, "Dokument")
                     )
                 except Exception as cleanup_error:
                     logger.error(
@@ -725,6 +726,7 @@ class PrivatDocumentService:
             Tuple (Document, Space) wenn Zugriff erlaubt, sonst None
         """
         from app.db.models import PrivatSpaceAccess
+
 
         # SECURITY: Hole Dokument MIT Space in EINER Query (TOCTOU-sicher!)
         result = await db.execute(

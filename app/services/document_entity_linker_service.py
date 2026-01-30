@@ -27,6 +27,7 @@ from app.services.entity_search_service import (
     calculate_similarity,
 )
 from app.core.security.sensitive_data_filter import get_pii_safe_logger
+from app.core.safe_errors import safe_error_log
 
 # SECURITY: Use PII-safe logger for GDPR compliance
 # Never log customer numbers, IBANs, VAT-IDs, or other PII
@@ -266,7 +267,7 @@ class DocumentEntityLinkerService:
                     logger.error(
                         "document_linking_error",
                         document_id=str(doc.id),
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
             offset += batch_size

@@ -39,6 +39,7 @@ from app.services.compliance.audit_chain_service import (
     log_document_event,
 )
 from app.services.compliance.retention_service import retention_service
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -448,12 +449,12 @@ class GoBDArchiveService:
                 stats["skipped"] += 1
                 stats["errors"].append({
                     "archive_id": str(archive.id),
-                    "reason": f"Fehler: {str(e)}",
+                    "reason": safe_error_detail(e, "Archiv"),
                 })
                 logger.error(
                     "batch_verification_error",
                     archive_id=str(archive.id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         logger.info(

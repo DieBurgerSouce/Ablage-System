@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db, require_admin
 from app.core.jsonb_validators import validate_jsonb_payload
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User, UserCompany, Company
 from app.services.workflow import (
     ConditionEvaluator,
@@ -871,7 +872,7 @@ async def execute_workflow(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Workflow-Ausführung"),
         )
 
 

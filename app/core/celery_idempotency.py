@@ -23,6 +23,7 @@ from redis.exceptions import RedisError
 import structlog
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -118,7 +119,7 @@ class IdempotencyKey:
             logger.warning(
                 "idempotency_check_failed",
                 key=key,
-                error=str(e),
+                **safe_error_log(e),
             )
             # Bei Redis-Fehler: Erlaube Task-Ausfuehrung
             return False
@@ -149,7 +150,7 @@ class IdempotencyKey:
             logger.warning(
                 "idempotency_get_result_failed",
                 key=key,
-                error=str(e),
+                **safe_error_log(e),
             )
         return None
 
@@ -188,7 +189,7 @@ class IdempotencyKey:
             logger.warning(
                 "idempotency_set_result_failed",
                 key=key,
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 
@@ -220,7 +221,7 @@ class IdempotencyKey:
             logger.warning(
                 "idempotency_lock_acquire_failed",
                 key=key,
-                error=str(e),
+                **safe_error_log(e),
             )
             # Bei Fehler: Erlaube Task-Ausfuehrung
             return True
@@ -242,7 +243,7 @@ class IdempotencyKey:
             logger.warning(
                 "idempotency_lock_release_failed",
                 key=key,
-                error=str(e),
+                **safe_error_log(e),
             )
 
 
@@ -421,6 +422,6 @@ def clear_task_idempotency(
         logger.warning(
             "idempotency_cache_clear_failed",
             key=key,
-            error=str(e),
+            **safe_error_log(e),
         )
         return False

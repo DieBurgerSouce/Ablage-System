@@ -15,6 +15,7 @@ from sqlalchemy import select
 
 from app.workers.celery_app import celery_app, CPUTask
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 from app.db.models import Document
 from app.services.thumbnail_service import get_thumbnail_service
 from app.services.storage_service import get_storage_service
@@ -113,7 +114,7 @@ def generate_thumbnail_task(
                         logger.warning(
                             "thumbnail_upload_failed",
                             document_id=document_id,
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
                 # Generate preview if requested
@@ -143,7 +144,7 @@ def generate_thumbnail_task(
                             logger.warning(
                                 "preview_upload_failed",
                                 document_id=document_id,
-                                error=str(e),
+                                **safe_error_log(e),
                             )
 
                 # Update document
@@ -174,7 +175,7 @@ def generate_thumbnail_task(
                     "thumbnail_generation_failed",
                     task_id=task_id,
                     document_id=document_id,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 raise
 
@@ -225,12 +226,12 @@ def batch_generate_thumbnails_task(
             logger.warning(
                 "batch_thumbnail_single_failure",
                 document_id=doc_id,
-                error=str(e),
+                **safe_error_log(e),
             )
             results.append({
                 "success": False,
                 "document_id": doc_id,
-                "error": str(e),
+                "error": safe_error_detail(e, "Vorgang"),
             })
 
     successful = sum(1 for r in results if r.get("success", False))

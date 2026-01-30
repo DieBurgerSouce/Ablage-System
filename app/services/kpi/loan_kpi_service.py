@@ -24,6 +24,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import PrivatLoan
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -586,7 +587,7 @@ class LoanKPIService:
                 logger.error(
                     "loan_kpi_calculation_failed",
                     loan_id=str(loan.id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 error_count += 1
 

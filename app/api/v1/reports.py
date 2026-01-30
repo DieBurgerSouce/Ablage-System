@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
+from app.core.safe_errors import safe_error_detail
 from app.db.models import User
 from app.services.reports import (
     ReportBuilderService,
@@ -822,9 +823,9 @@ async def execute_report(
             db=db,
             execution_id=execution.id,
             status="failed",
-            error_message=str(e),
+            error_message=safe_error_detail(e, "Report"),
         )
-        raise HTTPException(status_code=500, detail=f"Report-Ausfuehrung fehlgeschlagen: {str(e)}")
+        raise HTTPException(status_code=500, detail=safe_error_detail(e, "Vorgang"))
 
     return ReportExecutionResponse.model_validate(execution)
 

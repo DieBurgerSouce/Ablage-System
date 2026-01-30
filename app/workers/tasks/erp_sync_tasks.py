@@ -19,6 +19,7 @@ from celery import shared_task
 from sqlalchemy import select, and_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.safe_errors import safe_error_log
 from app.workers.celery_app import celery_app
 from app.db.session import get_async_session_context
 from app.db.models import (
@@ -69,7 +70,7 @@ async def get_connection_config(db: AsyncSession, connection_id: UUID) -> Option
             logger.warning(
                 "erp_api_key_decryption_failed",
                 connection_id=str(connection.id),
-                error=str(e)
+                **safe_error_log(e)
             )
             # Bei Entschluesselungsfehler: Key ist nicht verfuegbar
             api_key = None
@@ -227,8 +228,8 @@ def sync_connection(
             try:
                 connector = await create_connector(config)
             except ValueError as e:
-                logger.error("erp_connector_creation_failed", error=str(e))
-                return {"success": False, "error": str(e)}
+                logger.error("erp_connector_creation_failed", **safe_error_log(e))
+                return {"success": False, **safe_error_log(e)}
 
             # Connect
             if not await connector.connect():
@@ -279,12 +280,12 @@ def sync_connection(
                     logger.exception(
                         "erp_entity_sync_failed",
                         entity=entity.value,
-                        error=str(e),
+                        **safe_error_log(e)
                     )
                     results.append({
                         "entity": entity.value,
                         "success": False,
-                        "error": str(e),
+                        "error": safe_error_detail(e, "Vorgang"),
                     })
                     total_success = False
 
@@ -474,8 +475,8 @@ def test_connection(connection_id: str) -> Dict[str, Any]:
                     }
 
             except Exception as e:
-                logger.exception("erp_connection_test_failed", error=str(e))
-                return {"success": False, "error": str(e)}
+                logger.exception("erp_connection_test_failed", **safe_error_log(e))
+                return {"success": False, **safe_error_log(e)}
 
     return asyncio.get_event_loop().run_until_complete(_test())
 
@@ -563,7 +564,7 @@ def notify_conflicts() -> Dict[str, Any]:
                         logger.warning(
                             "erp_conflict_notification_failed",
                             admin_id=str(admin.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
             return {

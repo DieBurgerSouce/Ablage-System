@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional
 import redis.asyncio as aioredis
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -39,7 +40,7 @@ def _sync_cleanup():
             logger.info("redis_atexit_cleanup_completed")
     except Exception as e:
         # Fehler beim Cleanup nicht propagieren
-        logger.warning("redis_atexit_cleanup_failed", error=str(e))
+        logger.warning("redis_atexit_cleanup_failed", **safe_error_log(e))
 
 
 class RedisStateManager:
@@ -116,7 +117,7 @@ class RedisStateManager:
                 return True
             return False
         except Exception as e:
-            logger.error("redis_ping_failed", error=str(e))
+            logger.error("redis_ping_failed", **safe_error_log(e))
             return False
 
     async def _ensure_connection(self) -> None:
@@ -380,13 +381,13 @@ class RedisStateManager:
                         logger.error(
                             "event_parse_error",
                             channel=channel,
-                            error=str(e)
+                            **safe_error_log(e)
                         )
                     except Exception as e:
                         logger.error(
                             "event_callback_error",
                             channel=channel,
-                            error=str(e)
+                            **safe_error_log(e)
                         )
         finally:
             if pubsub:
@@ -395,7 +396,7 @@ class RedisStateManager:
                     await pubsub.close()
                     logger.info("pubsub_closed", patterns=patterns)
                 except Exception as e:
-                    logger.warning("pubsub_cleanup_error", error=str(e))
+                    logger.warning("pubsub_cleanup_error", **safe_error_log(e))
 
     async def unsubscribe_all(self) -> None:
         """Cleanup all pubsub subscriptions."""
@@ -405,7 +406,7 @@ class RedisStateManager:
                 await self._pubsub.close()
                 logger.info("all_pubsub_unsubscribed")
             except Exception as e:
-                logger.warning("pubsub_cleanup_error", error=str(e))
+                logger.warning("pubsub_cleanup_error", **safe_error_log(e))
             finally:
                 self._pubsub = None
 
@@ -479,7 +480,7 @@ class RedisStateManager:
             logger.error(
                 "cache_invalidation_error",
                 pattern=full_pattern,
-                error=str(e)
+                **safe_error_log(e)
             )
             raise
 
@@ -568,7 +569,7 @@ class RedisStateManager:
                 logger.warning(
                     "queue_length_check_failed",
                     queue=queue_name,
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 lengths[queue_name] = 0
 

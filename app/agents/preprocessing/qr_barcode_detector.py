@@ -20,6 +20,7 @@ import numpy as np
 import structlog
 
 from app.agents.base import AgentCategory, PreprocessingAgent
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -263,7 +264,7 @@ class SEPAQRParser:
             return payment
 
         except Exception as e:
-            logger.warning("sepa_qr_parse_error", error=str(e))
+            logger.warning("sepa_qr_parse_error", **safe_error_log(e))
             return None
 
     def _parse_amount(self, amount_str: str) -> Tuple[Optional[float], str]:
@@ -507,7 +508,7 @@ class QRBarcodeDetectorAgent(PreprocessingAgent):
                         return cv2.imread(image)
                     return None
                 except Exception as e:
-                    logger.warning("image_load_error", path=image, error=str(e))
+                    logger.warning("image_load_error", path=image, **safe_error_log(e))
                     return None
 
             if isinstance(image, np.ndarray):
@@ -520,7 +521,7 @@ class QRBarcodeDetectorAgent(PreprocessingAgent):
             return None
 
         except Exception as e:
-            logger.warning("image_preparation_error", error=str(e))
+            logger.warning("image_preparation_error", **safe_error_log(e))
             return None
 
     async def _detect_with_pyzbar(
@@ -622,7 +623,7 @@ class QRBarcodeDetectorAgent(PreprocessingAgent):
                 ))
 
         except Exception as e:
-            logger.warning("pyzbar_detection_error", error=str(e))
+            logger.warning("pyzbar_detection_error", **safe_error_log(e))
 
         return detected
 

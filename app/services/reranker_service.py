@@ -25,12 +25,14 @@ if TYPE_CHECKING:
     from sentence_transformers import CrossEncoder
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
 # Metriken-Import (optional)
 try:
     from app.services.rag.metrics import record_rerank, record_rerank_fallback
+
     METRICS_AVAILABLE = True
 except ImportError:
     METRICS_AVAILABLE = False
@@ -152,7 +154,7 @@ class RerankerService:
             return available >= required_gb
 
         except Exception as e:
-            logger.warning("gpu_vram_check_failed", error=str(e))
+            logger.warning("gpu_vram_check_failed", **safe_error_log(e))
             return False
 
     def _ensure_gpu_model_loaded(self) -> bool:
@@ -209,7 +211,7 @@ class RerankerService:
                 logger.error(
                     "gpu_reranker_load_failed",
                     model=self.GPU_MODEL_NAME,
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 return False
 
@@ -246,7 +248,7 @@ class RerankerService:
                 logger.error(
                     "cpu_reranker_load_failed",
                     model=self.CPU_MODEL_NAME,
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 return False
 
@@ -307,7 +309,7 @@ class RerankerService:
                     else:
                         logger.warning(
                             "gpu_reranker_error",
-                            error=str(e),
+                            **safe_error_log(e),
                             falling_back_to="cpu"
                         )
                 self._stats["gpu_fallback_count"] += 1

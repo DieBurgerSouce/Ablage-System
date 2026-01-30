@@ -31,6 +31,7 @@ from app.db.models_alert import (
     AlertDigestSubscription,
 )
 from app.services.notification_service import (
+
     NotificationService,
     get_notification_service,
     NotificationPriority,
@@ -728,7 +729,7 @@ class AlertCenterService:
                     "bulk_action_error",
                     alert_id=str(alert_id),
                     action=action,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 error_count += 1
 
@@ -799,7 +800,7 @@ Ablage-System Alert Center
             logger.error(
                 "alert_email_failed",
                 alert_id=str(alert.id),
-                error=str(e),
+                **safe_error_log(e),
             )
 
     async def cleanup_auto_dismissed(self) -> int:

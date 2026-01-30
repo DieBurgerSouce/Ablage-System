@@ -9,6 +9,7 @@ Verwaltet Bankkonten:
 
 from datetime import datetime, timedelta
 from app.core.datetime_utils import utc_now
+from app.core.safe_errors import safe_error_log
 from decimal import Decimal
 from typing import Optional, List, TYPE_CHECKING
 from uuid import UUID, uuid4
@@ -120,7 +121,7 @@ def _decrypt_sensitive_data(ciphertext: str) -> Optional[str]:
     except Exception as e:
         logger.error(
             "encryption_decryption_error",
-            error=str(e)
+            **safe_error_log(e)
         )
         return None
 
@@ -460,6 +461,7 @@ class AccountService:
             Entschluesselte Login-ID oder None
         """
         from app.db.models import BankAccount
+
 
         account = await db.get(BankAccount, account_id)
 

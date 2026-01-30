@@ -26,6 +26,7 @@ import structlog
 from prometheus_client import Counter, Histogram, Gauge
 
 from app.core.datetime_utils import utc_now
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -572,16 +573,16 @@ class EnhancedFinTSService:
                 logger.error(
                     "sync_connection_failed",
                     connection_id=str(connection.id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 connection.error_count += 1
-                connection.last_error = str(e)
+                connection.last_error = safe_error_detail(e, "FinTS")
 
                 results.append(SyncResult(
                     connection_id=connection.id,
                     account_iban="",
                     success=False,
-                    error=str(e),
+                    **safe_error_log(e),
                 ))
 
         return results
@@ -739,7 +740,7 @@ class EnhancedFinTSService:
 
         except Exception as e:
             connection.error_count += 1
-            connection.last_error = str(e)
+            connection.last_error = safe_error_detail(e, "FinTS")
 
             if connection.error_count >= 3:
                 connection.health_status = ConnectionHealth.UNHEALTHY
@@ -936,7 +937,7 @@ class EnhancedFinTSService:
                 logger.error(
                     "notification_handler_failed",
                     channel=channel.value,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         return sent

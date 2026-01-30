@@ -27,6 +27,7 @@ from app.core.rbac import (
     require_any_permission,
     PermissionContext,
 )
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.services.personal import employee_service
 
 logger = structlog.get_logger(__name__)
@@ -446,9 +447,9 @@ async def create_employee(
         error_status, safe_message = _get_safe_error_response(e)
         logger.warning(
             "employee_validation_error",
-            error_detail=str(e),
             user_id=str(current_user.id),
             company_id=str(company.id),
+            **safe_error_log(e)
         )
         raise HTTPException(status_code=error_status, detail=safe_message)
 

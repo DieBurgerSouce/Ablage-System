@@ -22,6 +22,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import Document, ProcessingJob, ProcessingStatus, User
 
 logger = structlog.get_logger(__name__)
@@ -45,7 +46,8 @@ def _run_async_callback(coro) -> Any:
     except RuntimeError as e:
         # Handle case where there's already a running event loop
         # (e.g., in some test environments or nested async contexts)
-        if "cannot be called from a running event loop" in str(e):
+        error_msg = safe_error_detail(e, "Callback") if e.args else ""
+        if "cannot be called from a running event loop" in error_msg:
             logger.warning(
                 "async_callback_nested_loop",
                 message="Falling back to get_event_loop for nested context"
@@ -139,7 +141,7 @@ async def _dispatch_webhook_event(
                 retry_count=retry_count + 1,
                 max_retries=_WEBHOOK_MAX_RETRIES,
                 delay_seconds=delay,
-                error=str(e)
+                **safe_error_log(e, context="Webhook-Dispatch")
             )
             await asyncio.sleep(delay)
             await _dispatch_webhook_event(
@@ -152,7 +154,7 @@ async def _dispatch_webhook_event(
                 document_id=document_id,
                 event_type=event_type,
                 retries_exhausted=_WEBHOOK_MAX_RETRIES,
-                error=str(e),
+                **safe_error_log(e, context="Webhook-Dispatch"),
                 # Weitere Diagnose-Infos
                 exc_info=True
             )
@@ -244,7 +246,7 @@ def on_success(
                             retry_count=retry_count + 1,
                             max_retries=max_retries,
                             delay_seconds=delay,
-                            error=str(e)
+                            **safe_error_log(e, context="Datenbank-Update bei Erfolg")
                         )
                         await asyncio.sleep(delay)
                         await update_database(retry_count + 1)
@@ -255,7 +257,7 @@ def on_success(
                             task_id=task_id,
                             document_id=document_id,
                             retries_exhausted=max_retries,
-                            error=str(e),
+                            **safe_error_log(e, context="Datenbank-Update bei Erfolg"),
                             exc_info=True
                         )
 
@@ -286,9 +288,9 @@ def on_failure(
     logger.error(
         "task_failure_callback",
         task_id=task_id,
-        exception=str(exc),
         args=args,
         kwargs=kwargs,
+        **safe_error_log(exc, context="Task-Fehler"),
         exc_info=True
     )
 
@@ -326,7 +328,7 @@ def on_failure(
                         if job:
                             job.status = ProcessingStatus.FAILED
                             job.completed_at = datetime.now(timezone.utc)
-                            job.error_message = str(exc)
+                            job.error_message = safe_error_detail(exc, "Verarbeitung")
 
                         await session.commit()
 
@@ -334,7 +336,7 @@ def on_failure(
                             "document_updated_on_failure",
                             task_id=task_id,
                             document_id=document_id,
-                            error=str(exc)
+                            **safe_error_log(exc, context="Dokumentfehler")
                         )
 
                 except Exception as e:
@@ -342,14 +344,14 @@ def on_failure(
                         "failure_callback_database_error",
                         task_id=task_id,
                         document_id=document_id,
-                        error=str(e)
+                        **safe_error_log(e, context="Datenbank-Update bei Fehler")
                     )
 
         # Run async update using safe helper
         _run_async_callback(update_database())
 
     # Send notification to user
-    _send_failure_notification(document_id, str(exc))
+    _send_failure_notification(document_id, safe_error_detail(exc, "Verarbeitung"))
 
 
 # ==================== Retry Callbacks ====================
@@ -375,9 +377,9 @@ def on_retry(
     logger.warning(
         "task_retry_callback",
         task_id=task_id,
-        exception=str(exc),
         args=args,
-        kwargs=kwargs
+        kwargs=kwargs,
+        **safe_error_log(exc, context="Task-Retry")
     )
 
     # Extract document_id from args or kwargs
@@ -404,7 +406,8 @@ def on_retry(
 
                     if job:
                         job.retry_count = (job.retry_count or 0) + 1
-                        job.error_message = f"Retry {job.retry_count}/{job.max_retries}: {str(exc)}"
+                        safe_exc_msg = safe_error_detail(exc, "Verarbeitung")
+                        job.error_message = f"Retry {job.retry_count}/{job.max_retries}: {safe_exc_msg}"
                         await session.commit()
 
                         logger.info(
@@ -420,7 +423,7 @@ def on_retry(
                         "retry_callback_database_error",
                         task_id=task_id,
                         document_id=document_id,
-                        error=str(e)
+                        **safe_error_log(e, context="Datenbank-Update bei Retry")
                     )
 
         # Run async update using safe helper
@@ -599,10 +602,10 @@ async def send_task_notification(
             "task_notification_failed",
             document_id=document_id,
             status=status,
-            error=str(e),
+            **safe_error_log(e, context="Benachrichtigung"),
             exc_info=True
         )
-        return {"error": str(e)}
+        return {"error": safe_error_detail(e, "Benachrichtigung")}
 
 
 def get_german_error_message(exc: Exception) -> str:
@@ -612,7 +615,7 @@ def get_german_error_message(exc: Exception) -> str:
         exc: Exception to convert
 
     Returns:
-        German error message
+        German error message (PII-safe)
     """
     error_map = {
         "FileNotFoundError": "Datei nicht gefunden",
@@ -626,7 +629,8 @@ def get_german_error_message(exc: Exception) -> str:
     exc_type = type(exc).__name__
     base_message = error_map.get(exc_type, "Unbekannter Fehler")
 
-    return f"{base_message}: {str(exc)}"
+    # Use safe_error_detail for PII-safe message
+    return safe_error_detail(exc, base_message, include_type=False)
 
 
 # ==================== Notification Integration ====================
@@ -703,7 +707,7 @@ def _send_success_notification(document_id: str, result: Dict[str, Any]) -> None
             logger.warning(
                 "success_notification_failed",
                 document_id=document_id,
-                error=str(e),
+                **safe_error_log(e, context="Erfolgs-Benachrichtigung")
             )
 
     # Run async notification using optimized helper
@@ -712,7 +716,7 @@ def _send_success_notification(document_id: str, result: Dict[str, Any]) -> None
     try:
         _run_async_callback(_send_async())
     except Exception as e:
-        logger.warning("notification_loop_error", error=str(e))
+        logger.warning("notification_loop_error", **safe_error_log(e, context="Benachrichtigungs-Loop"))
 
 
 def _send_failure_notification(document_id: str, error_message: str) -> None:
@@ -786,7 +790,7 @@ def _send_failure_notification(document_id: str, error_message: str) -> None:
             logger.warning(
                 "failure_notification_failed",
                 document_id=document_id,
-                error=str(e),
+                **safe_error_log(e, context="Fehler-Benachrichtigung")
             )
 
     # Run async notification using optimized helper
@@ -794,7 +798,7 @@ def _send_failure_notification(document_id: str, error_message: str) -> None:
     try:
         _run_async_callback(_send_async())
     except Exception as e:
-        logger.warning("notification_loop_error", error=str(e))
+        logger.warning("notification_loop_error", **safe_error_log(e, context="Fehler-Benachrichtigungs-Loop"))
 
 
 def _send_quality_warning(document_id: str, confidence: float) -> None:
@@ -839,7 +843,7 @@ def _send_quality_warning(document_id: str, confidence: float) -> None:
             logger.warning(
                 "quality_warning_notification_failed",
                 document_id=document_id,
-                error=str(e),
+                **safe_error_log(e, context="Qualitäts-Warnung")
             )
 
     # Run async notification using optimized helper
@@ -851,5 +855,5 @@ def _send_quality_warning(document_id: str, confidence: float) -> None:
         logger.debug(
             "quality_warning_loop_error",
             document_id=document_id,
-            error=str(e)
+            **safe_error_log(e, context="Qualitäts-Warnungs-Loop")
         )

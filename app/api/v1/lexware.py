@@ -34,6 +34,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import User, EntityType
 from app.api.dependencies import get_db, get_current_active_user
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 
 logger = structlog.get_logger(__name__)
@@ -341,12 +342,12 @@ async def import_customers(
     except Exception as e:
         logger.exception(
             "lexware_customer_import_failed",
-            error=str(e),
+            **safe_error_log(e),
             user_id=user_id_str,
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Fehler beim Import: {str(e)}"
+            detail=safe_error_detail(e, "Import")
         )
 
     finally:
@@ -484,12 +485,12 @@ async def import_suppliers(
     except Exception as e:
         logger.exception(
             "lexware_supplier_import_failed",
-            error=str(e),
+            **safe_error_log(e),
             user_id=user_id_str,
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Fehler beim Import: {str(e)}"
+            detail=safe_error_detail(e, "Import")
         )
 
     finally:
@@ -603,12 +604,12 @@ async def link_documents(
         except Exception as e:
             logger.exception(
                 "entity_linking_failed",
-                error=str(e),
+                **safe_error_log(e),
                 user_id=str(current_user.id),
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Fehler beim Entity-Linking: {str(e)}"
+                detail=safe_error_detail(e, "Entity-Linking")
             )
 
 
@@ -671,11 +672,11 @@ async def link_single_document(
         logger.exception(
             "single_document_linking_failed",
             document_id=str(document_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Fehler beim Verknuepfen: {str(e)}"
+            detail=safe_error_detail(e, "Verknuepfen")
         )
 
 
@@ -780,7 +781,7 @@ async def get_linking_statistics(
                 by_confidence[bucket] = by_confidence.get(bucket, 0) + 1
 
     except Exception as e:
-        logger.warning("linking_statistics_extended_error", error=str(e))
+        logger.warning("linking_statistics_extended_error", **safe_error_log(e))
 
     return LinkingStatistics(
         total_documents=total_count,
@@ -858,11 +859,11 @@ async def search_entities(
         logger.exception(
             "entity_search_failed",
             query=request.query,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Fehler bei der Suche: {str(e)}"
+            detail=safe_error_detail(e, "Suche")
         )
 
 
@@ -932,6 +933,7 @@ async def list_entities_by_company(
     """
     from app.services.entity_search_service import get_entity_search_service
     from app.db.models import EntityType as DbEntityType
+
 
     if company not in ("folie", "messer"):
         raise HTTPException(

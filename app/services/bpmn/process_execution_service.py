@@ -32,6 +32,7 @@ from app.db.bpmn_models.bpmn import (
     TaskType,
 )
 from app.services.bpmn.bpmn_parser import BPMNProcess, BPMNElement, ElementType
+from app.core.safe_errors import safe_error_log
 from app.core.security.safe_expression_evaluator import (
     SafeExpressionEvaluator as ASTEvaluator,
     ExpressionEvaluationError,
@@ -101,14 +102,14 @@ class ExpressionEvaluator:
             logger.warning(
                 "expression_evaluation_failed",
                 expression=expression[:100],  # Truncate for security
-                error=str(e)
+                **safe_error_log(e)
             )
             return False
         except Exception as e:
             logger.warning(
                 "expression_evaluation_unexpected_error",
                 expression=expression[:100],
-                error=str(e)
+                **safe_error_log(e)
             )
             return False
 
@@ -696,7 +697,7 @@ class ProcessExecutionService:
             logger.error(
                 "script_task_failed",
                 element_id=element.id,
-                error=str(e)
+                **safe_error_log(e)
             )
 
         await self._continue_flow(instance, process, element, user_id)
@@ -965,6 +966,7 @@ class ProcessExecutionService:
         """Triggert einen Celery Task."""
         # Import hier um zirkulaere Imports zu vermeiden
         from app.workers.celery_app import celery_app
+
 
         # Task asynchron ausloesen
         celery_app.send_task(

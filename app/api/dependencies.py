@@ -17,6 +17,7 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 from app.core.security import decode_token, verify_token_type, extract_user_id_from_token
 from app.db.models import User
 from app.services.user_service import UserService
@@ -162,7 +163,7 @@ async def get_current_user(
     except HTTPException:
         raise
     except Exception as e:
-        logger.warning("token_validation_failed", error=str(e), error_type=type(e).__name__)
+        logger.warning("token_validation_failed", **safe_error_log(e), error_type=type(e).__name__)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentifizierung fehlgeschlagen",  # Authentication failed
@@ -272,6 +273,92 @@ async def get_current_superuser(
     return current_user
 
 
+# ==================== Multi-Tenant Company Validation ====================
+
+
+def validate_company_access(company_id: UUID, current_user: User) -> None:
+    """
+    Validate that the current user has access to the specified company.
+
+    SECURITY: Prevents Cross-Company Authorization Bypass (CWE-863).
+    Users can only access data for their own company unless they are superadmins.
+
+    Args:
+        company_id: The company ID being accessed
+        current_user: The authenticated user
+
+    Raises:
+        HTTPException: 403 if user doesn't have access to the company
+
+    Usage:
+        @app.get("/endpoint")
+        async def endpoint(
+            company_id: UUID = Query(...),
+            current_user: User = Depends(get_current_active_user),
+        ):
+            validate_company_access(company_id, current_user)
+            ...
+    """
+    # Superusers can access any company
+    if current_user.is_superuser:
+        return
+
+    # Check if user belongs to the requested company
+    if current_user.company_id is None:
+        logger.warning(
+            "user_without_company_accessing_company_data",
+            user_id=str(current_user.id),
+            requested_company_id=str(company_id),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Benutzer ist keiner Firma zugeordnet",
+        )
+
+    if str(current_user.company_id) != str(company_id):
+        logger.warning(
+            "cross_company_access_attempt",
+            user_id=str(current_user.id),
+            user_company_id=str(current_user.company_id),
+            requested_company_id=str(company_id),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Kein Zugriff auf diese Firma",
+        )
+
+
+async def get_validated_company_id(
+    company_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+) -> UUID:
+    """
+    Dependency that validates company access and returns the company_id.
+
+    SECURITY: Use this dependency when you need validated company_id.
+
+    Args:
+        company_id: The company ID from query/path parameter
+        current_user: The authenticated user (injected)
+
+    Returns:
+        The validated company_id
+
+    Raises:
+        HTTPException: 403 if user doesn't have access
+
+    Usage:
+        @app.get("/endpoint")
+        async def endpoint(
+            validated_company_id: UUID = Depends(get_validated_company_id),
+        ):
+            # validated_company_id is safe to use
+            ...
+    """
+    validate_company_access(company_id, current_user)
+    return company_id
+
+
 # ==================== Optional Authentication ====================
 
 async def get_current_user_optional(
@@ -316,7 +403,7 @@ async def get_current_user_optional(
             return user
 
     except Exception as e:
-        logger.debug("optional_user_lookup_failed", error=str(e))
+        logger.debug("optional_user_lookup_failed", **safe_error_log(e))
 
     return None
 
@@ -718,7 +805,7 @@ async def get_rate_limit_status(
             usage["batch_reset_in"] = max(0, batch_ttl) if batch_ttl > 0 else 3600
 
         except Exception as e:
-            logger.warning("rate_limit_status_error", error=str(e))
+            logger.warning("rate_limit_status_error", **safe_error_log(e))
 
     return {
         "user_id": str(current_user.id),
@@ -1026,6 +1113,10 @@ async def require_admin(
             detail="Nur Administratoren haben Zugriff auf diese Funktion",
         )
     return current_user
+
+
+# Alias fuer require_admin (Backwards-Kompatibilitaet)
+get_current_admin_user = require_admin
 
 
 class RateLimitDependency:

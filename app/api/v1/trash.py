@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db, get_current_user
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.db.schemas import (
     SoftDeleteResponse,
@@ -211,7 +212,7 @@ async def restore_document(
         # 30-Tage-Frist abgelaufen
         raise HTTPException(
             status_code=status.HTTP_410_GONE,
-            detail=str(e),
+            detail=safe_error_detail(e, "Papierkorb"),
         )
 
     if not result:

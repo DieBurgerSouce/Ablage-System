@@ -17,7 +17,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.search_service import SearchService, get_search_service
 from app.services.rag.search_service import RAGSearchService, get_rag_search_service
+from app.core.safe_errors import safe_error_log
 from app.db.schemas import (
+
     SearchType,
     SearchFilters,
     SearchResultItem,
@@ -249,7 +251,7 @@ class UnifiedSearchService:
             except Exception as e:
                 logger.warning(
                     "chunk_search_failed",
-                    error=str(e),
+                    **safe_error_log(e),
                     query=query,
                 )
                 # Bei Fehler in Chunk-Suche trotzdem Dokument-Ergebnisse zurueckgeben

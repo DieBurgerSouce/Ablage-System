@@ -28,6 +28,7 @@ from app.api.dependencies import get_db, get_current_active_user
 from app.core.rate_limiting import limiter, get_user_identifier
 from app.core.security import build_content_disposition
 from app.db.models import User, PrivatSpace
+from app.core.safe_errors import safe_error_log
 from app.db.schemas import (
     # Space
     PrivatSpaceCreate,
@@ -740,7 +741,7 @@ async def move_folder(
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
         # ValueError wird bei ungueltigem Zielordner oder Zirkularitaet geworfen
-        logger.warning("privat_folder_update_error", error=str(e))
+        logger.warning("privat_folder_update_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ungueltige Anfrage. Bitte Eingaben pruefen.",
@@ -3619,6 +3620,7 @@ async def get_goals_summary(
 ) -> FinancialGoalSummary:
     """Holt eine Zusammenfassung aller finanziellen Ziele."""
     from app.services.portfolio.financial_goals_service import FinancialGoalsService
+
 
     await get_user_space_or_403(db, space_id, current_user)
 

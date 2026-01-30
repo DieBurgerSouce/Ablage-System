@@ -603,7 +603,7 @@ class OCRRouterModel:
             logger.info("modell_geladen", version=version_info.version)
 
         except (FileNotFoundError, ValueError) as e:
-            logger.warning("kein_modell_in_registry", error=str(e))
+            logger.warning("kein_modell_in_registry", **safe_error_log(e))
 
     def _load_legacy(self, path: Path) -> None:
         """
@@ -643,6 +643,7 @@ class OCRRouterModel:
         # Import erst NACH Security-Check (Defense in Depth)
         import pickle  # noqa: S403 - Guarded by env var check above
 
+
         warnings.warn(
             "Lade Legacy pickle-Modell. Bitte nach Registry migrieren!",
             DeprecationWarning,
@@ -676,7 +677,7 @@ class OCRRouterModel:
             if active:
                 self.load(version=active)
         except Exception as e:
-            logger.debug("kein_aktives_modell", error=str(e))
+            logger.debug("kein_aktives_modell", **safe_error_log(e))
 
     def _get_model_version(self) -> str:
         """Get model version string."""
@@ -739,5 +740,5 @@ class OCRRouterModel:
             logger.info("rollback_erfolgreich", version=version)
             return True
         except Exception as e:
-            logger.error("rollback_fehlgeschlagen", error=str(e))
+            logger.error("rollback_fehlgeschlagen", **safe_error_log(e))
             return False

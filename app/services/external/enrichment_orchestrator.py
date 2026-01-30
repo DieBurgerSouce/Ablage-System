@@ -26,11 +26,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import BusinessEntity
 from app.core.security.sensitive_data_filter import get_pii_safe_logger
+from app.core.safe_errors import safe_error_log
 from app.services.external.handelsregister_service import (
     HandelsregisterService,
     CompanyRecord,
 )
 from app.services.external.bundesanzeiger_service import (
+
     BundesanzeigerService,
     InsolvencyResult,
 )
@@ -142,7 +144,7 @@ class EnrichmentOrchestrator:
             except Exception as e:
                 logger.warning(
                     "handelsregister_query_failed",
-                    error=str(e),
+                    **safe_error_log(e),
                     entity_id=str(entity_id),
                 )
 
@@ -157,7 +159,7 @@ class EnrichmentOrchestrator:
             except Exception as e:
                 logger.warning(
                     "bundesanzeiger_query_failed",
-                    error=str(e),
+                    **safe_error_log(e),
                     entity_id=str(entity_id),
                 )
 

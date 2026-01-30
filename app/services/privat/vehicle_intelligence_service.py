@@ -15,6 +15,7 @@ Enterprise Feature - KEINE externen APIs, alles lokal berechnet.
 from __future__ import annotations
 
 import threading
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, date, timedelta
 from decimal import Decimal, ROUND_HALF_UP
@@ -908,6 +909,7 @@ class VehicleIntelligenceService:
         """Berechnet Analytics fuer alle Fahrzeuge."""
         from app.db.models import PrivatVehicle
 
+
         VEHICLE_INTEL_CALCULATIONS.labels(calculation_type="batch_all").inc()
 
         query = select(PrivatVehicle).where(PrivatVehicle.deleted_at.is_(None))
@@ -930,11 +932,11 @@ class VehicleIntelligenceService:
                 stats["calculated"] += 1
             except Exception as e:
                 stats["skipped"] += 1
-                stats["errors"].append(f"{vehicle.id}: {str(e)}")
+                stats["errors"].append(f"{vehicle.id}: {safe_error_detail(e, 'Fahrzeug')}")
                 logger.warning(
                     "vehicle_analytics_failed",
                     vehicle_id=str(vehicle.id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         await db.commit()

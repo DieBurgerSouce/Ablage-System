@@ -9,6 +9,7 @@ Implementiert End-to-End Tracing fuer das Ablage-System:
 Usage:
     from app.core.tracing import TracingService, trace_span
 
+
     # In app startup
     tracing = TracingService()
     tracing.setup()
@@ -150,7 +151,7 @@ class TracingService:
             except Exception as e:
                 logger.warning(
                     "otlp_exporter_failed",
-                    error=str(e),
+                    **safe_error_log(e),
                     hint="Jaeger/Collector nicht erreichbar?"
                 )
 
@@ -184,7 +185,7 @@ class TracingService:
             return True
 
         except Exception as e:
-            logger.exception("tracing_setup_failed", error=str(e))
+            logger.exception("tracing_setup_failed", **safe_error_log(e))
             return False
 
     def _setup_auto_instrumentation(self, app: Optional[Any]) -> None:
@@ -201,28 +202,28 @@ class TracingService:
                 )
                 logger.debug("fastapi_instrumented")
             except Exception as e:
-                logger.warning("fastapi_instrumentation_failed", error=str(e))
+                logger.warning("fastapi_instrumentation_failed", **safe_error_log(e))
 
         # HTTPX (async HTTP client)
         try:
             HTTPXClientInstrumentor().instrument()
             logger.debug("httpx_instrumented")
         except Exception as e:
-            logger.warning("httpx_instrumentation_failed", error=str(e))
+            logger.warning("httpx_instrumentation_failed", **safe_error_log(e))
 
         # Redis
         try:
             RedisInstrumentor().instrument()
             logger.debug("redis_instrumented")
         except Exception as e:
-            logger.warning("redis_instrumentation_failed", error=str(e))
+            logger.warning("redis_instrumentation_failed", **safe_error_log(e))
 
         # Celery
         try:
             CeleryInstrumentor().instrument()
             logger.debug("celery_instrumented")
         except Exception as e:
-            logger.warning("celery_instrumentation_failed", error=str(e))
+            logger.warning("celery_instrumentation_failed", **safe_error_log(e))
 
     def instrument_sqlalchemy(self, engine: Any) -> None:
         """Instrumentiert SQLAlchemy Engine.
@@ -237,7 +238,7 @@ class TracingService:
             SQLAlchemyInstrumentor().instrument(engine=engine)
             logger.debug("sqlalchemy_instrumented")
         except Exception as e:
-            logger.warning("sqlalchemy_instrumentation_failed", error=str(e))
+            logger.warning("sqlalchemy_instrumentation_failed", **safe_error_log(e))
 
     def get_tracer(self) -> Optional[Any]:
         """Hole den Tracer.
@@ -291,7 +292,7 @@ class TracingService:
                 self._provider.shutdown()
                 logger.info("tracing_shutdown")
             except Exception as e:
-                logger.warning("tracing_shutdown_error", error=str(e))
+                logger.warning("tracing_shutdown_error", **safe_error_log(e))
 
 
 # Globale Tracing Service Instance

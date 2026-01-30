@@ -14,10 +14,12 @@ BPMN 2.0 Namespace: http://www.omg.org/spec/BPMN/20100524/MODEL
 
 import re
 import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as DefusedET
 from dataclasses import dataclass, field, asdict
 from typing import Optional, List, Dict, Any
 from enum import Enum
 import structlog
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -243,9 +245,10 @@ class BPMNParser:
             ValueError: Bei ungueltigem XML oder fehlendem Process
         """
         try:
-            root = ET.fromstring(bpmn_xml)
+            # SECURITY: Use defusedxml to prevent XXE attacks (CWE-611)
+            root = DefusedET.fromstring(bpmn_xml)
         except ET.ParseError as e:
-            logger.error("bpmn_parse_error", error=str(e))
+            logger.error("bpmn_parse_error", **safe_error_log(e))
             raise ValueError(f"Ungueltiges BPMN XML: {e}") from e
 
         # Process Element finden

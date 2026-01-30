@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.cache import invalidate_user_cache, invalidate_all_caches
+from app.core.safe_errors import safe_error_log
 from app.workers.celery_app import celery_app, CPUTask
 
 logger = structlog.get_logger(__name__)
@@ -108,12 +109,12 @@ async def _process_deletion_requests_async() -> Dict[str, Any]:
                 except Exception as e:
                     stats["errors"].append({
                         "user_id": str(user.id)[:8] + "...",
-                        "error": str(e),
+                        "error": safe_error_detail(e, "Vorgang"),
                     })
                     logger.error(
                         "gdpr_deletion_failed",
                         user_id=str(user.id)[:8] + "...",
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
             # 2. Verarbeite GDPRDeletionRequest-Tabelle (legacy)
@@ -153,12 +154,12 @@ async def _process_deletion_requests_async() -> Dict[str, Any]:
                     except Exception as e:
                         stats["errors"].append({
                             "request_id": str(request.id),
-                            "error": str(e),
+                            "error": safe_error_detail(e, "Vorgang"),
                         })
                         logger.error(
                             "gdpr_deletion_failed",
                             request_id=str(request.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
             except Exception as e:
                 # GDPRDeletionRequest-Tabelle existiert möglicherweise nicht
@@ -170,8 +171,8 @@ async def _process_deletion_requests_async() -> Dict[str, Any]:
             await db.commit()
 
     except Exception as e:
-        logger.error("gdpr_deletion_processing_error", error=str(e))
-        stats["errors"].append({"type": "general", "error": str(e)})
+        logger.error("gdpr_deletion_processing_error", **safe_error_log(e))
+        stats["errors"].append({"type": "general", **safe_error_log(e)})
 
     logger.info(
         "gdpr_deletion_processing_completed",
@@ -218,7 +219,7 @@ async def _delete_user_data(
             logger.warning(
                 "gdpr_storage_delete_failed",
                 document_id=str(doc.id),
-                error=str(e),
+                **safe_error_log(e),
             )
 
     # 2. Lösche Dokumente aus DB
@@ -256,7 +257,7 @@ async def _delete_user_data(
         logger.warning(
             "gdpr_cache_invalidation_failed",
             user_id=str(user_id),
-            error=str(cache_error)
+            **safe_error_log(cache_error)
         )
 
     return stats
@@ -469,8 +470,8 @@ Sofortmaßnahmen erforderlich!
         )
         stats["admin_notified"] = True
     except Exception as e:
-        stats["errors"].append({"type": "admin_notification", "error": str(e)})
-        logger.error("breach_admin_notification_failed", error=str(e))
+        stats["errors"].append({"type": "admin_notification", **safe_error_log(e)})
+        logger.error("breach_admin_notification_failed", **safe_error_log(e))
 
     # 2. Behördenmeldung (Art. 33)
     if notify_authority and affected_records > 0:
@@ -511,8 +512,8 @@ Frist: 72 Stunden ab Erkennung
             stats["authority_notified"] = True
 
         except Exception as e:
-            stats["errors"].append({"type": "authority_notification", "error": str(e)})
-            logger.error("breach_authority_notification_failed", error=str(e))
+            stats["errors"].append({"type": "authority_notification", **safe_error_log(e)})
+            logger.error("breach_authority_notification_failed", **safe_error_log(e))
 
     # 3. Benutzerbenachrichtigung (Art. 34) bei hohem Risiko
     if notify_users and affected_records > 0:
@@ -552,12 +553,12 @@ Mit freundlichen Grüßen,
                         logger.warning(
                             "breach_user_notification_failed",
                             user_id=str(user.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
         except Exception as e:
-            stats["errors"].append({"type": "user_notification", "error": str(e)})
-            logger.error("breach_user_notification_batch_failed", error=str(e))
+            stats["errors"].append({"type": "user_notification", **safe_error_log(e)})
+            logger.error("breach_user_notification_batch_failed", **safe_error_log(e))
 
     # 4. Speichere Breach-Eintrag in DB für Audit
     try:
@@ -578,8 +579,8 @@ Mit freundlichen Grüßen,
             await db.commit()
 
     except Exception as e:
-        stats["errors"].append({"type": "breach_log", "error": str(e)})
-        logger.error("breach_log_save_failed", error=str(e))
+        stats["errors"].append({"type": "breach_log", **safe_error_log(e)})
+        logger.error("breach_log_save_failed", **safe_error_log(e))
 
     logger.info(
         "breach_notification_completed",

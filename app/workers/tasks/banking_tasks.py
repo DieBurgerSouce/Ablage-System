@@ -23,6 +23,7 @@ from uuid import UUID
 import structlog
 
 from app.workers.celery_app import celery_app, CPUTask
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -309,7 +310,7 @@ def process_bank_import(
         logger.error(
             "banking_import_task_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise self.retry(exc=e)
@@ -425,7 +426,7 @@ def auto_reconcile(
                         logger.warning(
                             "reconcile_transaction_error",
                             transaction_id=str(tx.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
                 await db.commit()
@@ -446,7 +447,7 @@ def auto_reconcile(
         logger.error(
             "auto_reconcile_task_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise self.retry(exc=e)
@@ -555,7 +556,7 @@ def parse_transaction_references(
         logger.error(
             "parse_references_task_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise
@@ -644,7 +645,7 @@ def update_account_balances(self, bank_account_id: Optional[str] = None) -> Dict
         logger.error(
             "update_balances_task_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise
@@ -703,7 +704,7 @@ def check_overdue_payments(self) -> Dict[str, Any]:
                         logger.warning(
                             "check_overdue_user_error",
                             user_id=str(user.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
             return all_stats
@@ -722,7 +723,7 @@ def check_overdue_payments(self) -> Dict[str, Any]:
         logger.error(
             "check_overdue_task_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise
@@ -801,7 +802,7 @@ def process_automatic_dunning(
                         logger.warning(
                             "automatic_dunning_user_error",
                             user_id=str(user.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
             return stats
@@ -820,7 +821,7 @@ def process_automatic_dunning(
         logger.error(
             "automatic_dunning_task_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise
@@ -885,7 +886,7 @@ def update_cash_flow_forecasts(self) -> Dict[str, Any]:
                         logger.warning(
                             "cash_flow_update_user_error",
                             user_id=str(user.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
             return stats
@@ -904,7 +905,7 @@ def update_cash_flow_forecasts(self) -> Dict[str, Any]:
         logger.error(
             "update_cash_flow_task_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise
@@ -1039,7 +1040,7 @@ def send_skonto_alerts(self, days_ahead: int = 7) -> Dict[str, Any]:
                         logger.warning(
                             "skonto_alert_user_error",
                             user_id=str(user.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
             return stats
@@ -1058,7 +1059,7 @@ def send_skonto_alerts(self, days_ahead: int = 7) -> Dict[str, Any]:
         logger.error(
             "skonto_alerts_task_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise
@@ -1098,7 +1099,7 @@ def cleanup_tan_challenges(self) -> Dict[str, Any]:
         logger.error(
             "tan_cleanup_task_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise
@@ -1328,7 +1329,7 @@ def daily_mahnlauf(self) -> Dict[str, Any]:
                         logger.warning(
                             "mahnlauf_user_error",
                             user_id=str(user.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
             return stats
@@ -1347,7 +1348,7 @@ def daily_mahnlauf(self) -> Dict[str, Any]:
         logger.error(
             "daily_mahnlauf_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise
@@ -1396,7 +1397,7 @@ def reactivate_snoozed_tasks(self) -> Dict[str, Any]:
         logger.error(
             "reactivate_snoozed_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise
@@ -1565,7 +1566,7 @@ def send_pre_due_reminders(self, days_before: int = 3) -> Dict[str, Any]:
                         logger.warning(
                             "pre_due_reminder_error",
                             invoice_id=str(invoice.id) if invoice else "unknown",
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
                 await db.commit()
@@ -1586,7 +1587,7 @@ def send_pre_due_reminders(self, days_before: int = 3) -> Dict[str, Any]:
         logger.error(
             "send_pre_due_reminders_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise
@@ -1635,7 +1636,7 @@ def check_expired_mahnstopp(self) -> Dict[str, Any]:
         logger.error(
             "check_expired_mahnstopp_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise
@@ -1779,7 +1780,7 @@ def generate_dunning_daily_report(self) -> Dict[str, Any]:
                         logger.warning(
                             "dunning_report_send_error",
                             admin_id=str(admin.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
                 await db.commit()
@@ -1800,7 +1801,7 @@ def generate_dunning_daily_report(self) -> Dict[str, Any]:
         logger.error(
             "generate_dunning_daily_report_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise
@@ -1898,12 +1899,12 @@ def fints_sync_all_accounts(
                         stats["accounts_failed"] += 1
                         stats["errors"].append({
                             "account_id": str(account.id),
-                            "error": str(e)[:200],
+                            "error": safe_error_detail(e, "Vorgang")[:200],
                         })
                         logger.warning(
                             "fints_account_sync_error",
                             account_id=str(account.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
             return stats
@@ -1922,7 +1923,7 @@ def fints_sync_all_accounts(
         logger.error(
             "fints_sync_all_accounts_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise self.retry(exc=e)
@@ -1990,7 +1991,7 @@ def fints_refresh_balances(self, company_id: Optional[str] = None) -> Dict[str, 
                         logger.warning(
                             "fints_balance_refresh_error",
                             account_id=str(account.id),
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
             return stats
@@ -2009,7 +2010,7 @@ def fints_refresh_balances(self, company_id: Optional[str] = None) -> Dict[str, 
         logger.error(
             "fints_refresh_balances_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise
@@ -2081,7 +2082,7 @@ def execute_pending_sepa_transfers(self) -> Dict[str, Any]:
         logger.error(
             "execute_pending_sepa_transfers_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise self.retry(exc=e)
@@ -2157,7 +2158,7 @@ def update_bundesbank_basiszins(self) -> Dict[str, Any]:
         logger.error(
             "bundesbank_basiszins_update_failed",
             task_id=self.request.id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise self.retry(exc=e, countdown=3600)  # Retry nach 1 Stunde

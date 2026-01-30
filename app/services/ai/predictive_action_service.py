@@ -33,6 +33,7 @@ from sqlalchemy import select, and_, or_, func, case, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import utc_now
+from app.core.safe_errors import safe_error_log
 
 if TYPE_CHECKING:
     from app.services.notification_service import NotificationService
@@ -911,6 +912,7 @@ class PredictiveActionService:
         """Fuehre Mahnungs-Aktion aus."""
         from app.db.models import InvoiceTracking
 
+
         stmt = select(InvoiceTracking).where(
             InvoiceTracking.id == action.target_id
         )
@@ -1081,7 +1083,7 @@ class PredictiveActionService:
                             "predictive_action_notification_failed",
                             action_id=str(action.id),
                             channel="in_app",
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
         # Slack Benachrichtigungen
@@ -1099,7 +1101,7 @@ class PredictiveActionService:
                             "predictive_action_notification_failed",
                             action_id=str(action.id),
                             channel="slack",
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
         return sent_counts

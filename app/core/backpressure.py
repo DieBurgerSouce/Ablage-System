@@ -71,6 +71,7 @@ def get_queue_lengths() -> Dict[str, int]:
         from redis import Redis
         from celery import current_app
 
+
         redis_url = current_app.conf.broker_url
         redis_client = Redis.from_url(redis_url)
 
@@ -85,7 +86,7 @@ def get_queue_lengths() -> Dict[str, int]:
         return queue_lengths
 
     except Exception as e:
-        logger.warning("queue_length_check_failed", error=str(e))
+        logger.warning("queue_length_check_failed", **safe_error_log(e))
         return {}
 
 

@@ -147,7 +147,7 @@ class GPURecoveryManager:
             return stats
 
         except Exception as e:
-            logger.warning("gpu_memory_stats_failed", error=str(e))
+            logger.warning("gpu_memory_stats_failed", **safe_error_log(e))
             return GPUMemoryStats()
 
     async def clear_gpu_memory(self) -> GPUMemoryStats:
@@ -186,7 +186,7 @@ class GPURecoveryManager:
             return after
 
         except Exception as e:
-            logger.error("gpu_memory_clear_failed", error=str(e))
+            logger.error("gpu_memory_clear_failed", **safe_error_log(e))
             return self.get_memory_stats()
 
     def get_optimal_batch_size(self, backend: str) -> int:
@@ -422,6 +422,7 @@ class GPURecoveryManager:
         """
         try:
             from app.services.incident_response_service import (
+
                 get_incident_response_service,
                 Incident,
                 IncidentType,
@@ -474,7 +475,7 @@ class GPURecoveryManager:
             logger.debug("incident_response_service_not_available")
         except Exception as e:
             # Don't let incident reporting break recovery
-            logger.warning("oom_incident_report_failed", error=str(e))
+            logger.warning("oom_incident_report_failed", **safe_error_log(e))
 
     def get_stats(self) -> Dict[str, Any]:
         """Get recovery statistics."""

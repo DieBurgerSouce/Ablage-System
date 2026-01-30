@@ -18,6 +18,7 @@ from redis import Redis
 from redis.exceptions import RedisError
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.workers.celery_metrics import (
     record_task_started, record_task_succeeded, record_task_failed,
     record_task_retried, record_gpu_oom, init_worker_metrics,
@@ -95,7 +96,7 @@ def acquire_gpu_lock(timeout: int = _GPU_LOCK_ACQUIRE_TIMEOUT) -> str:
             retry_delay = min(base_delay + jitter, 5.0)  # Max 5 Sekunden
             logger.warning(
                 "gpu_lock_redis_error",
-                error=str(e),
+                **safe_error_log(e),
                 attempt=attempt,
                 retry_delay_ms=int(retry_delay * 1000)
             )
@@ -141,7 +142,7 @@ def refresh_gpu_lock(lock_value: str, extend_seconds: int = _GPU_LOCK_TIMEOUT) -
             )
             return False
     except RedisError as e:
-        logger.error("gpu_lock_refresh_error", error=str(e), lock_value=lock_value)
+        logger.error("gpu_lock_refresh_error", **safe_error_log(e), lock_value=lock_value)
         return False
 
 
@@ -186,7 +187,7 @@ def release_gpu_lock(lock_value: str) -> bool:
                 raise
 
     except RedisError as e:
-        logger.error("gpu_lock_release_error", error=str(e), lock_value=lock_value)
+        logger.error("gpu_lock_release_error", **safe_error_log(e), lock_value=lock_value)
         # Force delete on error to prevent deadlock
         try:
             redis = _get_redis_lock_client()
@@ -196,7 +197,7 @@ def release_gpu_lock(lock_value: str) -> bool:
             logger.warning(
                 "gpu_lock_force_release_failed",
                 lock_value=lock_value,
-                error_type=type(re).__name__,
+                **safe_error_log(re),
             )
         return False
 
@@ -231,7 +232,7 @@ def check_gpu_lock_health() -> dict:
             "locked": None,
             "owner": None,
             "ttl_seconds": None,
-            "status": f"error: {str(e)}"
+            "status": f"error: {safe_error_detail(e, 'GPU-Lock-Status')}"
         }
 
 
@@ -1359,6 +1360,65 @@ celery_app.conf.update(
             "task": "app.workers.tasks.life_event_tasks.detect_life_events",
             "schedule": crontab(hour=6, minute=15),  # Taeglich um 06:15 Uhr
         },
+        # =================================================================
+        # Predictive Maintenance Tasks (Vision 2.0 Phase 5)
+        # Proaktive Systemueberwachung mit Vorhersagen
+        # =================================================================
+        # Jede Minute: Metriken fuer Vorhersage-Modelle sammeln
+        "predictive-collect-metrics": {
+            "task": "app.workers.tasks.predictive_tasks.collect_metrics_for_prediction",
+            "schedule": 60.0,  # Jede Minute
+        },
+        # Alle 5 Minuten: System Health Predictions ausfuehren
+        "predictive-run-predictions": {
+            "task": "app.workers.tasks.predictive_tasks.run_predictions",
+            "schedule": 300.0,  # Alle 5 Minuten
+        },
+        # Alle 5 Minuten: Proaktive Alerts generieren
+        "predictive-generate-alerts": {
+            "task": "app.workers.tasks.predictive_tasks.generate_predictive_alerts",
+            "schedule": 300.0,  # Alle 5 Minuten
+        },
+        # Taeglich: Alte Predictive Alerts bereinigen (03:50)
+        "predictive-cleanup-old-alerts": {
+            "task": "app.workers.tasks.predictive_tasks.cleanup_old_predictive_alerts",
+            "schedule": crontab(hour=3, minute=50),  # Taeglich um 03:50 Uhr
+            "kwargs": {"max_age_hours": 24},
+        },
+        # =================================================================
+        # Financial Insights Tasks (Vision 2.0 Phase 6)
+        # Proaktive Cashflow, Fraud, Skonto Insights
+        # =================================================================
+        # Taeglich: Alle Daily Insights generieren (Master Task)
+        "insights-generate-all-daily": {
+            "task": "app.workers.tasks.insights_tasks.generate_all_daily_insights",
+            "schedule": crontab(hour=5, minute=0),  # Taeglich um 05:00 Uhr
+        },
+        # Taeglich: Cashflow-Prognosen fuer alle Companies
+        "insights-cashflow-daily": {
+            "task": "app.workers.tasks.insights_tasks.generate_daily_cashflow_predictions",
+            "schedule": crontab(hour=6, minute=0),  # Taeglich um 06:00 Uhr
+        },
+        # Taeglich: Betrugs-Scan fuer alle Companies
+        "insights-fraud-scan-daily": {
+            "task": "app.workers.tasks.insights_tasks.run_daily_fraud_scan",
+            "schedule": crontab(hour=3, minute=10),  # Taeglich um 03:10 Uhr
+        },
+        # Taeglich: Skonto-Empfehlungen generieren
+        "insights-skonto-daily": {
+            "task": "app.workers.tasks.insights_tasks.generate_daily_skonto_recommendations",
+            "schedule": crontab(hour=7, minute=0),  # Taeglich um 07:00 Uhr
+        },
+        # Alle 4 Stunden: Dringende Skonto-Fristen pruefen
+        "insights-urgent-skonto": {
+            "task": "app.workers.tasks.insights_tasks.check_urgent_skonto_deadlines",
+            "schedule": crontab(hour="*/4", minute=30),  # Alle 4 Stunden um :30
+        },
+        # Alle 5 Minuten: Action Queue Timeouts verarbeiten
+        "insights-action-queue-timeouts": {
+            "task": "app.workers.tasks.insights_tasks.process_action_queue_timeouts",
+            "schedule": 300.0,  # Alle 5 Minuten
+        },
     },
 
     # Queue routing
@@ -1755,7 +1815,7 @@ class GPUTask(Task):
             self._last_lock_refresh = time.time()  # Initialize refresh timestamp
             logger.debug("gpu_lock_acquired_for_task", task_id=task_id, lock_value=self._current_lock_value)
         except RuntimeError as e:
-            logger.error("gpu_lock_acquisition_failed", task_id=task_id, error=str(e))
+            logger.error("gpu_lock_acquisition_failed", task_id=task_id, **safe_error_log(e))
             raise
 
     def after_return(
@@ -2010,7 +2070,7 @@ def preload_ocr_models(sender: Any = None, **kwargs: Any) -> None:
         logger.info("models_preloaded_successfully", backend=default_backend)
 
     except Exception as e:
-        logger.error("model_preload_failed", error=str(e), exc_info=True)
+        logger.error("model_preload_failed", **safe_error_log(e, context="Model-Preload"), exc_info=True)
         # Don't fail worker startup - just log and continue
         _models_preloaded = True
 
@@ -2040,9 +2100,9 @@ def _preload_deepseek() -> None:
             logger.warning("deepseek_model_not_loaded")
 
     except ImportError as e:
-        logger.warning("deepseek_import_failed", error=str(e))
+        logger.warning("deepseek_import_failed", **safe_error_log(e, context="DeepSeek-Import"))
     except Exception as e:
-        logger.error("deepseek_preload_error", error=str(e))
+        logger.error("deepseek_preload_error", **safe_error_log(e, context="DeepSeek-Preload"))
 
 
 def _preload_got_ocr() -> None:
@@ -2065,9 +2125,9 @@ def _preload_got_ocr() -> None:
             logger.warning("got_ocr_model_not_loaded")
 
     except ImportError as e:
-        logger.warning("got_ocr_import_failed", error=str(e))
+        logger.warning("got_ocr_import_failed", **safe_error_log(e, context="GOT-OCR-Import"))
     except Exception as e:
-        logger.error("got_ocr_preload_error", error=str(e))
+        logger.error("got_ocr_preload_error", **safe_error_log(e, context="GOT-OCR-Preload"))
 
 
 def _preload_surya_gpu() -> None:
@@ -2091,9 +2151,9 @@ def _preload_surya_gpu() -> None:
             logger.warning("surya_gpu_model_not_loaded")
 
     except ImportError as e:
-        logger.warning("surya_gpu_import_failed", error=str(e))
+        logger.warning("surya_gpu_import_failed", **safe_error_log(e, context="Surya-GPU-Import"))
     except Exception as e:
-        logger.error("surya_gpu_preload_error", error=str(e))
+        logger.error("surya_gpu_preload_error", **safe_error_log(e, context="Surya-GPU-Preload"))
 
 
 # =============================================================================
@@ -2133,7 +2193,7 @@ def cleanup_gpu_on_worker_shutdown(sender: Any = None, **kwargs: Any) -> None:
             )
 
         except Exception as e:
-            logger.error("gpu_cleanup_failed", error=str(e))
+            logger.error("gpu_cleanup_failed", **safe_error_log(e, context="GPU-Cleanup"))
 
     # Force garbage collection
     import gc
@@ -2229,7 +2289,7 @@ def get_worker_health_status() -> Dict[str, Any]:
                         "reserved_gb": round(torch.cuda.memory_reserved() / (1024**3), 2),
                     }
                 except Exception as e:
-                    worker_info["gpu"] = {"available": False, "error": str(e)}
+                    worker_info["gpu"] = {"available": False, "error": safe_error_detail(e, "GPU-Status")}
                     worker_info["warnings"].append("GPU-Status nicht verfuegbar")
 
             # Pruefe auf stuck Tasks
@@ -2279,8 +2339,8 @@ def get_worker_health_status() -> Dict[str, Any]:
         result["gpu_lock"] = lock_status
 
     except Exception as e:
-        logger.error("worker_health_check_failed", error=str(e))
-        result["errors"].append(f"Health Check fehlgeschlagen: {e}")
+        logger.error("worker_health_check_failed", **safe_error_log(e, context="Worker-Health-Check"))
+        result["errors"].append(f"Health Check fehlgeschlagen: {safe_error_detail(e, 'Health-Check')}")
 
     # Cache aktualisieren
     global _worker_health_cache, _last_health_check
@@ -2351,8 +2411,8 @@ def restart_stuck_tasks(force: bool = False) -> Dict[str, Any]:
                 result["revoked"].append(task_id)
                 logger.warning("stuck_task_revoked", task_id=task_id)
             except Exception as e:
-                result["errors"].append({"task_id": task_id, "error": str(e)})
-                logger.error("stuck_task_revoke_failed", task_id=task_id, error=str(e))
+                result["errors"].append({"task_id": task_id, "error": safe_error_detail(e, "Task-Revoke")})
+                logger.error("stuck_task_revoke_failed", task_id=task_id, **safe_error_log(e))
 
     return result
 
@@ -2383,8 +2443,8 @@ def get_worker_heartbeat_status() -> Dict[str, Any]:
             }
 
     except Exception as e:
-        logger.error("heartbeat_check_failed", error=str(e))
-        result["error"] = str(e)
+        logger.error("heartbeat_check_failed", **safe_error_log(e, context="Heartbeat-Check"))
+        result["error"] = safe_error_detail(e, "Heartbeat-Check")
 
     return result
 

@@ -26,6 +26,7 @@ from app.api.dependencies import (
     RateLimitDependency,
 )
 from app.db.models import User, Document, DropShipmentClassification, ZmSubmission, ZmSubmissionStatus
+from app.core.safe_errors import safe_error_log
 from sqlalchemy import select
 
 
@@ -100,6 +101,7 @@ from app.services.streckengeschaeft import (
 )
 from starlette.responses import JSONResponse
 from app.services.streckengeschaeft.exceptions import (
+
     DropShipmentError,
     ClassificationNotFoundError,
     DocumentNotFoundError,
@@ -273,7 +275,7 @@ async def classify_document(
         }
 
     except DocumentNotFoundError as e:
-        logger.warning("classification_document_not_found", document_id=str(request.document_id), error=str(e))
+        logger.warning("classification_document_not_found", document_id=str(request.document_id), **safe_error_log(e))
         raise HTTPException(status_code=404, detail=e.user_message)
     except ClassificationAlreadyExistsError as e:
         logger.warning("classification_already_exists", document_id=str(request.document_id), error_code=e.error_code)
@@ -287,7 +289,7 @@ async def classify_document(
             "classification_failed",
             document_id=str(request.document_id),
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise HTTPException(status_code=500, detail="Klassifikation fehlgeschlagen. Bitte erneut versuchen.")
@@ -497,10 +499,10 @@ async def validate_classification(
         }
 
     except ClassificationNotFoundError as e:
-        logger.warning("validation_not_found", classification_id=str(classification_id), error=str(e))
+        logger.warning("validation_not_found", classification_id=str(classification_id), **safe_error_log(e))
         raise HTTPException(status_code=404, detail=e.user_message)
     except ValidationConflictError as e:
-        logger.warning("validation_conflict", classification_id=str(classification_id), error=str(e))
+        logger.warning("validation_conflict", classification_id=str(classification_id), **safe_error_log(e))
         raise HTTPException(status_code=409, detail=e.user_message)
     except DropShipmentError as e:
         logger.warning("validation_error", classification_id=str(classification_id), error_code=e.error_code)
@@ -594,7 +596,7 @@ async def link_proof_document(
             "message": "Belegnachweis erfolgreich verknuepft",
         }
     except ProofDocumentError as e:
-        logger.warning("proof_link_error", classification_id=str(classification_id), error=str(e))
+        logger.warning("proof_link_error", classification_id=str(classification_id), **safe_error_log(e))
         raise HTTPException(status_code=400, detail=e.user_message)
     except DropShipmentError as e:
         raise HTTPException(status_code=400, detail=e.user_message)
@@ -665,7 +667,7 @@ async def delete_classification(
 
         return {"success": True, "message": "Klassifikation geloescht"}
     except ClassificationNotFoundError as e:
-        logger.warning("classification_delete_not_found", classification_id=str(classification_id), error=str(e))
+        logger.warning("classification_delete_not_found", classification_id=str(classification_id), **safe_error_log(e))
         raise HTTPException(status_code=404, detail=e.user_message)
     except DropShipmentError as e:
         logger.warning("classification_delete_error", classification_id=str(classification_id), error_code=e.error_code)
@@ -756,7 +758,7 @@ async def export_to_datev(
         raise HTTPException(status_code=500, detail=e.user_message)
     except Exception as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.error("datev_export_error", error=str(e), user_id=str(current_user.id), exc_info=True)
+        logger.error("datev_export_error", **safe_error_log(e), user_id=str(current_user.id), exc_info=True)
         raise HTTPException(status_code=500, detail="DATEV-Export fehlgeschlagen. Bitte erneut versuchen.")
 
 

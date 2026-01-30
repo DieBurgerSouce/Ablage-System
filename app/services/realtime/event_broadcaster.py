@@ -25,6 +25,7 @@ from uuid import UUID
 import structlog
 
 from app.services.events.event_bus import Event, EventBus, EventType, get_event_bus
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -443,7 +444,7 @@ class EventBroadcaster:
             except Exception as e:
                 logger.error(
                     "callback_execution_failed",
-                    error=str(e),
+                    **safe_error_log(e),
                     event_type=event.event_type.value,
                 )
 

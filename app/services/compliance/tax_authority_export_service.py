@@ -38,6 +38,7 @@ from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
+
     AuditLog,
     Company,
     Document,
@@ -407,7 +408,7 @@ class TaxAuthorityExportService:
             )
 
         except Exception as e:
-            logger.error("GDPdU-Export fehlgeschlagen", error=str(e))
+            logger.error("GDPdU-Export fehlgeschlagen", **safe_error_log(e))
             return ExportResult(
                 success=False,
                 export_id=export_id,
@@ -418,7 +419,7 @@ class TaxAuthorityExportService:
                 created_at=datetime.now(timezone.utc),
                 statistics=statistics,
                 files=[],
-                error=str(e),
+                **safe_error_log(e),
             )
 
     # =========================================================================

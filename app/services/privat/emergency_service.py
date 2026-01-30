@@ -42,6 +42,7 @@ from app.db.schemas import (
     PrivatEmergencyAccessStatus,
 )
 from app.services.notification_service import NotificationService
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -150,6 +151,7 @@ class PrivatEmergencyService:
             Kontakt wenn vorhanden und Zugriff erlaubt, sonst None
         """
         from app.db.models import PrivatSpaceAccess
+
 
         # Join mit Space um Owner zu pruefen
         result = await db.execute(
@@ -861,7 +863,7 @@ class PrivatEmergencyService:
             logger.error(
                 "privat_emergency_notification_failed",
                 request_id=str(request.id),
-                error=str(e),
+                **safe_error_log(e),
                 error_type=type(e).__name__,
             )
 
@@ -914,5 +916,5 @@ class PrivatEmergencyService:
             logger.error(
                 "privat_emergency_contact_notification_failed",
                 request_id=str(request.id),
-                error=str(e),
+                **safe_error_log(e),
             )

@@ -488,7 +488,7 @@ class SuryaOCRTrainer:
 
         except Exception as e:
             logger.exception("Training fehlgeschlagen")
-            return {"status": "failed", "error": str(e)}
+            return {"status": "failed", **safe_error_log(e)}
 
     async def run_test(self, test_data_path: str) -> SuryaTestMetrics:
         """Führt Test auf Daten durch."""
@@ -669,6 +669,7 @@ class SuryaGermanTrainer(SuryaOCRTrainer):
     def _setup_custom_loss(self) -> None:
         """Initialisiert die Umlaut-gewichtete Loss-Function."""
         try:
+            from app.core.safe_errors import safe_error_log
             from app.ml.finetuning.umlaut_weighted_loss import (
                 UmlautWeightedCrossEntropy,
                 FocalUmlautLoss,
@@ -833,7 +834,7 @@ class SuryaGermanTrainer(SuryaOCRTrainer):
 
         except Exception as e:
             logger.exception("Deutsches Fine-Tuning fehlgeschlagen")
-            return {"status": "failed", "error": str(e)}
+            return {"status": "failed", **safe_error_log(e)}
 
     def _calculate_umlaut_accuracy(self, predictions: List[str], references: List[str]) -> float:
         """

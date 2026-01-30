@@ -18,6 +18,7 @@ from typing import Optional, Dict, Any, Tuple
 import structlog
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -87,6 +88,7 @@ async def _get_redis_client() -> Optional[Any]:
 
     try:
         from app.core.redis_state import RedisStateManager
+
         manager = RedisStateManager.get_instance()
         await manager.connect()
 
@@ -104,7 +106,7 @@ async def _get_redis_client() -> Optional[Any]:
     except Exception as e:
         _redis_available = False
         logger.warning("account_lockout_redis_unavailable",
-                      error=str(e),
+                      **safe_error_log(e),
                       message="Fallback auf In-Memory-Tracking")
         return None
 
@@ -391,7 +393,7 @@ async def record_failed_attempt(
                     lockout_until.isoformat()
                 )
             except Exception as e:
-                logger.warning("set_lockout_redis_error", error=str(e))
+                logger.warning("set_lockout_redis_error", **safe_error_log(e))
                 async with _fallback_lock:
                     _lockout_until_fallback[identifier] = lockout_until
         else:
@@ -435,7 +437,7 @@ async def reset_failed_attempts(
             logger.debug("failed_attempts_reset", identifier=identifier[:30] + "...")
             return True
         except Exception as e:
-            logger.warning("reset_attempts_redis_error", error=str(e))
+            logger.warning("reset_attempts_redis_error", **safe_error_log(e))
 
     # FAANG-AUDIT: Fallback mit Lock
     async with _fallback_lock:
@@ -514,7 +516,7 @@ async def get_lockout_status(
                     remaining_seconds = int((lockout_until - now).total_seconds())
 
         except Exception as e:
-            logger.warning("get_status_redis_error", error=str(e))
+            logger.warning("get_status_redis_error", **safe_error_log(e))
 
     # FAANG-AUDIT: Fallback-Werte mit Lock wenn Redis nicht verfügbar
     if redis is None or attempts == 0:

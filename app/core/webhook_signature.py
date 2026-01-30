@@ -21,6 +21,7 @@ from enum import Enum
 from typing import Optional, Tuple
 
 import structlog
+from app.core.safe_errors import safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -303,7 +304,7 @@ def verify_signature_safe(
     except InvalidSignatureFormatError as e:
         return False, f"Ungültiges Format: {str(e)}"
     except Exception as e:
-        return False, f"Unbekannter Fehler: {str(e)}"
+        return False, safe_error_detail(e, "Webhook-Signatur")
 
 
 # ==================== Header-Konstanten ====================

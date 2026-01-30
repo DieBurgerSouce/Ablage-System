@@ -16,7 +16,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import User
 from app.api.dependencies import get_current_user, get_db, verify_document_ownership
 from app.services.version_service import get_version_service, VersionService
+from app.core.safe_errors import safe_error_log
 from app.db.schemas import (
+
     OCRVersionResponse,
     OCRVersionListResponse,
     OCRVersionCompareRequest,
@@ -84,10 +86,10 @@ async def list_document_versions(
 
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("versions_validation_error", error=str(e))
+        logger.warning("versions_validation_error", **safe_error_log(e))
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ressource nicht gefunden.")
     except Exception as e:
-        logger.error("list_versions_error", error=str(e), exc_info=True)
+        logger.error("list_versions_error", **safe_error_log(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler beim Abrufen der Versionen"
@@ -217,10 +219,10 @@ async def compare_versions(
 
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("versions_validation_error", error=str(e))
+        logger.warning("versions_validation_error", **safe_error_log(e))
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ressource nicht gefunden.")
     except Exception as e:
-        logger.error("compare_versions_error", error=str(e), exc_info=True)
+        logger.error("compare_versions_error", **safe_error_log(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler beim Vergleichen der Versionen"
@@ -278,10 +280,10 @@ async def rollback_to_version(
 
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("versions_validation_error", error=str(e))
+        logger.warning("versions_validation_error", **safe_error_log(e))
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ressource nicht gefunden.")
     except Exception as e:
-        logger.error("rollback_error", error=str(e), exc_info=True)
+        logger.error("rollback_error", **safe_error_log(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler beim Rollback"

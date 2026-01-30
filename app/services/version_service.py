@@ -22,7 +22,9 @@ from sqlalchemy import select, update, func
 from sqlalchemy.orm import selectinload
 
 from app.db.models import Document, OCRResult, OCRResultVersion, User
+from app.core.safe_errors import safe_error_log
 from app.db.schemas import (
+
     OCRVersionResponse,
     OCRVersionSummary,
     OCRVersionListResponse,
@@ -392,7 +394,7 @@ class VersionService:
                     numlines=3
                 )
             except Exception as e:
-                logger.warning("html_diff_failed", error=str(e))
+                logger.warning("html_diff_failed", **safe_error_log(e))
 
             # Unified diff like git
             unified = list(unified_diff(

@@ -13,12 +13,13 @@ Phase 4 der Strategischen Roadmap (Januar 2026).
 """
 
 from datetime import datetime, date
-from typing import Optional, List, Dict, Union, Callable
+from typing import Any, Optional, List, Dict, Union, Callable
 from uuid import UUID, uuid4
 from enum import Enum
 import re
 import logging
 import operator
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from decimal import Decimal
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 
@@ -486,7 +487,7 @@ class BusinessRulesEngine:
 
         except Exception as e:
             logger.error(f"Fehler bei Regel-Auswertung '{rule.name}': {e}")
-            result.execution_errors.append(str(e))
+            result.execution_errors.append(safe_error_detail(e, "Regel"))
 
         return result
 

@@ -203,7 +203,7 @@ def _deserialize_value(value: str) -> CacheValueType:
     except (json.JSONDecodeError, TypeError) as e:
         logger.warning(
             "cache_deserialize_json_error",
-            error=str(e),
+            **safe_error_log(e),
             value_preview=value[:100] if len(value) > 100 else value
         )
         return value
@@ -211,7 +211,7 @@ def _deserialize_value(value: str) -> CacheValueType:
     except (ValidationError, ValueError) as e:
         logger.warning(
             "cache_deserialize_validation_error",
-            error=str(e),
+            **safe_error_log(e),
             value_preview=value[:100] if len(value) > 100 else value
         )
         # Bei Validierungsfehlern Cache-Eintrag verwerfen
@@ -328,6 +328,7 @@ def redis_cache(
             try:
                 import time as time_module
                 from app.core.redis_state import RedisStateManager
+                from app.core.safe_errors import safe_error_detail
                 redis_manager = RedisStateManager.get_instance()
                 await redis_manager._ensure_connection()
 
@@ -385,7 +386,7 @@ def redis_cache(
                 # Redis nicht verfuegbar - continue without cache
                 logger.warning(
                     "cache_read_failed",
-                    error=str(e),
+                    **safe_error_log(e),
                     function=func.__name__
                 )
 
@@ -426,7 +427,7 @@ def redis_cache(
                 # Cache Write fehlgeschlagen - nicht kritisch
                 logger.warning(
                     "cache_write_failed",
-                    error=str(e),
+                    **safe_error_log(e),
                     function=func.__name__
                 )
 
@@ -467,7 +468,7 @@ async def invalidate_cache(pattern: str) -> int:
         return 0
 
     except Exception as e:
-        logger.warning("cache_invalidation_failed", error=str(e), pattern=pattern)
+        logger.warning("cache_invalidation_failed", **safe_error_log(e), pattern=pattern)
         return 0
 
 
@@ -674,6 +675,7 @@ async def get_cache_stats() -> dict:
     """
     try:
         from app.core.redis_state import RedisStateManager
+
         redis_manager = RedisStateManager.get_instance()
         await redis_manager._ensure_connection()
 
@@ -698,5 +700,5 @@ async def get_cache_stats() -> dict:
         }
 
     except Exception as e:
-        logger.warning("cache_stats_failed", error=str(e))
-        return {"error": str(e)}
+        logger.warning("cache_stats_failed", **safe_error_log(e))
+        return {"error": safe_error_detail(e, "Vorgang")}

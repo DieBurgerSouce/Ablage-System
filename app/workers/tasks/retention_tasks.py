@@ -20,6 +20,7 @@ from celery import shared_task
 from sqlalchemy import select, and_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.safe_errors import safe_error_log
 from app.db.database import async_session_factory
 from app.db.models import (
     DocumentArchive,
@@ -73,7 +74,7 @@ def check_expiring_archives_task(self, days_ahead: int = 90) -> dict:
     except Exception as e:
         logger.error(
             "retention_check_failed",
-            error=str(e),
+            **safe_error_log(e),
             days_ahead=days_ahead
         )
         raise self.retry(exc=e)
@@ -185,7 +186,7 @@ def verify_archive_integrity_task(
     except Exception as e:
         logger.error(
             "integrity_verification_failed",
-            error=str(e),
+            **safe_error_log(e),
             company_id=company_id
         )
         raise self.retry(exc=e)
@@ -280,7 +281,7 @@ def process_expired_archives_task(self) -> dict:
     except Exception as e:
         logger.error(
             "expired_archives_processing_failed",
-            error=str(e)
+            **safe_error_log(e)
         )
         raise self.retry(exc=e)
 
@@ -416,7 +417,7 @@ def generate_retention_report_task(self, company_id: str) -> dict:
     except Exception as e:
         logger.error(
             "retention_report_generation_failed",
-            error=str(e),
+            **safe_error_log(e),
             company_id=company_id
         )
         raise self.retry(exc=e)

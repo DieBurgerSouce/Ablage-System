@@ -19,6 +19,7 @@ from uuid import UUID
 from sqlalchemy import select, and_, or_, func
 from sqlalchemy.orm import selectinload
 
+from app.core.safe_errors import safe_error_log
 from app.workers.celery_app import celery_app
 from app.db.session import get_async_session_context
 from app.db.models import (
@@ -187,12 +188,12 @@ def send_contract_deadline_reminders_task(
                 except Exception as e:
                     stats["errors"].append({
                         "contract_id": str(contract.id),
-                        "error": str(e),
+                        "error": safe_error_detail(e, "Vorgang"),
                     })
                     logger.warning(
                         "contract_reminder_failed",
                         contract_id=str(contract.id),
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
             return stats
@@ -211,7 +212,7 @@ def send_contract_deadline_reminders_task(
         )
         return result
     except Exception as e:
-        logger.error("contract_deadline_reminders_failed", error=str(e))
+        logger.error("contract_deadline_reminders_failed", **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -396,12 +397,12 @@ def check_expiring_contracts_task(
                 except Exception as e:
                     stats["errors"].append({
                         "contract_id": str(contract.id),
-                        "error": str(e),
+                        "error": safe_error_detail(e, "Vorgang"),
                     })
                     logger.warning(
                         "contract_expiry_check_failed",
                         contract_id=str(contract.id),
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
             await db.commit()
@@ -421,7 +422,7 @@ def check_expiring_contracts_task(
         )
         return result
     except Exception as e:
-        logger.error("expiring_contracts_check_failed", error=str(e))
+        logger.error("expiring_contracts_check_failed", **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -527,12 +528,12 @@ def auto_renew_contracts_task(self) -> Dict[str, Any]:
                 except Exception as e:
                     stats["errors"].append({
                         "contract_id": str(contract.id),
-                        "error": str(e),
+                        "error": safe_error_detail(e, "Vorgang"),
                     })
                     logger.warning(
                         "contract_auto_renewal_failed",
                         contract_id=str(contract.id),
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
             await db.commit()
@@ -549,7 +550,7 @@ def auto_renew_contracts_task(self) -> Dict[str, Any]:
         )
         return result
     except Exception as e:
-        logger.error("auto_renewal_failed", error=str(e))
+        logger.error("auto_renewal_failed", **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -705,7 +706,7 @@ def generate_contract_report_task(self) -> Dict[str, Any]:
         )
         return result
     except Exception as e:
-        logger.error("contract_report_generation_failed", error=str(e))
+        logger.error("contract_report_generation_failed", **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -768,7 +769,7 @@ def check_renewal_option_expiry_task(self) -> Dict[str, Any]:
                 except Exception as e:
                     stats["errors"].append({
                         "option_id": str(option.id),
-                        "error": str(e),
+                        "error": safe_error_detail(e, "Vorgang"),
                     })
 
             await db.commit()
@@ -784,7 +785,7 @@ def check_renewal_option_expiry_task(self) -> Dict[str, Any]:
         )
         return result
     except Exception as e:
-        logger.error("renewal_option_expiry_check_failed", error=str(e))
+        logger.error("renewal_option_expiry_check_failed", **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -861,7 +862,7 @@ def check_overdue_milestones_task(self) -> Dict[str, Any]:
                 except Exception as e:
                     stats["errors"].append({
                         "milestone_id": str(milestone.id),
-                        "error": str(e),
+                        "error": safe_error_detail(e, "Vorgang"),
                     })
 
             return stats
@@ -877,5 +878,5 @@ def check_overdue_milestones_task(self) -> Dict[str, Any]:
         )
         return result
     except Exception as e:
-        logger.error("overdue_milestones_check_failed", error=str(e))
+        logger.error("overdue_milestones_check_failed", **safe_error_log(e))
         raise self.retry(exc=e)

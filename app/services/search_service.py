@@ -37,6 +37,7 @@ from app.services.german_compound_splitter import (
 )
 from app.services.reranker_service import get_reranker_service, RerankerService
 from app.services.query_expansion_service import QueryExpansionService
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -145,7 +146,7 @@ class SearchService:
                     min_part_length=settings.COMPOUND_MIN_PART_LENGTH
                 )
             except Exception as e:
-                logger.warning("compound_splitter_load_error", error=str(e))
+                logger.warning("compound_splitter_load_error", **safe_error_log(e))
                 self._compound_splitting_enabled = False
         return self._compound_splitter
 
@@ -283,7 +284,7 @@ class SearchService:
             logger.warning(
                 "cache_invalidation_error",
                 user_id=str(user_id),
-                error=str(e)
+                **safe_error_log(e)
             )
             return 0
 
@@ -335,7 +336,7 @@ class SearchService:
             logger.warning(
                 "document_cache_invalidation_error",
                 document_id=str(document_id),
-                error=str(e)
+                **safe_error_log(e)
             )
             return 0
 
@@ -359,7 +360,7 @@ class SearchService:
             logger.info("all_search_cache_invalidated", invalidated_count=count)
             return count
         except Exception as e:
-            logger.warning("cache_invalidation_error", error=str(e))
+            logger.warning("cache_invalidation_error", **safe_error_log(e))
             return 0
 
     async def search(
@@ -442,7 +443,7 @@ class SearchService:
                 else:
                     metrics.record_cache_miss()
             except Exception as e:
-                logger.warning("search_cache_error", error=str(e), cache_key=cache_key[:50])
+                logger.warning("search_cache_error", **safe_error_log(e), cache_key=cache_key[:50])
 
         # Query erweitern: Compound-Splits + Umlaut-Varianten + Synonyme (fuer FTS und Hybrid)
         expanded_query = query
@@ -475,7 +476,7 @@ class SearchService:
                             expansions_count=len(synonym_expansions)
                         )
                 except Exception as e:
-                    logger.warning("synonym_expansion_error", error=str(e))
+                    logger.warning("synonym_expansion_error", **safe_error_log(e))
 
         logger.info(
             "search_started",
@@ -572,7 +573,7 @@ class SearchService:
                 )
             except Exception as e:
                 metrics.record_cache_store(success=False)
-                logger.warning("search_cache_store_error", error=str(e))
+                logger.warning("search_cache_store_error", **safe_error_log(e))
 
         return response
 
@@ -959,7 +960,7 @@ class SearchService:
                 else:
                     metrics.record_cache_miss()
             except Exception as e:
-                logger.warning("similar_cache_error", error=str(e))
+                logger.warning("similar_cache_error", **safe_error_log(e))
 
         # Embedding des Quelldokuments holen (eigenes oder geteiltes)
         # Prüfe ob Benutzer Zugriff hat (Owner oder via DocumentAccess)
@@ -1079,7 +1080,7 @@ class SearchService:
                 logger.debug("similar_cache_stored", document_id=str(document_id))
             except Exception as e:
                 metrics.record_cache_store(success=False)
-                logger.warning("similar_cache_store_error", error=str(e))
+                logger.warning("similar_cache_store_error", **safe_error_log(e))
 
         return results
 
@@ -1278,7 +1279,7 @@ class SearchService:
         except Exception as e:
             logger.warning(
                 "search_rerank_failed",
-                error=str(e),
+                **safe_error_log(e),
                 fallback="using_rrf_scores"
             )
             return results[:top_k]
@@ -1606,7 +1607,7 @@ class SearchService:
         except Exception as e:
             # Log at WARNING for unexpected failures (schema issues, etc.)
             # SQLite limitation is expected and harmless, but other errors need visibility
-            logger.warning("text_suggest_failed", error=str(e), error_type=type(e).__name__)
+            logger.warning("text_suggest_failed", **safe_error_log(e), error_type=type(e).__name__)
 
         # Nach Score sortieren und limitieren
         suggestions.sort(key=lambda x: x.score, reverse=True)
@@ -1628,6 +1629,7 @@ class SearchService:
     def _create_highlight(self, text: str, query: str) -> str:
         """Erstellt sicheres HTML-Highlight fuer Suchbegriff (ReDoS-geschuetzt)."""
         from app.core.input_sanitization import create_safe_highlight
+
         return create_safe_highlight(text, query, tag="mark")
 
 

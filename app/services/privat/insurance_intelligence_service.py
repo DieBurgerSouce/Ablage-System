@@ -15,6 +15,7 @@ Enterprise Feature - Singleton Pattern wie alle Intelligence Services.
 from __future__ import annotations
 
 import threading
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -370,7 +371,7 @@ class InsuranceIntelligenceService:
             logger.warning(
                 "event_publishing_failed",
                 space_id=str(space_id),
-                error=str(e),
+                **safe_error_log(e),
             )
 
     # =========================================================================
@@ -396,6 +397,7 @@ class InsuranceIntelligenceService:
             BatchInsuranceResult mit Statistiken
         """
         from app.db.models import PrivatSpace
+
 
         INSURANCE_INTEL_CALCULATIONS.labels(calculation_type="batch_all").inc()
 
@@ -437,11 +439,11 @@ class InsuranceIntelligenceService:
 
             except Exception as e:
                 batch_result.skipped += 1
-                batch_result.errors.append(f"{space.id}: {str(e)}")
+                batch_result.errors.append(f"{space.id}: {safe_error_detail(e, 'Insurance')}")
                 logger.warning(
                     "insurance_batch_calculation_failed",
                     space_id=str(space.id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         # Durchschnitt berechnen

@@ -22,6 +22,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.db.models import User
 from app.api.dependencies import get_current_active_user, get_db
 from app.services.batch_job_service import get_batch_job_service
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -129,6 +130,7 @@ async def create_batch_job(
             celery_task_id = result.id
         elif request.job_type == "embedding":
             from app.workers.tasks.embedding_tasks import batch_generate_embeddings
+
             result = batch_generate_embeddings.apply_async(
                 kwargs={
                     "document_ids": [str(doc_id) for doc_id in request.document_ids],
@@ -145,7 +147,7 @@ async def create_batch_job(
         logger.error(
             "batch_job_celery_start_failed",
             batch_id=str(batch_job.id)[:8],
-            error=str(e)
+            **safe_error_log(e)
         )
         # Job bleibt im Status QUEUED, kann manuell gestartet werden
 
@@ -266,11 +268,11 @@ async def pause_batch_job(
 
     except PermissionError as e:
         # SECURITY FIX 28-17: Generische Fehlermeldung
-        logger.warning("batch_pause_permission_denied", error=str(e))
+        logger.warning("batch_pause_permission_denied", **safe_error_log(e))
         raise HTTPException(status_code=403, detail="Keine Berechtigung fuer diese Aktion")
     except ValueError as e:
         # SECURITY FIX 28-17: Generische Fehlermeldung
-        logger.warning("batch_pause_validation_error", error=str(e))
+        logger.warning("batch_pause_validation_error", **safe_error_log(e))
         raise HTTPException(status_code=400, detail="Ungueltige Anfrage fuer Batch-Pause")
 
 
@@ -310,11 +312,11 @@ async def resume_batch_job(
 
     except PermissionError as e:
         # SECURITY FIX 28-17: Generische Fehlermeldung
-        logger.warning("batch_resume_permission_denied", error=str(e))
+        logger.warning("batch_resume_permission_denied", **safe_error_log(e))
         raise HTTPException(status_code=403, detail="Keine Berechtigung fuer diese Aktion")
     except ValueError as e:
         # SECURITY FIX 28-17: Generische Fehlermeldung
-        logger.warning("batch_resume_validation_error", error=str(e))
+        logger.warning("batch_resume_validation_error", **safe_error_log(e))
         raise HTTPException(status_code=400, detail="Ungueltige Anfrage fuer Batch-Fortsetzung")
 
 
@@ -354,11 +356,11 @@ async def cancel_batch_job(
 
     except PermissionError as e:
         # SECURITY FIX 28-17: Generische Fehlermeldung
-        logger.warning("batch_cancel_permission_denied", error=str(e))
+        logger.warning("batch_cancel_permission_denied", **safe_error_log(e))
         raise HTTPException(status_code=403, detail="Keine Berechtigung fuer diese Aktion")
     except ValueError as e:
         # SECURITY FIX 28-17: Generische Fehlermeldung
-        logger.warning("batch_cancel_validation_error", error=str(e))
+        logger.warning("batch_cancel_validation_error", **safe_error_log(e))
         raise HTTPException(status_code=400, detail="Ungueltige Anfrage fuer Batch-Abbruch")
 
 

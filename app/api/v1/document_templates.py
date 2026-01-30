@@ -17,6 +17,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db, get_current_active_user
 from app.middleware.company_context import require_company
+from app.core.safe_errors import safe_error_detail, safe_error_log
+from app.core.security_auth import build_content_disposition
 from app.api.schemas.document_template import (
     # Template schemas
     TemplateCreate,
@@ -418,7 +420,7 @@ async def preview_template(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Dokumentvorlage"),
         )
 
 
@@ -513,7 +515,7 @@ async def generate_document(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Dokumentvorlage"),
         )
 
 
@@ -621,11 +623,11 @@ async def download_generated_document(
             content=content,
             media_type=content_type,
             headers={
-                "Content-Disposition": f'attachment; filename="{doc.filename}"',
+                "Content-Disposition": build_content_disposition(doc.filename, "attachment"),
             },
         )
     except Exception as e:
-        logger.error("document_download_failed", document_id=str(document_id), error=str(e))
+        logger.error("document_download_failed", document_id=str(document_id), **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Dokument konnte nicht heruntergeladen werden",

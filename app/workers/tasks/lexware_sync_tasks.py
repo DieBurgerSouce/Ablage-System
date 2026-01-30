@@ -19,6 +19,7 @@ import structlog
 from celery import shared_task
 
 from app.core.datetime_utils import utc_now
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.services.erp.base_connector import ERPEntity, ERPSyncDirection
 from app.services.erp.lexware_connector import (
     LexwareConnectionConfig,
@@ -365,11 +366,11 @@ def full_sync_task(
                         )
 
                 except Exception as e:
-                    results["errors"].append(f"{entity_type}: {str(e)}")
+                    results["errors"].append(f"{entity_type}: {safe_error_detail(e, 'Lexware')}")
                     logger.error(
                         "lexware_full_sync_entity_error",
                         entity=entity_type,
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
             results["success"] = len(results["errors"]) == 0
@@ -873,7 +874,7 @@ def health_check_task(self) -> Dict[str, Any]:
             return {
                 "healthy": False,
                 "status": "error",
-                "error": str(e),
+                "error": safe_error_detail(e, "Vorgang"),
             }
         finally:
             if connector:

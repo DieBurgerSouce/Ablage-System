@@ -40,6 +40,7 @@ except ImportError:
 
 from app.api.dependencies import get_db
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -149,10 +150,10 @@ async def _check_database(db: AsyncSession) -> KomponentenStatus:
             details={"pool_size": settings.DB_POOL_SIZE},
         )
     except Exception as e:
-        logger.error("health_check_database_failed", error=str(e))
+        logger.error("health_check_database_failed", **safe_error_log(e))
         return KomponentenStatus(
             gesund=False,
-            nachricht=f"Datenbank nicht erreichbar: {str(e)[:100]}",
+            nachricht=f"Datenbank nicht erreichbar: {safe_error_detail(e, 'DB-Verbindung')}",
             latenz_ms=None,
         )
 
@@ -197,9 +198,9 @@ async def _check_redis() -> KomponentenStatus:
             gesund=False, nachricht="Redis-Client nicht installiert"
         )
     except Exception as e:
-        logger.error("health_check_redis_failed", error=str(e))
+        logger.error("health_check_redis_failed", **safe_error_log(e))
         return KomponentenStatus(
-            gesund=False, nachricht=f"Redis nicht erreichbar: {str(e)[:100]}"
+            gesund=False, nachricht=f"Redis nicht erreichbar: {safe_error_detail(e, 'Redis')}"
         )
 
 
@@ -237,9 +238,9 @@ def _check_gpu() -> KomponentenStatus:
             details={"pytorch_installiert": False},
         )
     except Exception as e:
-        logger.error("health_check_gpu_failed", error=str(e))
+        logger.error("health_check_gpu_failed", **safe_error_log(e))
         return KomponentenStatus(
-            gesund=False, nachricht=f"GPU-Pruefung fehlgeschlagen: {str(e)[:100]}"
+            gesund=False, nachricht=f"GPU-Pruefung fehlgeschlagen: {safe_error_detail(e, 'GPU')}"
         )
 
 
@@ -263,9 +264,9 @@ def _check_disk_space() -> KomponentenStatus:
             },
         )
     except Exception as e:
-        logger.error("health_check_disk_failed", error=str(e))
+        logger.error("health_check_disk_failed", **safe_error_log(e))
         return KomponentenStatus(
-            gesund=False, nachricht=f"Speicherplatz-Pruefung fehlgeschlagen: {str(e)[:100]}"
+            gesund=False, nachricht=f"Speicherplatz-Pruefung fehlgeschlagen: {safe_error_detail(e, 'Storage')}"
         )
 
 
@@ -301,9 +302,9 @@ async def _check_minio() -> KomponentenStatus:
             gesund=False, nachricht="MinIO-Client nicht installiert"
         )
     except Exception as e:
-        logger.error("health_check_minio_failed", error=str(e))
+        logger.error("health_check_minio_failed", **safe_error_log(e))
         return KomponentenStatus(
-            gesund=False, nachricht=f"MinIO nicht erreichbar: {str(e)[:100]}"
+            gesund=False, nachricht=f"MinIO nicht erreichbar: {safe_error_detail(e, 'MinIO')}"
         )
 
 
@@ -616,7 +617,7 @@ async def _check_celery_workers() -> WorkerHealthResponse:
             await redis_client.ping()
             broker_erreichbar = True
         except Exception as e:
-            logger.warning("celery_broker_check_failed", error=str(e))
+            logger.warning("celery_broker_check_failed", **safe_error_log(e))
             broker_erreichbar = False
             empfehlungen.append("Redis Broker nicht erreichbar - Worker können keine Tasks empfangen")
             return WorkerHealthResponse(
@@ -663,7 +664,7 @@ async def _check_celery_workers() -> WorkerHealthResponse:
             ping_result = inspect.ping() or {}
             reserved = inspect.reserved() or {}
         except Exception as e:
-            logger.warning("celery_inspect_failed", error=str(e))
+            logger.warning("celery_inspect_failed", **safe_error_log(e))
             active = {}
             stats = {}
             ping_result = {}
@@ -784,7 +785,7 @@ async def _check_celery_workers() -> WorkerHealthResponse:
         )
 
     except ImportError as e:
-        logger.warning("celery_not_available", error=str(e))
+        logger.warning("celery_not_available", **safe_error_log(e))
         return WorkerHealthResponse(
             status="unbekannt",
             zeitstempel=datetime.now(timezone.utc).isoformat(),
@@ -798,7 +799,7 @@ async def _check_celery_workers() -> WorkerHealthResponse:
             empfehlungen=["Celery nicht installiert oder konfiguriert"],
         )
     except Exception as e:
-        logger.error("celery_worker_health_failed", error=str(e))
+        logger.error("celery_worker_health_failed", **safe_error_log(e))
         return WorkerHealthResponse(
             status="kritisch",
             zeitstempel=datetime.now(timezone.utc).isoformat(),
@@ -809,7 +810,7 @@ async def _check_celery_workers() -> WorkerHealthResponse:
             tasks_aktiv=0,
             workers=[],
             queues=[],
-            empfehlungen=[f"Worker-Prüfung fehlgeschlagen: {str(e)[:100]}"],
+            empfehlungen=[f"Worker-Prüfung fehlgeschlagen: {safe_error_detail(e, 'Vorgang')}"],
         )
 
 
@@ -946,7 +947,7 @@ async def ocr_health() -> OCRHealthResponse:
         )
 
     except Exception as e:
-        logger.error("ocr_health_check_failed", error=str(e))
+        logger.error("ocr_health_check_failed", **safe_error_log(e))
         return OCRHealthResponse(
             status="kritisch",
             zeitstempel=datetime.now(timezone.utc).isoformat(),
@@ -989,10 +990,10 @@ async def ocr_backend_health(backend_name: str) -> OCRBackendHealth:
         )
 
     except Exception as e:
-        logger.error("ocr_backend_health_check_failed", backend=backend_name, error=str(e))
+        logger.error("ocr_backend_health_check_failed", backend=backend_name, **safe_error_log(e))
         return OCRBackendHealth(
             gesund=False,
-            grund=f"Pruefung fehlgeschlagen: {str(e)[:100]}",
+            grund=f"Pruefung fehlgeschlagen: {safe_error_detail(e, 'Vorgang')}",
             status=None,
         )
 
@@ -1099,7 +1100,7 @@ async def circuit_breaker_health() -> CircuitBreakerHealthResponse:
             gesamtzahl=0,
         )
     except Exception as e:
-        logger.error("circuit_breaker_health_failed", error=str(e))
+        logger.error("circuit_breaker_health_failed", **safe_error_log(e))
         return CircuitBreakerHealthResponse(
             status="kritisch",
             zeitstempel=datetime.now(timezone.utc).isoformat(),
@@ -1222,7 +1223,7 @@ async def pipeline_health() -> PipelineHealthResponse:
             german_correction_stats=None,
         )
     except Exception as e:
-        logger.error("pipeline_health_failed", error=str(e))
+        logger.error("pipeline_health_failed", **safe_error_log(e))
         return PipelineHealthResponse(
             status="kritisch",
             zeitstempel=datetime.now(timezone.utc).isoformat(),
@@ -1358,7 +1359,7 @@ async def slo_health() -> SLOHealthResponse:
             all_slos_met=False,
         )
     except Exception as e:
-        logger.error("slo_health_failed", error=str(e))
+        logger.error("slo_health_failed", **safe_error_log(e))
         return SLOHealthResponse(
             status="kritisch",
             zeitstempel=datetime.now(timezone.utc).isoformat(),
@@ -1446,7 +1447,7 @@ async def gpu_status() -> GPUStatusResponse:
             utilization_percent=None,
         )
     except Exception as e:
-        logger.error("gpu_status_check_failed", error=str(e))
+        logger.error("gpu_status_check_failed", **safe_error_log(e))
         return GPUStatusResponse(
             available=False,
             name=None,
@@ -1548,7 +1549,7 @@ async def gpu_memory_health() -> MemoryGuardHealthResponse:
             cleanup_recommended=False,
         )
     except Exception as e:
-        logger.error("gpu_memory_health_failed", error=str(e))
+        logger.error("gpu_memory_health_failed", **safe_error_log(e))
         return MemoryGuardHealthResponse(
             status="kritisch",
             zeitstempel=datetime.now(timezone.utc).isoformat(),
@@ -1907,8 +1908,8 @@ async def cache_stats() -> CacheStatsResponse:
     except ImportError:
         pass
     except Exception as e:
-        logger.warning("cache_stats_ocr_failed", error=str(e))
-        ocr_cache_stats = {"error": str(e)[:100]}
+        logger.warning("cache_stats_ocr_failed", **safe_error_log(e))
+        ocr_cache_stats = {"error": safe_error_detail(e, "Vorgang")[:100]}
 
     # Redis info
     redis_verfuegbar = False
@@ -1949,8 +1950,8 @@ async def cache_stats() -> CacheStatsResponse:
     except ImportError:
         redis_info = {"error": "Redis Client nicht installiert"}
     except Exception as e:
-        logger.warning("cache_stats_redis_failed", error=str(e))
-        redis_info = {"error": str(e)[:100]}
+        logger.warning("cache_stats_redis_failed", **safe_error_log(e))
+        redis_info = {"error": safe_error_detail(e, "Vorgang")[:100]}
 
     # Session cache stats
     session_cache_stats = None
@@ -2313,6 +2314,7 @@ async def degradation_status(
     # Check Circuit Breakers
     try:
         from app.services.circuit_breaker import get_circuit_breaker_registry
+
 
         registry = get_circuit_breaker_registry()
         all_status = registry.get_all_status()

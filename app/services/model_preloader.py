@@ -14,6 +14,7 @@ Features:
 
 import asyncio
 import time
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from typing import Any, Dict, List, Optional, Set
 from enum import Enum
 import structlog
@@ -163,12 +164,12 @@ class ModelPreloader:
 
             except Exception as e:
                 self._status[model_name] = PreloadStatus.FAILED
-                self._errors[model_name] = str(e)
+                self._errors[model_name] = safe_error_detail(e, "Preload")
                 logger.error(
                     "model_preload_failed",
                     model=model_name,
                     error_type=type(e).__name__,
-                    error=str(e),
+                    **safe_error_log(e),
                     exc_info=True  # Include traceback for debugging
                 )
                 results[model_name] = PreloadStatus.FAILED
@@ -240,6 +241,7 @@ class ModelPreloader:
                     return
 
                 from app.agents.ocr.deepseek_agent import DeepSeekAgent
+
                 agent = DeepSeekAgent()
                 await agent._load_model()
 
@@ -256,7 +258,7 @@ class ModelPreloader:
             logger.warning(
                 "model_preload_import_error",
                 model=model_name,
-                error=str(e)
+                **safe_error_log(e)
             )
             self._status[model_name] = PreloadStatus.SKIPPED
             self._errors[model_name] = f"Import-Fehler: {e}"
@@ -286,7 +288,7 @@ class ModelPreloader:
             # torch not available
             return False
         except Exception as e:
-            logger.debug("vram_check_failed", error_type=type(e).__name__, error=str(e))
+            logger.debug("vram_check_failed", error_type=type(e).__name__, **safe_error_log(e))
             return False
 
     def get_status(self) -> Dict[str, Any]:
@@ -343,7 +345,7 @@ class ModelPreloader:
                 logger.warning(
                     "preloaded_agent_cleanup_error",
                     model=name,
-                    error=str(e)
+                    **safe_error_log(e)
                 )
 
         self._loaded_agents.clear()

@@ -21,6 +21,10 @@ import structlog
 # SECURITY FIX 27-4: Rate Limiting fuer Banking Endpoints
 from app.core.rate_limiting import limiter, get_user_identifier
 
+# SECURITY FIX: PII leakage prevention (CWE-532)
+from app.core.safe_errors import safe_error_detail, safe_error_log
+from app.core.security_auth import build_content_disposition
+
 from app.api.dependencies import get_db, get_current_active_user
 from app.db.models import User
 from app.services.banking.account_service import AccountService
@@ -342,7 +346,7 @@ async def create_account(
         logger.warning(
             "banking_account_create_failed",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         # SECURITY: Generische Fehlermeldung - keine internen Details exponieren
         raise HTTPException(
@@ -575,7 +579,7 @@ async def preview_import(
         logger.error(
             "banking_import_preview_failed",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         # SECURITY: Generische Fehlermeldung - keine internen Details exponieren
@@ -655,7 +659,7 @@ async def import_file(
         logger.warning(
             "banking_import_failed",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         # SECURITY: Generische Fehlermeldung - keine internen Details exponieren
         raise HTTPException(
@@ -666,7 +670,7 @@ async def import_file(
         logger.error(
             "banking_import_error",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         raise HTTPException(
@@ -1045,7 +1049,7 @@ async def manual_match(
             transaction_id=str(transaction_id),
             document_id=str(document_id),
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         # SECURITY: Generische Fehlermeldung - keine internen Details exponieren
         raise HTTPException(
@@ -1139,7 +1143,7 @@ async def split_transaction(
             "split_transaction_failed",
             transaction_id=str(transaction_id),
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         # SECURITY: Generische Fehlermeldung - keine internen Details exponieren
         raise HTTPException(
@@ -1271,7 +1275,7 @@ async def create_payment(
         logger.warning(
             "payment_create_failed",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         # SECURITY: Generische Fehlermeldung - keine internen Details exponieren
         raise HTTPException(
@@ -1405,7 +1409,7 @@ async def approve_payment(
             "payment_approve_failed",
             payment_id=str(payment_id),
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         # SECURITY: Generische Fehlermeldung - keine internen Details exponieren
         raise HTTPException(
@@ -1441,7 +1445,7 @@ async def cancel_payment(
             "payment_cancel_failed",
             payment_id=str(payment_id),
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         # SECURITY: Generische Fehlermeldung - keine internen Details exponieren
         raise HTTPException(
@@ -1480,7 +1484,7 @@ async def submit_payment(
             "payment_submit_failed",
             payment_id=str(payment_id),
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         # SECURITY: Generische Fehlermeldung - keine internen Details exponieren
         raise HTTPException(
@@ -1522,7 +1526,7 @@ async def confirm_payment_tan(
             "payment_tan_confirm_failed",
             payment_id=str(payment_id),
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1730,7 +1734,7 @@ async def create_dunning(
             "dunning_create_failed",
             document_id=str(document_id),
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         # SECURITY: Generische Fehlermeldung - keine internen Details exponieren
         raise HTTPException(
@@ -1847,7 +1851,7 @@ async def escalate_dunning(
             "dunning_escalate_failed",
             dunning_id=str(dunning_id),
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         # SECURITY: Generische Fehlermeldung - keine internen Details exponieren
         raise HTTPException(
@@ -1887,7 +1891,7 @@ async def close_dunning(
             dunning_id=str(dunning_id),
             user_id=str(current_user.id),
             close_status=close_status.value if close_status else None,
-            error=str(e),
+            **safe_error_log(e),
         )
         # SECURITY: Generische Fehlermeldung - keine internen Details exponieren
         raise HTTPException(
@@ -1973,7 +1977,7 @@ async def set_mahnstopp(
             "mahnstopp_set_failed",
             dunning_id=str(dunning_id),
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -2009,7 +2013,7 @@ async def lift_mahnstopp(
             "mahnstopp_lift_failed",
             dunning_id=str(dunning_id),
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -2043,7 +2047,7 @@ async def claim_b2b_pauschale(
             "b2b_pauschale_claim_failed",
             dunning_id=str(dunning_id),
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -2079,7 +2083,7 @@ async def set_b2b_status(
             "b2b_status_set_failed",
             dunning_id=str(dunning_id),
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -2186,7 +2190,7 @@ async def log_phone_call(
             "phone_call_log_failed",
             dunning_id=str(dunning_id),
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -2306,16 +2310,16 @@ async def preview_dunning_letter(
         logger.warning(
             "dunning_letter_preview_failed",
             dunning_id=str(dunning_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Mahnvorgang nicht gefunden: {str(e)}",
+            detail=safe_error_detail(e, "Mahnvorgang"),
         )
     except RuntimeError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
+            detail=safe_error_detail(e, "Mahnbrief"),
         )
 
 
@@ -2379,7 +2383,7 @@ async def download_dunning_letter_pdf(
             content=pdf_content,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Disposition": build_content_disposition(filename, "attachment"),
             },
         )
 
@@ -2387,16 +2391,16 @@ async def download_dunning_letter_pdf(
         logger.warning(
             "dunning_letter_pdf_failed",
             dunning_id=str(dunning_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Mahnvorgang nicht gefunden: {str(e)}",
+            detail=safe_error_detail(e, "Mahnvorgang"),
         )
     except RuntimeError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
+            detail=safe_error_detail(e, "Mahnbrief"),
         )
 
 
@@ -2504,7 +2508,7 @@ async def batch_generate_dunning_letters(
         content=zip_content,
         media_type="application/zip",
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Disposition": build_content_disposition(filename, "attachment"),
         },
     )
 
@@ -2747,7 +2751,7 @@ async def create_mahn_task(
         logger.warning(
             "mahn_task_create_failed",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -2783,7 +2787,7 @@ async def assign_mahn_task(
             "mahn_task_assign_failed",
             task_id=str(task_id),
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -2821,7 +2825,7 @@ async def snooze_mahn_task(
             "mahn_task_snooze_failed",
             task_id=str(task_id),
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -2857,7 +2861,7 @@ async def complete_mahn_task(
             "mahn_task_complete_failed",
             task_id=str(task_id),
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -2895,7 +2899,7 @@ async def bulk_complete_mahn_tasks(
             completed += 1
         except ValueError as e:
             failed += 1
-            errors.append({"task_id": str(task_id), "error": str(e)})
+            errors.append({"task_id": str(task_id), **safe_error_log(e)})
 
     return {
         "total": len(request.task_ids),
@@ -2934,7 +2938,7 @@ async def get_dunning_stages(
         logger.error(
             "dunning_stages_get_failed",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -2970,7 +2974,7 @@ async def create_dunning_stage(
         logger.warning(
             "dunning_stage_create_failed",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -3008,7 +3012,7 @@ async def update_dunning_stage(
             "dunning_stage_update_failed",
             stage_id=str(stage_id),
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -3038,7 +3042,7 @@ async def reorder_dunning_stages(
         logger.warning(
             "dunning_stages_reorder_failed",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -3068,7 +3072,7 @@ async def get_auto_dunning_settings(
         logger.error(
             "auto_dunning_settings_get_failed",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -3098,7 +3102,7 @@ async def update_auto_dunning_settings(
         logger.warning(
             "auto_dunning_settings_update_failed",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -3163,7 +3167,7 @@ async def set_customer_dunning_settings(
             "customer_dunning_settings_failed",
             business_entity_id=str(business_entity_id),
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

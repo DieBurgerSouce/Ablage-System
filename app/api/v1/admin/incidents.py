@@ -18,6 +18,7 @@ import structlog
 
 from app.api.dependencies import get_db, get_current_superuser
 from app.db.models import User
+from app.core.safe_errors import safe_error_log
 from app.services.incident_response_service import (
     get_incident_response_service,
     IncidentType,
@@ -411,7 +412,7 @@ async def unblock_ip(
         if redis:
             await redis.delete(f"blocked_ip:{ip_address}")
     except Exception as e:
-        logger.warning("ip_unblock_redis_failed", ip=ip_address, error=str(e))
+        logger.warning("ip_unblock_redis_failed", ip=ip_address, **safe_error_log(e))
 
     logger.info(
         "admin_ip_unblocked",
@@ -514,6 +515,7 @@ async def get_security_config(
         RESPONSE_RULES
     )
     from app.core.config import settings
+
 
     # Konvertiere Response-Regeln zu serialisierbarem Format
     rules_serializable = {}

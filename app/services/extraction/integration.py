@@ -36,6 +36,7 @@ from app.services.extraction.validators.cross_field_validator import (
     ValidationResult,
 )
 from app.services.extraction.config import get_default_config
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -202,7 +203,7 @@ class EnhancedExtractionAdapter:
             )
 
         except Exception as e:
-            logger.exception("enhanced_extraction_error", error=str(e))
+            logger.exception("enhanced_extraction_error", **safe_error_log(e))
             result.extraction_warnings.append(f"Extraktionsfehler: {e}")
             result.needs_review = True
 

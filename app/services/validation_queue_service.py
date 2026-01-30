@@ -13,6 +13,7 @@ Verwendung:
 import uuid
 from datetime import datetime, date, timedelta
 from app.core.datetime_utils import utc_now
+from app.core.safe_errors import safe_error_log
 from typing import Optional, List, Dict, Any, Tuple
 import structlog
 
@@ -658,9 +659,7 @@ class ValidationQueueService:
                     })
             except Exception as e:
                 failed_items.append({
-                    "id": str(item_id),
-                    "error": str(e)
-                })
+                    "id": str(item_id), **safe_error_log(e)})
 
         logger.info(
             "validation_batch_approve_completed",
@@ -713,9 +712,7 @@ class ValidationQueueService:
                     })
             except Exception as e:
                 failed_items.append({
-                    "id": str(item_id),
-                    "error": str(e)
-                })
+                    "id": str(item_id), **safe_error_log(e)})
 
         logger.info(
             "validation_batch_reject_completed",
@@ -765,9 +762,7 @@ class ValidationQueueService:
                     })
             except Exception as e:
                 failed_items.append({
-                    "id": str(item_id),
-                    "error": str(e)
-                })
+                    "id": str(item_id), **safe_error_log(e)})
 
         logger.info(
             "validation_batch_assign_completed",

@@ -25,6 +25,7 @@ import httpx
 
 from app.core.config import settings
 from app.core.cache import cache_get, cache_set, invalidate_cache
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -158,7 +159,7 @@ class BundesbankRateService:
         except Exception as e:
             logger.warning(
                 "Bundesbank API nicht erreichbar, verwende Fallback",
-                error=str(e),
+                **safe_error_log(e),
             )
 
         # 3. Fallback
@@ -224,7 +225,7 @@ class BundesbankRateService:
         except Exception as e:
             logger.warning(
                 "Bundesbank History API nicht erreichbar",
-                error=str(e),
+                **safe_error_log(e),
             )
 
         # Fallback: Return only current rate
@@ -300,7 +301,7 @@ class BundesbankRateService:
         except Exception as e:
             logger.error(
                 "Basiszins-Refresh von API fehlgeschlagen",
-                error=str(e),
+                **safe_error_log(e),
             )
             raise RuntimeError(f"Basiszins-Refresh fehlgeschlagen: {e}")
 
@@ -407,13 +408,13 @@ class BundesbankRateService:
             logger.warning(
                 "Bundesbank API HTTP-Fehler",
                 status_code=e.response.status_code,
-                error=str(e),
+                **safe_error_log(e),
             )
             return None
         except Exception as e:
             logger.warning(
                 "Bundesbank API Fehler",
-                error=str(e),
+                **safe_error_log(e),
             )
             return None
 
@@ -506,7 +507,7 @@ class BundesbankRateService:
         except Exception as e:
             logger.warning(
                 "Bundesbank History API Fehler",
-                error=str(e),
+                **safe_error_log(e),
             )
             return None
 

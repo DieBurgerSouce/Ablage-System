@@ -14,6 +14,7 @@ from PIL import Image
 import pypdfium2 as pdfium
 
 from app.agents.base import OCRAgent, OCRResult
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -154,7 +155,7 @@ class SuryaGPUAgent(OCRAgent):
             self._warmup_models()
 
         except Exception as e:
-            logger.error("surya_models_load_failed", error=str(e))
+            logger.error("surya_models_load_failed", **safe_error_log(e))
             raise
 
     def _warmup_models(self):
@@ -196,7 +197,7 @@ class SuryaGPUAgent(OCRAgent):
 
         except Exception as e:
             # Warmup failure is not critical - just log it
-            logger.warning("model_warmup_failed", error=str(e))
+            logger.warning("model_warmup_failed", **safe_error_log(e))
 
     def _load_image(self, image_path: str) -> List[Image.Image]:
         """Load image(s) from file path, handling both PDFs and images."""
@@ -219,7 +220,7 @@ class SuryaGPUAgent(OCRAgent):
                     logger.debug("pdf_page_loaded", page=page_num + 1, total=len(pdf))
                 pdf.close()
             except Exception as e:
-                logger.error("pdf_load_failed", error=str(e))
+                logger.error("pdf_load_failed", **safe_error_log(e))
                 raise
         else:
             # Handle image files (PNG, JPG, etc.)
@@ -231,7 +232,7 @@ class SuryaGPUAgent(OCRAgent):
                     image = image.convert('RGB')
                 images.append(image)
             except Exception as e:
-                logger.error("image_load_failed", error=str(e))
+                logger.error("image_load_failed", **safe_error_log(e))
                 raise
 
         return images
@@ -295,8 +296,8 @@ class SuryaGPUAgent(OCRAgent):
             }
 
         except Exception as e:
-            logger.error("image_processing_failed", error=str(e))
-            return {"text": "", "confidence": 0.0, "text_regions": 0, "german_chars_found": [], "error": str(e)}
+            logger.error("image_processing_failed", **safe_error_log(e))
+            return {"text": "", "confidence": 0.0, "text_regions": 0, "german_chars_found": [], **safe_error_log(e)}
 
     async def process(
         self,
@@ -386,11 +387,11 @@ class SuryaGPUAgent(OCRAgent):
             return result.to_dict()
 
         except Exception as e:
-            logger.error("ocr_processing_failed", error=str(e))
+            logger.error("ocr_processing_failed", **safe_error_log(e))
 
             # Erstelle standardisiertes Fehler-Result
             result = self.create_error_result(
-                error=str(e),
+                **safe_error_log(e),
                 error_code="SURYA_OCR_ERROR",
             )
             return result.to_dict()

@@ -60,6 +60,7 @@ from app.services.rag.prompt_templates import (
     build_chat_prompt,
 )
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -85,8 +86,8 @@ def get_search_service_dep() -> RAGSearchService:
     description="Sendet eine Nachricht und erhaelt eine RAG-gestuetzte Antwort."
 )
 async def send_chat_message(
-    http_request: Request,  # SECURITY FIX 28-12: Required for rate limiter
-    request: RAGChatRequest,
+    request: Request,  # SECURITY FIX: Required for rate limiter
+    body: RAGChatRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     llm_service: LLMService = Depends(get_llm_service_dep),
@@ -112,10 +113,10 @@ async def send_chat_message(
     logger.info(
         "chat_message_request",
         user_id=str(current_user.id),
-        session_id=str(request.session_id) if request.session_id else "new",
-        context_type=request.context_type.value,
-        realtime=request.realtime,
-        message_length=len(request.message)
+        session_id=str(body.session_id) if body.session_id else "new",
+        context_type=body.context_type.value,
+        realtime=body.realtime,
+        message_length=len(body.message)
     )
 
     try:
@@ -123,9 +124,9 @@ async def send_chat_message(
         session = await _get_or_create_session(
             db=db,
             user_id=current_user.id,
-            session_id=request.session_id,
-            context_type=request.context_type,
-            context_id=request.context_id
+            session_id=body.session_id,
+            context_type=body.context_type,
+            context_id=body.context_id
         )
 
         # 2. Chat-Historie laden
@@ -133,15 +134,15 @@ async def send_chat_message(
 
         # 3. Relevante Chunks suchen
         document_ids = None
-        if request.context_type == RAGContextType.DOCUMENT and request.context_id:
+        if body.context_type == RAGContextType.DOCUMENT and body.context_id:
             try:
-                document_ids = [UUID(request.context_id)]
+                document_ids = [UUID(body.context_id)]
             except ValueError as e:
-                logger.debug("invalid_context_id_uuid_skipped", context_id=request.context_id, error_type=type(e).__name__)
+                logger.debug("invalid_context_id_uuid_skipped", context_id=body.context_id, error_type=type(e).__name__)
 
         chunks = await search_service.search_for_context(
             db=db,
-            query=request.message,
+            query=body.message,
             context_chunks=settings.RAG_CHAT_CONTEXT_CHUNKS,
             document_ids=document_ids
         )
@@ -151,10 +152,10 @@ async def send_chat_message(
 
         # 5. Prompt erstellen
         messages = build_chat_prompt(
-            question=request.message,
+            question=body.message,
             context=context,
             history=history,
-            realtime=request.realtime
+            realtime=body.realtime
         )
 
         # LLM Messages konvertieren
@@ -164,14 +165,14 @@ async def send_chat_message(
         ]
 
         # 6. LLM-Antwort generieren
-        llm_context = LLMContextType.REALTIME if request.realtime else LLMContextType.GENERAL
-        if request.context_type == RAGContextType.CUSTOMER:
+        llm_context = LLMContextType.REALTIME if body.realtime else LLMContextType.GENERAL
+        if body.context_type == RAGContextType.CUSTOMER:
             llm_context = LLMContextType.CUSTOMER
 
         response = await llm_service.generate(
             messages=llm_messages,
             context_type=llm_context,
-            enable_thinking=not request.realtime  # Kein Thinking im Realtime-Modus
+            enable_thinking=not body.realtime  # Kein Thinking im Realtime-Modus
         )
 
         # 7. Nachrichten speichern
@@ -179,7 +180,7 @@ async def send_chat_message(
         user_message = RAGChatMessage(
             session_id=session.id,
             role=RAGChatRole.USER,
-            content=request.message,
+            content=body.message,
             attached_document_id=document_ids[0] if document_ids else None
         )
         db.add(user_message)
@@ -234,7 +235,7 @@ async def send_chat_message(
         logger.exception(
             "chat_message_failed",
             user_id=str(current_user.id),
-            error=str(e)
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -250,8 +251,8 @@ async def send_chat_message(
     description="Sendet eine Nachricht und streamt die Antwort via SSE."
 )
 async def send_chat_message_stream(
-    http_request: Request,  # SECURITY FIX 28-12: Required for rate limiter
-    request: RAGChatRequest,
+    request: Request,  # SECURITY FIX: Required for rate limiter
+    body: RAGChatRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     llm_service: LLMService = Depends(get_llm_service_dep),
@@ -277,23 +278,23 @@ async def send_chat_message_stream(
             document_ids = None
             logger.debug(
                 "rag_chat_context_check",
-                context_type=request.context_type.value if request.context_type else None,
-                context_id=request.context_id,
+                context_type=body.context_type.value if body.context_type else None,
+                context_id=body.context_id,
             )
-            if request.context_type == RAGContextType.DOCUMENT and request.context_id:
+            if body.context_type == RAGContextType.DOCUMENT and body.context_id:
                 try:
-                    document_ids = [UUID(request.context_id)]
+                    document_ids = [UUID(body.context_id)]
                     logger.info(
                         "document_context_set",
-                        context_id=request.context_id,
+                        context_id=body.context_id,
                         document_ids=str(document_ids)
                     )
                 except ValueError:
-                    logger.warning("invalid_context_id", context_id=request.context_id)
+                    logger.warning("invalid_context_id", context_id=body.context_id)
 
             chunks = await search_service.search_for_context(
                 db=db,
-                query=request.message,
+                query=body.message,
                 context_chunks=settings.RAG_CHAT_CONTEXT_CHUNKS,
                 document_ids=document_ids
             )
@@ -301,7 +302,7 @@ async def send_chat_message_stream(
             # Debug-Logging: Wurden Chunks gefunden?
             logger.info(
                 "rag_chat_search_result",
-                query=request.message[:50],
+                query=body.message[:50],
                 chunks_found=len(chunks),
                 has_context=bool(chunks),
                 document_filter=str(document_ids) if document_ids else "none"
@@ -348,6 +349,7 @@ async def send_chat_message_stream(
                         try:
                             from app.services.storage_service import get_storage_service
                             from app.services.ocr import quick_ocr_preview
+
                             import tempfile
                             from pathlib import Path as FilePath
 
@@ -386,7 +388,7 @@ async def send_chat_message_stream(
                                 tmp_path.unlink(missing_ok=True)
 
                         except Exception as e:
-                            logger.warning("chat_fallback_quick_ocr_failed", document_id=str(doc.id), error=str(e))
+                            logger.warning("chat_fallback_quick_ocr_failed", document_id=str(doc.id), **safe_error_log(e))
                             context = "HINWEIS: Das Dokument konnte nicht gelesen werden. Bitte warten Sie bis die Verarbeitung abgeschlossen ist."
                     else:
                         context = "HINWEIS: Das Dokument wurde noch nicht verarbeitet. Bitte warten Sie einen Moment und versuchen Sie es erneut."
@@ -400,15 +402,15 @@ async def send_chat_message_stream(
                 context = "HINWEIS: Es wurden keine relevanten Dokumente zu dieser Anfrage gefunden. Der Benutzer fragt moeglicherweise nach Dokumenten, die noch nicht indexiert wurden, oder die Suchanfrage ist zu allgemein."
                 logger.warning(
                     "rag_chat_no_context",
-                    query=request.message[:50],
+                    query=body.message[:50],
                     document_filter=str(document_ids) if document_ids else "none"
                 )
 
             # 3. Chat Session verwalten
-            if request.session_id:
+            if body.session_id:
                 result = await db.execute(
                     select(RAGChatSession).where(
-                        RAGChatSession.id == request.session_id,
+                        RAGChatSession.id == body.session_id,
                         RAGChatSession.user_id == current_user.id
                     )
                 )
@@ -421,8 +423,8 @@ async def send_chat_message_stream(
                 session = RAGChatSession(
                     user_id=current_user.id,
                     session_token=secrets.token_urlsafe(32),
-                    context_type=request.context_type.value if request.context_type else None,
-                    context_id=request.context_id,
+                    context_type=body.context_type.value if body.context_type else None,
+                    context_id=body.context_id,
                     status="active",
                 )
                 db.add(session)
@@ -433,7 +435,7 @@ async def send_chat_message_stream(
             user_message = RAGChatMessage(
                 session_id=session.id,
                 role=RAGChatRole.USER,
-                content=request.message,
+                content=body.message,
                 attached_document_id=document_ids[0] if document_ids else None,
             )
             db.add(user_message)
@@ -460,8 +462,8 @@ async def send_chat_message_stream(
                 yield f"data: {json.dumps(source_event)}\n\n"
 
             # 6. LLM Context
-            llm_context = LLMContextType.REALTIME if request.realtime else LLMContextType.GENERAL
-            if request.context_type == RAGContextType.CUSTOMER:
+            llm_context = LLMContextType.REALTIME if body.realtime else LLMContextType.GENERAL
+            if body.context_type == RAGContextType.CUSTOMER:
                 llm_context = LLMContextType.CUSTOMER
 
             # 7. LLM Streaming - System-Prompt je nach Modus
@@ -484,7 +486,7 @@ KONTEXT:
 
             messages = [
                 LLMMessage(role="system", content=system_content),
-                LLMMessage(role="user", content=request.message),
+                LLMMessage(role="user", content=body.message),
             ]
 
             full_response = ""
@@ -512,7 +514,7 @@ KONTEXT:
                 try:
                     generated_title = await _generate_chat_title(
                         llm_service=llm_service,
-                        user_message=request.message
+                        user_message=body.message
                     )
                     session.title = generated_title
                     logger.info(
@@ -521,7 +523,7 @@ KONTEXT:
                         title=generated_title
                     )
                 except Exception as e:
-                    logger.warning("chat_title_generation_skipped", error=str(e))
+                    logger.warning("chat_title_generation_skipped", **safe_error_log(e))
 
             await db.commit()
 
@@ -537,8 +539,8 @@ KONTEXT:
             )
 
         except Exception as e:
-            logger.error("rag_chat_stream_failed", error=str(e))
-            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            logger.error("rag_chat_stream_failed", **safe_error_log(e))
+            yield f"data: {json.dumps({'type': 'error', 'error': safe_error_detail(e, 'Chat')})}\n\n"
 
     return StreamingResponse(
         generate_stream(),
@@ -560,8 +562,8 @@ KONTEXT:
     description="Erstellt eine neue Chat-Session."
 )
 async def create_chat_session(
-    http_request: Request,  # SECURITY FIX 28-12: Required for rate limiter
-    request: RAGChatSessionCreate,
+    request: Request,  # SECURITY FIX: Required for rate limiter
+    body: RAGChatSessionCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> RAGChatSessionResponse:
@@ -573,9 +575,9 @@ async def create_chat_session(
     session = RAGChatSession(
         user_id=current_user.id,
         session_token=str(uuid4()),
-        title=request.title,
-        context_type=request.context_type.value if request.context_type else None,
-        context_id=request.context_id,
+        title=body.title,
+        context_type=body.context_type.value if body.context_type else None,
+        context_id=body.context_id,
         status="active"
     )
     db.add(session)
@@ -963,7 +965,7 @@ Titel (NUR der Titel, ohne Anführungszeichen):"""
         return title
 
     except Exception as e:
-        logger.warning("chat_title_generation_failed", error=str(e))
+        logger.warning("chat_title_generation_failed", **safe_error_log(e))
         # Fallback: Erste 50 Zeichen der Nachricht
         title = user_message[:50].strip()
         if len(user_message) > 50:
@@ -1042,9 +1044,9 @@ async def _get_chat_history(
     description="Teilt eine Chat-Session mit einem anderen Benutzer."
 )
 async def share_chat_session(
-    http_request: Request,  # SECURITY FIX 28-12: Required for rate limiter
+    request: Request,  # SECURITY FIX: Required for rate limiter
     session_id: UUID,
-    request: ChatSessionShareRequest,
+    body: ChatSessionShareRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> ChatSessionCollaboratorResponse:
@@ -1057,18 +1059,18 @@ async def share_chat_session(
 
     try:
         # Access Level konvertieren
-        db_level = DBChatSessionAccessLevel(request.access_level.value)
+        db_level = DBChatSessionAccessLevel(body.access_level.value)
 
         access = await sharing_service.share_session(
             session_id=session_id,
             owner_id=current_user.id,
-            target_user_id=request.user_id,
+            target_user_id=body.user_id,
             access_level=db_level
         )
         await db.commit()
 
         # User-Info holen
-        user = await db.get(User, request.user_id)
+        user = await db.get(User, body.user_id)
 
         return ChatSessionCollaboratorResponse(
             user_id=str(access.user_id),
@@ -1081,7 +1083,7 @@ async def share_chat_session(
 
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("chat_session_validation_error", error=str(e))
+        logger.warning("chat_session_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
@@ -1132,7 +1134,7 @@ async def revoke_chat_session_access(
 
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("chat_session_validation_error", error=str(e))
+        logger.warning("chat_session_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
@@ -1170,7 +1172,7 @@ async def get_chat_session_collaborators(
 
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("chat_session_validation_error", error=str(e))
+        logger.warning("chat_session_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ungueltige Anfrage. Bitte Eingaben pruefen."

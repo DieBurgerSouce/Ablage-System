@@ -17,6 +17,7 @@ import structlog
 
 from app.db.models import WorkflowStep
 from app.services.workflow.condition_evaluator import ConditionEvaluator
+from app.core.safe_errors import safe_error_log
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -138,9 +139,9 @@ class WorkflowStepExecutor:
             logger.exception(
                 "step_execution_error",
                 step_id=str(step.id),
-                error=str(e),
+                **safe_error_log(e),
             )
-            return StepResult(success=False, error=str(e))
+            return StepResult(success=False, **safe_error_log(e))
 
     # =========================================================================
     # Step-Type Executors
@@ -289,12 +290,12 @@ class WorkflowStepExecutor:
                 logger.exception(
                     "parallel_step_failed",
                     action_type=action_type,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 return {
                     "name": action_name,
                     "success": False,
-                    "error": str(e),
+                    "error": safe_error_detail(e, "Vorgang"),
                 }
 
         # Alle Actions parallel ausfuehren
@@ -726,7 +727,7 @@ class WorkflowStepExecutor:
             )
 
         except Exception as e:
-            return StepResult(success=False, error=str(e))
+            return StepResult(success=False, **safe_error_log(e))
 
     async def _action_send_email(
         self,
@@ -767,7 +768,7 @@ class WorkflowStepExecutor:
             )
 
         except Exception as e:
-            return StepResult(success=False, error=str(e))
+            return StepResult(success=False, **safe_error_log(e))
 
     # =========================================================================
     # Integration Actions
@@ -814,7 +815,7 @@ class WorkflowStepExecutor:
             )
 
         except Exception as e:
-            return StepResult(success=False, error=str(e))
+            return StepResult(success=False, **safe_error_log(e))
 
     async def _action_http_request(
         self,
@@ -862,7 +863,7 @@ class WorkflowStepExecutor:
                 )
 
         except Exception as e:
-            return StepResult(success=False, error=str(e))
+            return StepResult(success=False, **safe_error_log(e))
 
     # =========================================================================
     # Processing Actions
@@ -911,7 +912,7 @@ class WorkflowStepExecutor:
             )
 
         except Exception as e:
-            return StepResult(success=False, error=str(e))
+            return StepResult(success=False, **safe_error_log(e))
 
     async def _action_ai_categorization(
         self,
@@ -953,7 +954,7 @@ class WorkflowStepExecutor:
             )
 
         except Exception as e:
-            return StepResult(success=False, error=str(e))
+            return StepResult(success=False, **safe_error_log(e))
 
     async def _action_export_document(
         self,
@@ -999,7 +1000,7 @@ class WorkflowStepExecutor:
             )
 
         except Exception as e:
-            return StepResult(success=False, error=str(e))
+            return StepResult(success=False, **safe_error_log(e))
 
     async def _action_duplicate_check(
         self,
@@ -1041,7 +1042,7 @@ class WorkflowStepExecutor:
             )
 
         except Exception as e:
-            return StepResult(success=False, error=str(e))
+            return StepResult(success=False, **safe_error_log(e))
 
     # =========================================================================
     # Workflow Control Actions
@@ -1217,7 +1218,7 @@ class WorkflowStepExecutor:
             )
 
         except Exception as e:
-            return StepResult(success=False, error=str(e))
+            return StepResult(success=False, **safe_error_log(e))
 
     async def _action_request_approval(
         self,
@@ -1295,6 +1296,7 @@ class WorkflowStepExecutor:
             return True, None
 
         from app.db.models import Document
+
         from sqlalchemy import select
 
         doc_query = select(Document.company_id).where(Document.id == context.document_id)

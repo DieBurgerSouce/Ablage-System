@@ -51,6 +51,7 @@ from sqlalchemy.orm import selectinload
 
 from app.api.dependencies import get_current_user, get_db
 from app.db.models import User
+from app.core.safe_errors import safe_error_log
 from app.db.models_ai_conversation import (
     AIConversation,
     AIConversationMessage,
@@ -366,7 +367,7 @@ async def list_conversations(
         logger.error(
             "ai_conversations_list_db_error",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -377,8 +378,8 @@ async def list_conversations(
 @router.post("", response_model=ConversationDetail, status_code=status.HTTP_201_CREATED)
 @limiter.limit("20/minute")
 async def create_conversation(
-    request: CreateConversationRequest,
-    http_request: Request,
+    body: CreateConversationRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ConversationDetail:
@@ -391,9 +392,9 @@ async def create_conversation(
             session_id=session_id,
             user_id=current_user.id,
             company_id=current_user.company_id,
-            context_page=request.context_page,
-            context_data=request.context_data,
-            language=request.language,
+            context_page=body.context_page,
+            context_data=body.context_data,
+            language=body.language,
             is_active=True,
             is_starred=False,
             message_count=0,
@@ -437,7 +438,7 @@ async def create_conversation(
         logger.error(
             "ai_conversation_create_db_error",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -449,7 +450,7 @@ async def create_conversation(
 @limiter.limit("60/minute")
 async def get_conversation_by_session(
     session_id: str,
-    http_request: Request,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ConversationDetail:
@@ -511,7 +512,7 @@ async def get_conversation_by_session(
             "ai_conversation_get_by_session_db_error",
             user_id=str(current_user.id),
             session_id=session_id[:20] + "..." if len(session_id) > 20 else session_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -523,7 +524,7 @@ async def get_conversation_by_session(
 @limiter.limit("60/minute")
 async def get_conversation(
     conversation_id: UUID,
-    http_request: Request,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ConversationDetail:
@@ -573,7 +574,7 @@ async def get_conversation(
             "ai_conversation_get_db_error",
             user_id=str(current_user.id),
             conversation_id=str(conversation_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -585,8 +586,8 @@ async def get_conversation(
 @limiter.limit("30/minute")
 async def update_conversation(
     conversation_id: UUID,
-    request: UpdateConversationRequest,
-    http_request: Request,
+    body: UpdateConversationRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ConversationDetail:
@@ -611,14 +612,14 @@ async def update_conversation(
                 detail="Konversation nicht gefunden",
             )
 
-        if request.title is not None:
-            conversation.title = request.title
-        if request.is_starred is not None:
-            conversation.is_starred = request.is_starred
-        if request.is_active is not None:
-            conversation.is_active = request.is_active
-        if request.preferences is not None:
-            conversation.preferences = request.preferences
+        if body.title is not None:
+            conversation.title = body.title
+        if body.is_starred is not None:
+            conversation.is_starred = body.is_starred
+        if body.is_active is not None:
+            conversation.is_active = body.is_active
+        if body.preferences is not None:
+            conversation.preferences = body.preferences
 
         await db.commit()
         await db.refresh(conversation)
@@ -656,7 +657,7 @@ async def update_conversation(
             "ai_conversation_update_db_error",
             user_id=str(current_user.id),
             conversation_id=str(conversation_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -668,7 +669,7 @@ async def update_conversation(
 @limiter.limit("20/minute")
 async def delete_conversation(
     conversation_id: UUID,
-    http_request: Request,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
@@ -705,7 +706,7 @@ async def delete_conversation(
             "ai_conversation_delete_db_error",
             user_id=str(current_user.id),
             conversation_id=str(conversation_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -717,7 +718,7 @@ async def delete_conversation(
 @limiter.limit("60/minute")
 async def get_messages(
     conversation_id: UUID,
-    http_request: Request,
+    request: Request,
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -780,7 +781,7 @@ async def get_messages(
             "ai_messages_get_db_error",
             user_id=str(current_user.id),
             conversation_id=str(conversation_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -792,8 +793,8 @@ async def get_messages(
 @limiter.limit("30/minute")
 async def send_message(
     conversation_id: UUID,
-    request: SendMessageRequest,
-    http_request: Request,
+    body: SendMessageRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> MessageResponse:
@@ -825,8 +826,8 @@ async def send_message(
             id=uuid.uuid4(),
             conversation_id=conversation_id,
             role=AIMessageRole.USER.value,
-            content=request.content,
-            intent=request.intent,
+            content=body.content,
+            intent=body.intent,
         )
         db.add(user_message)
 
@@ -837,7 +838,7 @@ async def send_message(
         # Generiere automatischen Titel wenn noch keiner vorhanden
         if not conversation.title and conversation.message_count == 1:
             # Ersten 50 Zeichen der ersten Nachricht als Titel
-            conversation.title = request.content[:50] + ("..." if len(request.content) > 50 else "")
+            conversation.title = body.content[:50] + ("..." if len(body.content) > 50 else "")
 
         await db.commit()
         await db.refresh(user_message)
@@ -871,7 +872,7 @@ async def send_message(
             "ai_message_send_db_error",
             user_id=str(current_user.id),
             conversation_id=str(conversation_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -895,8 +896,8 @@ class MessageFeedbackRequest(BaseModel):
 @limiter.limit("30/minute")
 async def submit_message_feedback(
     message_id: UUID,
-    request: MessageFeedbackRequest,
-    http_request: Request,
+    body: MessageFeedbackRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> FeedbackResponse:
@@ -927,11 +928,11 @@ async def submit_message_feedback(
 
         # Validiere Feedback-Typ
         try:
-            feedback_type = AIFeedbackType(request.feedback_type)
+            feedback_type = AIFeedbackType(body.feedback_type)
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltiger Feedback-Typ: {request.feedback_type}",
+                detail=f"Ungueltiger Feedback-Typ: {body.feedback_type}",
             )
 
         feedback = AIConversationFeedback(
@@ -939,10 +940,10 @@ async def submit_message_feedback(
             message_id=message_id,
             user_id=current_user.id,
             feedback_type=feedback_type.value,
-            rating=request.rating,
-            comment=request.comment,
-            correction=request.correction,
-            expected_intent=request.expected_intent,
+            rating=body.rating,
+            comment=body.comment,
+            correction=body.correction,
+            expected_intent=body.expected_intent,
         )
 
         db.add(feedback)
@@ -953,7 +954,7 @@ async def submit_message_feedback(
             "ai_message_feedback_submitted",
             user_id=str(current_user.id),
             message_id=str(message_id),
-            feedback_type=request.feedback_type,
+            feedback_type=body.feedback_type,
         )
 
         return FeedbackResponse(
@@ -972,7 +973,7 @@ async def submit_message_feedback(
             "ai_feedback_submit_db_error",
             user_id=str(current_user.id),
             message_id=str(message_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -984,8 +985,8 @@ async def submit_message_feedback(
 @limiter.limit("30/minute")
 async def submit_feedback(
     conversation_id: UUID,
-    request: FeedbackRequest,
-    http_request: Request,
+    body: FeedbackRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> FeedbackResponse:
@@ -1012,16 +1013,16 @@ async def submit_feedback(
 
         # Validiere Feedback-Typ
         try:
-            feedback_type = AIFeedbackType(request.feedback_type)
+            feedback_type = AIFeedbackType(body.feedback_type)
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltiger Feedback-Typ: {request.feedback_type}",
+                detail=f"Ungueltiger Feedback-Typ: {body.feedback_type}",
             )
 
         # Validiere message_id Format
         try:
-            message_uuid = UUID(request.message_id)
+            message_uuid = UUID(body.message_id)
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -1047,10 +1048,10 @@ async def submit_feedback(
             message_id=message_uuid,
             user_id=current_user.id,
             feedback_type=feedback_type.value,
-            rating=request.rating,
-            comment=request.comment,
-            correction=request.correction,
-            expected_intent=request.expected_intent,
+            rating=body.rating,
+            comment=body.comment,
+            correction=body.correction,
+            expected_intent=body.expected_intent,
         )
 
         db.add(feedback)
@@ -1061,8 +1062,8 @@ async def submit_feedback(
             "ai_feedback_submitted",
             user_id=str(current_user.id),
             conversation_id=str(conversation_id),
-            message_id=request.message_id,
-            feedback_type=request.feedback_type,
+            message_id=body.message_id,
+            feedback_type=body.feedback_type,
         )
 
         return FeedbackResponse(
@@ -1081,7 +1082,7 @@ async def submit_feedback(
             "ai_feedback_submit_db_error",
             user_id=str(current_user.id),
             conversation_id=str(conversation_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1093,7 +1094,7 @@ async def submit_feedback(
 @limiter.limit("60/minute")
 async def get_actions(
     conversation_id: UUID,
-    http_request: Request,
+    request: Request,
     status_filter: Optional[str] = Query(None, alias="status"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -1167,7 +1168,7 @@ async def get_actions(
             "ai_actions_get_db_error",
             user_id=str(current_user.id),
             conversation_id=str(conversation_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1180,8 +1181,8 @@ async def get_actions(
 async def confirm_action(
     conversation_id: UUID,
     action_id: UUID,
-    request: ActionConfirmRequest,
-    http_request: Request,
+    body: ActionConfirmRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ActionResponse:
@@ -1214,8 +1215,8 @@ async def confirm_action(
             )
 
         # Aktualisiere Parameter wenn angegeben
-        if request.parameters:
-            action.parameters = {**(action.parameters or {}), **request.parameters}
+        if body.parameters:
+            action.parameters = {**(action.parameters or {}), **body.parameters}
 
         action.status = AIActionStatus.CONFIRMED.value
         action.confirmed_by_id = current_user.id
@@ -1257,7 +1258,7 @@ async def confirm_action(
             "ai_action_confirm_db_error",
             user_id=str(current_user.id),
             action_id=str(action_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1270,7 +1271,7 @@ async def confirm_action(
 async def cancel_action(
     conversation_id: UUID,
     action_id: UUID,
-    http_request: Request,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ActionResponse:
@@ -1337,7 +1338,7 @@ async def cancel_action(
             "ai_action_cancel_db_error",
             user_id=str(current_user.id),
             action_id=str(action_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1348,7 +1349,7 @@ async def cancel_action(
 @router.get("/stats", response_model=ConversationStatsResponse)
 @limiter.limit("30/minute")
 async def get_stats(
-    http_request: Request,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ConversationStatsResponse:
@@ -1476,7 +1477,7 @@ async def get_stats(
         logger.error(
             "ai_stats_get_db_error",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1487,7 +1488,7 @@ async def get_stats(
 @router.get("/stats/summary")
 @limiter.limit("30/minute")
 async def get_conversation_stats_legacy(
-    http_request: Request,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
@@ -1544,7 +1545,7 @@ async def get_conversation_stats_legacy(
         logger.error(
             "ai_stats_legacy_get_db_error",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

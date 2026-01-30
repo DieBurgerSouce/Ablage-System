@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import User
 from app.api.dependencies import get_current_user, get_db
 from app.services.rag import get_chat_service
+from app.core.safe_errors import safe_error_detail, safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -136,17 +137,17 @@ async def send_chat_message(
     except PermissionError as e:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=str(e),
+            detail=safe_error_detail(e, "Berechtigung"),
         )
     except Exception as e:
         logger.error(
             "chat_message_error",
             user_id=str(current_user.id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Chat-Verarbeitung fehlgeschlagen: {str(e)}",
+            detail=safe_error_detail(e, "Chat-Verarbeitung"),
         )
 
 
@@ -214,8 +215,8 @@ async def send_chat_message_stream(
             yield f'data: {{"type": "complete", "session_id": "{session.id}", "message_id": "{assistant_msg.id}"}}\n\n'
 
         except Exception as e:
-            logger.error("chat_stream_error", error=str(e))
-            yield f'data: {{"type": "error", "message": "{str(e)}"}}\n\n'
+            logger.error("chat_stream_error", **safe_error_log(e))
+            yield f'data: {{"type": "error", "message": "{safe_error_detail(e, "Chat-Stream")}"}}\n\n'
 
     return StreamingResponse(
         generate(),

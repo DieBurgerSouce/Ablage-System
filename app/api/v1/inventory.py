@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_current_company_id, get_db
+from app.core.safe_errors import safe_error_detail
 from app.db.models import User
 from app.db.models_inventory import MovementType
 from app.services.inventory import (
@@ -626,7 +627,7 @@ async def create_goods_receipt(
         await session.commit()
         return receipt
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "Inventar"))
 
 
 @router.get("/goods-receipts", response_model=list[GoodsReceiptResponse])
@@ -714,7 +715,7 @@ async def auto_match_goods_receipt(
         await session.commit()
         return result
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "Inventar"))
 
 
 @router.post("/goods-receipts/{receipt_id}/match-line")
@@ -732,7 +733,7 @@ async def match_goods_receipt_line(
         await session.commit()
         return GoodsReceiptLineResponse.model_validate(line)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "Inventar"))
 
 
 @router.patch("/goods-receipts/{receipt_id}/line-quantity")
@@ -750,7 +751,7 @@ async def update_goods_receipt_line_quantity(
         await session.commit()
         return GoodsReceiptLineResponse.model_validate(line)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "Inventar"))
 
 
 @router.post("/goods-receipts/{receipt_id}/process")
@@ -767,4 +768,4 @@ async def process_goods_receipt(
         await session.commit()
         return result
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "Inventar"))

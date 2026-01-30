@@ -12,6 +12,7 @@ import structlog
 from celery import shared_task
 
 from app.core.database import get_async_session
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -135,12 +136,12 @@ async def _async_generate_monthly_packages(
                             )
 
             except Exception as e:
-                error_msg = f"Fehler bei Firma {company.id}: {str(e)}"
+                error_msg = f"Fehler bei Firma {company.id}: {safe_error_detail(e, 'Tax')}"
                 errors.append(error_msg)
                 logger.error(
                     "monthly_package_generation_error",
                     company_id=str(company.id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         logger.info(
@@ -268,12 +269,12 @@ async def _async_generate_quarterly_packages(
                         packages_with_missing += 1
 
             except Exception as e:
-                error_msg = f"Fehler bei Firma {company.id}: {str(e)}"
+                error_msg = f"Fehler bei Firma {company.id}: {safe_error_detail(e, 'Tax')}"
                 errors.append(error_msg)
                 logger.error(
                     "quarterly_package_generation_error",
                     company_id=str(company.id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         logger.info(

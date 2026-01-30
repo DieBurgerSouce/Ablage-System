@@ -68,6 +68,7 @@ from app.core.rbac import require_role, require_any_role
 from app.services.ocr_training_service import get_ocr_training_service
 from app.services.benchmark_runner_service import get_benchmark_runner_service
 from app.services.feedback_learning_service import get_feedback_learning_service
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -251,7 +252,7 @@ async def get_sample_preview(
         logger.error(
             "sample_preview_error",
             sample_id=str(sample_id),
-            error=str(e)
+            **safe_error_log(e)
         )
         # SECURITY FIX 28-28: Generische Fehlermeldung
         raise HTTPException(
@@ -2235,7 +2236,7 @@ async def get_next_verification_item(
             logger.warning(
                 "on_the_fly_extraction_failed",
                 sample_id=str(item.sample_id),
-                error=str(e),
+                **safe_error_log(e),
             )
 
     return {
@@ -2615,7 +2616,7 @@ async def trigger_llm_review(
             detail="Sample nicht gefunden."
         )
     except Exception as e:
-        logger.error("llm_review_failed", sample_id=str(sample_id), error=str(e))
+        logger.error("llm_review_failed", sample_id=str(sample_id), **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="LLM-Review fehlgeschlagen. Bitte versuchen Sie es erneut."
@@ -2752,6 +2753,7 @@ async def accept_llm_correction(
     Erfordert Admin- oder Editor-Rolle.
     """
     from app.db.models import OCRTrainingSample
+
 
     result = await db.execute(
         select(OCRTrainingSample).where(OCRTrainingSample.id == sample_id)

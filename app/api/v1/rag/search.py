@@ -25,6 +25,7 @@ from app.api.schemas.rag import (
     RAGSearchType,
 )
 from app.services.rag.search_service import get_rag_search_service, RAGSearchService
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -45,8 +46,8 @@ def get_search_service_dep() -> RAGSearchService:
     description="Fuehrt eine Chunk-basierte semantische Suche durch."
 )
 async def search_chunks(
-    http_request: Request,  # SECURITY FIX 28-13: Required for rate limiter
-    request: RAGSearchRequest,
+    request: Request,  # SECURITY FIX: Required for rate limiter
+    body: RAGSearchRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     search_service: RAGSearchService = Depends(get_search_service_dep)
@@ -67,38 +68,38 @@ async def search_chunks(
     logger.info(
         "rag_search_request",
         user_id=str(current_user.id),
-        query=request.query[:100],
-        search_type=request.search_type.value,
-        limit=request.limit
+        query=body.query[:100],
+        search_type=body.search_type.value,
+        limit=body.limit
     )
 
     try:
         # Suchtyp-spezifische Verarbeitung
-        if request.search_type == RAGSearchType.SEMANTIC:
+        if body.search_type == RAGSearchType.SEMANTIC:
             response = await search_service.semantic_search(
                 db=db,
-                query=request.query,
-                limit=request.limit,
-                threshold=request.threshold,
-                document_ids=request.document_ids,
-                section_types=request.section_types,
-                rerank=request.rerank
+                query=body.query,
+                limit=body.limit,
+                threshold=body.threshold,
+                document_ids=body.document_ids,
+                section_types=body.section_types,
+                rerank=body.rerank
             )
-        elif request.search_type == RAGSearchType.HYBRID:
+        elif body.search_type == RAGSearchType.HYBRID:
             response = await search_service.hybrid_search(
                 db=db,
-                query=request.query,
-                limit=request.limit,
-                threshold=request.threshold,
-                document_ids=request.document_ids,
-                rerank=request.rerank
+                query=body.query,
+                limit=body.limit,
+                threshold=body.threshold,
+                document_ids=body.document_ids,
+                rerank=body.rerank
             )
         else:  # KEYWORD
             response = await search_service.keyword_search(
                 db=db,
-                query=request.query,
-                limit=request.limit,
-                document_ids=request.document_ids
+                query=body.query,
+                limit=body.limit,
+                document_ids=body.document_ids
             )
 
         # Response konvertieren
@@ -132,7 +133,7 @@ async def search_chunks(
             "rag_search_failed",
             user_id=str(current_user.id),
             query=request.query[:50],
-            error=str(e)
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -195,7 +196,7 @@ async def semantic_search_get(
 
     except Exception as e:
         # SECURITY FIX 28-23: Generische Fehlermeldung
-        logger.exception("semantic_search_get_failed", error=str(e))
+        logger.exception("semantic_search_get_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Suche fehlgeschlagen. Bitte versuchen Sie es erneut."
@@ -263,7 +264,7 @@ async def hybrid_search_get(
 
     except Exception as e:
         # SECURITY FIX 28-23: Generische Fehlermeldung
-        logger.exception("hybrid_search_get_failed", error=str(e))
+        logger.exception("hybrid_search_get_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Suche fehlgeschlagen. Bitte versuchen Sie es erneut."

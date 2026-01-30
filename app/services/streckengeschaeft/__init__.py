@@ -14,6 +14,7 @@ import asyncio
 import csv
 import io
 import re
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, timedelta
 from app.core.datetime_utils import utc_now
@@ -298,7 +299,7 @@ class DropShipmentDetectionService:
                 )
                 return (doc_id, classification, None)
             except Exception as e:
-                return (doc_id, None, str(e))
+                return (doc_id, None, safe_error_detail(e, "Streckengeschaeft"))
 
         # Process all documents in parallel
         tasks = [classify_single(doc_id) for doc_id in document_ids]

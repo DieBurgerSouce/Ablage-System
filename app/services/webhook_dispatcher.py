@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
 from app.db.models import WebhookSubscription, WebhookDelivery, User
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.core.webhook_signature import (
     generate_signature,
     SIGNATURE_HEADER_NAME,
@@ -448,6 +449,7 @@ class WebhookDispatcher:
         """
         # M.1 CRITICAL: SSRF-Schutz - URL validieren BEVOR HTTP-Request gemacht wird
         from app.core.security import validate_url_for_ssrf_async
+
         is_valid, ssrf_error = await validate_url_for_ssrf_async(subscription.url)
         if not is_valid:
             logger.warning(
@@ -649,7 +651,7 @@ class WebhookDispatcher:
 
             except httpx.ConnectError as e:
                 delivery.status = DeliveryStatus.RETRYING.value
-                delivery.error_message = f"Verbindungsfehler: {str(e)[:200]}"
+                delivery.error_message = safe_error_detail(e, "Webhook")
                 delivery.attempts = attempt + 1
                 await db.commit()
 
@@ -661,10 +663,10 @@ class WebhookDispatcher:
                 logger.error(
                     "webhook_delivery_error",
                     subscription_id=str(subscription.id)[:8],
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 delivery.status = DeliveryStatus.FAILED.value
-                delivery.error_message = str(e)[:500]
+                delivery.error_message = safe_error_detail(e, "Webhook")
                 delivery.attempts = attempt + 1
                 await db.commit()
 

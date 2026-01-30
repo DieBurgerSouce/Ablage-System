@@ -10,9 +10,10 @@ Provides REST API endpoints for:
 Feinpoliert und durchdacht - Deutsche Dokumente mit hoechster Genauigkeit.
 """
 
+import re
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from sqlalchemy.sql.elements import ColumnElement
@@ -35,7 +36,9 @@ from app.api.schemas.extracted_data import (
     ExtractedContractData,
 )
 from app.db import models
+from app.core.safe_errors import safe_error_log
 from app.services.export_service import (
+
     export_invoices_csv,
     export_invoices_excel,
     export_orders_csv,
@@ -214,6 +217,13 @@ async def search_extracted_data(
     if iban:
         # Normalisiere IBAN (entferne Leerzeichen)
         iban_clean = iban.replace(" ", "").upper()
+        # SECURITY: Whitelist-Validierung gegen JSONB Path Injection (CWE-89)
+        # IBAN-Format: 2 Buchstaben Laendercode + 2-32 alphanumerische Zeichen
+        if not re.match(r'^[A-Z]{2}[A-Z0-9]{2,32}$', iban_clean):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ungueltiges IBAN-Format. Erlaubt: 2-Buchstaben Laendercode + alphanumerisch."
+            )
         filters.append(
             or_(
                 models.Document.extracted_data["invoice"]["sender_bank"]["iban"].astext.ilike(f"%{iban_clean}%"),
@@ -227,6 +237,13 @@ async def search_extracted_data(
     # USt-IdNr
     if vat_id:
         vat_clean = vat_id.replace(" ", "").upper()
+        # SECURITY: Whitelist-Validierung gegen JSONB Path Injection (CWE-89)
+        # VAT-ID Format: 2 Buchstaben Laendercode + 2-12 alphanumerische Zeichen
+        if not re.match(r'^[A-Z]{2}[A-Z0-9]{2,12}$', vat_clean):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ungueltiges USt-IdNr-Format. Erlaubt: 2-Buchstaben Laendercode + alphanumerisch."
+            )
         filters.append(
             or_(
                 models.Document.extracted_data["invoice"]["sender_vat_id"].astext.ilike(f"%{vat_clean}%"),
@@ -1040,7 +1057,7 @@ async def get_extracted_data_by_id(
         logger.error(
             "extracted_data_parse_error",
             document_id=str(document_id),
-            error=str(e)
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -973,6 +973,62 @@ ERROR_CODE_REGISTRY: dict[str, str] = {
     "CACHE_003": "Redis Connection Pool Exhausted",
 }
 
+# ==================== Business Logic Exceptions (E027) ====================
+
+class BusinessLogicError(AblageSystemException):
+    """Business logic validation or processing error"""
+
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            message=message,
+            error_code="E027",
+            details=details or {},
+            user_message_de=message
+        )
+
+
+class EntityNotFoundError(BusinessLogicError):
+    """Business entity not found"""
+
+    def __init__(self, entity_type: str, entity_id: str):
+        super().__init__(
+            message=f"{entity_type} not found: {entity_id}",
+            details={
+                "entity_type": entity_type,
+                "entity_id": entity_id
+            }
+        )
+        self.user_message_de = f"{entity_type} nicht gefunden"
+
+
+class WorkflowError(BusinessLogicError):
+    """Workflow execution or validation error"""
+
+    def __init__(self, workflow_id: str, reason: str):
+        super().__init__(
+            message=f"Workflow error for {workflow_id}: {reason}",
+            details={
+                "workflow_id": workflow_id,
+                "reason": reason
+            }
+        )
+        self.user_message_de = f"Workflow-Fehler: {reason}"
+
+
+class ScenarioError(BusinessLogicError):
+    """Scenario simulation error"""
+
+    def __init__(self, scenario_id: str, reason: str):
+        super().__init__(
+            message=f"Scenario error for {scenario_id}: {reason}",
+            details={
+                "scenario_id": scenario_id,
+                "reason": reason
+            }
+        )
+        self.user_message_de = f"Szenario-Fehler: {reason}"
+
+
 # Legacy mapping for backward compatibility (DEPRECATED - use new codes)
 LEGACY_ERROR_CODE_MAP: dict[str, str] = {
     "E001": "GPU_001",

@@ -146,7 +146,7 @@ class VaultClient:
                 return False
 
         except Exception as e:
-            logger.error("vault_connection_error", error=str(e))
+            logger.error("vault_connection_error", **safe_error_log(e))
             return False
 
     def _authenticate_approle(self) -> None:
@@ -161,7 +161,7 @@ class VaultClient:
             self._client.token = response["auth"]["client_token"]
             logger.info("vault_approle_authenticated")
         except Exception as e:
-            logger.error("vault_approle_auth_failed", error=str(e))
+            logger.error("vault_approle_auth_failed", **safe_error_log(e))
             raise
 
     def get_secret(
@@ -220,7 +220,7 @@ class VaultClient:
             return response.get("data", {}).get("data", {})
 
         except Exception as e:
-            logger.warning("vault_secret_read_failed", path=path, error=str(e))
+            logger.warning("vault_secret_read_failed", path=path, **safe_error_log(e))
             return None
 
     def clear_cache(self) -> None:
@@ -320,7 +320,7 @@ class VaultClient:
             logger.error(
                 "vault_transit_encrypt_fehlgeschlagen",
                 key_name=key_name,
-                error=str(e),
+                **safe_error_log(e),
                 message="Transit-Verschluesselung fehlgeschlagen",
             )
             return None
@@ -390,7 +390,7 @@ class VaultClient:
             logger.error(
                 "vault_transit_decrypt_fehlgeschlagen",
                 key_name=key_name,
-                error=str(e),
+                **safe_error_log(e),
                 message="Transit-Entschluesselung fehlgeschlagen",
             )
             return None
@@ -460,7 +460,7 @@ class VaultClient:
             logger.error(
                 "vault_transit_rewrap_fehlgeschlagen",
                 key_name=key_name,
-                error=str(e),
+                **safe_error_log(e),
                 message="Transit-Rewrap fehlgeschlagen",
             )
             return None
@@ -527,7 +527,7 @@ class VaultClient:
             logger.error(
                 "vault_transit_key_erstellen_fehlgeschlagen",
                 key_name=key_name,
-                error=str(e),
+                **safe_error_log(e),
                 message="Transit-Key konnte nicht erstellt werden",
             )
             return False
@@ -578,7 +578,7 @@ class VaultClient:
             logger.error(
                 "vault_transit_key_rotation_fehlgeschlagen",
                 key_name=key_name,
-                error=str(e),
+                **safe_error_log(e),
                 message="Key-Rotation fehlgeschlagen",
             )
             return False
@@ -621,7 +621,7 @@ class VaultClient:
             logger.warning(
                 "vault_transit_key_info_fehlgeschlagen",
                 key_name=key_name,
-                error=str(e),
+                **safe_error_log(e),
                 message="Key-Info konnte nicht abgerufen werden",
             )
             return None
@@ -792,6 +792,7 @@ class VaultTransitEncryptionService:
             # Legacy format - assume local encryption
             # NOTE: Import hier um zirkulaere Imports zu vermeiden
             from app.core.encryption import decrypt_data
+
             return decrypt_data(ciphertext, associated_data=context)
 
     def rewrap(

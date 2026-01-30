@@ -137,7 +137,7 @@ class ContextualUmlautRestorer:
             logger.info("bert_model_loaded", model=model_name)
 
         except Exception as e:
-            logger.error("bert_model_load_failed", error=str(e))
+            logger.error("bert_model_load_failed", **safe_error_log(e))
             self._enable_bert = False
 
     def restore(self, text: str) -> UmlautCorrectionResult:
@@ -256,7 +256,7 @@ class ContextualUmlautRestorer:
                             offset += len(new_char) - old_len
 
             except Exception as e:
-                logger.warning("bert_prediction_failed", error=str(e))
+                logger.warning("bert_prediction_failed", **safe_error_log(e))
                 continue
 
         return UmlautCorrectionResult(
@@ -290,13 +290,13 @@ class ContextualUmlautRestorer:
             logger.warning(
                 "sentence_scoring_failed",
                 error_type=type(e).__name__,
-                error=str(e)
+                **safe_error_log(e)
             )
             return 0.0
         except torch.cuda.OutOfMemoryError as e:
             logger.error(
                 "sentence_scoring_gpu_oom",
-                error=str(e)
+                **safe_error_log(e)
             )
             # Clear GPU cache on OOM
             if torch.cuda.is_available():
@@ -306,7 +306,7 @@ class ContextualUmlautRestorer:
             logger.warning(
                 "sentence_scoring_unexpected_error",
                 error_type=type(e).__name__,
-                error=str(e)
+                **safe_error_log(e)
             )
             return 0.0
 
@@ -318,6 +318,7 @@ class ContextualUmlautRestorer:
         """Restauriere Umlaute mit Dictionary-Heuristiken."""
         try:
             from app.services.german_text_postprocessor import get_german_postprocessor
+
             postprocessor = get_german_postprocessor()
 
             result = postprocessor.postprocess(text)

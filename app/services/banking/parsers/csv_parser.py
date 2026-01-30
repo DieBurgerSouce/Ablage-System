@@ -11,6 +11,7 @@ import structlog
 import re
 import csv
 import io
+from app.core.safe_errors import safe_error_detail, safe_error_log
 
 from .base import BaseParser, ParsedTransaction, ParseResult, ParserRegistry
 from ..models import ImportFormat, TransactionType
@@ -209,7 +210,7 @@ class GenericCSVParser(BaseParser):
             logger.exception(f"Fehler beim Parsen des CSV: {e}")
             result.errors.append({
                 "type": "parse_error",
-                "message": str(e),
+                "message": safe_error_detail(e, "CSV"),
             })
 
         return result

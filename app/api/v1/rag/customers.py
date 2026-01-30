@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.db.models import User, RAGCustomerCard
 from app.api.dependencies import get_current_user, get_db, require_admin
+from app.core.safe_errors import safe_error_log
 from app.services.rag.customer_card_service import (
     get_customer_card_service,
     CustomerCardService,
@@ -378,7 +379,7 @@ async def create_customer_card(
         logger.exception(
             "create_customer_card_failed",
             customer_id=request.customer_id,
-            error=str(e)
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -454,6 +455,7 @@ async def sync_all_customer_cards(
     """
     from app.workers.tasks.rag_tasks import run_rag_batch_job
     from app.db.models import RAGBatchJob, RAGBatchJobType, RAGBatchJobStatus
+
 
     # Job erstellen
     job = RAGBatchJob(

@@ -19,6 +19,7 @@ import structlog
 
 from app.api.dependencies import get_db, get_current_superuser
 from app.db.models import User
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -304,7 +305,7 @@ async def get_queue_stats(
 
     except Exception as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.exception("queue_stats_error", error=str(e))
+        logger.exception("queue_stats_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler beim Abrufen der Queue-Statistiken. Bitte erneut versuchen.",
@@ -429,15 +430,13 @@ async def get_workers_health(
         from app.workers.celery_app import get_worker_health_status
         return get_worker_health_status()
     except Exception as e:
-        return {
-            "error": str(e),
-            "workers": [],
+        return {**safe_error_log(e), "workers": [],
             "total_workers": 0,
             "healthy_workers": 0,
             "unhealthy_workers": 0,
             "stale_tasks": [],
             "warnings": [],
-            "errors": [str(e)],
+            "errors": [safe_error_detail(e, "Vorgang")],
         }
 
 
@@ -465,6 +464,7 @@ async def _get_gpu_status() -> GPUStatus:
         lock_holder = None
         try:
             from app.workers.celery_app import check_gpu_lock_health
+
             lock_status = check_gpu_lock_health()
             lock_held = lock_status.get("locked", False)
             lock_holder = lock_status.get("owner")

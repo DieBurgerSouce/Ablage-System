@@ -21,6 +21,7 @@ from user_agents import parse as parse_user_agent
 
 from app.db.models import UserSession
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -538,7 +539,7 @@ class SessionManager:
             return device_name, device_type
 
         except Exception as e:
-            logger.warning("user_agent_parse_failed", error=str(e))
+            logger.warning("user_agent_parse_failed", **safe_error_log(e))
             return None, None
 
     def _mask_ip(self, ip_address: str) -> str:

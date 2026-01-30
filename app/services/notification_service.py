@@ -26,6 +26,7 @@ import httpx
 import structlog
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -80,7 +81,7 @@ def validate_user_id_for_redis_key(user_id: str) -> str:
         logger.warning(
             "invalid_user_id_for_redis_key",
             user_id=str(user_id)[:50],  # Truncate for logging
-            error=str(e)
+            **safe_error_log(e)
         )
         raise ValueError(f"Invalid user_id format: must be a valid UUID")
 
@@ -616,7 +617,7 @@ class EmailNotifier:
             logger.error(
                 "email_send_failed",
                 to=to_email,
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 
@@ -734,7 +735,7 @@ class WebhookNotifier:
             logger.error(
                 "webhook_send_failed",
                 url=url,
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 
@@ -753,6 +754,7 @@ class InAppNotificationStore:
         """Get Redis client (lazy initialization)."""
         if self._redis is None:
             from app.core.redis_state import get_redis
+
             self._redis = await get_redis()
         return self._redis
 
@@ -808,7 +810,7 @@ class InAppNotificationStore:
             logger.error(
                 "notification_store_failed",
                 user_id=user_id,
-                error=str(e),
+                **safe_error_log(e),
             )
             return notification_id
 
@@ -851,7 +853,7 @@ class InAppNotificationStore:
             logger.error(
                 "notification_fetch_failed",
                 user_id=user_id,
-                error=str(e),
+                **safe_error_log(e),
             )
             return []
 
@@ -885,7 +887,7 @@ class InAppNotificationStore:
                 "notification_mark_read_failed",
                 user_id=user_id,
                 notification_id=notification_id,
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 
@@ -1096,7 +1098,7 @@ class NotificationService:
             logger.warning(
                 "websocket_notification_failed",
                 user_id=user_id,
-                error=str(e),
+                **safe_error_log(e),
             )
             results[NotificationChannel.WEBSOCKET] = False
 
@@ -1296,7 +1298,7 @@ class NotificationWebSocketManager:
             logger.warning(
                 "notification_ws_accept_failed",
                 user_id=user_id,
-                error=str(e)
+                **safe_error_log(e)
             )
             return False
 
@@ -1377,7 +1379,7 @@ class NotificationWebSocketManager:
                 logger.warning(
                     "notification_ws_send_failed",
                     user_id=user_id,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 dead_connections.append(ws)
 

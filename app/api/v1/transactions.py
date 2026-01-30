@@ -319,8 +319,11 @@ async def list_transactions(
             )
         )
 
-    # Sortierung
-    sort_column = getattr(DocumentGroup, sort_by, DocumentGroup.updated_at)
+    # SECURITY: Whitelist gegen Reflection-Angriffe (CWE-89)
+    ALLOWED_SORT_FIELDS = {"created_at", "updated_at", "name", "reference_number"}
+    if sort_by not in ALLOWED_SORT_FIELDS:
+        sort_by = "updated_at"
+    sort_column = getattr(DocumentGroup, sort_by)
     if sort_order == "desc":
         query = query.order_by(desc(sort_column))
     else:

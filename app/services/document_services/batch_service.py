@@ -25,6 +25,7 @@ from app.db.schemas import (
     BulkUpdateResult,
 )
 from app.services.document_services.base import DocumentServiceBase
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -155,7 +156,7 @@ class DocumentBatchService(DocumentServiceBase):
         except Exception as e:
             logger.error(
                 "batch_delete_failed",
-                error=str(e),
+                **safe_error_log(e),
                 document_count=len(document_ids),
                 dry_run=dry_run
             )
@@ -168,7 +169,7 @@ class DocumentBatchService(DocumentServiceBase):
                 failed=len(document_ids),
                 errors=[BatchOperationError(
                     document_id=document_ids[0],
-                    error=f"Batch-Loeschung fehlgeschlagen: {str(e)}",
+                    error=safe_error_detail(e, "Batch-Loeschung"),
                     error_code="DELETE_ERROR"
                 )],
                 message="Batch-Loeschung fehlgeschlagen",
@@ -276,7 +277,7 @@ class DocumentBatchService(DocumentServiceBase):
                     failed += 1
                     errors.append(BatchOperationError(
                         document_id=doc_id,
-                        error=str(e),
+                        **safe_error_log(e),
                         error_code="TAG_ERROR"
                     ))
 
@@ -285,7 +286,7 @@ class DocumentBatchService(DocumentServiceBase):
         except Exception as e:
             logger.error(
                 "batch_tag_failed",
-                error=str(e),
+                **safe_error_log(e),
                 document_count=len(document_ids),
                 operation=operation.value
             )
@@ -298,7 +299,7 @@ class DocumentBatchService(DocumentServiceBase):
                 failed=len(document_ids),
                 errors=[BatchOperationError(
                     document_id=document_ids[0] if document_ids else None,
-                    error=f"Batch-Tag-Operation fehlgeschlagen: {str(e)}",
+                    error=safe_error_detail(e, "Batch-Tags"),
                     error_code="TAG_TRANSACTION_ERROR"
                 )],
                 message="Batch-Tag-Operation fehlgeschlagen - Rollback durchgefuehrt"
@@ -435,11 +436,11 @@ class DocumentBatchService(DocumentServiceBase):
                 total_updated += 1
 
             except Exception as e:
-                errors.append(f"Dokument {doc.id}: {str(e)}")
+                errors.append(f"Dokument {doc.id}: {safe_error_detail(e, 'Batch')}")
                 logger.warning(
                     "bulk_update_document_failed",
                     document_id=str(doc.id),
-                    error=str(e)
+                    **safe_error_log(e)
                 )
 
         await db.commit()

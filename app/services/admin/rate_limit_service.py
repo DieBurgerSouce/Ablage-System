@@ -27,6 +27,7 @@ from app.db.schemas import (
     UserTier,
 )
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -176,7 +177,7 @@ class RateLimitService:
             await client.close()
             return usage
         except Exception as e:
-            logger.warning("redis_usage_fetch_failed", error=str(e))
+            logger.warning("redis_usage_fetch_failed", **safe_error_log(e))
             return {
                 "ocr_hourly": 0,
                 "ocr_daily": 0,
@@ -433,7 +434,7 @@ class RateLimitService:
 
             return True
         except Exception as e:
-            logger.error("rate_limit_reset_failed", error=str(e))
+            logger.error("rate_limit_reset_failed", **safe_error_log(e))
             return False
 
     @staticmethod

@@ -22,6 +22,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 import structlog
 
 from app.services.realtime.event_broadcaster import (
+
     EventBroadcaster,
     RealtimeEvent,
     RealtimeEventType,
@@ -181,7 +182,7 @@ class RealtimeWebSocketManager:
         try:
             await websocket.accept()
         except Exception as e:
-            logger.error("websocket_accept_failed", user_id=user_id, error=str(e))
+            logger.error("websocket_accept_failed", user_id=user_id, **safe_error_log(e))
             return False
 
         async with self._lock:
@@ -290,13 +291,13 @@ class RealtimeWebSocketManager:
             logger.warning(
                 "invalid_json_message",
                 user_id=user_id,
-                error=str(e),
+                **safe_error_log(e),
             )
         except Exception as e:
             logger.error(
                 "message_handling_failed",
                 user_id=user_id,
-                error=str(e),
+                **safe_error_log(e),
             )
 
     async def _handle_ping(self, user_id: str) -> None:
@@ -455,7 +456,7 @@ class RealtimeWebSocketManager:
             logger.warning(
                 "websocket_send_failed",
                 user_id=user_id,
-                error=str(e),
+                **safe_error_log(e),
             )
             # Mark for cleanup
             async with self._lock:
@@ -544,7 +545,7 @@ class RealtimeWebSocketManager:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error("ping_loop_error", error=str(e))
+                logger.error("ping_loop_error", **safe_error_log(e))
 
     def get_stats(self) -> Dict[str, Any]:
         """Gibt Statistiken ueber Verbindungen zurueck."""

@@ -359,7 +359,7 @@ class ErrorTrackingService:
                     try:
                         config.callback(f"Error-Alert: {category.value}", alert_data)
                     except Exception as e:
-                        logger.error("alert_callback_failed", error=str(e))
+                        logger.error("alert_callback_failed", **safe_error_log(e))
 
     def configure_alert(
         self,
@@ -699,6 +699,7 @@ def track_error(
 
     Usage:
         from app.services.error_tracking_service import track_error, ErrorCategory
+
 
         track_error(
             ErrorCategory.OCR,

@@ -131,7 +131,7 @@ class ThumbnailService:
             logger.exception(
                 "thumbnail_generation_failed",
                 document_id=document_id,
-                error=str(e),
+                **safe_error_log(e),
             )
             return None
 
@@ -167,7 +167,7 @@ class ThumbnailService:
             logger.exception(
                 "preview_generation_failed",
                 document_id=document_id,
-                error=str(e),
+                **safe_error_log(e),
             )
             return None
 
@@ -217,7 +217,7 @@ class ThumbnailService:
             logger.warning(
                 "pdf_thumbnail_failed",
                 document_id=document_id,
-                error=str(e),
+                **safe_error_log(e),
             )
             return None
 
@@ -232,6 +232,7 @@ class ThumbnailService:
 
         def _process():
             from pdf2image import convert_from_path
+
 
             # Convert first page at higher DPI for preview
             images = convert_from_path(
@@ -263,7 +264,7 @@ class ThumbnailService:
             logger.warning(
                 "pdf_preview_failed",
                 document_id=document_id,
-                error=str(e),
+                **safe_error_log(e),
             )
             return None
 

@@ -16,6 +16,7 @@ from celery import shared_task
 from sqlalchemy import select
 
 from app.core.celery_idempotency import idempotent_task
+from app.core.safe_errors import safe_error_detail
 from app.db.database import get_async_session_context
 from app.workers.celery_app import celery_app
 
@@ -106,7 +107,7 @@ def check_retraining_threshold(
                     logger.exception(f"Error checking {model_type.value}: {e}")
                     results["errors"].append({
                         "model_type": model_type.value,
-                        "error": str(e),
+                        "error": safe_error_detail(e, "Vorgang"),
                     })
 
             await db.commit()
@@ -254,11 +255,11 @@ def run_retraining(
                 await service.update_job_status(
                     job_id,
                     RetrainingStatus.FAILED,
-                    error_message=str(e),
+                    error_message=safe_error_detail(e, "MLOps"),
                 )
 
                 result["status"] = "failed"
-                result["error"] = str(e)
+                result["error"] = safe_error_detail(e, "MLOps")
 
             await db.commit()
 

@@ -25,6 +25,7 @@ import structlog
 
 from app.api.dependencies import get_db, get_current_active_user
 from app.core.rate_limiting import limiter, get_user_identifier
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.db.schemas import PrivatAccessLevel
 
@@ -2229,7 +2230,7 @@ async def get_property_ki_analysis(
     try:
         analysis = await ki_service.analyze_property_value(db, property_id, use_cache)
     except Exception as e:
-        logger.error("ki_property_analysis_failed", property_id=str(property_id), error=str(e))
+        logger.error("ki_property_analysis_failed", property_id=str(property_id), **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="KI-Analyse derzeit nicht verfuegbar. Bitte spaeter erneut versuchen.",
@@ -2292,7 +2293,7 @@ async def get_vehicle_ki_analysis(
     try:
         analysis = await ki_service.analyze_vehicle_depreciation(db, vehicle_id, use_cache)
     except Exception as e:
-        logger.error("ki_vehicle_analysis_failed", vehicle_id=str(vehicle_id), error=str(e))
+        logger.error("ki_vehicle_analysis_failed", vehicle_id=str(vehicle_id), **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="KI-Analyse derzeit nicht verfuegbar. Bitte spaeter erneut versuchen.",
@@ -2346,7 +2347,7 @@ async def get_investment_ki_advice(
     try:
         advice = await ki_service.get_investment_advice(db, space_id, use_cache)
     except Exception as e:
-        logger.error("ki_investment_advice_failed", space_id=str(space_id), error=str(e))
+        logger.error("ki_investment_advice_failed", space_id=str(space_id), **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="KI-Analyse derzeit nicht verfuegbar. Bitte spaeter erneut versuchen.",
@@ -2402,7 +2403,7 @@ async def get_insurance_ki_check(
     try:
         check_result = await ki_service.check_insurance_coverage(db, space_id, use_cache)
     except Exception as e:
-        logger.error("ki_insurance_check_failed", space_id=str(space_id), error=str(e))
+        logger.error("ki_insurance_check_failed", space_id=str(space_id), **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="KI-Analyse derzeit nicht verfuegbar. Bitte spaeter erneut versuchen.",
@@ -2460,7 +2461,7 @@ async def financial_qa_chat(
             "ki_financial_qa_failed",
             space_id=str(space_id),
             question_length=len(qa_request.question),
-            error=str(e)
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -2604,7 +2605,7 @@ async def get_predictive_insights(
         logger.error(
             "predictive_insights_failed",
             space_id=str(space_id),
-            error=str(e)
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -2724,14 +2725,14 @@ async def get_kpi_projection(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "KPI-Projektion"),
         )
     except Exception as e:
         logger.error(
             "kpi_projection_failed",
             space_id=str(space_id),
             kpi_name=kpi_name,
-            error=str(e)
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -3033,7 +3034,7 @@ async def create_portfolio_snapshot(
         logger.error(
             "portfolio_snapshot_creation_failed",
             space_id=str(space_id),
-            error=str(e),
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

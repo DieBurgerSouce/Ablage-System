@@ -2,16 +2,21 @@
  * MLOps Dashboard Page
  *
  * Hauptseite fuer das Machine Learning Operations Dashboard.
- * Zeigt Modell-Registry, Retraining-Jobs und Performance-Statistiken.
+ * Zeigt Modell-Registry, Retraining-Jobs, A/B Tests und Performance-Statistiken.
+ *
+ * Vision 2.0 Phase 3: Erweitert um A/B Test Vergleiche und Rollback-Historie.
  */
 
 import { Brain } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   MLOpsStatsCards,
   ModelRegistryTable,
   RetrainingJobsPanel,
   RetrainingConfigPanel,
   PerformanceChart,
+  ABTestComparison,
+  RollbackTimeline,
 } from './components';
 
 export function MLOpsPage() {
@@ -33,20 +38,53 @@ export function MLOpsPage() {
       {/* Statistics Cards */}
       <MLOpsStatsCards />
 
-      {/* Main Grid */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Left Column */}
-        <div className="space-y-6">
-          <ModelRegistryTable />
-          <RetrainingConfigPanel />
-        </div>
+      {/* Main Content with Tabs */}
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="overview">Uebersicht</TabsTrigger>
+          <TabsTrigger value="ab-tests">A/B Tests</TabsTrigger>
+          <TabsTrigger value="retraining">Retraining</TabsTrigger>
+          <TabsTrigger value="history">Historie</TabsTrigger>
+        </TabsList>
 
-        {/* Right Column */}
-        <div className="space-y-6">
-          <PerformanceChart />
-          <RetrainingJobsPanel />
-        </div>
-      </div>
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Left Column */}
+            <div className="space-y-6">
+              <ModelRegistryTable />
+              <RetrainingConfigPanel />
+            </div>
+
+            {/* Right Column */}
+            <div className="space-y-6">
+              <PerformanceChart />
+              <RetrainingJobsPanel />
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* A/B Tests Tab */}
+        <TabsContent value="ab-tests" className="space-y-6">
+          <ABTestComparison />
+        </TabsContent>
+
+        {/* Retraining Tab */}
+        <TabsContent value="retraining" className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <RetrainingJobsPanel />
+            <RetrainingConfigPanel />
+          </div>
+        </TabsContent>
+
+        {/* History Tab */}
+        <TabsContent value="history" className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <RollbackTimeline />
+            <PerformanceChart />
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

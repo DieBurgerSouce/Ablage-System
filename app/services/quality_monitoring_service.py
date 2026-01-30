@@ -217,6 +217,7 @@ class QualityMonitoringService:
     async def _get_current_snapshot(self, backend_name: str) -> QualitySnapshot:
         """Holt aktuellen Qualitäts-Snapshot für ein Backend."""
         from app.db.models import OCRQualitySnapshot
+        from app.core.safe_errors import safe_error_log
 
         since = datetime.now() - timedelta(hours=self.DEGRADATION_WINDOW_HOURS)
 
@@ -491,9 +492,7 @@ class QualityMonitoringService:
         except Exception as e:
             logger.exception(f"Rollback-Fehler für {model_name}")
             return {
-                "success": False,
-                "error": str(e)
-            }
+                "success": False, **safe_error_log(e)}
 
     async def get_model_health(self, model_name: str) -> ModelHealthStatus:
         """

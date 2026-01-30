@@ -30,6 +30,7 @@ from app.db.models import (
     Company,
 )
 from app.services.banking.models import DunningLevel
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -306,6 +307,7 @@ class DunningLetterService:
         """
         # Lade DunningRecord mit allen Relationen
         from app.db.models import DunningRecord
+
 
         dunning_query = select(DunningRecord).where(
             DunningRecord.id == dunning_record_id
@@ -776,12 +778,12 @@ class DunningLetterService:
                 logger.warning(
                     "dunning_letter_generation_error",
                     dunning_record_id=str(record["id"]),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 results.append({
                     "id": record["id"],
                     "content": None,
-                    "error": str(e),
+                    "error": safe_error_detail(e, "Vorgang"),
                 })
 
         return results

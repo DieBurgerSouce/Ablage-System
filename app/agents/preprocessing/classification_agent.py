@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import structlog
 
 from app.agents.base import PreprocessingAgent
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -291,7 +292,7 @@ class DocumentClassificationAgent(PreprocessingAgent):
             self.logger.warning(
                 "image_analysis_failed",
                 file_path=str(file_path),
-                error=str(e),
+                **safe_error_log(e),
             )
             return {
                 "width": 0,
@@ -331,7 +332,7 @@ class DocumentClassificationAgent(PreprocessingAgent):
             self.logger.warning(
                 "pdf_analysis_failed",
                 file_path=str(file_path),
-                error=str(e),
+                **safe_error_log(e),
             )
             return {
                 "page_count": 1,
@@ -367,7 +368,7 @@ class DocumentClassificationAgent(PreprocessingAgent):
             self.logger.warning(
                 "sample_text_extraction_failed",
                 file_path=str(file_path),
-                error=str(e),
+                **safe_error_log(e),
             )
 
         # Cache for reuse
@@ -397,7 +398,7 @@ class DocumentClassificationAgent(PreprocessingAgent):
             self.logger.warning(
                 "pdf_text_extraction_failed",
                 file_path=str(file_path),
-                error=str(e),
+                **safe_error_log(e),
             )
             return ""
 

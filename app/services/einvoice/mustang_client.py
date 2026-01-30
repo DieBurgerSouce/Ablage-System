@@ -17,6 +17,7 @@ from typing import Optional
 import httpx
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = logging.getLogger(__name__)
 
@@ -161,7 +162,7 @@ class MustangClient:
             )
 
         except httpx.RequestError as e:
-            logger.error("mustang_connection_error", extra={"error": str(e)})
+            logger.error("mustang_connection_error", **safe_error_log(e))
             raise MustangConnectionError(
                 f"Verbindung zum Mustang-Service fehlgeschlagen: {e}"
             ) from e
@@ -180,7 +181,7 @@ class MustangClient:
             return response.json()
 
         except httpx.RequestError as e:
-            logger.error("mustang_formats_error", extra={"error": str(e)})
+            logger.error("mustang_formats_error", **safe_error_log(e))
             raise MustangConnectionError(
                 f"Fehler beim Abrufen der Formate: {e}"
             ) from e
@@ -227,7 +228,7 @@ class MustangClient:
             )
 
         except httpx.RequestError as e:
-            logger.error("mustang_validate_error", extra={"error": str(e)})
+            logger.error("mustang_validate_error", **safe_error_log(e))
             raise MustangConnectionError(
                 f"Fehler bei der Validierung: {e}"
             ) from e
@@ -267,7 +268,7 @@ class MustangClient:
             )
 
         except httpx.RequestError as e:
-            logger.error("mustang_extract_error", extra={"error": str(e)})
+            logger.error("mustang_extract_error", **safe_error_log(e))
             raise MustangConnectionError(
                 f"Fehler bei der Extraktion: {e}"
             ) from e
@@ -324,7 +325,7 @@ class MustangClient:
             return data.get("xml", "")
 
         except httpx.RequestError as e:
-            logger.error("mustang_generate_ubl_error", extra={"error": str(e)})
+            logger.error("mustang_generate_ubl_error", **safe_error_log(e))
             raise MustangConnectionError(
                 f"Fehler bei der UBL-Generierung: {e}"
             ) from e
@@ -377,7 +378,7 @@ class MustangClient:
             return data.get("xml", "")
 
         except httpx.RequestError as e:
-            logger.error("mustang_convert_error", extra={"error": str(e)})
+            logger.error("mustang_convert_error", **safe_error_log(e))
             raise MustangConnectionError(
                 f"Fehler bei der Konvertierung: {e}"
             ) from e

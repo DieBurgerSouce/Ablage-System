@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.schemas.extracted_data import InvoiceDirection
 from app.core.audit_logger import get_audit_logger, SecurityEventType
 from app.db.models import BusinessEntity, CompanySettings, Document, Tag
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -964,7 +965,7 @@ class QuickClassificationService:
             logger.warning(
                 "quick_classification_entity_match_error",
                 document_id=str(document_id),
-                error=str(e)
+                **safe_error_log(e)
             )
 
     def _record_metrics(
@@ -1259,7 +1260,7 @@ class QuickClassificationService:
                 "entity_link_error",
                 document_id=str(document_id),
                 entity_id=str(entity_id),
-                error=str(e)
+                **safe_error_log(e)
             )
 
     async def _assign_tag(
@@ -1360,7 +1361,7 @@ class QuickClassificationService:
             logger.error(
                 "quick_classification_tag_error",
                 document_id=str(document_id),
-                error=str(e)
+                **safe_error_log(e)
             )
 
     def _extract_vat_ids(self, text: str) -> List[ExtractedIdentifier]:

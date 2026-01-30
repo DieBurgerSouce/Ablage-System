@@ -62,6 +62,7 @@ except ImportError:
     JSON_LIB = "json"
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -306,7 +307,7 @@ class OCRCacheService:
                 from app.core.rate_limiting import get_redis_storage
                 self._redis = await get_redis_storage()
             except Exception as e:
-                logger.warning("ocr_cache_redis_unavailable", error=str(e))
+                logger.warning("ocr_cache_redis_unavailable", **safe_error_log(e))
                 return None
         return self._redis
 
@@ -434,7 +435,7 @@ class OCRCacheService:
             )
             self._record_backend_miss(backend)
         except Exception as e:
-            logger.warning("ocr_cache_get_error", error=str(e))
+            logger.warning("ocr_cache_get_error", **safe_error_log(e))
             self._record_backend_miss(backend)
 
         return None
@@ -480,6 +481,7 @@ class OCRCacheService:
         # Record to Prometheus
         try:
             from app.services.gpu_metrics_service import get_gpu_metrics_service
+
             metrics = get_gpu_metrics_service()
             metrics.record_cache_operation(operation="miss", level="l2")
         except Exception as e:
@@ -541,7 +543,7 @@ class OCRCacheService:
                 await redis.set(cache_key, json_dumps(cache_data), ex=cache_ttl)
                 l2_success = True
             except Exception as e:
-                logger.warning("ocr_cache_l2_set_error", error=str(e))
+                logger.warning("ocr_cache_l2_set_error", **safe_error_log(e))
 
         logger.debug(
             "ocr_result_cached",
@@ -641,7 +643,7 @@ class OCRCacheService:
                 )
             return deleted_count
         except Exception as e:
-            logger.warning("ocr_cache_invalidate_error", error=str(e))
+            logger.warning("ocr_cache_invalidate_error", **safe_error_log(e))
             return deleted_count
 
     async def _record_hit(self, file_hash: str) -> None:
@@ -656,7 +658,7 @@ class OCRCacheService:
                 logger.debug(
                     "ocr_cache_stats_hit_failed",
                     file_hash=file_hash[:8],
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
     async def _record_miss(self, file_hash: str) -> None:
@@ -670,7 +672,7 @@ class OCRCacheService:
                 logger.debug(
                     "ocr_cache_stats_miss_failed",
                     file_hash=file_hash[:8],
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
     async def get_stats(self) -> Dict[str, Any]:
@@ -753,10 +755,10 @@ class OCRCacheService:
                 },
             }
         except Exception as e:
-            logger.warning("ocr_cache_stats_error", error=str(e))
+            logger.warning("ocr_cache_stats_error", **safe_error_log(e))
             return {
                 "enabled": self._enabled,
-                "error": str(e),
+                "error": safe_error_detail(e, "Vorgang"),
                 "l1_cache": l1_stats,
                 "per_backend": backend_stats,
             }
@@ -779,7 +781,7 @@ class OCRCacheService:
             logger.info("ocr_cache_all_stats_cleared")
             return True
         except Exception as e:
-            logger.warning("ocr_cache_stats_clear_error", error=str(e))
+            logger.warning("ocr_cache_stats_clear_error", **safe_error_log(e))
             return False
 
 

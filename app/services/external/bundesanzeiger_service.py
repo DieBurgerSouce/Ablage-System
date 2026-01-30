@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 from typing import List, Optional
 
 import structlog
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -88,7 +89,7 @@ class BundesanzeigerService:
         #     response = await self._scrape_bundesanzeiger(company_name)
         #     return self._parse_insolvency_data(response)
         # except Exception as e:
-        #     logger.error("bundesanzeiger_scraping_error", error=str(e))
+        #     logger.error("bundesanzeiger_scraping_error", **safe_error_log(e))
         #     return InsolvencyResult(
         #         company_name=company_name,
         #         has_insolvency=False,

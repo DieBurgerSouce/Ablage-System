@@ -330,7 +330,7 @@ class WorkflowInsightsService:
             logger.warning(
                 "batch_approval_suggestion_failed",
                 company_id=str(company_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return []
 
@@ -430,7 +430,7 @@ class WorkflowInsightsService:
             logger.warning(
                 "bottleneck_detection_failed",
                 company_id=str(company_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return []
 
@@ -533,7 +533,7 @@ class WorkflowInsightsService:
             logger.warning(
                 "automation_suggestion_failed",
                 company_id=str(company_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return []
 
@@ -646,7 +646,7 @@ class WorkflowInsightsService:
             logger.warning(
                 "stale_items_detection_failed",
                 company_id=str(company_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return []
 
@@ -668,6 +668,7 @@ class WorkflowInsightsService:
             Liste von ProactiveInsights fuer Arbeitslast-Ungleichgewichte
         """
         from app.db.models import ApprovalRequest, User
+
 
         try:
             # Lade Arbeitslast pro Benutzer
@@ -749,7 +750,7 @@ class WorkflowInsightsService:
             logger.warning(
                 "workload_analysis_failed",
                 company_id=str(company_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return []
 

@@ -19,6 +19,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.db.models import Tune
 from app.api.schemas.tunes import TuneCreate, TuneUpdate, TuneResponse
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -124,7 +125,7 @@ class TuneService:
             return tune
         except IntegrityError as e:
             await db.rollback()
-            logger.error("tune_creation_failed", error=str(e))
+            logger.error("tune_creation_failed", **safe_error_log(e))
             raise ValueError("Fehler beim Erstellen des Tunes. Name möglicherweise bereits vergeben.")
 
     @staticmethod
@@ -168,7 +169,7 @@ class TuneService:
             return tune
         except IntegrityError as e:
             await db.rollback()
-            logger.error("tune_update_failed", tune_id=str(tune_id), error=str(e))
+            logger.error("tune_update_failed", tune_id=str(tune_id), **safe_error_log(e))
             raise ValueError("Fehler beim Aktualisieren des Tunes.")
 
     @staticmethod

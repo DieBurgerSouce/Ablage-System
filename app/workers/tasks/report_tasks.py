@@ -25,6 +25,7 @@ from celery import shared_task
 
 from app.workers.celery_app import celery_app
 from app.db.session import get_async_session_context
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -113,12 +114,12 @@ def execute_scheduled_reports(self) -> Dict[str, Any]:
                     stats["errors"].append({
                         "template_id": str(template.id),
                         "name": template.name,
-                        "error": str(e),
+                        "error": safe_error_detail(e, "Vorgang"),
                     })
                     logger.error(
                         "scheduled_report_failed",
                         template_id=str(template.id),
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
         return stats
@@ -133,7 +134,7 @@ def execute_scheduled_reports(self) -> Dict[str, Any]:
         )
         return result
     except Exception as e:
-        logger.error("scheduled_reports_batch_failed", error=str(e))
+        logger.error("scheduled_reports_batch_failed", **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -292,7 +293,7 @@ def generate_report_async(
                     db=db,
                     execution_id=uuid.UUID(execution_id),
                     status="failed",
-                    error_message=str(e),
+                    error_message=safe_error_detail(e, "Report"),
                     error_details={"exception_type": type(e).__name__},
                 )
 
@@ -300,7 +301,7 @@ def generate_report_async(
                     "report_generation_failed",
                     execution_id=execution_id,
                     template_id=template_id,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 raise
 
@@ -310,7 +311,7 @@ def generate_report_async(
         logger.error(
             "report_async_task_failed",
             execution_id=execution_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -416,7 +417,7 @@ Ihr Ablage-System
                     except Exception as e:
                         failed_recipients.append({
                             "recipient": recipient,
-                            "error": str(e),
+                            "error": safe_error_detail(e, "Vorgang"),
                         })
 
                 logger.info(
@@ -436,9 +437,9 @@ Ihr Ablage-System
                 logger.error(
                     "report_email_send_failed",
                     execution_id=execution_id,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
-                return {"success": False, "error": str(e)}
+                return {"success": False, **safe_error_log(e)}
 
     try:
         return asyncio.get_event_loop().run_until_complete(_send())
@@ -446,7 +447,7 @@ Ihr Ablage-System
         logger.error(
             "report_email_task_failed",
             execution_id=execution_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -499,7 +500,7 @@ def cleanup_old_executions(retention_days: int = 90) -> Dict[str, Any]:
                             "report_file_delete_failed",
                             execution_id=str(execution.id),
                             file_path=execution.file_path,
-                            error=str(e),
+                            **safe_error_log(e),
                         )
 
             # Dann DB-Eintraege loeschen

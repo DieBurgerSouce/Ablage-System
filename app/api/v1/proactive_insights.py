@@ -29,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies import get_current_active_user, get_db
 from app.core.rate_limiting import limiter, get_user_identifier
 from app.db.models import User
+from app.core.safe_errors import safe_error_log
 from app.services.orchestration.proactive_insights_service import (
     get_proactive_insights_service,
     InsightPriority,
@@ -45,6 +46,7 @@ from app.services.orchestration.workflow_insights_service import (
     get_workflow_insights_service,
 )
 from app.services.orchestration.data_enrichment_insights_service import (
+
     get_data_enrichment_insights_service,
 )
 
@@ -277,7 +279,7 @@ async def get_all_insights(
     except Exception as e:
         logger.warning(
             "insight_fetch_partial_failure",
-            error=str(e),
+            **safe_error_log(e),
         )
 
     # Filter nach Prioritaet
@@ -557,7 +559,7 @@ async def get_insights_summary(
         all_insights.extend(data_insights)
 
     except Exception as e:
-        logger.warning("insight_summary_partial_failure", error=str(e))
+        logger.warning("insight_summary_partial_failure", **safe_error_log(e))
         data_quality = {"quality_score": None}
 
     # Zaehlen

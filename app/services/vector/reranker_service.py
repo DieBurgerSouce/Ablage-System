@@ -21,6 +21,7 @@ import httpx
 import structlog
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -93,7 +94,7 @@ class RerankerService:
             logger.warning(
                 "reranker_health_check_failed",
                 url=settings.RERANKER_SERVICE_URL,
-                error=str(e)
+                **safe_error_log(e)
             )
             self._is_available = False
             return False
@@ -203,7 +204,7 @@ class RerankerService:
         except Exception as e:
             logger.error(
                 "reranker_error",
-                error=str(e),
+                **safe_error_log(e),
                 documents_count=len(documents)
             )
             return self._fallback_results(documents, id_key, score_key, top_k)

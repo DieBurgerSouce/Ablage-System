@@ -214,7 +214,7 @@ class SkontoNotificationService:
             logger.warning(
                 "skonto_email_notification_failed",
                 user_id=user_id,
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 
@@ -227,6 +227,7 @@ class SkontoNotificationService:
         """Sendet Slack-Benachrichtigung fuer dringende Faelle."""
         try:
             from app.services.slack_service import (
+
                 SlackNotificationType,
                 SlackMessagePriority,
             )
@@ -271,7 +272,7 @@ class SkontoNotificationService:
         except Exception as e:
             logger.debug(
                 "skonto_slack_notification_failed",
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 
@@ -315,7 +316,7 @@ class SkontoNotificationService:
             logger.debug(
                 "skonto_in_app_notification_failed",
                 user_id=user_id,
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 

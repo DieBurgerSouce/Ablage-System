@@ -33,6 +33,7 @@ logger = structlog.get_logger(__name__)
 # Try to import symspellpy (optional dependency)
 try:
     from symspellpy import SymSpell, Verbosity
+
     SYMSPELL_AVAILABLE = True
 except ImportError:
     SYMSPELL_AVAILABLE = False
@@ -213,7 +214,7 @@ class GermanSpellchecker:
                 )
                 logger.info("german_frequency_dict_loaded", path=str(pkg_path))
         except Exception as e:
-            logger.warning("german_frequency_dict_not_found", error=str(e))
+            logger.warning("german_frequency_dict_not_found", **safe_error_log(e))
 
         # Load business vocabulary
         if load_business_vocab:
@@ -238,7 +239,7 @@ class GermanSpellchecker:
                             self._custom_words.add(word)
                 logger.info("custom_dictionary_loaded", path=custom_path)
             except Exception as e:
-                logger.warning("custom_dictionary_load_failed", path=custom_path, error=str(e))
+                logger.warning("custom_dictionary_load_failed", path=custom_path, **safe_error_log(e))
 
     def add_word(self, word: str, frequency: int = 10000) -> None:
         """

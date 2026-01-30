@@ -22,6 +22,7 @@ from sqlalchemy import select, and_
 
 from app.db.models import User, Document
 from app.api.dependencies import get_db, get_current_active_user
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.services.document_chain_service import (
     DocumentChainService,
     RelationshipType,
@@ -102,7 +103,7 @@ async def create_chain(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Dokumentenkette")
         )
 
     await db.commit()
@@ -327,7 +328,7 @@ async def link_documents(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Dokumentenkette")
         )
 
     await db.commit()

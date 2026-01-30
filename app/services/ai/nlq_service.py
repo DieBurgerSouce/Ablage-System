@@ -35,6 +35,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.datetime_utils import utc_now
 from app.services.extraction.patterns.date_patterns import parse_german_date
 from app.db.models import Document, BusinessEntity, InvoiceTracking
+from app.core.safe_errors import safe_error_detail,  safe_error_log
 
 # NOTE: Folder model does not exist - folder-based queries disabled
 Folder = None
@@ -312,16 +313,16 @@ class NLQService:
             logger.error(
                 "nlq_query_error",
                 query=query[:100],
-                error=str(e),
+                **safe_error_log(e),
             )
             return NLQResult(
                 success=False,
                 intent=QueryIntent.UNKNOWN,
                 extracted_entities=[],
-                natural_response=f"Fehler bei der Verarbeitung: {str(e)}",
+                natural_response=safe_error_detail(e, "NLQ"),
                 confidence=0.0,
                 processing_time_ms=int((time.time() - start_time) * 1000),
-                error_message=str(e),
+                error_message=safe_error_detail(e, "NLQ"),
             )
 
     # ========================================================================
@@ -907,6 +908,7 @@ class NLQService:
             from app.services.rag.search_service import RAGSearchService
             from app.services.rag.llm_service import LLMService, LLMMessage, LLMContextType
 
+
             # 1. Semantische Suche nach relevanten Chunks
             search_service = RAGSearchService()
             search_result = await search_service.semantic_search(
@@ -1027,7 +1029,7 @@ KONTEXT AUS DOKUMENTEN:
                 await llm_service.close()
 
         except ImportError as e:
-            logger.warning("nlq_rag_import_error", error=str(e))
+            logger.warning("nlq_rag_import_error", **safe_error_log(e))
             return NLQResult(
                 success=True,
                 intent=QueryIntent.CHAT,
@@ -1039,14 +1041,14 @@ KONTEXT AUS DOKUMENTEN:
                 confidence=0.30,
             )
         except Exception as e:
-            logger.error("nlq_chat_error", error=str(e), query=query[:50])
+            logger.error("nlq_chat_error", **safe_error_log(e), query=query[:50])
             return NLQResult(
                 success=False,
                 intent=QueryIntent.CHAT,
                 extracted_entities=entities,
-                natural_response=f"Fehler bei der Verarbeitung: {str(e)}",
+                natural_response=safe_error_detail(e, "NLQ"),
                 confidence=0.0,
-                error_message=str(e),
+                error_message=safe_error_detail(e, "NLQ"),
             )
 
 

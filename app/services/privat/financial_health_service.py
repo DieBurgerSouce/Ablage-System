@@ -822,7 +822,7 @@ class FinancialHealthService:
             logger.warning(
                 "diversification_calculation_failed",
                 space_id=str(space_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             score = Decimal("50")
             details = {"error": "Berechnung nicht moeglich"}
@@ -1058,7 +1058,7 @@ class FinancialHealthService:
             logger.warning(
                 "benchmark_calculation_failed",
                 space_id=str(space_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return None
 
@@ -1072,6 +1072,7 @@ class FinancialHealthService:
     ) -> Dict[str, Any]:
         """Berechnet alle Health Scores neu (fuer Celery Beat)."""
         from app.db.models import PrivatSpace
+
 
         result = await db.execute(
             select(PrivatSpace.id).where(PrivatSpace.is_active == True)
@@ -1090,7 +1091,7 @@ class FinancialHealthService:
                 logger.error(
                     "health_score_recalculation_failed",
                     space_id=str(space_id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         logger.info(

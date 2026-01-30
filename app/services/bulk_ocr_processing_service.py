@@ -47,6 +47,7 @@ from app.services.benchmark_runner_service import (
 )
 from app.core.config import settings
 from app.db.schemas import BulkProcessingProgress as BulkProgressSchema
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -487,6 +488,7 @@ class BulkOCRProcessingService:
     async def list_jobs(self, db: AsyncSession) -> List[BulkProcessingJob]:
         """Gibt alle Jobs zurück."""
         from app.db.models import OCRBulkProcessingJob
+
         from sqlalchemy import select
 
         result = await db.execute(
@@ -600,13 +602,13 @@ class BulkOCRProcessingService:
             job.status = BulkJobStatus.FAILED
             job.error_log.append({
                 "timestamp": datetime.now(timezone.utc).isoformat(),
-                "error": str(e),
+                "error": safe_error_detail(e, "Vorgang"),
                 "backend": job.current_backend,
             })
             logger.exception(
                 "bulk_processing_failed",
                 job_id=job_id[:8],
-                error=str(e),
+                **safe_error_log(e),
             )
             raise
 
@@ -675,7 +677,7 @@ class BulkOCRProcessingService:
             except Exception as e:
                 job.error_log.append({
                     "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "error": str(e),
+                    "error": safe_error_detail(e, "Vorgang"),
                     "backend": backend_name,
                     "batch_start": batch_start,
                 })
@@ -684,7 +686,7 @@ class BulkOCRProcessingService:
                     job_id=job.id[:8],
                     backend=backend_name,
                     batch_start=batch_start,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
     async def _process_batch(
@@ -743,13 +745,13 @@ class BulkOCRProcessingService:
                 results.append(BenchmarkResult(
                     backend_name=backend_name,
                     success=False,
-                    error=str(e),
+                    **safe_error_log(e),
                 ))
                 logger.error(
                     "sample_processing_error",
                     sample_id=str(sample.id)[:8],
                     backend=backend_name,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         return results
@@ -892,7 +894,7 @@ class BulkOCRProcessingService:
             logger.warning(
                 "checkpoint_db_save_failed",
                 job_id=job.id[:8],
-                error=str(e),
+                **safe_error_log(e),
             )
             await db.rollback()
 
@@ -1002,7 +1004,7 @@ class BulkOCRProcessingService:
                     errors += 1
                     error_list.append({
                         "file": str(file_path),
-                        "error": str(e),
+                        "error": safe_error_detail(e, "Vorgang"),
                     })
 
         await db.commit()

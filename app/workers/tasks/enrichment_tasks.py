@@ -3,6 +3,7 @@
 
 import structlog
 from app.workers.celery_app import celery_app
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -22,7 +23,7 @@ def enrich_entity(entity_id: str) -> dict:
         logger.info("enrichment_entity_complete", entity_id=entity_id)
         return {"status": "success", "entity_id": entity_id, "sources_checked": 0}
     except Exception as e:
-        logger.error("enrichment_entity_error", entity_id=entity_id, error=str(e))
+        logger.error("enrichment_entity_error", entity_id=entity_id, **safe_error_log(e))
         raise
 
 
@@ -35,5 +36,5 @@ def cleanup_expired_cache() -> dict:
         logger.info("enrichment_cleanup_complete")
         return {"status": "success", "entries_cleaned": 0}
     except Exception as e:
-        logger.error("enrichment_cleanup_error", error=str(e))
+        logger.error("enrichment_cleanup_error", **safe_error_log(e))
         raise

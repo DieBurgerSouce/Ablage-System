@@ -22,6 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User, Document
 from app.db.bpmn_models.gobd import (
     AuditChainEventType,
@@ -321,11 +322,11 @@ async def archive_document(
             "storage_download_failed",
             document_id=str(request.document_id),
             file_path=document.file_path,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Fehler beim Laden des Dokuments aus dem Storage: {str(e)}",
+            detail=safe_error_detail(e, "Laden des Dokuments aus dem Storage"),
         )
 
     try:
@@ -365,11 +366,11 @@ async def archive_document(
         logger.error(
             "archive_document_failed",
             document_id=str(request.document_id),
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Archivierung"),
         )
 
 
@@ -492,11 +493,11 @@ async def verify_archive_integrity(
             "storage_download_failed_verification",
             archive_id=str(request.archive_id),
             file_path=document.file_path,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Fehler beim Laden des Dokuments aus dem Storage: {str(e)}",
+            detail=safe_error_detail(e, "Laden des Dokuments aus dem Storage"),
         )
 
     try:
@@ -538,7 +539,7 @@ async def verify_archive_integrity(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Integritätsprüfung"),
         )
 
 
@@ -836,9 +837,10 @@ async def create_retention_policy(
 
     except Exception as e:
         await db.rollback()
+        logger.error("retention_policy_creation_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Erstellung der Aufbewahrungsrichtlinie"),
         )
 
 
@@ -895,7 +897,7 @@ async def create_deletion_request(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Löschanfrage"),
         )
 
 
@@ -961,7 +963,7 @@ async def approve_deletion_request(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Genehmigung der Löschanfrage"),
         )
 
 
@@ -993,7 +995,7 @@ async def reject_deletion_request(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Ablehnung der Löschanfrage"),
         )
 
 
@@ -1033,9 +1035,10 @@ async def get_verfahrensdokumentation(
         return VerfahrensdokumentationResponse(**doc)
 
     except Exception as e:
+        logger.error("verfahrensdokumentation_generation_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Fehler bei der Generierung der Verfahrensdokumentation: {str(e)}",
+            detail=safe_error_detail(e, "Generierung der Verfahrensdokumentation"),
         )
 
 
@@ -1079,9 +1082,10 @@ async def export_verfahrensdokumentation_pdf(
         )
 
     except Exception as e:
+        logger.error("verfahrensdokumentation_pdf_export_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Fehler beim PDF-Export: {str(e)}",
+            detail=safe_error_detail(e, "PDF-Export"),
         )
 
 
@@ -1117,9 +1121,10 @@ async def export_verfahrensdokumentation_markdown(
         )
 
     except Exception as e:
+        logger.error("verfahrensdokumentation_markdown_export_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Fehler beim Markdown-Export: {str(e)}",
+            detail=safe_error_detail(e, "Markdown-Export"),
         )
 
 
@@ -1149,9 +1154,10 @@ async def export_verfahrensdokumentation_html(
         return HTMLResponse(content=html_bytes.decode("utf-8"))
 
     except Exception as e:
+        logger.error("verfahrensdokumentation_html_export_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Fehler beim HTML-Export: {str(e)}",
+            detail=safe_error_detail(e, "HTML-Export"),
         )
 
 
@@ -1255,9 +1261,10 @@ async def get_steuerberater_export(
         }
 
     except Exception as e:
+        logger.error("steuerberater_export_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Fehler beim Steuerberater-Export: {str(e)}",
+            detail=safe_error_detail(e, "Steuerberater-Export"),
         )
 
 

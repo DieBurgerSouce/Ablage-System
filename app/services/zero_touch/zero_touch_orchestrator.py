@@ -25,6 +25,7 @@ from app.services.zero_touch.confidence_aggregator import ConfidenceAggregator, 
 from app.services.zero_touch.business_object_factory import BusinessObjectFactory, BusinessObjectResult
 from app.services.zero_touch.auto_filing_service import AutoFilingService, FilingResult
 from app.services.zero_touch import zero_touch_metrics
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -307,7 +308,7 @@ class ZeroTouchOrchestrator:
             logger.error(
                 "zero_touch_processing_failed",
                 document_id=str(document_id),
-                error=str(e),
+                **safe_error_log(e),
                 duration_ms=duration_ms,
                 exc_info=True,
             )
@@ -315,7 +316,7 @@ class ZeroTouchOrchestrator:
             error_result = self._create_error_result(
                 document_id=document_id,
                 company_id=company_id,
-                error=str(e),
+                **safe_error_log(e),
                 start_time=start_time,
             )
 
@@ -608,7 +609,7 @@ class ZeroTouchOrchestrator:
             logger.warning(
                 "failed_to_emit_zero_touch_event",
                 document_id=str(result.document_id),
-                error=str(e),
+                **safe_error_log(e),
             )
 
     def _record_metrics(self, result: ZeroTouchResult) -> None:

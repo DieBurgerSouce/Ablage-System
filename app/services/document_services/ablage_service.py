@@ -45,6 +45,7 @@ from app.db.schemas import (
 )
 from app.services.document_services.base import DocumentServiceBase
 from app.services.storage_service import get_storage_service
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -327,7 +328,7 @@ class AblageService(DocumentServiceBase):
             total_amount = float(amounts_row[0] or 0) if amounts_row else 0.0
             total_paid = float(amounts_row[1] or 0) if amounts_row else 0.0
         except Exception as e:
-            logger.warning("aggregation_amounts_failed", error=str(e))
+            logger.warning("aggregation_amounts_failed", **safe_error_log(e))
             total_amount = 0.0
             total_paid = 0.0
 
@@ -337,7 +338,7 @@ class AblageService(DocumentServiceBase):
             overdue_count = overdue_row[0] if overdue_row else 0
             total_overdue = float(overdue_row[1] or 0) if overdue_row else 0.0
         except Exception as e:
-            logger.warning("aggregation_overdue_failed", error=str(e))
+            logger.warning("aggregation_overdue_failed", **safe_error_log(e))
             overdue_count = 0
             total_overdue = 0.0
 
@@ -419,7 +420,7 @@ class AblageService(DocumentServiceBase):
                     logger.error(
                         "zip_download_file_failed",
                         document_id=str(doc.id),
-                        error=str(e)
+                        **safe_error_log(e)
                     )
                     # Fehler-Platzhalter
                     zip_file.writestr(
@@ -660,11 +661,11 @@ class AblageService(DocumentServiceBase):
             except Exception as e:
                 failed_count += 1
                 failed_ids.append(doc_id)
-                errors.append(f"{doc_id}: {str(e)}")
+                errors.append(f"{doc_id}: {safe_error_detail(e, 'Ablage')}")
                 logger.warning(
                     "bulk_mark_paid_failed",
                     document_id=str(doc_id),
-                    error=str(e)
+                    **safe_error_log(e)
                 )
 
         return BulkOperationResultAblage(
@@ -724,7 +725,7 @@ class AblageService(DocumentServiceBase):
             except Exception as e:
                 failed_count += 1
                 failed_ids.append(doc.id)
-                errors.append(f"{doc.id}: {str(e)}")
+                errors.append(f"{doc.id}: {safe_error_detail(e, 'Dokument')}")
 
         await db.commit()
 
@@ -793,7 +794,7 @@ class AblageService(DocumentServiceBase):
             except Exception as e:
                 failed_count += 1
                 failed_ids.append(doc.id)
-                errors.append(f"{doc.id}: {str(e)}")
+                errors.append(f"{doc.id}: {safe_error_detail(e, 'Dokument')}")
 
         # Nicht gefundene IDs
         found_ids = {doc.id for doc in documents}
@@ -879,7 +880,7 @@ class AblageService(DocumentServiceBase):
             except Exception as e:
                 failed_count += 1
                 failed_ids.append(doc.id)
-                errors.append(f"{doc.id}: {str(e)}")
+                errors.append(f"{doc.id}: {safe_error_detail(e, 'Dokument')}")
 
         await db.commit()
 

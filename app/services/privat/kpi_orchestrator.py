@@ -15,6 +15,7 @@ Enterprise Feature - Singleton Pattern.
 from __future__ import annotations
 
 import threading
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -346,7 +347,7 @@ class KPIOrchestrationService:
             logger.exception(
                 "kpi_orchestration_failed",
                 space_id=str(space_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             raise
 
@@ -393,7 +394,7 @@ class KPIOrchestrationService:
                     entity_type="property",
                     entity_id=prop.id,
                     success=False,
-                    error=str(e),
+                    **safe_error_log(e),
                 ))
 
         KPI_ENTITIES_PROCESSED.labels(entity_type="property").set(len(results))
@@ -436,7 +437,7 @@ class KPIOrchestrationService:
                     entity_type="vehicle",
                     entity_id=vehicle.id,
                     success=False,
-                    error=str(e),
+                    **safe_error_log(e),
                 ))
 
         KPI_ENTITIES_PROCESSED.labels(entity_type="vehicle").set(len(results))
@@ -480,7 +481,7 @@ class KPIOrchestrationService:
                     entity_type="loan",
                     entity_id=loan.id,
                     success=False,
-                    error=str(e),
+                    **safe_error_log(e),
                 ))
 
         KPI_ENTITIES_PROCESSED.labels(entity_type="loan").set(len(results))
@@ -523,7 +524,7 @@ class KPIOrchestrationService:
                     entity_type="investment",
                     entity_id=investment.id,
                     success=False,
-                    error=str(e),
+                    **safe_error_log(e),
                 ))
 
         KPI_ENTITIES_PROCESSED.labels(entity_type="investment").set(len(results))
@@ -560,7 +561,7 @@ class KPIOrchestrationService:
                 entity_type="insurance",
                 entity_id=space_id,
                 success=False,
-                error=str(e),
+                **safe_error_log(e),
             ))
 
         KPI_ENTITIES_PROCESSED.labels(entity_type="insurance").set(len(results))
@@ -599,7 +600,7 @@ class KPIOrchestrationService:
             logger.warning(
                 "financial_health_calculation_failed",
                 space_id=str(space_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return {"overall_score": None, "dimensions": {}}
 
@@ -639,7 +640,7 @@ class KPIOrchestrationService:
             logger.warning(
                 "kpi_event_publishing_failed",
                 space_id=str(space_id),
-                error=str(e),
+                **safe_error_log(e),
             )
 
     # =========================================================================
@@ -710,11 +711,11 @@ class KPIOrchestrationService:
 
             except Exception as e:
                 result.spaces_skipped += 1
-                result.errors.append(f"Space {space.id}: {str(e)}")
+                result.errors.append(f"Space {space.id}: {safe_error_detail(e, 'KPI')}")
                 logger.warning(
                     "batch_space_calculation_failed",
                     space_id=str(space.id),
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         # Durchschnittlichen Health Score berechnen
@@ -858,13 +859,13 @@ class KPIOrchestrationService:
                 "single_entity_kpi_failed",
                 entity_type=entity_type,
                 entity_id=str(entity_id),
-                error=str(e),
+                **safe_error_log(e),
             )
             return EntityKPIResult(
                 entity_type=entity_type,
                 entity_id=entity_id,
                 success=False,
-                error=str(e),
+                **safe_error_log(e),
             )
 
     async def _get_space_id_for_entity(
@@ -875,6 +876,7 @@ class KPIOrchestrationService:
     ) -> Optional[UUID]:
         """Ermittelt die Space-ID fuer eine Entity."""
         from app.db.models import PrivatProperty, PrivatVehicle, PrivatLoan, PrivatInvestment
+
 
         model_map = {
             "property": PrivatProperty,

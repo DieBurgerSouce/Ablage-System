@@ -73,6 +73,7 @@ from app.db.schemas import (
     FinanceCategoryAggregations,
 )
 from app.services.document_services.base import DocumentServiceBase
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -186,6 +187,7 @@ async def log_finance_history(
     """
     from app.db.models import FinanceDocumentHistory
 
+
     try:
         history_entry = FinanceDocumentHistory(
             document_id=document_id,
@@ -214,7 +216,7 @@ async def log_finance_history(
             "finance_history_log_failed",
             document_id=str(document_id),
             action=action,
-            error=str(e),
+            **safe_error_log(e),
         )
 
 

@@ -21,6 +21,7 @@ from starlette.types import ASGIApp
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import DocumentAccessType
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -168,7 +169,7 @@ class DocumentAccessLoggingMiddleware(BaseHTTPMiddleware):
                 ip_address=ip_address,
                 user_agent=user_agent,
                 success=False,
-                error_message=str(e)[:500],
+                error_message=safe_error_detail(e, "Zugriff"),
             )
             raise
 
@@ -206,6 +207,7 @@ class DocumentAccessLoggingMiddleware(BaseHTTPMiddleware):
             # Import here to avoid circular imports
             from app.services.document_access_service import document_access_service
 
+
             async with self.get_db() as db:
                 await document_access_service.log_access(
                     db=db,
@@ -226,7 +228,7 @@ class DocumentAccessLoggingMiddleware(BaseHTTPMiddleware):
             logger.error(
                 "document_access_log_failed",
                 document_id=document_id,
-                error=str(e),
+                **safe_error_log(e),
             )
 
     def _get_client_ip(self, request: Request) -> Optional[str]:

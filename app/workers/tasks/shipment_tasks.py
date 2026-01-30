@@ -20,6 +20,7 @@ from celery import shared_task
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.safe_errors import safe_error_log
 from app.db.session import async_session_factory
 from app.db.models import Shipment, Company, ShipmentStatusEnum
 from app.services.shipping import CarrierService, Carrier, ShipmentStatus
@@ -123,7 +124,7 @@ async def _refresh_active_shipments(company_id_str: Optional[str] = None) -> dic
                             logger.warning(
                                 "shipment_update_failed",
                                 shipment_id=str(shipment.id),
-                                error=str(e)
+                                **safe_error_log(e)
                             )
                             total_failed += 1
 
@@ -131,7 +132,7 @@ async def _refresh_active_shipments(company_id_str: Optional[str] = None) -> dic
                     logger.error(
                         "company_shipment_refresh_failed",
                         company_id=str(company_id),
-                        error=str(e)
+                        **safe_error_log(e)
                     )
 
         logger.info(
@@ -218,9 +219,9 @@ async def _refresh_single_shipment(shipment_id: str, company_id: str) -> dict:
                 logger.error(
                     "single_shipment_refresh_failed",
                     shipment_id=shipment_id,
-                    error=str(e)
+                    **safe_error_log(e)
                 )
-                return {"success": False, "error": str(e)}
+                return {"success": False, **safe_error_log(e)}
 
     finally:
         await service.close()
@@ -428,7 +429,7 @@ async def _notify_status_change(
         logger.warning(
             "shipment_notification_failed",
             shipment_id=str(shipment.id),
-            error=str(e)
+            **safe_error_log(e)
         )
 
 
@@ -462,5 +463,5 @@ async def _send_delay_notification(
         logger.warning(
             "delay_notification_failed",
             shipment_id=str(shipment.id),
-            error=str(e)
+            **safe_error_log(e)
         )

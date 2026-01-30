@@ -22,6 +22,7 @@ from sqlalchemy import select, update, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.db.session import get_async_session_context
 from app.db.models import Document, ProcessingStatus
 from app.workers.celery_app import CPUTask, celery_app
@@ -119,12 +120,12 @@ def detect_document_groups(
         logger.error(
             "document_grouping_task_failed",
             task_id=task_id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         return {
             "success": False,
-            "error": str(e),
+            "error": safe_error_detail(e, "Vorgang"),
             "task_id": task_id,
         }
 
@@ -249,10 +250,10 @@ def batch_detect_groups_by_folder(
         logger.error(
             "batch_group_detection_failed",
             task_id=task_id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
-        return {"success": False, "error": str(e)}
+        return {"success": False, **safe_error_log(e)}
 
 
 async def _batch_detect_groups_async(task_id: str, limit: int) -> Dict[str, Any]:
@@ -308,7 +309,7 @@ async def _batch_detect_groups_async(task_id: str, limit: int) -> Dict[str, Any]
                 logger.warning(
                     "folder_processing_failed",
                     folder=folder_name,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 continue
 
@@ -383,12 +384,12 @@ def extract_entities_from_document(
             "entity_extraction_failed",
             task_id=task_id,
             document_id=document_id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         return {
             "success": False,
-            "error": str(e),
+            "error": safe_error_detail(e, "Vorgang"),
             "document_id": document_id,
         }
 
@@ -543,10 +544,10 @@ def batch_extract_entities(
         logger.error(
             "batch_entity_extraction_failed",
             task_id=task_id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
-        return {"success": False, "error": str(e)}
+        return {"success": False, **safe_error_log(e)}
 
 
 async def _batch_extract_entities_async(
@@ -611,7 +612,7 @@ async def _batch_extract_entities_async(
                 logger.warning(
                     "document_entity_extraction_failed",
                     document_id=doc_id,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 error_count += 1
 
@@ -708,11 +709,11 @@ def run_document_intelligence_pipeline(self) -> Dict[str, Any]:
         logger.error(
             "document_intelligence_pipeline_failed",
             task_id=task_id,
-            error=str(e),
+            **safe_error_log(e),
             exc_info=True,
         )
         pipeline_results["success"] = False
-        pipeline_results["error"] = str(e)
+        pipeline_results["error"] = safe_error_detail(e, "Pipeline")
         return pipeline_results
 
 
@@ -741,9 +742,9 @@ def update_intelligence_metrics(self) -> Dict[str, Any]:
         logger.error(
             "metrics_update_failed",
             task_id=task_id,
-            error=str(e),
+            **safe_error_log(e),
         )
-        return {"success": False, "error": str(e)}
+        return {"success": False, **safe_error_log(e)}
 
 
 async def _update_metrics_async() -> Dict[str, Any]:

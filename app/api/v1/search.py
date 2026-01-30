@@ -22,6 +22,7 @@ from app.db.models import User
 from app.api.dependencies import get_current_user, get_db
 from app.services.search_service import get_search_service, SearchService
 from app.services.search_analytics_service import get_search_analytics_service
+from app.core.safe_errors import safe_error_log
 from app.db.schemas import (
     SearchFilters,
     SearchFacetsResponse,
@@ -121,26 +122,26 @@ async def get_search_facets(
         )
 
     except OperationalError as e:
-        logger.error("facets_db_connection_error", error_type="OperationalError", error=str(e))
+        logger.error("facets_db_connection_error", error_type="OperationalError", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Datenbankverbindung nicht verfuegbar"
         )
     except SQLAlchemyError as e:
-        logger.error("facets_db_error", error_type=type(e).__name__, error=str(e))
+        logger.error("facets_db_error", error_type=type(e).__name__, **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Datenbankfehler beim Abrufen der Facetten"
         )
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        logger.warning("facets_validation_error", error_type="ValueError", error=str(e))
+        logger.warning("facets_validation_error", error_type="ValueError", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ungueltige Filterparameter. Bitte Eingaben pruefen."
         )
     except Exception as e:
-        logger.error("facets_error", error_type=type(e).__name__, error=str(e), exc_info=True)
+        logger.error("facets_error", error_type=type(e).__name__, **safe_error_log(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler beim Abrufen der Facetten"
@@ -204,19 +205,19 @@ async def get_search_suggestions(
         )
 
     except OperationalError as e:
-        logger.error("suggest_db_connection_error", error_type="OperationalError", error=str(e))
+        logger.error("suggest_db_connection_error", error_type="OperationalError", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Datenbankverbindung nicht verfuegbar"
         )
     except SQLAlchemyError as e:
-        logger.error("suggest_db_error", error_type=type(e).__name__, error=str(e))
+        logger.error("suggest_db_error", error_type=type(e).__name__, **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Datenbankfehler bei der Autovervollstaendigung"
         )
     except Exception as e:
-        logger.error("suggest_error", error_type=type(e).__name__, error=str(e), exc_info=True)
+        logger.error("suggest_error", error_type=type(e).__name__, **safe_error_log(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler bei der Autovervollständigung"
@@ -270,19 +271,19 @@ async def get_popular_tags(
         }
 
     except OperationalError as e:
-        logger.error("popular_tags_db_connection_error", error_type="OperationalError", error=str(e))
+        logger.error("popular_tags_db_connection_error", error_type="OperationalError", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Datenbankverbindung nicht verfuegbar"
         )
     except SQLAlchemyError as e:
-        logger.error("popular_tags_db_error", error_type=type(e).__name__, error=str(e))
+        logger.error("popular_tags_db_error", error_type=type(e).__name__, **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Datenbankfehler beim Abrufen der Tags"
         )
     except Exception as e:
-        logger.error("popular_tags_error", error_type=type(e).__name__, error=str(e), exc_info=True)
+        logger.error("popular_tags_error", error_type=type(e).__name__, **safe_error_log(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler beim Abrufen der Tags"
@@ -349,7 +350,7 @@ async def get_recent_searches(
         }
 
     except Exception as e:
-        logger.warning("recent_searches_redis_error", error=str(e))
+        logger.warning("recent_searches_redis_error", **safe_error_log(e))
         # Graceful degradation: Leere Liste zurueckgeben wenn Redis nicht verfuegbar
         return {
             "searches": [],
@@ -398,13 +399,13 @@ async def clear_search_history(
         }
 
     except (RedisError, RedisConnectionError) as e:
-        logger.error("clear_search_history_redis_error", error_type=type(e).__name__, error=str(e))
+        logger.error("clear_search_history_redis_error", error_type=type(e).__name__, **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Redis nicht verfuegbar - Suchhistorie konnte nicht geloescht werden"
         )
     except Exception as e:
-        logger.error("clear_search_history_error", error_type=type(e).__name__, error=str(e))
+        logger.error("clear_search_history_error", error_type=type(e).__name__, **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler beim Loeschen der Suchhistorie"
@@ -488,7 +489,7 @@ async def save_search_to_history(
         return True
 
     except Exception as e:
-        logger.warning("save_search_history_error", error=str(e))
+        logger.warning("save_search_history_error", **safe_error_log(e))
         return False
 
 
@@ -560,7 +561,7 @@ async def get_trending_searches(
         ]
 
     except Exception as e:
-        logger.warning("trending_queries_error", error=str(e))
+        logger.warning("trending_queries_error", **safe_error_log(e))
         result["trending_queries"] = []
 
     try:
@@ -589,7 +590,7 @@ async def get_trending_searches(
         ]
 
     except Exception as e:
-        logger.warning("trending_tags_error", error=str(e))
+        logger.warning("trending_tags_error", **safe_error_log(e))
         result["trending_tags"] = []
 
     try:
@@ -625,7 +626,7 @@ async def get_trending_searches(
         }
 
     except Exception as e:
-        logger.warning("recent_activity_error", error=str(e))
+        logger.warning("recent_activity_error", **safe_error_log(e))
         result["recent_activity"] = {}
 
     logger.debug(
@@ -659,6 +660,7 @@ async def get_search_stats(
     try:
         from sqlalchemy import select, func
         from app.db.models import Document
+
 
         # Gesamtanzahl
         total_result = await db.execute(
@@ -704,19 +706,19 @@ async def get_search_stats(
         }
 
     except OperationalError as e:
-        logger.error("search_stats_db_connection_error", error_type="OperationalError", error=str(e))
+        logger.error("search_stats_db_connection_error", error_type="OperationalError", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Datenbankverbindung nicht verfuegbar"
         )
     except SQLAlchemyError as e:
-        logger.error("search_stats_db_error", error_type=type(e).__name__, error=str(e))
+        logger.error("search_stats_db_error", error_type=type(e).__name__, **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Datenbankfehler beim Abrufen der Statistiken"
         )
     except Exception as e:
-        logger.error("search_stats_error", error_type=type(e).__name__, error=str(e), exc_info=True)
+        logger.error("search_stats_error", error_type=type(e).__name__, **safe_error_log(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler beim Abrufen der Statistiken"
@@ -782,19 +784,19 @@ async def get_weighted_ctr_analytics(
         return result
 
     except OperationalError as e:
-        logger.error("weighted_ctr_db_connection_error", error_type="OperationalError", error=str(e))
+        logger.error("weighted_ctr_db_connection_error", error_type="OperationalError", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Datenbankverbindung nicht verfuegbar"
         )
     except SQLAlchemyError as e:
-        logger.error("weighted_ctr_db_error", error_type=type(e).__name__, error=str(e))
+        logger.error("weighted_ctr_db_error", error_type=type(e).__name__, **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Datenbankfehler beim Abrufen der Weighted CTR Statistiken"
         )
     except Exception as e:
-        logger.error("weighted_ctr_error", error_type=type(e).__name__, error=str(e), exc_info=True)
+        logger.error("weighted_ctr_error", error_type=type(e).__name__, **safe_error_log(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler beim Abrufen der Weighted CTR Statistiken"

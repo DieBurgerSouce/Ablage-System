@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db, require_admin
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User, Document
 from app.services.dlp import (
     DLPService,
@@ -178,7 +179,7 @@ async def create_policy(
     except DLPServiceError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=str(e)
+            detail=safe_error_detail(e, "Policy-Erstellung")
         )
 
 
@@ -236,7 +237,7 @@ async def update_policy(
     except DLPServiceError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
+            detail=safe_error_detail(e, "Policy-Aktualisierung")
         )
 
 
@@ -280,8 +281,8 @@ async def delete_policy(
     description="Prueft ob eine Aktion auf einem Dokument erlaubt ist."
 )
 async def check_access(
-    request: AccessCheckRequest,
-    http_request: Request,
+    body: AccessCheckRequest,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> DLPCheckResult:
@@ -299,7 +300,7 @@ async def check_access(
     user_company_id = getattr(current_user, 'company_id', None)
 
     # Dokument laden MIT company_id Validierung (Multi-Tenant Security!)
-    query = select(Document).where(Document.id == request.document_id)
+    query = select(Document).where(Document.id == body.document_id)
 
     # KRITISCH: Wenn User einer Company zugeordnet ist, NUR Dokumente dieser Company!
     if user_company_id:
@@ -321,17 +322,17 @@ async def check_access(
     check_result = await dlp_service.check_access(
         user=current_user,
         document=document,
-        action_type=request.action_type,
+        action_type=body.action_type,
     )
 
     # Client-Info fuer Audit
-    ip_address, user_agent = _get_client_info(http_request)
+    ip_address, user_agent = _get_client_info(request)
 
     # Logging (jetzt mit DB-Persistenz!)
     await dlp_service.log_dlp_event(
         user_id=current_user.id,
-        document_id=request.document_id,
-        action=request.action_type,
+        document_id=body.document_id,
+        action=body.action_type,
         result=check_result,
         company_id=user_company_id,
         ip_address=ip_address,

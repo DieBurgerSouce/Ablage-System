@@ -18,6 +18,7 @@ from app.services.ai.nlq.result_formatter import (
     ResultFormatter,
 )
 from app.services.ai.nlq.schema_introspector import SchemaIntrospector
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.services.ai.nlq.sql_generator import (
     SQLGenerationResult,
     SQLGenerator,
@@ -27,6 +28,7 @@ from app.services.ai.nlq.sql_sanitizer import (
     SQLSanitizer,
 )
 from app.services.ai.nlq.visualization_recommender import (
+
     VisualizationRecommender,
 )
 
@@ -130,9 +132,9 @@ class NLQOrchestrator:
                 )
             )
         except Exception as e:
-            logger.error("sql_generation_failed", error=str(e))
+            logger.error("sql_generation_failed", **safe_error_log(e))
             raise BusinessLogicError(
-                f"SQL-Generierung fehlgeschlagen: {str(e)}"
+                safe_error_detail(e, "SQL-Generierung")
             ) from e
 
         # 3. Sanitize SQL
@@ -157,10 +159,10 @@ class NLQOrchestrator:
             logger.error(
                 "query_execution_failed",
                 sql=sanitization.sanitized_sql,
-                error=str(e),
+                **safe_error_log(e),
             )
             raise BusinessLogicError(
-                f"Abfrage-Ausführung fehlgeschlagen: {str(e)}"
+                safe_error_detail(e, "Abfrage-Ausführung")
             ) from e
 
         # 5. Recommend visualization
@@ -463,7 +465,7 @@ class NLQOrchestrator:
         except Exception as e:
             health["components"]["ollama"] = {
                 "status": "error",
-                "error": str(e),
+                "error": safe_error_detail(e, "Vorgang"),
             }
             health["status"] = "degraded"
 
@@ -474,7 +476,7 @@ class NLQOrchestrator:
         except Exception as e:
             health["components"]["redis"] = {
                 "status": "error",
-                "error": str(e),
+                "error": safe_error_detail(e, "Vorgang"),
             }
             health["status"] = "degraded"
 
@@ -486,7 +488,7 @@ class NLQOrchestrator:
         except Exception as e:
             health["components"]["database"] = {
                 "status": "error",
-                "error": str(e),
+                "error": safe_error_detail(e, "Vorgang"),
             }
             health["status"] = "degraded"
 

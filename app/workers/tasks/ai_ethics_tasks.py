@@ -3,6 +3,7 @@
 
 import structlog
 from app.workers.celery_app import celery_app
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -22,7 +23,7 @@ def generate_bias_report() -> dict:
         logger.info("ai_ethics_bias_report_complete")
         return {"status": "success", "biases_detected": 0}
     except Exception as e:
-        logger.error("ai_ethics_bias_report_error", error=str(e))
+        logger.error("ai_ethics_bias_report_error", **safe_error_log(e))
         raise
 
 
@@ -35,5 +36,5 @@ def update_fairness_metrics() -> dict:
         logger.info("ai_ethics_fairness_metrics_complete")
         return {"status": "success"}
     except Exception as e:
-        logger.error("ai_ethics_fairness_metrics_error", error=str(e))
+        logger.error("ai_ethics_fairness_metrics_error", **safe_error_log(e))
         raise

@@ -20,6 +20,7 @@ import structlog
 
 from app.workers.celery_app import celery_app, CPUTask, GPUTask
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -158,7 +159,7 @@ def run_surya_benchmark(
         return result
 
     except Exception as e:
-        logger.exception("surya_benchmark_failed", task_id=task_id, error=str(e))
+        logger.exception("surya_benchmark_failed", task_id=task_id, **safe_error_log(e))
         raise
 
 
@@ -368,7 +369,7 @@ def check_surya_retraining_conditions(self) -> Dict[str, Any]:
         logger.exception(
             "check_surya_retraining_failed",
             task_id=task_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise
 
@@ -481,7 +482,7 @@ def export_surya_training_dataset(
         logger.exception(
             "export_surya_dataset_failed",
             task_id=task_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise
 
@@ -602,7 +603,7 @@ def run_surya_german_finetuning(
         logger.exception(
             "surya_german_finetuning_failed",
             task_id=task_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise
 
@@ -726,7 +727,7 @@ def evaluate_surya_model(
         logger.exception(
             "evaluate_surya_model_failed",
             task_id=task_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise
 
@@ -822,7 +823,7 @@ def deploy_surya_model(
         logger.exception(
             "deploy_surya_model_failed",
             task_id=task_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise
 
@@ -951,7 +952,7 @@ def evaluate_surya_ab_test(
         logger.exception(
             "evaluate_ab_test_failed",
             task_id=task_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise
 
@@ -1025,7 +1026,7 @@ def rollback_surya_model(
         logger.exception(
             "rollback_surya_model_error",
             task_id=task_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise
 
@@ -1113,7 +1114,7 @@ def process_surya_corrections(
                     except Exception as e:
                         errors.append({
                             "correction_id": str(correction.id),
-                            "error": str(e),
+                            "error": safe_error_detail(e, "Vorgang"),
                         })
 
                 await session.commit()
@@ -1140,7 +1141,7 @@ def process_surya_corrections(
         logger.exception(
             "process_surya_corrections_failed",
             task_id=task_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise
 
@@ -1240,10 +1241,10 @@ def update_surya_metrics(self) -> Dict[str, Any]:
         logger.exception(
             "update_surya_metrics_failed",
             task_id=task_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         # Don't raise - metrics update failure should not block
-        return {"success": False, "error": str(e)}
+        return {"success": False, **safe_error_log(e)}
 
 
 @celery_app.task(
@@ -1401,7 +1402,7 @@ def generate_surya_improvement_report(
         logger.exception(
             "generate_surya_improvement_report_failed",
             task_id=task_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise
 

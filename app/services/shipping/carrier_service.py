@@ -30,6 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.models import Shipment, ShipmentEvent, BusinessEntity
+from app.core.safe_errors import safe_error_log
 
 from .carrier_providers import (
     BaseCarrierProvider,
@@ -233,7 +234,7 @@ class CarrierService:
             logger.error(
                 "tracking_failed",
                 carrier=carrier.value,
-                error=str(e)
+                **safe_error_log(e)
             )
             raise
 
@@ -265,7 +266,7 @@ class CarrierService:
                 logger.error(
                     "batch_tracking_error",
                     tracking_number=tracking_number[:8],
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 results[tracking_number] = self._create_unknown_result(tracking_number)
 
@@ -317,7 +318,7 @@ class CarrierService:
                 logger.error(
                     "shipment_refresh_failed",
                     shipment_id=str(shipment.id),
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 failed += 1
 
@@ -393,7 +394,7 @@ class CarrierService:
                 db, tracking_number, carrier, company_id, save_to_db=True
             )
         except Exception as e:
-            logger.warning("initial_tracking_failed", error=str(e))
+            logger.warning("initial_tracking_failed", **safe_error_log(e))
 
         return shipment
 

@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_async_session_context
 from app.db.models import OCRTrainingSample, TrainingSampleStatus
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -119,7 +120,7 @@ def run_surya_ocr(file_path: Path) -> tuple[bool, str, float]:
         return True, text, avg_confidence
 
     except Exception as e:
-        logger.error("ocr_error", error=str(e))
+        logger.error("ocr_error", **safe_error_log(e))
         return False, "", 0.0
 
 

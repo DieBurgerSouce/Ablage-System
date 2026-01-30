@@ -23,6 +23,7 @@ import torch
 import numpy as np
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 
 class EmbeddingModelType(str, Enum):
@@ -162,7 +163,7 @@ class JinaEmbeddingService:
                 logger.error(
                     "jina_model_load_failed",
                     model=self.model_name,
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 raise RuntimeError(f"Jina-Modell konnte nicht geladen werden: {e}")
 
@@ -291,7 +292,7 @@ class JinaEmbeddingService:
                         )
                         all_embeddings.append(emb.tolist())
                     except Exception as e:
-                        logger.error("jina_single_embedding_failed", error=str(e))
+                        logger.error("jina_single_embedding_failed", **safe_error_log(e))
                         all_embeddings.append([0.0] * self.dimension)
                     finally:
                         if self.device.type == "cuda" and idx % 4 == 3:
@@ -427,7 +428,7 @@ class EmbeddingService:
                 logger.error(
                     "embedding_model_load_failed",
                     model=self.model_name,
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 raise RuntimeError(f"Embedding-Modell konnte nicht geladen werden: {e}")
 
@@ -557,6 +558,7 @@ class EmbeddingService:
         """Lazy-load Redis connection."""
         if self._redis is None:
             from app.core.redis_state import RedisStateManager
+
             self._redis = RedisStateManager.get_instance()
             await self._redis.connect()
         return self._redis
@@ -576,7 +578,7 @@ class EmbeddingService:
                 logger.debug("query_embedding_cache_hit", query=query[:50])
                 return json.loads(cached)
         except Exception as e:
-            logger.debug("query_embedding_cache_get_failed", error=str(e))
+            logger.debug("query_embedding_cache_get_failed", **safe_error_log(e))
         return None
 
     async def _cache_query_embedding(self, query: str, embedding: List[float]) -> None:
@@ -591,7 +593,7 @@ class EmbeddingService:
             )
             logger.debug("query_embedding_cached", query=query[:50])
         except Exception as e:
-            logger.debug("query_embedding_cache_set_failed", error=str(e))
+            logger.debug("query_embedding_cache_set_failed", **safe_error_log(e))
 
     def generate_query_embedding(self, query: str) -> List[float]:
         """Embedding fuer Suchanfrage generieren (sync).
@@ -708,7 +710,7 @@ class EmbeddingService:
                         # Zero-Vektor als Fallback bei OOM
                         all_embeddings.append([0.0] * self.dimension)
                     except Exception as e:
-                        logger.error("single_embedding_failed", error=str(e))
+                        logger.error("single_embedding_failed", **safe_error_log(e))
                         all_embeddings.append([0.0] * self.dimension)
                     finally:
                         # Speicher nach jeder Iteration freigeben

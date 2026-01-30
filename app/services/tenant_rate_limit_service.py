@@ -33,7 +33,9 @@ from app.db.models import (
     User,
 )
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 from app.core.rate_limiting import (
+
     get_redis_storage,
     RateLimitStorageError,
 )
@@ -203,7 +205,7 @@ class TenantRateLimitService:
                 logger.error(
                     "tenant_rate_limit_check_failed",
                     company_id=str(company_id),
-                    error=str(e)
+                    **safe_error_log(e)
                 )
                 if settings.RATE_LIMIT_FAIL_CLOSED:
                     raise RateLimitStorageError("Rate-Limit-Pruefung fehlgeschlagen.") from e
@@ -259,7 +261,7 @@ class TenantRateLimitService:
             logger.error(
                 "tenant_rate_limit_increment_failed",
                 company_id=str(company_id),
-                error=str(e)
+                **safe_error_log(e)
             )
             return False
 

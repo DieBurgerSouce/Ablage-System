@@ -21,6 +21,7 @@ import operator
 from decimal import Decimal
 from typing import Any, Dict, Optional, Union, Callable
 import structlog
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -210,7 +211,7 @@ class SafeExpressionEvaluator:
             logger.warning(
                 "expression_evaluation_failed",
                 expression=expression[:100],  # Truncate for logging
-                error=str(e),
+                **safe_error_log(e),
             )
             raise ExpressionEvaluationError(
                 f"Auswertungsfehler: {e}"

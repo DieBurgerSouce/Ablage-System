@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import get_current_user
+from app.api.dependencies import get_current_user
 from app.db.session import get_async_session
 from app.services.privat.life_events.life_event_engine import LifeEventEngine
 

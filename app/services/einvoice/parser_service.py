@@ -22,6 +22,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.safe_errors import safe_error_log
 from app.api.schemas.einvoice import (
     EInvoiceFormatDetected,
     EInvoiceParseResponse,
@@ -146,7 +147,7 @@ class EInvoiceParserService:
         except Exception as e:
             logger.error(
                 "einvoice_parse_pdf_error",
-                extra={"filename": filename, "error": str(e)},
+                extra={"filename": filename, **safe_error_log(e)},
                 exc_info=True
             )
             raise
@@ -199,7 +200,7 @@ class EInvoiceParserService:
         except Exception as e:
             logger.error(
                 "einvoice_parse_xml_error",
-                extra={"filename": filename, "error": str(e)},
+                extra={"filename": filename, **safe_error_log(e)},
                 exc_info=True
             )
             raise

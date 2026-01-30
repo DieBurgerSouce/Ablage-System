@@ -19,6 +19,7 @@ import structlog
 if TYPE_CHECKING:
     from app.services.workflow.workflow_execution_service import ExecutionContext
 
+
 logger = structlog.get_logger(__name__)
 
 
@@ -204,7 +205,7 @@ class ConditionEvaluator:
                 "condition_evaluation_error",
                 field=field,
                 operator=operator,
-                error=str(e),
+                **safe_error_log(e),
             )
             return False
 

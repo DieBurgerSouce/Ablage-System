@@ -74,6 +74,7 @@ from app.core.totp import (
     TOTPSecretEncryptionError,
     PYOTP_AVAILABLE,
 )
+from app.core.safe_errors import safe_error_log
 from app.core.account_lockout import (
     check_account_lockout,
     record_failed_attempt,
@@ -216,7 +217,7 @@ async def login(
             "login_blocked_security_service_unavailable",
             ip=client_ip,
             email=login_data.email[:3] + "***" if login_data.email else None,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -261,7 +262,7 @@ async def login(
                 "login_blocked_cannot_record_failed_attempt",
                 ip=client_ip,
                 email=login_data.email[:3] + "***" if login_data.email else None,
-                error=str(e),
+                **safe_error_log(e),
             )
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -368,7 +369,7 @@ async def login(
         logger.warning(
             "session_creation_failed",
             user_id=str(user.id),
-            error=str(e)
+            **safe_error_log(e)
         )
 
     logger.info(
@@ -486,7 +487,7 @@ async def verify_2fa_login_endpoint(
         logger.error(
             "2fa_decryption_failed",
             user_id=str(user.id),
-            error=str(e)
+            **safe_error_log(e)
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -527,7 +528,7 @@ async def verify_2fa_login_endpoint(
         logger.warning(
             "session_creation_failed_2fa",
             user_id=str(user.id),
-            error=str(e)
+            **safe_error_log(e)
         )
 
     logger.info(
@@ -662,7 +663,7 @@ async def refresh_token(
     except HTTPException:
         raise
     except Exception as e:
-        logger.warning("refresh_token_failed", error=str(e), error_type=type(e).__name__)
+        logger.warning("refresh_token_failed", **safe_error_log(e), error_type=type(e).__name__)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Ungültiger oder abgelaufener Refresh Token",  # Invalid or expired refresh token
@@ -748,7 +749,7 @@ async def logout(
 
     except Exception as e:
         # Session revocation failure should not block logout
-        logger.debug("session_revoke_skipped", error=str(e))
+        logger.debug("session_revoke_skipped", **safe_error_log(e))
 
     # 3. Blacklist refresh token if provided
     if logout_data.refresh_token:
@@ -769,7 +770,7 @@ async def logout(
 
         except Exception as e:
             # Token already invalid or blacklist failed - log but continue logout
-            logger.debug("refresh_token_blacklist_skipped", error=str(e))
+            logger.debug("refresh_token_blacklist_skipped", **safe_error_log(e))
 
     # Log logout summary
     logger.info(
@@ -838,7 +839,7 @@ async def get_current_user_info(
             logger.warning(
                 "rbac_role_fetch_failed",
                 user_id=str(current_user.id),
-                error=str(e),
+                **safe_error_log(e),
                 fallback_role="viewer"
             )
 
@@ -982,7 +983,7 @@ async def request_password_reset(
     try:
         notification_service = NotificationService()
     except Exception as e:
-        logger.warning("notification_service_unavailable", error=str(e))
+        logger.warning("notification_service_unavailable", **safe_error_log(e))
 
     success, message = await reset_service.request_password_reset(
         db=db,
@@ -1224,13 +1225,13 @@ async def initiate_2fa_setup(
         }
 
     except TOTPSecretEncryptionError as e:
-        logger.error("2fa_setup_encryption_failed", error=str(e), user_id=str(current_user.id)[:8])
+        logger.error("2fa_setup_encryption_failed", **safe_error_log(e), user_id=str(current_user.id)[:8])
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=e.user_message_de
         )
     except Exception as e:
-        logger.error("2fa_setup_failed", error=str(e), user_id=str(current_user.id)[:8])
+        logger.error("2fa_setup_failed", **safe_error_log(e), user_id=str(current_user.id)[:8])
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="2FA-Setup fehlgeschlagen. Bitte versuchen Sie es später erneut."
@@ -1279,7 +1280,7 @@ async def verify_2fa_setup_endpoint(
                 detail="Ungültiger Code. Stellen Sie sicher, dass die Zeit auf Ihrem Gerät korrekt ist."
             )
     except TOTPSecretEncryptionError as e:
-        logger.error("2fa_verify_decryption_failed", error=str(e))
+        logger.error("2fa_verify_decryption_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=e.user_message_de
@@ -1336,7 +1337,7 @@ async def disable_2fa(
             backup_codes=current_user.totp_backup_codes
         )
     except TOTPSecretEncryptionError as e:
-        logger.error("2fa_disable_decryption_failed", error=str(e))
+        logger.error("2fa_disable_decryption_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=e.user_message_de
@@ -1403,7 +1404,7 @@ async def regenerate_backup_codes(
                 detail="Ungültiger Code."
             )
     except TOTPSecretEncryptionError as e:
-        logger.error("2fa_regenerate_decryption_failed", error=str(e))
+        logger.error("2fa_regenerate_decryption_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=e.user_message_de
@@ -1818,6 +1819,7 @@ async def request_email_change(
     from app.services.email_verification_service import get_email_verification_service
     from app.services.user_service import UserService
     from app.core.exceptions import EmailVerificationError
+
 
     # Verifiziere Passwort
     authenticated = await UserService.authenticate_user(

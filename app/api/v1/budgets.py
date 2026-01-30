@@ -21,6 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Path
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.db.models_budget import (
     BudgetPeriodType,
@@ -348,9 +349,9 @@ async def create_kostenstelle(
         return KostenstelleResponse.model_validate(kostenstelle)
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "Kostenstellen-Validierung"))
     except Exception as e:
-        logger.exception("kostenstelle_create_failed")
+        logger.exception("kostenstelle_create_failed", **safe_error_log(e))
         raise HTTPException(status_code=500, detail="Fehler beim Erstellen der Kostenstelle")
 
 
@@ -465,9 +466,9 @@ async def create_budget(
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "Budget-Validierung"))
     except Exception as e:
-        logger.exception("budget_create_failed")
+        logger.exception("budget_create_failed", **safe_error_log(e))
         raise HTTPException(status_code=500, detail="Fehler beim Erstellen des Budgets")
 
 
@@ -665,7 +666,7 @@ async def activate_budget(
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "Budget-Aktivierung"))
 
 
 @router.post(
@@ -710,7 +711,7 @@ async def close_budget(
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "Budget-Schließung"))
 
 
 # ============================================================================
@@ -772,7 +773,7 @@ async def create_budget_line(
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "Budget-Position-Validierung"))
 
 
 @router.get(
@@ -887,7 +888,7 @@ async def create_allocation(
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "Budget-Zuordnung-Validierung"))
 
 
 @router.get(
@@ -985,7 +986,7 @@ async def get_variance_report(
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "Abweichungsbericht-Generierung"))
 
 
 # ============================================================================
@@ -1067,4 +1068,4 @@ async def acknowledge_alert(
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=safe_error_detail(e, "Alert-Bestätigung"))

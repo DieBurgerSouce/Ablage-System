@@ -26,6 +26,7 @@ from app.workers.celery_metrics import (
 )
 from app.db.session import get_async_session_context
 from app.db.models import Document, ProcessingStatus, ZeroTouchResult
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
@@ -77,7 +78,7 @@ def process_document_zero_touch(
             except ValueError as e:
                 return {
                     "success": False,
-                    "error": f"Ungueltige UUID: {str(e)}",
+                    "error": safe_error_detail(e, "UUID-Validierung"),
                 }
 
             # Dokument laden
@@ -149,7 +150,7 @@ def process_document_zero_touch(
         return result
     except Exception as e:
         record_task_failed("zero_touch.process_document", str(e))
-        logger.error("zero_touch_task_exception", document_id=document_id, error=str(e))
+        logger.error("zero_touch_task_exception", document_id=document_id, **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -225,7 +226,7 @@ def process_pending_documents(
                     logger.warning(
                         "zero_touch_queue_failed",
                         document_id=str(doc_id),
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
             return stats
@@ -242,7 +243,7 @@ def process_pending_documents(
         return result
     except Exception as e:
         record_task_failed("zero_touch.process_pending", str(e))
-        logger.error("zero_touch_pending_failed", error=str(e))
+        logger.error("zero_touch_pending_failed", **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -415,7 +416,7 @@ def recalculate_thresholds(
         return result
     except Exception as e:
         record_task_failed("zero_touch.recalculate_thresholds", str(e))
-        logger.error("zero_touch_threshold_recalculation_failed", error=str(e))
+        logger.error("zero_touch_threshold_recalculation_failed", **safe_error_log(e))
         raise self.retry(exc=e)
 
 
@@ -493,5 +494,5 @@ def generate_zero_touch_statistics(
         return result
     except Exception as e:
         record_task_failed("zero_touch.generate_statistics", str(e))
-        logger.error("zero_touch_statistics_failed", error=str(e))
+        logger.error("zero_touch_statistics_failed", **safe_error_log(e))
         raise self.retry(exc=e)

@@ -19,6 +19,7 @@ from app.services.backend_manager import get_backend_manager
 # Import German correction components
 from app.agents.postprocessing.german_correction_agent import GermanCorrectionAgent
 from app.utils.german_text import normalize_german_text
+from app.core.safe_errors import safe_error_log
 
 
 class OCRService:
@@ -63,7 +64,7 @@ class OCRService:
             except Exception as e:
                 logger.warning(
                     "german_correction_agent_init_failed",
-                    error=str(e),
+                    **safe_error_log(e),
                     message="Korrektur deaktiviert"
                 )
 
@@ -199,7 +200,7 @@ class OCRService:
                     logger.warning(
                         "german_correction_failed",
                         error_type=type(e).__name__,
-                        error=str(e),
+                        **safe_error_log(e),
                         text_length=len(result.get("text", "")),
                         total_correction_errors=self.processing_stats["total_correction_errors"],
                         message="Korrektur übersprungen, Originaltext beibehalten"
@@ -254,12 +255,12 @@ class OCRService:
 
         except Exception as e:
             self.processing_stats["total_errors"] += 1
-            logger.error("ocr_processing_failed", error=str(e), exc_info=True)
+            logger.error("ocr_processing_failed", **safe_error_log(e), exc_info=True)
 
             # Return error response (fallback already attempted by backend_manager)
             return {
                 "success": False,
-                "error": str(e),
+                "error": safe_error_detail(e, "Vorgang"),
                 "metadata": {
                     "processing_time_seconds": (datetime.now(timezone.utc) - start_time).total_seconds(),
                     "timestamp": datetime.now(timezone.utc).isoformat()
@@ -597,6 +598,7 @@ class OCRService:
             from uuid import UUID
             from app.services.version_service import get_version_service
 
+
             version_service = get_version_service()
 
             doc_uuid = UUID(document_id) if isinstance(document_id, str) else document_id
@@ -629,7 +631,7 @@ class OCRService:
             logger.error(
                 "ocr_version_save_failed",
                 document_id=document_id,
-                error=str(e)
+                **safe_error_log(e)
             )
             return None
 

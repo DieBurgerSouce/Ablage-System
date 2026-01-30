@@ -10,6 +10,7 @@ from typing import Dict, Any, List, Optional
 from uuid import UUID
 from datetime import datetime, timezone
 import structlog
+from app.core.safe_errors import safe_error_detail, safe_error_log
 
 from sqlalchemy import select
 
@@ -144,11 +145,11 @@ async def extract_document_text(
                 logger.warning("ocr_document_not_found", document_id=document_id)
 
     except Exception as e:
-        ocr_error = str(e)
+        ocr_error = safe_error_detail(e, "OCR")
         logger.error(
             "ocr_extraction_failed",
             document_id=document_id,
-            error=str(e)
+            **safe_error_log(e)
         )
         # Fallback auf leeren Text, damit Workflow weiterlaufen kann
         extracted_text = ""
@@ -300,7 +301,7 @@ async def classify_document(
         logger.error(
             "classification_failed",
             document_id=document_id,
-            error=str(e)
+            **safe_error_log(e)
         )
         # Fallback auf Keyword-basierte Klassifizierung
         text_lower = extracted_text.lower()
@@ -496,7 +497,7 @@ async def extract_entities(
         logger.error(
             "entity_extraction_failed",
             document_id=document_id,
-            error=str(e)
+            **safe_error_log(e)
         )
 
     entity_count = len(entities)
@@ -636,7 +637,7 @@ async def match_business_entity(
         logger.error(
             "entity_matching_failed",
             document_id=document_id,
-            error=str(e)
+            **safe_error_log(e)
         )
         # Bei Fehler: Kein Match, aber Workflow laeuft weiter
         entity_matched = False
@@ -771,7 +772,7 @@ async def route_to_folder(
             logger.error(
                 "document_routing_failed",
                 document_id=document_id,
-                error=str(e)
+                **safe_error_log(e)
             )
             await db.rollback()
 
@@ -894,7 +895,7 @@ async def trigger_workflow(
             logger.error(
                 "follow_up_workflow_start_failed",
                 workflow=follow_up_workflow,
-                error=str(e)
+                **safe_error_log(e)
             )
 
     async with async_session_maker() as db:
@@ -933,6 +934,7 @@ async def complete_classification(
     """
     from app.db.session import async_session_maker
     from app.db.bpmn_models.bpmn import ProcessHistory
+
 
     document_id = variables.get("document_id")
     document_type = variables.get("document_type", "other")

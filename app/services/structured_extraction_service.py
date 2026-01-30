@@ -41,6 +41,7 @@ from app.services.document_classification_service import (
     get_classification_service,
 )
 from app.services.entity_extraction_service import EntityExtractionService
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.services.translation_service import (
     TranslationService,
     get_translation_service,
@@ -798,7 +799,7 @@ class StructuredExtractionService:
                 logger.warning(
                     "invoice_direction_detection_failed",
                     document_id=document_id,
-                    error=str(e),
+                    **safe_error_log(e),
                 )
 
         # 6. Overall Confidence berechnen
@@ -1417,10 +1418,10 @@ class StructuredExtractionService:
             except Exception as e:
                 logger.warning(
                     "line_item_extraction_failed",
-                    error=str(e),
+                    **safe_error_log(e),
                     table_count=len(tables),
                 )
-                warnings.append(f"Positionsextraktion fehlgeschlagen: {str(e)}")
+                warnings.append(safe_error_detail(e, "Extraktion"))
 
         # Falls keine Tabellen oder Extraktion fehlgeschlagen: Regex-Fallback
         if not invoice.line_items and text:
@@ -1433,7 +1434,7 @@ class StructuredExtractionService:
                         count=len(invoice.line_items),
                     )
             except Exception as e:
-                logger.debug("line_item_text_fallback_failed", error=str(e))
+                logger.debug("line_item_text_fallback_failed", **safe_error_log(e))
 
         # Warnungen sammeln
         invoice.extraction_warnings = list(invoice.extraction_warnings) + warnings
@@ -1599,7 +1600,7 @@ class StructuredExtractionService:
             except Exception as e:
                 logger.warning(
                     "enhanced_extraction_failed",
-                    error=str(e),
+                    **safe_error_log(e),
                 )
                 # Nicht kritisch - regulaere Extraktion bleibt erhalten
 
@@ -1966,6 +1967,7 @@ class StructuredExtractionService:
             # Import lokale IBAN-Validierung
             try:
                 from app.services.extraction.patterns.reference_patterns import validate_iban
+
                 validations.iban_checksum_valid = validate_iban(invoice.sender_bank.iban)
             except ImportError:
                 # Fallback: Eigene MOD-97 Validierung
@@ -2321,7 +2323,7 @@ class StructuredExtractionService:
             except Exception as e:
                 logger.warning(
                     "order_line_item_extraction_failed",
-                    error=str(e),
+                    **safe_error_log(e),
                     table_count=len(tables),
                 )
 
@@ -2331,7 +2333,7 @@ class StructuredExtractionService:
                 line_item_service = _get_line_item_service()
                 order.line_items = await line_item_service.extract_from_text(text)
             except Exception as e:
-                logger.debug("order_line_item_text_fallback_failed", error=str(e))
+                logger.debug("order_line_item_text_fallback_failed", **safe_error_log(e))
 
         # Konfidenz
         confidence = 0.5

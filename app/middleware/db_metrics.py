@@ -204,7 +204,7 @@ def update_pool_metrics(engine: Engine) -> None:
             overflow=overflow
         )
     except Exception as e:
-        logger.warning("db_pool_metrics_error", error=str(e))
+        logger.warning("db_pool_metrics_error", **safe_error_log(e))
 
 
 @contextmanager
@@ -233,6 +233,7 @@ def track_db_operation(operation: str, table: str):
 
         try:
             from app.core.business_metrics import record_db_query
+
             record_db_query(
                 operation=operation,
                 table=table,

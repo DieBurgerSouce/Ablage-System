@@ -23,6 +23,7 @@ from app.db.models import (
     PrivatSpace,
 )
 from app.services.document_intelligence.llm_ner_service import (
+
     EntityType,
     ExtractedEntity,
     LLMNERService,
@@ -614,13 +615,13 @@ class DeadlineExtractionService:
                 except Exception as e:
                     error_msg = f"Fehler beim Erstellen von Deadline '{parsed.title}': {e}"
                     result.errors.append(error_msg)
-                    logger.warning("deadline_creation_error", error=str(e))
+                    logger.warning("deadline_creation_error", **safe_error_log(e))
 
             # Commit wird von Aufrufer erwartet
 
         except Exception as e:
             result.errors.append(f"Allgemeiner Fehler: {e}")
-            logger.exception("deadline_extraction_error", error=str(e))
+            logger.exception("deadline_extraction_error", **safe_error_log(e))
 
         finally:
             result.processing_time_ms = int(

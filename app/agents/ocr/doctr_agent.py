@@ -26,6 +26,7 @@ from PIL import Image
 import pypdfium2 as pdfium
 
 from app.agents.base import OCRAgent, OCRResult
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -205,7 +206,7 @@ class DocTRAgent(OCRAgent):
             )
 
         except Exception as e:
-            logger.error("doctr_models_load_failed", error=str(e))
+            logger.error("doctr_models_load_failed", **safe_error_log(e))
             raise
 
     def _load_image(self, image_path: str) -> List[Image.Image]:
@@ -246,7 +247,7 @@ class DocTRAgent(OCRAgent):
                     )
                 pdf.close()
             except Exception as e:
-                logger.error("doctr_pdf_load_failed", error=str(e))
+                logger.error("doctr_pdf_load_failed", **safe_error_log(e))
                 raise
         else:
             # Handle image files (PNG, JPG, TIFF, etc.)
@@ -258,7 +259,7 @@ class DocTRAgent(OCRAgent):
                     image = image.convert('RGB')
                 images.append(image)
             except Exception as e:
-                logger.error("doctr_image_load_failed", error=str(e))
+                logger.error("doctr_image_load_failed", **safe_error_log(e))
                 raise
 
         return images
@@ -343,14 +344,12 @@ class DocTRAgent(OCRAgent):
             }
 
         except Exception as e:
-            logger.error("doctr_image_processing_failed", error=str(e))
+            logger.error("doctr_image_processing_failed", **safe_error_log(e))
             return {
                 "text": "",
                 "confidence": 0.0,
                 "word_count": 0,
-                "text_blocks": [],
-                "error": str(e)
-            }
+                "text_blocks": [], **safe_error_log(e)}
 
     def _detect_umlauts(self, text: str) -> Tuple[bool, List[str]]:
         """Detect German umlauts in text.
@@ -541,14 +540,14 @@ class DocTRAgent(OCRAgent):
             processing_time_ms = int((time.time() - start_time) * 1000)
             logger.error(
                 "doctr_processing_failed",
-                error=str(e),
+                **safe_error_log(e),
                 processing_time_ms=processing_time_ms,
                 exc_info=True
             )
 
             # Create standardized error result
             result = self.create_error_result(
-                error=str(e),
+                **safe_error_log(e),
                 error_code="DOCTR_OCR_ERROR",
                 processing_time_ms=processing_time_ms
             )

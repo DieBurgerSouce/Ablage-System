@@ -197,8 +197,8 @@ async def get_agent_status(
 @limiter.limit("30/minute", key_func=get_user_identifier)
 @router.post("/execute/ocr")
 async def execute_ocr_agent(
-    http_request: Request,  # SECURITY FIX 28-11: Required for rate limiter (renamed to avoid conflict)
-    request: AgentExecuteRequest,
+    request: Request,  # SECURITY FIX: Required for rate limiter
+    body: AgentExecuteRequest,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),  # V.2 SECURITY FIX: Authentication required
 ):
@@ -217,18 +217,18 @@ async def execute_ocr_agent(
     """
     # Submit to Celery
     task = process_document_gpu.delay(
-        document_id=request.document_id,
-        file_path=request.file_path,
-        backend=request.backend,
-        priority=request.priority,
-        options=request.options or {},
+        document_id=body.document_id,
+        file_path=body.file_path,
+        backend=body.backend,
+        priority=body.priority,
+        options=body.options or {},
     )
 
     return {
         "status": "submitted",
         "task_id": task.id,
-        "document_id": request.document_id,
-        "backend": request.backend,
+        "document_id": body.document_id,
+        "backend": body.backend,
         "message": "OCR processing started",
     }
 
@@ -237,8 +237,8 @@ async def execute_ocr_agent(
 @limiter.limit("10/minute", key_func=get_user_identifier)
 @router.post("/execute/batch")
 async def execute_batch_processing(
-    http_request: Request,  # SECURITY FIX 28-11: Required for rate limiter (renamed to avoid conflict)
-    request: BatchProcessRequest,
+    request: Request,  # SECURITY FIX: Required for rate limiter
+    body: BatchProcessRequest,
     current_user: User = Depends(get_current_active_user),  # V.3 SECURITY FIX: Authentication required
 ):
     """
@@ -251,7 +251,7 @@ async def execute_batch_processing(
     Returns:
         Task ID
     """
-    if len(request.document_ids) != len(request.file_paths):
+    if len(body.document_ids) != len(body.file_paths):
         raise HTTPException(
             status_code=400,
             detail=HTTPErrors.ARRAY_LENGTH_MISMATCH,
@@ -259,17 +259,17 @@ async def execute_batch_processing(
 
     # Submit batch task
     task = batch_process_documents.delay(
-        document_ids=request.document_ids,
-        file_paths=request.file_paths,
-        backend=request.backend,
-        options=request.options or {},
+        document_ids=body.document_ids,
+        file_paths=body.file_paths,
+        backend=body.backend,
+        options=body.options or {},
     )
 
     return {
         "status": "submitted",
         "task_id": task.id,
-        "batch_size": len(request.document_ids),
-        "backend": request.backend,
+        "batch_size": len(body.document_ids),
+        "backend": body.backend,
     }
 
 
@@ -277,8 +277,8 @@ async def execute_batch_processing(
 @limiter.limit("20/minute", key_func=get_user_identifier)
 @router.post("/execute/workflow")
 async def execute_workflow(
-    http_request: Request,  # SECURITY FIX 28-11: Required for rate limiter (renamed to avoid conflict)
-    request: WorkflowExecuteRequest,
+    request: Request,  # SECURITY FIX: Required for rate limiter
+    body: WorkflowExecuteRequest,
     current_user: User = Depends(get_current_active_user),  # V.4 SECURITY FIX: Authentication required
 ):
     """
@@ -301,16 +301,16 @@ async def execute_workflow(
     """
     # Submit workflow task
     task = process_document_workflow.delay(
-        document_id=request.document_id,
-        file_path=request.file_path,
-        priority=request.priority,
-        options=request.options or {},
+        document_id=body.document_id,
+        file_path=body.file_path,
+        priority=body.priority,
+        options=body.options or {},
     )
 
     return {
         "status": "submitted",
         "task_id": task.id,
-        "document_id": request.document_id,
+        "document_id": body.document_id,
         "workflow": "full_processing",
     }
 

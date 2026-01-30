@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db, get_current_active_user
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import (
     User,
     ProcessStatus,
@@ -221,7 +222,7 @@ async def deploy_process_definition(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Prozess-Definition")
         )
 
 
@@ -300,7 +301,7 @@ async def export_process_definition(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
+            detail=safe_error_detail(e, "BPMN-Export")
         )
 
 
@@ -330,7 +331,7 @@ async def activate_process_definition(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Prozess-Aktivierung")
         )
 
 
@@ -356,7 +357,7 @@ async def deactivate_process_definition(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Prozess-Deaktivierung")
         )
 
 
@@ -407,7 +408,7 @@ async def start_process_instance(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Prozess-Start")
         )
 
 
@@ -499,7 +500,7 @@ async def terminate_process_instance(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Prozess-Terminierung")
         )
 
 
@@ -530,7 +531,7 @@ async def send_signal_to_instance(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Signal-Verarbeitung")
         )
 
 
@@ -691,7 +692,7 @@ async def claim_task(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Aufgabe-Uebernehmen")
         )
 
 
@@ -718,7 +719,7 @@ async def unclaim_task(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Aufgabe-Freigeben")
         )
 
 
@@ -751,7 +752,7 @@ async def complete_task(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Aufgabe-Abschliessen")
         )
 
 
@@ -781,7 +782,7 @@ async def delegate_task(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Aufgabe-Delegieren")
         )
 
 
@@ -954,5 +955,5 @@ async def deploy_template(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Template-Deployment")
         )

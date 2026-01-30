@@ -10,6 +10,8 @@ Features:
 - Hit/Miss-Metriken
 """
 
+from __future__ import annotations
+
 import asyncio
 import hashlib
 import json
@@ -17,8 +19,6 @@ import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -26,6 +26,7 @@ import redis.asyncio as aioredis
 import structlog
 
 from app.core.config import settings
+from app.core.safe_errors import safe_error_log
 
 if TYPE_CHECKING:
     from app.services.embedding_service import EmbeddingService
@@ -161,6 +162,9 @@ class SemanticCacheService:
         self._initialized = False
 
         # Lokaler In-Memory Cache fuer Hot-Entries
+        # SECURITY WARNING: Falls dieser Cache aktiviert wird, MUSS company_id im Key
+        # enthalten sein fuer Multi-Tenant Isolation (CWE-639)!
+        # Format: f"{company_id}:{prompt_hash}" statt nur prompt_hash
         self._local_cache: Dict[str, Tuple[List[float], str]] = {}
         self._local_cache_max = 100
 
@@ -176,7 +180,7 @@ class SemanticCacheService:
                 await self._redis.ping()
                 logger.info("semantic_cache_redis_connected", url=self._redis_url[:30])
             except Exception as e:
-                logger.warning("semantic_cache_redis_error", error=str(e))
+                logger.warning("semantic_cache_redis_error", **safe_error_log(e))
                 self._redis = None
         return self._redis
 
@@ -186,22 +190,30 @@ class SemanticCacheService:
             try:
                 from app.services.embedding_service import EmbeddingService
 
+
                 self._embedding_service = EmbeddingService()
             except Exception as e:
-                logger.warning("embedding_service_init_error", error=str(e))
+                logger.warning("embedding_service_init_error", **safe_error_log(e))
         return self._embedding_service
 
-    def _compute_prompt_hash(self, prompt: str, model: str = "") -> str:
+    def _compute_prompt_hash(
+        self, prompt: str, model: str = "", company_id: str = ""
+    ) -> str:
         """Berechnet Hash fuer Prompt.
+
+        SECURITY: Multi-Tenant Cache Isolation (CWE-639)
+        Der Hash beinhaltet company_id um Cross-Tenant LLM Response Leaks zu verhindern.
 
         Args:
             prompt: Der Prompt
             model: Optionales Modell
+            company_id: Company-ID fuer Multi-Tenant Isolation (PFLICHT fuer Production)
 
         Returns:
             SHA256 Hash
         """
-        content = f"{model}:{prompt}".encode("utf-8")
+        # SECURITY: company_id MUSS im Hash enthalten sein fuer Multi-Tenant Isolation
+        content = f"{company_id}:{model}:{prompt}".encode("utf-8")
         return hashlib.sha256(content).hexdigest()
 
     def _cosine_similarity(
@@ -248,19 +260,24 @@ class SemanticCacheService:
             embedding = await embedding_service.embed_query_async(text)
             return embedding.tolist() if isinstance(embedding, np.ndarray) else embedding
         except Exception as e:
-            logger.warning("embedding_generation_error", error=str(e))
+            logger.warning("embedding_generation_error", **safe_error_log(e))
             return None
 
     async def get(
         self,
         prompt: str,
         model: str = "",
+        company_id: str = "",
     ) -> CacheHit:
         """Sucht nach Cache-Hit basierend auf semantischer Aehnlichkeit.
+
+        SECURITY: Multi-Tenant Cache Isolation (CWE-639)
+        company_id MUSS uebergeben werden fuer sichere Multi-Tenant Nutzung.
 
         Args:
             prompt: Der Prompt
             model: Optionales Modell
+            company_id: Company-ID fuer Multi-Tenant Isolation (PFLICHT fuer Production)
 
         Returns:
             CacheHit mit Ergebnis
@@ -268,7 +285,8 @@ class SemanticCacheService:
         start_time = time.time()
 
         # Exakter Hash-Match zuerst (schnell)
-        prompt_hash = self._compute_prompt_hash(prompt, model)
+        # SECURITY: company_id wird im Hash verwendet fuer Multi-Tenant Isolation
+        prompt_hash = self._compute_prompt_hash(prompt, model, company_id)
 
         redis = await self._get_redis()
         if redis:
@@ -305,7 +323,7 @@ class SemanticCacheService:
                             lookup_time_ms=lookup_time,
                         )
             except Exception as e:
-                logger.warning("cache_exact_lookup_error", error=str(e))
+                logger.warning("cache_exact_lookup_error", **safe_error_log(e))
 
         # Kein exakter Match - Semantic Search
         prompt_embedding = await self._get_embedding(prompt)
@@ -348,10 +366,10 @@ class SemanticCacheService:
                             best_match = entry
 
                     except Exception as e:
-                        logger.debug("cache_entry_error", key=key, error=str(e))
+                        logger.debug("cache_entry_error", key=key, **safe_error_log(e))
 
             except Exception as e:
-                logger.warning("cache_semantic_lookup_error", error=str(e))
+                logger.warning("cache_semantic_lookup_error", **safe_error_log(e))
 
         lookup_time = int((time.time() - start_time) * 1000)
 
@@ -405,22 +423,28 @@ class SemanticCacheService:
         prompt: str,
         response: str,
         model: str = "",
+        company_id: str = "",
         ttl: Optional[int] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """Speichert Antwort im Cache.
 
+        SECURITY: Multi-Tenant Cache Isolation (CWE-639)
+        company_id MUSS uebergeben werden fuer sichere Multi-Tenant Nutzung.
+
         Args:
             prompt: Der Prompt
             response: Die LLM-Antwort
             model: Verwendetes Modell
+            company_id: Company-ID fuer Multi-Tenant Isolation (PFLICHT fuer Production)
             ttl: Optionale TTL in Sekunden
             metadata: Optionale Metadaten
 
         Returns:
             True bei Erfolg
         """
-        prompt_hash = self._compute_prompt_hash(prompt, model)
+        # SECURITY: company_id wird im Hash verwendet fuer Multi-Tenant Isolation
+        prompt_hash = self._compute_prompt_hash(prompt, model, company_id)
         prompt_embedding = await self._get_embedding(prompt)
 
         if not prompt_embedding:
@@ -464,21 +488,26 @@ class SemanticCacheService:
                 return True
 
             except Exception as e:
-                logger.warning("cache_set_error", error=str(e))
+                logger.warning("cache_set_error", **safe_error_log(e))
 
         return False
 
-    async def invalidate(self, prompt: str, model: str = "") -> bool:
+    async def invalidate(self, prompt: str, model: str = "", company_id: str = "") -> bool:
         """Invalidiert Cache-Eintrag.
+
+        SECURITY: Multi-Tenant Cache Isolation (CWE-639)
+        company_id MUSS uebergeben werden fuer sichere Multi-Tenant Nutzung.
 
         Args:
             prompt: Der Prompt
             model: Verwendetes Modell
+            company_id: Company-ID fuer Multi-Tenant Isolation (PFLICHT fuer Production)
 
         Returns:
             True wenn Eintrag gefunden und geloescht
         """
-        prompt_hash = self._compute_prompt_hash(prompt, model)
+        # SECURITY: company_id wird im Hash verwendet fuer Multi-Tenant Isolation
+        prompt_hash = self._compute_prompt_hash(prompt, model, company_id)
         cache_key = f"{CACHE_KEY_PREFIX}:{prompt_hash}"
 
         redis = await self._get_redis()
@@ -488,7 +517,7 @@ class SemanticCacheService:
                 await redis.srem(CACHE_INDEX_KEY, cache_key)
                 return deleted > 0
             except Exception as e:
-                logger.warning("cache_invalidate_error", error=str(e))
+                logger.warning("cache_invalidate_error", **safe_error_log(e))
 
         return False
 
@@ -520,7 +549,7 @@ class SemanticCacheService:
             return len(keys)
 
         except Exception as e:
-            logger.warning("cache_clear_error", error=str(e))
+            logger.warning("cache_clear_error", **safe_error_log(e))
             return 0
 
     async def _update_stats(
@@ -556,7 +585,7 @@ class SemanticCacheService:
                 await redis.hincrby(CACHE_STATS_KEY, "misses", 1)
 
         except Exception as e:
-            logger.debug("stats_update_error", error=str(e))
+            logger.debug("stats_update_error", **safe_error_log(e))
 
     async def get_stats(self) -> CacheStats:
         """Gibt Cache-Statistiken zurueck.
@@ -592,7 +621,7 @@ class SemanticCacheService:
             )
 
         except Exception as e:
-            logger.warning("stats_get_error", error=str(e))
+            logger.warning("stats_get_error", **safe_error_log(e))
             return CacheStats()
 
     async def close(self) -> None:

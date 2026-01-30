@@ -146,7 +146,7 @@ class BackupValidator:
                 self._checksum_cache = json.load(f)
             logger.debug("checksum_cache_geladen", anzahl=len(self._checksum_cache))
         except (IOError, OSError, json.JSONDecodeError, ValueError) as e:
-            logger.warning("checksum_cache_laden_fehlgeschlagen", error=str(e))
+            logger.warning("checksum_cache_laden_fehlgeschlagen", **safe_error_log(e))
 
     def _save_checksum_cache(self) -> None:
         """Speichere Checksum-Cache in Datei."""
@@ -158,7 +158,7 @@ class BackupValidator:
                 json.dump(self._checksum_cache, f, indent=2)
             logger.debug("checksum_cache_gespeichert")
         except (IOError, OSError, TypeError) as e:
-            logger.warning("checksum_cache_speichern_fehlgeschlagen", error=str(e))
+            logger.warning("checksum_cache_speichern_fehlgeschlagen", **safe_error_log(e))
 
     # =========================================================================
     # Haupt-Validierungsmethoden
@@ -182,6 +182,7 @@ class BackupValidator:
             ValidationResult mit Status und Details
         """
         import time
+
         start_time = time.perf_counter()
 
         if not path.exists():

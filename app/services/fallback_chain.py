@@ -12,6 +12,7 @@ Feinpoliert und durchdacht - Enterprise-grade Fallback Management.
 
 import asyncio
 import time
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -25,6 +26,7 @@ from app.services.confidence_service import (
     get_confidence_service
 )
 from app.services.circuit_breaker import (
+
     CircuitBreakerRegistry,
     CircuitBreakerError,
     CircuitState,
@@ -443,14 +445,14 @@ class FallbackChain:
                 fallback_reasons.append({
                     "backend": backend_name,
                     "reason": reason.value,
-                    "details": str(e)
+                    "details": safe_error_detail(e, "Fallback")
                 })
                 self._fallback_counts[backend_name] = self._fallback_counts.get(backend_name, 0) + 1
                 logger.error(
                     "fallback_chain_error",
                     document_id=document_id,
                     backend=backend_name,
-                    error=str(e),
+                    **safe_error_log(e),
                     error_type=error_type
                 )
 

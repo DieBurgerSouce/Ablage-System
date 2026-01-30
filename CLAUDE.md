@@ -1,772 +1,726 @@
-# Ablage-System OCR - Claude Code Schnellreferenz
+# Claude Code Configuration - Claude Flow V3
 
-> **Detaillierte Dokumentation**: `.claude/CLAUDE.md`
-> **Memory-Dateien**: `.claude/memory/` (Auto-Managed)
-> **Letzte Aktualisierung**: 2026-01-20
+## 🚨 AUTOMATIC SWARM ORCHESTRATION
+
+**When starting work on complex tasks, Claude Code MUST automatically:**
+
+1. **Initialize the swarm** using CLI tools via Bash
+2. **Spawn concurrent agents** using Claude Code's Task tool
+3. **Coordinate via hooks** and memory
+
+### 🚨 CRITICAL: CLI + Task Tool in SAME Message
+
+**When user says "spawn swarm" or requests complex work, Claude Code MUST in ONE message:**
+1. Call CLI tools via Bash to initialize coordination
+2. **IMMEDIATELY** call Task tool to spawn REAL working agents
+3. Both CLI and Task calls must be in the SAME response
+
+**CLI coordinates, Task tool agents do the actual work!**
+
+### 🤖 INTELLIGENT 3-TIER MODEL ROUTING (ADR-026)
+
+**The routing system has 3 tiers for optimal cost/performance:**
+
+| Tier | Handler | Latency | Cost | Use Cases |
+|------|---------|---------|------|-----------|
+| **1** | Agent Booster | <1ms | $0 | Simple transforms (var→const, add-types, remove-console) |
+| **2** | Haiku | ~500ms | $0.0002 | Simple tasks, bug fixes, low complexity |
+| **3** | Sonnet/Opus | 2-5s | $0.003-$0.015 | Architecture, security, complex reasoning |
+
+**Before spawning agents, get routing recommendation:**
+```bash
+npx @claude-flow/cli@latest hooks pre-task --description "[task description]"
+```
+
+**When you see these recommendations:**
+
+1. `[AGENT_BOOSTER_AVAILABLE]` → Skip LLM entirely, use Edit tool directly
+   - Intent types: `var-to-const`, `add-types`, `add-error-handling`, `async-await`, `add-logging`, `remove-console`
+
+2. `[TASK_MODEL_RECOMMENDATION] Use model="X"` → Use that model in Task tool:
+```javascript
+Task({
+  prompt: "...",
+  subagent_type: "coder",
+  model: "haiku"  // ← USE THE RECOMMENDED MODEL (haiku/sonnet/opus)
+})
+```
+
+**Benefits:** 75% cost reduction, 352x faster for Tier 1 tasks
 
 ---
 
-<!-- AUTO-MANAGED: project-status -->
-## Projekt-Status
+### 🛡️ Anti-Drift Config (PREFERRED)
 
-| Feld | Wert |
-|------|------|
-| **Status** | Production-Ready |
-| **Version** | 1.1 |
-| **Hardware** | RTX 4080 16GB VRAM |
-| **Sprache** | Deutsch-First (100% Umlaut-Genauigkeit) |
+**Use this to prevent agent drift:**
+```bash
+# Small teams (6-8 agents) - use hierarchical for tight control
+npx @claude-flow/cli@latest swarm init --topology hierarchical --max-agents 8 --strategy specialized
 
-**Aktuelle Issues**: Siehe `.claude/memory/KNOWN_ISSUES.md`
-**Aenderungen**: Siehe `.claude/memory/RECENT_CHANGES.md`
-<!-- /AUTO-MANAGED: project-status -->
+# Large teams (10-15 agents) - use hierarchical-mesh for V3 queen + peer communication
+npx @claude-flow/cli@latest swarm init --topology hierarchical-mesh --max-agents 15 --strategy specialized
+```
+
+**Valid Topologies:**
+- `hierarchical` - Queen controls workers directly (anti-drift for small teams)
+- `hierarchical-mesh` - V3 queen + peer communication (recommended for 10+ agents)
+- `mesh` - Fully connected peer network
+- `ring` - Circular communication pattern
+- `star` - Central coordinator with spokes
+- `hybrid` - Dynamic topology switching
+
+**Anti-Drift Guidelines:**
+- **hierarchical**: Coordinator catches divergence
+- **max-agents 6-8**: Smaller team = less drift
+- **specialized**: Clear roles, no overlap
+- **consensus**: raft (leader maintains state)
 
 ---
 
-## `.claude/` Verzeichnis
+### 🔄 Auto-Start Swarm Protocol (Background Execution)
 
-```
-.claude/
-├── CLAUDE.md              # Core Reference (~500 Zeilen)
-├── memory/                # AUTO-MANAGED Dateien
-│   ├── PROJECT_STATUS.md  # Service Health, Deployments
-│   ├── KNOWN_ISSUES.md    # Bugs, Issues
-│   ├── RECENT_CHANGES.md  # Changelog
-│   └── DEPENDENCIES.md    # Tech Stack
-├── commands/              # Slash Commands
-├── hooks/                 # Pre/Post Hooks
-├── agents/                # Subagents
-└── Docs/                  # Themen-Dokumentation (114 Dateien)
-```
+When the user requests a complex task, **spawn agents in background and WAIT for completion:**
 
-### Slash Commands
+```javascript
+// STEP 1: Initialize swarm coordination (anti-drift config)
+Bash("npx @claude-flow/cli@latest swarm init --topology hierarchical --max-agents 8 --strategy specialized")
 
-| Situation | Command |
-|-----------|---------|
-| System pruefen | `/check-system` |
-| Deutsche Texte | `/validate-german` |
-| Dokument verarbeiten | `/process-doc <pfad>` |
-| GPU-Probleme | `/debug-gpu` |
-| OCR-Qualitaet | `/ocr-benchmark` |
-| Tests ausfuehren | `/quick-test` |
-| Code reviewen | `/review-pr` |
-| **WebApp testen** | **`/test-webapp`** |
+// STEP 2: Spawn ALL agents IN BACKGROUND in a SINGLE message
+// Use run_in_background: true so agents work concurrently
+Task({
+  prompt: "Research requirements, analyze codebase patterns, store findings in memory",
+  subagent_type: "researcher",
+  description: "Research phase",
+  run_in_background: true  // ← CRITICAL: Run in background
+})
+Task({
+  prompt: "Design architecture based on research. Document decisions.",
+  subagent_type: "system-architect",
+  description: "Architecture phase",
+  run_in_background: true
+})
+Task({
+  prompt: "Implement the solution following the design. Write clean code.",
+  subagent_type: "coder",
+  description: "Implementation phase",
+  run_in_background: true
+})
+Task({
+  prompt: "Write comprehensive tests for the implementation.",
+  subagent_type: "tester",
+  description: "Testing phase",
+  run_in_background: true
+})
+Task({
+  prompt: "Review code quality, security, and best practices.",
+  subagent_type: "reviewer",
+  description: "Review phase",
+  run_in_background: true
+})
 
-### Verfuegbare Skills
-
-| Situation | Skill |
-|-----------|-------|
-| Frontend/E2E Tests | `@webapp-tester-mcp` |
-| OCR debuggen | `@ocr-debug` |
-| Deutsche Texte | `@german-text` |
-| Docker-Dev | `@docker-dev` |
-
----
-
-## Architektur
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Ablage-System OCR                        │
-├─────────────────────────────────────────────────────────────┤
-│  Frontend (Nginx:80)     │  Grafana (:3002)  │  Prometheus  │
-├──────────────────────────┴───────────────────┴──────────────┤
-│                    FastAPI Backend (:8000)                  │
-├─────────────────────────────────────────────────────────────┤
-│  Celery Workers  │  Redis (:6380)  │  PostgreSQL (:5433)    │
-├─────────────────────────────────────────────────────────────┤
-│  OCR: DeepSeek | GOT-OCR | Surya | Surya-GPU               │
-├─────────────────────────────────────────────────────────────┤
-│                 GPU: NVIDIA RTX 4080 (16GB)                 │
-└─────────────────────────────────────────────────────────────┘
+// STEP 3: WAIT - Tell user agents are working, then STOP
+// Say: "I've spawned 5 agents to work on this in parallel. They'll report back when done."
+// DO NOT check status repeatedly. Just wait for user or agent responses.
 ```
 
----
+### ⏸️ CRITICAL: Spawn and Wait Pattern
 
-## Docker-Only Entwicklung
+**After spawning background agents:**
+
+1. **TELL USER** - "I've spawned X agents working in parallel on: [list tasks]"
+2. **STOP** - Do not continue with more tool calls
+3. **WAIT** - Let the background agents complete their work
+4. **RESPOND** - When agents return results, review and synthesize
+
+**Example response after spawning:**
+```
+I've launched 5 concurrent agents to work on this:
+- 🔍 Researcher: Analyzing requirements and codebase
+- 🏗️ Architect: Designing the implementation approach
+- 💻 Coder: Implementing the solution
+- 🧪 Tester: Writing tests
+- 👀 Reviewer: Code review and security check
+
+They're working in parallel. I'll synthesize their results when they complete.
+```
+
+### 🚫 DO NOT:
+- Continuously check swarm status
+- Poll TaskOutput repeatedly
+- Add more tool calls after spawning
+- Ask "should I check on the agents?"
+
+### ✅ DO:
+- Spawn all agents in ONE message
+- Tell user what's happening
+- Wait for agent results to arrive
+- Synthesize results when they return
+
+## 🧠 AUTO-LEARNING PROTOCOL
+
+### Before Starting Any Task
+```bash
+# 1. Search memory for relevant patterns from past successes
+Bash("npx @claude-flow/cli@latest memory search --query '[task keywords]' --namespace patterns")
+
+# 2. Check if similar task was done before
+Bash("npx @claude-flow/cli@latest memory search --query '[task type]' --namespace tasks")
+
+# 3. Load learned optimizations
+Bash("npx @claude-flow/cli@latest hooks route --task '[task description]'")
+```
+
+### After Completing Any Task Successfully
+```bash
+# 1. Store successful pattern for future reference
+Bash("npx @claude-flow/cli@latest memory store --namespace patterns --key '[pattern-name]' --value '[what worked]'")
+
+# 2. Train neural patterns on the successful approach
+Bash("npx @claude-flow/cli@latest hooks post-edit --file '[main-file]' --train-neural true")
+
+# 3. Record task completion with metrics
+Bash("npx @claude-flow/cli@latest hooks post-task --task-id '[id]' --success true --store-results true")
+
+# 4. Trigger optimization worker if performance-related
+Bash("npx @claude-flow/cli@latest hooks worker dispatch --trigger optimize")
+```
+
+### Continuous Improvement Triggers
+
+| Trigger | Worker | When to Use |
+|---------|--------|-------------|
+| After major refactor | `optimize` | Performance optimization |
+| After adding features | `testgaps` | Find missing test coverage |
+| After security changes | `audit` | Security analysis |
+| After API changes | `document` | Update documentation |
+| Every 5+ file changes | `map` | Update codebase map |
+| Complex debugging | `deepdive` | Deep code analysis |
+
+### Memory-Enhanced Development
+
+**ALWAYS check memory before:**
+- Starting a new feature (search for similar implementations)
+- Debugging an issue (search for past solutions)
+- Refactoring code (search for learned patterns)
+- Performance work (search for optimization strategies)
+
+**ALWAYS store in memory after:**
+- Solving a tricky bug (store the solution pattern)
+- Completing a feature (store the approach)
+- Finding a performance fix (store the optimization)
+- Discovering a security issue (store the vulnerability pattern)
+
+### 📋 Agent Routing (Anti-Drift)
+
+| Code | Task | Agents |
+|------|------|--------|
+| 1 | Bug Fix | coordinator, researcher, coder, tester |
+| 3 | Feature | coordinator, architect, coder, tester, reviewer |
+| 5 | Refactor | coordinator, architect, coder, reviewer |
+| 7 | Performance | coordinator, perf-engineer, coder |
+| 9 | Security | coordinator, security-architect, auditor |
+| 11 | Docs | researcher, api-docs |
+
+**Codes 1-9: hierarchical/specialized (anti-drift). Code 11: mesh/balanced**
+
+### 🎯 Task Complexity Detection
+
+**AUTO-INVOKE SWARM when task involves:**
+- Multiple files (3+)
+- New feature implementation
+- Refactoring across modules
+- API changes with tests
+- Security-related changes
+- Performance optimization
+- Database schema changes
+
+**SKIP SWARM for:**
+- Single file edits
+- Simple bug fixes (1-2 lines)
+- Documentation updates
+- Configuration changes
+- Quick questions/exploration
+
+## 🚨 CRITICAL: CONCURRENT EXECUTION & FILE MANAGEMENT
+
+**ABSOLUTE RULES**:
+1. ALL operations MUST be concurrent/parallel in a single message
+2. **NEVER save working files, text/mds and tests to the root folder**
+3. ALWAYS organize files in appropriate subdirectories
+4. **USE CLAUDE CODE'S TASK TOOL** for spawning agents concurrently, not just MCP
+
+### ⚡ GOLDEN RULE: "1 MESSAGE = ALL RELATED OPERATIONS"
+
+**MANDATORY PATTERNS:**
+- **TodoWrite**: ALWAYS batch ALL todos in ONE call (5-10+ todos minimum)
+- **Task tool (Claude Code)**: ALWAYS spawn ALL agents in ONE message with full instructions
+- **File operations**: ALWAYS batch ALL reads/writes/edits in ONE message
+- **Bash commands**: ALWAYS batch ALL terminal operations in ONE message
+- **Memory operations**: ALWAYS batch ALL memory store/retrieve in ONE message
+
+### 📁 File Organization Rules
+
+**NEVER save to root folder. Use these directories:**
+- `/src` - Source code files
+- `/tests` - Test files
+- `/docs` - Documentation and markdown files
+- `/config` - Configuration files
+- `/scripts` - Utility scripts
+- `/examples` - Example code
+
+## Project Config (Anti-Drift Defaults)
+
+- **Topology**: hierarchical (prevents drift)
+- **Max Agents**: 8 (smaller = less drift)
+- **Strategy**: specialized (clear roles)
+- **Consensus**: raft
+- **Memory**: hybrid
+- **HNSW**: Enabled
+- **Neural**: Enabled
+
+## 🚀 V3 CLI Commands (26 Commands, 140+ Subcommands)
+
+### Core Commands
+
+| Command | Subcommands | Description |
+|---------|-------------|-------------|
+| `init` | 4 | Project initialization with wizard, presets, skills, hooks |
+| `agent` | 8 | Agent lifecycle (spawn, list, status, stop, metrics, pool, health, logs) |
+| `swarm` | 6 | Multi-agent swarm coordination and orchestration |
+| `memory` | 11 | AgentDB memory with vector search (150x-12,500x faster) |
+| `mcp` | 9 | MCP server management and tool execution |
+| `task` | 6 | Task creation, assignment, and lifecycle |
+| `session` | 7 | Session state management and persistence |
+| `config` | 7 | Configuration management and provider setup |
+| `status` | 3 | System status monitoring with watch mode |
+| `workflow` | 6 | Workflow execution and template management |
+| `hooks` | 17 | Self-learning hooks + 12 background workers |
+| `hive-mind` | 6 | Queen-led Byzantine fault-tolerant consensus |
+
+### Advanced Commands
+
+| Command | Subcommands | Description |
+|---------|-------------|-------------|
+| `daemon` | 5 | Background worker daemon (start, stop, status, trigger, enable) |
+| `neural` | 5 | Neural pattern training (train, status, patterns, predict, optimize) |
+| `security` | 6 | Security scanning (scan, audit, cve, threats, validate, report) |
+| `performance` | 5 | Performance profiling (benchmark, profile, metrics, optimize, report) |
+| `providers` | 5 | AI providers (list, add, remove, test, configure) |
+| `plugins` | 5 | Plugin management (list, install, uninstall, enable, disable) |
+| `deployment` | 5 | Deployment management (deploy, rollback, status, environments, release) |
+| `embeddings` | 4 | Vector embeddings (embed, batch, search, init) - 75x faster with agentic-flow |
+| `claims` | 4 | Claims-based authorization (check, grant, revoke, list) |
+| `migrate` | 5 | V2 to V3 migration with rollback support |
+| `doctor` | 1 | System diagnostics with health checks |
+| `completions` | 4 | Shell completions (bash, zsh, fish, powershell) |
+
+### Quick CLI Examples
 
 ```bash
-# Starten
-docker-compose up -d
+# Initialize project
+npx @claude-flow/cli@latest init --wizard
 
-# Frontend neu bauen
-docker-compose build frontend && docker-compose up -d frontend
+# Start daemon with background workers
+npx @claude-flow/cli@latest daemon start
 
-# Backend neu bauen
-docker-compose build backend && docker-compose up -d backend
+# Spawn an agent
+npx @claude-flow/cli@latest agent spawn -t coder --name my-coder
 
-# Alles neu bauen
-docker-compose build && docker-compose up -d
+# Initialize swarm
+npx @claude-flow/cli@latest swarm init --v3-mode
 
-# Tests
-docker-compose exec backend pytest tests/unit/ -v
+# Search memory (HNSW-indexed)
+npx @claude-flow/cli@latest memory search --query "authentication patterns"
 
-# GPU-Status
-nvidia-smi
+# System diagnostics
+npx @claude-flow/cli@latest doctor --fix
 
-# Celery Worker
-celery -A app.workers.celery_app worker --loglevel=info --concurrency=1 --pool=solo
+# Security scan
+npx @claude-flow/cli@latest security scan --depth full
+
+# Performance benchmark
+npx @claude-flow/cli@latest performance benchmark --suite all
 ```
 
----
+## 🚀 Available Agents (60+ Types)
 
-## OCR Backends
+### Core Development
+`coder`, `reviewer`, `tester`, `planner`, `researcher`
 
-| Backend | VRAM | GPU | Staerken |
-|---------|------|-----|----------|
-| DeepSeek-Janus-Pro | 12GB | Ja | Beste Umlaut-Genauigkeit, Fraktur |
-| GOT-OCR 2.0 | 10GB | Nein | Tabellen, Formeln, schnell |
-| Surya + Docling | 0GB | Nein | CPU-Fallback, Layout |
-| Surya GPU | 4GB | Ja | Schnelle GPU-Variante |
+### V3 Specialized Agents
+`security-architect`, `security-auditor`, `memory-specialist`, `performance-engineer`
 
----
+### 🔐 @claude-flow/security
+CVE remediation, input validation, path security:
+- `InputValidator` - Zod validation
+- `PathValidator` - Traversal prevention
+- `SafeExecutor` - Injection protection
 
-<!-- AUTO-MANAGED: enterprise-features -->
-## Enterprise Features
+### Swarm Coordination
+`hierarchical-coordinator`, `mesh-coordinator`, `adaptive-coordinator`, `collective-intelligence-coordinator`, `swarm-memory-manager`
 
-### Lexware Integration (Januar 2026)
+### Consensus & Distributed
+`byzantine-coordinator`, `raft-manager`, `gossip-coordinator`, `consensus-builder`, `crdt-synchronizer`, `quorum-manager`, `security-manager`
 
-**Status**: Production-Ready | **Migration**: 089, 090
+### Performance & Optimization
+`perf-analyzer`, `performance-benchmarker`, `task-orchestrator`, `memory-coordinator`, `smart-agent`
 
-| Service | Beschreibung |
-|---------|--------------|
-| `LexwareImportService` | Excel-Import Kunden/Lieferanten (Folie & Messer) |
-| `EntitySearchService` | Suche nach Kundennr, IBAN, VAT-ID, Matchcode |
-| `DocumentEntityLinkerService` | Auto-Linking Dokumente → Entities (75%+ Confidence) |
+### GitHub & Repository
+`github-modes`, `pr-manager`, `code-review-swarm`, `issue-tracker`, `release-manager`, `workflow-automation`, `project-board-sync`, `repo-architect`, `multi-repo-swarm`
 
-**API Endpoints:**
-- `POST /api/v1/lexware/import/customers`
-- `POST /api/v1/lexware/import/suppliers`
-- `POST /api/v1/lexware/link-documents`
-- `GET /api/v1/lexware/statistics`
+### SPARC Methodology
+`sparc-coord`, `sparc-coder`, `specification`, `pseudocode`, `architecture`, `refinement`
 
-**Celery Tasks:**
-- `entity_linking.link_all_documents` - Batch-Linking nach Import
-- `entity_linking.link_single_document` - Nach OCR-Completion
+### Specialized Development
+`backend-dev`, `mobile-dev`, `ml-developer`, `cicd-engineer`, `api-docs`, `system-architect`, `code-analyzer`, `base-template-generator`
 
-**Key Features:**
-- Intelligentes Konflikt-Handling (kritisch vs harmlos)
-- Namensvarianten-Erkennung (Müller GmbH vs Mueller GmbH)
-- Multi-Strategie Matching: Kundennr (99%), Matchcode (95%), IBAN/VAT (90%), Fuzzy-Name (80%), Adresse (75%)
-- Pattern-Extraktion aus OCR-Text
+### Testing & Validation
+`tdd-london-swarm`, `production-validator`
 
-**Datenmodell (BusinessEntity):**
-```python
-lexware_ids: JSONB  # {"folie": {"kd_nr": "12345", "matchcode": "MUELLER"}, ...}
-company_presence: JSONB  # ["folie", "messer"]
-primary_customer_number: str  # Hauptkundennummer
-primary_supplier_number: str  # Hauptlieferantennummer
+## 🪝 V3 Hooks System (27 Hooks + 12 Workers)
+
+### All Available Hooks
+
+| Hook | Description | Key Options |
+|------|-------------|-------------|
+| `pre-edit` | Get context before editing files | `--file`, `--operation` |
+| `post-edit` | Record editing outcome for learning | `--file`, `--success`, `--train-neural` |
+| `pre-command` | Assess risk before commands | `--command`, `--validate-safety` |
+| `post-command` | Record command execution outcome | `--command`, `--track-metrics` |
+| `pre-task` | Record task start, get agent suggestions | `--description`, `--coordinate-swarm` |
+| `post-task` | Record task completion for learning | `--task-id`, `--success`, `--store-results` |
+| `session-start` | Start/restore session (v2 compat) | `--session-id`, `--auto-configure` |
+| `session-end` | End session and persist state | `--generate-summary`, `--export-metrics` |
+| `session-restore` | Restore a previous session | `--session-id`, `--latest` |
+| `route` | Route task to optimal agent | `--task`, `--context`, `--top-k` |
+| `route-task` | (v2 compat) Alias for route | `--task`, `--auto-swarm` |
+| `explain` | Explain routing decision | `--topic`, `--detailed` |
+| `pretrain` | Bootstrap intelligence from repo | `--model-type`, `--epochs` |
+| `build-agents` | Generate optimized agent configs | `--agent-types`, `--focus` |
+| `metrics` | View learning metrics dashboard | `--v3-dashboard`, `--format` |
+| `transfer` | Transfer patterns via IPFS registry | `store`, `from-project` |
+| `list` | List all registered hooks | `--format` |
+| `intelligence` | RuVector intelligence system | `trajectory-*`, `pattern-*`, `stats` |
+| `worker` | Background worker management | `list`, `dispatch`, `status`, `detect` |
+| `progress` | Check V3 implementation progress | `--detailed`, `--format` |
+| `statusline` | Generate dynamic statusline | `--json`, `--compact`, `--no-color` |
+| `coverage-route` | Route based on test coverage gaps | `--task`, `--path` |
+| `coverage-suggest` | Suggest coverage improvements | `--path` |
+| `coverage-gaps` | List coverage gaps with priorities | `--format`, `--limit` |
+| `pre-bash` | (v2 compat) Alias for pre-command | Same as pre-command |
+| `post-bash` | (v2 compat) Alias for post-command | Same as post-command |
+
+### 12 Background Workers
+
+| Worker | Priority | Description |
+|--------|----------|-------------|
+| `ultralearn` | normal | Deep knowledge acquisition |
+| `optimize` | high | Performance optimization |
+| `consolidate` | low | Memory consolidation |
+| `predict` | normal | Predictive preloading |
+| `audit` | critical | Security analysis |
+| `map` | normal | Codebase mapping |
+| `preload` | low | Resource preloading |
+| `deepdive` | normal | Deep code analysis |
+| `document` | normal | Auto-documentation |
+| `refactor` | normal | Refactoring suggestions |
+| `benchmark` | normal | Performance benchmarking |
+| `testgaps` | normal | Test coverage analysis |
+
+### Essential Hook Commands
+
+```bash
+# Core hooks
+npx @claude-flow/cli@latest hooks pre-task --description "[task]"
+npx @claude-flow/cli@latest hooks post-task --task-id "[id]" --success true
+npx @claude-flow/cli@latest hooks post-edit --file "[file]" --train-neural true
+
+# Session management
+npx @claude-flow/cli@latest hooks session-start --session-id "[id]"
+npx @claude-flow/cli@latest hooks session-end --export-metrics true
+npx @claude-flow/cli@latest hooks session-restore --session-id "[id]"
+
+# Intelligence routing
+npx @claude-flow/cli@latest hooks route --task "[task]"
+npx @claude-flow/cli@latest hooks explain --topic "[topic]"
+
+# Neural learning
+npx @claude-flow/cli@latest hooks pretrain --model-type moe --epochs 10
+npx @claude-flow/cli@latest hooks build-agents --agent-types coder,tester
+
+# Background workers
+npx @claude-flow/cli@latest hooks worker list
+npx @claude-flow/cli@latest hooks worker dispatch --trigger audit
+npx @claude-flow/cli@latest hooks worker status
+
+# Coverage-aware routing
+npx @claude-flow/cli@latest hooks coverage-gaps --format table
+npx @claude-flow/cli@latest hooks coverage-route --task "[task]"
+
+# Statusline (for Claude Code integration)
+npx @claude-flow/cli@latest hooks statusline
+npx @claude-flow/cli@latest hooks statusline --json
 ```
 
-**Details**: Siehe `.claude/Docs/Integrations/Lexware.md`
+## 🔄 Migration (V2 to V3)
 
-### Entity Risk Scoring (Januar 2026)
+```bash
+# Check migration status
+npx @claude-flow/cli@latest migrate status
 
-**Status**: Production-Ready | **Migration**: 092, 093
+# Run migration with backup
+npx @claude-flow/cli@latest migrate run --backup
 
-| Service | Beschreibung |
-|---------|--------------|
-| `RiskScoringService` | Risiko-Score Berechnung (0-100) für Geschäftspartner |
-| `InvoiceTracking` | Rechnungsverfolgung mit Mahnstufen (0-4) |
+# Rollback if needed
+npx @claude-flow/cli@latest migrate rollback
 
-**Risk Faktoren:**
-- payment_delay (35%): Zahlungsverzögerung in Tagen
-- default_rate (25%): Ausfallrate (überfällig/gesamt)
-- invoice_volume (15%): Rechnungsvolumen (höher = weniger Risiko)
-- document_frequency (10%): Regelmäßigkeit der Dokumente
-- relationship_age (15%): Beziehungsdauer in Monaten
-
-**API Endpoints:**
-- `GET/POST/PATCH/DELETE /api/v1/invoices/*` - CRUD
-- `POST /api/v1/invoices/{id}/mark-paid` - Rechnung bezahlt
-- `POST /api/v1/invoices/{id}/increase-dunning` - Mahnstufe erhöhen
-
-**Celery Tasks:**
-- `risk_scoring.calculate_all` - Täglich 02:00 (maintenance queue)
-- `risk_scoring.calculate_single` - Nach Invoice-Updates (metadata queue)
-- `risk_scoring.check_high_risk_entities` - High-Risk Alert (threshold: 75)
-
-**SECURITY**: NIEMALS Entity-Namen in Logs/Responses (PII-Compliance)
-
-### Skonto & Teilzahlungen (Januar 2026)
-
-**Status**: Production-Ready | **Migration**: 094
-
-| Service | Beschreibung |
-|---------|--------------|
-| `SkontoService` | Skonto-Berechnung, Deadline-Tracking, Auto-Detection |
-| `PartialPaymentService` | Teilzahlungen, Bank-Reconciliation |
-
-**API Endpoints:**
-- `GET/PATCH /api/v1/invoices/{id}/skonto` - Skonto verwalten
-- `POST /api/v1/invoices/{id}/apply-skonto` - Skonto anwenden
-- `GET /api/v1/invoices/skonto/upcoming` - Ablaufende Fristen
-- `POST/GET /api/v1/invoices/{id}/payments` - Teilzahlungen
-
-**Features:**
-- Auto-Detection von "2% Skonto 14 Tage" aus OCR
-- Deadline-Alerts vor Ablauf
-- Teilzahlungs-Tracking mit Status-Updates
-- Bank-Abgleich (Reconciliation)
-
-### Document Chain Tracking (Januar 2026)
-
-**Status**: Production-Ready | **Migration**: 095
-
-| Service | Beschreibung |
-|---------|--------------|
-| `DocumentChainService` | Auftragsketten Angebot→Auftrag→Lieferschein→Rechnung |
-
-**API Endpoints:**
-- `POST/GET /api/v1/document-chains` - Ketten erstellen/auflisten
-- `POST /api/v1/document-chains/link` - Dokumente verknuepfen
-- `GET /api/v1/document-chains/auto-match/{id}` - Auto-Matching
-- `GET /api/v1/document-chains/{id}/discrepancies` - Abweichungen
-
-**Features:**
-- Auto-Matching ueber Referenznummer (95%+), Kunde+Betrag (85%+)
-- Abweichungserkennung (Betraege, Mengen)
-- Kettenfortschritt-Tracking
-
-### Email & Folder Import (Januar 2026)
-
-**Status**: Production-Ready | **Frontend**: Vollstaendig
-
-| Service | Beschreibung |
-|---------|--------------|
-| `EmailImportService` | IMAP-Email-Abruf, Attachment-Extraktion, Entity-Matching |
-| `FolderImportService` | Dateisystem-Ueberwachung, Auto-Import |
-| `ImportRuleService` | Regelbasierte Verarbeitung (Bedingungen + Aktionen) |
-| `EmailSenderMatcherService` | Absender → Entity Zuordnung (85%+ Confidence) |
-
-**API Endpoints:**
-- `GET/POST/PATCH/DELETE /api/v1/imports/email/configs` - Email-Konfigurationen
-- `POST /api/v1/imports/email/configs/{id}/test` - IMAP-Verbindung testen
-- `POST /api/v1/imports/email/configs/{id}/sync` - Manueller Email-Sync
-- `GET/POST/PATCH/DELETE /api/v1/imports/folder/configs` - Folder-Konfigurationen
-- `POST /api/v1/imports/folder/configs/{id}/start|stop|poll` - Watcher-Steuerung
-- `GET/POST/PATCH/DELETE /api/v1/imports/rules` - Import-Regeln
-- `GET /api/v1/imports/logs` - Import-Logs mit Filterung
-
-**Celery Tasks (IMPORT_BEAT_SCHEDULE):**
-- `import.sync_all_email_configs` - Alle 15 Min
-- `import.poll_all_folder_configs` - Alle 5 Min
-- `import.retry_failed_imports` - Alle 30 Min
-- `import.cleanup_old_logs` - Taeglich 03:00
-- `import.check_connection_health` - Alle 30 Min
-
-**Features:**
-- IMAP Support mit SSL/TLS
-- Absender-Matching fuer automatische Entity-Zuordnung
-- Folder-Watching mit konfigurierbarem Polling
-- Import Rules mit Bedingungen und Aktionen
-- Automatischer Retry bei Fehlern
-
-**Frontend Routes:**
-- `/admin/imports/` - Import Dashboard
-- `/admin/imports/email` - Email-Konfigurationen
-- `/admin/imports/folder` - Folder-Konfigurationen
-- `/admin/imports/rules` - Import-Regeln Builder
-- `/admin/imports/logs` - Import-Logs
-
-**SECURITY**: Email-Passwoerter verschluesselt (AES-256-GCM), NIEMALS Email-Inhalte in Logs
-
-### OCR Self-Learning System (Januar 2026)
-
-**Status**: Production-Ready | **Migration**: Keine (JSONB-basiert)
-
-| Service | Beschreibung |
-|---------|--------------|
-| `SelfLearningOCRService` | Confidence-Kalibrierung, A/B Testing, Learning Modes |
-
-**Learning Modes:**
-- `aggressive`: Jede User-Korrektur fliesst sofort ein
-- `cautious`: Nur verifizierte Korrekturen
-- `batch`: Taeglich im Batch
-
-**API Endpoints:**
-- `POST /api/v1/ocr-learning/feedback` - Korrektur-Feedback
-- `POST /api/v1/ocr-learning/calibrate` - Kalibrierte Confidence
-- `GET /api/v1/ocr-learning/stats` - Statistiken
-- `POST /api/v1/ocr-learning/ab-test/start` - A/B Test starten (Admin)
-- `POST /api/v1/ocr-learning/mode/{mode}` - Modus setzen (Admin)
-
-**Frontend:** `/admin/ocr-learning` - Dashboard mit Stats, A/B Tests, Mode Selection
-
-**SECURITY**: Input-Whitelist-Validierung fuer Backends, Feldnamen, Korrektur-Typen, Test-IDs (Regex + Laengenbegrenzung)
-
-### MLOps Pipeline (Januar 2026)
-
-**Status**: Production-Ready | **Migration**: Keine (JSONB-basiert)
-
-| Service | Beschreibung |
-|---------|--------------|
-| `ModelRegistry` | Model Versioning mit Rollback-Capability |
-| `RetrainingService` | Automatisches Retraining bei 100+ Korrekturen |
-
-**Model Lifecycle**: DRAFT → CANDIDATE → ACTIVE → DEPRECATED/ROLLED_BACK
-
-**Celery Tasks:**
-- `mlops.check_retraining_threshold` - Taeglich 03:00
-- `mlops.run_retraining` - GPU-Queue, max 1h
-- `mlops.evaluate_model` - Entscheidet Promotion/Rejection
-- `mlops.rollback_if_degraded` - Automatisch bei >5% Degradation
-- `mlops.cleanup_old_versions` - Woechentlich, archiviert >90 Tage
-
-**Details**: Siehe `.claude/CLAUDE.md` - MLOps Pipeline Sektion
-
-### Help System (Januar 2026)
-
-**Status**: Production-Ready | **Migration**: Keine (JSONB in User.preferences)
-
-| Service | Beschreibung |
-|---------|--------------|
-| `Help System API` | Kontextuelle Hilfe, Onboarding, Tooltips, Video-Tutorials |
-
-**API Endpoints:**
-- `GET /api/v1/help/articles` - Hilfe-Artikel (mit Kategorie/Context-Filter)
-- `GET /api/v1/help/articles/{article_id}` - Einzelner Artikel
-- `GET /api/v1/help/articles/context/{context}` - Artikel fuer spezifische Seite
-- `GET /api/v1/help/search?q=query` - Volltextsuche
-- `GET /api/v1/help/tooltips/{feature_id}` - Feature-Tooltip
-- `GET /api/v1/help/onboarding` - Onboarding-Status
-- `PATCH /api/v1/help/onboarding/step/{step_id}` - Schritt als erledigt
-- `POST /api/v1/help/onboarding/skip` - Onboarding ueberspringen
-- `GET /api/v1/help/videos` - Video-Tutorials
-- `GET/PATCH /api/v1/help/preferences` - User-Praeferenzen
-
-**Features:**
-- Kontextuelle Hilfe nach Seite/Feature
-- 5-Schritt Onboarding-Tour mit Progress-Tracking
-- Feature-Tooltips mit Dismiss-Funktion
-- Video-Tutorial-Verknuepfungen
-- Volltext-Suche mit Score-Ranking (Titel 1.0, Tags 0.7, Content 0.5)
-
-**Frontend:** Alle Texte auf Deutsch, Markdown-Support fuer Artikel-Content
-
-**Details**: Siehe `.claude/Docs/API/Help-API.md`
-
-### Validation UI (Januar 2026)
-
-**Status**: Production-Ready | **Features**: Keyboard + Swipe
-
-**Keyboard Shortcuts:**
-- `A` - Genehmigen (Approve)
-- `R` - Ablehnen (Reject)
-- `J/K` - Naechstes/Vorheriges Item
-- `Enter/Space` - Item oeffnen
-- `Escape` - Auswahl aufheben
-- `Ctrl+A` - Alle auswaehlen
-
-**Mobile Swipe:**
-- Rechts swipen = Genehmigen (gruener Hintergrund)
-- Links swipen = Ablehnen (roter Hintergrund)
-- Threshold: 100px fuer Trigger
-- Animierte Feedback-Anzeige
-
-### Fraud Detection System (Januar 2026)
-
-**Status**: Production-Ready
-
-| Modul | Beschreibung |
-|-------|--------------|
-| `duplicate_invoice_detection` | Hash + Fuzzy-Matching fuer Duplikate |
-| `price_anomaly_detection` | Historischer Preisvergleich |
-| `phantom_supplier_detection` | Fiktive Lieferanten erkennen |
-| `internal_fraud_patterns` | Expense-Abuse Muster |
-
-**API Endpoints:** `/api/v1/fraud/*`
-
-### Holding Dashboard (Januar 2026)
-
-**Status**: Production-Ready
-
-- Multi-Company Consolidated View
-- Intercompany Transaction Tracking
-- Cash Flow Aggregation per Company
-- Company Comparison Metrics
-
-**API Endpoints:** `/api/v1/holding/*`
-
-### Predictive Cash Flow (Januar 2026)
-
-**Status**: Production-Ready
-
-- ML-basierte Prognose (7-90 Tage)
-- What-If Scenario Analysis
-- Skonto Optimization Recommendations
-- Early Warning System
-
-**API Endpoints:** `/api/v1/cashflow/*`
-
-### Risk Intelligence (Januar 2026)
-
-**Status**: Production-Ready
-
-- Comprehensive Risk Profiles per Entity
-- Industry Benchmark Comparisons
-- Network Analysis (IBAN/Address)
-- External Sources: Handelsregister, Insolvenzregister
-
-**API Endpoints:** `/api/v1/risk/*`
-
-### Subscription Management (Januar 2026)
-
-**Status**: Production-Ready
-
-- Tiers: Free, Basic, Professional, Enterprise
-- Feature-Gating per Tier
-- Upgrade/Downgrade Flows
-
-**API Endpoints:** `/api/v1/subscriptions/*`
-
-### Tenant Rate Limits (Januar 2026)
-
-**Status**: Production-Ready
-
-- Per-Company API Rate Limiting
-- Usage Metrics Tracking
-- Violation Logging
-
-**API Endpoints:** `/api/v1/admin/rate-limits/*`
-
-### Multi-Factor Authentication (Januar 2026)
-
-**Status**: Production-Ready | **Migration**: Keine (JSONB in User-Model)
-
-| Service | Beschreibung |
-|---------|--------------|
-| `MFAService` | TOTP (RFC 6238) basierte 2FA mit Backup-Codes |
-
-**Features:**
-- TOTP via Authenticator-Apps (Google, Microsoft, Authy)
-- 10 Backup-Codes (bcrypt-gehashed)
-- AES-256-GCM verschluesselte Secrets
-- QR-Code Setup mit manuellem Secret-Fallback
-
-**API Endpoints:**
-- `GET /api/v1/mfa/status` - 2FA-Status abrufen
-- `POST /api/v1/mfa/setup` - Setup initiieren (QR + Secret)
-- `POST /api/v1/mfa/verify` - Setup verifizieren
-- `POST /api/v1/mfa/disable` - 2FA deaktivieren
-- `POST /api/v1/mfa/regenerate` - Backup-Codes neu generieren
-- `POST /api/v1/mfa/validate` - TOTP-Code validieren
-- `POST /api/v1/mfa/backup` - Backup-Code verwenden
-
-**Frontend:** `/settings/security` - MFA Setup Wizard mit 4 Steps
-
-**SECURITY**: TOTP-Secrets AES-256-GCM verschluesselt, Backup-Codes bcrypt-gehashed
-
-### Data Loss Prevention (Januar 2026)
-
-**Status**: Production-Ready | **Migration**: Keine (In-Memory Policies)
-
-| Service | Beschreibung |
-|---------|--------------|
-| `DLPService` | Policy-basierte Zugriffskontrollen fuer Dokumente |
-
-**Features:**
-- Download-Restriktionen (Rollen, Zeitfenster, Tags)
-- Automatische Wasserzeichen (Text, Position, Opacity)
-- Sensitive Data Detection (Kreditkarte, IBAN, SSN, Email, etc.)
-- Audit-Logging aller Zugriffe
-- Benachrichtigungen bei Policy-Verletzungen
-
-**DLP Actions:**
-- `allow` - Zugriff erlauben
-- `block` - Zugriff blockieren
-- `watermark` - Mit Wasserzeichen erlauben
-- `notify` - Erlauben + Admin benachrichtigen
-- `audit_only` - Nur protokollieren
-
-**API Endpoints:**
-- `GET/POST/PATCH/DELETE /api/v1/dlp/policies` - Policy CRUD (Admin)
-- `POST /api/v1/dlp/check` - Zugriffspruefung durchfuehren
-- `POST /api/v1/dlp/scan` - Text auf sensible Daten scannen
-- `GET /api/v1/dlp/sensitive-data-types` - Verfuegbare Typen
-
-**Frontend:** `/admin/dlp` - Policy Management + Scanner Tool
-
-**Sensitive Data Types:**
-- Kreditkarten (Luhn-Algorithmus)
-- IBAN (DE-Format)
-- Sozialversicherungsnummer (US SSN)
-- Steuer-IDs
-- Email, Telefon, Geburtsdatum
-
-### Bundesbank Basiszins-API (Januar 2026)
-
-**Status**: Production-Ready | **Feature 18**
-
-| Service | Beschreibung |
-|---------|--------------|
-| `BundesbankRateService` | Automatischer Abruf des Basiszinssatzes von der Bundesbank |
-
-**Features:**
-- SDMX-REST API Anbindung zur Deutschen Bundesbank
-- Redis-Caching mit 6-Monats-TTL
-- Fallback-Wert bei API-Ausfall (3.62% seit 01.07.2024)
-- §288 BGB Verzugszins-Berechnung (B2B +9%, B2C +5%)
-
-**API Endpoints:**
-- `GET /api/v1/banking/dunning/interest-rates` - Aktuelle Verzugszinssaetze
-- `GET /api/v1/banking/dunning/interest-rates/history` - Historische Basiszinssaetze
-- `GET /api/v1/banking/dunning/interest-rates/calculate` - Verzugszins-Berechnung
-
-**Datenmodell (BasiszinsData):**
-```python
-rate: Decimal           # Basiszinssatz (z.B. 3.62)
-valid_from: str         # Gueltig ab (z.B. "2024-07-01")
-valid_until: Optional[str]
-source: BasiszinsSource # api, cache, fallback
+# Validate migration
+npx @claude-flow/cli@latest migrate validate
 ```
 
-### LaTeX Formula Parsing (Januar 2026)
+## 🧠 Intelligence System (RuVector)
 
-**Status**: Production-Ready | **Feature 19**
+V3 includes the RuVector Intelligence System:
+- **SONA**: Self-Optimizing Neural Architecture (<0.05ms adaptation)
+- **MoE**: Mixture of Experts for specialized routing
+- **HNSW**: 150x-12,500x faster pattern search
+- **EWC++**: Elastic Weight Consolidation (prevents forgetting)
+- **Flash Attention**: 2.49x-7.47x speedup
 
-| Service | Beschreibung |
-|---------|--------------|
-| `FormulaExtractionService` | LaTeX-Formeln aus OCR-Output extrahieren und parsen |
+The 4-step intelligence pipeline:
+1. **RETRIEVE** - Fetch relevant patterns via HNSW
+2. **JUDGE** - Evaluate with verdicts (success/failure)
+3. **DISTILL** - Extract key learnings via LoRA
+4. **CONSOLIDATE** - Prevent catastrophic forgetting via EWC++
 
-**Features:**
-- Erkennung von Inline ($...$), Display ($$...$$) und equation-Formeln
-- Formeltyp-Klassifikation (Gleichung, Bruch, Summe, Integral, Matrix)
-- Kontext-Erkennung (Finanziell, Wissenschaftlich, Statistisch)
-- Syntax-Validierung mit OCR-Fehler-Erkennung
-- MathML-Konvertierung
-- Numerische Wertextraktion mit Einheiten
+## 📦 Embeddings Package (v3.0.0-alpha.12)
 
-**API Endpoints:**
-- `POST /api/v1/ocr/formulas/extract` - Formeln aus Text extrahieren
-- `POST /api/v1/ocr/formulas/parse` - Einzelne Formel parsen
-- `POST /api/v1/ocr/formulas/validate` - Formel-Syntax validieren
+Features:
+- **sql.js**: Cross-platform SQLite persistent cache (WASM, no native compilation)
+- **Document chunking**: Configurable overlap and size
+- **Normalization**: L2, L1, min-max, z-score
+- **Hyperbolic embeddings**: Poincaré ball model for hierarchical data
+- **75x faster**: With agentic-flow ONNX integration
+- **Neural substrate**: Integration with RuVector
 
-### Tax Authority Export (Januar 2026)
+## 🐝 Hive-Mind Consensus
 
-**Status**: Production-Ready | **Feature 20**
+### Topologies
+- `hierarchical` - Queen controls workers directly
+- `mesh` - Fully connected peer network
+- `hierarchical-mesh` - Hybrid (recommended)
+- `adaptive` - Dynamic based on load
 
-| Service | Beschreibung |
-|---------|--------------|
-| `TaxAuthorityExportService` | GDPdU-konformer Export fuer Steuerpruefungen (§90 III AO) |
+### Consensus Strategies
+- `byzantine` - BFT (tolerates f < n/3 faulty)
+- `raft` - Leader-based (tolerates f < n/2)
+- `gossip` - Epidemic for eventual consistency
+- `crdt` - Conflict-free replicated data types
+- `quorum` - Configurable quorum-based
 
-**Features:**
-- GDPdU-konformer Export (XML + CSV)
-- index.xml und DTD-Generierung fuer IDEA/ACL
-- Tabellendefinitionen: Rechnungen, Bankbewegungen, Belege, Aenderungsprotokoll
-- ZIP-Archiv mit MD5-Pruefsummen
-- UTF-8 Encoding
+## V3 Performance Targets
 
-**Kategorien:**
-- `invoices_outgoing` / `invoices_incoming` - Rechnungen
-- `bank_transactions` - Bankbewegungen
-- `documents` - Belege
-- `audit_log` - Aenderungsprotokoll
+| Metric | Target |
+|--------|--------|
+| Flash Attention | 2.49x-7.47x speedup |
+| HNSW Search | 150x-12,500x faster |
+| Memory Reduction | 50-75% with quantization |
+| MCP Response | <100ms |
+| CLI Startup | <500ms |
+| SONA Adaptation | <0.05ms |
 
-### Intercompany Reconciliation (Januar 2026)
+## 📊 Performance Optimization Protocol
 
-**Status**: Production-Ready | **Feature 15**
+### Automatic Performance Tracking
+```bash
+# After any significant operation, track metrics
+Bash("npx @claude-flow/cli@latest hooks post-command --command '[operation]' --track-metrics true")
 
-| Service | Beschreibung |
-|---------|--------------|
-| `IntercompanyReconciliationService` | IC-Transaktionen abstimmen und Eliminierungen generieren |
+# Periodically run benchmarks (every major feature)
+Bash("npx @claude-flow/cli@latest performance benchmark --suite all")
 
-**Features:**
-- IC-Transaktionen zwischen Konzernfirmen
-- Automatische Saldenabstimmung
-- Differenzerkennung (Betrag, Datum, fehlendes Gegenkonto)
-- Eliminierungsbuchungen fuer Konzernabschluss
-- Multi-Tenant mit Company-Isolation
-
-**API Endpoints:**
-- `GET /api/v1/holding/ic/summary` - IC-Zusammenfassung
-- `GET /api/v1/holding/ic/transactions` - IC-Transaktionen
-- `GET /api/v1/holding/ic/balances` - IC-Salden
-- `POST /api/v1/holding/ic/reconcile` - Abstimmung durchfuehren
-- `GET /api/v1/holding/ic/eliminations` - Eliminierungsbuchungen
-- `GET /api/v1/holding/ic/report` - Vollstaendiger Bericht
-
-**Frontend:** `/holding/reconciliation` - Vollstaendige React-UI mit 4 Tabs
-
-### Alert Center (Januar 2026)
-
-**Status**: Production-Ready | **Migration**: 117
-
-| Service | Beschreibung |
-|---------|--------------|
-| `AlertCenterService` | Zentrales Alert-Management mit Kategorisierung und Workflows |
-
-**Alert-Kategorien:**
-- `fraud` - Betrugsverdacht (Duplikate, Preisanomalien)
-- `risk` - Risikowarnungen (High-Risk Entities, Zahlungsverzoegerungen)
-- `compliance` - Compliance-Verletzungen (GDPR, GoBD, DLP)
-- `deadline` - Fristwarnungen (Skonto, Rechnungen, Vertraege)
-- `system` - Systemwarnungen (GPU, Disk, OCR-Fehlerrate)
-- `security` - Sicherheitswarnungen (Login-Versuche, API-Missbrauch)
-- `quality` - Qualitaetswarnungen (OCR-Confidence, Umlaute)
-- `workflow` - Workflow-Alerts (Eskalation, Delegation)
-
-**Schweregrade:** info, low, medium, high, critical
-
-**API Endpoints:**
-- `GET /api/v1/alerts` - Alert-Liste mit Filterung
-- `GET /api/v1/alerts/stats` - Dashboard-Statistiken
-- `POST /api/v1/alerts/{id}/acknowledge` - Als gelesen markieren
-- `POST /api/v1/alerts/{id}/dismiss` - Verwerfen
-- `POST /api/v1/alerts/{id}/resolve` - Als geloest markieren
-- `POST /api/v1/alerts/{id}/escalate` - Eskalieren
-- `POST /api/v1/alerts/bulk` - Massenaktionen
-
-**Frontend:** `/alerts` - Dashboard mit Filtern, Statistiken, Quick-Actions
-
-### AI Conversations Persistence (Januar 2026)
-
-**Status**: Production-Ready | **Migration**: 120
-
-| Service | Beschreibung |
-|---------|--------------|
-| `AIConversation` | Chat-Sessions mit dem KI-Finanzassistenten |
-| `AIConversationMessage` | Einzelne Nachrichten (User/Assistant/System) |
-| `AIConversationAction` | Vorgeschlagene/Ausgefuehrte Aktionen |
-| `AIConversationFeedback` | Benutzer-Feedback zu Antworten |
-
-**Features:**
-- Chat-History Persistenz fuer Kontext-Bewahrung
-- Intent-Erkennung (search, execute_action, explain, suggest_booking, etc.)
-- Aktions-Tracking mit Bestaetigungs-Workflow
-- Feedback-Sammlung fuer kontinuierliche Verbesserung
-- Multi-Tenant Isolation via RLS Policies
-
-**API Endpoints:**
-- `GET /api/v1/ai/conversations` - Konversationen auflisten
-- `POST /api/v1/ai/conversations` - Neue Konversation starten
-- `GET /api/v1/ai/conversations/{id}` - Konversation abrufen
-- `PATCH /api/v1/ai/conversations/{id}` - Konversation aktualisieren
-- `DELETE /api/v1/ai/conversations/{id}` - Konversation loeschen
-- `POST /api/v1/ai/conversations/{id}/messages` - Nachricht senden
-- `GET /api/v1/ai/conversations/{id}/messages` - Nachrichten abrufen
-- `POST /api/v1/ai/conversations/{id}/feedback` - Feedback geben
-- `GET /api/v1/ai/conversations/{id}/actions` - Aktionen abrufen
-- `POST /api/v1/ai/conversations/{id}/actions/{action_id}/confirm` - Aktion bestaetigen
-- `POST /api/v1/ai/conversations/{id}/actions/{action_id}/cancel` - Aktion abbrechen
-- `GET /api/v1/ai/conversations/stats/summary` - Statistiken
-
-**Datenmodell:**
-```python
-# AIConversation
-session_id: str           # Eindeutige Frontend-Session-ID
-user_id: UUID             # Benutzer
-company_id: UUID          # Multi-Tenant
-title: str                # Automatisch generiert
-context_page: str         # Seite wo gestartet
-message_count: int        # Anzahl Nachrichten
-action_count: int         # Anzahl Aktionen
-is_starred: bool          # Favorit markiert
-context_data: JSONB       # Zusaetzlicher Kontext
-
-# AIConversationMessage
-role: Enum                # user, assistant, system
-content: str              # Markdown-formatiert
-intent: Enum              # search, execute_action, etc.
-confidence: float         # Intent-Konfidenz (0.0-1.0)
-processing_time_ms: int   # Verarbeitungszeit
-tokens_used: int          # Token-Nutzung
-referenced_documents: JSONB
-
-# AIConversationAction
-action_type: str          # payment_run, approve_invoices, etc.
-status: Enum              # proposed, confirmed, executed, cancelled, failed
-parameters: JSONB         # Aktionsparameter
-result: JSONB             # Ergebnis
-requires_confirmation: bool
-confirmed_by_id: UUID
-
-# AIConversationFeedback
-feedback_type: Enum       # helpful, not_helpful, incorrect, confusing
-rating: int               # 1-5 Sterne
-comment: str              # Freitext
-correction: str           # Korrigierte Antwort
-expected_intent: str      # Falls falsch erkannt
+# Analyze bottlenecks when performance degrades
+Bash("npx @claude-flow/cli@latest performance profile --target '[component]'")
 ```
 
-**SECURITY**: Konversationen sind Benutzer- und Company-isoliert via RLS
-<!-- /AUTO-MANAGED: enterprise-features -->
+### Session Persistence (Cross-Conversation Learning)
+```bash
+# At session start - restore previous context
+Bash("npx @claude-flow/cli@latest session restore --latest")
+
+# At session end - persist learned patterns
+Bash("npx @claude-flow/cli@latest hooks session-end --generate-summary true --persist-state true --export-metrics true")
+```
+
+### Neural Pattern Training
+```bash
+# Train on successful code patterns
+Bash("npx @claude-flow/cli@latest neural train --pattern-type coordination --epochs 10")
+
+# Predict optimal approach for new tasks
+Bash("npx @claude-flow/cli@latest neural predict --input '[task description]'")
+
+# View learned patterns
+Bash("npx @claude-flow/cli@latest neural patterns --list")
+```
+
+## 🔧 Environment Variables
+
+```bash
+# Configuration
+CLAUDE_FLOW_CONFIG=./claude-flow.config.json
+CLAUDE_FLOW_LOG_LEVEL=info
+
+# Provider API Keys
+ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...
+GOOGLE_API_KEY=...
+
+# MCP Server
+CLAUDE_FLOW_MCP_PORT=3000
+CLAUDE_FLOW_MCP_HOST=localhost
+CLAUDE_FLOW_MCP_TRANSPORT=stdio
+
+# Memory
+CLAUDE_FLOW_MEMORY_BACKEND=hybrid
+CLAUDE_FLOW_MEMORY_PATH=./data/memory
+```
+
+## 🔍 Doctor Health Checks
+
+Run `npx @claude-flow/cli@latest doctor` to check:
+- Node.js version (20+)
+- npm version (9+)
+- Git installation
+- Config file validity
+- Daemon status
+- Memory database
+- API keys
+- MCP servers
+- Disk space
+- TypeScript installation
+
+## 🚀 Quick Setup
+
+```bash
+# Add MCP servers (auto-detects MCP mode when stdin is piped)
+claude mcp add claude-flow -- npx -y @claude-flow/cli@latest
+claude mcp add ruv-swarm -- npx -y ruv-swarm mcp start  # Optional
+claude mcp add flow-nexus -- npx -y flow-nexus@latest mcp start  # Optional
+
+# Start daemon
+npx @claude-flow/cli@latest daemon start
+
+# Run doctor
+npx @claude-flow/cli@latest doctor --fix
+```
+
+## 🎯 Claude Code vs CLI Tools
+
+### Claude Code Handles ALL EXECUTION:
+- **Task tool**: Spawn and run agents concurrently
+- File operations (Read, Write, Edit, MultiEdit, Glob, Grep)
+- Code generation and programming
+- Bash commands and system operations
+- TodoWrite and task management
+- Git operations
+
+### CLI Tools Handle Coordination (via Bash):
+- **Swarm init**: `npx @claude-flow/cli@latest swarm init --topology <type>`
+- **Swarm status**: `npx @claude-flow/cli@latest swarm status`
+- **Agent spawn**: `npx @claude-flow/cli@latest agent spawn -t <type> --name <name>`
+- **Memory store**: `npx @claude-flow/cli@latest memory store --key "mykey" --value "myvalue" --namespace patterns`
+- **Memory search**: `npx @claude-flow/cli@latest memory search --query "search terms"`
+- **Memory list**: `npx @claude-flow/cli@latest memory list --namespace patterns`
+- **Memory retrieve**: `npx @claude-flow/cli@latest memory retrieve --key "mykey" --namespace patterns`
+- **Hooks**: `npx @claude-flow/cli@latest hooks <hook-name> [options]`
+
+## 📝 Memory Commands Reference (IMPORTANT)
+
+### Store Data (ALL options shown)
+```bash
+# REQUIRED: --key and --value
+# OPTIONAL: --namespace (default: "default"), --ttl, --tags
+npx @claude-flow/cli@latest memory store --key "pattern-auth" --value "JWT with refresh tokens" --namespace patterns
+npx @claude-flow/cli@latest memory store --key "bug-fix-123" --value "Fixed null check" --namespace solutions --tags "bugfix,auth"
+```
+
+### Search Data (semantic vector search)
+```bash
+# REQUIRED: --query (full flag, not -q)
+# OPTIONAL: --namespace, --limit, --threshold
+npx @claude-flow/cli@latest memory search --query "authentication patterns"
+npx @claude-flow/cli@latest memory search --query "error handling" --namespace patterns --limit 5
+```
+
+### List Entries
+```bash
+# OPTIONAL: --namespace, --limit
+npx @claude-flow/cli@latest memory list
+npx @claude-flow/cli@latest memory list --namespace patterns --limit 10
+```
+
+### Retrieve Specific Entry
+```bash
+# REQUIRED: --key
+# OPTIONAL: --namespace (default: "default")
+npx @claude-flow/cli@latest memory retrieve --key "pattern-auth"
+npx @claude-flow/cli@latest memory retrieve --key "pattern-auth" --namespace patterns
+```
+
+### Initialize Memory Database
+```bash
+npx @claude-flow/cli@latest memory init --force --verbose
+```
+
+**KEY**: CLI coordinates the strategy via Bash, Claude Code's Task tool executes with real agents.
+
+## 📚 Full Capabilities Reference
+
+For a comprehensive overview of all Claude Flow V3 features, agents, commands, and integrations, see:
+
+**`.claude-flow/CAPABILITIES.md`** - Complete reference generated during init
+
+This includes:
+- All 60+ agent types with routing recommendations
+- All 26 CLI commands with 140+ subcommands
+- All 27 hooks + 12 background workers
+- RuVector intelligence system details
+- Hive-Mind consensus mechanisms
+- Integration ecosystem (agentic-flow, agentdb, ruv-swarm, flow-nexus, agentic-jujutsu)
+- Performance targets and status
+
+## Support
+
+- Documentation: https://github.com/ruvnet/claude-flow
+- Issues: https://github.com/ruvnet/claude-flow/issues
 
 ---
 
-<!-- AUTO-MANAGED: critical-rules -->
-## Kritische Regeln
+Remember: **Claude Flow CLI coordinates, Claude Code Task tool creates!**
 
-1. **Deutsche Texte**: ALLE Fehlermeldungen auf Deutsch
-2. **GPU-Management**: VRAM unter 85% halten (max 13.6GB)
-3. **Typ-Annotationen**: Pflicht fuer alle Python-Funktionen
-4. **Sicherheit**: Keine Secrets im Code, keine PII in Logs
-5. **Tests**: Muessen vor Commit bestehen
-6. **Multi-Model Orchestration**: IMMER befolgen
-7. **shadcn/ui Select**: NIEMALS `value=""` nutzen (Crashes!) → `value="auto"` oder `value="all"`
-8. **Lexware PII**: NIEMALS Kundennummern, IBANs, VAT-IDs in Logs
-<!-- /AUTO-MANAGED: critical-rules -->
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
+Never save working files, text/mds and tests to the root folder.
 
----
+## 🚨 SWARM EXECUTION RULES (CRITICAL)
+1. **SPAWN IN BACKGROUND**: Use `run_in_background: true` for all agent Task calls
+2. **SPAWN ALL AT ONCE**: Put ALL agent Task calls in ONE message for parallel execution
+3. **TELL USER**: After spawning, list what each agent is doing (use emojis for clarity)
+4. **STOP AND WAIT**: After spawning, STOP - do NOT add more tool calls or check status
+5. **NO POLLING**: Never poll TaskOutput or check swarm status - trust agents to return
+6. **SYNTHESIZE**: When agent results arrive, review ALL results before proceeding
+7. **NO CONFIRMATION**: Don't ask "should I check?" - just wait for results
 
-## Multi-Model Orchestration
-
-Bei jedem Prompt erhaeltst du einen `ORCHESTRATION ROUTING` Kontext. **BEFOLGEN!**
-
-| Routing-Empfehlung | Aktion |
-|--------------------|--------|
-| `HAIKU` | `Task(subagent_type="haiku-task", model="haiku", ...)` |
-| `SONNET` | `Task(subagent_type="sonnet-implementation", model="sonnet", ...)` |
-| `OPUS` | Selbst machen |
-
-**MCP Server:**
-- `mcp__orchestration__route_task` - Optimalen Agent
-- `mcp__orchestration__list_agents` - 15 Agenten anzeigen
-
----
-
-## Monitoring URLs
-
-| Service | URL |
-|---------|-----|
-| Grafana | http://localhost:3002 (admin/admin123) |
-| Prometheus | http://localhost:9090 |
-| API Docs | http://localhost:8000/docs |
-| MinIO Console | http://localhost:9001 |
-
----
-
-## Dokumentations-Index
-
-| Thema | Pfad |
-|-------|------|
-| Core Reference | `.claude/CLAUDE.md` |
-| Project Status | `.claude/memory/PROJECT_STATUS.md` |
-| Known Issues | `.claude/memory/KNOWN_ISSUES.md` |
-| Recent Changes | `.claude/memory/RECENT_CHANGES.md` |
-| Dependencies | `.claude/memory/DEPENDENCIES.md` |
-| API Docs | `.claude/Docs/API/` |
-| Architecture | `.claude/Docs/Architecture/` |
-| Testing | `.claude/Docs/Testing/` |
-| Operations | `.claude/Docs/Operations/` |
-| OCR Backends | `.claude/Docs/OCR-Backends/` |
-
----
-
-## CLAUDE.md Maintenance
-
-Claude SOLL diese Dateien automatisch pflegen:
-
-1. **AUTO-MANAGED Sektionen**: Werden bei relevanten Aenderungen aktualisiert
-2. **Memory-Dateien**: `.claude/memory/*.md` fuer dynamische Infos
-3. **Wann aktualisieren**:
-   - Nach Migrationen (alembic)
-   - Nach neuen Features/Services
-   - Nach Bug-Fixes
-   - Nach Konfigurations-Aenderungen
-
-**Format der AUTO-MANAGED Marker:**
-```html
-<!-- AUTO-MANAGED: section-name -->
-Inhalt...
-<!-- /AUTO-MANAGED: section-name -->
+Example spawn message:
+```
+"I've launched 4 agents in background:
+- 🔍 Researcher: [task]
+- 💻 Coder: [task]
+- 🧪 Tester: [task]
+- 👀 Reviewer: [task]
+Working in parallel - I'll synthesize when they complete."
 ```

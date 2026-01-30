@@ -66,6 +66,7 @@ from app.core.gpu_recovery import GPURecoveryError
 from app.core.retry_strategy import RetryExhaustedError
 from app.services.api_key_service import APIKeyError, APIKeyLimitError, APIKeyNotFoundError
 from app.middleware.csrf import CSRFError
+from app.core.safe_errors import safe_error_log
 from app.services.error_tracking_service import (
     get_error_tracking_service,
     ErrorCategory,
@@ -673,7 +674,7 @@ def _track_exception(
         )
     except Exception as e:
         # Error tracking darf nicht den Request-Flow stoeren
-        logger.debug("error_tracking_failed", error=str(e))
+        logger.debug("error_tracking_failed", **safe_error_log(e))
 
 
 def _translate_validation_error(error_type: str, msg: str) -> str:
@@ -706,6 +707,7 @@ def _translate_validation_error(error_type: str, msg: str) -> str:
 def _should_include_details() -> bool:
     """Prüft ob Details in der Response enthalten sein sollen (nur DEBUG)."""
     from app.core.config import settings
+
     return settings.DEBUG
 
 
