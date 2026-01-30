@@ -50,6 +50,52 @@ Task({
 
 ---
 
+### 🔥 AUTO-SWARM (NAHTLOSE INTEGRATION)
+
+**Claude kann Swarms AUTOMATISCH spawnen ohne PowerShell-Befehle!**
+
+#### Wann wird automatisch ein Swarm gespawnt?
+
+| Trigger | Beispiele |
+|---------|-----------|
+| **Keywords** | "refactor all", "security audit", "migration", "optimize all" |
+| **Datei-Anzahl** | >5 Dateien betroffen |
+| **Komplexitaet** | Architektur-Entscheidungen, Multi-Modul Changes |
+
+#### Nutzung durch Claude
+
+```bash
+# Via MCP Orchestration (empfohlen)
+mcp__orchestration__decompose_task --task_prompt "Refactor all API endpoints"
+
+# Direkt via CLI (bei Bedarf)
+npx @claude-flow/cli@latest swarm "Security audit" --strategy security
+```
+
+#### Automatische Strategie-Auswahl
+
+| Task-Typ | Strategie | Agents |
+|----------|-----------|--------|
+| Security Audit | `security` | 4-6 |
+| Refactoring | `refactoring` | 4-6 |
+| Performance | `optimization` | 4-6 |
+| Testing | `testing` | 3-5 |
+| Research | `research` | 3-5 |
+| Implementation | `development` | 5-8 |
+
+#### Integration mit MCP Orchestration
+
+```python
+# Der Swarm-Bridge integriert sich mit dem bestehenden MCP Server:
+# - mcp__orchestration__route_task → Routing-Empfehlung
+# - mcp__orchestration__decompose_task → Task-Dekomposition fuer Swarm
+# - mcp__orchestration__validate_and_escalate → Qualitaets-Gate
+```
+
+**Swarm-State wird gespeichert in**: `.claude-flow/swarm-state.json`
+
+---
+
 ### 🛡️ Anti-Drift Config (PREFERRED)
 
 **Use this to prevent agent drift:**

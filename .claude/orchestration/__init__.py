@@ -6,12 +6,18 @@ Dieses Paket implementiert intelligentes Routing zwischen Claude-Modellen:
 - Sonnet: Implementierung, Tests, Dokumentation
 - Haiku: Formatierung, Boilerplate, einfache Validierung
 
+NEU: Claude Flow V3 Swarm Integration
+- SwarmBridge: Automatisches Spawnen von Multi-Agent Swarms
+- TaskComplexityAnalyzer: Entscheidet ob Swarm nötig ist
+- auto_swarm(): Convenience-Funktion für automatische Swarms
+
 Hauptkomponenten:
 - TaskClassifier: Klassifiziert Aufgaben für das passende Modell
 - ContextCompressor: Komprimiert Kontext für verschiedene Modelle
 - DecisionCache: Cached Opus-Entscheidungen für Sonnet/Haiku
 - QualityGate: Validiert Output und eskaliert bei Bedarf
 - Orchestrator: Hauptkomponente die alles koordiniert
+- SwarmBridge: Brücke zu Claude Flow V3 Swarms
 """
 
 from .task_classifier import TaskClassifier, ModelTier, ClassificationResult
@@ -24,6 +30,26 @@ from .user_feedback import UserFeedback, DisplayMode, OrchestrationFeedback
 from .metrics import OrchestrationMetrics, MetricsSnapshot
 from .token_counter import TokenCounter, ContentType
 from .validators import OrchestrationValidator, ValidationError
+
+# Claude Flow V3 Swarm Integration
+from .swarm_bridge import (
+    # Core Classes
+    SwarmBridge,
+    SwarmConfig,
+    SwarmStrategy,
+    SwarmTopology,
+    SwarmPlan,
+    SwarmAgent,
+    AgentType,
+    ComplexityAnalysis,
+    # Analyzers
+    TaskComplexityAnalyzer,
+    SwarmPlanner,
+    # Convenience Functions
+    get_swarm_bridge,
+    analyze_for_swarm,
+    get_swarm_instructions,
+)
 
 __version__ = "1.0.0"
 __author__ = "Ablage-System Team"
@@ -74,4 +100,19 @@ __all__ = [
     # Validators
     "OrchestrationValidator",
     "ValidationError",
+
+    # Claude Flow V3 Swarm Integration
+    "SwarmBridge",
+    "SwarmConfig",
+    "SwarmStrategy",
+    "SwarmTopology",
+    "SwarmPlan",
+    "SwarmAgent",
+    "AgentType",
+    "ComplexityAnalysis",
+    "TaskComplexityAnalyzer",
+    "SwarmPlanner",
+    "get_swarm_bridge",
+    "analyze_for_swarm",
+    "get_swarm_instructions",
 ]
