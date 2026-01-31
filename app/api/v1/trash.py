@@ -128,11 +128,22 @@ async def get_trash_stats(
         and doc.days_until_permanent_deletion <= 7
     )
 
+    # Calculate storage used from file_size of deleted documents
+    from app.db.models import Document
+    from sqlalchemy import select, func
+
+    storage_query = select(func.coalesce(func.sum(Document.file_size), 0)).where(
+        Document.owner_id == current_user.id,
+        Document.deleted_at.isnot(None),
+    )
+    storage_result = await db.execute(storage_query)
+    storage_used = storage_result.scalar() or 0
+
     return TrashStatsResponse(
         total_items=result.total,
         can_restore_count=can_restore,
         expiring_soon_count=expiring_soon,
-        storage_used_bytes=0,  # TODO: Berechnung wenn file_size verfuegbar
+        storage_used_bytes=storage_used,
     )
 
 

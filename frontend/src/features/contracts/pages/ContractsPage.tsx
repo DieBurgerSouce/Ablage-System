@@ -125,11 +125,11 @@ export function ContractsPage() {
 
     try {
       await deleteMutation.mutateAsync(deleteContract.id);
-      toast.success('Vertrag geloescht');
+      toast.success('Vertrag gelöscht');
       setDeleteContract(null);
       setDetailSheetOpen(false);
     } catch (error) {
-      toast.error('Fehler beim Loeschen des Vertrags');
+      toast.error('Fehler beim Löschen des Vertrags');
     }
   };
 
@@ -172,12 +172,12 @@ export function ContractsPage() {
       });
       toast.success(
         renewalConfirm.decision === 'exercise'
-          ? 'Verlaengerung ausgeubt'
-          : 'Verlaengerung abgelehnt'
+          ? 'Verlängerung ausgeübt'
+          : 'Verlängerung abgelehnt'
       );
       setRenewalConfirm(null);
     } catch (error) {
-      toast.error('Fehler bei der Verlaengerungsentscheidung');
+      toast.error('Fehler bei der Verlängerungsentscheidung');
     }
   };
 

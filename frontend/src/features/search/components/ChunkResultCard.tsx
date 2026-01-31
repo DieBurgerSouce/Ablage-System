@@ -4,6 +4,7 @@
  * Zeigt ein einzelnes Chunk-Suchergebnis mit Vorschau und Score.
  */
 
+import DOMPurify from 'dompurify';
 import { Layers, FileText, ExternalLink } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -98,7 +99,7 @@ export function ChunkResultCard({
                     {chunk.highlight ? (
                         <p
                             dangerouslySetInnerHTML={{
-                                __html: truncateContent(chunk.highlight),
+                                __html: DOMPurify.sanitize(truncateContent(chunk.highlight)),
                             }}
                             className="[&>mark]:bg-yellow-200 [&>mark]:dark:bg-yellow-900/50 [&>mark]:px-0.5 [&>mark]:rounded"
                         />

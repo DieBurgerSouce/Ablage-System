@@ -94,6 +94,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                 <SidebarLink to="/document-groups" icon={Layers} label="Dokumentgruppen" onNavigate={onNavigate} />
                 <SidebarLink to="/document-chains" icon={Link2} label="Auftragsketten" onNavigate={onNavigate} />
                 <SidebarLink to="/admin/datev" icon={FileSpreadsheet} label="DATEV Export" onNavigate={onNavigate} />
+                <SidebarLink to="/admin/datev-connect" icon={Link2} label="DATEVconnect" onNavigate={onNavigate} />
                 <SidebarLink to="/berichte" icon={BarChart3} label="Berichte" onNavigate={onNavigate} />
                 <SidebarLink to="/holding" icon={Building2} label="Holding" onNavigate={onNavigate} />
                 <SidebarLink to="/cashflow" icon={TrendingUp} label="Cash-Flow" onNavigate={onNavigate} />
@@ -155,6 +156,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                             onClick={() => setShowSmartFolders(!showSmartFolders)}
                             className="w-full flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                             aria-expanded={showSmartFolders}
+                            aria-label={showSmartFolders ? "Gespeicherte Suchen ausblenden" : "Gespeicherte Suchen anzeigen"}
                         >
                             <span className="flex items-center gap-2">
                                 <Bookmark className="w-4 h-4" />
@@ -228,6 +230,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                             onClick={() => setShowAdminMenu(!showAdminMenu)}
                             className="w-full flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                             aria-expanded={showAdminMenu}
+                            aria-label={showAdminMenu ? "Administration ausblenden" : "Administration anzeigen"}
                         >
                             <span className="flex items-center gap-2">
                                 <Shield className="w-4 h-4" />
@@ -372,6 +375,7 @@ function SmartFolderLink({ name, params, pinned, onClick }: SmartFolderLinkProps
                 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground text-left',
                 pinned && 'text-amber-600 dark:text-amber-400'
             )}
+            aria-label={`${pinned ? "Gepinnte" : "Gespeicherte"} Suche: ${name}`}
         >
             {pinned ? (
                 <Pin className="w-3.5 h-3.5 flex-shrink-0" />

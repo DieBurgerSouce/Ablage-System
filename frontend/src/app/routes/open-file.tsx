@@ -27,6 +27,25 @@ interface FileHandlerData {
   source: 'launchQueue' | 'cache' | 'manual'
 }
 
+/**
+ * File Handling API Types (Web API)
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/File_Handling_API
+ */
+interface LaunchParams {
+  files: FileSystemFileHandle[]
+  targetURL?: string
+}
+
+interface LaunchQueue {
+  setConsumer: (callback: (launchParams: LaunchParams) => void | Promise<void>) => void
+}
+
+declare global {
+  interface Window {
+    launchQueue?: LaunchQueue
+  }
+}
+
 function OpenFilePage() {
   const navigate = useNavigate()
   const [fileData, setFileData] = useState<FileHandlerData | null>(null)
@@ -45,10 +64,8 @@ function OpenFilePage() {
 
       try {
         // Check if launchQueue is available (File Handling API)
-        if ('launchQueue' in window) {
-          const launchQueue = (window as any).launchQueue
-
-          launchQueue.setConsumer(async (launchParams: any) => {
+        if (window.launchQueue) {
+          window.launchQueue.setConsumer(async (launchParams: LaunchParams) => {
             if (!launchParams.files || launchParams.files.length === 0) {
               logger.info('[OpenFile] Keine Dateien in launchQueue')
               setIsLoading(false)

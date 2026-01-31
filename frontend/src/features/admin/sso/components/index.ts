@@ -5,4 +5,8 @@
  */
 
 export { EditProviderDialog } from './EditProviderDialog';
-export type { SSOProvider, SSOProviderUpdate, EditProviderDialogProps } from './EditProviderDialog';
+// SSOProvider is now exported from sso-schemas.ts as SSOProviderResponse for type consistency
+export type { SSOProviderUpdate, EditProviderDialogProps } from './EditProviderDialog';
+
+// Re-export types and schemas from types directory (includes SSOProviderResponse)
+export * from '../types/sso-schemas';

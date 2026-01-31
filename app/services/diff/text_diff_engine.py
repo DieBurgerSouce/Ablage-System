@@ -99,7 +99,8 @@ class TextDiffEngine:
             line = diff[i]
 
             if line.startswith("@@"):
-                # Hunk-Header
+                # Hunk-Header parsen: @@ -start_a,count_a +start_b,count_b @@
+                line_start_a, line_start_b = self._parse_hunk_header(line)
                 i += 1
                 hunk_lines_a: List[str] = []
                 hunk_lines_b: List[str] = []
@@ -130,8 +131,8 @@ class TextDiffEngine:
 
                     hunks.append(
                         DiffHunk(
-                            line_start_a=0,  # TODO: Aus Header parsen
-                            line_start_b=0,
+                            line_start_a=line_start_a,
+                            line_start_b=line_start_b,
                             content_a="\n".join(hunk_lines_a),
                             content_b="\n".join(hunk_lines_b),
                             change_type=change_type,
@@ -156,3 +157,25 @@ class TextDiffEngine:
         )
 
         return result
+
+    def _parse_hunk_header(self, header: str) -> tuple[int, int]:
+        """Parst Hunk-Header und extrahiert Zeilennummern.
+
+        Format: @@ -start_a,count_a +start_b,count_b @@
+
+        Args:
+            header: Hunk-Header-Zeile
+
+        Returns:
+            Tuple (line_start_a, line_start_b)
+        """
+        import re
+
+        # Pattern: @@ -start_a[,count_a] +start_b[,count_b] @@
+        pattern = r"@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@"
+        match = re.search(pattern, header)
+
+        if match:
+            return int(match.group(1)), int(match.group(2))
+
+        return 0, 0

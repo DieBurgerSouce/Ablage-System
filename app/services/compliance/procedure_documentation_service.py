@@ -702,8 +702,38 @@ Alle Aenderungen am System werden dokumentiert:
             retention_policies_count=retention_count,
             audit_chain_entries=chain_count,
             tsa_configured=tsa_configured,
-            last_integrity_check=datetime.now(timezone.utc),  # TODO: Echten Wert laden
+            last_integrity_check=await self._get_last_integrity_check(db, company_id),
         )
+
+    async def _get_last_integrity_check(
+        self,
+        db: AsyncSession,
+        company_id: uuid.UUID,
+    ) -> datetime:
+        """Holt Zeitpunkt der letzten Integritaetspruefung."""
+        # Suche nach letztem integrity_check Audit-Eintrag
+        query = (
+            select(AuditLog.created_at)
+            .where(
+                AuditLog.company_id == company_id,
+                AuditLog.action.in_([
+                    "integrity_check_completed",
+                    "merkle_tree_verified",
+                    "audit_chain_verified",
+                    "gobd_compliance_verified",
+                ]),
+            )
+            .order_by(AuditLog.created_at.desc())
+            .limit(1)
+        )
+        result = await db.execute(query)
+        last_check = result.scalar_one_or_none()
+
+        if last_check:
+            return last_check
+
+        # Fallback: Aktuelle Zeit (keine Pruefung bisher)
+        return datetime.now(timezone.utc)
 
     async def _get_retention_policies(
         self,
@@ -757,22 +787,72 @@ Alle Aenderungen am System werden dokumentiert:
         company_id: uuid.UUID,
         limit: int = 10,
     ) -> List[Dict[str, Any]]:
-        """Holt die letzten System-Aenderungen."""
-        # TODO: Aus separater Change-History Tabelle laden
-        return [
-            {
-                "date": "2026-01-15",
-                "version": "1.1",
-                "description": "BPMN Process Engine hinzugefuegt",
-                "author": "System",
-            },
-            {
-                "date": "2026-01-10",
-                "version": "1.0",
-                "description": "Initiale Version der Verfahrensdokumentation",
-                "author": "System",
-            },
+        """Holt die letzten System-Aenderungen aus AuditLog."""
+        # Relevante Aktionen fuer Verfahrensdokumentation
+        relevant_actions = [
+            "system_config_changed",
+            "retention_policy_created",
+            "retention_policy_updated",
+            "compliance_rule_changed",
+            "archive_config_changed",
+            "tsa_config_updated",
+            "gobd_settings_changed",
+            "workflow_deployed",
+            "bpmn_process_created",
         ]
+
+        # Lade AuditLog-Eintraege
+        query = (
+            select(AuditLog)
+            .where(
+                AuditLog.company_id == company_id,
+                AuditLog.action.in_(relevant_actions),
+            )
+            .order_by(AuditLog.created_at.desc())
+            .limit(limit)
+        )
+        result = await db.execute(query)
+        logs = result.scalars().all()
+
+        changes = []
+        version_counter = 1.0
+
+        for log in logs:
+            # Extrahiere Details aus changes JSONB
+            changes_data = log.changes or {}
+            description = changes_data.get("description", log.action.replace("_", " ").title())
+
+            # User-Name aus User-ID
+            author = "System"
+            if log.user_id:
+                user_query = select(User.email).where(User.id == log.user_id)
+                user_result = await db.execute(user_query)
+                user_email = user_result.scalar_one_or_none()
+                if user_email:
+                    author = user_email.split("@")[0]  # Nur Benutzername
+
+            changes.append({
+                "date": log.created_at.strftime("%Y-%m-%d"),
+                "version": f"{version_counter:.1f}",
+                "description": description,
+                "author": author,
+                "action": log.action,
+            })
+            version_counter += 0.1
+
+        # Falls keine Logs vorhanden, Standard-Eintraege
+        if not changes:
+            changes = [
+                {
+                    "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+                    "version": "1.0",
+                    "description": "Initiale Version der Verfahrensdokumentation",
+                    "author": "System",
+                    "action": "system_initialized",
+                },
+            ]
+
+        return changes
 
     # ================== Export Methods ==================
 

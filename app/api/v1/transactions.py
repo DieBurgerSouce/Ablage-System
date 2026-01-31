@@ -2,9 +2,9 @@
 
 Basiert auf dem bestehenden DocumentGroup-Model mit group_type='transaction'.
 Ermoeglicht die Verfolgung von Dokumentenketten:
-  Anfrage → Angebot → Auftrag → Lieferschein → Rechnung → Zahlung
+  Anfrage -> Angebot -> Auftrag -> Lieferschein -> Rechnung -> Zahlung
 
-Phase: 11 (HIGH Priority TODOs)
+Feinpoliert und durchdacht - Enterprise Transaction Tracking.
 """
 
 from datetime import datetime, timezone

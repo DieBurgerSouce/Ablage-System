@@ -4,7 +4,7 @@
  * API-Funktionen fuer das Activity Timeline Feature.
  */
 
-import { apiClient } from '@/lib/api-client';
+import { apiClient } from '@/lib/api';
 import type {
   Activity,
   TimelineResponse,

@@ -533,6 +533,10 @@ OPENAPI_TAGS = [
         "name": "Dokumentvorlagen",
         "description": "Dokumentvorlagen-System. Templates mit Jinja2-Syntax, Variablen-Platzhalter, Ein-Klick Dokumentenerstellung, Textbausteine.",
     },
+    {
+        "name": "DATEV Connect",
+        "description": "DATEVconnect API Integration. OAuth2-Authentifizierung, Buchungsstapel, Belegbilder-Upload, Stammdaten-Sync, GoBD-konforme Festschreibung, ML-basierte Kontierungsvorschlaege.",
+    },
 ]
 
 OPENAPI_DESCRIPTION = """
@@ -872,6 +876,7 @@ from app.api.v1.process_mining import router as process_mining_router  # Vision 
 from app.api.v1.consent import router as consent_router  # Vision 2.0: Consent Management (DSGVO)
 from app.api.v1.credit import router as credit_router  # Vision 2.0: Creditreform Integration
 from app.api.v1.datev_booking import router as datev_booking_router  # Vision 2.0: DATEV Buchungsvorschlaege
+from app.api.v1.datev_connect import router as datev_connect_router  # DATEV Connect Integration (Migration 145)
 from app.api.v1.classification import router as classification_router  # Vision 2.0 Phase 3: Multi-Label Classification
 
 # Vision 2.0 Phase 5: Privacy & Predictive Maintenance
@@ -882,6 +887,7 @@ from app.api.v1.predictive_health import router as predictive_health_router  # V
 from app.api.v1.action_queue import router as action_queue_router  # Vision 2.0 Phase 6: Action Approval Queue
 from app.api.v1.financial_insights import router as financial_insights_router  # Vision 2.0 Phase 6: Financial Insights
 from app.api.v1.xai import router as xai_router  # Vision 2.0 Phase 6: Explainable AI
+from app.api.v1.sso import router as sso_router  # Enterprise SSO (OIDC/SAML)
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -981,6 +987,7 @@ app.include_router(compliance_router, prefix="/api/v1")
 app.include_router(dpia_router, prefix="/api/v1")
 app.include_router(help_router, prefix="/api/v1")
 app.include_router(mfa_router, prefix="/api/v1")
+app.include_router(sso_router, prefix="/api/v1")  # Enterprise SSO (OIDC/SAML)
 app.include_router(dlp_router, prefix="/api/v1")
 app.include_router(transactions_router, prefix="/api/v1")
 app.include_router(teams_router, prefix="/api/v1")
@@ -1035,6 +1042,7 @@ app.include_router(process_mining_router, prefix="/api/v1")  # Vision 2.0: Proce
 app.include_router(consent_router, prefix="/api/v1")  # Vision 2.0: Consent Management (DSGVO)
 app.include_router(credit_router, prefix="/api/v1")  # Vision 2.0: Creditreform Integration
 app.include_router(datev_booking_router, prefix="/api/v1")  # Vision 2.0: DATEV Buchungsvorschlaege
+app.include_router(datev_connect_router, prefix="/api/v1")  # DATEV Connect Integration (Migration 145)
 app.include_router(classification_router, prefix="/api/v1")  # Vision 2.0 Phase 3: Multi-Label Classification
 
 # Vision 2.0 Phase 5: Privacy & Predictive Maintenance (100% Completion)

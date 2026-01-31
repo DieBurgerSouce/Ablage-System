@@ -388,17 +388,20 @@ class SmartInboxService:
         """
         self.logger.info("triggering_aggregation", company_id=str(company_id))
 
-        # In Production: Celery Task starten
-        # Hier: Stub, der eine UUID zurueckgibt
-        import uuid
-        task_id = uuid.uuid4()
-
-        # TODO: Celery Task aufrufen
-        # from app.workers.tasks.smart_inbox_tasks import aggregate_inbox_items
-        # task = aggregate_inbox_items.delay(str(company_id), str(self.user_id))
-        # return UUID(task.id)
-
-        return task_id
+        # Celery Task starten fuer asynchrone Aggregation
+        try:
+            from app.workers.tasks.smart_inbox_tasks import aggregate_inbox_items
+            task = aggregate_inbox_items.delay(str(company_id), str(self.user_id))
+            return UUID(task.id)
+        except ImportError:
+            # Fallback wenn Celery nicht verfuegbar (Dev-Modus)
+            self.logger.warning("celery_not_available_for_aggregation")
+            import uuid
+            return uuid.uuid4()
+        except Exception as e:
+            self.logger.error("aggregation_task_failed", error=str(e))
+            import uuid
+            return uuid.uuid4()
 
     async def get_statistics(
         self,
@@ -491,16 +494,45 @@ class SmartInboxService:
         source_result = await self.db.execute(source_query)
         by_source = {row[0] or "other": row[1] for row in source_result.all()}
 
+        # Berechne durchschnittliche Reaktionszeit aus abgeschlossenen Items
+        avg_response_time_ms = await self._calculate_avg_response_time(base_filter)
+
         return {
             "total": total,
             "pending": pending,
             "in_progress": in_progress,
             "completed_today": completed_today,
             "dismissed_today": dismissed_today,
-            "avg_response_time_ms": 0,  # TODO: Calculate from completed items
+            "avg_response_time_ms": avg_response_time_ms,
             "by_category": by_category,
             "by_source": by_source,
         }
+
+    async def _calculate_avg_response_time(self, base_filter) -> int:
+        """Berechnet durchschnittliche Reaktionszeit aus abgeschlossenen Items."""
+        # Hole completed Items mit Zeitdifferenz
+        from sqlalchemy import extract
+
+        completed_query = select(
+            func.avg(
+                extract('epoch', SmartInboxItem.completed_at) -
+                extract('epoch', SmartInboxItem.created_at)
+            ).label("avg_seconds")
+        ).where(
+            and_(
+                base_filter,
+                SmartInboxItem.status == SmartInboxItemStatus.COMPLETED.value,
+                SmartInboxItem.completed_at.isnot(None),
+            )
+        )
+
+        result = await self.db.execute(completed_query)
+        avg_seconds = result.scalar()
+
+        if avg_seconds:
+            return int(avg_seconds * 1000)  # Konvertiere zu Millisekunden
+
+        return 0
 
     async def _get_item(
         self,

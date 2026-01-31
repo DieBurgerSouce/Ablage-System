@@ -26,6 +26,7 @@ import json
 
 from app.db.models import (
     Document,
+    OCRResult,
     OCRValidationCorrection,
 )
 from app.db.models_ocr_feedback import (
@@ -522,6 +523,26 @@ class SelfLearningOCRService:
                 feedback.original_confidence,
             )
 
+            # Extrahiere Backend-Version aus OCR-Ergebnis
+            backend_version = None
+            ocr_result_query = select(OCRResult).where(
+                and_(
+                    OCRResult.document_id == feedback.document_id,
+                    OCRResult.backend == feedback.ocr_backend,
+                )
+            ).order_by(OCRResult.created_at.desc()).limit(1)
+            ocr_result = await self._db.execute(ocr_result_query)
+            ocr_result_row = ocr_result.scalar_one_or_none()
+
+            if ocr_result_row and ocr_result_row.detected_layout:
+                # Backend-Version kann in detected_layout.metadata gespeichert sein
+                layout_meta = ocr_result_row.detected_layout.get("metadata", {})
+                backend_version = layout_meta.get("backend_version") or layout_meta.get("model_version")
+
+            # Fallback: Version aus document_metadata extrahieren
+            if not backend_version and doc.document_metadata:
+                backend_version = doc.document_metadata.get("ocr_backend_version")
+
             # Erstelle Feedback-Eintrag
             db_feedback = OCRCorrectionFeedback(
                 id=uuid.uuid4(),
@@ -529,7 +550,7 @@ class SelfLearningOCRService:
                 company_id=doc.company_id,
                 user_id=feedback.user_id,
                 backend=feedback.ocr_backend,
-                backend_version=None,  # TODO: Aus OCR-Ergebnis extrahieren
+                backend_version=backend_version,
                 field_name=feedback.field_name,
                 original_value=feedback.original_value,
                 corrected_value=feedback.corrected_value,
@@ -1198,6 +1219,28 @@ class SelfLearningOCRService:
             result = await self._db.execute(query)
             rows = result.all()
 
+            # Aggregiere Dokument-Zaehler pro Backend/Dokumenttyp fuer correction_rate
+            doc_count_query = (
+                select(
+                    Document.ocr_backend_used,
+                    Document.document_type,
+                    func.count(Document.id).label("doc_count"),
+                )
+                .where(
+                    and_(
+                        Document.processed_date >= period_start,
+                        Document.processed_date <= period_end,
+                        Document.ocr_backend_used.isnot(None),
+                    )
+                )
+                .group_by(Document.ocr_backend_used, Document.document_type)
+            )
+            doc_count_result = await self._db.execute(doc_count_query)
+            doc_counts = {
+                (r.ocr_backend_used, str(r.document_type) if r.document_type else None): r.doc_count
+                for r in doc_count_result.all()
+            }
+
             performance_records = []
 
             for row in rows:
@@ -1210,6 +1253,11 @@ class SelfLearningOCRService:
                 # Mehr Korrekturen = niedrigere Confidence
                 adjustment = -0.05 * (total / 100)  # -5% pro 100 Korrekturen
 
+                # Hole Dokument-Anzahl fuer Backend/Dokumenttyp aus aggregierten Counts
+                total_docs = doc_counts.get((row.backend, row.document_type), 0)
+                # Berechne Korrekturrate (Korrekturen / Dokumente)
+                correction_rate = (total / total_docs) if total_docs > 0 else 0.0
+
                 # Erstelle oder aktualisiere Performance-Record
                 perf_record = OCRBackendPerformance(
                     id=uuid.uuid4(),
@@ -1218,8 +1266,8 @@ class SelfLearningOCRService:
                     document_type=row.document_type,
                     company_id=None,  # Global, nicht company-spezifisch
                     total_corrections=total,
-                    total_documents=0,  # TODO: Aus Document-Tabelle aggregieren
-                    correction_rate=0.0,  # TODO: Berechnen
+                    total_documents=total_docs,
+                    correction_rate=correction_rate,
                     avg_confidence_before=avg_conf,
                     avg_confidence_adjustment=adjustment,
                     umlaut_error_rate=umlaut_rate,
@@ -1248,6 +1296,8 @@ class SelfLearningOCRService:
                     constraint="uq_backend_performance_period",
                     set_={
                         "total_corrections": perf_record.total_corrections,
+                        "total_documents": perf_record.total_documents,
+                        "correction_rate": perf_record.correction_rate,
                         "avg_confidence_before": perf_record.avg_confidence_before,
                         "avg_confidence_adjustment": perf_record.avg_confidence_adjustment,
                         "umlaut_error_rate": perf_record.umlaut_error_rate,

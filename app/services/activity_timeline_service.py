@@ -356,11 +356,43 @@ class ActivityTimelineService:
 
         activities = []
 
-        # Da DocumentChain separat ist, vereinfachte Implementierung:
-        # Hole alle Dokumente die zur Chain gehoeren und deren Aktivitaeten
+        # DocumentChain Integration - hole Aktivitaeten fuer verknuepfte Dokumente
+        try:
+            from app.db.models import DocumentChain, DocumentChainItem
 
-        # TODO: Vollstaendige Implementation wenn DocumentChain Model verfuegbar
-        # Vorerst leere Liste zurueckgeben
+            # Lade Chain mit Items
+            chain_query = select(DocumentChain).where(DocumentChain.id == chain_id)
+            chain_result = await self.db.execute(chain_query)
+            chain = chain_result.scalar_one_or_none()
+
+            if not chain:
+                return activities
+
+            # Lade verknuepfte Dokument-IDs
+            items_query = select(DocumentChainItem.document_id).where(
+                DocumentChainItem.chain_id == chain_id
+            )
+            items_result = await self.db.execute(items_query)
+            document_ids = items_result.scalars().all()
+
+            # Hole Aktivitaeten fuer alle Dokumente der Chain
+            for doc_id in document_ids:
+                doc_activities = await self.get_document_timeline(
+                    document_id=doc_id,
+                    user_id=user_id,
+                    company_id=company_id,
+                    limit=10,  # Begrenzt pro Dokument
+                )
+                activities.extend(doc_activities)
+
+            # Sortiere nach Zeitstempel
+            activities.sort(key=lambda a: a.timestamp, reverse=True)
+
+        except ImportError:
+            # DocumentChain Model nicht verfuegbar
+            pass
+        except Exception as e:
+            logger.warning("document_chain_timeline_error", error=str(e))
 
         return activities
 

@@ -91,6 +91,21 @@ Diese E-Mail wurde automatisch generiert.
 # HELPER FUNCTIONS
 # =============================================================================
 
+
+def format_avg_processing_time(avg_ms: Optional[float]) -> str:
+    """Formatiere durchschnittliche Verarbeitungszeit fuer Anzeige."""
+    if avg_ms is None:
+        return "Nicht verfuegbar"
+    if avg_ms < 1000:
+        return f"< 1 Sekunde"
+    elif avg_ms < 60000:
+        seconds = avg_ms / 1000
+        return f"{seconds:.1f} Sekunden"
+    else:
+        minutes = avg_ms / 60000
+        return f"{minutes:.1f} Minuten"
+
+
 async def get_users_with_digest_preference(
     db: AsyncSession,
     digest_type: str
@@ -151,11 +166,24 @@ async def get_user_document_stats(
     )
     failed_ocr = failed_result.scalar() or 0
 
+    # Durchschnittliche Verarbeitungszeit berechnen
+    avg_time_result = await db.execute(
+        select(func.avg(Document.processing_duration_ms)).where(
+            and_(
+                Document.uploaded_by_id == user_id,
+                Document.uploaded_at >= since,
+                Document.processing_duration_ms.isnot(None),
+            )
+        )
+    )
+    avg_processing_ms = avg_time_result.scalar()
+
     return {
         "total": total_docs,
         "successful": successful_ocr,
         "failed": failed_ocr,
-        "success_rate": round(successful_ocr / total_docs * 100, 1) if total_docs > 0 else 0
+        "success_rate": round(successful_ocr / total_docs * 100, 1) if total_docs > 0 else 0,
+        "avg_processing_time_ms": avg_processing_ms,
     }
 
 
@@ -430,7 +458,7 @@ def send_weekly_digest(self) -> Dict[str, Any]:
                         total_documents=doc_stats["total"],
                         ocr_success_rate=doc_stats["success_rate"],
                         total_notifications=len(notifications),
-                        avg_processing_time="< 5 Sekunden",  # TODO: Echte Berechnung
+                        avg_processing_time=format_avg_processing_time(doc_stats.get("avg_processing_time_ms")),
                         trend_section=trend
                     )
 

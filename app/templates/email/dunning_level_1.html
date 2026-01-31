@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1. Mahnung</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #b45309;
+            font-size: 24px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #fbbf24;
+            padding-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background: #fef3c7;
+            font-weight: bold;
+        }
+        .amount {
+            text-align: right;
+            font-family: 'Courier New', monospace;
+        }
+        .total-row {
+            background: #fef3c7;
+            font-weight: bold;
+        }
+        .payment-info {
+            background: #fefce8;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+            border-left: 4px solid #eab308;
+        }
+        .deadline {
+            color: #b45309;
+            font-weight: bold;
+        }
+        .bank-details {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 6px;
+        }
+        .bank-details dt {
+            font-weight: bold;
+            margin-top: 8px;
+        }
+        .bank-details dd {
+            margin: 2px 0 0 0;
+            font-family: 'Courier New', monospace;
+        }
+        .notice {
+            background: #fff7ed;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+            border-left: 4px solid #f97316;
+            color: #c2410c;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 13px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>1. Mahnung</h1>
+
+        <p>Sehr geehrte Damen und Herren,</p>
+
+        <p>
+            trotz unserer Zahlungserinnerung ist der unten aufgefuehrte Betrag
+            leider immer noch offen. Wir moechten Sie daher nochmals hoeflich
+            auffordern, die ausstehende Forderung umgehend zu begleichen.
+        </p>
+
+        <table>
+            <tr>
+                <th>Position</th>
+                <th class="amount">Betrag</th>
+            </tr>
+            <tr>
+                <td>Rechnung {{ data.invoice_number }} vom {{ data.invoice_date | date }}</td>
+                <td class="amount">{{ data.outstanding_amount | currency }}</td>
+            </tr>
+            {% if data.dunning_fee > 0 %}
+            <tr>
+                <td>Mahngebuehr</td>
+                <td class="amount">{{ data.dunning_fee | currency }}</td>
+            </tr>
+            {% endif %}
+            {% if data.interest_amount > 0 %}
+            <tr>
+                <td>Verzugszinsen ({{ data.days_overdue }} Tage)</td>
+                <td class="amount">{{ data.interest_amount | currency }}</td>
+            </tr>
+            {% endif %}
+            <tr class="total-row">
+                <td>Gesamtbetrag</td>
+                <td class="amount">{{ data.total_amount | currency }}</td>
+            </tr>
+        </table>
+
+        <div class="payment-info">
+            <p>
+                Bitte ueberweisen Sie den Gesamtbetrag von
+                <strong>{{ data.total_amount | currency }}</strong>
+                bis zum <span class="deadline">{{ data.payment_deadline | date }}</span>.
+            </p>
+        </div>
+
+        <div class="bank-details">
+            <strong>Bankverbindung:</strong>
+            <dl>
+                <dt>IBAN:</dt>
+                <dd>{{ data.company_iban }}</dd>
+                <dt>BIC:</dt>
+                <dd>{{ data.company_bic }}</dd>
+                <dt>Bank:</dt>
+                <dd>{{ data.company_bank_name }}</dd>
+                <dt>Verwendungszweck:</dt>
+                <dd>{{ data.payment_reference }}</dd>
+            </dl>
+        </div>
+
+        <div class="notice">
+            <strong>Hinweis:</strong> Ab dem Faelligkeitsdatum sind wir berechtigt,
+            Verzugszinsen nach &sect;288 BGB zu berechnen.
+        </div>
+
+        <p>
+            Sollte es Ihrerseits Gruende fuer die verspaetete Zahlung geben,
+            bitten wir um eine kurze Rueckmeldung.
+        </p>
+
+        <p>Mit freundlichen Gruessen</p>
+        <p><strong>{{ data.company_name }}</strong></p>
+
+        <div class="footer">
+            Bei Fragen: Tel. {{ data.contact_phone }} | {{ data.contact_email }}
+        </div>
+    </div>
+</body>
+</html>

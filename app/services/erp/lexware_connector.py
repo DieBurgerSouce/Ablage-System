@@ -1496,16 +1496,112 @@ async def create_lexware_connector_from_db(
     """
     Erstellt Connector aus Datenbank-Konfiguration.
 
+    Liest ERP-Verbindungsdaten aus der ERPConnection-Tabelle und
+    erstellt einen vollstaendig konfigurierten LexwareConnector.
+
+    SECURITY:
+    - Credentials werden verschluesselt gespeichert (AES-256-GCM)
+    - Multi-Tenant Isolation via company_id
+    - Keine PII in Logs (CWE-532)
+
     Args:
         company_id: Company UUID
 
     Returns:
-        LexwareConnector oder None
+        LexwareConnector oder None wenn nicht konfiguriert/Fehler
     """
-    # TODO: Implement DB lookup for ERP config
-    # This would read from an erp_connections table
-    logger.info(
-        "lexware_connector_from_db",
-        company_id=str(company_id),
-    )
-    return None
+    from app.db.session import async_session_maker
+    from app.db.models import ERPConnection
+    from app.core.encryption import decrypt_api_key
+    from sqlalchemy import select, and_
+
+    async with async_session_maker() as db:
+        try:
+            # Query ERPConnection fuer Lexware-Konfiguration
+            query = select(ERPConnection).where(
+                and_(
+                    ERPConnection.company_id == company_id,
+                    ERPConnection.erp_type == "lexware",
+                    ERPConnection.is_active == True,
+                )
+            )
+            result = await db.execute(query)
+            connection = result.scalar_one_or_none()
+
+            if not connection:
+                logger.info(
+                    "lexware_no_connection_configured",
+                    company_id=str(company_id)[:8],  # SECURITY: Nur Prefix loggen
+                )
+                return None
+
+            # Decrypt Credentials
+            # SECURITY: AES-256-GCM mit Connection-ID als AAD
+            try:
+                decrypted_secret = decrypt_api_key(
+                    connection.encrypted_api_key,
+                    str(connection.id),  # Connection-ID als AAD
+                )
+            except Exception as e:
+                # SECURITY: Keine Crypto-Details loggen (CWE-209)
+                logger.error(
+                    "lexware_decrypt_credentials_failed",
+                    company_id=str(company_id)[:8],
+                    error_type=type(e).__name__,
+                )
+                return None
+
+            # Parse JSONB enabled_entities fuer Extra-Konfiguration
+            extra_config = connection.enabled_entities or {}
+
+            # Bestimme Environment aus URL
+            environment = "sandbox" if "sandbox" in (connection.url or "").lower() else "production"
+
+            # Erstelle LexwareConnectionConfig aus DB-Werten
+            config = LexwareConnectionConfig(
+                # OAuth2 Credentials
+                client_id=connection.username,  # username speichert client_id
+                client_secret=decrypted_secret,
+
+                # API-Verbindung
+                url=connection.url,
+                environment=environment,
+                api_version=LexwareAPIVersion(extra_config.get("api_version", "v1")),
+
+                # Lexware-spezifisch
+                organization_id=extra_config.get("organization_id", ""),
+
+                # Webhook-Einstellungen (optional)
+                webhook_url=extra_config.get("webhook_url", ""),
+                webhook_secret=extra_config.get("webhook_secret", ""),
+
+                # Sync-Einstellungen aus DB
+                batch_size=connection.batch_size,
+                max_retries=connection.max_retries,
+                retry_delay_seconds=connection.retry_delay_seconds,
+
+                # Timeouts
+                connect_timeout_seconds=connection.connect_timeout_seconds,
+                read_timeout_seconds=connection.read_timeout_seconds,
+            )
+
+            # Erstelle Connector
+            connector = LexwareConnector(config)
+
+            logger.info(
+                "lexware_connector_created_from_db",
+                company_id=str(company_id)[:8],  # SECURITY: Nur Prefix
+                connection_id=str(connection.id)[:8],
+                environment=environment,
+            )
+
+            return connector
+
+        except Exception as e:
+            # SECURITY: Keine Details loggen (CWE-532)
+            logger.error(
+                "lexware_connector_from_db_error",
+                company_id=str(company_id)[:8],
+                error_type=type(e).__name__,
+            )
+            return None

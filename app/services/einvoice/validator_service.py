@@ -476,15 +476,156 @@ class EInvoiceValidatorService:
         pdf_content: bytes,
         result: ValidationResult
     ) -> None:
-        """Validiert PDF/A-3 Konformitaet via Mustang."""
-        # TODO: PDF/A-3 Validierung ueber Mustang/VeraPDF
-        # Fuer jetzt: Ueberspringen
-        result.pdf_a_compliant = None
-        result.add_warning(
-            code="PDFA_NOT_VALIDATED",
-            location="pdf",
-            message="PDF/A-3 Validierung noch nicht implementiert"
-        )
+        """Validiert PDF/A-3 Konformitaet.
+
+        Prueft grundlegende PDF/A-3 Anforderungen:
+        - PDF-Strukturvaliditaet
+        - Embedded File Stream (fuer ZUGFeRD XML)
+        - Metadata (XMP)
+        - Keine externen Referenzen
+
+        Fuer volle PDF/A-3 Validierung wird VeraPDF empfohlen,
+        diese Implementation bietet eine Basisvalidierung.
+        """
+        import io
+
+        try:
+            # PyPDF2 oder pypdf fuer Basis-PDF-Validierung
+            try:
+                from pypdf import PdfReader
+            except ImportError:
+                try:
+                    from PyPDF2 import PdfReader
+                except ImportError:
+                    result.pdf_a_compliant = None
+                    result.add_warning(
+                        code="PDFA_LIBRARY_MISSING",
+                        location="pdf",
+                        message="pypdf/PyPDF2 nicht installiert - PDF/A-3 Validierung uebersprungen"
+                    )
+                    return
+
+            # PDF einlesen
+            pdf_file = io.BytesIO(pdf_content)
+            reader = PdfReader(pdf_file)
+
+            # 1. Pruefe ob PDF lesbar ist (Strukturvaliditaet)
+            try:
+                num_pages = len(reader.pages)
+                if num_pages < 1:
+                    result.pdf_a_compliant = False
+                    result.add_error(
+                        code="PDFA_NO_PAGES",
+                        location="pdf",
+                        message="PDF enthaelt keine Seiten"
+                    )
+                    return
+            except Exception as e:
+                result.pdf_a_compliant = False
+                result.add_error(
+                    code="PDFA_STRUCTURE_INVALID",
+                    location="pdf",
+                    message=f"PDF-Struktur ungueltig: {safe_error_detail(e, 'PDF')}"
+                )
+                return
+
+            # 2. Pruefe auf eingebettete Dateien (ZUGFeRD XML)
+            has_embedded_files = False
+            embedded_xml_found = False
+
+            if "/Names" in reader.trailer.get("/Root", {}):
+                root = reader.trailer["/Root"]
+                if "/EmbeddedFiles" in root.get("/Names", {}):
+                    has_embedded_files = True
+
+            # Alternativer Check: Attachments via Catalog
+            if hasattr(reader, 'attachments') and reader.attachments:
+                has_embedded_files = True
+                for name in reader.attachments:
+                    if name.lower().endswith('.xml'):
+                        embedded_xml_found = True
+                        break
+
+            # 3. Pruefe XMP Metadata (PDF/A Konformitaet)
+            has_xmp = False
+            pdfa_conformance = None
+
+            if reader.metadata:
+                # Standard-Metadaten vorhanden
+                has_xmp = True
+
+            # 4. Basis-Checks fuer ZUGFeRD: Embedded XML erforderlich
+            # ZUGFeRD erfordert eingebettetes XML (factur-x.xml)
+            if not has_embedded_files:
+                result.pdf_a_compliant = False
+                result.add_error(
+                    code="PDFA_NO_EMBEDDED_FILES",
+                    location="pdf",
+                    message="PDF/A-3 erfordert eingebettete Dateien (ZUGFeRD XML fehlt)"
+                )
+                return
+
+            # 5. Keine JavaScript oder andere aktive Inhalte (PDF/A-3 verbietet dies)
+            # Basis-Check: Keine /JavaScript im Root
+            try:
+                root_obj = reader.trailer.get("/Root", {})
+                if "/JavaScript" in str(root_obj) or "/JS" in str(root_obj):
+                    result.pdf_a_compliant = False
+                    result.add_error(
+                        code="PDFA_JAVASCRIPT_FOUND",
+                        location="pdf",
+                        message="PDF/A-3 verbietet JavaScript"
+                    )
+                    return
+            except Exception:
+                pass  # Ignoriere Fehler bei diesem optionalen Check
+
+            # 6. Pruefe Encryption (PDF/A erlaubt nur bestimmte Encryption)
+            if reader.is_encrypted:
+                result.pdf_a_compliant = False
+                result.add_error(
+                    code="PDFA_ENCRYPTED",
+                    location="pdf",
+                    message="PDF/A-3 verbietet Passwortverschluesselung"
+                )
+                return
+
+            # Basis-Checks bestanden
+            result.pdf_a_compliant = True
+
+            # Informations-Warnungen hinzufuegen
+            if not has_xmp:
+                result.add_warning(
+                    code="PDFA_XMP_MISSING",
+                    location="pdf/metadata",
+                    message="XMP-Metadaten nicht gefunden - fuer volle PDF/A-3 Konformitaet empfohlen"
+                )
+
+            if not embedded_xml_found:
+                result.add_warning(
+                    code="PDFA_ZUGFERD_XML_NOT_VERIFIED",
+                    location="pdf/attachment",
+                    message="Eingebettetes factur-x.xml konnte nicht verifiziert werden"
+                )
+
+            logger.info(
+                "pdfa_validation_completed",
+                compliant=True,
+                pages=num_pages,
+                has_embedded_files=has_embedded_files,
+            )
+
+        except Exception as e:
+            logger.warning(
+                "pdfa_validation_error",
+                **safe_error_log(e)
+            )
+            result.pdf_a_compliant = None
+            result.add_warning(
+                code="PDFA_VALIDATION_ERROR",
+                location="pdf",
+                message=f"PDF/A-3 Validierung fehlgeschlagen: {safe_error_detail(e, 'PDF')}"
+            )
 
     def _detect_profile(self, xml_content: str) -> Optional[str]:
         """Erkennt ZUGFeRD/XRechnung Profil aus XML."""

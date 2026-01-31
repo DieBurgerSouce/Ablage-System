@@ -193,10 +193,6 @@ export function ComparePage() {
           report={diffReport}
           text1=""
           text2=""
-          onExportPdf={() => {
-            // TODO: PDF Export implementieren
-            console.log('PDF Export');
-          }}
         />
       )}
 

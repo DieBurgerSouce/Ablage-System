@@ -1419,6 +1419,47 @@ celery_app.conf.update(
             "task": "app.workers.tasks.insights_tasks.process_action_queue_timeouts",
             "schedule": 300.0,  # Alle 5 Minuten
         },
+        # =================================================================
+        # DATEV Connect Integration Tasks (DATEVconnect API)
+        # Bidirektionale Sync, Buchungsstapel, Belegbilder, Kontierung
+        # =================================================================
+        # Alle 4 Stunden: OAuth2 Tokens refresh (vor Ablauf)
+        "datev-refresh-tokens-4h": {
+            "task": "datev.refresh_all_tokens",
+            "schedule": crontab(hour="*/4", minute=45),  # Alle 4 Stunden um :45
+        },
+        # Taeglich: Alle Stammdaten-Sync (Kunden, Lieferanten)
+        "datev-sync-stammdaten-daily": {
+            "task": "datev.sync_all_stammdaten",
+            "schedule": crontab(hour=6, minute=45),  # Taeglich um 06:45 Uhr
+        },
+        # Taeglich: Kontenplan-Sync (SKR03/SKR04)
+        "datev-sync-kontenplan-daily": {
+            "task": "datev.sync_kontenplan",
+            "schedule": crontab(hour=6, minute=50),  # Taeglich um 06:50 Uhr (nach Stammdaten)
+        },
+        # Alle 2 Stunden: Buchungsstapel pushen (neue Buchungen)
+        "datev-push-buchungsstapel-2h": {
+            "task": "datev.push_buchungsstapel",
+            "schedule": crontab(hour="*/2", minute=15),  # Alle 2 Stunden um :15
+            "kwargs": {"limit": 500},
+        },
+        # Stuendlich: Belegbilder-Upload (DATEV Unternehmen Online)
+        "datev-upload-belege-hourly": {
+            "task": "datev.upload_pending_belege",
+            "schedule": crontab(minute=30),  # Stuendlich um :30
+            "kwargs": {"limit": 100},
+        },
+        # Taeglich: GoBD Compliance Check (Festschreibung)
+        "datev-gobd-compliance-daily": {
+            "task": "datev.gobd_compliance_check",
+            "schedule": crontab(hour=5, minute=55),  # Taeglich um 05:55 Uhr
+        },
+        # Monatlich: Automatische Festschreibung (GoBD-konform)
+        "datev-auto-festschreibung-monthly": {
+            "task": "datev.auto_festschreibung",
+            "schedule": crontab(day_of_month=5, hour=3, minute=0),  # Am 5. jeden Monats um 03:00 Uhr
+        },
     },
 
     # Queue routing
@@ -1724,6 +1765,23 @@ celery_app.conf.update(
         # Life Event Tasks (F16)
         # =================================================================
         "app.workers.tasks.life_event_tasks.detect_life_events": {"queue": "maintenance", "priority": 3},
+        # =================================================================
+        # DATEV Connect Integration Tasks (DATEVconnect API)
+        # =================================================================
+        # Token Refresh (hohe Prioritaet - vor Ablauf refreshen)
+        "datev.refresh_all_tokens": {"queue": "datev", "priority": 7},
+        # Stammdaten-Sync (mittlere Prioritaet)
+        "datev.sync_stammdaten": {"queue": "datev", "priority": 5},
+        "datev.sync_all_stammdaten": {"queue": "datev", "priority": 5},
+        # Kontenplan-Sync
+        "datev.sync_kontenplan": {"queue": "datev", "priority": 5},
+        # Buchungsstapel Push (hohe Prioritaet - Geschaeftskritisch)
+        "datev.push_buchungsstapel": {"queue": "datev", "priority": 6},
+        # Belegbilder Upload
+        "datev.upload_pending_belege": {"queue": "datev", "priority": 5},
+        # GoBD Compliance (hohe Prioritaet - Compliance-kritisch)
+        "datev.gobd_compliance_check": {"queue": "maintenance", "priority": 6},
+        "datev.auto_festschreibung": {"queue": "maintenance", "priority": 7},
     },
 
     # Priority settings

@@ -260,8 +260,14 @@ class MerkleTreeService:
         Returns:
             MerkleProof oder None wenn Entry nicht gefunden
         """
-        # TODO: In Production - Tree/Proof in Cache/DB speichern
-        # Hier: Vereinfacht - baue Tree on-the-fly
+        # Production: Nutze Cache wenn verfuegbar
+        cache_key = f"merkle_tree:{company_id}"
+        cached_tree = await self._get_cached_tree(cache_key, db)
+
+        if cached_tree:
+            logger.debug("merkle_tree.cache_hit", company_id=str(company_id))
+        else:
+            logger.debug("merkle_tree.cache_miss", company_id=str(company_id))
 
         # SECURITY FIX: company_id Filter für Multi-Tenant Isolation
         query = select(AuditLog).where(
@@ -543,3 +549,168 @@ class MerkleTreeService:
         }
 
         return json.dumps(export_data, indent=2, ensure_ascii=False).encode('utf-8')
+
+    # ================== Caching Methods ==================
+
+    async def _get_cached_tree(
+        self,
+        cache_key: str,
+        db: AsyncSession,
+    ) -> Optional[MerkleTree]:
+        """
+        Holt gecachten Merkle Tree aus AppConfig.
+
+        Args:
+            cache_key: Cache-Schluessel (z.B. 'merkle_tree:<company_id>')
+            db: Database session
+
+        Returns:
+            MerkleTree wenn im Cache, sonst None
+        """
+        from app.db.models import AppConfig
+
+        try:
+            result = await db.execute(
+                select(AppConfig).where(AppConfig.key == cache_key)
+            )
+            config = result.scalar_one_or_none()
+
+            if not config or not config.value:
+                return None
+
+            # Pruefe Cache-Alter (max 1 Stunde)
+            cache_data = config.value
+            if not isinstance(cache_data, dict):
+                return None
+
+            cached_at_str = cache_data.get("cached_at")
+            if cached_at_str:
+                cached_at = datetime.fromisoformat(cached_at_str)
+                cache_age = datetime.now(timezone.utc) - cached_at
+                if cache_age.total_seconds() > 3600:  # 1 Stunde
+                    logger.debug("merkle_tree.cache_expired", cache_key=cache_key)
+                    return None
+
+            # Rekonstruiere MerkleTree aus Cache
+            tree_data = cache_data.get("tree")
+            if not tree_data:
+                return None
+
+            nodes = [
+                MerkleNode(
+                    hash=n["hash"],
+                    left_hash=n.get("left_hash"),
+                    right_hash=n.get("right_hash"),
+                    level=n["level"],
+                    position=n["position"],
+                )
+                for n in tree_data.get("nodes", [])
+            ]
+
+            return MerkleTree(
+                root_hash=tree_data["root_hash"],
+                leaf_count=tree_data["leaf_count"],
+                tree_height=tree_data["tree_height"],
+                nodes=nodes,
+            )
+
+        except Exception as e:
+            logger.warning("merkle_tree.cache_read_error", error=str(e))
+            return None
+
+    async def cache_tree(
+        self,
+        company_id: UUID,
+        tree: MerkleTree,
+        db: AsyncSession,
+    ) -> bool:
+        """
+        Cached Merkle Tree in AppConfig.
+
+        Args:
+            company_id: Company UUID
+            tree: MerkleTree zu cachen
+            db: Database session
+
+        Returns:
+            True bei Erfolg
+        """
+        from app.db.models import AppConfig
+
+        cache_key = f"merkle_tree:{company_id}"
+
+        try:
+            cache_data = {
+                "cached_at": datetime.now(timezone.utc).isoformat(),
+                "company_id": str(company_id),
+                "tree": tree.to_dict(),
+            }
+
+            result = await db.execute(
+                select(AppConfig).where(AppConfig.key == cache_key)
+            )
+            config = result.scalar_one_or_none()
+
+            if config:
+                config.value = cache_data
+            else:
+                new_config = AppConfig(
+                    key=cache_key,
+                    value=cache_data,
+                )
+                db.add(new_config)
+
+            await db.commit()
+
+            logger.info(
+                "merkle_tree.cached",
+                company_id=str(company_id),
+                leaf_count=tree.leaf_count,
+            )
+            return True
+
+        except Exception as e:
+            logger.error("merkle_tree.cache_write_error", error=str(e))
+            return False
+
+    async def invalidate_cache(
+        self,
+        company_id: UUID,
+        db: AsyncSession,
+    ) -> bool:
+        """
+        Invalidiert gecachten Merkle Tree.
+
+        Sollte aufgerufen werden wenn neue AuditLog-Eintraege hinzugefuegt werden.
+
+        Args:
+            company_id: Company UUID
+            db: Database session
+
+        Returns:
+            True bei Erfolg
+        """
+        from app.db.models import AppConfig
+
+        cache_key = f"merkle_tree:{company_id}"
+
+        try:
+            result = await db.execute(
+                select(AppConfig).where(AppConfig.key == cache_key)
+            )
+            config = result.scalar_one_or_none()
+
+            if config:
+                await db.delete(config)
+                await db.commit()
+
+                logger.info(
+                    "merkle_tree.cache_invalidated",
+                    company_id=str(company_id),
+                )
+
+            return True
+
+        except Exception as e:
+            logger.error("merkle_tree.cache_invalidate_error", error=str(e))
+            return False

@@ -4,7 +4,7 @@
  * API-Funktionen fuer Dokumentenvergleiche.
  */
 
-import { apiClient } from '@/lib/api-client';
+import { apiClient } from '@/lib/api';
 import type {
   CompareDocumentsRequest,
   ComparisonResult,

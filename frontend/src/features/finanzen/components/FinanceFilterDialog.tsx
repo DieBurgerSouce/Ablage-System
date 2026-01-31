@@ -78,7 +78,7 @@ export function FinanceFilterDialog({
       dateTo: '',
       amountMin: '',
       amountMax: '',
-      steuerart: '',
+      steuerart: 'all',
       sortBy: 'document_date',
       sortOrder: 'desc',
     },
@@ -113,7 +113,7 @@ export function FinanceFilterDialog({
     if (data.dateTo) filters.dateTo = data.dateTo
     if (data.amountMin) filters.amountMin = parseFloat(data.amountMin)
     if (data.amountMax) filters.amountMax = parseFloat(data.amountMax)
-    if (data.steuerart) filters.steuerart = data.steuerart
+    if (data.steuerart && data.steuerart !== 'all') filters.steuerart = data.steuerart
 
     onApplyFilters(filters)
     onOpenChange(false)
@@ -130,7 +130,7 @@ export function FinanceFilterDialog({
       dateTo: '',
       amountMin: '',
       amountMax: '',
-      steuerart: '',
+      steuerart: 'all',
       sortBy: 'document_date',
       sortOrder: 'desc',
     })
@@ -230,7 +230,7 @@ export function FinanceFilterDialog({
                   <SelectValue placeholder="Alle Steuerarten" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Alle Steuerarten</SelectItem>
+                  <SelectItem value="all">Alle Steuerarten</SelectItem>
                   <SelectItem value="einkommensteuer">Einkommensteuer</SelectItem>
                   <SelectItem value="koerperschaftsteuer">Koerperschaftsteuer</SelectItem>
                   <SelectItem value="gewerbesteuer">Gewerbesteuer</SelectItem>

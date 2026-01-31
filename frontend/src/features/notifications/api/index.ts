@@ -4,7 +4,7 @@
  * API-Funktionen für Benachrichtigungen und Einstellungen
  */
 
-import { apiClient } from '@/lib/api-client';
+import { apiClient } from '@/lib/api';
 import type {
   Notification,
   NotificationsResponse,

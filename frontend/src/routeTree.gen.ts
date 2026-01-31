@@ -10,32 +10,56 @@
 
 import { Route as rootRouteImport } from './app/routes/__root'
 import { Route as WorkflowsRouteImport } from './app/routes/workflows'
+import { Route as WissenRouteImport } from './app/routes/wissen'
+import { Route as VorlagenRouteImport } from './app/routes/vorlagen'
+import { Route as VertraegeRouteImport } from './app/routes/vertraege'
 import { Route as ValidationQueueRouteImport } from './app/routes/validation-queue'
 import { Route as UploadRouteImport } from './app/routes/upload'
+import { Route as TrashRouteImport } from './app/routes/trash'
+import { Route as TeamsRouteImport } from './app/routes/teams'
 import { Route as StreckengeschaeftRouteImport } from './app/routes/streckengeschaeft'
 import { Route as SpesenRouteImport } from './app/routes/spesen'
+import { Route as ShareTargetRouteImport } from './app/routes/share-target'
 import { Route as ShareRouteImport } from './app/routes/share'
+import { Route as SettingsRouteImport } from './app/routes/settings'
+import { Route as SendungenRouteImport } from './app/routes/sendungen'
 import { Route as SearchRouteImport } from './app/routes/search'
+import { Route as ScanRouteImport } from './app/routes/scan'
+import { Route as RiskRouteImport } from './app/routes/risk'
 import { Route as RelationshipsRouteImport } from './app/routes/relationships'
+import { Route as ProzesseRouteImport } from './app/routes/prozesse'
 import { Route as PrivatRouteImport } from './app/routes/privat'
 import { Route as PersonalRouteImport } from './app/routes/personal'
+import { Route as OpenFileRouteImport } from './app/routes/open-file'
 import { Route as MonitoringRouteImport } from './app/routes/monitoring'
 import { Route as LoginRouteImport } from './app/routes/login'
 import { Route as LieferantenRouteImport } from './app/routes/lieferanten'
 import { Route as KundenRouteImport } from './app/routes/kunden'
 import { Route as KasseRouteImport } from './app/routes/kasse'
 import { Route as JobsRouteImport } from './app/routes/jobs'
+import { Route as InventoryRouteImport } from './app/routes/inventory'
+import { Route as HoldingRouteImport } from './app/routes/holding'
+import { Route as FraudRouteImport } from './app/routes/fraud'
 import { Route as ForgotPasswordRouteImport } from './app/routes/forgot-password'
 import { Route as FinanzenRouteImport } from './app/routes/finanzen'
 import { Route as DocumentGroupsRouteImport } from './app/routes/document-groups'
+import { Route as DocumentChainsRouteImport } from './app/routes/document-chains'
+import { Route as DeveloperRouteImport } from './app/routes/developer'
 import { Route as ChatRouteImport } from './app/routes/chat'
+import { Route as CashflowRouteImport } from './app/routes/cashflow'
+import { Route as BerichteRouteImport } from './app/routes/berichte'
 import { Route as AutomationRouteImport } from './app/routes/automation'
+import { Route as AlertsRouteImport } from './app/routes/alerts'
 import { Route as AdminRouteImport } from './app/routes/admin'
+import { Route as ActivityRouteImport } from './app/routes/activity'
 import { Route as SplatRouteImport } from './app/routes/$'
 import { Route as IndexRouteImport } from './app/routes/index'
 import { Route as WorkflowsIndexRouteImport } from './app/routes/workflows.index'
 import { Route as StreckengeschaeftIndexRouteImport } from './app/routes/streckengeschaeft.index'
 import { Route as SpesenIndexRouteImport } from './app/routes/spesen.index'
+import { Route as SendungenIndexRouteImport } from './app/routes/sendungen.index'
+import { Route as RiskIndexRouteImport } from './app/routes/risk.index'
+import { Route as ProzesseIndexRouteImport } from './app/routes/prozesse.index'
 import { Route as PrivatIndexRouteImport } from './app/routes/privat.index'
 import { Route as PersonalIndexRouteImport } from './app/routes/personal.index'
 import { Route as LieferantenIndexRouteImport } from './app/routes/lieferanten.index'
@@ -53,7 +77,17 @@ import { Route as StreckengeschaeftKlassifikationenRouteImport } from './app/rou
 import { Route as StreckengeschaeftEinstellungenRouteImport } from './app/routes/streckengeschaeft.einstellungen'
 import { Route as StreckengeschaeftClassificationIdRouteImport } from './app/routes/streckengeschaeft.$classificationId'
 import { Route as SpesenReportIdRouteImport } from './app/routes/spesen.$reportId'
+import { Route as SettingsSecurityRouteImport } from './app/routes/settings.security'
+import { Route as SettingsDelegationsRouteImport } from './app/routes/settings.delegations'
+import { Route as SettingsConsentRouteImport } from './app/routes/settings.consent'
+import { Route as SendungenNeuRouteImport } from './app/routes/sendungen.neu'
+import { Route as SendungenShipmentIdRouteImport } from './app/routes/sendungen.$shipmentId'
+import { Route as RiskIntelligenceRouteImport } from './app/routes/risk.intelligence'
+import { Route as RiskEntityIdRouteImport } from './app/routes/risk.$entityId'
 import { Route as ResetPasswordTokenRouteImport } from './app/routes/reset-password.$token'
+import { Route as ProzesseNeuRouteImport } from './app/routes/prozesse.neu'
+import { Route as ProzesseAufgabenRouteImport } from './app/routes/prozesse.aufgaben'
+import { Route as ProzesseDefinitionIdRouteImport } from './app/routes/prozesse.$definitionId'
 import { Route as PrivatVersicherungenRouteImport } from './app/routes/privat.versicherungen'
 import { Route as PrivatPortfolioRouteImport } from './app/routes/privat.portfolio'
 import { Route as PrivatNotfallRouteImport } from './app/routes/privat.notfall'
@@ -62,30 +96,64 @@ import { Route as PrivatFristenRouteImport } from './app/routes/privat.fristen'
 import { Route as PrivatFinanzenRouteImport } from './app/routes/privat.finanzen'
 import { Route as PrivatFahrzeugeRouteImport } from './app/routes/privat.fahrzeuge'
 import { Route as PersonalEmployeeIdRouteImport } from './app/routes/personal.$employeeId'
+import { Route as LieferantenRankingRouteImport } from './app/routes/lieferanten.ranking'
 import { Route as LieferantenSupplierIdRouteImport } from './app/routes/lieferanten.$supplierId'
 import { Route as KundenCustomerIdRouteImport } from './app/routes/kunden.$customerId'
+import { Route as HoldingReconciliationRouteImport } from './app/routes/holding.reconciliation'
+import { Route as FinanzenZahlungsverhaltenRouteImport } from './app/routes/finanzen.zahlungsverhalten'
 import { Route as FinanzenYearRouteImport } from './app/routes/finanzen.$year'
+import { Route as DocumentsCompareRouteImport } from './app/routes/documents.compare'
 import { Route as DocumentsDocumentIdRouteImport } from './app/routes/documents.$documentId'
 import { Route as DocumentGroupsIdRouteImport } from './app/routes/document-groups.$id'
+import { Route as DocumentChainsChainIdRouteImport } from './app/routes/document-chains.$chainId'
+import { Route as BankingPaymentAutomationRouteImport } from './app/routes/banking.payment-automation'
+import { Route as BankingMissedSkontoRouteImport } from './app/routes/banking.missed-skonto'
+import { Route as BankingAutoMahnlaufRouteImport } from './app/routes/banking.auto-mahnlauf'
+import { Route as AdminWidgetsRouteImport } from './app/routes/admin.widgets'
+import { Route as AdminValidationRouteImport } from './app/routes/admin.validation'
 import { Route as AdminUsersRouteImport } from './app/routes/admin.users'
 import { Route as AdminTunesRouteImport } from './app/routes/admin.tunes'
+import { Route as AdminTenantLimitsRouteImport } from './app/routes/admin.tenant-limits'
+import { Route as AdminSsoRouteImport } from './app/routes/admin.sso'
+import { Route as AdminSmartQueueRouteImport } from './app/routes/admin.smart-queue'
+import { Route as AdminSlackRouteImport } from './app/routes/admin.slack'
 import { Route as AdminSettingsRouteImport } from './app/routes/admin.settings'
+import { Route as AdminRulesRouteImport } from './app/routes/admin.rules'
+import { Route as AdminRiskScoringRouteImport } from './app/routes/admin.risk-scoring'
+import { Route as AdminRechnungenRouteImport } from './app/routes/admin.rechnungen'
+import { Route as AdminProcessOptimizationRouteImport } from './app/routes/admin.process-optimization'
 import { Route as AdminOcrTrainingRouteImport } from './app/routes/admin.ocr-training'
 import { Route as AdminOcrReviewRouteImport } from './app/routes/admin.ocr-review'
+import { Route as AdminOcrLearningRouteImport } from './app/routes/admin.ocr-learning'
 import { Route as AdminOcrBackendsRouteImport } from './app/routes/admin.ocr-backends'
+import { Route as AdminMlopsRouteImport } from './app/routes/admin.mlops'
 import { Route as AdminMahnungenRouteImport } from './app/routes/admin.mahnungen'
+import { Route as AdminLexwareRouteImport } from './app/routes/admin.lexware'
 import { Route as AdminJobQueueRouteImport } from './app/routes/admin.job-queue'
+import { Route as AdminImportsRouteImport } from './app/routes/admin.imports'
+import { Route as AdminFirmenRouteImport } from './app/routes/admin.firmen'
 import { Route as AdminErpRouteImport } from './app/routes/admin.erp'
+import { Route as AdminDunningTemplatesRouteImport } from './app/routes/admin.dunning-templates'
+import { Route as AdminDlpRouteImport } from './app/routes/admin.dlp'
+import { Route as AdminDisasterRecoveryRouteImport } from './app/routes/admin.disaster-recovery'
+import { Route as AdminDatevConnectRouteImport } from './app/routes/admin.datev-connect'
 import { Route as AdminDatevRouteImport } from './app/routes/admin.datev'
+import { Route as AdminCorrectionWorkbenchRouteImport } from './app/routes/admin.correction-workbench'
 import { Route as AdminBankingRouteImport } from './app/routes/admin.banking'
+import { Route as AdminAuditLogsRouteImport } from './app/routes/admin.audit-logs'
 import { Route as AdminAiDecisionsRouteImport } from './app/routes/admin.ai-decisions'
+import { Route as AdminActivityRouteImport } from './app/routes/admin.activity'
 import { Route as PersonalEmployeeIdIndexRouteImport } from './app/routes/personal.$employeeId.index'
 import { Route as LieferantenSupplierIdIndexRouteImport } from './app/routes/lieferanten.$supplierId.index'
 import { Route as KundenCustomerIdIndexRouteImport } from './app/routes/kunden.$customerId.index'
 import { Route as FinanzenYearIndexRouteImport } from './app/routes/finanzen.$year.index'
+import { Route as AdminRechnungenIndexRouteImport } from './app/routes/admin.rechnungen.index'
 import { Route as AdminMahnungenIndexRouteImport } from './app/routes/admin.mahnungen.index'
+import { Route as AdminLexwareIndexRouteImport } from './app/routes/admin.lexware.index'
+import { Route as AdminImportsIndexRouteImport } from './app/routes/admin.imports.index'
 import { Route as AdminErpIndexRouteImport } from './app/routes/admin.erp.index'
 import { Route as AdminDatevIndexRouteImport } from './app/routes/admin.datev.index'
+import { Route as AdminDatevConnectIndexRouteImport } from './app/routes/admin.datev-connect.index'
 import { Route as AdminBankingIndexRouteImport } from './app/routes/admin.banking.index'
 import { Route as WorkflowsWorkflowIdHistoryRouteImport } from './app/routes/workflows.$workflowId.history'
 import { Route as PrivatVersicherungenInsuranceIdRouteImport } from './app/routes/privat.versicherungen.$insuranceId'
@@ -97,6 +165,8 @@ import { Route as KundenCustomerIdFolderIdRouteImport } from './app/routes/kunde
 import { Route as KasseBuchRegisterIdRouteImport } from './app/routes/kasse.buch.$registerId'
 import { Route as FinanzenYearCategoryRouteImport } from './app/routes/finanzen.$year.$category'
 import { Route as DocumentsDocumentIdRelationshipsRouteImport } from './app/routes/documents.$documentId.relationships'
+import { Route as DocumentsDocumentIdActivityRouteImport } from './app/routes/documents.$documentId.activity'
+import { Route as AdminRechnungenListeRouteImport } from './app/routes/admin.rechnungen.liste'
 import { Route as AdminOcrBackendsBackendRouteImport } from './app/routes/admin.ocr-backends.$backend'
 import { Route as AdminMahnungenMahnstoppRouteImport } from './app/routes/admin.mahnungen.mahnstopp'
 import { Route as AdminMahnungenKanbanRouteImport } from './app/routes/admin.mahnungen.kanban'
@@ -104,6 +174,13 @@ import { Route as AdminMahnungenEskalationRouteImport } from './app/routes/admin
 import { Route as AdminMahnungenEinstellungenRouteImport } from './app/routes/admin.mahnungen.einstellungen'
 import { Route as AdminMahnungenAufgabenRouteImport } from './app/routes/admin.mahnungen.aufgaben'
 import { Route as AdminMahnungenAktivRouteImport } from './app/routes/admin.mahnungen.aktiv'
+import { Route as AdminLexwareSuppliersRouteImport } from './app/routes/admin.lexware.suppliers'
+import { Route as AdminLexwareStatisticsRouteImport } from './app/routes/admin.lexware.statistics'
+import { Route as AdminImportsRulesRouteImport } from './app/routes/admin.imports.rules'
+import { Route as AdminImportsLogsRouteImport } from './app/routes/admin.imports.logs'
+import { Route as AdminImportsFolderRouteImport } from './app/routes/admin.imports.folder'
+import { Route as AdminImportsEmailRouteImport } from './app/routes/admin.imports.email'
+import { Route as AdminFirmenDashboardRouteImport } from './app/routes/admin.firmen.dashboard'
 import { Route as AdminErpSyncRouteImport } from './app/routes/admin.erp.sync'
 import { Route as AdminErpStatsRouteImport } from './app/routes/admin.erp.stats'
 import { Route as AdminErpConflictsRouteImport } from './app/routes/admin.erp.conflicts'
@@ -111,12 +188,19 @@ import { Route as AdminDatevVendorsRouteImport } from './app/routes/admin.datev.
 import { Route as AdminDatevHistoryRouteImport } from './app/routes/admin.datev.history'
 import { Route as AdminDatevExportRouteImport } from './app/routes/admin.datev.export'
 import { Route as AdminDatevConfigRouteImport } from './app/routes/admin.datev.config'
+import { Route as AdminDatevConnectSyncRouteImport } from './app/routes/admin.datev-connect.sync'
+import { Route as AdminDatevConnectOauthCallbackRouteImport } from './app/routes/admin.datev-connect.oauth-callback'
+import { Route as AdminDatevConnectKontierungRouteImport } from './app/routes/admin.datev-connect.kontierung'
+import { Route as AdminDatevConnectKontenplanRouteImport } from './app/routes/admin.datev-connect.kontenplan'
+import { Route as AdminDatevConnectBuchungenRouteImport } from './app/routes/admin.datev-connect.buchungen'
 import { Route as AdminBankingTransactionsRouteImport } from './app/routes/admin.banking.transactions'
 import { Route as AdminBankingSkontoRouteImport } from './app/routes/admin.banking.skonto'
 import { Route as AdminBankingReconciliationRouteImport } from './app/routes/admin.banking.reconciliation'
 import { Route as AdminBankingPaymentsRouteImport } from './app/routes/admin.banking.payments'
 import { Route as AdminBankingImportRouteImport } from './app/routes/admin.banking.import'
 import { Route as AdminBankingAccountsRouteImport } from './app/routes/admin.banking.accounts'
+import { Route as LieferantenSupplierIdFolderIdIndexRouteImport } from './app/routes/lieferanten.$supplierId.$folderId.index'
+import { Route as KundenCustomerIdFolderIdIndexRouteImport } from './app/routes/kunden.$customerId.$folderId.index'
 import { Route as PrivatFinanzenKrediteLoanIdRouteImport } from './app/routes/privat.finanzen.kredite.$loanId'
 import { Route as PrivatFinanzenAnlagenInvestmentIdRouteImport } from './app/routes/privat.finanzen.anlagen.$investmentId'
 import { Route as LieferantenSupplierIdFolderIdVorgaengeRouteImport } from './app/routes/lieferanten.$supplierId.$folderId.vorgaenge'
@@ -130,6 +214,21 @@ const WorkflowsRoute = WorkflowsRouteImport.update({
   path: '/workflows',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WissenRoute = WissenRouteImport.update({
+  id: '/wissen',
+  path: '/wissen',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VorlagenRoute = VorlagenRouteImport.update({
+  id: '/vorlagen',
+  path: '/vorlagen',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VertraegeRoute = VertraegeRouteImport.update({
+  id: '/vertraege',
+  path: '/vertraege',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ValidationQueueRoute = ValidationQueueRouteImport.update({
   id: '/validation-queue',
   path: '/validation-queue',
@@ -138,6 +237,16 @@ const ValidationQueueRoute = ValidationQueueRouteImport.update({
 const UploadRoute = UploadRouteImport.update({
   id: '/upload',
   path: '/upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TrashRoute = TrashRouteImport.update({
+  id: '/trash',
+  path: '/trash',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TeamsRoute = TeamsRouteImport.update({
+  id: '/teams',
+  path: '/teams',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StreckengeschaeftRoute = StreckengeschaeftRouteImport.update({
@@ -150,9 +259,24 @@ const SpesenRoute = SpesenRouteImport.update({
   path: '/spesen',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ShareTargetRoute = ShareTargetRouteImport.update({
+  id: '/share-target',
+  path: '/share-target',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ShareRoute = ShareRouteImport.update({
   id: '/share',
   path: '/share',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SendungenRoute = SendungenRouteImport.update({
+  id: '/sendungen',
+  path: '/sendungen',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SearchRoute = SearchRouteImport.update({
@@ -160,9 +284,24 @@ const SearchRoute = SearchRouteImport.update({
   path: '/search',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ScanRoute = ScanRouteImport.update({
+  id: '/scan',
+  path: '/scan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RiskRoute = RiskRouteImport.update({
+  id: '/risk',
+  path: '/risk',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RelationshipsRoute = RelationshipsRouteImport.update({
   id: '/relationships',
   path: '/relationships',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProzesseRoute = ProzesseRouteImport.update({
+  id: '/prozesse',
+  path: '/prozesse',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivatRoute = PrivatRouteImport.update({
@@ -173,6 +312,11 @@ const PrivatRoute = PrivatRouteImport.update({
 const PersonalRoute = PersonalRouteImport.update({
   id: '/personal',
   path: '/personal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OpenFileRoute = OpenFileRouteImport.update({
+  id: '/open-file',
+  path: '/open-file',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MonitoringRoute = MonitoringRouteImport.update({
@@ -205,6 +349,21 @@ const JobsRoute = JobsRouteImport.update({
   path: '/jobs',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InventoryRoute = InventoryRouteImport.update({
+  id: '/inventory',
+  path: '/inventory',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HoldingRoute = HoldingRouteImport.update({
+  id: '/holding',
+  path: '/holding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FraudRoute = FraudRouteImport.update({
+  id: '/fraud',
+  path: '/fraud',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
@@ -220,9 +379,29 @@ const DocumentGroupsRoute = DocumentGroupsRouteImport.update({
   path: '/document-groups',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocumentChainsRoute = DocumentChainsRouteImport.update({
+  id: '/document-chains',
+  path: '/document-chains',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeveloperRoute = DeveloperRouteImport.update({
+  id: '/developer',
+  path: '/developer',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChatRoute = ChatRouteImport.update({
   id: '/chat',
   path: '/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CashflowRoute = CashflowRouteImport.update({
+  id: '/cashflow',
+  path: '/cashflow',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BerichteRoute = BerichteRouteImport.update({
+  id: '/berichte',
+  path: '/berichte',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AutomationRoute = AutomationRouteImport.update({
@@ -230,9 +409,19 @@ const AutomationRoute = AutomationRouteImport.update({
   path: '/automation',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AlertsRoute = AlertsRouteImport.update({
+  id: '/alerts',
+  path: '/alerts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ActivityRoute = ActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SplatRoute = SplatRouteImport.update({
@@ -259,6 +448,21 @@ const SpesenIndexRoute = SpesenIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => SpesenRoute,
+} as any)
+const SendungenIndexRoute = SendungenIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SendungenRoute,
+} as any)
+const RiskIndexRoute = RiskIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RiskRoute,
+} as any)
+const ProzesseIndexRoute = ProzesseIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProzesseRoute,
 } as any)
 const PrivatIndexRoute = PrivatIndexRouteImport.update({
   id: '/',
@@ -350,10 +554,60 @@ const SpesenReportIdRoute = SpesenReportIdRouteImport.update({
   path: '/$reportId',
   getParentRoute: () => SpesenRoute,
 } as any)
+const SettingsSecurityRoute = SettingsSecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsDelegationsRoute = SettingsDelegationsRouteImport.update({
+  id: '/delegations',
+  path: '/delegations',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsConsentRoute = SettingsConsentRouteImport.update({
+  id: '/consent',
+  path: '/consent',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SendungenNeuRoute = SendungenNeuRouteImport.update({
+  id: '/neu',
+  path: '/neu',
+  getParentRoute: () => SendungenRoute,
+} as any)
+const SendungenShipmentIdRoute = SendungenShipmentIdRouteImport.update({
+  id: '/$shipmentId',
+  path: '/$shipmentId',
+  getParentRoute: () => SendungenRoute,
+} as any)
+const RiskIntelligenceRoute = RiskIntelligenceRouteImport.update({
+  id: '/intelligence',
+  path: '/intelligence',
+  getParentRoute: () => RiskRoute,
+} as any)
+const RiskEntityIdRoute = RiskEntityIdRouteImport.update({
+  id: '/$entityId',
+  path: '/$entityId',
+  getParentRoute: () => RiskRoute,
+} as any)
 const ResetPasswordTokenRoute = ResetPasswordTokenRouteImport.update({
   id: '/reset-password/$token',
   path: '/reset-password/$token',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ProzesseNeuRoute = ProzesseNeuRouteImport.update({
+  id: '/neu',
+  path: '/neu',
+  getParentRoute: () => ProzesseRoute,
+} as any)
+const ProzesseAufgabenRoute = ProzesseAufgabenRouteImport.update({
+  id: '/aufgaben',
+  path: '/aufgaben',
+  getParentRoute: () => ProzesseRoute,
+} as any)
+const ProzesseDefinitionIdRoute = ProzesseDefinitionIdRouteImport.update({
+  id: '/$definitionId',
+  path: '/$definitionId',
+  getParentRoute: () => ProzesseRoute,
 } as any)
 const PrivatVersicherungenRoute = PrivatVersicherungenRouteImport.update({
   id: '/versicherungen',
@@ -395,6 +649,11 @@ const PersonalEmployeeIdRoute = PersonalEmployeeIdRouteImport.update({
   path: '/$employeeId',
   getParentRoute: () => PersonalRoute,
 } as any)
+const LieferantenRankingRoute = LieferantenRankingRouteImport.update({
+  id: '/ranking',
+  path: '/ranking',
+  getParentRoute: () => LieferantenRoute,
+} as any)
 const LieferantenSupplierIdRoute = LieferantenSupplierIdRouteImport.update({
   id: '/$supplierId',
   path: '/$supplierId',
@@ -405,10 +664,26 @@ const KundenCustomerIdRoute = KundenCustomerIdRouteImport.update({
   path: '/$customerId',
   getParentRoute: () => KundenRoute,
 } as any)
+const HoldingReconciliationRoute = HoldingReconciliationRouteImport.update({
+  id: '/reconciliation',
+  path: '/reconciliation',
+  getParentRoute: () => HoldingRoute,
+} as any)
+const FinanzenZahlungsverhaltenRoute =
+  FinanzenZahlungsverhaltenRouteImport.update({
+    id: '/zahlungsverhalten',
+    path: '/zahlungsverhalten',
+    getParentRoute: () => FinanzenRoute,
+  } as any)
 const FinanzenYearRoute = FinanzenYearRouteImport.update({
   id: '/$year',
   path: '/$year',
   getParentRoute: () => FinanzenRoute,
+} as any)
+const DocumentsCompareRoute = DocumentsCompareRouteImport.update({
+  id: '/documents/compare',
+  path: '/documents/compare',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const DocumentsDocumentIdRoute = DocumentsDocumentIdRouteImport.update({
   id: '/documents/$documentId',
@@ -420,6 +695,37 @@ const DocumentGroupsIdRoute = DocumentGroupsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => DocumentGroupsRoute,
 } as any)
+const DocumentChainsChainIdRoute = DocumentChainsChainIdRouteImport.update({
+  id: '/$chainId',
+  path: '/$chainId',
+  getParentRoute: () => DocumentChainsRoute,
+} as any)
+const BankingPaymentAutomationRoute =
+  BankingPaymentAutomationRouteImport.update({
+    id: '/banking/payment-automation',
+    path: '/banking/payment-automation',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const BankingMissedSkontoRoute = BankingMissedSkontoRouteImport.update({
+  id: '/banking/missed-skonto',
+  path: '/banking/missed-skonto',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BankingAutoMahnlaufRoute = BankingAutoMahnlaufRouteImport.update({
+  id: '/banking/auto-mahnlauf',
+  path: '/banking/auto-mahnlauf',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminWidgetsRoute = AdminWidgetsRouteImport.update({
+  id: '/widgets',
+  path: '/widgets',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminValidationRoute = AdminValidationRouteImport.update({
+  id: '/validation',
+  path: '/validation',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -430,11 +736,52 @@ const AdminTunesRoute = AdminTunesRouteImport.update({
   path: '/tunes',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminTenantLimitsRoute = AdminTenantLimitsRouteImport.update({
+  id: '/tenant-limits',
+  path: '/tenant-limits',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSsoRoute = AdminSsoRouteImport.update({
+  id: '/sso',
+  path: '/sso',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSmartQueueRoute = AdminSmartQueueRouteImport.update({
+  id: '/smart-queue',
+  path: '/smart-queue',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSlackRoute = AdminSlackRouteImport.update({
+  id: '/slack',
+  path: '/slack',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminRulesRoute = AdminRulesRouteImport.update({
+  id: '/rules',
+  path: '/rules',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRiskScoringRoute = AdminRiskScoringRouteImport.update({
+  id: '/risk-scoring',
+  path: '/risk-scoring',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRechnungenRoute = AdminRechnungenRouteImport.update({
+  id: '/rechnungen',
+  path: '/rechnungen',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminProcessOptimizationRoute =
+  AdminProcessOptimizationRouteImport.update({
+    id: '/process-optimization',
+    path: '/process-optimization',
+    getParentRoute: () => AdminRoute,
+  } as any)
 const AdminOcrTrainingRoute = AdminOcrTrainingRouteImport.update({
   id: '/ocr-training',
   path: '/ocr-training',
@@ -445,9 +792,19 @@ const AdminOcrReviewRoute = AdminOcrReviewRouteImport.update({
   path: '/ocr-review',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminOcrLearningRoute = AdminOcrLearningRouteImport.update({
+  id: '/ocr-learning',
+  path: '/ocr-learning',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminOcrBackendsRoute = AdminOcrBackendsRouteImport.update({
   id: '/ocr-backends',
   path: '/ocr-backends',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMlopsRoute = AdminMlopsRouteImport.update({
+  id: '/mlops',
+  path: '/mlops',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminMahnungenRoute = AdminMahnungenRouteImport.update({
@@ -455,9 +812,24 @@ const AdminMahnungenRoute = AdminMahnungenRouteImport.update({
   path: '/mahnungen',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminLexwareRoute = AdminLexwareRouteImport.update({
+  id: '/lexware',
+  path: '/lexware',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminJobQueueRoute = AdminJobQueueRouteImport.update({
   id: '/job-queue',
   path: '/job-queue',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminImportsRoute = AdminImportsRouteImport.update({
+  id: '/imports',
+  path: '/imports',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminFirmenRoute = AdminFirmenRouteImport.update({
+  id: '/firmen',
+  path: '/firmen',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminErpRoute = AdminErpRouteImport.update({
@@ -465,19 +837,55 @@ const AdminErpRoute = AdminErpRouteImport.update({
   path: '/erp',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminDunningTemplatesRoute = AdminDunningTemplatesRouteImport.update({
+  id: '/dunning-templates',
+  path: '/dunning-templates',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDlpRoute = AdminDlpRouteImport.update({
+  id: '/dlp',
+  path: '/dlp',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDisasterRecoveryRoute = AdminDisasterRecoveryRouteImport.update({
+  id: '/disaster-recovery',
+  path: '/disaster-recovery',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDatevConnectRoute = AdminDatevConnectRouteImport.update({
+  id: '/datev-connect',
+  path: '/datev-connect',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminDatevRoute = AdminDatevRouteImport.update({
   id: '/datev',
   path: '/datev',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminCorrectionWorkbenchRoute =
+  AdminCorrectionWorkbenchRouteImport.update({
+    id: '/correction-workbench',
+    path: '/correction-workbench',
+    getParentRoute: () => AdminRoute,
+  } as any)
 const AdminBankingRoute = AdminBankingRouteImport.update({
   id: '/banking',
   path: '/banking',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminAuditLogsRoute = AdminAuditLogsRouteImport.update({
+  id: '/audit-logs',
+  path: '/audit-logs',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminAiDecisionsRoute = AdminAiDecisionsRouteImport.update({
   id: '/ai-decisions',
   path: '/ai-decisions',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminActivityRoute = AdminActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
   getParentRoute: () => AdminRoute,
 } as any)
 const PersonalEmployeeIdIndexRoute = PersonalEmployeeIdIndexRouteImport.update({
@@ -501,10 +909,25 @@ const FinanzenYearIndexRoute = FinanzenYearIndexRouteImport.update({
   path: '/',
   getParentRoute: () => FinanzenYearRoute,
 } as any)
+const AdminRechnungenIndexRoute = AdminRechnungenIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRechnungenRoute,
+} as any)
 const AdminMahnungenIndexRoute = AdminMahnungenIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminMahnungenRoute,
+} as any)
+const AdminLexwareIndexRoute = AdminLexwareIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminLexwareRoute,
+} as any)
+const AdminImportsIndexRoute = AdminImportsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminImportsRoute,
 } as any)
 const AdminErpIndexRoute = AdminErpIndexRouteImport.update({
   id: '/',
@@ -515,6 +938,11 @@ const AdminDatevIndexRoute = AdminDatevIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminDatevRoute,
+} as any)
+const AdminDatevConnectIndexRoute = AdminDatevConnectIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminDatevConnectRoute,
 } as any)
 const AdminBankingIndexRoute = AdminBankingIndexRouteImport.update({
   id: '/',
@@ -578,6 +1006,17 @@ const DocumentsDocumentIdRelationshipsRoute =
     path: '/relationships',
     getParentRoute: () => DocumentsDocumentIdRoute,
   } as any)
+const DocumentsDocumentIdActivityRoute =
+  DocumentsDocumentIdActivityRouteImport.update({
+    id: '/activity',
+    path: '/activity',
+    getParentRoute: () => DocumentsDocumentIdRoute,
+  } as any)
+const AdminRechnungenListeRoute = AdminRechnungenListeRouteImport.update({
+  id: '/liste',
+  path: '/liste',
+  getParentRoute: () => AdminRechnungenRoute,
+} as any)
 const AdminOcrBackendsBackendRoute = AdminOcrBackendsBackendRouteImport.update({
   id: '/$backend',
   path: '/$backend',
@@ -615,6 +1054,41 @@ const AdminMahnungenAktivRoute = AdminMahnungenAktivRouteImport.update({
   path: '/aktiv',
   getParentRoute: () => AdminMahnungenRoute,
 } as any)
+const AdminLexwareSuppliersRoute = AdminLexwareSuppliersRouteImport.update({
+  id: '/suppliers',
+  path: '/suppliers',
+  getParentRoute: () => AdminLexwareRoute,
+} as any)
+const AdminLexwareStatisticsRoute = AdminLexwareStatisticsRouteImport.update({
+  id: '/statistics',
+  path: '/statistics',
+  getParentRoute: () => AdminLexwareRoute,
+} as any)
+const AdminImportsRulesRoute = AdminImportsRulesRouteImport.update({
+  id: '/rules',
+  path: '/rules',
+  getParentRoute: () => AdminImportsRoute,
+} as any)
+const AdminImportsLogsRoute = AdminImportsLogsRouteImport.update({
+  id: '/logs',
+  path: '/logs',
+  getParentRoute: () => AdminImportsRoute,
+} as any)
+const AdminImportsFolderRoute = AdminImportsFolderRouteImport.update({
+  id: '/folder',
+  path: '/folder',
+  getParentRoute: () => AdminImportsRoute,
+} as any)
+const AdminImportsEmailRoute = AdminImportsEmailRouteImport.update({
+  id: '/email',
+  path: '/email',
+  getParentRoute: () => AdminImportsRoute,
+} as any)
+const AdminFirmenDashboardRoute = AdminFirmenDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AdminFirmenRoute,
+} as any)
 const AdminErpSyncRoute = AdminErpSyncRouteImport.update({
   id: '/sync',
   path: '/sync',
@@ -650,6 +1124,35 @@ const AdminDatevConfigRoute = AdminDatevConfigRouteImport.update({
   path: '/config',
   getParentRoute: () => AdminDatevRoute,
 } as any)
+const AdminDatevConnectSyncRoute = AdminDatevConnectSyncRouteImport.update({
+  id: '/sync',
+  path: '/sync',
+  getParentRoute: () => AdminDatevConnectRoute,
+} as any)
+const AdminDatevConnectOauthCallbackRoute =
+  AdminDatevConnectOauthCallbackRouteImport.update({
+    id: '/oauth-callback',
+    path: '/oauth-callback',
+    getParentRoute: () => AdminDatevConnectRoute,
+  } as any)
+const AdminDatevConnectKontierungRoute =
+  AdminDatevConnectKontierungRouteImport.update({
+    id: '/kontierung',
+    path: '/kontierung',
+    getParentRoute: () => AdminDatevConnectRoute,
+  } as any)
+const AdminDatevConnectKontenplanRoute =
+  AdminDatevConnectKontenplanRouteImport.update({
+    id: '/kontenplan',
+    path: '/kontenplan',
+    getParentRoute: () => AdminDatevConnectRoute,
+  } as any)
+const AdminDatevConnectBuchungenRoute =
+  AdminDatevConnectBuchungenRouteImport.update({
+    id: '/buchungen',
+    path: '/buchungen',
+    getParentRoute: () => AdminDatevConnectRoute,
+  } as any)
 const AdminBankingTransactionsRoute =
   AdminBankingTransactionsRouteImport.update({
     id: '/transactions',
@@ -682,6 +1185,18 @@ const AdminBankingAccountsRoute = AdminBankingAccountsRouteImport.update({
   path: '/accounts',
   getParentRoute: () => AdminBankingRoute,
 } as any)
+const LieferantenSupplierIdFolderIdIndexRoute =
+  LieferantenSupplierIdFolderIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => LieferantenSupplierIdFolderIdRoute,
+  } as any)
+const KundenCustomerIdFolderIdIndexRoute =
+  KundenCustomerIdFolderIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => KundenCustomerIdFolderIdRoute,
+  } as any)
 const PrivatFinanzenKrediteLoanIdRoute =
   PrivatFinanzenKrediteLoanIdRouteImport.update({
     id: '/kredite/$loanId',
@@ -727,45 +1242,96 @@ const AdminOcrTrainingBatchIdRoute = AdminOcrTrainingBatchIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/activity': typeof ActivityRoute
   '/admin': typeof AdminRouteWithChildren
+  '/alerts': typeof AlertsRoute
   '/automation': typeof AutomationRoute
+  '/berichte': typeof BerichteRoute
+  '/cashflow': typeof CashflowRoute
   '/chat': typeof ChatRoute
+  '/developer': typeof DeveloperRoute
+  '/document-chains': typeof DocumentChainsRouteWithChildren
   '/document-groups': typeof DocumentGroupsRouteWithChildren
   '/finanzen': typeof FinanzenRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
+  '/fraud': typeof FraudRoute
+  '/holding': typeof HoldingRouteWithChildren
+  '/inventory': typeof InventoryRoute
   '/jobs': typeof JobsRoute
   '/kasse': typeof KasseRouteWithChildren
   '/kunden': typeof KundenRouteWithChildren
   '/lieferanten': typeof LieferantenRouteWithChildren
   '/login': typeof LoginRoute
   '/monitoring': typeof MonitoringRoute
+  '/open-file': typeof OpenFileRoute
   '/personal': typeof PersonalRouteWithChildren
   '/privat': typeof PrivatRouteWithChildren
+  '/prozesse': typeof ProzesseRouteWithChildren
   '/relationships': typeof RelationshipsRoute
+  '/risk': typeof RiskRouteWithChildren
+  '/scan': typeof ScanRoute
   '/search': typeof SearchRoute
+  '/sendungen': typeof SendungenRouteWithChildren
+  '/settings': typeof SettingsRouteWithChildren
   '/share': typeof ShareRoute
+  '/share-target': typeof ShareTargetRoute
   '/spesen': typeof SpesenRouteWithChildren
   '/streckengeschaeft': typeof StreckengeschaeftRouteWithChildren
+  '/teams': typeof TeamsRoute
+  '/trash': typeof TrashRoute
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
+  '/vertraege': typeof VertraegeRoute
+  '/vorlagen': typeof VorlagenRoute
+  '/wissen': typeof WissenRoute
   '/workflows': typeof WorkflowsRouteWithChildren
+  '/admin/activity': typeof AdminActivityRoute
   '/admin/ai-decisions': typeof AdminAiDecisionsRoute
+  '/admin/audit-logs': typeof AdminAuditLogsRoute
   '/admin/banking': typeof AdminBankingRouteWithChildren
+  '/admin/correction-workbench': typeof AdminCorrectionWorkbenchRoute
   '/admin/datev': typeof AdminDatevRouteWithChildren
+  '/admin/datev-connect': typeof AdminDatevConnectRouteWithChildren
+  '/admin/disaster-recovery': typeof AdminDisasterRecoveryRoute
+  '/admin/dlp': typeof AdminDlpRoute
+  '/admin/dunning-templates': typeof AdminDunningTemplatesRoute
   '/admin/erp': typeof AdminErpRouteWithChildren
+  '/admin/firmen': typeof AdminFirmenRouteWithChildren
+  '/admin/imports': typeof AdminImportsRouteWithChildren
   '/admin/job-queue': typeof AdminJobQueueRoute
+  '/admin/lexware': typeof AdminLexwareRouteWithChildren
   '/admin/mahnungen': typeof AdminMahnungenRouteWithChildren
+  '/admin/mlops': typeof AdminMlopsRoute
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
+  '/admin/ocr-learning': typeof AdminOcrLearningRoute
   '/admin/ocr-review': typeof AdminOcrReviewRoute
   '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
+  '/admin/process-optimization': typeof AdminProcessOptimizationRoute
+  '/admin/rechnungen': typeof AdminRechnungenRouteWithChildren
+  '/admin/risk-scoring': typeof AdminRiskScoringRoute
+  '/admin/rules': typeof AdminRulesRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/slack': typeof AdminSlackRoute
+  '/admin/smart-queue': typeof AdminSmartQueueRoute
+  '/admin/sso': typeof AdminSsoRoute
+  '/admin/tenant-limits': typeof AdminTenantLimitsRoute
   '/admin/tunes': typeof AdminTunesRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/validation': typeof AdminValidationRoute
+  '/admin/widgets': typeof AdminWidgetsRoute
+  '/banking/auto-mahnlauf': typeof BankingAutoMahnlaufRoute
+  '/banking/missed-skonto': typeof BankingMissedSkontoRoute
+  '/banking/payment-automation': typeof BankingPaymentAutomationRoute
+  '/document-chains/$chainId': typeof DocumentChainsChainIdRoute
   '/document-groups/$id': typeof DocumentGroupsIdRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
+  '/documents/compare': typeof DocumentsCompareRoute
   '/finanzen/$year': typeof FinanzenYearRouteWithChildren
+  '/finanzen/zahlungsverhalten': typeof FinanzenZahlungsverhaltenRoute
+  '/holding/reconciliation': typeof HoldingReconciliationRoute
   '/kunden/$customerId': typeof KundenCustomerIdRouteWithChildren
   '/lieferanten/$supplierId': typeof LieferantenSupplierIdRouteWithChildren
+  '/lieferanten/ranking': typeof LieferantenRankingRoute
   '/personal/$employeeId': typeof PersonalEmployeeIdRouteWithChildren
   '/privat/fahrzeuge': typeof PrivatFahrzeugeRouteWithChildren
   '/privat/finanzen': typeof PrivatFinanzenRouteWithChildren
@@ -774,7 +1340,17 @@ export interface FileRoutesByFullPath {
   '/privat/notfall': typeof PrivatNotfallRoute
   '/privat/portfolio': typeof PrivatPortfolioRoute
   '/privat/versicherungen': typeof PrivatVersicherungenRouteWithChildren
+  '/prozesse/$definitionId': typeof ProzesseDefinitionIdRoute
+  '/prozesse/aufgaben': typeof ProzesseAufgabenRoute
+  '/prozesse/neu': typeof ProzesseNeuRoute
   '/reset-password/$token': typeof ResetPasswordTokenRoute
+  '/risk/$entityId': typeof RiskEntityIdRoute
+  '/risk/intelligence': typeof RiskIntelligenceRoute
+  '/sendungen/$shipmentId': typeof SendungenShipmentIdRoute
+  '/sendungen/neu': typeof SendungenNeuRoute
+  '/settings/consent': typeof SettingsConsentRoute
+  '/settings/delegations': typeof SettingsDelegationsRoute
+  '/settings/security': typeof SettingsSecurityRoute
   '/spesen/$reportId': typeof SpesenReportIdRoute
   '/streckengeschaeft/$classificationId': typeof StreckengeschaeftClassificationIdRoute
   '/streckengeschaeft/einstellungen': typeof StreckengeschaeftEinstellungenRoute
@@ -792,6 +1368,9 @@ export interface FileRoutesByFullPath {
   '/lieferanten/': typeof LieferantenIndexRoute
   '/personal/': typeof PersonalIndexRoute
   '/privat/': typeof PrivatIndexRoute
+  '/prozesse/': typeof ProzesseIndexRoute
+  '/risk/': typeof RiskIndexRoute
+  '/sendungen/': typeof SendungenIndexRoute
   '/spesen/': typeof SpesenIndexRoute
   '/streckengeschaeft/': typeof StreckengeschaeftIndexRoute
   '/workflows/': typeof WorkflowsIndexRoute
@@ -801,6 +1380,11 @@ export interface FileRoutesByFullPath {
   '/admin/banking/reconciliation': typeof AdminBankingReconciliationRoute
   '/admin/banking/skonto': typeof AdminBankingSkontoRoute
   '/admin/banking/transactions': typeof AdminBankingTransactionsRoute
+  '/admin/datev-connect/buchungen': typeof AdminDatevConnectBuchungenRoute
+  '/admin/datev-connect/kontenplan': typeof AdminDatevConnectKontenplanRoute
+  '/admin/datev-connect/kontierung': typeof AdminDatevConnectKontierungRoute
+  '/admin/datev-connect/oauth-callback': typeof AdminDatevConnectOauthCallbackRoute
+  '/admin/datev-connect/sync': typeof AdminDatevConnectSyncRoute
   '/admin/datev/config': typeof AdminDatevConfigRoute
   '/admin/datev/export': typeof AdminDatevExportRoute
   '/admin/datev/history': typeof AdminDatevHistoryRoute
@@ -808,6 +1392,13 @@ export interface FileRoutesByFullPath {
   '/admin/erp/conflicts': typeof AdminErpConflictsRoute
   '/admin/erp/stats': typeof AdminErpStatsRoute
   '/admin/erp/sync': typeof AdminErpSyncRoute
+  '/admin/firmen/dashboard': typeof AdminFirmenDashboardRoute
+  '/admin/imports/email': typeof AdminImportsEmailRoute
+  '/admin/imports/folder': typeof AdminImportsFolderRoute
+  '/admin/imports/logs': typeof AdminImportsLogsRoute
+  '/admin/imports/rules': typeof AdminImportsRulesRoute
+  '/admin/lexware/statistics': typeof AdminLexwareStatisticsRoute
+  '/admin/lexware/suppliers': typeof AdminLexwareSuppliersRoute
   '/admin/mahnungen/aktiv': typeof AdminMahnungenAktivRoute
   '/admin/mahnungen/aufgaben': typeof AdminMahnungenAufgabenRoute
   '/admin/mahnungen/einstellungen': typeof AdminMahnungenEinstellungenRoute
@@ -815,6 +1406,8 @@ export interface FileRoutesByFullPath {
   '/admin/mahnungen/kanban': typeof AdminMahnungenKanbanRoute
   '/admin/mahnungen/mahnstopp': typeof AdminMahnungenMahnstoppRoute
   '/admin/ocr-backends/$backend': typeof AdminOcrBackendsBackendRoute
+  '/admin/rechnungen/liste': typeof AdminRechnungenListeRoute
+  '/documents/$documentId/activity': typeof DocumentsDocumentIdActivityRoute
   '/documents/$documentId/relationships': typeof DocumentsDocumentIdRelationshipsRoute
   '/finanzen/$year/$category': typeof FinanzenYearCategoryRoute
   '/kasse/buch/$registerId': typeof KasseBuchRegisterIdRoute
@@ -826,9 +1419,13 @@ export interface FileRoutesByFullPath {
   '/privat/versicherungen/$insuranceId': typeof PrivatVersicherungenInsuranceIdRoute
   '/workflows/$workflowId/history': typeof WorkflowsWorkflowIdHistoryRoute
   '/admin/banking/': typeof AdminBankingIndexRoute
+  '/admin/datev-connect/': typeof AdminDatevConnectIndexRoute
   '/admin/datev/': typeof AdminDatevIndexRoute
   '/admin/erp/': typeof AdminErpIndexRoute
+  '/admin/imports/': typeof AdminImportsIndexRoute
+  '/admin/lexware/': typeof AdminLexwareIndexRoute
   '/admin/mahnungen/': typeof AdminMahnungenIndexRoute
+  '/admin/rechnungen/': typeof AdminRechnungenIndexRoute
   '/finanzen/$year/': typeof FinanzenYearIndexRoute
   '/kunden/$customerId/': typeof KundenCustomerIdIndexRoute
   '/lieferanten/$supplierId/': typeof LieferantenSupplierIdIndexRoute
@@ -840,32 +1437,78 @@ export interface FileRoutesByFullPath {
   '/lieferanten/$supplierId/$folderId/vorgaenge': typeof LieferantenSupplierIdFolderIdVorgaengeRoute
   '/privat/finanzen/anlagen/$investmentId': typeof PrivatFinanzenAnlagenInvestmentIdRoute
   '/privat/finanzen/kredite/$loanId': typeof PrivatFinanzenKrediteLoanIdRoute
+  '/kunden/$customerId/$folderId/': typeof KundenCustomerIdFolderIdIndexRoute
+  '/lieferanten/$supplierId/$folderId/': typeof LieferantenSupplierIdFolderIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/activity': typeof ActivityRoute
+  '/alerts': typeof AlertsRoute
   '/automation': typeof AutomationRoute
+  '/berichte': typeof BerichteRoute
+  '/cashflow': typeof CashflowRoute
   '/chat': typeof ChatRoute
+  '/developer': typeof DeveloperRoute
+  '/document-chains': typeof DocumentChainsRouteWithChildren
   '/document-groups': typeof DocumentGroupsRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
+  '/fraud': typeof FraudRoute
+  '/holding': typeof HoldingRouteWithChildren
+  '/inventory': typeof InventoryRoute
   '/jobs': typeof JobsRoute
   '/login': typeof LoginRoute
   '/monitoring': typeof MonitoringRoute
+  '/open-file': typeof OpenFileRoute
   '/relationships': typeof RelationshipsRoute
+  '/scan': typeof ScanRoute
   '/search': typeof SearchRoute
+  '/settings': typeof SettingsRouteWithChildren
   '/share': typeof ShareRoute
+  '/share-target': typeof ShareTargetRoute
+  '/teams': typeof TeamsRoute
+  '/trash': typeof TrashRoute
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
+  '/vertraege': typeof VertraegeRoute
+  '/vorlagen': typeof VorlagenRoute
+  '/wissen': typeof WissenRoute
+  '/admin/activity': typeof AdminActivityRoute
   '/admin/ai-decisions': typeof AdminAiDecisionsRoute
+  '/admin/audit-logs': typeof AdminAuditLogsRoute
+  '/admin/correction-workbench': typeof AdminCorrectionWorkbenchRoute
+  '/admin/disaster-recovery': typeof AdminDisasterRecoveryRoute
+  '/admin/dlp': typeof AdminDlpRoute
+  '/admin/dunning-templates': typeof AdminDunningTemplatesRoute
+  '/admin/firmen': typeof AdminFirmenRouteWithChildren
   '/admin/job-queue': typeof AdminJobQueueRoute
+  '/admin/mlops': typeof AdminMlopsRoute
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
+  '/admin/ocr-learning': typeof AdminOcrLearningRoute
   '/admin/ocr-review': typeof AdminOcrReviewRoute
   '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
+  '/admin/process-optimization': typeof AdminProcessOptimizationRoute
+  '/admin/risk-scoring': typeof AdminRiskScoringRoute
+  '/admin/rules': typeof AdminRulesRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/slack': typeof AdminSlackRoute
+  '/admin/smart-queue': typeof AdminSmartQueueRoute
+  '/admin/sso': typeof AdminSsoRoute
+  '/admin/tenant-limits': typeof AdminTenantLimitsRoute
   '/admin/tunes': typeof AdminTunesRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/validation': typeof AdminValidationRoute
+  '/admin/widgets': typeof AdminWidgetsRoute
+  '/banking/auto-mahnlauf': typeof BankingAutoMahnlaufRoute
+  '/banking/missed-skonto': typeof BankingMissedSkontoRoute
+  '/banking/payment-automation': typeof BankingPaymentAutomationRoute
+  '/document-chains/$chainId': typeof DocumentChainsChainIdRoute
   '/document-groups/$id': typeof DocumentGroupsIdRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
+  '/documents/compare': typeof DocumentsCompareRoute
+  '/finanzen/zahlungsverhalten': typeof FinanzenZahlungsverhaltenRoute
+  '/holding/reconciliation': typeof HoldingReconciliationRoute
+  '/lieferanten/ranking': typeof LieferantenRankingRoute
   '/privat/fahrzeuge': typeof PrivatFahrzeugeRouteWithChildren
   '/privat/finanzen': typeof PrivatFinanzenRouteWithChildren
   '/privat/fristen': typeof PrivatFristenRoute
@@ -873,7 +1516,17 @@ export interface FileRoutesByTo {
   '/privat/notfall': typeof PrivatNotfallRoute
   '/privat/portfolio': typeof PrivatPortfolioRoute
   '/privat/versicherungen': typeof PrivatVersicherungenRouteWithChildren
+  '/prozesse/$definitionId': typeof ProzesseDefinitionIdRoute
+  '/prozesse/aufgaben': typeof ProzesseAufgabenRoute
+  '/prozesse/neu': typeof ProzesseNeuRoute
   '/reset-password/$token': typeof ResetPasswordTokenRoute
+  '/risk/$entityId': typeof RiskEntityIdRoute
+  '/risk/intelligence': typeof RiskIntelligenceRoute
+  '/sendungen/$shipmentId': typeof SendungenShipmentIdRoute
+  '/sendungen/neu': typeof SendungenNeuRoute
+  '/settings/consent': typeof SettingsConsentRoute
+  '/settings/delegations': typeof SettingsDelegationsRoute
+  '/settings/security': typeof SettingsSecurityRoute
   '/spesen/$reportId': typeof SpesenReportIdRoute
   '/streckengeschaeft/$classificationId': typeof StreckengeschaeftClassificationIdRoute
   '/streckengeschaeft/einstellungen': typeof StreckengeschaeftEinstellungenRoute
@@ -891,6 +1544,9 @@ export interface FileRoutesByTo {
   '/lieferanten': typeof LieferantenIndexRoute
   '/personal': typeof PersonalIndexRoute
   '/privat': typeof PrivatIndexRoute
+  '/prozesse': typeof ProzesseIndexRoute
+  '/risk': typeof RiskIndexRoute
+  '/sendungen': typeof SendungenIndexRoute
   '/spesen': typeof SpesenIndexRoute
   '/streckengeschaeft': typeof StreckengeschaeftIndexRoute
   '/workflows': typeof WorkflowsIndexRoute
@@ -900,6 +1556,11 @@ export interface FileRoutesByTo {
   '/admin/banking/reconciliation': typeof AdminBankingReconciliationRoute
   '/admin/banking/skonto': typeof AdminBankingSkontoRoute
   '/admin/banking/transactions': typeof AdminBankingTransactionsRoute
+  '/admin/datev-connect/buchungen': typeof AdminDatevConnectBuchungenRoute
+  '/admin/datev-connect/kontenplan': typeof AdminDatevConnectKontenplanRoute
+  '/admin/datev-connect/kontierung': typeof AdminDatevConnectKontierungRoute
+  '/admin/datev-connect/oauth-callback': typeof AdminDatevConnectOauthCallbackRoute
+  '/admin/datev-connect/sync': typeof AdminDatevConnectSyncRoute
   '/admin/datev/config': typeof AdminDatevConfigRoute
   '/admin/datev/export': typeof AdminDatevExportRoute
   '/admin/datev/history': typeof AdminDatevHistoryRoute
@@ -907,6 +1568,13 @@ export interface FileRoutesByTo {
   '/admin/erp/conflicts': typeof AdminErpConflictsRoute
   '/admin/erp/stats': typeof AdminErpStatsRoute
   '/admin/erp/sync': typeof AdminErpSyncRoute
+  '/admin/firmen/dashboard': typeof AdminFirmenDashboardRoute
+  '/admin/imports/email': typeof AdminImportsEmailRoute
+  '/admin/imports/folder': typeof AdminImportsFolderRoute
+  '/admin/imports/logs': typeof AdminImportsLogsRoute
+  '/admin/imports/rules': typeof AdminImportsRulesRoute
+  '/admin/lexware/statistics': typeof AdminLexwareStatisticsRoute
+  '/admin/lexware/suppliers': typeof AdminLexwareSuppliersRoute
   '/admin/mahnungen/aktiv': typeof AdminMahnungenAktivRoute
   '/admin/mahnungen/aufgaben': typeof AdminMahnungenAufgabenRoute
   '/admin/mahnungen/einstellungen': typeof AdminMahnungenEinstellungenRoute
@@ -914,20 +1582,24 @@ export interface FileRoutesByTo {
   '/admin/mahnungen/kanban': typeof AdminMahnungenKanbanRoute
   '/admin/mahnungen/mahnstopp': typeof AdminMahnungenMahnstoppRoute
   '/admin/ocr-backends/$backend': typeof AdminOcrBackendsBackendRoute
+  '/admin/rechnungen/liste': typeof AdminRechnungenListeRoute
+  '/documents/$documentId/activity': typeof DocumentsDocumentIdActivityRoute
   '/documents/$documentId/relationships': typeof DocumentsDocumentIdRelationshipsRoute
   '/finanzen/$year/$category': typeof FinanzenYearCategoryRoute
   '/kasse/buch/$registerId': typeof KasseBuchRegisterIdRoute
-  '/kunden/$customerId/$folderId': typeof KundenCustomerIdFolderIdRouteWithChildren
-  '/lieferanten/$supplierId/$folderId': typeof LieferantenSupplierIdFolderIdRouteWithChildren
   '/privat/fahrzeuge/$vehicleId': typeof PrivatFahrzeugeVehicleIdRoute
   '/privat/immobilien/$propertyId': typeof PrivatImmobilienPropertyIdRoute
   '/privat/spaces/$spaceId': typeof PrivatSpacesSpaceIdRoute
   '/privat/versicherungen/$insuranceId': typeof PrivatVersicherungenInsuranceIdRoute
   '/workflows/$workflowId/history': typeof WorkflowsWorkflowIdHistoryRoute
   '/admin/banking': typeof AdminBankingIndexRoute
+  '/admin/datev-connect': typeof AdminDatevConnectIndexRoute
   '/admin/datev': typeof AdminDatevIndexRoute
   '/admin/erp': typeof AdminErpIndexRoute
+  '/admin/imports': typeof AdminImportsIndexRoute
+  '/admin/lexware': typeof AdminLexwareIndexRoute
   '/admin/mahnungen': typeof AdminMahnungenIndexRoute
+  '/admin/rechnungen': typeof AdminRechnungenIndexRoute
   '/finanzen/$year': typeof FinanzenYearIndexRoute
   '/kunden/$customerId': typeof KundenCustomerIdIndexRoute
   '/lieferanten/$supplierId': typeof LieferantenSupplierIdIndexRoute
@@ -939,50 +1611,103 @@ export interface FileRoutesByTo {
   '/lieferanten/$supplierId/$folderId/vorgaenge': typeof LieferantenSupplierIdFolderIdVorgaengeRoute
   '/privat/finanzen/anlagen/$investmentId': typeof PrivatFinanzenAnlagenInvestmentIdRoute
   '/privat/finanzen/kredite/$loanId': typeof PrivatFinanzenKrediteLoanIdRoute
+  '/kunden/$customerId/$folderId': typeof KundenCustomerIdFolderIdIndexRoute
+  '/lieferanten/$supplierId/$folderId': typeof LieferantenSupplierIdFolderIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/activity': typeof ActivityRoute
   '/admin': typeof AdminRouteWithChildren
+  '/alerts': typeof AlertsRoute
   '/automation': typeof AutomationRoute
+  '/berichte': typeof BerichteRoute
+  '/cashflow': typeof CashflowRoute
   '/chat': typeof ChatRoute
+  '/developer': typeof DeveloperRoute
+  '/document-chains': typeof DocumentChainsRouteWithChildren
   '/document-groups': typeof DocumentGroupsRouteWithChildren
   '/finanzen': typeof FinanzenRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
+  '/fraud': typeof FraudRoute
+  '/holding': typeof HoldingRouteWithChildren
+  '/inventory': typeof InventoryRoute
   '/jobs': typeof JobsRoute
   '/kasse': typeof KasseRouteWithChildren
   '/kunden': typeof KundenRouteWithChildren
   '/lieferanten': typeof LieferantenRouteWithChildren
   '/login': typeof LoginRoute
   '/monitoring': typeof MonitoringRoute
+  '/open-file': typeof OpenFileRoute
   '/personal': typeof PersonalRouteWithChildren
   '/privat': typeof PrivatRouteWithChildren
+  '/prozesse': typeof ProzesseRouteWithChildren
   '/relationships': typeof RelationshipsRoute
+  '/risk': typeof RiskRouteWithChildren
+  '/scan': typeof ScanRoute
   '/search': typeof SearchRoute
+  '/sendungen': typeof SendungenRouteWithChildren
+  '/settings': typeof SettingsRouteWithChildren
   '/share': typeof ShareRoute
+  '/share-target': typeof ShareTargetRoute
   '/spesen': typeof SpesenRouteWithChildren
   '/streckengeschaeft': typeof StreckengeschaeftRouteWithChildren
+  '/teams': typeof TeamsRoute
+  '/trash': typeof TrashRoute
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
+  '/vertraege': typeof VertraegeRoute
+  '/vorlagen': typeof VorlagenRoute
+  '/wissen': typeof WissenRoute
   '/workflows': typeof WorkflowsRouteWithChildren
+  '/admin/activity': typeof AdminActivityRoute
   '/admin/ai-decisions': typeof AdminAiDecisionsRoute
+  '/admin/audit-logs': typeof AdminAuditLogsRoute
   '/admin/banking': typeof AdminBankingRouteWithChildren
+  '/admin/correction-workbench': typeof AdminCorrectionWorkbenchRoute
   '/admin/datev': typeof AdminDatevRouteWithChildren
+  '/admin/datev-connect': typeof AdminDatevConnectRouteWithChildren
+  '/admin/disaster-recovery': typeof AdminDisasterRecoveryRoute
+  '/admin/dlp': typeof AdminDlpRoute
+  '/admin/dunning-templates': typeof AdminDunningTemplatesRoute
   '/admin/erp': typeof AdminErpRouteWithChildren
+  '/admin/firmen': typeof AdminFirmenRouteWithChildren
+  '/admin/imports': typeof AdminImportsRouteWithChildren
   '/admin/job-queue': typeof AdminJobQueueRoute
+  '/admin/lexware': typeof AdminLexwareRouteWithChildren
   '/admin/mahnungen': typeof AdminMahnungenRouteWithChildren
+  '/admin/mlops': typeof AdminMlopsRoute
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
+  '/admin/ocr-learning': typeof AdminOcrLearningRoute
   '/admin/ocr-review': typeof AdminOcrReviewRoute
   '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
+  '/admin/process-optimization': typeof AdminProcessOptimizationRoute
+  '/admin/rechnungen': typeof AdminRechnungenRouteWithChildren
+  '/admin/risk-scoring': typeof AdminRiskScoringRoute
+  '/admin/rules': typeof AdminRulesRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/slack': typeof AdminSlackRoute
+  '/admin/smart-queue': typeof AdminSmartQueueRoute
+  '/admin/sso': typeof AdminSsoRoute
+  '/admin/tenant-limits': typeof AdminTenantLimitsRoute
   '/admin/tunes': typeof AdminTunesRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/validation': typeof AdminValidationRoute
+  '/admin/widgets': typeof AdminWidgetsRoute
+  '/banking/auto-mahnlauf': typeof BankingAutoMahnlaufRoute
+  '/banking/missed-skonto': typeof BankingMissedSkontoRoute
+  '/banking/payment-automation': typeof BankingPaymentAutomationRoute
+  '/document-chains/$chainId': typeof DocumentChainsChainIdRoute
   '/document-groups/$id': typeof DocumentGroupsIdRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
+  '/documents/compare': typeof DocumentsCompareRoute
   '/finanzen/$year': typeof FinanzenYearRouteWithChildren
+  '/finanzen/zahlungsverhalten': typeof FinanzenZahlungsverhaltenRoute
+  '/holding/reconciliation': typeof HoldingReconciliationRoute
   '/kunden/$customerId': typeof KundenCustomerIdRouteWithChildren
   '/lieferanten/$supplierId': typeof LieferantenSupplierIdRouteWithChildren
+  '/lieferanten/ranking': typeof LieferantenRankingRoute
   '/personal/$employeeId': typeof PersonalEmployeeIdRouteWithChildren
   '/privat/fahrzeuge': typeof PrivatFahrzeugeRouteWithChildren
   '/privat/finanzen': typeof PrivatFinanzenRouteWithChildren
@@ -991,7 +1716,17 @@ export interface FileRoutesById {
   '/privat/notfall': typeof PrivatNotfallRoute
   '/privat/portfolio': typeof PrivatPortfolioRoute
   '/privat/versicherungen': typeof PrivatVersicherungenRouteWithChildren
+  '/prozesse/$definitionId': typeof ProzesseDefinitionIdRoute
+  '/prozesse/aufgaben': typeof ProzesseAufgabenRoute
+  '/prozesse/neu': typeof ProzesseNeuRoute
   '/reset-password/$token': typeof ResetPasswordTokenRoute
+  '/risk/$entityId': typeof RiskEntityIdRoute
+  '/risk/intelligence': typeof RiskIntelligenceRoute
+  '/sendungen/$shipmentId': typeof SendungenShipmentIdRoute
+  '/sendungen/neu': typeof SendungenNeuRoute
+  '/settings/consent': typeof SettingsConsentRoute
+  '/settings/delegations': typeof SettingsDelegationsRoute
+  '/settings/security': typeof SettingsSecurityRoute
   '/spesen/$reportId': typeof SpesenReportIdRoute
   '/streckengeschaeft/$classificationId': typeof StreckengeschaeftClassificationIdRoute
   '/streckengeschaeft/einstellungen': typeof StreckengeschaeftEinstellungenRoute
@@ -1009,6 +1744,9 @@ export interface FileRoutesById {
   '/lieferanten/': typeof LieferantenIndexRoute
   '/personal/': typeof PersonalIndexRoute
   '/privat/': typeof PrivatIndexRoute
+  '/prozesse/': typeof ProzesseIndexRoute
+  '/risk/': typeof RiskIndexRoute
+  '/sendungen/': typeof SendungenIndexRoute
   '/spesen/': typeof SpesenIndexRoute
   '/streckengeschaeft/': typeof StreckengeschaeftIndexRoute
   '/workflows/': typeof WorkflowsIndexRoute
@@ -1018,6 +1756,11 @@ export interface FileRoutesById {
   '/admin/banking/reconciliation': typeof AdminBankingReconciliationRoute
   '/admin/banking/skonto': typeof AdminBankingSkontoRoute
   '/admin/banking/transactions': typeof AdminBankingTransactionsRoute
+  '/admin/datev-connect/buchungen': typeof AdminDatevConnectBuchungenRoute
+  '/admin/datev-connect/kontenplan': typeof AdminDatevConnectKontenplanRoute
+  '/admin/datev-connect/kontierung': typeof AdminDatevConnectKontierungRoute
+  '/admin/datev-connect/oauth-callback': typeof AdminDatevConnectOauthCallbackRoute
+  '/admin/datev-connect/sync': typeof AdminDatevConnectSyncRoute
   '/admin/datev/config': typeof AdminDatevConfigRoute
   '/admin/datev/export': typeof AdminDatevExportRoute
   '/admin/datev/history': typeof AdminDatevHistoryRoute
@@ -1025,6 +1768,13 @@ export interface FileRoutesById {
   '/admin/erp/conflicts': typeof AdminErpConflictsRoute
   '/admin/erp/stats': typeof AdminErpStatsRoute
   '/admin/erp/sync': typeof AdminErpSyncRoute
+  '/admin/firmen/dashboard': typeof AdminFirmenDashboardRoute
+  '/admin/imports/email': typeof AdminImportsEmailRoute
+  '/admin/imports/folder': typeof AdminImportsFolderRoute
+  '/admin/imports/logs': typeof AdminImportsLogsRoute
+  '/admin/imports/rules': typeof AdminImportsRulesRoute
+  '/admin/lexware/statistics': typeof AdminLexwareStatisticsRoute
+  '/admin/lexware/suppliers': typeof AdminLexwareSuppliersRoute
   '/admin/mahnungen/aktiv': typeof AdminMahnungenAktivRoute
   '/admin/mahnungen/aufgaben': typeof AdminMahnungenAufgabenRoute
   '/admin/mahnungen/einstellungen': typeof AdminMahnungenEinstellungenRoute
@@ -1032,6 +1782,8 @@ export interface FileRoutesById {
   '/admin/mahnungen/kanban': typeof AdminMahnungenKanbanRoute
   '/admin/mahnungen/mahnstopp': typeof AdminMahnungenMahnstoppRoute
   '/admin/ocr-backends/$backend': typeof AdminOcrBackendsBackendRoute
+  '/admin/rechnungen/liste': typeof AdminRechnungenListeRoute
+  '/documents/$documentId/activity': typeof DocumentsDocumentIdActivityRoute
   '/documents/$documentId/relationships': typeof DocumentsDocumentIdRelationshipsRoute
   '/finanzen/$year/$category': typeof FinanzenYearCategoryRoute
   '/kasse/buch/$registerId': typeof KasseBuchRegisterIdRoute
@@ -1043,9 +1795,13 @@ export interface FileRoutesById {
   '/privat/versicherungen/$insuranceId': typeof PrivatVersicherungenInsuranceIdRoute
   '/workflows/$workflowId/history': typeof WorkflowsWorkflowIdHistoryRoute
   '/admin/banking/': typeof AdminBankingIndexRoute
+  '/admin/datev-connect/': typeof AdminDatevConnectIndexRoute
   '/admin/datev/': typeof AdminDatevIndexRoute
   '/admin/erp/': typeof AdminErpIndexRoute
+  '/admin/imports/': typeof AdminImportsIndexRoute
+  '/admin/lexware/': typeof AdminLexwareIndexRoute
   '/admin/mahnungen/': typeof AdminMahnungenIndexRoute
+  '/admin/rechnungen/': typeof AdminRechnungenIndexRoute
   '/finanzen/$year/': typeof FinanzenYearIndexRoute
   '/kunden/$customerId/': typeof KundenCustomerIdIndexRoute
   '/lieferanten/$supplierId/': typeof LieferantenSupplierIdIndexRoute
@@ -1057,51 +1813,104 @@ export interface FileRoutesById {
   '/lieferanten/$supplierId/$folderId/vorgaenge': typeof LieferantenSupplierIdFolderIdVorgaengeRoute
   '/privat/finanzen/anlagen/$investmentId': typeof PrivatFinanzenAnlagenInvestmentIdRoute
   '/privat/finanzen/kredite/$loanId': typeof PrivatFinanzenKrediteLoanIdRoute
+  '/kunden/$customerId/$folderId/': typeof KundenCustomerIdFolderIdIndexRoute
+  '/lieferanten/$supplierId/$folderId/': typeof LieferantenSupplierIdFolderIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/$'
+    | '/activity'
     | '/admin'
+    | '/alerts'
     | '/automation'
+    | '/berichte'
+    | '/cashflow'
     | '/chat'
+    | '/developer'
+    | '/document-chains'
     | '/document-groups'
     | '/finanzen'
     | '/forgot-password'
+    | '/fraud'
+    | '/holding'
+    | '/inventory'
     | '/jobs'
     | '/kasse'
     | '/kunden'
     | '/lieferanten'
     | '/login'
     | '/monitoring'
+    | '/open-file'
     | '/personal'
     | '/privat'
+    | '/prozesse'
     | '/relationships'
+    | '/risk'
+    | '/scan'
     | '/search'
+    | '/sendungen'
+    | '/settings'
     | '/share'
+    | '/share-target'
     | '/spesen'
     | '/streckengeschaeft'
+    | '/teams'
+    | '/trash'
     | '/upload'
     | '/validation-queue'
+    | '/vertraege'
+    | '/vorlagen'
+    | '/wissen'
     | '/workflows'
+    | '/admin/activity'
     | '/admin/ai-decisions'
+    | '/admin/audit-logs'
     | '/admin/banking'
+    | '/admin/correction-workbench'
     | '/admin/datev'
+    | '/admin/datev-connect'
+    | '/admin/disaster-recovery'
+    | '/admin/dlp'
+    | '/admin/dunning-templates'
     | '/admin/erp'
+    | '/admin/firmen'
+    | '/admin/imports'
     | '/admin/job-queue'
+    | '/admin/lexware'
     | '/admin/mahnungen'
+    | '/admin/mlops'
     | '/admin/ocr-backends'
+    | '/admin/ocr-learning'
     | '/admin/ocr-review'
     | '/admin/ocr-training'
+    | '/admin/process-optimization'
+    | '/admin/rechnungen'
+    | '/admin/risk-scoring'
+    | '/admin/rules'
     | '/admin/settings'
+    | '/admin/slack'
+    | '/admin/smart-queue'
+    | '/admin/sso'
+    | '/admin/tenant-limits'
     | '/admin/tunes'
     | '/admin/users'
+    | '/admin/validation'
+    | '/admin/widgets'
+    | '/banking/auto-mahnlauf'
+    | '/banking/missed-skonto'
+    | '/banking/payment-automation'
+    | '/document-chains/$chainId'
     | '/document-groups/$id'
     | '/documents/$documentId'
+    | '/documents/compare'
     | '/finanzen/$year'
+    | '/finanzen/zahlungsverhalten'
+    | '/holding/reconciliation'
     | '/kunden/$customerId'
     | '/lieferanten/$supplierId'
+    | '/lieferanten/ranking'
     | '/personal/$employeeId'
     | '/privat/fahrzeuge'
     | '/privat/finanzen'
@@ -1110,7 +1919,17 @@ export interface FileRouteTypes {
     | '/privat/notfall'
     | '/privat/portfolio'
     | '/privat/versicherungen'
+    | '/prozesse/$definitionId'
+    | '/prozesse/aufgaben'
+    | '/prozesse/neu'
     | '/reset-password/$token'
+    | '/risk/$entityId'
+    | '/risk/intelligence'
+    | '/sendungen/$shipmentId'
+    | '/sendungen/neu'
+    | '/settings/consent'
+    | '/settings/delegations'
+    | '/settings/security'
     | '/spesen/$reportId'
     | '/streckengeschaeft/$classificationId'
     | '/streckengeschaeft/einstellungen'
@@ -1128,6 +1947,9 @@ export interface FileRouteTypes {
     | '/lieferanten/'
     | '/personal/'
     | '/privat/'
+    | '/prozesse/'
+    | '/risk/'
+    | '/sendungen/'
     | '/spesen/'
     | '/streckengeschaeft/'
     | '/workflows/'
@@ -1137,6 +1959,11 @@ export interface FileRouteTypes {
     | '/admin/banking/reconciliation'
     | '/admin/banking/skonto'
     | '/admin/banking/transactions'
+    | '/admin/datev-connect/buchungen'
+    | '/admin/datev-connect/kontenplan'
+    | '/admin/datev-connect/kontierung'
+    | '/admin/datev-connect/oauth-callback'
+    | '/admin/datev-connect/sync'
     | '/admin/datev/config'
     | '/admin/datev/export'
     | '/admin/datev/history'
@@ -1144,6 +1971,13 @@ export interface FileRouteTypes {
     | '/admin/erp/conflicts'
     | '/admin/erp/stats'
     | '/admin/erp/sync'
+    | '/admin/firmen/dashboard'
+    | '/admin/imports/email'
+    | '/admin/imports/folder'
+    | '/admin/imports/logs'
+    | '/admin/imports/rules'
+    | '/admin/lexware/statistics'
+    | '/admin/lexware/suppliers'
     | '/admin/mahnungen/aktiv'
     | '/admin/mahnungen/aufgaben'
     | '/admin/mahnungen/einstellungen'
@@ -1151,6 +1985,8 @@ export interface FileRouteTypes {
     | '/admin/mahnungen/kanban'
     | '/admin/mahnungen/mahnstopp'
     | '/admin/ocr-backends/$backend'
+    | '/admin/rechnungen/liste'
+    | '/documents/$documentId/activity'
     | '/documents/$documentId/relationships'
     | '/finanzen/$year/$category'
     | '/kasse/buch/$registerId'
@@ -1162,9 +1998,13 @@ export interface FileRouteTypes {
     | '/privat/versicherungen/$insuranceId'
     | '/workflows/$workflowId/history'
     | '/admin/banking/'
+    | '/admin/datev-connect/'
     | '/admin/datev/'
     | '/admin/erp/'
+    | '/admin/imports/'
+    | '/admin/lexware/'
     | '/admin/mahnungen/'
+    | '/admin/rechnungen/'
     | '/finanzen/$year/'
     | '/kunden/$customerId/'
     | '/lieferanten/$supplierId/'
@@ -1176,32 +2016,78 @@ export interface FileRouteTypes {
     | '/lieferanten/$supplierId/$folderId/vorgaenge'
     | '/privat/finanzen/anlagen/$investmentId'
     | '/privat/finanzen/kredite/$loanId'
+    | '/kunden/$customerId/$folderId/'
+    | '/lieferanten/$supplierId/$folderId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/$'
+    | '/activity'
+    | '/alerts'
     | '/automation'
+    | '/berichte'
+    | '/cashflow'
     | '/chat'
+    | '/developer'
+    | '/document-chains'
     | '/document-groups'
     | '/forgot-password'
+    | '/fraud'
+    | '/holding'
+    | '/inventory'
     | '/jobs'
     | '/login'
     | '/monitoring'
+    | '/open-file'
     | '/relationships'
+    | '/scan'
     | '/search'
+    | '/settings'
     | '/share'
+    | '/share-target'
+    | '/teams'
+    | '/trash'
     | '/upload'
     | '/validation-queue'
+    | '/vertraege'
+    | '/vorlagen'
+    | '/wissen'
+    | '/admin/activity'
     | '/admin/ai-decisions'
+    | '/admin/audit-logs'
+    | '/admin/correction-workbench'
+    | '/admin/disaster-recovery'
+    | '/admin/dlp'
+    | '/admin/dunning-templates'
+    | '/admin/firmen'
     | '/admin/job-queue'
+    | '/admin/mlops'
     | '/admin/ocr-backends'
+    | '/admin/ocr-learning'
     | '/admin/ocr-review'
     | '/admin/ocr-training'
+    | '/admin/process-optimization'
+    | '/admin/risk-scoring'
+    | '/admin/rules'
     | '/admin/settings'
+    | '/admin/slack'
+    | '/admin/smart-queue'
+    | '/admin/sso'
+    | '/admin/tenant-limits'
     | '/admin/tunes'
     | '/admin/users'
+    | '/admin/validation'
+    | '/admin/widgets'
+    | '/banking/auto-mahnlauf'
+    | '/banking/missed-skonto'
+    | '/banking/payment-automation'
+    | '/document-chains/$chainId'
     | '/document-groups/$id'
     | '/documents/$documentId'
+    | '/documents/compare'
+    | '/finanzen/zahlungsverhalten'
+    | '/holding/reconciliation'
+    | '/lieferanten/ranking'
     | '/privat/fahrzeuge'
     | '/privat/finanzen'
     | '/privat/fristen'
@@ -1209,7 +2095,17 @@ export interface FileRouteTypes {
     | '/privat/notfall'
     | '/privat/portfolio'
     | '/privat/versicherungen'
+    | '/prozesse/$definitionId'
+    | '/prozesse/aufgaben'
+    | '/prozesse/neu'
     | '/reset-password/$token'
+    | '/risk/$entityId'
+    | '/risk/intelligence'
+    | '/sendungen/$shipmentId'
+    | '/sendungen/neu'
+    | '/settings/consent'
+    | '/settings/delegations'
+    | '/settings/security'
     | '/spesen/$reportId'
     | '/streckengeschaeft/$classificationId'
     | '/streckengeschaeft/einstellungen'
@@ -1227,6 +2123,9 @@ export interface FileRouteTypes {
     | '/lieferanten'
     | '/personal'
     | '/privat'
+    | '/prozesse'
+    | '/risk'
+    | '/sendungen'
     | '/spesen'
     | '/streckengeschaeft'
     | '/workflows'
@@ -1236,6 +2135,11 @@ export interface FileRouteTypes {
     | '/admin/banking/reconciliation'
     | '/admin/banking/skonto'
     | '/admin/banking/transactions'
+    | '/admin/datev-connect/buchungen'
+    | '/admin/datev-connect/kontenplan'
+    | '/admin/datev-connect/kontierung'
+    | '/admin/datev-connect/oauth-callback'
+    | '/admin/datev-connect/sync'
     | '/admin/datev/config'
     | '/admin/datev/export'
     | '/admin/datev/history'
@@ -1243,6 +2147,13 @@ export interface FileRouteTypes {
     | '/admin/erp/conflicts'
     | '/admin/erp/stats'
     | '/admin/erp/sync'
+    | '/admin/firmen/dashboard'
+    | '/admin/imports/email'
+    | '/admin/imports/folder'
+    | '/admin/imports/logs'
+    | '/admin/imports/rules'
+    | '/admin/lexware/statistics'
+    | '/admin/lexware/suppliers'
     | '/admin/mahnungen/aktiv'
     | '/admin/mahnungen/aufgaben'
     | '/admin/mahnungen/einstellungen'
@@ -1250,20 +2161,24 @@ export interface FileRouteTypes {
     | '/admin/mahnungen/kanban'
     | '/admin/mahnungen/mahnstopp'
     | '/admin/ocr-backends/$backend'
+    | '/admin/rechnungen/liste'
+    | '/documents/$documentId/activity'
     | '/documents/$documentId/relationships'
     | '/finanzen/$year/$category'
     | '/kasse/buch/$registerId'
-    | '/kunden/$customerId/$folderId'
-    | '/lieferanten/$supplierId/$folderId'
     | '/privat/fahrzeuge/$vehicleId'
     | '/privat/immobilien/$propertyId'
     | '/privat/spaces/$spaceId'
     | '/privat/versicherungen/$insuranceId'
     | '/workflows/$workflowId/history'
     | '/admin/banking'
+    | '/admin/datev-connect'
     | '/admin/datev'
     | '/admin/erp'
+    | '/admin/imports'
+    | '/admin/lexware'
     | '/admin/mahnungen'
+    | '/admin/rechnungen'
     | '/finanzen/$year'
     | '/kunden/$customerId'
     | '/lieferanten/$supplierId'
@@ -1275,49 +2190,102 @@ export interface FileRouteTypes {
     | '/lieferanten/$supplierId/$folderId/vorgaenge'
     | '/privat/finanzen/anlagen/$investmentId'
     | '/privat/finanzen/kredite/$loanId'
+    | '/kunden/$customerId/$folderId'
+    | '/lieferanten/$supplierId/$folderId'
   id:
     | '__root__'
     | '/'
     | '/$'
+    | '/activity'
     | '/admin'
+    | '/alerts'
     | '/automation'
+    | '/berichte'
+    | '/cashflow'
     | '/chat'
+    | '/developer'
+    | '/document-chains'
     | '/document-groups'
     | '/finanzen'
     | '/forgot-password'
+    | '/fraud'
+    | '/holding'
+    | '/inventory'
     | '/jobs'
     | '/kasse'
     | '/kunden'
     | '/lieferanten'
     | '/login'
     | '/monitoring'
+    | '/open-file'
     | '/personal'
     | '/privat'
+    | '/prozesse'
     | '/relationships'
+    | '/risk'
+    | '/scan'
     | '/search'
+    | '/sendungen'
+    | '/settings'
     | '/share'
+    | '/share-target'
     | '/spesen'
     | '/streckengeschaeft'
+    | '/teams'
+    | '/trash'
     | '/upload'
     | '/validation-queue'
+    | '/vertraege'
+    | '/vorlagen'
+    | '/wissen'
     | '/workflows'
+    | '/admin/activity'
     | '/admin/ai-decisions'
+    | '/admin/audit-logs'
     | '/admin/banking'
+    | '/admin/correction-workbench'
     | '/admin/datev'
+    | '/admin/datev-connect'
+    | '/admin/disaster-recovery'
+    | '/admin/dlp'
+    | '/admin/dunning-templates'
     | '/admin/erp'
+    | '/admin/firmen'
+    | '/admin/imports'
     | '/admin/job-queue'
+    | '/admin/lexware'
     | '/admin/mahnungen'
+    | '/admin/mlops'
     | '/admin/ocr-backends'
+    | '/admin/ocr-learning'
     | '/admin/ocr-review'
     | '/admin/ocr-training'
+    | '/admin/process-optimization'
+    | '/admin/rechnungen'
+    | '/admin/risk-scoring'
+    | '/admin/rules'
     | '/admin/settings'
+    | '/admin/slack'
+    | '/admin/smart-queue'
+    | '/admin/sso'
+    | '/admin/tenant-limits'
     | '/admin/tunes'
     | '/admin/users'
+    | '/admin/validation'
+    | '/admin/widgets'
+    | '/banking/auto-mahnlauf'
+    | '/banking/missed-skonto'
+    | '/banking/payment-automation'
+    | '/document-chains/$chainId'
     | '/document-groups/$id'
     | '/documents/$documentId'
+    | '/documents/compare'
     | '/finanzen/$year'
+    | '/finanzen/zahlungsverhalten'
+    | '/holding/reconciliation'
     | '/kunden/$customerId'
     | '/lieferanten/$supplierId'
+    | '/lieferanten/ranking'
     | '/personal/$employeeId'
     | '/privat/fahrzeuge'
     | '/privat/finanzen'
@@ -1326,7 +2294,17 @@ export interface FileRouteTypes {
     | '/privat/notfall'
     | '/privat/portfolio'
     | '/privat/versicherungen'
+    | '/prozesse/$definitionId'
+    | '/prozesse/aufgaben'
+    | '/prozesse/neu'
     | '/reset-password/$token'
+    | '/risk/$entityId'
+    | '/risk/intelligence'
+    | '/sendungen/$shipmentId'
+    | '/sendungen/neu'
+    | '/settings/consent'
+    | '/settings/delegations'
+    | '/settings/security'
     | '/spesen/$reportId'
     | '/streckengeschaeft/$classificationId'
     | '/streckengeschaeft/einstellungen'
@@ -1344,6 +2322,9 @@ export interface FileRouteTypes {
     | '/lieferanten/'
     | '/personal/'
     | '/privat/'
+    | '/prozesse/'
+    | '/risk/'
+    | '/sendungen/'
     | '/spesen/'
     | '/streckengeschaeft/'
     | '/workflows/'
@@ -1353,6 +2334,11 @@ export interface FileRouteTypes {
     | '/admin/banking/reconciliation'
     | '/admin/banking/skonto'
     | '/admin/banking/transactions'
+    | '/admin/datev-connect/buchungen'
+    | '/admin/datev-connect/kontenplan'
+    | '/admin/datev-connect/kontierung'
+    | '/admin/datev-connect/oauth-callback'
+    | '/admin/datev-connect/sync'
     | '/admin/datev/config'
     | '/admin/datev/export'
     | '/admin/datev/history'
@@ -1360,6 +2346,13 @@ export interface FileRouteTypes {
     | '/admin/erp/conflicts'
     | '/admin/erp/stats'
     | '/admin/erp/sync'
+    | '/admin/firmen/dashboard'
+    | '/admin/imports/email'
+    | '/admin/imports/folder'
+    | '/admin/imports/logs'
+    | '/admin/imports/rules'
+    | '/admin/lexware/statistics'
+    | '/admin/lexware/suppliers'
     | '/admin/mahnungen/aktiv'
     | '/admin/mahnungen/aufgaben'
     | '/admin/mahnungen/einstellungen'
@@ -1367,6 +2360,8 @@ export interface FileRouteTypes {
     | '/admin/mahnungen/kanban'
     | '/admin/mahnungen/mahnstopp'
     | '/admin/ocr-backends/$backend'
+    | '/admin/rechnungen/liste'
+    | '/documents/$documentId/activity'
     | '/documents/$documentId/relationships'
     | '/finanzen/$year/$category'
     | '/kasse/buch/$registerId'
@@ -1378,9 +2373,13 @@ export interface FileRouteTypes {
     | '/privat/versicherungen/$insuranceId'
     | '/workflows/$workflowId/history'
     | '/admin/banking/'
+    | '/admin/datev-connect/'
     | '/admin/datev/'
     | '/admin/erp/'
+    | '/admin/imports/'
+    | '/admin/lexware/'
     | '/admin/mahnungen/'
+    | '/admin/rechnungen/'
     | '/finanzen/$year/'
     | '/kunden/$customerId/'
     | '/lieferanten/$supplierId/'
@@ -1392,34 +2391,61 @@ export interface FileRouteTypes {
     | '/lieferanten/$supplierId/$folderId/vorgaenge'
     | '/privat/finanzen/anlagen/$investmentId'
     | '/privat/finanzen/kredite/$loanId'
+    | '/kunden/$customerId/$folderId/'
+    | '/lieferanten/$supplierId/$folderId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
+  ActivityRoute: typeof ActivityRoute
   AdminRoute: typeof AdminRouteWithChildren
+  AlertsRoute: typeof AlertsRoute
   AutomationRoute: typeof AutomationRoute
+  BerichteRoute: typeof BerichteRoute
+  CashflowRoute: typeof CashflowRoute
   ChatRoute: typeof ChatRoute
+  DeveloperRoute: typeof DeveloperRoute
+  DocumentChainsRoute: typeof DocumentChainsRouteWithChildren
   DocumentGroupsRoute: typeof DocumentGroupsRouteWithChildren
   FinanzenRoute: typeof FinanzenRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  FraudRoute: typeof FraudRoute
+  HoldingRoute: typeof HoldingRouteWithChildren
+  InventoryRoute: typeof InventoryRoute
   JobsRoute: typeof JobsRoute
   KasseRoute: typeof KasseRouteWithChildren
   KundenRoute: typeof KundenRouteWithChildren
   LieferantenRoute: typeof LieferantenRouteWithChildren
   LoginRoute: typeof LoginRoute
   MonitoringRoute: typeof MonitoringRoute
+  OpenFileRoute: typeof OpenFileRoute
   PersonalRoute: typeof PersonalRouteWithChildren
   PrivatRoute: typeof PrivatRouteWithChildren
+  ProzesseRoute: typeof ProzesseRouteWithChildren
   RelationshipsRoute: typeof RelationshipsRoute
+  RiskRoute: typeof RiskRouteWithChildren
+  ScanRoute: typeof ScanRoute
   SearchRoute: typeof SearchRoute
+  SendungenRoute: typeof SendungenRouteWithChildren
+  SettingsRoute: typeof SettingsRouteWithChildren
   ShareRoute: typeof ShareRoute
+  ShareTargetRoute: typeof ShareTargetRoute
   SpesenRoute: typeof SpesenRouteWithChildren
   StreckengeschaeftRoute: typeof StreckengeschaeftRouteWithChildren
+  TeamsRoute: typeof TeamsRoute
+  TrashRoute: typeof TrashRoute
   UploadRoute: typeof UploadRoute
   ValidationQueueRoute: typeof ValidationQueueRouteWithChildren
+  VertraegeRoute: typeof VertraegeRoute
+  VorlagenRoute: typeof VorlagenRoute
+  WissenRoute: typeof WissenRoute
   WorkflowsRoute: typeof WorkflowsRouteWithChildren
+  BankingAutoMahnlaufRoute: typeof BankingAutoMahnlaufRoute
+  BankingMissedSkontoRoute: typeof BankingMissedSkontoRoute
+  BankingPaymentAutomationRoute: typeof BankingPaymentAutomationRoute
   DocumentsDocumentIdRoute: typeof DocumentsDocumentIdRouteWithChildren
+  DocumentsCompareRoute: typeof DocumentsCompareRoute
   ResetPasswordTokenRoute: typeof ResetPasswordTokenRoute
 }
 
@@ -1430,6 +2456,27 @@ declare module '@tanstack/react-router' {
       path: '/workflows'
       fullPath: '/workflows'
       preLoaderRoute: typeof WorkflowsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wissen': {
+      id: '/wissen'
+      path: '/wissen'
+      fullPath: '/wissen'
+      preLoaderRoute: typeof WissenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/vorlagen': {
+      id: '/vorlagen'
+      path: '/vorlagen'
+      fullPath: '/vorlagen'
+      preLoaderRoute: typeof VorlagenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/vertraege': {
+      id: '/vertraege'
+      path: '/vertraege'
+      fullPath: '/vertraege'
+      preLoaderRoute: typeof VertraegeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/validation-queue': {
@@ -1446,6 +2493,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UploadRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/trash': {
+      id: '/trash'
+      path: '/trash'
+      fullPath: '/trash'
+      preLoaderRoute: typeof TrashRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/teams': {
+      id: '/teams'
+      path: '/teams'
+      fullPath: '/teams'
+      preLoaderRoute: typeof TeamsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/streckengeschaeft': {
       id: '/streckengeschaeft'
       path: '/streckengeschaeft'
@@ -1460,11 +2521,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SpesenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/share-target': {
+      id: '/share-target'
+      path: '/share-target'
+      fullPath: '/share-target'
+      preLoaderRoute: typeof ShareTargetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/share': {
       id: '/share'
       path: '/share'
       fullPath: '/share'
       preLoaderRoute: typeof ShareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sendungen': {
+      id: '/sendungen'
+      path: '/sendungen'
+      fullPath: '/sendungen'
+      preLoaderRoute: typeof SendungenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/search': {
@@ -1474,11 +2556,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SearchRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/scan': {
+      id: '/scan'
+      path: '/scan'
+      fullPath: '/scan'
+      preLoaderRoute: typeof ScanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/risk': {
+      id: '/risk'
+      path: '/risk'
+      fullPath: '/risk'
+      preLoaderRoute: typeof RiskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/relationships': {
       id: '/relationships'
       path: '/relationships'
       fullPath: '/relationships'
       preLoaderRoute: typeof RelationshipsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prozesse': {
+      id: '/prozesse'
+      path: '/prozesse'
+      fullPath: '/prozesse'
+      preLoaderRoute: typeof ProzesseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privat': {
@@ -1493,6 +2596,13 @@ declare module '@tanstack/react-router' {
       path: '/personal'
       fullPath: '/personal'
       preLoaderRoute: typeof PersonalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/open-file': {
+      id: '/open-file'
+      path: '/open-file'
+      fullPath: '/open-file'
+      preLoaderRoute: typeof OpenFileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/monitoring': {
@@ -1537,6 +2647,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof JobsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/inventory': {
+      id: '/inventory'
+      path: '/inventory'
+      fullPath: '/inventory'
+      preLoaderRoute: typeof InventoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/holding': {
+      id: '/holding'
+      path: '/holding'
+      fullPath: '/holding'
+      preLoaderRoute: typeof HoldingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fraud': {
+      id: '/fraud'
+      path: '/fraud'
+      fullPath: '/fraud'
+      preLoaderRoute: typeof FraudRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/forgot-password': {
       id: '/forgot-password'
       path: '/forgot-password'
@@ -1558,11 +2689,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocumentGroupsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/document-chains': {
+      id: '/document-chains'
+      path: '/document-chains'
+      fullPath: '/document-chains'
+      preLoaderRoute: typeof DocumentChainsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developer': {
+      id: '/developer'
+      path: '/developer'
+      fullPath: '/developer'
+      preLoaderRoute: typeof DeveloperRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/chat': {
       id: '/chat'
       path: '/chat'
       fullPath: '/chat'
       preLoaderRoute: typeof ChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cashflow': {
+      id: '/cashflow'
+      path: '/cashflow'
+      fullPath: '/cashflow'
+      preLoaderRoute: typeof CashflowRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/berichte': {
+      id: '/berichte'
+      path: '/berichte'
+      fullPath: '/berichte'
+      preLoaderRoute: typeof BerichteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/automation': {
@@ -1572,11 +2731,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AutomationRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/alerts': {
+      id: '/alerts'
+      path: '/alerts'
+      fullPath: '/alerts'
+      preLoaderRoute: typeof AlertsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/activity': {
+      id: '/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof ActivityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$': {
@@ -1613,6 +2786,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/spesen/'
       preLoaderRoute: typeof SpesenIndexRouteImport
       parentRoute: typeof SpesenRoute
+    }
+    '/sendungen/': {
+      id: '/sendungen/'
+      path: '/'
+      fullPath: '/sendungen/'
+      preLoaderRoute: typeof SendungenIndexRouteImport
+      parentRoute: typeof SendungenRoute
+    }
+    '/risk/': {
+      id: '/risk/'
+      path: '/'
+      fullPath: '/risk/'
+      preLoaderRoute: typeof RiskIndexRouteImport
+      parentRoute: typeof RiskRoute
+    }
+    '/prozesse/': {
+      id: '/prozesse/'
+      path: '/'
+      fullPath: '/prozesse/'
+      preLoaderRoute: typeof ProzesseIndexRouteImport
+      parentRoute: typeof ProzesseRoute
     }
     '/privat/': {
       id: '/privat/'
@@ -1733,12 +2927,82 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SpesenReportIdRouteImport
       parentRoute: typeof SpesenRoute
     }
+    '/settings/security': {
+      id: '/settings/security'
+      path: '/security'
+      fullPath: '/settings/security'
+      preLoaderRoute: typeof SettingsSecurityRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/delegations': {
+      id: '/settings/delegations'
+      path: '/delegations'
+      fullPath: '/settings/delegations'
+      preLoaderRoute: typeof SettingsDelegationsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/consent': {
+      id: '/settings/consent'
+      path: '/consent'
+      fullPath: '/settings/consent'
+      preLoaderRoute: typeof SettingsConsentRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/sendungen/neu': {
+      id: '/sendungen/neu'
+      path: '/neu'
+      fullPath: '/sendungen/neu'
+      preLoaderRoute: typeof SendungenNeuRouteImport
+      parentRoute: typeof SendungenRoute
+    }
+    '/sendungen/$shipmentId': {
+      id: '/sendungen/$shipmentId'
+      path: '/$shipmentId'
+      fullPath: '/sendungen/$shipmentId'
+      preLoaderRoute: typeof SendungenShipmentIdRouteImport
+      parentRoute: typeof SendungenRoute
+    }
+    '/risk/intelligence': {
+      id: '/risk/intelligence'
+      path: '/intelligence'
+      fullPath: '/risk/intelligence'
+      preLoaderRoute: typeof RiskIntelligenceRouteImport
+      parentRoute: typeof RiskRoute
+    }
+    '/risk/$entityId': {
+      id: '/risk/$entityId'
+      path: '/$entityId'
+      fullPath: '/risk/$entityId'
+      preLoaderRoute: typeof RiskEntityIdRouteImport
+      parentRoute: typeof RiskRoute
+    }
     '/reset-password/$token': {
       id: '/reset-password/$token'
       path: '/reset-password/$token'
       fullPath: '/reset-password/$token'
       preLoaderRoute: typeof ResetPasswordTokenRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/prozesse/neu': {
+      id: '/prozesse/neu'
+      path: '/neu'
+      fullPath: '/prozesse/neu'
+      preLoaderRoute: typeof ProzesseNeuRouteImport
+      parentRoute: typeof ProzesseRoute
+    }
+    '/prozesse/aufgaben': {
+      id: '/prozesse/aufgaben'
+      path: '/aufgaben'
+      fullPath: '/prozesse/aufgaben'
+      preLoaderRoute: typeof ProzesseAufgabenRouteImport
+      parentRoute: typeof ProzesseRoute
+    }
+    '/prozesse/$definitionId': {
+      id: '/prozesse/$definitionId'
+      path: '/$definitionId'
+      fullPath: '/prozesse/$definitionId'
+      preLoaderRoute: typeof ProzesseDefinitionIdRouteImport
+      parentRoute: typeof ProzesseRoute
     }
     '/privat/versicherungen': {
       id: '/privat/versicherungen'
@@ -1796,6 +3060,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PersonalEmployeeIdRouteImport
       parentRoute: typeof PersonalRoute
     }
+    '/lieferanten/ranking': {
+      id: '/lieferanten/ranking'
+      path: '/ranking'
+      fullPath: '/lieferanten/ranking'
+      preLoaderRoute: typeof LieferantenRankingRouteImport
+      parentRoute: typeof LieferantenRoute
+    }
     '/lieferanten/$supplierId': {
       id: '/lieferanten/$supplierId'
       path: '/$supplierId'
@@ -1810,12 +3081,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KundenCustomerIdRouteImport
       parentRoute: typeof KundenRoute
     }
+    '/holding/reconciliation': {
+      id: '/holding/reconciliation'
+      path: '/reconciliation'
+      fullPath: '/holding/reconciliation'
+      preLoaderRoute: typeof HoldingReconciliationRouteImport
+      parentRoute: typeof HoldingRoute
+    }
+    '/finanzen/zahlungsverhalten': {
+      id: '/finanzen/zahlungsverhalten'
+      path: '/zahlungsverhalten'
+      fullPath: '/finanzen/zahlungsverhalten'
+      preLoaderRoute: typeof FinanzenZahlungsverhaltenRouteImport
+      parentRoute: typeof FinanzenRoute
+    }
     '/finanzen/$year': {
       id: '/finanzen/$year'
       path: '/$year'
       fullPath: '/finanzen/$year'
       preLoaderRoute: typeof FinanzenYearRouteImport
       parentRoute: typeof FinanzenRoute
+    }
+    '/documents/compare': {
+      id: '/documents/compare'
+      path: '/documents/compare'
+      fullPath: '/documents/compare'
+      preLoaderRoute: typeof DocumentsCompareRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/documents/$documentId': {
       id: '/documents/$documentId'
@@ -1831,6 +3123,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocumentGroupsIdRouteImport
       parentRoute: typeof DocumentGroupsRoute
     }
+    '/document-chains/$chainId': {
+      id: '/document-chains/$chainId'
+      path: '/$chainId'
+      fullPath: '/document-chains/$chainId'
+      preLoaderRoute: typeof DocumentChainsChainIdRouteImport
+      parentRoute: typeof DocumentChainsRoute
+    }
+    '/banking/payment-automation': {
+      id: '/banking/payment-automation'
+      path: '/banking/payment-automation'
+      fullPath: '/banking/payment-automation'
+      preLoaderRoute: typeof BankingPaymentAutomationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/banking/missed-skonto': {
+      id: '/banking/missed-skonto'
+      path: '/banking/missed-skonto'
+      fullPath: '/banking/missed-skonto'
+      preLoaderRoute: typeof BankingMissedSkontoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/banking/auto-mahnlauf': {
+      id: '/banking/auto-mahnlauf'
+      path: '/banking/auto-mahnlauf'
+      fullPath: '/banking/auto-mahnlauf'
+      preLoaderRoute: typeof BankingAutoMahnlaufRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/widgets': {
+      id: '/admin/widgets'
+      path: '/widgets'
+      fullPath: '/admin/widgets'
+      preLoaderRoute: typeof AdminWidgetsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/validation': {
+      id: '/admin/validation'
+      path: '/validation'
+      fullPath: '/admin/validation'
+      preLoaderRoute: typeof AdminValidationRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/users': {
       id: '/admin/users'
       path: '/users'
@@ -1845,11 +3179,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminTunesRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/tenant-limits': {
+      id: '/admin/tenant-limits'
+      path: '/tenant-limits'
+      fullPath: '/admin/tenant-limits'
+      preLoaderRoute: typeof AdminTenantLimitsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/sso': {
+      id: '/admin/sso'
+      path: '/sso'
+      fullPath: '/admin/sso'
+      preLoaderRoute: typeof AdminSsoRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/smart-queue': {
+      id: '/admin/smart-queue'
+      path: '/smart-queue'
+      fullPath: '/admin/smart-queue'
+      preLoaderRoute: typeof AdminSmartQueueRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/slack': {
+      id: '/admin/slack'
+      path: '/slack'
+      fullPath: '/admin/slack'
+      preLoaderRoute: typeof AdminSlackRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/settings': {
       id: '/admin/settings'
       path: '/settings'
       fullPath: '/admin/settings'
       preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/rules': {
+      id: '/admin/rules'
+      path: '/rules'
+      fullPath: '/admin/rules'
+      preLoaderRoute: typeof AdminRulesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/risk-scoring': {
+      id: '/admin/risk-scoring'
+      path: '/risk-scoring'
+      fullPath: '/admin/risk-scoring'
+      preLoaderRoute: typeof AdminRiskScoringRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/rechnungen': {
+      id: '/admin/rechnungen'
+      path: '/rechnungen'
+      fullPath: '/admin/rechnungen'
+      preLoaderRoute: typeof AdminRechnungenRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/process-optimization': {
+      id: '/admin/process-optimization'
+      path: '/process-optimization'
+      fullPath: '/admin/process-optimization'
+      preLoaderRoute: typeof AdminProcessOptimizationRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/ocr-training': {
@@ -1866,11 +3256,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOcrReviewRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/ocr-learning': {
+      id: '/admin/ocr-learning'
+      path: '/ocr-learning'
+      fullPath: '/admin/ocr-learning'
+      preLoaderRoute: typeof AdminOcrLearningRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/ocr-backends': {
       id: '/admin/ocr-backends'
       path: '/ocr-backends'
       fullPath: '/admin/ocr-backends'
       preLoaderRoute: typeof AdminOcrBackendsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/mlops': {
+      id: '/admin/mlops'
+      path: '/mlops'
+      fullPath: '/admin/mlops'
+      preLoaderRoute: typeof AdminMlopsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/mahnungen': {
@@ -1880,11 +3284,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMahnungenRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/lexware': {
+      id: '/admin/lexware'
+      path: '/lexware'
+      fullPath: '/admin/lexware'
+      preLoaderRoute: typeof AdminLexwareRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/job-queue': {
       id: '/admin/job-queue'
       path: '/job-queue'
       fullPath: '/admin/job-queue'
       preLoaderRoute: typeof AdminJobQueueRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/imports': {
+      id: '/admin/imports'
+      path: '/imports'
+      fullPath: '/admin/imports'
+      preLoaderRoute: typeof AdminImportsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/firmen': {
+      id: '/admin/firmen'
+      path: '/firmen'
+      fullPath: '/admin/firmen'
+      preLoaderRoute: typeof AdminFirmenRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/erp': {
@@ -1894,11 +3319,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminErpRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/dunning-templates': {
+      id: '/admin/dunning-templates'
+      path: '/dunning-templates'
+      fullPath: '/admin/dunning-templates'
+      preLoaderRoute: typeof AdminDunningTemplatesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/dlp': {
+      id: '/admin/dlp'
+      path: '/dlp'
+      fullPath: '/admin/dlp'
+      preLoaderRoute: typeof AdminDlpRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/disaster-recovery': {
+      id: '/admin/disaster-recovery'
+      path: '/disaster-recovery'
+      fullPath: '/admin/disaster-recovery'
+      preLoaderRoute: typeof AdminDisasterRecoveryRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/datev-connect': {
+      id: '/admin/datev-connect'
+      path: '/datev-connect'
+      fullPath: '/admin/datev-connect'
+      preLoaderRoute: typeof AdminDatevConnectRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/datev': {
       id: '/admin/datev'
       path: '/datev'
       fullPath: '/admin/datev'
       preLoaderRoute: typeof AdminDatevRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/correction-workbench': {
+      id: '/admin/correction-workbench'
+      path: '/correction-workbench'
+      fullPath: '/admin/correction-workbench'
+      preLoaderRoute: typeof AdminCorrectionWorkbenchRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/banking': {
@@ -1908,11 +3368,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBankingRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/audit-logs': {
+      id: '/admin/audit-logs'
+      path: '/audit-logs'
+      fullPath: '/admin/audit-logs'
+      preLoaderRoute: typeof AdminAuditLogsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/ai-decisions': {
       id: '/admin/ai-decisions'
       path: '/ai-decisions'
       fullPath: '/admin/ai-decisions'
       preLoaderRoute: typeof AdminAiDecisionsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/activity': {
+      id: '/admin/activity'
+      path: '/activity'
+      fullPath: '/admin/activity'
+      preLoaderRoute: typeof AdminActivityRouteImport
       parentRoute: typeof AdminRoute
     }
     '/personal/$employeeId/': {
@@ -1943,12 +3417,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FinanzenYearIndexRouteImport
       parentRoute: typeof FinanzenYearRoute
     }
+    '/admin/rechnungen/': {
+      id: '/admin/rechnungen/'
+      path: '/'
+      fullPath: '/admin/rechnungen/'
+      preLoaderRoute: typeof AdminRechnungenIndexRouteImport
+      parentRoute: typeof AdminRechnungenRoute
+    }
     '/admin/mahnungen/': {
       id: '/admin/mahnungen/'
       path: '/'
       fullPath: '/admin/mahnungen/'
       preLoaderRoute: typeof AdminMahnungenIndexRouteImport
       parentRoute: typeof AdminMahnungenRoute
+    }
+    '/admin/lexware/': {
+      id: '/admin/lexware/'
+      path: '/'
+      fullPath: '/admin/lexware/'
+      preLoaderRoute: typeof AdminLexwareIndexRouteImport
+      parentRoute: typeof AdminLexwareRoute
+    }
+    '/admin/imports/': {
+      id: '/admin/imports/'
+      path: '/'
+      fullPath: '/admin/imports/'
+      preLoaderRoute: typeof AdminImportsIndexRouteImport
+      parentRoute: typeof AdminImportsRoute
     }
     '/admin/erp/': {
       id: '/admin/erp/'
@@ -1963,6 +3458,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/datev/'
       preLoaderRoute: typeof AdminDatevIndexRouteImport
       parentRoute: typeof AdminDatevRoute
+    }
+    '/admin/datev-connect/': {
+      id: '/admin/datev-connect/'
+      path: '/'
+      fullPath: '/admin/datev-connect/'
+      preLoaderRoute: typeof AdminDatevConnectIndexRouteImport
+      parentRoute: typeof AdminDatevConnectRoute
     }
     '/admin/banking/': {
       id: '/admin/banking/'
@@ -2041,6 +3543,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocumentsDocumentIdRelationshipsRouteImport
       parentRoute: typeof DocumentsDocumentIdRoute
     }
+    '/documents/$documentId/activity': {
+      id: '/documents/$documentId/activity'
+      path: '/activity'
+      fullPath: '/documents/$documentId/activity'
+      preLoaderRoute: typeof DocumentsDocumentIdActivityRouteImport
+      parentRoute: typeof DocumentsDocumentIdRoute
+    }
+    '/admin/rechnungen/liste': {
+      id: '/admin/rechnungen/liste'
+      path: '/liste'
+      fullPath: '/admin/rechnungen/liste'
+      preLoaderRoute: typeof AdminRechnungenListeRouteImport
+      parentRoute: typeof AdminRechnungenRoute
+    }
     '/admin/ocr-backends/$backend': {
       id: '/admin/ocr-backends/$backend'
       path: '/$backend'
@@ -2089,6 +3605,55 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/mahnungen/aktiv'
       preLoaderRoute: typeof AdminMahnungenAktivRouteImport
       parentRoute: typeof AdminMahnungenRoute
+    }
+    '/admin/lexware/suppliers': {
+      id: '/admin/lexware/suppliers'
+      path: '/suppliers'
+      fullPath: '/admin/lexware/suppliers'
+      preLoaderRoute: typeof AdminLexwareSuppliersRouteImport
+      parentRoute: typeof AdminLexwareRoute
+    }
+    '/admin/lexware/statistics': {
+      id: '/admin/lexware/statistics'
+      path: '/statistics'
+      fullPath: '/admin/lexware/statistics'
+      preLoaderRoute: typeof AdminLexwareStatisticsRouteImport
+      parentRoute: typeof AdminLexwareRoute
+    }
+    '/admin/imports/rules': {
+      id: '/admin/imports/rules'
+      path: '/rules'
+      fullPath: '/admin/imports/rules'
+      preLoaderRoute: typeof AdminImportsRulesRouteImport
+      parentRoute: typeof AdminImportsRoute
+    }
+    '/admin/imports/logs': {
+      id: '/admin/imports/logs'
+      path: '/logs'
+      fullPath: '/admin/imports/logs'
+      preLoaderRoute: typeof AdminImportsLogsRouteImport
+      parentRoute: typeof AdminImportsRoute
+    }
+    '/admin/imports/folder': {
+      id: '/admin/imports/folder'
+      path: '/folder'
+      fullPath: '/admin/imports/folder'
+      preLoaderRoute: typeof AdminImportsFolderRouteImport
+      parentRoute: typeof AdminImportsRoute
+    }
+    '/admin/imports/email': {
+      id: '/admin/imports/email'
+      path: '/email'
+      fullPath: '/admin/imports/email'
+      preLoaderRoute: typeof AdminImportsEmailRouteImport
+      parentRoute: typeof AdminImportsRoute
+    }
+    '/admin/firmen/dashboard': {
+      id: '/admin/firmen/dashboard'
+      path: '/dashboard'
+      fullPath: '/admin/firmen/dashboard'
+      preLoaderRoute: typeof AdminFirmenDashboardRouteImport
+      parentRoute: typeof AdminFirmenRoute
     }
     '/admin/erp/sync': {
       id: '/admin/erp/sync'
@@ -2139,6 +3704,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDatevConfigRouteImport
       parentRoute: typeof AdminDatevRoute
     }
+    '/admin/datev-connect/sync': {
+      id: '/admin/datev-connect/sync'
+      path: '/sync'
+      fullPath: '/admin/datev-connect/sync'
+      preLoaderRoute: typeof AdminDatevConnectSyncRouteImport
+      parentRoute: typeof AdminDatevConnectRoute
+    }
+    '/admin/datev-connect/oauth-callback': {
+      id: '/admin/datev-connect/oauth-callback'
+      path: '/oauth-callback'
+      fullPath: '/admin/datev-connect/oauth-callback'
+      preLoaderRoute: typeof AdminDatevConnectOauthCallbackRouteImport
+      parentRoute: typeof AdminDatevConnectRoute
+    }
+    '/admin/datev-connect/kontierung': {
+      id: '/admin/datev-connect/kontierung'
+      path: '/kontierung'
+      fullPath: '/admin/datev-connect/kontierung'
+      preLoaderRoute: typeof AdminDatevConnectKontierungRouteImport
+      parentRoute: typeof AdminDatevConnectRoute
+    }
+    '/admin/datev-connect/kontenplan': {
+      id: '/admin/datev-connect/kontenplan'
+      path: '/kontenplan'
+      fullPath: '/admin/datev-connect/kontenplan'
+      preLoaderRoute: typeof AdminDatevConnectKontenplanRouteImport
+      parentRoute: typeof AdminDatevConnectRoute
+    }
+    '/admin/datev-connect/buchungen': {
+      id: '/admin/datev-connect/buchungen'
+      path: '/buchungen'
+      fullPath: '/admin/datev-connect/buchungen'
+      preLoaderRoute: typeof AdminDatevConnectBuchungenRouteImport
+      parentRoute: typeof AdminDatevConnectRoute
+    }
     '/admin/banking/transactions': {
       id: '/admin/banking/transactions'
       path: '/transactions'
@@ -2180,6 +3780,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/banking/accounts'
       preLoaderRoute: typeof AdminBankingAccountsRouteImport
       parentRoute: typeof AdminBankingRoute
+    }
+    '/lieferanten/$supplierId/$folderId/': {
+      id: '/lieferanten/$supplierId/$folderId/'
+      path: '/'
+      fullPath: '/lieferanten/$supplierId/$folderId/'
+      preLoaderRoute: typeof LieferantenSupplierIdFolderIdIndexRouteImport
+      parentRoute: typeof LieferantenSupplierIdFolderIdRoute
+    }
+    '/kunden/$customerId/$folderId/': {
+      id: '/kunden/$customerId/$folderId/'
+      path: '/'
+      fullPath: '/kunden/$customerId/$folderId/'
+      preLoaderRoute: typeof KundenCustomerIdFolderIdIndexRouteImport
+      parentRoute: typeof KundenCustomerIdFolderIdRoute
     }
     '/privat/finanzen/kredite/$loanId': {
       id: '/privat/finanzen/kredite/$loanId'
@@ -2277,6 +3891,27 @@ const AdminDatevRouteWithChildren = AdminDatevRoute._addFileChildren(
   AdminDatevRouteChildren,
 )
 
+interface AdminDatevConnectRouteChildren {
+  AdminDatevConnectBuchungenRoute: typeof AdminDatevConnectBuchungenRoute
+  AdminDatevConnectKontenplanRoute: typeof AdminDatevConnectKontenplanRoute
+  AdminDatevConnectKontierungRoute: typeof AdminDatevConnectKontierungRoute
+  AdminDatevConnectOauthCallbackRoute: typeof AdminDatevConnectOauthCallbackRoute
+  AdminDatevConnectSyncRoute: typeof AdminDatevConnectSyncRoute
+  AdminDatevConnectIndexRoute: typeof AdminDatevConnectIndexRoute
+}
+
+const AdminDatevConnectRouteChildren: AdminDatevConnectRouteChildren = {
+  AdminDatevConnectBuchungenRoute: AdminDatevConnectBuchungenRoute,
+  AdminDatevConnectKontenplanRoute: AdminDatevConnectKontenplanRoute,
+  AdminDatevConnectKontierungRoute: AdminDatevConnectKontierungRoute,
+  AdminDatevConnectOauthCallbackRoute: AdminDatevConnectOauthCallbackRoute,
+  AdminDatevConnectSyncRoute: AdminDatevConnectSyncRoute,
+  AdminDatevConnectIndexRoute: AdminDatevConnectIndexRoute,
+}
+
+const AdminDatevConnectRouteWithChildren =
+  AdminDatevConnectRoute._addFileChildren(AdminDatevConnectRouteChildren)
+
 interface AdminErpRouteChildren {
   AdminErpConflictsRoute: typeof AdminErpConflictsRoute
   AdminErpStatsRoute: typeof AdminErpStatsRoute
@@ -2293,6 +3928,54 @@ const AdminErpRouteChildren: AdminErpRouteChildren = {
 
 const AdminErpRouteWithChildren = AdminErpRoute._addFileChildren(
   AdminErpRouteChildren,
+)
+
+interface AdminFirmenRouteChildren {
+  AdminFirmenDashboardRoute: typeof AdminFirmenDashboardRoute
+}
+
+const AdminFirmenRouteChildren: AdminFirmenRouteChildren = {
+  AdminFirmenDashboardRoute: AdminFirmenDashboardRoute,
+}
+
+const AdminFirmenRouteWithChildren = AdminFirmenRoute._addFileChildren(
+  AdminFirmenRouteChildren,
+)
+
+interface AdminImportsRouteChildren {
+  AdminImportsEmailRoute: typeof AdminImportsEmailRoute
+  AdminImportsFolderRoute: typeof AdminImportsFolderRoute
+  AdminImportsLogsRoute: typeof AdminImportsLogsRoute
+  AdminImportsRulesRoute: typeof AdminImportsRulesRoute
+  AdminImportsIndexRoute: typeof AdminImportsIndexRoute
+}
+
+const AdminImportsRouteChildren: AdminImportsRouteChildren = {
+  AdminImportsEmailRoute: AdminImportsEmailRoute,
+  AdminImportsFolderRoute: AdminImportsFolderRoute,
+  AdminImportsLogsRoute: AdminImportsLogsRoute,
+  AdminImportsRulesRoute: AdminImportsRulesRoute,
+  AdminImportsIndexRoute: AdminImportsIndexRoute,
+}
+
+const AdminImportsRouteWithChildren = AdminImportsRoute._addFileChildren(
+  AdminImportsRouteChildren,
+)
+
+interface AdminLexwareRouteChildren {
+  AdminLexwareStatisticsRoute: typeof AdminLexwareStatisticsRoute
+  AdminLexwareSuppliersRoute: typeof AdminLexwareSuppliersRoute
+  AdminLexwareIndexRoute: typeof AdminLexwareIndexRoute
+}
+
+const AdminLexwareRouteChildren: AdminLexwareRouteChildren = {
+  AdminLexwareStatisticsRoute: AdminLexwareStatisticsRoute,
+  AdminLexwareSuppliersRoute: AdminLexwareSuppliersRoute,
+  AdminLexwareIndexRoute: AdminLexwareIndexRoute,
+}
+
+const AdminLexwareRouteWithChildren = AdminLexwareRoute._addFileChildren(
+  AdminLexwareRouteChildren,
 )
 
 interface AdminMahnungenRouteChildren {
@@ -2341,39 +4024,109 @@ const AdminOcrTrainingRouteChildren: AdminOcrTrainingRouteChildren = {
 const AdminOcrTrainingRouteWithChildren =
   AdminOcrTrainingRoute._addFileChildren(AdminOcrTrainingRouteChildren)
 
+interface AdminRechnungenRouteChildren {
+  AdminRechnungenListeRoute: typeof AdminRechnungenListeRoute
+  AdminRechnungenIndexRoute: typeof AdminRechnungenIndexRoute
+}
+
+const AdminRechnungenRouteChildren: AdminRechnungenRouteChildren = {
+  AdminRechnungenListeRoute: AdminRechnungenListeRoute,
+  AdminRechnungenIndexRoute: AdminRechnungenIndexRoute,
+}
+
+const AdminRechnungenRouteWithChildren = AdminRechnungenRoute._addFileChildren(
+  AdminRechnungenRouteChildren,
+)
+
 interface AdminRouteChildren {
+  AdminActivityRoute: typeof AdminActivityRoute
   AdminAiDecisionsRoute: typeof AdminAiDecisionsRoute
+  AdminAuditLogsRoute: typeof AdminAuditLogsRoute
   AdminBankingRoute: typeof AdminBankingRouteWithChildren
+  AdminCorrectionWorkbenchRoute: typeof AdminCorrectionWorkbenchRoute
   AdminDatevRoute: typeof AdminDatevRouteWithChildren
+  AdminDatevConnectRoute: typeof AdminDatevConnectRouteWithChildren
+  AdminDisasterRecoveryRoute: typeof AdminDisasterRecoveryRoute
+  AdminDlpRoute: typeof AdminDlpRoute
+  AdminDunningTemplatesRoute: typeof AdminDunningTemplatesRoute
   AdminErpRoute: typeof AdminErpRouteWithChildren
+  AdminFirmenRoute: typeof AdminFirmenRouteWithChildren
+  AdminImportsRoute: typeof AdminImportsRouteWithChildren
   AdminJobQueueRoute: typeof AdminJobQueueRoute
+  AdminLexwareRoute: typeof AdminLexwareRouteWithChildren
   AdminMahnungenRoute: typeof AdminMahnungenRouteWithChildren
+  AdminMlopsRoute: typeof AdminMlopsRoute
   AdminOcrBackendsRoute: typeof AdminOcrBackendsRouteWithChildren
+  AdminOcrLearningRoute: typeof AdminOcrLearningRoute
   AdminOcrReviewRoute: typeof AdminOcrReviewRoute
   AdminOcrTrainingRoute: typeof AdminOcrTrainingRouteWithChildren
+  AdminProcessOptimizationRoute: typeof AdminProcessOptimizationRoute
+  AdminRechnungenRoute: typeof AdminRechnungenRouteWithChildren
+  AdminRiskScoringRoute: typeof AdminRiskScoringRoute
+  AdminRulesRoute: typeof AdminRulesRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminSlackRoute: typeof AdminSlackRoute
+  AdminSmartQueueRoute: typeof AdminSmartQueueRoute
+  AdminSsoRoute: typeof AdminSsoRoute
+  AdminTenantLimitsRoute: typeof AdminTenantLimitsRoute
   AdminTunesRoute: typeof AdminTunesRoute
   AdminUsersRoute: typeof AdminUsersRoute
+  AdminValidationRoute: typeof AdminValidationRoute
+  AdminWidgetsRoute: typeof AdminWidgetsRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminActivityRoute: AdminActivityRoute,
   AdminAiDecisionsRoute: AdminAiDecisionsRoute,
+  AdminAuditLogsRoute: AdminAuditLogsRoute,
   AdminBankingRoute: AdminBankingRouteWithChildren,
+  AdminCorrectionWorkbenchRoute: AdminCorrectionWorkbenchRoute,
   AdminDatevRoute: AdminDatevRouteWithChildren,
+  AdminDatevConnectRoute: AdminDatevConnectRouteWithChildren,
+  AdminDisasterRecoveryRoute: AdminDisasterRecoveryRoute,
+  AdminDlpRoute: AdminDlpRoute,
+  AdminDunningTemplatesRoute: AdminDunningTemplatesRoute,
   AdminErpRoute: AdminErpRouteWithChildren,
+  AdminFirmenRoute: AdminFirmenRouteWithChildren,
+  AdminImportsRoute: AdminImportsRouteWithChildren,
   AdminJobQueueRoute: AdminJobQueueRoute,
+  AdminLexwareRoute: AdminLexwareRouteWithChildren,
   AdminMahnungenRoute: AdminMahnungenRouteWithChildren,
+  AdminMlopsRoute: AdminMlopsRoute,
   AdminOcrBackendsRoute: AdminOcrBackendsRouteWithChildren,
+  AdminOcrLearningRoute: AdminOcrLearningRoute,
   AdminOcrReviewRoute: AdminOcrReviewRoute,
   AdminOcrTrainingRoute: AdminOcrTrainingRouteWithChildren,
+  AdminProcessOptimizationRoute: AdminProcessOptimizationRoute,
+  AdminRechnungenRoute: AdminRechnungenRouteWithChildren,
+  AdminRiskScoringRoute: AdminRiskScoringRoute,
+  AdminRulesRoute: AdminRulesRoute,
   AdminSettingsRoute: AdminSettingsRoute,
+  AdminSlackRoute: AdminSlackRoute,
+  AdminSmartQueueRoute: AdminSmartQueueRoute,
+  AdminSsoRoute: AdminSsoRoute,
+  AdminTenantLimitsRoute: AdminTenantLimitsRoute,
   AdminTunesRoute: AdminTunesRoute,
   AdminUsersRoute: AdminUsersRoute,
+  AdminValidationRoute: AdminValidationRoute,
+  AdminWidgetsRoute: AdminWidgetsRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
+interface DocumentChainsRouteChildren {
+  DocumentChainsChainIdRoute: typeof DocumentChainsChainIdRoute
+}
+
+const DocumentChainsRouteChildren: DocumentChainsRouteChildren = {
+  DocumentChainsChainIdRoute: DocumentChainsChainIdRoute,
+}
+
+const DocumentChainsRouteWithChildren = DocumentChainsRoute._addFileChildren(
+  DocumentChainsRouteChildren,
+)
 
 interface DocumentGroupsRouteChildren {
   DocumentGroupsIdRoute: typeof DocumentGroupsIdRoute
@@ -2403,17 +4156,30 @@ const FinanzenYearRouteWithChildren = FinanzenYearRoute._addFileChildren(
 
 interface FinanzenRouteChildren {
   FinanzenYearRoute: typeof FinanzenYearRouteWithChildren
+  FinanzenZahlungsverhaltenRoute: typeof FinanzenZahlungsverhaltenRoute
   FinanzenIndexRoute: typeof FinanzenIndexRoute
 }
 
 const FinanzenRouteChildren: FinanzenRouteChildren = {
   FinanzenYearRoute: FinanzenYearRouteWithChildren,
+  FinanzenZahlungsverhaltenRoute: FinanzenZahlungsverhaltenRoute,
   FinanzenIndexRoute: FinanzenIndexRoute,
 }
 
 const FinanzenRouteWithChildren = FinanzenRoute._addFileChildren(
   FinanzenRouteChildren,
 )
+
+interface HoldingRouteChildren {
+  HoldingReconciliationRoute: typeof HoldingReconciliationRoute
+}
+
+const HoldingRouteChildren: HoldingRouteChildren = {
+  HoldingReconciliationRoute: HoldingReconciliationRoute,
+}
+
+const HoldingRouteWithChildren =
+  HoldingRoute._addFileChildren(HoldingRouteChildren)
 
 interface KasseRouteChildren {
   KasseIndexRoute: typeof KasseIndexRoute
@@ -2430,6 +4196,7 @@ const KasseRouteWithChildren = KasseRoute._addFileChildren(KasseRouteChildren)
 interface KundenCustomerIdFolderIdRouteChildren {
   KundenCustomerIdFolderIdCategoryRoute: typeof KundenCustomerIdFolderIdCategoryRoute
   KundenCustomerIdFolderIdVorgaengeRoute: typeof KundenCustomerIdFolderIdVorgaengeRoute
+  KundenCustomerIdFolderIdIndexRoute: typeof KundenCustomerIdFolderIdIndexRoute
 }
 
 const KundenCustomerIdFolderIdRouteChildren: KundenCustomerIdFolderIdRouteChildren =
@@ -2438,6 +4205,7 @@ const KundenCustomerIdFolderIdRouteChildren: KundenCustomerIdFolderIdRouteChildr
       KundenCustomerIdFolderIdCategoryRoute,
     KundenCustomerIdFolderIdVorgaengeRoute:
       KundenCustomerIdFolderIdVorgaengeRoute,
+    KundenCustomerIdFolderIdIndexRoute: KundenCustomerIdFolderIdIndexRoute,
   }
 
 const KundenCustomerIdFolderIdRouteWithChildren =
@@ -2474,6 +4242,7 @@ const KundenRouteWithChildren =
 interface LieferantenSupplierIdFolderIdRouteChildren {
   LieferantenSupplierIdFolderIdCategoryRoute: typeof LieferantenSupplierIdFolderIdCategoryRoute
   LieferantenSupplierIdFolderIdVorgaengeRoute: typeof LieferantenSupplierIdFolderIdVorgaengeRoute
+  LieferantenSupplierIdFolderIdIndexRoute: typeof LieferantenSupplierIdFolderIdIndexRoute
 }
 
 const LieferantenSupplierIdFolderIdRouteChildren: LieferantenSupplierIdFolderIdRouteChildren =
@@ -2482,6 +4251,8 @@ const LieferantenSupplierIdFolderIdRouteChildren: LieferantenSupplierIdFolderIdR
       LieferantenSupplierIdFolderIdCategoryRoute,
     LieferantenSupplierIdFolderIdVorgaengeRoute:
       LieferantenSupplierIdFolderIdVorgaengeRoute,
+    LieferantenSupplierIdFolderIdIndexRoute:
+      LieferantenSupplierIdFolderIdIndexRoute,
   }
 
 const LieferantenSupplierIdFolderIdRouteWithChildren =
@@ -2507,11 +4278,13 @@ const LieferantenSupplierIdRouteWithChildren =
 
 interface LieferantenRouteChildren {
   LieferantenSupplierIdRoute: typeof LieferantenSupplierIdRouteWithChildren
+  LieferantenRankingRoute: typeof LieferantenRankingRoute
   LieferantenIndexRoute: typeof LieferantenIndexRoute
 }
 
 const LieferantenRouteChildren: LieferantenRouteChildren = {
   LieferantenSupplierIdRoute: LieferantenSupplierIdRouteWithChildren,
+  LieferantenRankingRoute: LieferantenRankingRoute,
   LieferantenIndexRoute: LieferantenIndexRoute,
 }
 
@@ -2620,6 +4393,70 @@ const PrivatRouteChildren: PrivatRouteChildren = {
 const PrivatRouteWithChildren =
   PrivatRoute._addFileChildren(PrivatRouteChildren)
 
+interface ProzesseRouteChildren {
+  ProzesseDefinitionIdRoute: typeof ProzesseDefinitionIdRoute
+  ProzesseAufgabenRoute: typeof ProzesseAufgabenRoute
+  ProzesseNeuRoute: typeof ProzesseNeuRoute
+  ProzesseIndexRoute: typeof ProzesseIndexRoute
+}
+
+const ProzesseRouteChildren: ProzesseRouteChildren = {
+  ProzesseDefinitionIdRoute: ProzesseDefinitionIdRoute,
+  ProzesseAufgabenRoute: ProzesseAufgabenRoute,
+  ProzesseNeuRoute: ProzesseNeuRoute,
+  ProzesseIndexRoute: ProzesseIndexRoute,
+}
+
+const ProzesseRouteWithChildren = ProzesseRoute._addFileChildren(
+  ProzesseRouteChildren,
+)
+
+interface RiskRouteChildren {
+  RiskEntityIdRoute: typeof RiskEntityIdRoute
+  RiskIntelligenceRoute: typeof RiskIntelligenceRoute
+  RiskIndexRoute: typeof RiskIndexRoute
+}
+
+const RiskRouteChildren: RiskRouteChildren = {
+  RiskEntityIdRoute: RiskEntityIdRoute,
+  RiskIntelligenceRoute: RiskIntelligenceRoute,
+  RiskIndexRoute: RiskIndexRoute,
+}
+
+const RiskRouteWithChildren = RiskRoute._addFileChildren(RiskRouteChildren)
+
+interface SendungenRouteChildren {
+  SendungenShipmentIdRoute: typeof SendungenShipmentIdRoute
+  SendungenNeuRoute: typeof SendungenNeuRoute
+  SendungenIndexRoute: typeof SendungenIndexRoute
+}
+
+const SendungenRouteChildren: SendungenRouteChildren = {
+  SendungenShipmentIdRoute: SendungenShipmentIdRoute,
+  SendungenNeuRoute: SendungenNeuRoute,
+  SendungenIndexRoute: SendungenIndexRoute,
+}
+
+const SendungenRouteWithChildren = SendungenRoute._addFileChildren(
+  SendungenRouteChildren,
+)
+
+interface SettingsRouteChildren {
+  SettingsConsentRoute: typeof SettingsConsentRoute
+  SettingsDelegationsRoute: typeof SettingsDelegationsRoute
+  SettingsSecurityRoute: typeof SettingsSecurityRoute
+}
+
+const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsConsentRoute: SettingsConsentRoute,
+  SettingsDelegationsRoute: SettingsDelegationsRoute,
+  SettingsSecurityRoute: SettingsSecurityRoute,
+}
+
+const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
+  SettingsRouteChildren,
+)
+
 interface SpesenRouteChildren {
   SpesenReportIdRoute: typeof SpesenReportIdRoute
   SpesenIndexRoute: typeof SpesenIndexRoute
@@ -2698,10 +4535,12 @@ const WorkflowsRouteWithChildren = WorkflowsRoute._addFileChildren(
 )
 
 interface DocumentsDocumentIdRouteChildren {
+  DocumentsDocumentIdActivityRoute: typeof DocumentsDocumentIdActivityRoute
   DocumentsDocumentIdRelationshipsRoute: typeof DocumentsDocumentIdRelationshipsRoute
 }
 
 const DocumentsDocumentIdRouteChildren: DocumentsDocumentIdRouteChildren = {
+  DocumentsDocumentIdActivityRoute: DocumentsDocumentIdActivityRoute,
   DocumentsDocumentIdRelationshipsRoute: DocumentsDocumentIdRelationshipsRoute,
 }
 
@@ -2711,29 +4550,54 @@ const DocumentsDocumentIdRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
+  ActivityRoute: ActivityRoute,
   AdminRoute: AdminRouteWithChildren,
+  AlertsRoute: AlertsRoute,
   AutomationRoute: AutomationRoute,
+  BerichteRoute: BerichteRoute,
+  CashflowRoute: CashflowRoute,
   ChatRoute: ChatRoute,
+  DeveloperRoute: DeveloperRoute,
+  DocumentChainsRoute: DocumentChainsRouteWithChildren,
   DocumentGroupsRoute: DocumentGroupsRouteWithChildren,
   FinanzenRoute: FinanzenRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  FraudRoute: FraudRoute,
+  HoldingRoute: HoldingRouteWithChildren,
+  InventoryRoute: InventoryRoute,
   JobsRoute: JobsRoute,
   KasseRoute: KasseRouteWithChildren,
   KundenRoute: KundenRouteWithChildren,
   LieferantenRoute: LieferantenRouteWithChildren,
   LoginRoute: LoginRoute,
   MonitoringRoute: MonitoringRoute,
+  OpenFileRoute: OpenFileRoute,
   PersonalRoute: PersonalRouteWithChildren,
   PrivatRoute: PrivatRouteWithChildren,
+  ProzesseRoute: ProzesseRouteWithChildren,
   RelationshipsRoute: RelationshipsRoute,
+  RiskRoute: RiskRouteWithChildren,
+  ScanRoute: ScanRoute,
   SearchRoute: SearchRoute,
+  SendungenRoute: SendungenRouteWithChildren,
+  SettingsRoute: SettingsRouteWithChildren,
   ShareRoute: ShareRoute,
+  ShareTargetRoute: ShareTargetRoute,
   SpesenRoute: SpesenRouteWithChildren,
   StreckengeschaeftRoute: StreckengeschaeftRouteWithChildren,
+  TeamsRoute: TeamsRoute,
+  TrashRoute: TrashRoute,
   UploadRoute: UploadRoute,
   ValidationQueueRoute: ValidationQueueRouteWithChildren,
+  VertraegeRoute: VertraegeRoute,
+  VorlagenRoute: VorlagenRoute,
+  WissenRoute: WissenRoute,
   WorkflowsRoute: WorkflowsRouteWithChildren,
+  BankingAutoMahnlaufRoute: BankingAutoMahnlaufRoute,
+  BankingMissedSkontoRoute: BankingMissedSkontoRoute,
+  BankingPaymentAutomationRoute: BankingPaymentAutomationRoute,
   DocumentsDocumentIdRoute: DocumentsDocumentIdRouteWithChildren,
+  DocumentsCompareRoute: DocumentsCompareRoute,
   ResetPasswordTokenRoute: ResetPasswordTokenRoute,
 }
 export const routeTree = rootRouteImport

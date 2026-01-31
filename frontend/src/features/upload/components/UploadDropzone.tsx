@@ -57,7 +57,7 @@ export function UploadDropzone({ onFilesAdd }: UploadDropzoneProps) {
                 "hover:border-primary/50 hover:bg-muted/30"
             )}
         >
-            <input {...getInputProps()} />
+            <input {...getInputProps()} aria-label="Datei zum Hochladen auswählen" />
 
             <div className="relative z-10 flex flex-col items-center gap-4">
                 <div className={cn(

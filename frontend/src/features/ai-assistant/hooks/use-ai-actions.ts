@@ -7,6 +7,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 import {
     aiActionsApi,
     AIActionType,
@@ -277,7 +278,7 @@ export function useActionSuggestions() {
                 results.push(result);
             } catch (error) {
                 // Continue with remaining suggestions
-                console.error(`Fehler bei ${suggestion.title}:`, error);
+                logger.error(`AI-Aktion fehlgeschlagen: ${suggestion.title}`, error);
             }
         }
         return results;
@@ -293,7 +294,7 @@ export function useActionSuggestions() {
                 });
                 results.push(result);
             } catch (error) {
-                console.error(`Fehler bei ${suggestion.title}:`, error);
+                logger.error(`AI-Aktion fehlgeschlagen: ${suggestion.title}`, error);
             }
         }
         return results;

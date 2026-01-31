@@ -2429,6 +2429,14 @@ class BusinessEntity(Base):
         comment="Timestamp of last risk calculation"
     )
 
+    # Auto-Filing Support (Phase 11.1)
+    default_folder_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("folders.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="Default folder for auto-filing documents from this entity",
+    )
+
     # Metadata & Audit
     notes = Column(Text, nullable=True)
     custom_fields = Column(CrossDBJSON, default=dict)  # Flexible Zusatzfelder
@@ -2442,6 +2450,7 @@ class BusinessEntity(Base):
     # Relationships
     created_by = relationship("User", foreign_keys=[created_by_id])
     documents = relationship("Document", back_populates="business_entity")
+    default_folder = relationship("Folder", foreign_keys=[default_folder_id])
 
     # Indexes
     __table_args__ = (
@@ -2452,6 +2461,7 @@ class BusinessEntity(Base):
         Index("ix_business_entities_entity_type", "entity_type"),
         Index("ix_business_entities_is_active", "is_active"),
         Index("ix_business_entities_deleted_at", "deleted_at"),
+        Index("ix_business_entities_default_folder_id", "default_folder_id"),
     )
 
     @property
@@ -6031,6 +6041,514 @@ class DATEVExport(Base):
 
 
 # =============================================================================
+# DATEV CONNECT INTEGRATION (Migration 145)
+# =============================================================================
+
+
+class DATEVConnectionStatus(str, Enum):
+    """DATEV Connection Status."""
+    pending = "pending"
+    connecting = "connecting"
+    connected = "connected"
+    disconnected = "disconnected"
+    error = "error"
+    token_expired = "token_expired"
+
+
+class DATEVSyncType(str, Enum):
+    """DATEV Sync Operation Types."""
+    stammdaten_push = "stammdaten_push"
+    stammdaten_pull = "stammdaten_pull"
+    buchungsstapel = "buchungsstapel"
+    belegbilder = "belegbilder"
+    kontierung = "kontierung"
+    kontenplan = "kontenplan"
+
+
+class DATEVKontierungStatus(str, Enum):
+    """Status of Kontierung Suggestion."""
+    suggested = "suggested"
+    accepted = "accepted"
+    rejected = "rejected"
+    modified = "modified"
+
+
+class DATEVConnection(Base):
+    """
+    DATEVconnect API Connection.
+
+    Verwaltet OAuth2-Verbindung zu DATEVconnect fuer bidirektionale Synchronisation.
+    Unterstuetzt Buchungsstapel, Belegbilder und Stammdaten-Sync.
+
+    SECURITY: Alle Credentials werden verschluesselt gespeichert (AES-256-GCM).
+    """
+
+    __tablename__ = "datev_connections"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        comment="Multi-Tenant Isolation"
+    )
+    created_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="Ersteller der Verbindung"
+    )
+
+    # Connection Name
+    name = Column(String(100), nullable=False, comment="Anzeigename der Verbindung")
+    description = Column(Text, nullable=True)
+
+    # DATEV Identifiers
+    mandant_nr = Column(String(10), nullable=False, comment="DATEV Mandantennummer")
+    berater_nr = Column(String(10), nullable=False, comment="DATEV Beraternummer")
+    kontenrahmen = Column(
+        String(10),
+        nullable=False,
+        default="SKR03",
+        comment="Kontenrahmen (SKR03/SKR04)"
+    )
+    wirtschaftsjahr_beginn = Column(
+        Integer,
+        nullable=False,
+        default=1,
+        comment="Monat des Wirtschaftsjahresbeginns (1-12)"
+    )
+
+    # OAuth2 Credentials (encrypted)
+    client_id = Column(String(100), nullable=True)
+    client_secret_encrypted = Column(Text, nullable=True, comment="AES-256-GCM encrypted")
+    access_token_encrypted = Column(Text, nullable=True, comment="AES-256-GCM encrypted")
+    refresh_token_encrypted = Column(Text, nullable=True, comment="AES-256-GCM encrypted")
+    token_expires_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Connection Configuration
+    environment = Column(
+        String(20),
+        nullable=False,
+        default="production",
+        comment="production or sandbox"
+    )
+    api_version = Column(String(10), nullable=True, default="v1")
+    webhook_url = Column(String(500), nullable=True, comment="Callback URL for notifications")
+
+    # Sync Configuration
+    auto_kontierung = Column(Boolean, default=False, comment="Automatische Kontierungsvorschlaege")
+    auto_beleg_upload = Column(Boolean, default=True, comment="Automatischer Belegbilder-Upload")
+    sync_interval_minutes = Column(Integer, default=60, comment="Sync-Intervall in Minuten")
+    last_buchung_nr = Column(Integer, nullable=True, comment="Letzte verwendete Buchungsnummer")
+
+    # Status
+    connection_status = Column(
+        String(20),
+        nullable=False,
+        default="pending",
+        comment="pending, connecting, connected, disconnected, error, token_expired"
+    )
+    last_connection_at = Column(DateTime(timezone=True), nullable=True)
+    last_sync_at = Column(DateTime(timezone=True), nullable=True)
+    last_error = Column(Text, nullable=True)
+
+    # Audit
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    company = relationship("Company", backref="datev_connections")
+    created_by = relationship("User", backref="datev_connections_created")
+    buchungen = relationship("DATEVBuchung", back_populates="connection", cascade="all, delete-orphan")
+    sync_history = relationship("DATEVSyncHistory", back_populates="connection", cascade="all, delete-orphan")
+    kontenplan = relationship("DATEVKontenplan", back_populates="connection", cascade="all, delete-orphan")
+    beleglinks = relationship("DATEVBeleglink", back_populates="connection", cascade="all, delete-orphan")
+    kontierung_patterns = relationship("DATEVKontierungPattern", back_populates="connection", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("ix_datev_connections_company_id", "company_id"),
+        Index("ix_datev_connections_mandant_berater", "mandant_nr", "berater_nr"),
+        Index("ix_datev_connections_status", "connection_status"),
+        UniqueConstraint("company_id", "mandant_nr", "berater_nr", name="uq_datev_connection_per_mandant"),
+    )
+
+
+class DATEVKontenplan(Base):
+    """
+    DATEV Kontenplan Cache.
+
+    Lokaler Cache des DATEV Kontenplans fuer schnelle Kontierungsvorschlaege.
+    Wird periodisch mit DATEV synchronisiert.
+    """
+
+    __tablename__ = "datev_kontenplan"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    connection_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("datev_connections.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Konto
+    kontonummer = Column(String(10), nullable=False, comment="Kontennummer (z.B. 4400)")
+    bezeichnung = Column(String(200), nullable=False, comment="Kontobezeichnung")
+    kontenrahmen = Column(String(10), nullable=False, comment="SKR03 oder SKR04")
+    kontotyp = Column(
+        String(50),
+        nullable=True,
+        comment="sachkonto, personenkonto, erloes, aufwand, etc."
+    )
+
+    # Steuer
+    steuerschluessel_default = Column(String(5), nullable=True, comment="Standard-Steuerschluessel")
+    mwst_satz = Column(Float, nullable=True, comment="Standard-MwSt-Satz")
+
+    # Hierarchie
+    kontenklasse = Column(Integer, nullable=True, comment="0-9 Kontenklasse")
+    is_sammelkonto = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
+
+    # Sync
+    synced_at = Column(DateTime(timezone=True), nullable=True)
+    datev_konto_id = Column(String(50), nullable=True, comment="DATEV interne ID")
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    connection = relationship("DATEVConnection", back_populates="kontenplan")
+
+    __table_args__ = (
+        Index("ix_datev_kontenplan_connection_id", "connection_id"),
+        Index("ix_datev_kontenplan_kontonummer", "kontonummer"),
+        Index("ix_datev_kontenplan_lookup", "connection_id", "kontonummer", "kontenrahmen"),
+        UniqueConstraint("connection_id", "kontonummer", name="uq_datev_konto_per_connection"),
+    )
+
+
+class DATEVBuchung(Base):
+    """
+    DATEV Buchungssatz.
+
+    Repraesentiert einen Buchungssatz fuer den DATEV Export.
+    GoBD-konform mit SHA-256 Hash fuer Unveraenderbarkeit nach Festschreibung.
+
+    SECURITY: Festgeschriebene Buchungen sind immutable (gobd_festgeschrieben=True).
+    """
+
+    __tablename__ = "datev_buchungen"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    connection_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("datev_connections.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="Verknuepftes Quelldokument"
+    )
+    entity_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("business_entities.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="Verknuepfter Geschaeftspartner"
+    )
+
+    # Buchungssatz
+    buchungsnummer = Column(Integer, nullable=True, comment="Fortlaufende Nummer im Stapel")
+    belegdatum = Column(Date, nullable=False, comment="Datum des Belegs")
+    buchungsdatum = Column(Date, nullable=True, comment="Datum der Buchung")
+    valutadatum = Column(Date, nullable=True, comment="Valutadatum")
+
+    # Betraege
+    betrag_soll = Column(Float, nullable=False, comment="Soll-Betrag (immer positiv)")
+    betrag_haben = Column(Float, nullable=False, comment="Haben-Betrag (immer positiv)")
+    waehrung = Column(String(3), nullable=False, default="EUR")
+
+    # Konten
+    konto_soll = Column(String(10), nullable=False, comment="Soll-Konto")
+    konto_haben = Column(String(10), nullable=False, comment="Haben-Konto")
+    steuerschluessel = Column(String(5), nullable=True, comment="DATEV Steuerschluessel")
+    kostenstelle_1 = Column(String(20), nullable=True)
+    kostenstelle_2 = Column(String(20), nullable=True)
+    kostentraeger = Column(String(20), nullable=True)
+
+    # Buchungstext
+    buchungstext = Column(String(120), nullable=True, comment="Buchungstext (max 120 Zeichen)")
+    belegnummer = Column(String(36), nullable=True, comment="Belegnummer/Rechnungsnummer")
+
+    # GoBD Compliance
+    gobd_festgeschrieben = Column(
+        Boolean,
+        default=False,
+        comment="True = unveraenderbar (GoBD-konform)"
+    )
+    gobd_hash = Column(String(64), nullable=True, comment="SHA-256 Hash fuer Unveraenderbarkeit")
+    festgeschrieben_at = Column(DateTime(timezone=True), nullable=True)
+    festgeschrieben_by = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Sync Status
+    sync_status = Column(
+        String(20),
+        nullable=False,
+        default="pending",
+        comment="pending, synced, error"
+    )
+    synced_at = Column(DateTime(timezone=True), nullable=True)
+    datev_buchung_id = Column(String(50), nullable=True, comment="ID nach DATEV-Sync")
+    sync_error = Column(Text, nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Relationships
+    connection = relationship("DATEVConnection", back_populates="buchungen")
+    document = relationship("Document", backref="datev_buchungen")
+    entity = relationship("BusinessEntity", backref="datev_buchungen")
+
+    __table_args__ = (
+        Index("ix_datev_buchungen_connection_id", "connection_id"),
+        Index("ix_datev_buchungen_document_id", "document_id"),
+        Index("ix_datev_buchungen_entity_id", "entity_id"),
+        Index("ix_datev_buchungen_belegdatum", "belegdatum"),
+        Index("ix_datev_buchungen_sync_status", "sync_status"),
+        Index("ix_datev_buchungen_gobd", "gobd_festgeschrieben"),
+        CheckConstraint(
+            "sync_status IN ('pending', 'synced', 'error')",
+            name="ck_datev_buchungen_sync_status"
+        ),
+    )
+
+
+class DATEVBeleglink(Base):
+    """
+    DATEV Belegbild-Verknuepfung.
+
+    Verknuepft hochgeladene Belegbilder mit DATEV-Buchungen.
+    Ermoeglicht den Upload zu DATEV Unternehmen Online (DUO).
+    """
+
+    __tablename__ = "datev_beleglinks"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    connection_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("datev_connections.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    buchung_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("datev_buchungen.id", ondelete="CASCADE"),
+        nullable=True,
+        comment="Verknuepfte Buchung"
+    )
+    document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False,
+        comment="Quelldokument mit Belegbild"
+    )
+
+    # Upload Status
+    upload_status = Column(
+        String(20),
+        nullable=False,
+        default="pending",
+        comment="pending, uploaded, error"
+    )
+    uploaded_at = Column(DateTime(timezone=True), nullable=True)
+    datev_beleg_id = Column(String(100), nullable=True, comment="DATEV Beleg-ID nach Upload")
+    upload_error = Column(Text, nullable=True)
+
+    # File Info
+    original_filename = Column(String(255), nullable=True)
+    file_hash = Column(String(64), nullable=True, comment="SHA-256 des Belegbilds")
+    file_size_bytes = Column(Integer, nullable=True)
+    mime_type = Column(String(100), nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    connection = relationship("DATEVConnection", back_populates="beleglinks")
+    buchung = relationship("DATEVBuchung", backref="beleglinks")
+    document = relationship("Document", backref="datev_beleglinks")
+
+    __table_args__ = (
+        Index("ix_datev_beleglinks_connection_id", "connection_id"),
+        Index("ix_datev_beleglinks_buchung_id", "buchung_id"),
+        Index("ix_datev_beleglinks_document_id", "document_id"),
+        Index("ix_datev_beleglinks_upload_status", "upload_status"),
+        CheckConstraint(
+            "upload_status IN ('pending', 'uploaded', 'error')",
+            name="ck_datev_beleglinks_upload_status"
+        ),
+    )
+
+
+class DATEVKontierungPattern(Base):
+    """
+    ML-basierte Kontierungsmuster.
+
+    Lernt aus historischen Buchungen und User-Korrekturen um
+    intelligente Kontierungsvorschlaege zu generieren.
+
+    Matching-Kriterien: Lieferant, Betrag-Range, Stichwort.
+    """
+
+    __tablename__ = "datev_kontierung_patterns"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    connection_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("datev_connections.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Matching-Kriterien
+    entity_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("business_entities.id", ondelete="CASCADE"),
+        nullable=True,
+        comment="Optionaler Geschaeftspartner-Match"
+    )
+    pattern_type = Column(
+        String(50),
+        nullable=False,
+        comment="entity, keyword, amount_range, document_type"
+    )
+    keyword_pattern = Column(String(200), nullable=True, comment="Regex-Pattern fuer Buchungstext")
+    amount_min = Column(Float, nullable=True)
+    amount_max = Column(Float, nullable=True)
+    document_type = Column(String(50), nullable=True, comment="Dokumenttyp-Filter")
+
+    # Kontierung
+    konto_soll = Column(String(10), nullable=False)
+    konto_haben = Column(String(10), nullable=False)
+    steuerschluessel = Column(String(5), nullable=True)
+    kostenstelle = Column(String(20), nullable=True)
+
+    # ML Metrics
+    confidence = Column(Float, nullable=False, default=0.5, comment="0.0-1.0 Konfidenz")
+    usage_count = Column(Integer, default=0, comment="Wie oft wurde dieses Pattern verwendet")
+    success_count = Column(Integer, default=0, comment="Wie oft wurde es akzeptiert")
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Status
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    connection = relationship("DATEVConnection", back_populates="kontierung_patterns")
+    entity = relationship("BusinessEntity", backref="datev_kontierung_patterns")
+
+    __table_args__ = (
+        Index("ix_datev_kontierung_patterns_connection_id", "connection_id"),
+        Index("ix_datev_kontierung_patterns_entity_id", "entity_id"),
+        Index("ix_datev_kontierung_patterns_confidence", "confidence"),
+        Index("ix_datev_kontierung_patterns_lookup", "connection_id", "entity_id", "pattern_type"),
+    )
+
+
+class DATEVSyncHistory(Base):
+    """
+    DATEV Sync-Historie.
+
+    Protokolliert alle Sync-Operationen fuer Audit und Debugging.
+    """
+
+    __tablename__ = "datev_sync_history"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    connection_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("datev_connections.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    triggered_by = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Sync Details
+    sync_type = Column(
+        String(50),
+        nullable=False,
+        comment="stammdaten_push, stammdaten_pull, buchungsstapel, belegbilder, kontierung, kontenplan"
+    )
+    direction = Column(String(10), nullable=False, default="push", comment="push or pull")
+
+    # Results
+    status = Column(
+        String(20),
+        nullable=False,
+        default="running",
+        comment="running, completed, partial, failed"
+    )
+    items_total = Column(Integer, default=0)
+    items_success = Column(Integer, default=0)
+    items_failed = Column(Integer, default=0)
+    items_skipped = Column(Integer, default=0)
+
+    # Timing
+    started_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    duration_seconds = Column(Float, nullable=True)
+
+    # Error Handling
+    error_message = Column(Text, nullable=True)
+    error_details = Column(CrossDBJSON, nullable=True, default=dict)
+
+    # Metadata
+    sync_metadata = Column(CrossDBJSON, nullable=True, default=dict, comment="Zusaetzliche Sync-Infos")  # Renamed: 'metadata' is reserved in SQLAlchemy
+
+    # Relationships
+    connection = relationship("DATEVConnection", back_populates="sync_history")
+    user = relationship("User", backref="datev_sync_triggered")
+
+    __table_args__ = (
+        Index("ix_datev_sync_history_connection_id", "connection_id"),
+        Index("ix_datev_sync_history_started_at", "started_at"),
+        Index("ix_datev_sync_history_status", "status"),
+        Index("ix_datev_sync_history_sync_type", "sync_type"),
+        CheckConstraint(
+            "status IN ('running', 'completed', 'partial', 'failed')",
+            name="ck_datev_sync_history_status"
+        ),
+        CheckConstraint(
+            "direction IN ('push', 'pull')",
+            name="ck_datev_sync_history_direction"
+        ),
+    )
+
+
+# =============================================================================
 # FINANCE DOCUMENT HISTORY
 # =============================================================================
 
@@ -6273,6 +6791,13 @@ class Company(Base):
 
     # Aktivierte Features als JSON-Array
     features_enabled = Column(CrossDBJSON, default=lambda: ["ocr", "search", "export"])
+
+    # Auto-Filing Rules (Phase 11.2)
+    filing_rules = Column(
+        CrossDBJSON,
+        default=dict,
+        comment="Custom auto-filing rules: {'invoice': {'folder_id': 'uuid', 'folder_name': '...'}, ...}",
+    )
 
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())

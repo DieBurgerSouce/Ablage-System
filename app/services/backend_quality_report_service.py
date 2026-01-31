@@ -272,16 +272,53 @@ class BackendQualityReportService:
             scores, umlaut_scores, speed_scores
         )
 
+        # Bestimme besten Backend fuer Tabellen (falls Daten vorhanden)
+        best_for_tables = await self._get_best_backend_for_tables(backends, since)
+        if not best_for_tables:
+            best_for_tables = best_overall  # Fallback auf Overall
+
         return BackendComparisonReport(
             report_date=datetime.now(timezone.utc),
             backends=backends,
             best_overall=best_overall,
             best_for_umlauts=best_umlauts,
-            best_for_tables=best_overall,  # TODO: Tabellen-spezifische Metrik
+            best_for_tables=best_for_tables,
             best_for_speed=best_speed,
             per_backend_scores=scores,
             recommendations=recommendations,
         )
+
+    async def _get_best_backend_for_tables(
+        self,
+        backends: List[str],
+        since: datetime,
+    ) -> Optional[str]:
+        """Ermittelt das beste Backend fuer Tabellen-Erkennung."""
+        best_backend = None
+        best_score = -1.0
+
+        for backend in backends:
+            # Suche nach Tabellen-spezifischen Benchmarks
+            table_query = select(
+                func.avg(OCRBackendBenchmark.table_accuracy).label("avg_table"),
+                func.count(OCRBackendBenchmark.id).label("count"),
+            ).where(
+                and_(
+                    OCRBackendBenchmark.backend_name == backend,
+                    OCRBackendBenchmark.processed_at >= since,
+                    OCRBackendBenchmark.table_accuracy.isnot(None),
+                )
+            )
+            result = await self.db.execute(table_query)
+            row = result.first()
+
+            if row and row.count and row.count > 0 and row.avg_table:
+                avg_score = float(row.avg_table)
+                if avg_score > best_score:
+                    best_score = avg_score
+                    best_backend = backend
+
+        return best_backend
 
     # =========================================================================
     # PERFORMANCE METRICS
@@ -516,13 +553,25 @@ class BackendQualityReportService:
                 WeaknessCategory.HANDWRITING: "Handschrift-Erkennung",
             }
 
+            # Berechne Prozentsatz der betroffenen Samples
+            total_query = select(func.count(OCRBackendBenchmark.id)).where(
+                and_(
+                    OCRBackendBenchmark.backend_name == backend_name,
+                    OCRBackendBenchmark.processed_at >= since,
+                )
+            )
+            total_result = await self.db.execute(total_query)
+            total_count = total_result.scalar() or 1
+
+            affected_percentage = round(with_stats.count / total_count * 100, 1)
+
             return WeaknessPattern(
                 category=category,
                 description=f"{descriptions.get(category, category.value)}: "
                            f"CER {with_cer*100:.1f}% vs {without_cer*100:.1f}% ohne",
                 severity=severity,
                 affected_sample_count=with_stats.count,
-                affected_sample_percentage=0,  # TODO: Berechnen
+                affected_sample_percentage=affected_percentage,
                 recommended_action=f"Training mit mehr {category.value}-Samples",
             )
 

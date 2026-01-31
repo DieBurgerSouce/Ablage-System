@@ -40,7 +40,14 @@ export function ProgressRing({
     const strokeDashoffset = circumference - (progress / 100) * circumference;
 
     return (
-        <div className={cn('relative inline-flex items-center justify-center', className)}>
+        <div
+            className={cn('relative inline-flex items-center justify-center', className)}
+            role="progressbar"
+            aria-valuenow={Math.round(progress)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={`Fortschritt: ${Math.round(progress)}%`}
+        >
             <svg
                 width={dimension}
                 height={dimension}

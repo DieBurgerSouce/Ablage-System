@@ -264,8 +264,21 @@ class GoBDArchiveService:
         if hash_match:
             check.status = IntegrityCheckStatus.PASSED.value
 
-            # TODO: Optional TSA-Token verifizieren
-            # check.tsa_verified = await self._verify_tsa_token(...)
+            # TSA-Token verifizieren wenn vorhanden
+            tsa_verified = None
+            if archive.signature_certificate:
+                tsa_verified = await self._verify_tsa_token(
+                    token_base64=archive.signature_certificate,
+                    document_content=document_content,
+                )
+                check.tsa_verified = tsa_verified
+
+                if tsa_verified is False:
+                    # TSA-Token ungueltig - warnen aber Hash-Match bleibt bestanden
+                    logger.warning(
+                        "tsa_token_verification_failed",
+                        archive_id=str(archive_id),
+                    )
 
             # Aktualisiere Archiv-Status
             archive.is_verified = True
@@ -624,14 +637,21 @@ class GoBDArchiveService:
     ) -> Optional[Dict[str, Any]]:
         """Holt einen RFC 3161 Zeitstempel von einem TSA.
 
+        Implementiert echten RFC 3161 Request ueber tsa_service.
+
         Args:
             db: Datenbank-Session
             company_id: Firmen-ID
-            content_hash: Hash des zu signierenden Inhalts
+            content_hash: SHA-256 Hash des zu signierenden Inhalts (hex)
 
         Returns:
             Dict mit timestamp, token, provider oder None
         """
+        from app.services.compliance.tsa_service import (
+            TimestampAuthorityService,
+            TSAStatus,
+        )
+
         # Finde aktive TSA-Konfiguration
         result = await db.execute(
             select(TimestampAuthorityConfig)
@@ -646,41 +666,114 @@ class GoBDArchiveService:
         tsa_config = result.scalar_one_or_none()
 
         if not tsa_config:
-            # Kein TSA konfiguriert
+            # Kein TSA konfiguriert - nutze FreeTSA als Fallback
+            logger.debug(
+                "no_tsa_config_using_fallback",
+                company_id=str(company_id),
+            )
+            tsa_config = None
+
+        # TSA Service initialisieren und Zeitstempel anfordern
+        tsa_service = TimestampAuthorityService(timeout_seconds=30)
+
+        try:
+            # Konvertiere Hash zu Bytes
+            hash_bytes = bytes.fromhex(content_hash)
+
+            if tsa_config:
+                # Mit gespeicherter Konfiguration
+                response, used_config = await tsa_service.request_timestamp_with_config(
+                    db=db,
+                    company_id=company_id,
+                    data=hash_bytes,
+                    config_id=tsa_config.id,
+                )
+                provider_name = tsa_config.name
+            else:
+                # Fallback auf FreeTSA
+                response = await tsa_service.request_timestamp(
+                    data=hash_bytes,
+                    tsa_url=tsa_service.DEFAULT_TSA_ENDPOINTS[0]["url"],
+                )
+                provider_name = "FreeTSA (Fallback)"
+
+            if response.status == TSAStatus.SUCCESS and response.token_base64:
+                logger.info(
+                    "tsa_timestamp_obtained",
+                    company_id=str(company_id),
+                    provider=provider_name,
+                    response_time_ms=response.response_time_ms,
+                )
+
+                return {
+                    "timestamp": response.timestamp,
+                    "token": response.token_base64,
+                    "provider": provider_name,
+                    "serial_number": response.serial_number,
+                }
+            else:
+                logger.warning(
+                    "tsa_timestamp_failed",
+                    company_id=str(company_id),
+                    status=response.status.value,
+                    error=response.error_message,
+                )
+                return None
+
+        except Exception as e:
+            logger.error(
+                "tsa_timestamp_error",
+                company_id=str(company_id),
+                **safe_error_log(e),
+            )
             return None
 
-        # TODO: Tatsaechlicher RFC 3161 Request
-        # Dies erfordert einen HTTP-Client und ASN.1 Parsing
-        # Beispiel-Implementierung:
-        #
-        # import requests
-        # from asn1crypto import tsp, cms
-        #
-        # timestamp_req = tsp.TimeStampReq({
-        #     'version': 1,
-        #     'message_imprint': {
-        #         'hash_algorithm': {'algorithm': 'sha256'},
-        #         'hashed_message': bytes.fromhex(content_hash),
-        #     },
-        #     'cert_req': True,
-        # })
-        #
-        # response = requests.post(
-        #     tsa_config.endpoint_url,
-        #     data=timestamp_req.dump(),
-        #     headers={'Content-Type': 'application/timestamp-query'},
-        # )
-        #
-        # tsp_response = tsp.TimeStampResp.load(response.content)
-        # ...
+        finally:
+            await tsa_service.close()
 
-        logger.warning(
-            "tsa_timestamp_not_implemented",
-            company_id=str(company_id),
-            tsa_config=tsa_config.name,
-        )
+    async def _verify_tsa_token(
+        self,
+        token_base64: str,
+        document_content: bytes,
+    ) -> Optional[bool]:
+        """Verifiziert einen RFC 3161 TSA-Token gegen den Dokumenteninhalt.
 
-        return None
+        Nutzt tsa_service.verify_timestamp() fuer die Validierung.
+
+        Args:
+            token_base64: Base64-encoded TSA Response Token
+            document_content: Originaler Dokumenteninhalt
+
+        Returns:
+            True wenn Token gueltig, False wenn ungueltig, None bei Fehler
+        """
+        from app.services.compliance.tsa_service import TimestampAuthorityService
+
+        if not token_base64:
+            return None
+
+        try:
+            tsa_service = TimestampAuthorityService()
+
+            # Verifiziere Token gegen Originaldaten
+            is_valid = tsa_service.verify_timestamp(
+                token_base64=token_base64,
+                original_data=document_content,
+            )
+
+            if is_valid:
+                logger.info("tsa_token_verified_successfully")
+            else:
+                logger.warning("tsa_token_verification_failed_hash_mismatch")
+
+            return is_valid
+
+        except Exception as e:
+            logger.error(
+                "tsa_token_verification_error",
+                **safe_error_log(e),
+            )
+            return None
 
 
 # Import fuer timedelta

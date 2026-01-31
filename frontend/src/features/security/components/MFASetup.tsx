@@ -264,7 +264,7 @@ Generiert am: ${new Date().toLocaleString('de-DE')}
               className="space-y-4"
             >
               <p className="text-sm text-muted-foreground">
-                Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein, um die Einrichtung abzuschliessen.
+                Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein, um die Einrichtung abzuschließen.
               </p>
 
               <div className="space-y-2">
@@ -370,7 +370,7 @@ Generiert am: ${new Date().toLocaleString('de-DE')}
               <div>
                 <h3 className="text-lg font-semibold">2FA erfolgreich aktiviert!</h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Ihr Konto ist jetzt durch Zwei-Faktor-Authentifizierung geschuetzt.
+                  Ihr Konto ist jetzt durch Zwei-Faktor-Authentifizierung geschützt.
                 </p>
               </div>
               <Button onClick={onComplete} className="w-full">

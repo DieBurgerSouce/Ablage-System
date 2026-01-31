@@ -654,8 +654,70 @@ class CommunicationHubService:
         if entity.risk_factors:
             trend.factors = entity.risk_factors
 
-        # TODO: Historische Daten fuer Trend-Berechnung
-        # Aktuell nicht implementiert, da keine historische Risk-Tabelle
+        # Historische Trend-Berechnung basierend auf InvoiceTracking-Daten
+        # Vergleiche Zahlungsverhalten der letzten 90 Tage mit den 90 Tagen davor
+        now = datetime.now(timezone.utc)
+        period_end = now
+        period_start = now - timedelta(days=90)
+        prev_period_end = period_start
+        prev_period_start = prev_period_end - timedelta(days=90)
+
+        # Aktuelle Periode: Durchschnittliche Zahlungsverzoegerung
+        current_payment_stats = await self.db.execute(
+            select(
+                func.avg(
+                    func.extract('epoch', InvoiceTracking.paid_at) -
+                    func.extract('epoch', func.cast(InvoiceTracking.due_date, Document.created_at.type))
+                ) / 86400  # Sekunden zu Tagen
+            )
+            .join(Document, InvoiceTracking.document_id == Document.id)
+            .where(
+                Document.business_entity_id == entity_id,
+                Document.company_id == company_id,
+                InvoiceTracking.status == "paid",
+                InvoiceTracking.paid_at >= period_start,
+                InvoiceTracking.paid_at < period_end,
+            )
+        )
+        current_avg_delay = current_payment_stats.scalar() or 0
+
+        # Vorherige Periode
+        prev_payment_stats = await self.db.execute(
+            select(
+                func.avg(
+                    func.extract('epoch', InvoiceTracking.paid_at) -
+                    func.extract('epoch', func.cast(InvoiceTracking.due_date, Document.created_at.type))
+                ) / 86400
+            )
+            .join(Document, InvoiceTracking.document_id == Document.id)
+            .where(
+                Document.business_entity_id == entity_id,
+                Document.company_id == company_id,
+                InvoiceTracking.status == "paid",
+                InvoiceTracking.paid_at >= prev_period_start,
+                InvoiceTracking.paid_at < prev_period_end,
+            )
+        )
+        prev_avg_delay = prev_payment_stats.scalar() or 0
+
+        # Trend berechnen (negative Verzoegerung = besser)
+        if prev_avg_delay != 0:
+            # Wenn aktuelle Verzoegerung geringer ist, verbessert sich der Trend
+            change = current_avg_delay - prev_avg_delay
+            trend.trend_percentage = round(abs(change / prev_avg_delay) * 100, 1) if prev_avg_delay else 0
+
+            if change < -1:  # Mindestens 1 Tag Verbesserung
+                trend.trend_direction = "improving"
+            elif change > 1:  # Mindestens 1 Tag Verschlechterung
+                trend.trend_direction = "declining"
+            else:
+                trend.trend_direction = "stable"
+
+            # Schaetze vorherigen Score basierend auf Verzoegerungsaenderung
+            if entity.risk_score is not None:
+                # Rueckrechnung: Wenn sich Verzoegerung geaendert hat, war Score anders
+                score_impact = change * 2  # ~2 Punkte pro Tag Verzoegerungsaenderung
+                trend.previous_score = max(0, min(100, entity.risk_score - score_impact))
 
         return trend
 
@@ -721,6 +783,76 @@ class CommunicationHubService:
         )
         sentiment_dist = {row[0]: row[1] for row in sentiment_result.all()}
 
+        # Zeitbasierte Statistiken fuer die letzten 30 Tage
+        now = datetime.now(timezone.utc)
+        thirty_days_ago = now - timedelta(days=30)
+
+        # Telefonate pro Woche (4 Wochen)
+        weekly_calls = {}
+        for week_offset in range(4):
+            week_start = now - timedelta(days=7 * (week_offset + 1))
+            week_end = now - timedelta(days=7 * week_offset)
+            week_count_result = await self.db.execute(
+                select(func.count(PhoneNote.id))
+                .where(
+                    PhoneNote.entity_id == entity_id,
+                    PhoneNote.company_id == company_id,
+                    PhoneNote.call_datetime >= week_start,
+                    PhoneNote.call_datetime < week_end,
+                )
+            )
+            weekly_calls[f"week_{week_offset + 1}"] = week_count_result.scalar() or 0
+
+        # Dokumente pro Woche (4 Wochen)
+        weekly_docs = {}
+        for week_offset in range(4):
+            week_start = now - timedelta(days=7 * (week_offset + 1))
+            week_end = now - timedelta(days=7 * week_offset)
+            week_doc_result = await self.db.execute(
+                select(func.count(Document.id))
+                .where(
+                    Document.business_entity_id == entity_id,
+                    Document.company_id == company_id,
+                    Document.deleted_at.is_(None),
+                    Document.created_at >= week_start,
+                    Document.created_at < week_end,
+                )
+            )
+            weekly_docs[f"week_{week_offset + 1}"] = week_doc_result.scalar() or 0
+
+        # Aktivitaetstrend (Vergleich letzte 15 Tage vs. vorherige 15 Tage)
+        first_half_start = thirty_days_ago
+        first_half_end = now - timedelta(days=15)
+        second_half_start = first_half_end
+        second_half_end = now
+
+        first_half_calls = await self.db.execute(
+            select(func.count(PhoneNote.id))
+            .where(
+                PhoneNote.entity_id == entity_id,
+                PhoneNote.company_id == company_id,
+                PhoneNote.call_datetime >= first_half_start,
+                PhoneNote.call_datetime < first_half_end,
+            )
+        )
+        second_half_calls = await self.db.execute(
+            select(func.count(PhoneNote.id))
+            .where(
+                PhoneNote.entity_id == entity_id,
+                PhoneNote.company_id == company_id,
+                PhoneNote.call_datetime >= second_half_start,
+                PhoneNote.call_datetime < second_half_end,
+            )
+        )
+        first_count = first_half_calls.scalar() or 0
+        second_count = second_half_calls.scalar() or 0
+
+        activity_trend = "stable"
+        if second_count > first_count + 2:
+            activity_trend = "increasing"
+        elif second_count < first_count - 2:
+            activity_trend = "decreasing"
+
         return {
             "total_phone_calls": phone_count,
             "open_follow_ups": open_follow_ups,
@@ -728,7 +860,11 @@ class CommunicationHubService:
             "total_comments": comment_count,
             "sentiment_distribution": sentiment_dist,
             "last_30_days": {
-                # TODO: Zeitbasierte Statistiken
+                "phone_calls_by_week": weekly_calls,
+                "documents_by_week": weekly_docs,
+                "activity_trend": activity_trend,
+                "total_phone_calls": sum(weekly_calls.values()),
+                "total_documents": sum(weekly_docs.values()),
             },
         }
 

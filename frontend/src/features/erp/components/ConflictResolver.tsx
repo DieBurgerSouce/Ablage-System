@@ -335,13 +335,13 @@ function ConflictCard({ conflict, onResolve, isResolving }: ConflictCardProps) {
 // =============================================================================
 
 export function ConflictResolver() {
-  const [connectionFilter, setConnectionFilter] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<ERPConflictStatus | ''>('pending');
+  const [connectionFilter, setConnectionFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<ERPConflictStatus | 'all'>('pending');
 
   const { data: connections } = useERPConnections();
   const { data: conflicts, isLoading } = useERPConflicts(
-    connectionFilter || undefined,
-    statusFilter as ERPConflictStatus || undefined
+    connectionFilter === 'all' ? undefined : connectionFilter,
+    statusFilter === 'all' ? undefined : statusFilter as ERPConflictStatus
   );
   const resolveConflict = useResolveConflict();
 
@@ -376,7 +376,7 @@ export function ConflictResolver() {
               <SelectValue placeholder="Alle Verbindungen" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Alle Verbindungen</SelectItem>
+              <SelectItem value="all">Alle Verbindungen</SelectItem>
               {connections?.map((conn) => (
                 <SelectItem key={conn.id} value={conn.id}>
                   {conn.name}
@@ -387,13 +387,13 @@ export function ConflictResolver() {
 
           <Select
             value={statusFilter}
-            onValueChange={(v) => setStatusFilter(v as ERPConflictStatus | '')}
+            onValueChange={(v) => setStatusFilter(v as ERPConflictStatus | 'all')}
           >
             <SelectTrigger className="w-[150px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Alle Status</SelectItem>
+              <SelectItem value="all">Alle Status</SelectItem>
               <SelectItem value="pending">Offen</SelectItem>
               <SelectItem value="resolved">Aufgelöst</SelectItem>
               <SelectItem value="ignored">Ignoriert</SelectItem>

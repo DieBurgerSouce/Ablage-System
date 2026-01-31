@@ -500,7 +500,29 @@ class CompanyMetricsService:
         metrics.overdue_amount = Decimal(str(overdue_row[1] or 0))
 
         # Durchschnittliche Zahlungstage (nur bezahlte Rechnungen)
-        # TODO: Implementieren wenn payment_date in InvoiceTracking verfuegbar
+        # Verwendet InvoiceTracking.paid_at (datetime) und invoice_date (date)
+        payment_days_query = (
+            select(
+                func.avg(
+                    func.extract('epoch', InvoiceTracking.paid_at) / 86400 -
+                    func.extract('epoch', func.cast(InvoiceTracking.invoice_date, InvoiceTracking.paid_at.type)) / 86400
+                )
+            )
+            .select_from(InvoiceTracking)
+            .join(Document, Document.id == InvoiceTracking.document_id)
+            .where(
+                and_(
+                    Document.company_id == company_id,
+                    InvoiceTracking.status == "paid",
+                    InvoiceTracking.paid_at.isnot(None),
+                    InvoiceTracking.invoice_date.isnot(None),
+                )
+            )
+        )
+        payment_days_result = await db.execute(payment_days_query)
+        avg_payment_days = payment_days_result.scalar()
+        if avg_payment_days is not None:
+            metrics.average_payment_days = round(float(avg_payment_days), 1)
 
         return metrics
 

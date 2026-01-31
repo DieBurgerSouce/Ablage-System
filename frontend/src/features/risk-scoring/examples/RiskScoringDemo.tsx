@@ -298,7 +298,7 @@ export function RiskScoringDemo() {
             <CardContent>
               <HighRiskEntitiesTable
                 entities={mockHighRiskEntities}
-                onRecalculate={(id) => console.log('Recalculate', id)}
+                onRecalculate={() => {/* Demo: Neuberechnung getriggert */}}
               />
             </CardContent>
           </Card>

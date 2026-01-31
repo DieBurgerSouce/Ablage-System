@@ -58,6 +58,7 @@ import {
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { logger } from '@/lib/logger';
+import { useToast } from '@/hooks/use-toast';
 
 import { useAIAssistantStore } from '../stores/ai-assistant-store';
 import { usePageContext, getContextSuggestions, getContextPlaceholder } from '../hooks/use-page-context';
@@ -86,7 +87,12 @@ import { InsightCard, InsightsList } from './InsightCard';
 import {
   INTENT_METADATA,
   AssistantIntent,
+  ActionData,
+  BookingSuggestionData,
+  InsightResponse,
+  ExecuteActionResponse,
 } from '@/lib/api/services/finance-assistant';
+import type { ChatMessage as RAGMessage, ContextDocument } from '@/features/rag/types/chat-types';
 
 // ==================== Constants ====================
 
@@ -189,9 +195,10 @@ function AutonomyLevelBadge({ level }: AutonomyLevelBadgeProps) {
 interface ModeToggleProps {
   mode: AssistantMode;
   onChange: (mode: AssistantMode) => void;
+  disabled?: boolean;  // P1 Fix (Iteration 16): Verhindert Race Condition bei Mode-Wechsel
 }
 
-function ModeToggle({ mode, onChange }: ModeToggleProps) {
+function ModeToggle({ mode, onChange, disabled }: ModeToggleProps) {
   return (
     <TooltipProvider>
       <Tooltip>
@@ -201,6 +208,7 @@ function ModeToggle({ mode, onChange }: ModeToggleProps) {
             size="sm"
             className="h-7 px-2 text-xs gap-1"
             onClick={() => onChange(mode === 'rag' ? 'finance' : 'rag')}
+            disabled={disabled}  // P1 Fix: Deaktiviert während async-Operationen
           >
             {mode === 'rag' ? (
               <>
@@ -268,7 +276,11 @@ function FinanceChatMessage({ message, onDetailedFeedback }: FinanceChatMessageP
               <span className="text-sm">Denke nach...</span>
             </div>
           ) : (
-            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+            // P1 Fix (Iteration 16): XSS-Schutz - Type-Check stellt sicher, dass nur Strings gerendert werden
+            // React's JSX escaped automatisch, aber expliziter Type-Check verhindert Injection bei falschen Typen
+            <p className="text-sm whitespace-pre-wrap">
+              {typeof message.content === 'string' ? message.content : ''}
+            </p>
           )}
         </div>
 
@@ -330,6 +342,7 @@ function FinanceChatMessage({ message, onDetailedFeedback }: FinanceChatMessageP
 export function GlobalAIAssistantV2() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   // Local state
   const [input, setInput] = useState('');
@@ -337,6 +350,7 @@ export function GlobalAIAssistantV2() {
   const [mode, setMode] = useState<AssistantMode>('finance'); // Default to Finance Assistant
   const [feedbackMessageId, setFeedbackMessageId] = useState<string | null>(null);
   const [feedbackMessageContent, setFeedbackMessageContent] = useState('');
+  const [isSending, setIsSending] = useState(false); // Spam protection
 
   // Store state
   const {
@@ -451,12 +465,14 @@ export function GlobalAIAssistantV2() {
     }
   }, [isOpen, mode, ragStatus, ragConnect, storedSessionId]);
 
-  // Auto-scroll to bottom
+  // Auto-scroll to bottom - only on message count change or open, not every update
+  // This prevents layout jank during rapid streaming updates
+  const messageCount = financeMessages.length + ragMessages.length;
   useEffect(() => {
     if (messagesEndRef.current && isOpen) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [financeMessages, ragMessages, isStreaming, isOpen]);
+  }, [messageCount, isOpen]);
 
   // Focus input when opened
   useEffect(() => {
@@ -474,42 +490,111 @@ export function GlobalAIAssistantV2() {
   }, [input]);
 
   // Keyboard shortcut (Ctrl+K / Cmd+K)
+  // Using refs to avoid re-attaching event listeners on every state change
+  // This prevents memory leak risk from frequent re-attachments
+  const toggleRef = useRef(toggle);
+  const closeRef = useRef(close);
+  const isOpenRef = useRef(isOpen);
+
+  // Keep refs in sync with latest values
+  useEffect(() => {
+    toggleRef.current = toggle;
+    closeRef.current = close;
+    isOpenRef.current = isOpen;
+  }, [toggle, close, isOpen]);
+
+  // Single event listener attachment with stable callback
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === KEYBOARD_SHORTCUT) {
         e.preventDefault();
-        toggle();
+        toggleRef.current();
       }
-      if (e.key === 'Escape' && isOpen) {
-        close();
+      if (e.key === 'Escape' && isOpenRef.current) {
+        closeRef.current();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [toggle, close, isOpen]);
+  }, []); // Empty deps - listener attached only once
 
   // ==================== Handlers ====================
 
-  const handleSend = useCallback(() => {
-    if (!input.trim()) return;
+  // P2 Fix (Iteration 16): Input-Längen-Limit zur Verhinderung von DoS durch oversized Input
+  const MAX_INPUT_LENGTH = 5000;
 
-    if (mode === 'finance') {
-      sendFinanceMessage(input.trim());
-    } else {
-      if (ragStatus === 'connected') {
-        sendRagMessage(input.trim());
+  const handleSend = useCallback(async () => {
+    // Guard: empty input or already sending (spam protection)
+    if (!input.trim() || isSending) return;
+
+    // P2 Fix: Input auf max Länge begrenzen (DoS-Schutz)
+    const currentInput = input.trim().slice(0, MAX_INPUT_LENGTH);
+    setIsSending(true);
+    setInput(''); // Clear input immediately for better UX
+
+    try {
+      if (mode === 'finance') {
+        await sendFinanceMessage(currentInput);
+      } else {
+        // RAG mode - check connection status BEFORE attempting to send
+        // P0 Fix (Iteration 14): Unterscheide korrekt zwischen 'error', 'connecting', 'disconnected'
+        // UI-Konsistenz: 'connecting' bekommt 'default' Toast (nicht rot!), 'error'/'disconnected' bekommen 'destructive'
+        if (ragStatus === 'error') {
+          // Error state - RAG ist in Fehlerzustand, Seite neu laden empfohlen
+          setInput(currentInput);
+          logger.error('RAG in Fehlerzustand, Nachricht wiederhergestellt');
+          toast({
+            title: 'RAG Fehler',
+            description: 'Der RAG-Service ist in einen Fehlerzustand geraten. Bitte laden Sie die Seite neu.',
+            variant: 'destructive',
+          });
+          return;
+        } else if (ragStatus === 'connecting') {
+          // Connecting - user sollte warten, aber kein Alarm (gelbe Animation passt zu default Toast)
+          setInput(currentInput);
+          logger.info('RAG verbindet sich, Nachricht wiederhergestellt');
+          toast({
+            title: 'Verbinde...',
+            description: 'Die Verbindung zum RAG-Service wird aufgebaut. Bitte warten Sie einen Moment.',
+            variant: 'default',  // P0 Fix: Kein destructive fuer connecting!
+          });
+          return;
+        } else if (ragStatus === 'disconnected') {
+          // Disconnected - Verbindung wurde getrennt, user sollte warten auf Reconnect
+          setInput(currentInput);
+          logger.warn('RAG nicht verbunden, Nachricht wiederhergestellt');
+          toast({
+            title: 'Nicht verbunden',
+            description: 'Die Verbindung zum RAG-Service wurde getrennt. Bitte warten Sie auf die Wiederverbindung.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        await sendRagMessage(currentInput);
       }
+    } catch (err) {
+      logger.error('Nachricht senden fehlgeschlagen', err);
+      // Restore input on error so user can retry
+      setInput(currentInput);
+      // P1 Fix (Iteration 15): Generic Error Toast für User-Feedback
+      toast({
+        title: 'Fehler beim Senden',
+        description: 'Die Nachricht konnte nicht gesendet werden. Bitte versuchen Sie es erneut.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSending(false);
     }
-    setInput('');
-  }, [input, mode, sendFinanceMessage, sendRagMessage, ragStatus]);
+  }, [input, mode, sendFinanceMessage, sendRagMessage, ragStatus, isSending]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  // P2 Fix (Iteration 16): handleKeyDown memoized um Re-Render-Performance zu verbessern
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
-  };
+  }, [handleSend]);
 
   const handleSuggestionClick = useCallback((suggestion: string) => {
     setInput(suggestion);
@@ -625,7 +710,8 @@ export function GlobalAIAssistantV2() {
               </div>
 
               <div className="flex items-center gap-1">
-                <ModeToggle mode={mode} onChange={setMode} />
+                {/* P1 Fix (Iteration 16): Mode-Toggle während Sending/Loading deaktivieren */}
+                <ModeToggle mode={mode} onChange={setMode} disabled={isSending || isLoading} />
                 <AutonomyLevelBadge level={autonomyLevel} />
 
                 <Button
@@ -713,25 +799,16 @@ export function GlobalAIAssistantV2() {
 
             {/* RAG Mode Content */}
             {mode === 'rag' && (
-              <ChatArea
-                mode={mode}
-                messages={[]}
+              <RAGChatArea
                 ragMessages={ragMessages}
-                pendingActions={[]}
-                pendingBookings={[]}
                 suggestions={suggestions}
                 showEmpty={ragMessages.length === 0 && ragStatus === 'connected'}
                 isLoading={isStreaming}
                 error={ragError}
-                capabilities={[]}
                 messagesEndRef={messagesEndRef}
-                statusMessage={statusMessage}
+                statusMessage={statusMessage ?? undefined}
                 contextDocuments={contextDocuments}
                 onSuggestionClick={handleSuggestionClick}
-                onExecuteAction={async () => ({ action_id: '', status: 'completed', success: true, message: '', affected_count: 0, rollback_possible: false, execution_time_ms: 0, metadata: {} })}
-                onRollbackAction={async () => {}}
-                onDismissAction={() => {}}
-                onDismissBooking={() => {}}
                 onDetailedFeedback={handleOpenFeedback}
               />
             )}
@@ -768,8 +845,8 @@ export function GlobalAIAssistantV2() {
                     </TooltipProvider>
                   )}
                 </div>
-                <Button onClick={handleSend} disabled={!input.trim() || !isConnected || isLoading}>
-                  {isLoading ? (
+                <Button onClick={handleSend} disabled={!input.trim() || !isConnected || isLoading || isSending}>
+                  {isLoading || isSending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Send className="h-4 w-4" />
@@ -802,22 +879,31 @@ export function GlobalAIAssistantV2() {
 
 // ==================== Chat Area Sub-Component ====================
 
+/** Assistant capability description */
+interface AssistantCapability {
+  name: string;
+  description: string;
+  examples: string[];
+}
+
 interface ChatAreaProps {
   mode: AssistantMode;
   messages: ChatMessage[];
-  ragMessages: any[];
-  pendingActions: any[];
-  pendingBookings: any[];
+  ragMessages: RAGMessage[];
+  pendingActions: ActionData[];
+  pendingBookings: BookingSuggestionData[];
   suggestions: string[];
   showEmpty: boolean;
   isLoading: boolean;
   error?: string | null;
-  capabilities: { name: string; description: string; examples: string[] }[];
+  capabilities: AssistantCapability[];
+  // RefObject<T> is already nullable by design (current can be T | null)
+  // Adding "| null" to the generic parameter is semantically incorrect
   messagesEndRef: React.RefObject<HTMLDivElement>;
   statusMessage?: string;
-  contextDocuments?: any[];
+  contextDocuments?: ContextDocument[];
   onSuggestionClick: (suggestion: string) => void;
-  onExecuteAction: (actionType: string, params: Record<string, unknown>) => Promise<any>;
+  onExecuteAction: (actionType: string, params: Record<string, unknown>) => Promise<ExecuteActionResponse>;
   onRollbackAction: (actionId: string) => Promise<void>;
   onDismissAction: (actionType: string) => void;
   onDismissBooking: (index: number) => void;
@@ -932,9 +1018,10 @@ function ChatArea({
         {/* Pending Actions (Finance mode) */}
         {mode === 'finance' && (
           <AnimatePresence>
-            {pendingActions.map((action) => (
+            {pendingActions.map((action, index) => (
               <ActionProposalCard
-                key={action.action_type}
+                // Use index + action_type for unique key in case of duplicate action types
+                key={`action-${action.action_type}-${index}`}
                 action={action}
                 onExecute={async (a) => onExecuteAction(a.action_type, a.parameters)}
                 onDismiss={() => onDismissAction(action.action_type)}
@@ -955,6 +1042,99 @@ function ChatArea({
               />
             ))}
           </AnimatePresence>
+        )}
+
+        {/* Scroll Anchor */}
+        <div ref={messagesEndRef} />
+      </div>
+    </ScrollArea>
+  );
+}
+
+// ==================== RAG Chat Area (Separate Component - No Fake Handlers) ====================
+
+/**
+ * RAGChatArea - Dedicated component for RAG mode
+ *
+ * This component is separate from ChatArea to avoid fake success handlers.
+ * RAG mode doesn't support actions/bookings, so we don't pretend it does.
+ */
+interface RAGChatAreaProps {
+  ragMessages: RAGMessage[];
+  suggestions: string[];
+  showEmpty: boolean;
+  isLoading: boolean;
+  error?: string | null;
+  messagesEndRef: React.RefObject<HTMLDivElement>;
+  statusMessage?: string;
+  contextDocuments?: ContextDocument[];
+  onSuggestionClick: (suggestion: string) => void;
+  onDetailedFeedback?: (messageId: string, content: string) => void;
+}
+
+function RAGChatArea({
+  ragMessages,
+  suggestions,
+  showEmpty,
+  isLoading,
+  error,
+  messagesEndRef,
+  statusMessage,
+  contextDocuments,
+  onSuggestionClick,
+  onDetailedFeedback,
+}: RAGChatAreaProps) {
+  return (
+    <ScrollArea className="flex-1">
+      <div className="p-3 space-y-4">
+        {/* Empty State */}
+        {showEmpty && (
+          <div className="text-center py-8">
+            <Bot className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+            <p className="text-sm text-muted-foreground mb-4">
+              Wie kann ich dir helfen?
+            </p>
+
+            {/* Quick Suggestions */}
+            <div className="flex flex-wrap justify-center gap-2">
+              {suggestions.slice(0, 4).map((suggestion, i) => (
+                <QuickSuggestion
+                  key={i}
+                  suggestion={suggestion}
+                  onClick={() => onSuggestionClick(suggestion)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm">
+            <AlertCircle className="h-4 w-4 inline mr-2" />
+            {error}
+          </div>
+        )}
+
+        {/* RAG Messages */}
+        {ragMessages
+          .filter((m) => m.role !== 'system')
+          .map((message) => (
+            <RAGChatMessage
+              key={message.id}
+              message={message}
+              onSourceClick={(docId) => {
+                window.location.href = `/ablage/${docId}`;
+              }}
+            />
+          ))}
+
+        {/* Status Message */}
+        {statusMessage && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {statusMessage}
+          </div>
         )}
 
         {/* Scroll Anchor */}

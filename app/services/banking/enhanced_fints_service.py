@@ -670,8 +670,11 @@ class EnhancedFinTSService:
                 connection, date_from, date_to
             )
 
-            # Neue Transaktionen identifizieren
-            new_transactions = [t for t in transactions if self._is_new_transaction(t)]
+            # Neue Transaktionen identifizieren (async DB-Check)
+            new_transactions = []
+            for t in transactions:
+                if await self._is_new_transaction(t, connection.company_id):
+                    new_transactions.append(t)
 
             # Auto-Reconciliation
             reconciled = []
@@ -819,75 +822,165 @@ class EnhancedFinTSService:
         """
         Versucht eine Reconciliation-Strategie.
 
-        In Produktion: Sucht in der Datenbank nach passenden Rechnungen.
-        Hier: Mock-Implementation.
+        Sucht in der Datenbank nach passenden Rechnungen basierend auf
+        verschiedenen Matching-Strategien.
         """
-        # Mock: Simuliere verschiedene Match-Szenarien
+        from sqlalchemy import select, and_, or_, func
+        from sqlalchemy.orm import joinedload
+        from app.db.session import async_session_maker
+        from app.db.models import InvoiceTracking, Document, BusinessEntity, InvoiceStatus
+        import re
 
         if strategy == ReconciliationType.EXACT_MATCH:
-            # IBAN + Betrag exakt
+            # IBAN + Betrag exakt - suche Entity mit passender IBAN und offener Rechnung
             if sender_iban and amount > 0:
-                # TODO: In Produktion - echte DB-Abfrage statt Mock
-                # Mock: Deterministisch basierend auf IBAN-Hash fuer Testbarkeit
-                import hashlib
-                iban_hash = int(hashlib.md5(sender_iban.encode()).hexdigest()[:8], 16)
-                # Deterministisches Match basierend auf IBAN (kein random!)
-                if iban_hash % 3 == 0:  # ~33% Match-Rate, aber deterministisch
-                    return ReconciliationResult(
-                        transaction_id="",
-                        invoice_id=uuid4(),
-                        reconciliation_type=strategy,
-                        confidence=0.99,
-                        matched_amount=amount,
-                        expected_amount=amount,
-                        difference=Decimal("0"),
-                        explanation=f"IBAN {sender_iban} und Betrag {amount} stimmen exakt ueberein",
+                try:
+                    async with async_session_maker() as db:
+                        # Suche offene Rechnungen fuer Entity mit passender IBAN
+                        result = await db.execute(
+                            select(InvoiceTracking)
+                            .join(Document, InvoiceTracking.document_id == Document.id)
+                            .join(BusinessEntity, Document.business_entity_id == BusinessEntity.id)
+                            .where(
+                                and_(
+                                    BusinessEntity.iban == sender_iban,
+                                    InvoiceTracking.company_id == company_id,
+                                    InvoiceTracking.status.in_([InvoiceStatus.OPEN.value, InvoiceStatus.OVERDUE.value]),
+                                    # Toleranz: +/- 0.5% fuer Rundungsdifferenzen
+                                    func.abs(InvoiceTracking.amount - float(amount)) < float(amount * Decimal("0.005") + Decimal("0.01")),
+                                    InvoiceTracking.deleted_at.is_(None),
+                                )
+                            )
+                            .order_by(InvoiceTracking.due_date.asc())  # Aelteste zuerst
+                            .limit(1)
+                        )
+                        invoice = result.scalar_one_or_none()
+
+                        if invoice:
+                            expected_amount = Decimal(str(invoice.amount))
+                            return ReconciliationResult(
+                                transaction_id="",
+                                invoice_id=invoice.id,
+                                reconciliation_type=strategy,
+                                confidence=0.99,
+                                matched_amount=amount,
+                                expected_amount=expected_amount,
+                                difference=amount - expected_amount,
+                                explanation=f"IBAN {sender_iban} und Betrag {amount} stimmen mit Rechnung {invoice.invoice_number or invoice.id} ueberein",
+                            )
+                except Exception as e:
+                    logger.warning(
+                        "exact_match_db_error",
+                        sender_iban=sender_iban[:8] + "..." if sender_iban else None,
+                        error=str(e),
                     )
 
         elif strategy == ReconciliationType.REFERENCE_MATCH:
             # Rechnungsnummer in Verwendungszweck
-            import re
-            invoice_pattern = r"(?:RE|INV|RG)[- ]?(\d{4,10})"
+            invoice_pattern = r"(?:RE|INV|RG|RECH)[- ]?(\d{4,10})"
             match = re.search(invoice_pattern, reference, re.IGNORECASE)
             if match:
-                return ReconciliationResult(
-                    transaction_id="",
-                    invoice_id=uuid4(),
-                    reconciliation_type=strategy,
-                    confidence=0.95,
-                    matched_amount=amount,
-                    expected_amount=amount,
-                    difference=Decimal("0"),
-                    explanation=f"Rechnungsnummer {match.group(0)} im Verwendungszweck gefunden",
-                )
+                invoice_ref = match.group(0)
+                invoice_number_part = match.group(1)
+
+                try:
+                    async with async_session_maker() as db:
+                        # Suche Rechnung mit passender Rechnungsnummer
+                        result = await db.execute(
+                            select(InvoiceTracking)
+                            .where(
+                                and_(
+                                    InvoiceTracking.company_id == company_id,
+                                    InvoiceTracking.status.in_([InvoiceStatus.OPEN.value, InvoiceStatus.OVERDUE.value]),
+                                    or_(
+                                        InvoiceTracking.invoice_number.ilike(f"%{invoice_number_part}%"),
+                                        InvoiceTracking.invoice_number.ilike(f"%{invoice_ref}%"),
+                                    ),
+                                    InvoiceTracking.deleted_at.is_(None),
+                                )
+                            )
+                            .order_by(InvoiceTracking.due_date.asc())
+                            .limit(1)
+                        )
+                        invoice = result.scalar_one_or_none()
+
+                        if invoice:
+                            expected_amount = Decimal(str(invoice.amount))
+                            # Confidence basierend auf Betragsabweichung
+                            amount_diff = abs(amount - expected_amount)
+                            if amount_diff <= Decimal("0.01"):
+                                confidence = 0.98
+                            elif amount_diff <= expected_amount * Decimal("0.05"):
+                                confidence = 0.90
+                            else:
+                                confidence = 0.75
+
+                            return ReconciliationResult(
+                                transaction_id="",
+                                invoice_id=invoice.id,
+                                reconciliation_type=strategy,
+                                confidence=confidence,
+                                matched_amount=amount,
+                                expected_amount=expected_amount,
+                                difference=amount - expected_amount,
+                                explanation=f"Rechnungsnummer {invoice_ref} im Verwendungszweck gefunden - Rechnung {invoice.invoice_number}",
+                            )
+                except Exception as e:
+                    logger.warning(
+                        "reference_match_db_error",
+                        invoice_ref=invoice_ref,
+                        error=str(e),
+                    )
 
         elif strategy == ReconciliationType.SKONTO_MATCH:
-            # Betrag entspricht Skonto-Abzug (2-3%)
-            skonto_rates = [Decimal("0.02"), Decimal("0.03")]
-            for rate in skonto_rates:
-                # SECURITY: Guard against division by zero when rate >= 1.0
-                if rate >= Decimal("1.0"):
+            # Betrag entspricht Skonto-Abzug
+            if sender_iban and amount > 0:
+                try:
+                    async with async_session_maker() as db:
+                        # Suche Rechnungen mit aktivem Skonto fuer passende IBAN
+                        result = await db.execute(
+                            select(InvoiceTracking)
+                            .join(Document, InvoiceTracking.document_id == Document.id)
+                            .join(BusinessEntity, Document.business_entity_id == BusinessEntity.id)
+                            .where(
+                                and_(
+                                    BusinessEntity.iban == sender_iban,
+                                    InvoiceTracking.company_id == company_id,
+                                    InvoiceTracking.status.in_([InvoiceStatus.OPEN.value, InvoiceStatus.OVERDUE.value]),
+                                    InvoiceTracking.skonto_percentage.isnot(None),
+                                    InvoiceTracking.skonto_amount.isnot(None),
+                                    InvoiceTracking.skonto_used == False,
+                                    InvoiceTracking.deleted_at.is_(None),
+                                )
+                            )
+                            .order_by(InvoiceTracking.skonto_deadline.asc())  # Frueheste Frist zuerst
+                        )
+                        invoices = result.scalars().all()
+
+                        for invoice in invoices:
+                            # Berechne erwarteten Skonto-Betrag
+                            expected_skonto_amount = Decimal(str(invoice.amount)) - Decimal(str(invoice.skonto_amount or 0))
+
+                            # Toleranz: +/- 0.5% fuer Rundungsdifferenzen
+                            tolerance = expected_skonto_amount * Decimal("0.005") + Decimal("0.01")
+
+                            if abs(amount - expected_skonto_amount) <= tolerance:
+                                skonto_rate = Decimal(str(invoice.skonto_percentage or 0))
+                                return ReconciliationResult(
+                                    transaction_id="",
+                                    invoice_id=invoice.id,
+                                    reconciliation_type=strategy,
+                                    confidence=0.92,
+                                    matched_amount=amount,
+                                    expected_amount=Decimal(str(invoice.amount)),
+                                    difference=amount - Decimal(str(invoice.amount)),
+                                    explanation=f"Betrag entspricht {skonto_rate:.1f}% Skonto-Abzug auf Rechnung {invoice.invoice_number or invoice.id}",
+                                )
+                except Exception as e:
                     logger.warning(
-                        "invalid_skonto_rate",
-                        rate=str(rate),
-                        message="Skonto-Rate >= 100% ist ungueltig",
-                    )
-                    continue
-                gross_amount = amount / (1 - rate)
-                # TODO: In Produktion - echte DB-Abfrage
-                # Mock: Deterministisch basierend auf Betrag-Hash
-                import hashlib
-                amount_hash = int(hashlib.md5(str(amount).encode()).hexdigest()[:8], 16)
-                if amount_hash % 10 == 0:  # ~10% Match-Rate, deterministisch
-                    return ReconciliationResult(
-                        transaction_id="",
-                        invoice_id=uuid4(),
-                        reconciliation_type=strategy,
-                        confidence=0.85,
-                        matched_amount=amount,
-                        expected_amount=gross_amount.quantize(Decimal("0.01")),
-                        difference=gross_amount - amount,
-                        explanation=f"Betrag entspricht {rate*100:.0f}% Skonto-Abzug",
+                        "skonto_match_db_error",
+                        sender_iban=sender_iban[:8] + "..." if sender_iban else None,
+                        error=str(e),
                     )
 
         return None
@@ -1042,16 +1135,54 @@ class EnhancedFinTSService:
             # Manual: Weit in der Zukunft
             return now + timedelta(days=365)
 
-    def _is_new_transaction(self, transaction: TransactionData) -> bool:
-        """Prueft ob Transaktion neu ist (in Produktion: DB-Check)."""
-        # TODO: In Produktion - echte DB-Abfrage ob Transaction-ID existiert
-        # Mock: Deterministisch basierend auf Transaction-ID Hash
-        import hashlib
-        tx_id = transaction["id"]
+    async def _is_new_transaction(
+        self,
+        transaction: TransactionData,
+        company_id: UUID,
+    ) -> bool:
+        """
+        Prueft ob Transaktion bereits in der Datenbank existiert.
+
+        Args:
+            transaction: Transaktionsdaten
+            company_id: Company-ID fuer Multi-Tenant-Isolation
+
+        Returns:
+            True wenn Transaktion neu ist (noch nicht in DB)
+        """
+        from sqlalchemy import select, and_
+        from app.db.session import async_session_maker
+        from app.db.models import BankTransaction, BankAccount
+
+        tx_id = transaction.get("id")
         if not tx_id:
             return True  # Ohne ID immer als neu behandeln
-        tx_hash = int(hashlib.md5(tx_id.encode()).hexdigest()[:8], 16)
-        return tx_hash % 2 == 0  # ~50%, aber deterministisch und testbar
+
+        try:
+            async with async_session_maker() as db:
+                # Suche existierende Transaktion mit gleicher ID
+                result = await db.execute(
+                    select(BankTransaction.id)
+                    .join(BankAccount, BankTransaction.bank_account_id == BankAccount.id)
+                    .where(
+                        and_(
+                            BankTransaction.transaction_id == tx_id,
+                            BankAccount.company_id == company_id,
+                        )
+                    )
+                    .limit(1)
+                )
+                existing = result.scalar_one_or_none()
+                return existing is None  # Neu wenn nicht gefunden
+
+        except Exception as e:
+            logger.warning(
+                "transaction_duplicate_check_failed",
+                tx_id=tx_id,
+                error=str(e),
+            )
+            # Bei Fehler als neu behandeln, um Datenverlust zu vermeiden
+            return True
 
     def _generate_mock_transactions(
         self,

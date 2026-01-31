@@ -410,7 +410,11 @@ class InboxAggregator:
         """Aggregiert offene Genehmigungsanfragen."""
         items: List[InboxItemData] = []
 
-        # Pending Approvals für den Benutzer
+        # Hole User-Rollen und Gruppen fuer erweiterte Approval-Suche
+        user_roles = await self._get_user_roles(user_id, company_id, db)
+        user_groups = await self._get_user_groups(user_id, company_id, db)
+
+        # Pending Approvals für den Benutzer, seine Rollen oder Gruppen
         stmt = (
             select(ApprovalRequest)
             .where(
@@ -419,7 +423,8 @@ class InboxAggregator:
                     ApprovalRequest.status == "pending",
                     or_(
                         ApprovalRequest.requested_from_id == user_id,
-                        # TODO: Auch Approvals für Gruppen/Rollen
+                        ApprovalRequest.requested_from_role.in_(user_roles) if user_roles else False,
+                        ApprovalRequest.requested_from_group_id.in_(user_groups) if user_groups else False,
                     ),
                 )
             )
@@ -520,3 +525,53 @@ class InboxAggregator:
             )
 
         return items
+
+    async def _get_user_roles(
+        self,
+        user_id: UUID,
+        company_id: UUID,
+        db: AsyncSession,
+    ) -> List[str]:
+        """Holt alle Rollen eines Benutzers."""
+        from app.db.models import User
+
+        try:
+            result = await db.execute(
+                select(User.role).where(
+                    User.id == user_id,
+                    User.company_id == company_id,
+                )
+            )
+            user_role = result.scalar_one_or_none()
+
+            if user_role:
+                # Basisrolle + abgeleitete Rollen
+                roles = [user_role]
+                # Manager-Rollen erben Team-Rollen
+                if user_role in ["admin", "manager"]:
+                    roles.append("team_member")
+                return roles
+
+            return []
+        except Exception:
+            return []
+
+    async def _get_user_groups(
+        self,
+        user_id: UUID,
+        company_id: UUID,
+        db: AsyncSession,
+    ) -> List[UUID]:
+        """Holt alle Gruppen-IDs eines Benutzers."""
+        from app.db.models import UserGroupMembership
+
+        try:
+            result = await db.execute(
+                select(UserGroupMembership.group_id).where(
+                    UserGroupMembership.user_id == user_id,
+                )
+            )
+            return list(result.scalars().all())
+        except Exception:
+            # Tabelle existiert moeglicherweise nicht
+            return []

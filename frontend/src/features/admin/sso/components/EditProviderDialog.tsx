@@ -16,6 +16,8 @@ import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { logger } from '@/lib/logger';
+import type { SSOProviderResponse } from '../types/sso-schemas';
 import {
   Loader2,
   Shield,
@@ -70,22 +72,8 @@ import { useToast } from '@/hooks/use-toast';
 // Types
 // =============================================================================
 
-export interface SSOProvider {
-  id: string;
-  name: string;
-  provider_type: 'oidc' | 'saml';
-  preset: string;
-  enabled: boolean;
-  is_primary: boolean;
-  auto_create_users: boolean;
-  default_role: string;
-  allowed_domains?: string[] | null;
-  group_mapping?: Record<string, string> | null;
-  login_count: number;
-  last_used_at: string | null;
-  created_at: string;
-  updated_at: string;
-}
+// SSOProvider is now imported from sso-schemas.ts as SSOProviderResponse
+// This ensures type consistency across the SSO feature and prevents type drift
 
 export interface SSOProviderUpdate {
   name?: string;
@@ -106,7 +94,8 @@ export interface SSOProviderUpdate {
 }
 
 export interface EditProviderDialogProps {
-  provider: SSOProvider | null;
+  /** Provider data from API - uses SSOProviderResponse from sso-schemas.ts for type safety */
+  provider: SSOProviderResponse | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (data: SSOProviderUpdate) => Promise<void>;
@@ -146,6 +135,9 @@ type FormData = OIDCFormData | SAMLFormData;
 // Constants
 // =============================================================================
 
+/** Maximum JSON size for group_mapping to prevent DOM DoS (100KB) */
+const MAX_JSON_SIZE = 100 * 1024;
+
 const ROLE_OPTIONS = [
   { value: 'viewer', label: 'Betrachter' },
   { value: 'user', label: 'Benutzer' },
@@ -183,6 +175,8 @@ export function EditProviderDialog({
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
   const [showSecret, setShowSecret] = useState(false);
+  // P1 Fix: Track wenn group_mapping zu gross fuer Bearbeitung ist
+  const [isGroupMappingTruncated, setIsGroupMappingTruncated] = useState(false);
 
   const isOIDC = provider?.provider_type === 'oidc';
   const isSAML = provider?.provider_type === 'saml';
@@ -212,18 +206,43 @@ export function EditProviderDialog({
     },
   });
 
+  // P1 Fix (Iteration 14): Truncation-State in separatem useEffect berechnen
+  // Verhindert Anti-Pattern: setState in render function!
+  useEffect(() => {
+    if (provider?.group_mapping) {
+      const json = JSON.stringify(provider.group_mapping, null, 2);
+      const isTruncated = json.length > MAX_JSON_SIZE;
+      if (isTruncated) {
+        logger.warn('group_mapping too large for display', {
+          size: json.length,
+          maxSize: MAX_JSON_SIZE,
+        });
+      }
+      setIsGroupMappingTruncated(isTruncated);
+    } else {
+      setIsGroupMappingTruncated(false);
+    }
+  }, [provider?.group_mapping]);
+
   // Reset form when provider changes
   useEffect(() => {
     if (provider) {
+      // P1 Fix (Iteration 14): Kein setState in dieser Funktion!
+      // Truncation wird im separaten useEffect oben berechnet
+      const groupMappingJson = (() => {
+        if (!provider.group_mapping) return '';
+        const json = JSON.stringify(provider.group_mapping, null, 2);
+        // Wenn zu gross, leer lassen - Alert wird via isGroupMappingTruncated angezeigt
+        return json.length > MAX_JSON_SIZE ? '' : json;
+      })();
+
       const baseValues = {
         name: provider.name,
         enabled: provider.enabled,
         auto_create_users: provider.auto_create_users,
         default_role: provider.default_role,
         allowed_domains: provider.allowed_domains?.join(', ') || '',
-        group_mapping: provider.group_mapping
-          ? JSON.stringify(provider.group_mapping, null, 2)
-          : '',
+        group_mapping: groupMappingJson,
       };
 
       if (isOIDC) {
@@ -330,7 +349,7 @@ export function EditProviderDialog({
       await onSave(update);
       onOpenChange(false);
     } catch (error) {
-      console.error('Failed to save provider:', error);
+      logger.error('SSO Provider speichern fehlgeschlagen', error);
       toast({
         title: 'Fehler',
         description: 'Provider konnte nicht gespeichert werden',
@@ -782,12 +801,24 @@ export function EditProviderDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Gruppen-Mapping (JSON)</FormLabel>
+                      {/* P1 Fix (Iteration 14): Korrigierter Alert-Text und readOnly statt disabled */}
+                      {isGroupMappingTruncated && (
+                        <Alert variant="destructive" className="mb-2">
+                          <AlertDescription>
+                            Das Gruppen-Mapping ist zu gross fuer die Anzeige im Browser (&gt;100KB).
+                            Es kann nur ueber die API geaendert werden. Der aktuelle Wert bleibt erhalten.
+                          </AlertDescription>
+                        </Alert>
+                      )}
                       <FormControl>
                         <Textarea
                           {...field}
                           rows={5}
                           className="font-mono text-sm"
-                          placeholder='{"IdP-Admin-Gruppe": "admin", "IdP-Users": "user"}'
+                          placeholder={isGroupMappingTruncated
+                            ? '(Zu gross fuer Anzeige - nur ueber API aenderbar)'
+                            : '{"IdP-Admin-Gruppe": "admin", "IdP-Users": "user"}'}
+                          readOnly={isGroupMappingTruncated}
                         />
                       </FormControl>
                       <FormDescription>

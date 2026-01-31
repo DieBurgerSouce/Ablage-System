@@ -84,6 +84,7 @@ export function OCRBackendSelector({ selectedId, onSelect, gpuAvailable }: OCRBa
                         disabled={isDisabled}
                         className={cn(
                             "relative text-left p-5 rounded-xl border bg-card transition-colors flex flex-col h-full glass-card",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                             isDisabled && "opacity-50 cursor-not-allowed grayscale",
                             isSelected && "bg-primary/5"
                         )}

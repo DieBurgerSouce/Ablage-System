@@ -106,7 +106,7 @@ export function FinanceDocumentEditDialog({
       aktenzeichen: '',
       steuernummer: '',
       finanzamt: '',
-      steuerart: '',
+      steuerart: 'none',
       zeitraum: '',
       versicherungsnummer: '',
       vertragsnummer: '',
@@ -131,7 +131,7 @@ export function FinanceDocumentEditDialog({
         aktenzeichen: document.aktenzeichen || '',
         steuernummer: document.steuernummer || '',
         finanzamt: document.finanzamt || '',
-        steuerart: document.steuerart || '',
+        steuerart: document.steuerart || 'none',
         zeitraum: document.zeitraum || '',
         versicherungsnummer: document.versicherungsnummer || '',
         vertragsnummer: document.vertragsnummer || '',
@@ -161,8 +161,8 @@ export function FinanceDocumentEditDialog({
       if (data.finanzamt !== (document.finanzamt || '')) {
         updateData.finanzamt = data.finanzamt || undefined
       }
-      if (data.steuerart !== (document.steuerart || '')) {
-        updateData.steuerart = data.steuerart || undefined
+      if (data.steuerart !== (document.steuerart || 'none')) {
+        updateData.steuerart = data.steuerart === 'none' ? undefined : data.steuerart
       }
       if (data.zeitraum !== (document.zeitraum || '')) {
         updateData.zeitraum = data.zeitraum || undefined
@@ -368,7 +368,7 @@ export function FinanceDocumentEditDialog({
                       <SelectValue placeholder="Steuerart wählen" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Keine</SelectItem>
+                      <SelectItem value="none">Keine</SelectItem>
                       <SelectItem value="einkommensteuer">Einkommensteuer</SelectItem>
                       <SelectItem value="koerperschaftsteuer">Koerperschaftsteuer</SelectItem>
                       <SelectItem value="gewerbesteuer">Gewerbesteuer</SelectItem>

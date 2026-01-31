@@ -2,6 +2,7 @@
  * NoteDetailSheet - Seitenpanel fuer Notiz-Details
  */
 
+import DOMPurify from 'dompurify';
 import {
   Sheet,
   SheetContent,
@@ -126,7 +127,7 @@ export function NoteDetailSheet({
             <h4 className="text-sm font-medium mb-3">Inhalt</h4>
             <div className="prose prose-sm dark:prose-invert max-w-none">
               {note.content_format === 'html' ? (
-                <div dangerouslySetInnerHTML={{ __html: note.content || '<em>Kein Inhalt</em>' }} />
+                <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(note.content || '<em>Kein Inhalt</em>') }} />
               ) : (
                 <pre className="whitespace-pre-wrap font-sans text-sm">{note.content || 'Kein Inhalt'}</pre>
               )}

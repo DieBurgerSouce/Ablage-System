@@ -470,8 +470,8 @@ class DocumentTemplateService:
         if template.output_format == TemplateOutputFormat.PDF and save_to_storage:
             file_content = await self._render_pdf(html_content)
             file_size = len(file_content)
-            # TODO: Storage-Integration (MinIO)
-            # storage_path = await self._save_to_storage(company_id, filename, file_content)
+            # Phase 11.4: MinIO Storage Integration
+            storage_path = await self._save_to_storage(company_id, filename, file_content)
 
         # GeneratedDocument erstellen
         doc = GeneratedDocument(
@@ -1002,6 +1002,78 @@ class DocumentTemplateService:
 </html>"""
 
         return html
+
+    async def _save_to_storage(
+        self,
+        company_id: uuid.UUID,
+        filename: str,
+        file_content: bytes,
+    ) -> str | None:
+        """
+        Speichert generiertes Dokument in MinIO.
+
+        Phase 11.4: Vollstaendige MinIO-Integration fuer Template-Output.
+
+        Args:
+            company_id: Firmen-ID fuer Bucket-Isolierung
+            filename: Dateiname des generierten Dokuments
+            file_content: PDF-Bytes
+
+        Returns:
+            storage_path (s3://<bucket>/<key>) oder None bei Fehler
+        """
+        try:
+            from app.services.storage_service import get_storage_service
+
+            storage = get_storage_service()
+
+            if not storage.available:
+                logger.warning(
+                    "minio_not_available_for_template_storage",
+                    company_id=str(company_id),
+                    filename=filename,
+                )
+                return None
+
+            # Upload mit firmenspezifischem Pfad
+            result = await storage.upload_document(
+                file_data=file_content,
+                filename=filename,
+                content_type="application/pdf",
+                user_id=f"templates/{company_id}",
+                metadata={
+                    "source": "document_template",
+                    "company_id": str(company_id),
+                    "generated_at": datetime.now().isoformat(),
+                },
+            )
+
+            if result.get("success"):
+                storage_path = f"s3://{result['bucket']}/{result['storage_path']}"
+                logger.info(
+                    "template_document_stored",
+                    company_id=str(company_id),
+                    filename=filename,
+                    storage_path=storage_path,
+                    size_bytes=result.get("size_bytes"),
+                )
+                return storage_path
+            else:
+                logger.warning(
+                    "template_document_storage_failed",
+                    company_id=str(company_id),
+                    filename=filename,
+                )
+                return None
+
+        except Exception as e:
+            logger.error(
+                f"template_storage_error: {e}",
+                company_id=str(company_id),
+                filename=filename,
+            )
+            # Fehler beim Storage sollte nicht die Dokumentgenerierung blockieren
+            return None
 
     async def _render_pdf(self, html_content: str) -> bytes:
         """

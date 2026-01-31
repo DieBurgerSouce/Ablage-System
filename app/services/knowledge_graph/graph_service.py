@@ -552,9 +552,6 @@ class KnowledgeGraphService:
             company_id=str(company_id),
         )
 
-        # TODO: Implementiere BFS-Pathfinding
-        # Fuer MVP: Vereinfacht - pruefe nur direkte Verbindung
-
         # Pruefe ob beide Entities existieren
         from_entity = await db.get(BusinessEntity, from_id)
         to_entity = await db.get(BusinessEntity, to_id)
@@ -565,7 +562,20 @@ class KnowledgeGraphService:
         if from_entity.company_id != company_id or to_entity.company_id != company_id:
             return None
 
-        # Finde gemeinsame Dokumente
+        # BFS-Pathfinding mit max_depth zur Performance-Begrenzung
+        max_depth = 6
+        path_result = await self._bfs_shortest_path(
+            from_id=from_id,
+            to_id=to_id,
+            company_id=company_id,
+            max_depth=max_depth,
+            db=db,
+        )
+
+        if path_result:
+            return path_result
+
+        # Fallback: Direkte Verbindung pruefen
         from_docs_query = select(DocumentEntityLink.document_id).where(
             DocumentEntityLink.entity_id == from_id
         )
@@ -581,7 +591,6 @@ class KnowledgeGraphService:
         common_docs = from_docs & to_docs
 
         if common_docs:
-            # Direkter Pfad ueber gemeinsames Dokument
             doc_id = list(common_docs)[0]
             doc = await db.get(Document, doc_id)
 
@@ -631,6 +640,145 @@ class KnowledgeGraphService:
 
         return None
 
+    async def _bfs_shortest_path(
+        self,
+        from_id: UUID,
+        to_id: UUID,
+        company_id: UUID,
+        max_depth: int,
+        db: AsyncSession,
+    ) -> Optional[PathData]:
+        """
+        BFS-Algorithmus fuer kuerzesten Pfad zwischen Entities.
+
+        Findet Pfade ueber Dokumente und andere Entities.
+
+        Args:
+            from_id: Start-Entity UUID
+            to_id: Ziel-Entity UUID
+            company_id: Company UUID
+            max_depth: Maximale Pfadtiefe
+            db: Database session
+
+        Returns:
+            PathData wenn Pfad gefunden, sonst None
+        """
+        from collections import deque
+
+        # BFS Queue: (current_node_id, node_type, path, depth)
+        queue = deque([(from_id, "entity", [from_id], 0)])
+        visited = {f"entity_{from_id}"}
+
+        while queue:
+            current_id, current_type, path, depth = queue.popleft()
+
+            if depth >= max_depth:
+                continue
+
+            if current_type == "entity":
+                # Finde alle Dokumente dieser Entity
+                doc_links = await db.execute(
+                    select(DocumentEntityLink.document_id).where(
+                        DocumentEntityLink.entity_id == current_id
+                    )
+                )
+                doc_ids = doc_links.scalars().all()
+
+                for doc_id in doc_ids:
+                    doc_key = f"document_{doc_id}"
+                    if doc_key in visited:
+                        continue
+
+                    visited.add(doc_key)
+                    new_path = path + [doc_id]
+                    queue.append((doc_id, "document", new_path, depth + 1))
+
+            elif current_type == "document":
+                # Finde alle Entities dieses Dokuments
+                entity_links = await db.execute(
+                    select(DocumentEntityLink.entity_id).where(
+                        DocumentEntityLink.document_id == current_id
+                    )
+                )
+                entity_ids = entity_links.scalars().all()
+
+                for entity_id in entity_ids:
+                    # Ziel gefunden?
+                    if entity_id == to_id:
+                        final_path = path + [entity_id]
+                        return await self._build_path_data(final_path, db)
+
+                    entity_key = f"entity_{entity_id}"
+                    if entity_key in visited:
+                        continue
+
+                    # Pruefe ob Entity zur gleichen Company gehoert
+                    entity = await db.get(BusinessEntity, entity_id)
+                    if entity and entity.company_id == company_id:
+                        visited.add(entity_key)
+                        new_path = path + [entity_id]
+                        queue.append((entity_id, "entity", new_path, depth + 1))
+
+        return None
+
+    async def _build_path_data(
+        self,
+        path: List[UUID],
+        db: AsyncSession,
+    ) -> PathData:
+        """
+        Baut PathData aus Pfad-Liste.
+
+        Args:
+            path: Liste von UUIDs (alternierend Entity/Document)
+            db: Database session
+
+        Returns:
+            PathData mit Nodes und Edges
+        """
+        nodes: List[GraphNode] = []
+        edges: List[GraphEdge] = []
+        path_ids: List[str] = []
+
+        for i, uuid_val in enumerate(path):
+            is_entity = (i % 2 == 0)  # Pfad beginnt mit Entity
+
+            if is_entity:
+                entity = await db.get(BusinessEntity, uuid_val)
+                node_id = f"entity_{uuid_val}"
+                label = entity.name if entity else "Unbekannt"
+                node_type = "entity"
+            else:
+                doc = await db.get(Document, uuid_val)
+                node_id = f"document_{uuid_val}"
+                label = doc.filename if doc else "Dokument"
+                node_type = "document"
+
+            nodes.append(GraphNode(
+                id=node_id,
+                label=label,
+                type=node_type,
+                properties={},
+            ))
+            path_ids.append(node_id)
+
+            # Edge zum vorherigen Node
+            if i > 0:
+                prev_node_id = path_ids[i - 1]
+                edges.append(GraphEdge(
+                    source=prev_node_id,
+                    target=node_id,
+                    label="CONNECTED_TO",
+                    properties={},
+                ))
+
+        return PathData(
+            path=path_ids,
+            length=len(path) - 1,
+            nodes=nodes,
+            edges=edges,
+        )
+
     async def get_communities(
         self,
         company_id: UUID,
@@ -650,31 +798,37 @@ class KnowledgeGraphService:
         """
         logger.info("knowledge_graph.get_communities", company_id=str(company_id))
 
-        # TODO: Implementiere Community Detection
-        # Fuer MVP: Vereinfacht - gruppiere Entities nach Dokumenten
+        # Union-Find basierte Community Detection
+        communities = await self._union_find_communities(company_id, db)
 
-        communities: List[Community] = []
+        if communities:
+            logger.info(
+                "knowledge_graph.communities_found",
+                count=len(communities),
+                company_id=str(company_id),
+            )
+            return communities[:20]  # Limit auf 20 Communities
 
-        # Finde Entities mit gemeinsamen Dokumenten
-        doc_links_query = select(DocumentEntityLink).limit(100)
+        # Fallback: Gruppiere nach Dokumenten (Simple Approach)
+        fallback_communities: List[Community] = []
+
+        doc_links_query = select(DocumentEntityLink).limit(500)
         doc_links_result = await db.execute(doc_links_query)
         doc_links = doc_links_result.scalars().all()
 
-        # Gruppiere nach document_id
         doc_to_entities: Dict[UUID, List[UUID]] = defaultdict(list)
         for link in doc_links:
             doc_to_entities[link.document_id].append(link.entity_id)
 
-        # Erstelle Communities fuer Dokumente mit mehreren Entities
         for doc_id, entity_ids in doc_to_entities.items():
             if len(entity_ids) > 1:
                 doc = await db.get(Document, doc_id)
                 if doc and doc.company_id == company_id:
-                    communities.append(
+                    fallback_communities.append(
                         Community(
                             id=str(doc_id),
                             name=doc.filename or "Community",
-                            node_count=len(entity_ids) + 1,  # Entities + Dokument
+                            node_count=len(entity_ids) + 1,
                             edge_count=len(entity_ids),
                             central_node=GraphNode(
                                 id=f"document_{doc_id}",
@@ -686,4 +840,132 @@ class KnowledgeGraphService:
                         )
                     )
 
-        return communities[:20]  # Limit auf 20 Communities
+        return fallback_communities[:20]
+
+    async def _union_find_communities(
+        self,
+        company_id: UUID,
+        db: AsyncSession,
+    ) -> List[Community]:
+        """
+        Union-Find Algorithmus fuer Connected Components.
+
+        Args:
+            company_id: Company UUID
+            db: Database session
+
+        Returns:
+            Liste von Communities basierend auf Connected Components
+        """
+        # 1. Lade alle Entities der Company
+        entities_query = select(BusinessEntity.id, BusinessEntity.name).where(
+            BusinessEntity.company_id == company_id
+        ).limit(1000)
+        entities_result = await db.execute(entities_query)
+        entities = {e.id: e.name for e in entities_result.all()}
+
+        if not entities:
+            return []
+
+        # 2. Union-Find Datenstruktur
+        parent: Dict[UUID, UUID] = {e: e for e in entities.keys()}
+        rank: Dict[UUID, int] = {e: 0 for e in entities.keys()}
+
+        def find(x: UUID) -> UUID:
+            """Find mit Pfadkompression."""
+            if parent[x] != x:
+                parent[x] = find(parent[x])
+            return parent[x]
+
+        def union(x: UUID, y: UUID) -> None:
+            """Union mit Rank-Optimierung."""
+            root_x = find(x)
+            root_y = find(y)
+            if root_x != root_y:
+                if rank[root_x] < rank[root_y]:
+                    parent[root_x] = root_y
+                elif rank[root_x] > rank[root_y]:
+                    parent[root_y] = root_x
+                else:
+                    parent[root_y] = root_x
+                    rank[root_x] += 1
+
+        # 3. Finde Verbindungen ueber Dokumente
+        doc_links_query = select(
+            DocumentEntityLink.document_id,
+            DocumentEntityLink.entity_id
+        ).where(
+            DocumentEntityLink.entity_id.in_(entities.keys())
+        )
+        doc_links_result = await db.execute(doc_links_query)
+        doc_links = doc_links_result.all()
+
+        # Gruppiere Entities nach Dokument
+        doc_to_entities: Dict[UUID, List[UUID]] = defaultdict(list)
+        for doc_id, entity_id in doc_links:
+            doc_to_entities[doc_id].append(entity_id)
+
+        # Union Entities die das gleiche Dokument teilen
+        for doc_id, entity_ids in doc_to_entities.items():
+            if len(entity_ids) > 1:
+                first = entity_ids[0]
+                for other in entity_ids[1:]:
+                    union(first, other)
+
+        # 4. Gruppiere nach Root
+        root_to_members: Dict[UUID, List[UUID]] = defaultdict(list)
+        for entity_id in entities.keys():
+            root = find(entity_id)
+            root_to_members[root].append(entity_id)
+
+        # 5. Erstelle Communities
+        communities: List[Community] = []
+        community_idx = 0
+
+        for root_id, member_ids in root_to_members.items():
+            if len(member_ids) > 1:  # Nur echte Communities
+                community_idx += 1
+
+                # Finde zentralen Knoten (mit meisten Verbindungen)
+                central_id = root_id
+                max_connections = 0
+
+                for member_id in member_ids:
+                    # Zaehle Dokument-Verbindungen
+                    connections = sum(
+                        1 for doc_id, eid in doc_links
+                        if eid == member_id
+                    )
+                    if connections > max_connections:
+                        max_connections = connections
+                        central_id = member_id
+
+                central_name = entities.get(central_id, "Unbekannt")
+
+                # Zaehle Edges (interne Verbindungen)
+                edge_count = 0
+                for doc_id, ent_ids in doc_to_entities.items():
+                    members_in_doc = [e for e in ent_ids if e in member_ids]
+                    if len(members_in_doc) > 1:
+                        edge_count += len(members_in_doc) - 1
+
+                communities.append(
+                    Community(
+                        id=f"community_{community_idx}",
+                        name=f"Cluster: {central_name}",
+                        node_count=len(member_ids),
+                        edge_count=edge_count,
+                        central_node=GraphNode(
+                            id=f"entity_{central_id}",
+                            label=central_name,
+                            type="entity",
+                            properties={"is_central": True},
+                        ),
+                        member_ids=[f"entity_{m}" for m in member_ids],
+                    )
+                )
+
+        # Sortiere nach Groesse (groesste zuerst)
+        communities.sort(key=lambda c: c.node_count, reverse=True)
+
+        return communities

@@ -11,6 +11,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { logger } from '@/lib/logger'
 
 // ==================== Types ====================
 
@@ -258,7 +259,7 @@ export const useDashboardStore = create<DashboardState>()(
 
                 // Guard against null/undefined persisted state
                 if (!persistedState || typeof persistedState !== 'object') {
-                    console.warn('[Dashboard Store] Invalid persisted state, using defaults')
+                    logger.warn('[Dashboard Store] Invalid persisted state, using defaults')
                     return defaultState
                 }
 
@@ -270,7 +271,7 @@ export const useDashboardStore = create<DashboardState>()(
 
                     // Validate widgets array
                     if (!Array.isArray(widgets)) {
-                        console.warn('[Dashboard Store] Invalid widgets during migration, using defaults')
+                        logger.warn('[Dashboard Store] Invalid widgets during migration, using defaults')
                         return defaultState
                     }
 
@@ -293,7 +294,7 @@ export const useDashboardStore = create<DashboardState>()(
 
                     // If no valid widgets could be migrated, use defaults
                     if (migratedWidgets.length === 0) {
-                        console.warn('[Dashboard Store] No valid widgets found during migration, using defaults')
+                        logger.warn('[Dashboard Store] No valid widgets found during migration, using defaults')
                         return defaultState
                     }
 
@@ -308,7 +309,7 @@ export const useDashboardStore = create<DashboardState>()(
                 // For current version, validate the state structure
                 const currentWidgets = state.widgets
                 if (!Array.isArray(currentWidgets)) {
-                    console.warn('[Dashboard Store] Invalid widgets in current version, using defaults')
+                    logger.warn('[Dashboard Store] Invalid widgets in current version, using defaults')
                     return defaultState
                 }
 

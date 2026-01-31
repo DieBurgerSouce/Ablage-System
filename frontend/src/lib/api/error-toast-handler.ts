@@ -196,11 +196,19 @@ export function showApiErrorToast(error: AxiosError): void {
         errorInfo = { ...ERROR_MESSAGES[status] };
 
         // Fix 7: Bei 429 Rate-Limit den Retry-After Header anzeigen
+        // P2 Fix (Iteration 14): Auch HTTP-Datum Format unterstuetzen (RFC 7231)
         if (status === 429) {
             const retryAfter = error.response?.headers?.['retry-after'];
             if (retryAfter) {
-                const seconds = parseInt(retryAfter, 10);
-                if (!isNaN(seconds)) {
+                let seconds = parseInt(retryAfter, 10);
+                // P2 Fix: Falls keine Zahl, versuche HTTP-Datum zu parsen
+                if (isNaN(seconds)) {
+                    const date = new Date(retryAfter);
+                    if (!isNaN(date.getTime())) {
+                        seconds = Math.max(0, Math.ceil((date.getTime() - Date.now()) / 1000));
+                    }
+                }
+                if (!isNaN(seconds) && seconds > 0) {
                     errorInfo.description = `Bitte warten Sie ${seconds} Sekunde${seconds !== 1 ? 'n' : ''}, bevor Sie es erneut versuchen.`;
                 }
             }
@@ -250,3 +258,31 @@ export const _testUtils = {
     toastRateLimiter,
     extractErrorMessage,
 };
+
+/**
+ * Alias for backwards compatibility - some files import handleApiError
+ * This is a function that shows the toast and re-throws the error for handling
+ *
+ * P2 FIX (Iteration 12): Spezifischer AxiosError Check statt unsicherem Cast.
+ * - AxiosError wird korrekt an showApiErrorToast weitergegeben
+ * - Normale Error-Instanzen werden nur geloggt (kein Toast-Spam)
+ * - Beide Fälle werfen den ursprünglichen Fehler weiter
+ */
+export function handleApiError(error: unknown): never {
+    if (error instanceof AxiosError) {
+        // Echter AxiosError mit response/config - zeige Toast
+        showApiErrorToast(error);
+    } else if (error instanceof Error) {
+        // Normaler Error (z.B. TypeError, ReferenceError) - nur loggen
+        // KEIN Toast, da diese Fehler nicht vom API kommen
+        console.error('[handleApiError] Non-Axios error:', error.message);
+    } else {
+        // P0 Fix: Catch-all fuer null, undefined, primitive (string, number, etc.)
+        // Verhindert silent throws ohne jegliches Logging
+        console.error(
+            '[handleApiError] Unknown error type:',
+            error === null ? 'null' : error === undefined ? 'undefined' : String(error)
+        );
+    }
+    throw error;
+}

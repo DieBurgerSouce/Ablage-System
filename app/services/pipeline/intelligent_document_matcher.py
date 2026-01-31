@@ -466,7 +466,7 @@ class IntelligentDocumentMatcher:
                 if key in extracted_data and extracted_data[key]:
                     try:
                         return Decimal(str(extracted_data[key]))
-                    except:
+                    except (ValueError, TypeError, ArithmeticError):
                         pass
 
         # Fallback: Aus OCR-Text extrahieren
@@ -481,7 +481,7 @@ class IntelligentDocumentMatcher:
                 try:
                     amount_str = match.group(1).replace('.', '').replace(',', '.')
                     return Decimal(amount_str)
-                except:
+                except (ValueError, TypeError, ArithmeticError):
                     pass
 
         return None

@@ -26,14 +26,20 @@ export enum NotificationType {
 
 /**
  * Benachrichtigungs-Metadaten
+ *
+ * SECURITY NOTE: Additional metadata fields are restricted to primitive types
+ * and arrays of primitives to prevent prototype pollution attacks.
+ * Complex nested objects should use the explicitly typed fields above.
  */
 export interface NotificationMetadata {
+  // Explicitly typed known fields
   document_id?: string;
   invoice_id?: string;
   entity_id?: string;
   workflow_id?: string;
   action_url?: string;
-  [key: string]: unknown;
+  // Bounded additional fields (no complex nested objects)
+  [key: string]: string | number | boolean | null | undefined | string[];
 }
 
 /**

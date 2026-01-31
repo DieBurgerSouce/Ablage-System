@@ -456,14 +456,80 @@ class HealthScoreCalculator:
         # Fuer echte Implementierung: Score von vor 7 Tagen aus Cache/DB holen
         # Hier: Vereinfachte Logik basierend auf aktuellen Werten
 
-        if current_score >= 80:
-            return "stable"  # Hoher Score = stabil
-        elif current_score >= 60:
-            return "improving"  # Mittlerer Score = verbesserungswuerdig
-        else:
-            return "declining"  # Niedriger Score = kritisch
+        # Hole historischen Score aus AppConfig (vor 7 Tagen)
+        historical_score = await self._get_historical_score(company_id, days_ago=7)
 
-        # TODO: Echte Trend-Berechnung mit historischen Daten
-        # - Score in AppConfig/JSONB speichern (taeglich)
-        # - Vergleich aktuell vs. vor 7 Tagen
-        # - Delta > +5: improving, Delta < -5: declining, sonst: stable
+        if historical_score is not None:
+            delta = current_score - historical_score
+            if delta > 5:
+                return "improving"
+            elif delta < -5:
+                return "declining"
+            else:
+                return "stable"
+
+        # Fallback wenn keine Historie: basierend auf aktuellem Score
+        if current_score >= 80:
+            return "stable"
+        elif current_score >= 60:
+            return "improving"
+        else:
+            return "declining"
+
+    async def _get_historical_score(
+        self,
+        company_id: UUID,
+        days_ago: int = 7,
+    ) -> Optional[float]:
+        """Holt historischen Health Score aus AppConfig Cache."""
+        from app.db.models import AppConfig
+        from datetime import timedelta
+
+        cache_key = f"health_score_history:{company_id}"
+        target_date = (datetime.now(timezone.utc) - timedelta(days=days_ago)).strftime("%Y-%m-%d")
+
+        try:
+            result = await self.db.execute(
+                select(AppConfig).where(AppConfig.key == cache_key)
+            )
+            config = result.scalar_one_or_none()
+
+            if config and config.value and isinstance(config.value, dict):
+                # History format: {"2026-01-25": 85.5, "2026-01-24": 82.0, ...}
+                return config.value.get(target_date)
+
+            return None
+        except Exception:
+            return None
+
+    async def save_current_score(
+        self,
+        company_id: UUID,
+        score: float,
+    ) -> bool:
+        """Speichert aktuellen Score fuer Trend-Berechnung."""
+        from app.db.models import AppConfig
+
+        cache_key = f"health_score_history:{company_id}"
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+        try:
+            result = await self.db.execute(
+                select(AppConfig).where(AppConfig.key == cache_key)
+            )
+            config = result.scalar_one_or_none()
+
+            if config:
+                history = config.value if isinstance(config.value, dict) else {}
+                history[today] = score
+                # Behalte nur letzte 30 Tage
+                sorted_dates = sorted(history.keys(), reverse=True)[:30]
+                config.value = {d: history[d] for d in sorted_dates}
+            else:
+                config = AppConfig(key=cache_key, value={today: score})
+                self.db.add(config)
+
+            await self.db.commit()
+            return True
+        except Exception:
+            return False

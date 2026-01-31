@@ -2,7 +2,7 @@
  * Help System API Client
  */
 
-import { apiClient } from '@/lib/api-client';
+import { apiClient } from '@/lib/api';
 import type {
   HelpArticle,
   HelpCategory,

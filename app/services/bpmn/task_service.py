@@ -361,6 +361,13 @@ class ProcessTaskService:
             user_id=str(user_id)
         )
 
+        # Benachrichtigungen senden (async, nicht blockierend)
+        await self._send_task_completion_notifications(
+            task=task,
+            completed_by_id=user_id,
+            company_id=company_id,
+        )
+
         # Prozess fortsetzen
         from app.services.bpmn.process_execution_service import get_process_execution_service
         execution_service = get_process_execution_service(self.db)
@@ -654,6 +661,98 @@ class ProcessTaskService:
         )
         self.db.add(history)
         return history
+
+    async def _send_task_completion_notifications(
+        self,
+        task: ProcessTask,
+        completed_by_id: UUID,
+        company_id: UUID,
+    ) -> None:
+        """Sendet Benachrichtigungen bei Task-Abschluss.
+
+        Benachrichtigt:
+        - Den urspruenglich zugewiesenen Benutzer (wenn delegiert)
+        - Slack-Kanal fuer wichtige Tasks (approval, review)
+
+        Args:
+            task: Der abgeschlossene Task
+            completed_by_id: ID des abschliessenden Benutzers
+            company_id: Firmen-ID
+        """
+        try:
+            # Tasks die Slack-Benachrichtigung erhalten
+            SLACK_WORTHY_TASK_TYPES = {
+                "approval", "review", "sign", "escalation",
+                "genehmigung", "pruefung", "unterschrift",
+            }
+
+            task_name = task.name or task.element_id
+            task_name_lower = task_name.lower()
+
+            # In-App Benachrichtigung fuer delegierte Tasks
+            if task.delegated_from_id and task.delegated_from_id != completed_by_id:
+                try:
+                    from app.services.notification_service import (
+                        get_notification_service,
+                        NotificationType,
+                        NotificationPriority,
+                    )
+                    notification_service = get_notification_service()
+                    await notification_service.send_in_app_notification(
+                        user_id=str(task.delegated_from_id),
+                        title=f"Delegierter Task abgeschlossen: {task_name}",
+                        message=f"Der von Ihnen delegierte Task wurde abgeschlossen.",
+                        priority=NotificationPriority.NORMAL,
+                        notification_type=NotificationType.SYSTEM_ALERT,
+                        metadata={
+                            "task_id": str(task.id),
+                            "instance_id": str(task.instance_id),
+                            "completed_by_id": str(completed_by_id),
+                        },
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "task_notification_in_app_failed",
+                        task_id=str(task.id),
+                        error_type=type(e).__name__,
+                    )
+
+            # Slack-Benachrichtigung fuer wichtige Tasks
+            is_slack_worthy = any(
+                t in task_name_lower for t in SLACK_WORTHY_TASK_TYPES
+            )
+
+            if is_slack_worthy:
+                try:
+                    from app.services.slack_service import (
+                        SlackService,
+                        SlackNotificationType,
+                    )
+                    slack = SlackService()
+                    await slack.send_notification(
+                        notification_type=SlackNotificationType.WORKFLOW_COMPLETED,
+                        title=f"Workflow-Task abgeschlossen: {task_name}",
+                        message=f"Der Task wurde erfolgreich abgeschlossen.",
+                        context={
+                            "task_id": str(task.id),
+                            "instance_id": str(task.instance_id),
+                            "company_id": str(company_id),
+                        },
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "task_notification_slack_failed",
+                        task_id=str(task.id),
+                        error_type=type(e).__name__,
+                    )
+
+        except Exception as e:
+            # Benachrichtigungsfehler sollten Task-Abschluss nicht blockieren
+            logger.warning(
+                "task_completion_notification_failed",
+                task_id=str(task.id),
+                error_type=type(e).__name__,
+            )
 
 
 def get_task_service(db: AsyncSession) -> ProcessTaskService:

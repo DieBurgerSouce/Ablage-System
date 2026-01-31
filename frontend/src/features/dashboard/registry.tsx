@@ -11,6 +11,14 @@ import { SkontoWidget } from './components/widgets/SkontoWidget'
 import { OCRPerformanceWidget } from './components/widgets/OCRPerformanceWidget'
 import { ActivityFeedWidget } from './components/ActivityFeed'
 import { ProactiveInsightsWidget } from './components/widgets/ProactiveInsightsWidget'
+import { ApprovalsWidget } from './components/widgets/ApprovalsWidget'
+import { PortfolioSummaryWidget } from './components/widgets/PortfolioSummaryWidget'
+import { PropertyKPIsWidget } from './components/widgets/PropertyKPIsWidget'
+import { InsuranceCoverageWidget } from './components/widgets/InsuranceCoverageWidget'
+import { ImportSyncStatusWidget } from './components/widgets/ImportSyncStatusWidget'
+import { ComplianceDeadlineWidget } from './components/widgets/ComplianceDeadlineWidget'
+import { MLOpsPerformanceWidget } from './components/widgets/MLOpsPerformanceWidget'
+import { CashPositionWidget } from './components/widgets/CashPositionWidget'
 import type { LucideIcon } from 'lucide-react'
 import {
     Calendar,
@@ -30,6 +38,10 @@ import {
     Bell,
     Percent,
     Sparkles,
+    RefreshCw,
+    Scale,
+    Brain,
+    Banknote,
 } from 'lucide-react'
 
 export interface WidgetRegistryEntry {
@@ -149,39 +161,43 @@ const WIDGET_DEFINITIONS: WidgetRegistryEntry[] = [
     // Enterprise KPI Widgets
     {
         type: 'portfolio-summary',
-        component: () => <div className="p-4">Portfolio Widget (coming soon)</div>,
+        component: PortfolioSummaryWidget,
         label: 'Portfolio Übersicht',
         description: 'Nettovermögen und Vermögensaufteilung auf einen Blick.',
         icon: PiggyBank,
         category: 'finance',
-        defaultSize: { w: 6, h: 4 },
+        defaultSize: { w: 6, h: 5 },
+        minSize: { w: 4, h: 4 },
     },
     {
         type: 'property-kpis',
-        component: () => <div className="p-4">Immobilien-KPIs (coming soon)</div>,
+        component: PropertyKPIsWidget,
         label: 'Immobilien KPIs',
         description: 'Mietrendite, ROI und Wertentwicklung aller Immobilien.',
         icon: Home,
         category: 'finance',
-        defaultSize: { w: 6, h: 3 },
+        defaultSize: { w: 6, h: 5 },
+        minSize: { w: 4, h: 4 },
     },
     {
         type: 'insurance-coverage',
-        component: () => <div className="p-4">Versicherungs-Abdeckung (coming soon)</div>,
+        component: InsuranceCoverageWidget,
         label: 'Versicherungsschutz',
         description: 'Deckungslücken und anstehende Kündigungsfristen.',
         icon: ShieldCheck,
         category: 'finance',
-        defaultSize: { w: 4, h: 3 },
+        defaultSize: { w: 4, h: 5 },
+        minSize: { w: 3, h: 4 },
     },
     {
         type: 'approvals-pending',
-        component: () => <div className="p-4">Offene Genehmigungen (coming soon)</div>,
+        component: ApprovalsWidget,
         label: 'Genehmigungen',
         description: 'Ausstehende Genehmigungsanfragen mit Fälligkeiten.',
         icon: CheckCircle2,
         category: 'action',
-        defaultSize: { w: 4, h: 3 },
+        defaultSize: { w: 4, h: 4 },
+        minSize: { w: 3, h: 3 },
     },
     {
         type: 'activity-feed',
@@ -202,6 +218,47 @@ const WIDGET_DEFINITIONS: WidgetRegistryEntry[] = [
         category: 'info',
         defaultSize: { w: 6, h: 5 },
         minSize: { w: 4, h: 3 },
+    },
+    // Enterprise Monitoring Widgets (Phase 1.3)
+    {
+        type: 'import-sync-status',
+        component: ImportSyncStatusWidget,
+        label: 'Import Sync Status',
+        description: 'Status aller Import-Quellen (DATEV, Lexware, Email, Folder).',
+        icon: RefreshCw,
+        category: 'data',
+        defaultSize: { w: 4, h: 5 },
+        minSize: { w: 3, h: 4 },
+    },
+    {
+        type: 'compliance-deadlines',
+        component: ComplianceDeadlineWidget,
+        label: 'Compliance & Fristen',
+        description: 'GoBD, Audit-Termine, GDPR-Loeschfristen und Aufbewahrungspflichten.',
+        icon: Scale,
+        category: 'info',
+        defaultSize: { w: 4, h: 5 },
+        minSize: { w: 3, h: 4 },
+    },
+    {
+        type: 'mlops-performance',
+        component: MLOpsPerformanceWidget,
+        label: 'MLOps Performance',
+        description: 'OCR-Accuracy, Model-Drift, A/B Tests und Retraining-Status.',
+        icon: Brain,
+        category: 'data',
+        defaultSize: { w: 6, h: 5 },
+        minSize: { w: 4, h: 4 },
+    },
+    {
+        type: 'cash-position',
+        component: CashPositionWidget,
+        label: 'Kassenstand',
+        description: 'Echtzeit Kontostand, Tagesbewegungen und Liquiditaetsprognose.',
+        icon: Banknote,
+        category: 'finance',
+        defaultSize: { w: 4, h: 5 },
+        minSize: { w: 3, h: 4 },
     },
 ]
 

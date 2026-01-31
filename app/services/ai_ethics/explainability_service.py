@@ -396,43 +396,195 @@ class ExplainabilityService:
         if not invoice:
             return None
 
-        # TODO: Implementiere Auto-Approval Erklaerung
-        # Basiert auf Approval-Rules
+        # Lade zugehoerige Daten fuer Erklaerung
+        factors: List[ExplanationFactor] = []
+        total_confidence = 0.0
+        positive_factors = 0
+        negative_factors = 0
 
-        summary = "Auto-Approval basierend auf Unternehmensregeln"
-        factors = [
-            ExplanationFactor(
+        # 1. Betragsschwellen-Analyse
+        amount = float(invoice.amount or 0)
+        if amount <= 500:
+            factors.append(ExplanationFactor(
                 name="Betragsschwelle",
-                weight=0.40,
-                value="< 1000 EUR",
+                weight=0.35,
+                value=f"{amount:.2f} EUR",
                 impact="positive",
-                description="Betrag unter automatischer Freigabegrenze",
-            ),
-            ExplanationFactor(
+                description="Betrag im Bereich automatischer Freigabe (bis 500 EUR)",
+            ))
+            total_confidence += 0.35
+            positive_factors += 1
+        elif amount <= 1000:
+            factors.append(ExplanationFactor(
+                name="Betragsschwelle",
+                weight=0.25,
+                value=f"{amount:.2f} EUR",
+                impact="positive",
+                description="Betrag im erweiterten Freigabebereich (500-1000 EUR)",
+            ))
+            total_confidence += 0.25
+            positive_factors += 1
+        else:
+            factors.append(ExplanationFactor(
+                name="Betragsschwelle",
+                weight=0.35,
+                value=f"{amount:.2f} EUR",
+                impact="negative",
+                description=f"Betrag ueber automatischer Freigabegrenze ({amount:.2f} EUR > 1000 EUR)",
+            ))
+            negative_factors += 1
+
+        # 2. Lieferanten-Analyse
+        from app.db.models import BusinessEntity
+        entity = None
+        if invoice.entity_id:
+            entity = await db.get(BusinessEntity, invoice.entity_id)
+
+        if entity:
+            risk_score = getattr(entity, "risk_score", 50) or 50
+            is_trusted = risk_score < 40
+
+            if is_trusted:
+                factors.append(ExplanationFactor(
+                    name="Lieferanten-Status",
+                    weight=0.30,
+                    value=f"Risiko-Score: {risk_score}/100",
+                    impact="positive",
+                    description="Vertrauenswuerdiger Lieferant mit niedriger Risikobewertung",
+                ))
+                total_confidence += 0.30
+                positive_factors += 1
+            else:
+                factors.append(ExplanationFactor(
+                    name="Lieferanten-Status",
+                    weight=0.30,
+                    value=f"Risiko-Score: {risk_score}/100",
+                    impact="neutral" if risk_score < 60 else "negative",
+                    description=f"Lieferant mit {'mittlerer' if risk_score < 60 else 'hoeherer'} Risikobewertung",
+                ))
+                if risk_score < 60:
+                    total_confidence += 0.15
+                else:
+                    negative_factors += 1
+        else:
+            factors.append(ExplanationFactor(
                 name="Lieferanten-Status",
                 weight=0.30,
-                value="Vertrauenswürdig",
+                value="Unbekannt",
+                impact="neutral",
+                description="Kein Lieferant zugeordnet - neutrale Bewertung",
+            ))
+            total_confidence += 0.10
+
+        # 3. Dokumenten-Qualitaet (basierend auf Vollstaendigkeit)
+        doc_quality_score = 0.0
+        quality_details = []
+
+        if invoice.invoice_number:
+            doc_quality_score += 0.25
+            quality_details.append("Rechnungsnummer erkannt")
+        if invoice.due_date:
+            doc_quality_score += 0.25
+            quality_details.append("Faelligkeitsdatum vorhanden")
+        if invoice.amount and invoice.amount > 0:
+            doc_quality_score += 0.25
+            quality_details.append("Betrag erkannt")
+        if invoice.entity_id:
+            doc_quality_score += 0.25
+            quality_details.append("Lieferant zugeordnet")
+
+        quality_value = f"{doc_quality_score * 100:.0f}%"
+        if doc_quality_score >= 0.75:
+            factors.append(ExplanationFactor(
+                name="Dokumenten-Qualitaet",
+                weight=0.25,
+                value=quality_value,
                 impact="positive",
-                description="Lieferant mit guter Historie",
-            ),
-            ExplanationFactor(
-                name="Dokumenten-Qualität",
-                weight=0.30,
-                value="Hoch",
-                impact="positive",
-                description="Alle erforderlichen Felder erkannt",
-            ),
-        ]
+                description=f"Hohe Dokumentqualitaet: {', '.join(quality_details)}",
+            ))
+            total_confidence += 0.25
+            positive_factors += 1
+        elif doc_quality_score >= 0.50:
+            factors.append(ExplanationFactor(
+                name="Dokumenten-Qualitaet",
+                weight=0.25,
+                value=quality_value,
+                impact="neutral",
+                description=f"Mittlere Dokumentqualitaet: {', '.join(quality_details)}",
+            ))
+            total_confidence += 0.15
+        else:
+            factors.append(ExplanationFactor(
+                name="Dokumenten-Qualitaet",
+                weight=0.25,
+                value=quality_value,
+                impact="negative",
+                description=f"Niedrige Dokumentqualitaet, fehlende Felder",
+            ))
+            negative_factors += 1
+
+        # 4. Zahlungshistorie (wenn verfuegbar)
+        if entity:
+            # Zaehle bisherige bezahlte Rechnungen
+            from sqlalchemy import func
+            paid_count_query = select(func.count(InvoiceTracking.id)).where(
+                InvoiceTracking.entity_id == entity.id,
+                InvoiceTracking.status == "paid",
+            )
+            paid_result = await db.execute(paid_count_query)
+            paid_count = paid_result.scalar() or 0
+
+            if paid_count >= 10:
+                factors.append(ExplanationFactor(
+                    name="Zahlungshistorie",
+                    weight=0.10,
+                    value=f"{paid_count} bezahlte Rechnungen",
+                    impact="positive",
+                    description="Langjaehrige positive Zahlungshistorie",
+                ))
+                total_confidence += 0.10
+                positive_factors += 1
+            elif paid_count >= 3:
+                factors.append(ExplanationFactor(
+                    name="Zahlungshistorie",
+                    weight=0.10,
+                    value=f"{paid_count} bezahlte Rechnungen",
+                    impact="neutral",
+                    description="Aufbauende Zahlungshistorie",
+                ))
+                total_confidence += 0.05
+
+        # Berechne finale Konfidenz
+        final_confidence = min(total_confidence, 0.95)
+        if negative_factors > 0:
+            final_confidence *= (1 - negative_factors * 0.15)
+
+        # Generiere Summary
+        if final_confidence >= 0.70 and negative_factors == 0:
+            summary = f"Auto-Approval empfohlen: {positive_factors} positive Faktoren, Konfidenz {final_confidence*100:.0f}%"
+            alternatives = [
+                "Manuelle Freigabe bei Bedenken",
+                "Vier-Augen-Prinzip ab 5000 EUR",
+            ]
+        elif final_confidence >= 0.50:
+            summary = f"Bedingte Freigabe moeglich: {positive_factors} positive, {negative_factors} kritische Faktoren"
+            alternatives = [
+                "Manuelle Pruefung empfohlen",
+                "Rueckfrage beim Lieferanten",
+            ]
+        else:
+            summary = f"Manuelle Freigabe erforderlich: {negative_factors} kritische Faktoren identifiziert"
+            alternatives = [
+                "Detailpruefung durch Buchhaltung",
+                "Eskalation an Vorgesetzten",
+            ]
 
         return Explanation(
             decision_type="auto_approval",
             summary=summary,
             factors=factors,
-            confidence=0.90,
-            alternatives_considered=[
-                "Manuelle Freigabe bei höheren Beträgen",
-                "Vier-Augen-Prinzip ab 5000 EUR",
-            ],
+            confidence=final_confidence,
+            alternatives_considered=alternatives,
         )
 
     def _extract_keywords(self, text: str, doc_type: str) -> List[str]:

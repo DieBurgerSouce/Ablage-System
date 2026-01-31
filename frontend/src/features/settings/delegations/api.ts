@@ -4,7 +4,7 @@
  * API functions for delegation operations
  */
 
-import { apiClient } from '@/lib/api-client';
+import { apiClient } from '@/lib/api';
 import type {
   Delegation,
   DelegationCreateRequest,

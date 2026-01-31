@@ -843,8 +843,27 @@ async def send_message(
         await db.commit()
         await db.refresh(user_message)
 
-        # TODO: Hier wuerde die eigentliche KI-Verarbeitung stattfinden
-        # Fuer jetzt geben wir eine Platzhalter-Antwort zurueck
+        # KI-Verarbeitung ueber FinanceAssistantService triggern (async Celery Task)
+        # Die eigentliche Verarbeitung erfolgt asynchron, um die Response nicht zu blockieren
+        from app.workers.tasks.ai_conversation_tasks import process_ai_message
+
+        # Celery Task fuer asynchrone KI-Verarbeitung triggern
+        try:
+            process_ai_message.delay(
+                conversation_id=str(conversation_id),
+                message_id=str(user_message.id),
+                user_id=str(current_user.id),
+                company_id=str(conversation.company_id) if conversation.company_id else None,
+                content=body.content,
+            )
+        except Exception as task_error:
+            logger.warning(
+                "ai_message_celery_task_failed",
+                user_id=str(current_user.id),
+                conversation_id=str(conversation_id),
+                error_type=type(task_error).__name__,
+            )
+            # Fehler beim Task-Dispatch nicht fatal - Nachricht wurde trotzdem gespeichert
 
         logger.info(
             "ai_message_sent",
@@ -1232,8 +1251,24 @@ async def confirm_action(
             action_type=action.action_type,
         )
 
-        # TODO: Hier wuerde die Aktion ausgefuehrt werden
-        # (Integration mit ActionExecutorService in separatem Task)
+        # Aktion asynchron ausfuehren via Celery Task
+        from app.workers.tasks.ai_conversation_tasks import execute_ai_action
+
+        try:
+            execute_ai_action.delay(
+                action_id=str(action_id),
+                conversation_id=str(conversation_id),
+                user_id=str(current_user.id),
+                company_id=str(action.company_id) if hasattr(action, 'company_id') and action.company_id else None,
+            )
+        except Exception as task_error:
+            logger.warning(
+                "ai_action_celery_task_failed",
+                user_id=str(current_user.id),
+                action_id=str(action_id),
+                error_type=type(task_error).__name__,
+            )
+            # Fehler beim Task-Dispatch nicht fatal - Aktion wurde trotzdem bestaetigt
 
         return ActionResponse(
             id=str(action.id),

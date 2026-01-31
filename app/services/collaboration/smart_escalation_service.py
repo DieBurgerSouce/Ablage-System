@@ -773,16 +773,99 @@ class SmartEscalationService:
             score = 70.0
             details["status"] = "unbekannt"
 
-        # TODO: Hier koennten Abwesenheitseintraege geprueft werden
-        # if user.absence_until and user.absence_until > utc_now():
-        #     score = 0.0
-        #     is_available = False
+        # Pruefe Abwesenheit (Out of Office)
+        absence_info = await self._check_user_absence(user_id)
+        if absence_info.get("is_absent", False):
+            score = 0.0
+            is_available = False
+            details["status"] = "abwesend"
+            details["absence_reason"] = absence_info.get("reason", "Abwesenheit")
+            details["absence_until"] = absence_info.get("until")
+            details["deputy_id"] = absence_info.get("deputy_id")
 
         return {
             "score": score,
             "is_available": is_available,
             "details": details,
         }
+
+    async def _check_user_absence(
+        self,
+        user_id: UUID,
+    ) -> Dict[str, Any]:
+        """
+        Prueft ob User abwesend ist (Urlaub, Krankheit, etc.).
+
+        Args:
+            user_id: User-ID
+
+        Returns:
+            Dict mit is_absent, reason, until, deputy_id
+        """
+        # Pruefe User-Einstellungen fuer Abwesenheit
+        user_query = select(User).where(User.id == user_id)
+        result = await self.db.execute(user_query)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            return {"is_absent": False}
+
+        # Pruefe is_out_of_office Flag (wenn vorhanden im User-Model)
+        is_out_of_office = getattr(user, "is_out_of_office", False)
+        absence_until = getattr(user, "absence_until", None)
+        absence_reason = getattr(user, "absence_reason", None)
+        deputy_id = getattr(user, "deputy_user_id", None)
+
+        # Pruefe ob Abwesenheit aktiv und nicht abgelaufen
+        if is_out_of_office:
+            if absence_until:
+                # Abwesenheit hat ein Ende-Datum
+                if absence_until > utc_now():
+                    return {
+                        "is_absent": True,
+                        "reason": absence_reason or "Abwesenheit",
+                        "until": absence_until.isoformat() if absence_until else None,
+                        "deputy_id": str(deputy_id) if deputy_id else None,
+                    }
+                # Abwesenheit abgelaufen - ignorieren
+                return {"is_absent": False}
+            else:
+                # Unbefristete Abwesenheit
+                return {
+                    "is_absent": True,
+                    "reason": absence_reason or "Abwesenheit",
+                    "until": None,
+                    "deputy_id": str(deputy_id) if deputy_id else None,
+                }
+
+        # Pruefe User-Settings/Preferences (JSONB) wenn vorhanden
+        user_settings = getattr(user, "settings", None) or {}
+        if isinstance(user_settings, dict):
+            absence_settings = user_settings.get("absence", {})
+            if absence_settings.get("enabled", False):
+                until_str = absence_settings.get("until")
+                if until_str:
+                    try:
+                        until_dt = datetime.fromisoformat(until_str.replace("Z", "+00:00"))
+                        if until_dt > utc_now():
+                            return {
+                                "is_absent": True,
+                                "reason": absence_settings.get("reason", "Abwesenheit"),
+                                "until": until_str,
+                                "deputy_id": absence_settings.get("deputy_id"),
+                            }
+                    except ValueError:
+                        pass
+                else:
+                    # Keine End-Zeit = unbefristet abwesend
+                    return {
+                        "is_absent": True,
+                        "reason": absence_settings.get("reason", "Abwesenheit"),
+                        "until": None,
+                        "deputy_id": absence_settings.get("deputy_id"),
+                    }
+
+        return {"is_absent": False}
 
     async def _calculate_relationship_score(
         self,

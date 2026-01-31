@@ -260,8 +260,8 @@ export function BulkActionsBar({
                 {/* More Actions Dropdown */}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" disabled={isLoading}>
-                            <MoreHorizontal className="h-4 w-4" />
+                        <Button variant="ghost" size="sm" disabled={isLoading} aria-label="Weitere Aktionen">
+                            <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">

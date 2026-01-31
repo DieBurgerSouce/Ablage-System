@@ -32,7 +32,23 @@ import {
     Key,
 } from 'lucide-react';
 
-import { EditProviderDialog, SSOProvider, SSOProviderUpdate } from '@/features/admin/sso/components/EditProviderDialog';
+import { EditProviderDialog, type SSOProviderUpdate } from '@/features/admin/sso/components/EditProviderDialog';
+import { z } from 'zod';
+import {
+    ssoProviderCreateSchema,
+    providerPresetSchema,
+    type SSOProviderCreateRequest,
+    type SSOProviderListItem,
+    type ProviderPreset,
+    type SSOProviderResponse,
+    getPresetLabel,
+    getPresetIcon,
+    validateCreateRequest,
+    validateProviderResponse,
+    validateProviderListResponse,
+} from '@/features/admin/sso/types/sso-schemas';
+
+// SSOProviderResponse is the validated API type - use directly instead of unsafe casts
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -68,34 +84,17 @@ export const Route = createFileRoute('/admin/sso')({
     component: SSOAdminPage,
 });
 
-// Types - Extended SSOProvider for list view (re-export from EditProviderDialog covers full type)
-interface SSOProviderListItem {
-    id: string;
-    name: string;
-    provider_type: string;
-    preset: string;
-    enabled: boolean;
-    is_primary: boolean;
-    login_count: number;
-    last_used_at: string | null;
-    created_at: string;
-}
+// Types are now imported from sso-schemas.ts with proper Zod validation
+// SSOProviderListItem, ProviderPreset, SSOProviderCreateRequest imported above
 
-interface ProviderPreset {
-    preset: string;
-    provider_type: string;
-    required_fields: string[];
-    optional_fields: string[];
-    description: string;
-}
-
-// API hooks
+// API hooks with runtime validation
 function useProviders() {
     return useQuery({
         queryKey: ['sso', 'providers'],
         queryFn: async (): Promise<SSOProviderListItem[]> => {
             const response = await api.get('/api/v1/sso/providers');
-            return response.data;
+            // Runtime validation of API response - filters invalid items
+            return validateProviderListResponse(response.data);
         },
     });
 }
@@ -103,20 +102,36 @@ function useProviders() {
 function useProviderDetails(providerId: string | null) {
     return useQuery({
         queryKey: ['sso', 'provider', providerId],
-        queryFn: async (): Promise<SSOProvider> => {
+        queryFn: async (): Promise<SSOProviderResponse | null> => {
             const response = await api.get(`/api/v1/sso/providers/${providerId}`);
-            return response.data;
+            // Runtime validation of API response with detailed errors
+            const result = validateProviderResponse(response.data);
+            if (!result.success) {
+                console.error('[SSO] Invalid provider response from API:', result.error);
+                return null;
+            }
+            // Return validated SSOProviderResponse (type-safe, no unsafe cast needed)
+            return result.data;
         },
         enabled: !!providerId,
     });
 }
+
+/** Schema for presets API response validation */
+const presetsResponseSchema = z.array(providerPresetSchema);
 
 function usePresets() {
     return useQuery({
         queryKey: ['sso', 'presets'],
         queryFn: async (): Promise<ProviderPreset[]> => {
             const response = await api.get('/api/v1/sso/presets');
-            return response.data;
+            // Runtime validation of API response
+            const result = presetsResponseSchema.safeParse(response.data);
+            if (!result.success) {
+                console.error('[SSO] Invalid presets response from API:', result.error);
+                return [];
+            }
+            return result.data;
         },
     });
 }
@@ -129,33 +144,7 @@ function ProviderCard({ provider, onEdit, onDelete, onToggle, onSetPrimary }: {
     onToggle: () => void;
     onSetPrimary: () => void;
 }) {
-    const getPresetLabel = (preset: string): string => {
-        const labels: Record<string, string> = {
-            microsoft_entra: 'Microsoft Entra ID',
-            google_workspace: 'Google Workspace',
-            okta: 'Okta',
-            auth0: 'Auth0',
-            keycloak: 'Keycloak',
-            onelogin: 'OneLogin',
-            custom_oidc: 'Custom OIDC',
-            custom_saml: 'Custom SAML',
-        };
-        return labels[preset] || preset;
-    };
-
-    const getPresetIcon = (preset: string): string => {
-        const icons: Record<string, string> = {
-            microsoft_entra: '🔷',
-            google_workspace: '🔴',
-            okta: '🔵',
-            auth0: '🟠',
-            keycloak: '🟤',
-            onelogin: '🟢',
-            custom_oidc: '🔐',
-            custom_saml: '🔏',
-        };
-        return icons[preset] || '🔐';
-    };
+    // getPresetLabel and getPresetIcon are now imported from sso-schemas.ts
 
     return (
         <Card className={cn(
@@ -229,23 +218,86 @@ function ProviderCard({ provider, onEdit, onDelete, onToggle, onSetPrimary }: {
     );
 }
 
+/** Form data type for AddProviderDialog - strictly typed per field */
+interface AddProviderFormData {
+    name: string;
+    client_id: string;
+    client_secret: string;
+    scopes: string;
+    idp_certificate: string;
+    sp_entity_id: string;
+}
+
 function AddProviderDialog({ presets, onAdd }: {
     presets: ProviderPreset[];
-    onAdd: (data: any) => void;
+    onAdd: (data: SSOProviderCreateRequest) => void;
 }) {
+    const { toast } = useToast();
     const [open, setOpen] = useState(false);
-    const [preset, setPreset] = useState<string>('');
-    const [formData, setFormData] = useState<Record<string, string>>({
+    // CRITICAL: shadcn/ui Select crashes with value="" (CLAUDE.md Rule 7)
+    // Use undefined as initial state to allow placeholder to show
+    const [preset, setPreset] = useState<string | undefined>(undefined);
+    const [formData, setFormData] = useState<AddProviderFormData>({
         name: '',
+        client_id: '',
+        client_secret: '',
+        scopes: 'openid profile email',
+        idp_certificate: '',
+        sp_entity_id: '',
     });
 
     const selectedPreset = presets.find(p => p.preset === preset);
 
+    const handleFieldChange = (field: keyof AddProviderFormData, value: string) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+    };
+
     const handleSubmit = () => {
-        onAdd({ ...formData, preset });
+        // Build request object based on preset type
+        let requestData: Record<string, unknown>;
+
+        if (preset === 'custom_saml') {
+            requestData = {
+                name: formData.name,
+                preset,
+                idp_certificate: formData.idp_certificate,
+                sp_entity_id: formData.sp_entity_id || undefined,
+            };
+        } else {
+            // OIDC presets
+            requestData = {
+                name: formData.name,
+                preset,
+                client_id: formData.client_id,
+                client_secret: formData.client_secret,
+                scopes: formData.scopes || 'openid profile email',
+            };
+        }
+
+        // Validate with Zod schema
+        const validationResult = validateCreateRequest(requestData);
+
+        if (!validationResult.success) {
+            toast({
+                title: 'Validierungsfehler',
+                description: validationResult.error,
+                variant: 'destructive',
+            });
+            return;
+        }
+
+        // Pass validated data
+        onAdd(validationResult.data);
         setOpen(false);
-        setPreset('');
-        setFormData({ name: '' });
+        setPreset(undefined);
+        setFormData({
+            name: '',
+            client_id: '',
+            client_secret: '',
+            scopes: 'openid profile email',
+            idp_certificate: '',
+            sp_entity_id: '',
+        });
     };
 
     return (
@@ -267,6 +319,7 @@ function AddProviderDialog({ presets, onAdd }: {
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
                         <Label>Provider-Typ</Label>
+                        {/* value={preset || undefined} ensures no crash on empty string (CLAUDE.md Rule 7) */}
                         <Select value={preset} onValueChange={setPreset}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Provider auswaehlen" />
@@ -287,34 +340,73 @@ function AddProviderDialog({ presets, onAdd }: {
                                 <Label>Anzeigename</Label>
                                 <Input
                                     value={formData.name}
-                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                    onChange={e => handleFieldChange('name', e.target.value)}
                                     placeholder="z.B. Firmen-SSO"
                                 />
                             </div>
 
-                            {selectedPreset.required_fields.map(field => (
-                                <div key={field} className="space-y-2">
-                                    <Label className="flex items-center gap-1">
-                                        {field.replace(/_/g, ' ')}
-                                        <span className="text-destructive">*</span>
-                                    </Label>
-                                    {field === 'idp_certificate' ? (
+                            {/* OIDC Fields */}
+                            {selectedPreset.provider_type === 'oidc' && (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label className="flex items-center gap-1">
+                                            Client ID
+                                            <span className="text-destructive">*</span>
+                                        </Label>
+                                        <Input
+                                            value={formData.client_id}
+                                            onChange={e => handleFieldChange('client_id', e.target.value)}
+                                            placeholder="OAuth2 Client ID"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="flex items-center gap-1">
+                                            Client Secret
+                                            <span className="text-destructive">*</span>
+                                        </Label>
+                                        <Input
+                                            type="password"
+                                            value={formData.client_secret}
+                                            onChange={e => handleFieldChange('client_secret', e.target.value)}
+                                            placeholder="OAuth2 Client Secret"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Scopes (optional)</Label>
+                                        <Input
+                                            value={formData.scopes}
+                                            onChange={e => handleFieldChange('scopes', e.target.value)}
+                                            placeholder="openid profile email"
+                                        />
+                                    </div>
+                                </>
+                            )}
+
+                            {/* SAML Fields */}
+                            {selectedPreset.provider_type === 'saml' && (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label className="flex items-center gap-1">
+                                            IdP Zertifikat (PEM)
+                                            <span className="text-destructive">*</span>
+                                        </Label>
                                         <Textarea
-                                            value={formData[field] || ''}
-                                            onChange={e => setFormData({ ...formData, [field]: e.target.value })}
+                                            value={formData.idp_certificate}
+                                            onChange={e => handleFieldChange('idp_certificate', e.target.value)}
                                             placeholder="-----BEGIN CERTIFICATE-----"
                                             rows={4}
                                         />
-                                    ) : (
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>SP Entity ID (optional)</Label>
                                         <Input
-                                            type={field.includes('secret') ? 'password' : 'text'}
-                                            value={formData[field] || ''}
-                                            onChange={e => setFormData({ ...formData, [field]: e.target.value })}
-                                            placeholder={field}
+                                            value={formData.sp_entity_id}
+                                            onChange={e => handleFieldChange('sp_entity_id', e.target.value)}
+                                            placeholder={`${window.location.origin}/saml/metadata`}
                                         />
-                                    )}
-                                </div>
-                            ))}
+                                    </div>
+                                </>
+                            )}
                         </>
                     )}
                 </div>
@@ -325,7 +417,7 @@ function AddProviderDialog({ presets, onAdd }: {
                     </Button>
                     <Button
                         onClick={handleSubmit}
-                        disabled={!preset || !formData.name}
+                        disabled={preset === undefined || !formData.name}
                     >
                         Erstellen
                     </Button>
@@ -347,25 +439,37 @@ function SSOAdminPage() {
     const { data: presets, isLoading: loadingPresets } = usePresets();
     const { data: selectedProvider } = useProviderDetails(selectedProviderId);
 
-    // Mutations
+    // Mutations - all use SSOProviderResponse (validated Zod type)
     const createMutation = useMutation({
-        mutationFn: async (data: any) => {
+        mutationFn: async (data: SSOProviderCreateRequest): Promise<SSOProviderResponse> => {
             const response = await api.post('/api/v1/sso/providers', data);
-            return response.data;
+            // Runtime validation of API response with detailed errors
+            const result = validateProviderResponse(response.data);
+            if (!result.success) {
+                console.error('[SSO] Invalid create response:', result.error);
+                throw new Error(`Ungueltige Server-Antwort: ${result.error}`);
+            }
+            return result.data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['sso', 'providers'] });
             toast({ title: 'Provider erstellt', description: 'Der SSO-Provider wurde erfolgreich erstellt.' });
         },
-        onError: () => {
-            toast({ title: 'Fehler', description: 'Provider konnte nicht erstellt werden.', variant: 'destructive' });
+        onError: (error: Error) => {
+            toast({ title: 'Fehler', description: error.message || 'Provider konnte nicht erstellt werden.', variant: 'destructive' });
         },
     });
 
     const updateMutation = useMutation({
-        mutationFn: async ({ id, data }: { id: string; data: any }) => {
+        mutationFn: async ({ id, data }: { id: string; data: SSOProviderUpdate }): Promise<SSOProviderResponse> => {
             const response = await api.patch(`/api/v1/sso/providers/${id}`, data);
-            return response.data;
+            // Runtime validation of API response with detailed errors
+            const result = validateProviderResponse(response.data);
+            if (!result.success) {
+                console.error('[SSO] Invalid update response:', result.error);
+                throw new Error(`Ungueltige Server-Antwort: ${result.error}`);
+            }
+            return result.data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['sso', 'providers'] });
@@ -384,9 +488,15 @@ function SSOAdminPage() {
     });
 
     const setPrimaryMutation = useMutation({
-        mutationFn: async (id: string) => {
+        mutationFn: async (id: string): Promise<SSOProviderResponse> => {
             const response = await api.post(`/api/v1/sso/providers/${id}/set-primary`);
-            return response.data;
+            // Runtime validation of API response with detailed errors
+            const result = validateProviderResponse(response.data);
+            if (!result.success) {
+                console.error('[SSO] Invalid setPrimary response:', result.error);
+                throw new Error(`Ungueltige Server-Antwort: ${result.error}`);
+            }
+            return result.data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['sso', 'providers'] });

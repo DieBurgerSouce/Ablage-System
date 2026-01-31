@@ -1030,8 +1030,8 @@ class FinanceService(DocumentServiceBase):
             versicherungsnummer=extracted_data.get("versicherungsnummer"),
             vertragsnummer=extracted_data.get("vertragsnummer"),
             tags=[tag.name for tag in doc.tags] if doc.tags else [],
-            thumbnail_url=None,  # TODO: Generate if needed
-            preview_url=None,  # TODO: Generate if needed
+            thumbnail_url=self._get_thumbnail_url(doc),
+            preview_url=self._get_preview_url(doc),
             # Anomalie-Felder (Enterprise Feature)
             has_anomalies=self._extract_has_anomalies(extracted_data),
             anomaly_count=self._extract_anomaly_count(extracted_data),
@@ -1064,6 +1064,24 @@ class FinanceService(DocumentServiceBase):
             if score is not None:
                 return round(float(score), 3)
         return None
+
+    def _get_thumbnail_url(self, doc: Document) -> Optional[str]:
+        """Generiert Thumbnail-URL fuer Dokument."""
+        if not doc.storage_path:
+            return None
+
+        # Thumbnail-URL basiert auf Dokument-ID und Storage-Path
+        # Format: /api/v1/documents/{id}/thumbnail
+        return f"/api/v1/documents/{doc.id}/thumbnail"
+
+    def _get_preview_url(self, doc: Document) -> Optional[str]:
+        """Generiert Preview-URL fuer Dokument."""
+        if not doc.storage_path:
+            return None
+
+        # Preview-URL basiert auf Dokument-ID
+        # Format: /api/v1/documents/{id}/preview
+        return f"/api/v1/documents/{doc.id}/preview"
 
     # =========================================================================
     # CRUD Methods

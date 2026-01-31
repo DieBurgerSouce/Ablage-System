@@ -29,10 +29,11 @@ const DropdownMenuSubTrigger = React.forwardRef<
             inset && "pl-8",
             className
         )}
+        aria-haspopup="menu"
         {...props}
     >
         {children}
-        <ChevronRight className="ml-auto h-4 w-4" />
+        <ChevronRight className="ml-auto h-4 w-4" aria-hidden="true" />
     </DropdownMenuPrimitive.SubTrigger>
 ))
 DropdownMenuSubTrigger.displayName =
@@ -97,13 +98,15 @@ const DropdownMenuCheckboxItem = React.forwardRef<
     <DropdownMenuPrimitive.CheckboxItem
         ref={ref}
         className={cn(
-            "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+            "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 pl-8",
             className
         )}
         checked={checked}
+        role="menuitemcheckbox"
+        aria-checked={checked}
         {...props}
     >
-        <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+        <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center" aria-hidden="true">
             <DropdownMenuPrimitive.ItemIndicator>
                 <Check className="h-4 w-4" />
             </DropdownMenuPrimitive.ItemIndicator>
@@ -121,12 +124,13 @@ const DropdownMenuRadioItem = React.forwardRef<
     <DropdownMenuPrimitive.RadioItem
         ref={ref}
         className={cn(
-            "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+            "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 pl-8",
             className
         )}
+        role="menuitemradio"
         {...props}
     >
-        <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+        <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center" aria-hidden="true">
             <DropdownMenuPrimitive.ItemIndicator>
                 <Circle className="h-2 w-2 fill-current" />
             </DropdownMenuPrimitive.ItemIndicator>

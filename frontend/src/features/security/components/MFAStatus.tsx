@@ -267,7 +267,7 @@ Generiert am: ${new Date().toLocaleString('de-DE')}
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Warnung</AlertTitle>
               <AlertDescription>
-                Nach der Deaktivierung ist Ihr Konto nur noch durch Ihr Passwort geschuetzt.
+                Nach der Deaktivierung ist Ihr Konto nur noch durch Ihr Passwort geschützt.
               </AlertDescription>
             </Alert>
             <Input

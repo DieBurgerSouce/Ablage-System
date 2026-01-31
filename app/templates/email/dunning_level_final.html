@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Letzte Mahnung vor Inkasso</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border: 2px solid #7f1d1d;
+        }
+        h1 {
+            color: #7f1d1d;
+            font-size: 24px;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #7f1d1d;
+            padding-bottom: 10px;
+            text-transform: uppercase;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background: #fef2f2;
+            font-weight: bold;
+            color: #7f1d1d;
+        }
+        .amount {
+            text-align: right;
+            font-family: 'Courier New', monospace;
+        }
+        .total-row {
+            background: #fee2e2;
+            font-weight: bold;
+            color: #7f1d1d;
+        }
+        .payment-info {
+            background: #fee2e2;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+            border-left: 4px solid #7f1d1d;
+        }
+        .deadline {
+            color: #7f1d1d;
+            font-weight: bold;
+            text-decoration: underline;
+        }
+        .bank-details {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 6px;
+        }
+        .bank-details dt {
+            font-weight: bold;
+            margin-top: 8px;
+        }
+        .bank-details dd {
+            margin: 2px 0 0 0;
+            font-family: 'Courier New', monospace;
+        }
+        .warning-box {
+            background: #7f1d1d;
+            color: #fff;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .warning-box h2 {
+            margin: 0 0 10px 0;
+            font-size: 18px;
+        }
+        .legal-notice {
+            margin-top: 30px;
+            padding: 15px;
+            background: #fef2f2;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #7f1d1d;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 13px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Letzte Mahnung vor Inkasso</h1>
+
+        <p>Sehr geehrte Damen und Herren,</p>
+
+        <p>
+            trotz mehrfacher Mahnungen ist die nachstehend aufgefuehrte Forderung
+            noch immer nicht beglichen. Wir sehen uns daher gezwungen, Ihnen
+            diese <strong>letzte Mahnung</strong> zu senden.
+        </p>
+
+        <table>
+            <tr>
+                <th>Position</th>
+                <th class="amount">Betrag</th>
+            </tr>
+            <tr>
+                <td>Rechnung {{ data.invoice_number }} vom {{ data.invoice_date | date }}</td>
+                <td class="amount">{{ data.outstanding_amount | currency }}</td>
+            </tr>
+            {% if data.dunning_fee > 0 %}
+            <tr>
+                <td>Mahngebuehr (Letzte Mahnung)</td>
+                <td class="amount">{{ data.dunning_fee | currency }}</td>
+            </tr>
+            {% endif %}
+            {% if data.interest_amount > 0 %}
+            <tr>
+                <td>Verzugszinsen ({{ data.days_overdue }} Tage, 9% p.a.)</td>
+                <td class="amount">{{ data.interest_amount | currency }}</td>
+            </tr>
+            {% endif %}
+            <tr class="total-row">
+                <td>GESAMTBETRAG</td>
+                <td class="amount">{{ data.total_amount | currency }}</td>
+            </tr>
+        </table>
+
+        <div class="warning-box">
+            <h2>LETZTE FRIST: {{ data.payment_deadline | date }}</h2>
+            <p>
+                Sollte der Betrag bis zu diesem Datum nicht auf unserem Konto
+                eingegangen sein, werden wir die Forderung <strong>ohne weitere
+                Ankuendigung</strong> an ein Inkassounternehmen uebergeben.
+            </p>
+        </div>
+
+        <div class="payment-info">
+            <p>
+                Zur Vermeidung weiterer Kosten zahlen Sie bitte
+                <strong>{{ data.total_amount | currency }}</strong>
+                <strong>unverzueglich</strong>, spaetestens bis zum
+                <span class="deadline">{{ data.payment_deadline | date }}</span>.
+            </p>
+        </div>
+
+        <div class="bank-details">
+            <strong>Bankverbindung:</strong>
+            <dl>
+                <dt>IBAN:</dt>
+                <dd>{{ data.company_iban }}</dd>
+                <dt>BIC:</dt>
+                <dd>{{ data.company_bic }}</dd>
+                <dt>Bank:</dt>
+                <dd>{{ data.company_bank_name }}</dd>
+                <dt>Verwendungszweck:</dt>
+                <dd>{{ data.payment_reference }}</dd>
+            </dl>
+        </div>
+
+        <div class="legal-notice">
+            <strong>Rechtlicher Hinweis:</strong>
+            Bei Uebergabe an ein Inkassounternehmen oder bei gerichtlicher
+            Geltendmachung entstehen Ihnen erhebliche weitere Kosten
+            (Inkassogebuehren, Gerichtskosten, Rechtsanwaltskosten).
+            Diese koennen den Forderungsbetrag um 30-50% erhoehen.
+            Vermeiden Sie diese Kosten durch sofortige Zahlung.
+        </div>
+
+        <p>Mit freundlichen Gruessen</p>
+        <p><strong>{{ data.company_name }}</strong></p>
+
+        <div class="footer">
+            Bei Fragen: Tel. {{ data.contact_phone }} | {{ data.contact_email }}
+        </div>
+    </div>
+</body>
+</html>

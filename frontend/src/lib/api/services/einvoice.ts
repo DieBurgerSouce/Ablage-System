@@ -42,7 +42,13 @@ export interface ValidationError {
     ruleId?: string;
 }
 
-/** Validation Warning */
+/**
+ * Validation Warning
+ *
+ * Note: Warnings don't have severity in the API response,
+ * but we normalize them to have severity: 'warning' in the frontend
+ * for consistent handling with ValidationError.
+ */
 export interface ValidationWarning {
     code: string;
     location: string;
@@ -149,7 +155,7 @@ export interface ExtractedInvoiceData {
     currency?: string;
     paymentReference?: string;
     buyerReference?: string; // BT-10 Leitweg-ID
-    lineItems?: LineItem[];
+    lineItems: LineItem[]; // Always array (empty if no items) - consistent nullish coalescing
 }
 
 /** Line Item */
@@ -162,6 +168,138 @@ export interface LineItem {
 }
 
 // =============================================================================
+// API RESPONSE TYPES (snake_case from backend)
+// =============================================================================
+
+/** Raw API response for parse endpoint */
+interface ParseApiResponse {
+    success: boolean;
+    format: string | null;
+    profile: string | null;
+    version: string | null;
+    invoice_data: RawInvoiceData | null;
+    xml_content: string | null;
+    errors: string[];
+}
+
+/** Raw invoice data from API (snake_case) */
+interface RawInvoiceData {
+    invoice_number?: string;
+    invoice_date?: string;
+    payment_due_date?: string;
+    sender?: string;
+    sender_address?: string;
+    sender_city?: string;
+    sender_postal_code?: string;
+    sender_country?: string;
+    sender_vat_id?: string;
+    recipient?: string;
+    recipient_address?: string;
+    recipient_city?: string;
+    recipient_postal_code?: string;
+    recipient_country?: string;
+    recipient_vat_id?: string;
+    net_amount?: number;
+    vat_amount?: number;
+    gross_amount?: number;
+    vat_rate?: number;
+    currency?: string;
+    payment_reference?: string;
+    buyer_reference?: string;
+    line_items?: RawLineItem[];
+}
+
+/** Raw line item from API */
+interface RawLineItem {
+    description: string;
+    quantity: number;
+    unit_price: number;
+    total_price: number;
+    vat_rate?: number;
+}
+
+/** Raw validation response from API */
+interface ValidationApiResponse {
+    valid: boolean;
+    validator_used: string;
+    validated_at: string;
+    schema_valid: boolean;
+    schematron_valid: boolean;
+    pdf_a_compliant: boolean | null;
+    errors?: RawValidationError[];
+    warnings?: RawValidationWarning[];
+    error_count: number;
+    warning_count: number;
+}
+
+/** Raw validation error from API */
+interface RawValidationError {
+    code: string;
+    location: string;
+    message: string;
+    severity: 'fatal' | 'error' | 'warning' | 'info';
+    rule_id?: string;
+}
+
+/** Raw validation warning from API */
+interface RawValidationWarning {
+    code: string;
+    location: string;
+    message: string;
+}
+
+/** Raw formats response from API */
+interface FormatsApiResponse {
+    formats?: RawSupportedFormat[];
+    default_format: string;
+    default_profile: string;
+}
+
+/** Raw supported format from API */
+interface RawSupportedFormat {
+    id: string;
+    name: string;
+    description: string;
+    supported_profiles: string[];
+    b2g_compatible: boolean;
+}
+
+/** Raw status response from API */
+interface StatusApiResponse {
+    has_einvoice: boolean;
+    document_id: string;
+    einvoice_id?: string;
+    format?: string;
+    profile?: string;
+    version?: string;
+    is_valid?: boolean;
+    was_generated?: boolean;
+    was_extracted?: boolean;
+    leitweg_id?: string;
+    validation_summary?: {
+        error_count: number;
+        warning_count: number;
+    };
+    created_at?: string;
+}
+
+/** Raw Mustang health response from API */
+interface MustangHealthApiResponse {
+    status: 'healthy' | 'unavailable' | 'error';
+    service: string;
+    available: boolean;
+    mustang_version?: string;
+    java_version?: string;
+    features?: {
+        xrechnung_ubl: boolean;
+        kosit_validation: boolean;
+        pdf_extraction: boolean;
+    };
+    error?: string;
+    message?: string;
+}
+
+// =============================================================================
 // API SERVICE
 // =============================================================================
 
@@ -170,6 +308,9 @@ class EInvoiceService {
 
     /**
      * Parse E-Invoice (ZUGFeRD PDF or XRechnung XML)
+     *
+     * Note: apiClient.post generic specifies the RAW API response type (snake_case),
+     * then transformParseResponse converts to the camelCase frontend type.
      */
     async parse(
         file: File,
@@ -178,7 +319,9 @@ class EInvoiceService {
         const formData = new FormData();
         formData.append('file', file);
 
-        const response = await apiClient.post<EInvoiceParseResponse>(
+        // Generic type is ParseApiResponse (raw snake_case from backend)
+        // NOT EInvoiceParseResponse (which is the transformed camelCase type)
+        const response = await apiClient.post<ParseApiResponse>(
             `${this.basePath}/parse`,
             formData,
             {
@@ -247,7 +390,7 @@ class EInvoiceService {
         const formData = new FormData();
         formData.append('file', file);
 
-        const response = await apiClient.post<any>(
+        const response = await apiClient.post<ValidationApiResponse>(
             `${this.basePath}/validate`,
             formData,
             {
@@ -267,7 +410,7 @@ class EInvoiceService {
         documentId: string,
         validator: ValidatorType = 'AUTO'
     ): Promise<EInvoiceValidationResponse> {
-        const response = await apiClient.post<any>(
+        const response = await apiClient.post<ValidationApiResponse>(
             `${this.basePath}/validate`,
             null,
             {
@@ -286,7 +429,7 @@ class EInvoiceService {
      * Get supported formats
      */
     async getFormats(): Promise<EInvoiceFormatsResponse> {
-        const response = await apiClient.get<any>(`${this.basePath}/formats`);
+        const response = await apiClient.get<FormatsApiResponse>(`${this.basePath}/formats`);
         return this.transformFormatsResponse(response.data);
     }
 
@@ -294,7 +437,7 @@ class EInvoiceService {
      * Get E-Invoice status for document
      */
     async getStatus(documentId: string): Promise<EInvoiceStatus> {
-        const response = await apiClient.get<any>(`${this.basePath}/${documentId}`);
+        const response = await apiClient.get<StatusApiResponse>(`${this.basePath}/${documentId}`);
         return this.transformStatusResponse(response.data);
     }
 
@@ -313,7 +456,7 @@ class EInvoiceService {
      * Check Mustang service health
      */
     async checkMustangHealth(): Promise<MustangHealthStatus> {
-        const response = await apiClient.get<any>(`${this.basePath}/health/mustang`);
+        const response = await apiClient.get<MustangHealthApiResponse>(`${this.basePath}/health/mustang`);
         return this.transformMustangHealthResponse(response.data);
     }
 
@@ -321,7 +464,19 @@ class EInvoiceService {
     // RESPONSE TRANSFORMERS (snake_case -> camelCase)
     // =============================================================================
 
-    private transformParseResponse(data: any): EInvoiceParseResponse {
+    private transformParseResponse(data: ParseApiResponse | null | undefined): EInvoiceParseResponse {
+        // Defensive null check - prevent crash if API returns invalid data
+        if (!data) {
+            return {
+                success: false,
+                format: null,
+                profile: null,
+                version: null,
+                invoiceData: null,
+                xmlContent: null,
+                errors: ['Ungueltige Server-Antwort'],
+            };
+        }
         return {
             success: data.success,
             format: data.format,
@@ -329,11 +484,11 @@ class EInvoiceService {
             version: data.version,
             invoiceData: data.invoice_data ? this.transformInvoiceData(data.invoice_data) : null,
             xmlContent: data.xml_content,
-            errors: data.errors || [],
+            errors: data.errors ?? [],
         };
     }
 
-    private transformInvoiceData(data: any): ExtractedInvoiceData {
+    private transformInvoiceData(data: RawInvoiceData): ExtractedInvoiceData {
         return {
             invoiceNumber: data.invoice_number,
             invoiceDate: data.invoice_date,
@@ -357,17 +512,34 @@ class EInvoiceService {
             currency: data.currency,
             paymentReference: data.payment_reference,
             buyerReference: data.buyer_reference,
-            lineItems: data.line_items?.map((item: any) => ({
+            // Consistent nullish coalescing - always return empty array (not undefined)
+            // This matches errors/warnings patterns and allows safe .map() calls
+            lineItems: data.line_items?.map(item => ({
                 description: item.description,
                 quantity: item.quantity,
                 unitPrice: item.unit_price,
                 totalPrice: item.total_price,
                 vatRate: item.vat_rate,
-            })),
+            })) ?? [],
         };
     }
 
-    private transformValidationResponse(data: any): EInvoiceValidationResponse {
+    private transformValidationResponse(data: ValidationApiResponse | null | undefined): EInvoiceValidationResponse {
+        // Defensive null check - prevent crash if API returns invalid data
+        if (!data) {
+            return {
+                valid: false,
+                validatorUsed: 'unknown',
+                validatedAt: new Date().toISOString(),
+                schemaValid: false,
+                schematronValid: false,
+                pdfACompliant: null,
+                errors: [{ code: 'INTERNAL', location: '', message: 'Ungueltige Server-Antwort', severity: 'error' }],
+                warnings: [],
+                errorCount: 1,
+                warningCount: 0,
+            };
+        }
         return {
             valid: data.valid,
             validatorUsed: data.validator_used,
@@ -375,39 +547,44 @@ class EInvoiceService {
             schemaValid: data.schema_valid,
             schematronValid: data.schematron_valid,
             pdfACompliant: data.pdf_a_compliant,
-            errors: data.errors?.map((e: any) => ({
+            errors: data.errors?.map((e: RawValidationError) => ({
                 code: e.code,
                 location: e.location,
                 message: e.message,
                 severity: e.severity,
                 ruleId: e.rule_id,
-            })) || [],
-            warnings: data.warnings?.map((w: any) => ({
+            })) ?? [],
+            // Warnings are normalized to ValidationError with severity: 'warning'
+            // This allows consistent UI rendering for both errors and warnings
+            // Note: Backend may include rule_id in warnings for KOSIT validation
+            warnings: data.warnings?.map((w: RawValidationWarning & { rule_id?: string }): ValidationError => ({
                 code: w.code,
                 location: w.location,
                 message: w.message,
-                severity: 'warning' as const,
-            })) || [],
+                severity: 'warning', // Hardcoded as warnings always have 'warning' severity
+                ruleId: w.rule_id, // Include ruleId if backend provides it
+            })) ?? [],
             errorCount: data.error_count,
             warningCount: data.warning_count,
         };
     }
 
-    private transformFormatsResponse(data: any): EInvoiceFormatsResponse {
+    private transformFormatsResponse(data: FormatsApiResponse): EInvoiceFormatsResponse {
         return {
-            formats: data.formats?.map((f: any) => ({
+            // Type annotation removed - TypeScript infers from FormatsApiResponse.formats
+            formats: data.formats?.map(f => ({
                 id: f.id,
                 name: f.name,
                 description: f.description,
                 supportedProfiles: f.supported_profiles,
                 b2gCompatible: f.b2g_compatible,
-            })) || [],
+            })) ?? [],
             defaultFormat: data.default_format,
             defaultProfile: data.default_profile,
         };
     }
 
-    private transformStatusResponse(data: any): EInvoiceStatus {
+    private transformStatusResponse(data: StatusApiResponse): EInvoiceStatus {
         return {
             hasEinvoice: data.has_einvoice,
             documentId: data.document_id,
@@ -427,7 +604,7 @@ class EInvoiceService {
         };
     }
 
-    private transformMustangHealthResponse(data: any): MustangHealthStatus {
+    private transformMustangHealthResponse(data: MustangHealthApiResponse): MustangHealthStatus {
         return {
             status: data.status,
             service: data.service,

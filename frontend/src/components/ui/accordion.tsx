@@ -6,6 +6,14 @@ import { ChevronDown } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Accordion - Collapsible content sections
+ *
+ * WCAG 2.1 AA Compliance:
+ * - Radix UI handles aria-expanded, aria-controls automatically
+ * - AccordionTrigger receives focus and is keyboard navigable
+ * - AccordionContent is announced properly by screen readers
+ */
 const Accordion = AccordionPrimitive.Root
 
 const AccordionItem = React.forwardRef<
@@ -24,17 +32,22 @@ const AccordionTrigger = React.forwardRef<
   React.ElementRef<typeof AccordionPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger>
 >(({ className, children, ...props }, ref) => (
-  <AccordionPrimitive.Header className="flex">
+  <AccordionPrimitive.Header className="flex" asChild={false}>
     <AccordionPrimitive.Trigger
       ref={ref}
       className={cn(
         "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline [&[data-state=open]>svg]:rotate-180",
+        // Focus visible for keyboard navigation (WCAG 2.4.7)
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         className
       )}
       {...props}
     >
       {children}
-      <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+      <ChevronDown
+        className="h-4 w-4 shrink-0 transition-transform duration-200"
+        aria-hidden="true"
+      />
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 ))
@@ -47,6 +60,7 @@ const AccordionContent = React.forwardRef<
   <AccordionPrimitive.Content
     ref={ref}
     className="overflow-hidden text-sm transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
+    // Radix handles aria-hidden based on state
     {...props}
   >
     <div className={cn("pb-4 pt-0", className)}>{children}</div>

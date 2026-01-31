@@ -663,7 +663,31 @@ class RetentionService:
 
         sent_count = 0
         for archive in archives:
-            # TODO: Tatsaechliche Benachrichtigung senden (Slack, Email, etc.)
+            # Send notification via Slack and/or Email
+            try:
+                from app.services.slack_service import SlackService, SlackNotificationType, SlackMessagePriority
+
+                slack = SlackService()
+                if slack.is_enabled:
+                    days_remaining = (archive.retention_expires_at - datetime.utcnow()).days if archive.retention_expires_at else 0
+                    await slack.send_notification(
+                        notification_type=SlackNotificationType.SYSTEM_ALERT,
+                        title="Aufbewahrungsfrist-Erinnerung",
+                        message=f"Archiv {archive.archive_name or str(archive.id)[:8]} erreicht Ablaufdatum in {days_remaining} Tagen.",
+                        priority=SlackMessagePriority.NORMAL if days_remaining > 30 else SlackMessagePriority.HIGH,
+                        context={
+                            "archive_id": str(archive.id),
+                            "archive_name": archive.archive_name,
+                            "expires_at": archive.retention_expires_at.isoformat() if archive.retention_expires_at else None,
+                            "company_id": str(company_id),
+                        }
+                    )
+            except Exception as notification_error:
+                logger.warning(
+                    "retention_reminder_notification_failed",
+                    archive_id=str(archive.id),
+                    error_type=type(notification_error).__name__
+                )
 
             # Markiere als gesendet
             archive.retention_reminder_sent = True

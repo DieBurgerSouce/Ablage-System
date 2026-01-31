@@ -4,7 +4,7 @@
  * Hauptkomponente fuer die Side-by-Side Dokumentenvergleichsansicht.
  */
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   FileText,
   Percent,
@@ -13,6 +13,7 @@ import {
   ChevronDown,
   ChevronUp,
   Download,
+  Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +28,7 @@ import {
 import { cn } from '@/lib/utils';
 import type { DiffReport } from '../types';
 import { COMPARISON_TYPE_LABELS } from '../types';
+import { useCompareExport } from '../hooks';
 import { FieldDiffTable } from './FieldDiffTable';
 import { ComparisonHighlighter } from './ComparisonHighlighter';
 
@@ -34,7 +36,6 @@ interface DocumentCompareViewProps {
   report: DiffReport;
   text1?: string;
   text2?: string;
-  onExportPdf?: () => void;
 }
 
 function SimilarityMeter({ value, label }: { value: number; label: string }) {
@@ -110,11 +111,15 @@ export function DocumentCompareView({
   report,
   text1 = '',
   text2 = '',
-  onExportPdf,
 }: DocumentCompareViewProps) {
   const [recommendationsOpen, setRecommendationsOpen] = useState(true);
+  const exportContainerRef = useRef<HTMLDivElement>(null);
 
   const { comparisonResult, document1Info, document2Info, recommendations } = report;
+
+  // PDF Export Hook
+  const exportFilename = `vergleich_${document1Info.filename}_${document2Info.filename}`;
+  const { exportToPdf, isExporting } = useCompareExport(exportContainerRef, exportFilename);
 
   const hasCriticalChanges = comparisonResult.fieldChanges.some(
     (change) => change.significance === 'critical'
@@ -125,7 +130,7 @@ export function DocumentCompareView({
   ).length;
 
   return (
-    <div className="space-y-6">
+    <div ref={exportContainerRef} className="space-y-6">
       {/* Zusammenfassung */}
       <Card className={cn(hasCriticalChanges && 'border-red-500')}>
         <CardHeader>
@@ -137,12 +142,14 @@ export function DocumentCompareView({
                 {COMPARISON_TYPE_LABELS[comparisonResult.comparisonType]}
               </Badge>
             </CardTitle>
-            {onExportPdf && (
-              <Button variant="outline" size="sm" onClick={onExportPdf}>
+            <Button variant="outline" size="sm" onClick={exportToPdf} disabled={isExporting}>
+              {isExporting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
                 <Download className="h-4 w-4 mr-2" />
-                PDF exportieren
-              </Button>
-            )}
+              )}
+              PDF exportieren
+            </Button>
           </div>
         </CardHeader>
         <CardContent>

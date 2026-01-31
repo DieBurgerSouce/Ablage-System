@@ -527,7 +527,7 @@ def collect_template_stats(self) -> Dict[str, Any]:
     import asyncio
 
     async def _collect_stats():
-        from app.db.models import DocumentTemplate, Document
+        from app.db.models import DocumentTemplate, Document, GeneratedDocument
 
         result = {
             "collected_at": datetime.now(timezone.utc).isoformat(),
@@ -576,10 +576,50 @@ def collect_template_stats(self) -> Dict[str, Any]:
             )
             result["total_renders_week"] = week_renders.scalar() or 0
 
-            # Note: most_used_templates und error_rate würden komplexere
-            # Queries benötigen und sind hier als Platzhalter
-            result["most_used_templates"] = []  # TODO: Implementieren
-            result["error_rate"] = 0.0  # TODO: Aus Error-Logs berechnen
+            # Top 10 meist genutzte Templates (letzte 30 Tage)
+            month_start = today_start - timedelta(days=30)
+            most_used_query = await db.execute(
+                select(
+                    GeneratedDocument.template_id,
+                    DocumentTemplate.name,
+                    func.count(GeneratedDocument.id).label("render_count"),
+                )
+                .join(DocumentTemplate, GeneratedDocument.template_id == DocumentTemplate.id)
+                .where(GeneratedDocument.created_at >= month_start)
+                .group_by(GeneratedDocument.template_id, DocumentTemplate.name)
+                .order_by(func.count(GeneratedDocument.id).desc())
+                .limit(10)
+            )
+            result["most_used_templates"] = [
+                {
+                    "template_id": str(row.template_id),
+                    "name": row.name,
+                    "render_count": row.render_count,
+                }
+                for row in most_used_query.all()
+            ]
+
+            # Error-Rate: Generierungen ohne storage_path (fehlgeschlagen) vs. alle
+            total_generated = await db.execute(
+                select(func.count()).select_from(GeneratedDocument).where(
+                    GeneratedDocument.created_at >= month_start
+                )
+            )
+            total_count = total_generated.scalar() or 0
+
+            failed_generated = await db.execute(
+                select(func.count()).select_from(GeneratedDocument).where(
+                    and_(
+                        GeneratedDocument.created_at >= month_start,
+                        GeneratedDocument.storage_path.is_(None),
+                    )
+                )
+            )
+            failed_count = failed_generated.scalar() or 0
+
+            result["error_rate"] = round(
+                (failed_count / total_count * 100) if total_count > 0 else 0.0, 2
+            )
 
         logger.info(
             "template_stats_collected",

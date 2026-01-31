@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import DOMPurify from 'dompurify';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -200,15 +201,15 @@ export function SearchResultCard({ result, className }: SearchResultCardProps) {
 }
 
 /**
- * Sanitize HTML highlight to only allow safe tags.
- * The backend wraps matches in <mark> tags.
+ * Sanitize HTML highlight using DOMPurify.
+ * SECURITY: Only allow <mark> tags from backend search highlights.
+ * Previous custom regex was vulnerable to XSS via event handlers like <mark onclick="...">.
  */
 function sanitizeHighlight(html: string): string {
-    // Only allow <mark> and </mark> tags, escape everything else
-    return html
-        .replace(/<(?!\/?(mark))[^>]*>/gi, '')
-        .replace(/</g, '&lt;')
-        .replace(/&lt;(\/?)mark&gt;/gi, '<$1mark>');
+    return DOMPurify.sanitize(html, {
+        ALLOWED_TAGS: ['mark'],
+        ALLOWED_ATTR: [],
+    });
 }
 
 export default SearchResultCard;

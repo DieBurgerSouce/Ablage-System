@@ -9,6 +9,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import {
   Dialog,
   DialogContent,
@@ -346,7 +347,7 @@ export function GenerateDocumentDialog({
               {previewHtml && (
                 <div
                   className="border rounded-md p-4 bg-white min-h-[400px] max-h-[500px] overflow-auto"
-                  dangerouslySetInnerHTML={{ __html: previewHtml }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(previewHtml) }}
                 />
               )}
             </TabsContent>

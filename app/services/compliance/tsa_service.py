@@ -289,9 +289,26 @@ class TimestampAuthorityService:
             )
             return response, None
 
-        # TODO: Credentials aus Vault laden wenn auth_type != "none"
+        # Credentials aus Vault laden wenn auth_type != "none"
         auth_username = None
         auth_password = None
+
+        if config.auth_type and config.auth_type != "none":
+            credentials = await self._load_tsa_credentials_from_vault(
+                company_id=company_id,
+                config_id=config.id,
+                config_name=config.name,
+            )
+            if credentials:
+                auth_username = credentials.get("username")
+                auth_password = credentials.get("password")
+            else:
+                logger.warning(
+                    "tsa_credentials_not_found",
+                    config_id=str(config.id),
+                    auth_type=config.auth_type,
+                )
+                # Fahre ohne Auth fort (einige TSAs erlauben anonyme Anfragen)
 
         # Anfrage durchfuehren
         response = await self.request_timestamp(
@@ -476,6 +493,87 @@ class TimestampAuthorityService:
             return True
 
         return False
+
+    async def _load_tsa_credentials_from_vault(
+        self,
+        company_id: uuid.UUID,
+        config_id: uuid.UUID,
+        config_name: str,
+    ) -> Optional[Dict[str, str]]:
+        """Laedt TSA-Credentials aus HashiCorp Vault.
+
+        Vault-Pfad: secret/data/tsa/{company_id}/{config_name}
+
+        Args:
+            company_id: Firmen-ID fuer Namespace-Isolation
+            config_id: TSA-Config-ID (fuer Logging)
+            config_name: TSA-Config-Name (fuer Vault-Pfad)
+
+        Returns:
+            Dict mit 'username' und 'password' oder None wenn nicht gefunden
+        """
+        try:
+            from app.core.config.vault_client import VaultClient
+
+            vault = VaultClient.get_instance()
+
+            if not vault.is_configured():
+                logger.debug(
+                    "tsa_vault_not_configured",
+                    config_id=str(config_id),
+                )
+                return None
+
+            # Vault-Pfad: tsa/{company_id}/{config_name}
+            # Sanitize config_name fuer Vault-Pfad
+            safe_config_name = "".join(
+                c for c in config_name.lower()
+                if c.isalnum() or c in "-_"
+            )[:64]
+
+            vault_path = f"tsa/{str(company_id)}/{safe_config_name}"
+
+            credentials = vault.get_secret(
+                path=vault_path,
+                mount_point="secret",
+                use_cache=True,  # Credentials werden gecached (5 Min TTL)
+            )
+
+            if credentials and isinstance(credentials, dict):
+                username = credentials.get("username")
+                password = credentials.get("password")
+
+                if username and password:
+                    logger.info(
+                        "tsa_credentials_loaded_from_vault",
+                        config_id=str(config_id),
+                        vault_path=vault_path,
+                    )
+                    return {
+                        "username": username,
+                        "password": password,
+                    }
+
+            logger.warning(
+                "tsa_credentials_incomplete_in_vault",
+                config_id=str(config_id),
+                vault_path=vault_path,
+            )
+            return None
+
+        except ImportError:
+            logger.debug(
+                "tsa_vault_client_not_available",
+                message="VaultClient konnte nicht importiert werden",
+            )
+            return None
+        except Exception as e:
+            logger.warning(
+                "tsa_vault_credentials_load_failed",
+                config_id=str(config_id),
+                **safe_error_log(e),
+            )
+            return None
 
     def _build_tsa_request(
         self,

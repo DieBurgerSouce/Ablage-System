@@ -6,6 +6,7 @@
 
 import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import { logger } from '@/lib/logger';
 import {
   Card,
   CardContent,
@@ -76,7 +77,7 @@ export function DashboardList() {
       await deleteMutation.mutateAsync(deleteId);
       setDeleteId(null);
     } catch (error) {
-      console.error('Fehler beim Löschen:', error);
+      logger.error('Dashboard loeschen fehlgeschlagen', error);
     }
   };
 
@@ -85,7 +86,7 @@ export function DashboardList() {
       const newDashboard = await duplicateMutation.mutateAsync(id);
       navigate({ to: `/dashboards/${newDashboard.id}` });
     } catch (error) {
-      console.error('Fehler beim Duplizieren:', error);
+      logger.error('Dashboard duplizieren fehlgeschlagen', error);
     }
   };
 
@@ -93,7 +94,7 @@ export function DashboardList() {
     try {
       await setFavoriteMutation.mutateAsync(!currentValue);
     } catch (error) {
-      console.error('Fehler beim Setzen des Favoriten:', error);
+      logger.error('Dashboard Favorit setzen fehlgeschlagen', error);
     }
   };
 
@@ -102,7 +103,7 @@ export function DashboardList() {
       const newDashboard = await createFromPresetMutation.mutateAsync(presetId);
       navigate({ to: `/dashboards/${newDashboard.id}` });
     } catch (error) {
-      console.error('Fehler beim Erstellen aus Vorlage:', error);
+      logger.error('Dashboard aus Vorlage erstellen fehlgeschlagen', error);
     }
   };
 

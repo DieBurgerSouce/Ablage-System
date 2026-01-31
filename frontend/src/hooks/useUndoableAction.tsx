@@ -83,14 +83,22 @@ export interface UseUndoableActionReturn {
   ) => Promise<T>;
   /** Macht die letzte Aktion rueckgaengig */
   undo: () => Promise<void>;
+  /** Wiederholt die letzte rueckgaengig gemachte Aktion */
+  redo: () => Promise<void>;
   /** Ob es Aktionen zum Rückgängig machen gibt */
   canUndo: boolean;
+  /** Ob es Aktionen zum Wiederholen gibt */
+  canRedo: boolean;
   /** Der aktuelle Undo-Stack */
   undoStack: UndoableAction[];
-  /** Leert den Undo-Stack */
+  /** Der aktuelle Redo-Stack */
+  redoStack: UndoableAction[];
+  /** Leert den Undo- und Redo-Stack */
   clearStack: () => void;
   /** Ob gerade eine Undo-Operation laeuft */
   isUndoing: boolean;
+  /** Ob gerade eine Redo-Operation laeuft */
+  isRedoing: boolean;
 }
 
 // ==================== Hook ====================
@@ -107,11 +115,14 @@ export function useUndoableAction(
   } = options;
 
   const [undoStack, setUndoStack] = useState<UndoableAction[]>([]);
+  const [redoStack, setRedoStack] = useState<UndoableAction[]>([]);
   const [isUndoing, setIsUndoing] = useState(false);
+  const [isRedoing, setIsRedoing] = useState(false);
   const idCounter = useRef(0);
 
-  // Use ref-based lock to prevent race conditions from rapid undo calls
+  // Use ref-based lock to prevent race conditions from rapid undo/redo calls
   const isUndoingRef = useRef(false);
+  const isRedoingRef = useRef(false);
 
   // Ref fuer aktuellen Stack - verhindert stale closures in Toast-Callbacks
   const undoStackRef = useRef<UndoableAction[]>(undoStack);
@@ -145,11 +156,12 @@ export function useUndoableAction(
         // This allows detecting if stack was modified by other operations
         const capturedMutationId = ++mutationIdRef.current;
 
-        // Add to stack (with size limit)
+        // Add to stack (with size limit) and clear redo stack (new action invalidates redo history)
         setUndoStack((prev) => {
           const newStack = [fullAction as UndoableAction, ...prev];
           return newStack.slice(0, maxStackSize);
         });
+        setRedoStack([]); // Clear redo stack on new action
 
         // Callback
         onExecute?.(fullAction as UndoableAction);
@@ -221,7 +233,7 @@ export function useUndoableAction(
   const undo = useCallback(async () => {
     // Use ref-based lock to prevent race conditions from rapid calls
     // State-based isUndoing can have stale values in quick succession
-    if (undoStack.length === 0 || isUndoingRef.current) return;
+    if (undoStack.length === 0 || isUndoingRef.current || isRedoingRef.current) return;
 
     // Lock immediately using ref (synchronous)
     isUndoingRef.current = true;
@@ -233,8 +245,9 @@ export function useUndoableAction(
       // Execute undo
       await actionToUndo.undo();
 
-      // Only remove from stack on SUCCESS
+      // Only remove from stack on SUCCESS and add to redo stack
       setUndoStack(remainingStack);
+      setRedoStack((prev) => [actionToUndo, ...prev].slice(0, maxStackSize));
 
       // Callback
       onUndo?.(actionToUndo);
@@ -256,19 +269,68 @@ export function useUndoableAction(
       isUndoingRef.current = false;
       setIsUndoing(false);
     }
-  }, [undoStack, onUndo, showToasts]);
+  }, [undoStack, onUndo, showToasts, maxStackSize]);
+
+  const redo = useCallback(async () => {
+    // Use ref-based lock to prevent race conditions from rapid calls
+    if (redoStack.length === 0 || isRedoingRef.current || isUndoingRef.current) return;
+
+    // Lock immediately using ref (synchronous)
+    isRedoingRef.current = true;
+    setIsRedoing(true);
+
+    const [actionToRedo, ...remainingRedoStack] = redoStack;
+
+    try {
+      // Re-execute the action
+      const result = await actionToRedo.execute();
+
+      // Update the action with new result
+      const updatedAction: UndoableAction = {
+        ...actionToRedo,
+        data: result,
+        timestamp: new Date(),
+      };
+
+      // Only move from redo to undo stack on SUCCESS
+      setRedoStack(remainingRedoStack);
+      setUndoStack((prev) => [updatedAction, ...prev].slice(0, maxStackSize));
+
+      // Toast
+      if (showToasts) {
+        toast.success('Wiederholt', {
+          description: actionToRedo.description,
+        });
+      }
+    } catch (error) {
+      // KEEP action in redo stack on failure - allow retry
+      toast.error('Wiederholen fehlgeschlagen - erneut versuchen möglich', {
+        description:
+          error instanceof Error ? error.message : 'Unbekannter Fehler',
+      });
+      // Don't re-throw - let user retry
+    } finally {
+      isRedoingRef.current = false;
+      setIsRedoing(false);
+    }
+  }, [redoStack, showToasts, maxStackSize]);
 
   const clearStack = useCallback(() => {
     setUndoStack([]);
+    setRedoStack([]);
   }, []);
 
   return {
     executeAction,
     undo,
-    canUndo: undoStack.length > 0 && !isUndoing,
+    redo,
+    canUndo: undoStack.length > 0 && !isUndoing && !isRedoing,
+    canRedo: redoStack.length > 0 && !isUndoing && !isRedoing,
     undoStack,
+    redoStack,
     clearStack,
     isUndoing,
+    isRedoing,
   };
 }
 

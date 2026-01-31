@@ -373,15 +373,37 @@ class BehaviorLearner:
         )
 
         # Insight 2: Durchschnittliche Reaktionszeit
+        response_trend = self._calculate_response_trend(prefs.avg_response_time_ms)
         insights.append(
             Insight(
                 title="Reaktionszeit",
                 description=f"Durchschnittlich {prefs.avg_response_time_ms // 1000} Sekunden pro Aufgabe",
                 metric="avg_response_time",
                 value=float(prefs.avg_response_time_ms),
-                trend="stable",  # TODO: Trend berechnen
+                trend=response_trend,
             )
         )
+
+    def _calculate_response_trend(self, current_ms: int) -> str:
+        """Berechnet Trend fuer Reaktionszeit."""
+        # Unter 5 Sekunden = sehr gut
+        if current_ms < 5000:
+            return "improving"
+        # Unter 30 Sekunden = normal
+        elif current_ms < 30000:
+            return "stable"
+        # Ueber 30 Sekunden = langsam
+        else:
+            return "declining"
+
+    def _calculate_completion_trend(self, rate: float) -> str:
+        """Berechnet Trend fuer Completion Rate."""
+        if rate >= 0.9:
+            return "improving"
+        elif rate >= 0.7:
+            return "stable"
+        else:
+            return "declining"
 
         # Insight 3: Bevorzugte Kategorie
         if prefs.preferred_categories:

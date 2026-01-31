@@ -7,6 +7,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { useLocalStorage } from '@/hooks/use-local-storage'
+import { logger } from '@/lib/logger'
 import {
   Tour,
   TourStep,
@@ -88,7 +89,7 @@ export function useTour(options: UseTourOptions = {}): UseTourReturn {
   const startTour = useCallback((tourId: string) => {
     const tour = getTourById(tourId)
     if (!tour) {
-      console.warn(`Tour ${tourId} nicht gefunden`)
+      logger.warn('Tour nicht gefunden', { tourId })
       return
     }
 

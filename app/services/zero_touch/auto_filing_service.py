@@ -163,15 +163,30 @@ class AutoFilingService:
             )
             return None
 
-        # Aktuell haben BusinessEntities noch kein default_folder_id Feld
-        # Dies ist fuer zukuenftige Erweiterung vorbereitet
-        # TODO: Add default_folder_id to BusinessEntity model
+        # Phase 11.1: Nutze default_folder_id wenn vorhanden
+        if entity.default_folder_id:
+            # Lade zugehoerigen Ordner fuer den Namen
+            from app.db.models import Folder
 
-        # Vorschlag: Ordner nach Entity-Name erstellen
+            folder = await db.get(Folder, entity.default_folder_id)
+            if folder:
+                logger.info(
+                    "entity_default_folder_found",
+                    entity_id=str(entity_id),
+                    folder_id=str(folder.id),
+                )
+                return FilingResult(
+                    folder_id=folder.id,
+                    folder_name=folder.name,
+                    confidence=0.98,
+                    reason=f"Dokument wird im Standard-Ordner '{folder.name}' von '{entity.name}' abgelegt",
+                )
+
+        # Fallback: Ordner nach Entity-Name
         folder_name = f"{entity.name}"
 
         return FilingResult(
-            folder_id=None,  # Noch nicht implementiert
+            folder_id=None,
             folder_name=folder_name,
             confidence=0.95,
             reason=f"Dokument gehoert zu Geschaeftspartner '{entity.name}'",
@@ -207,12 +222,43 @@ class AutoFilingService:
             )
             return None
 
-        # Custom Filing Rules sind noch nicht im Company-Model implementiert
-        # Dies ist fuer zukuenftige Erweiterung vorbereitet
-        # TODO: Add filing_rules JSONB field to Company model
-        # Format: {"invoice": {"folder_id": "uuid", "folder_name": "Custom"}}
+        # Phase 11.2: Nutze filing_rules JSONB wenn vorhanden
+        if company.filing_rules and isinstance(company.filing_rules, dict):
+            rule = company.filing_rules.get(classification_type.lower())
 
-        # Vorlaeufig: Keine Custom-Regeln
+            if rule and isinstance(rule, dict):
+                folder_id = rule.get("folder_id")
+                folder_name = rule.get("folder_name")
+                confidence = rule.get("confidence", 0.95)
+
+                if folder_id or folder_name:
+                    # Validiere folder_id wenn vorhanden
+                    valid_folder_id = None
+                    if folder_id:
+                        try:
+                            valid_folder_id = UUID(folder_id) if isinstance(folder_id, str) else folder_id
+                        except ValueError:
+                            logger.warning(
+                                "invalid_folder_id_in_rule",
+                                company_id=str(company_id),
+                                folder_id=str(folder_id),
+                            )
+
+                    logger.info(
+                        "company_filing_rule_matched",
+                        company_id=str(company_id),
+                        classification_type=classification_type,
+                        folder_name=folder_name,
+                    )
+
+                    return FilingResult(
+                        folder_id=valid_folder_id,
+                        folder_name=folder_name or f"Custom-{classification_type}",
+                        confidence=float(confidence),
+                        reason=f"Firmenspezifische Regel: '{classification_type}' -> '{folder_name}'",
+                    )
+
+        # Keine Custom-Regel gefunden
         return None
 
     def _get_default_folder(
@@ -300,10 +346,128 @@ class AutoFilingService:
             new_mapping=new_mapping,
         )
 
-        # TODO: Implement persistent storage of custom mappings
-        # in AppConfig or Company settings
+        # Update global mapping (in-memory)
+        global DEFAULT_FOLDER_MAPPING
+        DEFAULT_FOLDER_MAPPING.update(new_mapping)
 
-        logger.warning(
-            "default_folder_mapping_update_not_yet_implemented",
-            message="Custom Folder Mappings werden erst in zukuenftiger Version unterstuetzt",
+        logger.info(
+            "default_folder_mapping_updated",
+            updated_keys=list(new_mapping.keys()),
         )
+
+    async def save_company_filing_rules(
+        self,
+        company_id: UUID,
+        rules: dict[str, dict[str, any]],
+        db: AsyncSession,
+    ) -> bool:
+        """
+        Speichert firmenspezifische Filing-Regeln persistent.
+
+        Args:
+            company_id: Firmen-ID
+            rules: Dict von Dokumententyp zu Regel {folder_id, folder_name, confidence}
+            db: Datenbank-Session
+
+        Returns:
+            True bei Erfolg
+
+        Example rules:
+            {
+                "invoice": {"folder_id": "uuid...", "folder_name": "Rechnungen/2026", "confidence": 0.95},
+                "contract": {"folder_name": "Vertraege/Aktiv", "confidence": 0.90}
+            }
+        """
+        result = await db.execute(
+            select(Company).where(Company.id == company_id)
+        )
+        company = result.scalar_one_or_none()
+
+        if not company:
+            logger.warning(
+                "company_not_found_for_filing_rules",
+                company_id=str(company_id),
+            )
+            return False
+
+        # Merge mit bestehenden Regeln
+        existing_rules = company.filing_rules or {}
+        if isinstance(existing_rules, dict):
+            existing_rules.update(rules)
+        else:
+            existing_rules = rules
+
+        # Speichern in JSONB-Feld
+        company.filing_rules = existing_rules
+        await db.commit()
+
+        logger.info(
+            "company_filing_rules_saved",
+            company_id=str(company_id),
+            rule_count=len(rules),
+        )
+
+        return True
+
+    async def get_company_filing_rules(
+        self,
+        company_id: UUID,
+        db: AsyncSession,
+    ) -> dict[str, dict[str, any]]:
+        """
+        Laedt firmenspezifische Filing-Regeln.
+
+        Args:
+            company_id: Firmen-ID
+            db: Datenbank-Session
+
+        Returns:
+            Dict von Dokumententyp zu Regel
+        """
+        result = await db.execute(
+            select(Company).where(Company.id == company_id)
+        )
+        company = result.scalar_one_or_none()
+
+        if not company or not company.filing_rules:
+            return {}
+
+        return company.filing_rules if isinstance(company.filing_rules, dict) else {}
+
+    async def delete_company_filing_rule(
+        self,
+        company_id: UUID,
+        document_type: str,
+        db: AsyncSession,
+    ) -> bool:
+        """
+        Loescht eine firmenspezifische Filing-Regel.
+
+        Args:
+            company_id: Firmen-ID
+            document_type: Dokumententyp (z.B. 'invoice')
+            db: Datenbank-Session
+
+        Returns:
+            True bei Erfolg
+        """
+        result = await db.execute(
+            select(Company).where(Company.id == company_id)
+        )
+        company = result.scalar_one_or_none()
+
+        if not company or not company.filing_rules:
+            return False
+
+        if isinstance(company.filing_rules, dict) and document_type in company.filing_rules:
+            del company.filing_rules[document_type]
+            await db.commit()
+
+            logger.info(
+                "company_filing_rule_deleted",
+                company_id=str(company_id),
+                document_type=document_type,
+            )
+            return True
+
+        return False

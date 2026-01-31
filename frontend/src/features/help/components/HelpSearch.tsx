@@ -3,6 +3,7 @@
  */
 
 import { useState } from 'react';
+import DOMPurify from 'dompurify';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -91,7 +92,7 @@ export function HelpSearch({ onSelectArticle }: HelpSearchProps) {
                     {result.highlight && (
                       <span
                         className="text-sm text-muted-foreground line-clamp-2"
-                        dangerouslySetInnerHTML={{ __html: result.highlight }}
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(result.highlight) }}
                       />
                     )}
                     <div className="flex gap-1 flex-wrap">
@@ -161,7 +162,7 @@ export function CompactHelpSearch({ onSelectArticle }: HelpSearchProps) {
               {result.highlight && (
                 <div
                   className="text-xs text-muted-foreground line-clamp-1 mt-1"
-                  dangerouslySetInnerHTML={{ __html: result.highlight }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(result.highlight) }}
                 />
               )}
             </button>

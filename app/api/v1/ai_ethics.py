@@ -10,6 +10,7 @@ REST API fuer KI-Ethik-Layer:
 Feinpoliert und durchdacht - Enterprise AI Ethics.
 """
 
+from datetime import datetime, timezone
 from typing import Dict, Any, List
 from uuid import UUID
 
@@ -260,6 +261,36 @@ async def get_fairness_metrics(
     try:
         report = await bias_detector.detect_bias(company_id, db)
 
+        # Calculate trend based on historical bias reports
+        from app.db.models import BiasReport as BiasReportModel
+        from sqlalchemy import select
+        from datetime import timedelta
+
+        trend = "stable"
+        now = datetime.now(timezone.utc)
+        seven_days_ago = now - timedelta(days=7)
+
+        # Get historical fairness scores from last 7 days
+        history_query = select(BiasReportModel.overall_fairness).where(
+            BiasReportModel.company_id == company_id,
+            BiasReportModel.created_at >= seven_days_ago,
+        ).order_by(BiasReportModel.created_at.asc())
+
+        history_result = await db.execute(history_query)
+        historical_scores = [row[0] for row in history_result.fetchall()]
+
+        if len(historical_scores) >= 2:
+            # Calculate trend from first half vs second half average
+            mid = len(historical_scores) // 2
+            first_half_avg = sum(historical_scores[:mid]) / mid
+            second_half_avg = sum(historical_scores[mid:]) / (len(historical_scores) - mid)
+            delta = second_half_avg - first_half_avg
+
+            if delta > 0.02:
+                trend = "improving"
+            elif delta < -0.02:
+                trend = "degrading"
+
         metrics = {
             "overall_fairness": report.overall_fairness,
             "fairness_level": (
@@ -276,7 +307,7 @@ async def get_fairness_metrics(
                 }
                 for d in report.dimensions
             ],
-            "trend": "stable",  # TODO: Trend basierend auf historischen Daten
+            "trend": trend,
             "last_checked": report.generated_at.isoformat(),
         }
 

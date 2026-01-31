@@ -35,24 +35,34 @@ export type FinanceEventType =
   | 'bulk.progress'
   | 'bulk.completed'
 
+/**
+ * WebSocket event data payload.
+ *
+ * SECURITY NOTE: Additional fields are restricted to safe primitive types
+ * to prevent prototype pollution. Complex data should use explicitly typed fields.
+ */
+interface FinanceEventData {
+  // Explicitly typed known fields
+  documentId?: string
+  documentIds?: string[]
+  year?: string
+  category?: string
+  status?: string
+  progress?: number
+  message?: string
+  deadline?: string
+  daysUntil?: number
+  exportId?: string
+  downloadUrl?: string
+  error?: string
+  // Bounded additional fields (primitives only)
+  [key: string]: string | number | boolean | null | undefined | string[]
+}
+
 export interface FinanceWebSocketEvent {
   type: FinanceEventType
   timestamp: string
-  data: {
-    documentId?: string
-    documentIds?: string[]
-    year?: string
-    category?: string
-    status?: string
-    progress?: number
-    message?: string
-    deadline?: string
-    daysUntil?: number
-    exportId?: string
-    downloadUrl?: string
-    error?: string
-    [key: string]: unknown
-  }
+  data: FinanceEventData
 }
 
 export interface UseFinanceWebSocketOptions {

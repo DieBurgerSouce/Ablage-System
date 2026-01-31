@@ -33,22 +33,85 @@ const isDev = import.meta.env.DEV;
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
+/**
+ * Bounded primitive type for log context values.
+ * Only allows primitive types to prevent oversized nested objects in logs.
+ */
+type LogContextValue = string | number | boolean | null | undefined;
+
+/**
+ * Bounded error type for log context.
+ * Only allows known error properties to prevent DoS via oversized error objects.
+ * P1 Fix (Iteration 12): Previously allowed Record<string, unknown> which could contain 10MB+ objects.
+ * P1 Fix (Iteration 13): cause ist jetzt rekursiv BoundedError statt string (max 3 Ebenen).
+ */
+interface BoundedError {
+  message: string;
+  name?: string;
+  stack?: string;
+  code?: string | number;
+  cause?: BoundedError;  // P1 Fix: Rekursiv fuer nested errors, bounded via depth limit
+}
+
+/**
+ * Log context for structured logging.
+ *
+ * SECURITY NOTE: This interface uses bounded types to:
+ * 1. Prevent prototype pollution via key validation in argsToContext
+ * 2. Prevent oversized log payloads via primitive-only values
+ * 3. Allow explicit error objects only via the 'error' key with bounded type
+ *
+ * Known safe keys are explicitly typed. Additional keys must be primitives only.
+ */
 interface LogContext {
-  [key: string]: unknown;
+  // Known safe context keys (explicitly typed)
+  component?: string;
+  action?: string;
+  documentId?: string;
+  userId?: string;
+  error?: BoundedError; // P1 Fix: Now bounded to known error properties
+  // Additional metadata - primitives only (no nested objects)
+  // This prevents 10MB+ payloads from nested Record<string, unknown>
+  [key: string]: LogContextValue | BoundedError;
 }
 
 /**
  * Formatiert Error-Objekte fuer bessere Lesbarkeit.
+ * Returns a bounded error object to prevent oversized payloads.
+ *
+ * P1 Fix (Iteration 13): Rekursive cause-Extraktion mit max 3 Ebenen Tiefe.
+ * Verhindert Verlust von nested Error.cause Informationen.
+ *
+ * @param error - Der zu formatierende Fehler
+ * @param depth - Aktuelle Rekursionstiefe (intern, max 3)
  */
-function formatError(error: unknown): Record<string, unknown> {
+function formatError(error: unknown, depth = 0): BoundedError {
+  // Depth limit verhindert endlose Rekursion bei zirkulaeren cause-Referenzen
+  const MAX_DEPTH = 3;
+
   if (error instanceof Error) {
+    const errorWithCause = error as Error & { cause?: unknown; code?: string | number };
     return {
       name: error.name,
       message: error.message,
-      stack: error.stack,
+      stack: error.stack?.slice(0, 1000),  // Truncate stack to 1KB
+      code: errorWithCause.code,
+      // P1 Fix: Rekursive cause-Extraktion (max 3 Ebenen)
+      cause: (() => {
+        const c = errorWithCause.cause;
+        if (c instanceof Error && depth < MAX_DEPTH) {
+          return formatError(c, depth + 1);  // Rekursiv mit depth+1
+        }
+        if (typeof c === 'string') {
+          return { message: c.slice(0, 500) };  // String cause als BoundedError
+        }
+        return undefined;
+      })(),
     };
   }
-  return { value: error };
+  // For non-Error values, stringify but truncate to prevent DoS
+  const stringified = typeof error === 'string' ? error : String(error);
+  return { message: stringified.slice(0, 1000) }; // Max 1KB for unknown errors
 }
 
 /**
@@ -70,19 +133,71 @@ function formatLogArgs(level: LogLevel, message: string, ...args: unknown[]): un
 
 /**
  * Konvertiert Log-Args zu Context-Objekt fuer Loki.
+ *
+ * P1 Fix (Iteration 13): DoS Protection fuer Object.assign.
+ * Verhindert Spreaden von riesigen Objekten wie `window` oder `process`.
+ * - Max 10 Keys pro Objekt
+ * - Nur primitive Values (string, number, boolean)
+ * - Arrays werden als JSON-String begrenzt
+ *
+ * P1 Fix (Iteration 14): Key-Whitelist + PII-Blocklist.
+ * - Nur alphanumerische Keys + underscore erlaubt (max 50 chars)
+ * - Blocklist fuer Prototype pollution + sensitive Keys
+ * - Case-insensitive Blocklist-Check fuer PII-Keys
  */
 function argsToContext(...args: unknown[]): Record<string, unknown> | undefined {
   if (args.length === 0) return undefined;
 
   const context: Record<string, unknown> = {};
+  const MAX_KEYS = 10;
+  const MAX_STRING_LENGTH = 500;
+
+  // P1 Fix (Iteration 14): Sicherheits-Pattern und Blocklist
+  // P1 Fix (Iteration 15): Erweitert um Domain-spezifische PII (CLAUDE.md Regel #8)
+  const SAFE_KEY_PATTERN = /^[a-z_][a-z0-9_]{0,49}$/i;  // Alphanumeric + _, max 50 chars
+  const BLOCKLIST = new Set([
+    // Prototype pollution
+    '__proto__', 'constructor', 'prototype', 'hasOwnProperty', 'toString', 'valueOf',
+    // Path disclosure
+    '__dirname', '__filename',
+    // PII/Secrets (case-insensitive check below)
+    'secret', 'password', 'token', 'key', 'apikey', 'api_key', 'auth', 'credential',
+    'iban', 'ssn', 'creditcard', 'credit_card', 'cardnumber', 'card_number',
+    // Domain-specific PII (CLAUDE.md Regel #8: NEVER log customer numbers, IBANs, VAT-IDs)
+    'email', 'phone', 'customernumber', 'customer_number',
+    'suppliernumber', 'supplier_number', 'vatid', 'vat_id',
+    'bic', 'swift', 'accountnumber', 'account_number',
+    'taxid', 'tax_id', 'tin',
+  ]);
 
   args.forEach((arg, index) => {
     if (arg instanceof Error) {
       context.error = formatError(arg);
+    } else if (Array.isArray(arg)) {
+      // Arrays: stringify und truncieren
+      const arrStr = JSON.stringify(arg);
+      context[`arg${index}`] = arrStr.slice(0, MAX_STRING_LENGTH);
     } else if (typeof arg === 'object' && arg !== null) {
-      Object.assign(context, arg);
-    } else {
-      context[`arg${index}`] = arg;
+      // P1 Fix: Nur primitive properties, max 10 keys + Key validation
+      const safeObj = arg as Record<string, unknown>;
+      const safeKeys = Object.keys(safeObj).slice(0, MAX_KEYS);
+      for (const key of safeKeys) {
+        // P1 Fix (Iteration 14): Key-Whitelist + PII-Blocklist
+        const keyLower = key.toLowerCase();
+        if (BLOCKLIST.has(keyLower) || !SAFE_KEY_PATTERN.test(key)) {
+          continue;
+        }
+        const val = safeObj[key];
+        if (typeof val === 'string') {
+          context[key] = val.slice(0, MAX_STRING_LENGTH);
+        } else if (typeof val === 'number' || typeof val === 'boolean') {
+          context[key] = val;
+        }
+        // Nested objects/functions werden ignoriert (DoS prevention)
+      }
+    } else if (arg !== null && arg !== undefined) {
+      // Primitives: stringify und truncieren
+      context[`arg${index}`] = String(arg).slice(0, MAX_STRING_LENGTH);
     }
   });
 

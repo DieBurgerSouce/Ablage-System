@@ -11,6 +11,12 @@ import type { AxiosRequestConfig } from 'axios';
 // Re-export the axios client
 export { apiClient };
 
+// Alias for backwards compatibility - many files import { api } from '@/lib/api'
+export { apiClient as api };
+
+// Re-export error handling utility
+export { handleApiError } from './error-toast-handler';
+
 // Re-export query client
 export { queryClient } from './query-client';
 

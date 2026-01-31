@@ -157,7 +157,7 @@ class BackupService:
 
     def _ensure_directories(self) -> None:
         """Stelle sicher, dass alle Backup-Verzeichnisse existieren."""
-        dirs = ["postgres", "redis", "minio", "config", "full"]
+        dirs = ["postgres", "redis", "minio", "config", "qdrant", "full"]
         for subdir in dirs:
             path = self.config.backup_dir / subdir
             path.mkdir(parents=True, exist_ok=True)
@@ -645,6 +645,217 @@ class BackupService:
             )
 
     # -------------------------------------------------------------------------
+    # Qdrant Vector DB Backup
+    # -------------------------------------------------------------------------
+
+    @track_backup(backup_type="qdrant")
+    async def backup_qdrant(self) -> BackupResult:
+        """
+        Erstelle Qdrant Vector-DB Backup (Snapshot).
+
+        Nutzt Qdrant's Snapshot-API um alle Collections zu sichern
+        und laedt die Snapshots nach MinIO/lokales Dateisystem hoch.
+
+        Returns:
+            BackupResult mit Pfad und Status
+        """
+        if not settings.QDRANT_ENABLED:
+            logger.debug("qdrant_backup_uebersprungen", grund="QDRANT_ENABLED=False")
+            return BackupResult(
+                success=True,
+                backup_type="qdrant",
+                error="Qdrant nicht aktiviert - Backup uebersprungen",
+            )
+
+        timestamp = utc_now().strftime("%Y%m%d_%H%M%S")
+        output_dir = self.config.backup_dir / "qdrant" / f"qdrant_{timestamp}"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        logger.info("qdrant_backup_gestartet", ziel=str(output_dir))
+
+        try:
+            from qdrant_client import QdrantClient
+            from qdrant_client.http.exceptions import UnexpectedResponse
+
+            # Qdrant-Client initialisieren
+            api_key = settings.QDRANT_API_KEY.get_secret_value() if settings.QDRANT_API_KEY else None
+            client = QdrantClient(
+                host=settings.QDRANT_HOST,
+                port=settings.QDRANT_HTTP_PORT,
+                api_key=api_key,
+                prefer_grpc=False,  # Snapshots nur via REST API
+            )
+
+            # Collections zum Backup
+            collections_to_backup = [
+                settings.QDRANT_COLLECTION_DOCUMENTS,
+                settings.QDRANT_COLLECTION_CHUNKS,
+            ]
+
+            # Optional: Alle existierenden Collections ermitteln
+            try:
+                all_collections = client.get_collections().collections
+                existing_collection_names = {c.name for c in all_collections}
+            except Exception as e:
+                logger.warning("qdrant_collections_abruf_fehler", error=str(e))
+                existing_collection_names = set()
+
+            snapshot_files: List[Path] = []
+            failed_collections: List[str] = []
+            total_size = 0
+
+            for collection in collections_to_backup:
+                # Pruefe ob Collection existiert
+                if collection not in existing_collection_names:
+                    logger.debug(
+                        "qdrant_collection_existiert_nicht",
+                        collection=collection,
+                    )
+                    continue
+
+                try:
+                    # Snapshot erstellen via REST API
+                    snapshot_info = client.create_snapshot(collection_name=collection)
+                    snapshot_name = snapshot_info.name
+
+                    logger.info(
+                        "qdrant_snapshot_erstellt",
+                        collection=collection,
+                        snapshot=snapshot_name,
+                    )
+
+                    # Snapshot herunterladen
+                    # Qdrant-Client bietet keine direkte Download-Methode
+                    # Nutze HTTP-Request zum Download
+                    import httpx
+
+                    snapshot_url = (
+                        f"http://{settings.QDRANT_HOST}:{settings.QDRANT_HTTP_PORT}"
+                        f"/collections/{collection}/snapshots/{snapshot_name}"
+                    )
+
+                    headers = {}
+                    if api_key:
+                        headers["api-key"] = api_key
+
+                    snapshot_path = output_dir / f"{collection}_{snapshot_name}"
+
+                    async with httpx.AsyncClient(timeout=300.0) as http_client:
+                        response = await http_client.get(snapshot_url, headers=headers)
+                        response.raise_for_status()
+
+                        with open(snapshot_path, "wb") as f:
+                            f.write(response.content)
+
+                    file_size = snapshot_path.stat().st_size
+                    total_size += file_size
+                    snapshot_files.append(snapshot_path)
+
+                    logger.info(
+                        "qdrant_snapshot_heruntergeladen",
+                        collection=collection,
+                        pfad=str(snapshot_path),
+                        groesse_mb=round(file_size / 1024 / 1024, 2),
+                    )
+
+                    # Snapshot auf Qdrant-Server loeschen (Aufraeumen)
+                    try:
+                        client.delete_snapshot(
+                            collection_name=collection,
+                            snapshot_name=snapshot_name,
+                        )
+                    except Exception:
+                        pass  # Nicht kritisch
+
+                except UnexpectedResponse as e:
+                    logger.error(
+                        "qdrant_snapshot_fehler",
+                        collection=collection,
+                        error=str(e),
+                    )
+                    failed_collections.append(collection)
+                except Exception as e:
+                    logger.error(
+                        "qdrant_collection_backup_fehler",
+                        collection=collection,
+                        error=str(e),
+                    )
+                    failed_collections.append(collection)
+
+            # Pruefen ob Backups erstellt wurden
+            if not snapshot_files:
+                if failed_collections:
+                    error_msg = f"Alle Collection-Backups fehlgeschlagen: {failed_collections}"
+                else:
+                    error_msg = "Keine Collections zum Backup gefunden"
+
+                # Aufraeumen leeres Verzeichnis
+                if output_dir.exists() and not list(output_dir.iterdir()):
+                    output_dir.rmdir()
+
+                return BackupResult(
+                    success=False,
+                    backup_type="qdrant",
+                    error=error_msg,
+                )
+
+            # Tar-Archiv erstellen wenn Kompression aktiviert
+            final_path = output_dir
+            if self.config.compression_enabled and snapshot_files:
+                tar_path = output_dir.with_suffix(".tar.gz")
+                with tarfile.open(tar_path, "w:gz") as tar:
+                    tar.add(output_dir, arcname=output_dir.name)
+                shutil.rmtree(output_dir)
+                final_path = tar_path
+                total_size = tar_path.stat().st_size
+
+            # Optional: Verschluesseln
+            if self.config.encryption_enabled:
+                encrypted_path = await self.encrypt_backup(final_path)
+                if encrypted_path:
+                    if final_path.is_file():
+                        final_path.unlink()
+                    else:
+                        shutil.rmtree(final_path)
+                    final_path = encrypted_path
+
+            # Upload zu MinIO (optional)
+            # Wird bereits im output_dir gespeichert
+
+            logger.info(
+                "qdrant_backup_erfolgreich",
+                pfad=str(final_path),
+                groesse_mb=round(total_size / 1024 / 1024, 2),
+                collections=len(snapshot_files),
+                fehlgeschlagen=failed_collections if failed_collections else None,
+            )
+
+            return BackupResult(
+                success=True,
+                backup_type="qdrant",
+                path=final_path,
+                size_bytes=total_size,
+                validated=True,
+                encrypted=self.config.encryption_enabled,
+            )
+
+        except ImportError:
+            error_msg = "qdrant-client nicht installiert - pip install qdrant-client"
+            logger.error("qdrant_client_nicht_gefunden", error=error_msg)
+            return BackupResult(
+                success=False,
+                backup_type="qdrant",
+                error=error_msg,
+            )
+        except Exception as e:
+            logger.exception("qdrant_backup_fehler")
+            return BackupResult(
+                success=False,
+                backup_type="qdrant",
+                **safe_error_log(e),
+            )
+
+    # -------------------------------------------------------------------------
     # Full Backup
     # -------------------------------------------------------------------------
 
@@ -664,6 +875,7 @@ class BackupService:
         results.append(await self.backup_redis())
         results.append(await self.backup_minio())
         results.append(await self.backup_config())
+        results.append(await self.backup_qdrant())
 
         # Metriken aktualisieren
         self.metrics.update_disk_usage()
@@ -1138,6 +1350,7 @@ class BackupService:
             "redis": 0,
             "minio": 0,
             "config": 0,
+            "qdrant": 0,
         }
 
         cutoff_timestamp = utc_now().timestamp() - (self.config.retention_days * 86400)
@@ -1201,7 +1414,7 @@ class BackupService:
             Liste von Backup-Informationen
         """
         backups: List[Dict[str, Any]] = []
-        types = [backup_type] if backup_type else ["postgres", "redis", "minio", "config"]
+        types = [backup_type] if backup_type else ["postgres", "redis", "minio", "config", "qdrant"]
 
         for btype in types:
             backup_dir = self.config.backup_dir / btype

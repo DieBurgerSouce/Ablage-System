@@ -3,7 +3,7 @@
  *
  * Phase 4.5: Frontend UX Enhancement
  */
-import { apiClient } from "@/lib/api-client"
+import { apiClient } from "@/lib/api"
 
 export interface SavedFilter {
   id: string

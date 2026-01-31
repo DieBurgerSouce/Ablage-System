@@ -231,16 +231,34 @@ async def _batch_integrity_check(
     failed = 0
     errors = []
 
+    # Storage Service fuer MinIO-Zugriff
+    from app.services.storage_service import StorageService
+    storage = StorageService()
+
     for archive in archives:
         try:
+            # Dokument aus MinIO laden (wenn storage_path vorhanden)
+            document_content = None
+            if archive.storage_path:
+                try:
+                    document_content = await storage.download_document(
+                        archive.storage_path
+                    )
+                except Exception as storage_err:
+                    logger.warning(
+                        "archive_storage_load_failed",
+                        archive_id=str(archive.id),
+                        storage_path=archive.storage_path,
+                        error_type=type(storage_err).__name__,
+                    )
+                    # Continue with None - integrity check will use stored hash
+
             # Integritaetspruefung durchfuehren
             check_result = await gobd_archive_service.verify_archive_integrity(
                 db,
                 archive.id,
                 archive.company_id,
-                # document_content muss vom Storage geladen werden
-                # Hier vereinfacht - in Produktion Storage einbinden
-                document_content=None,  # TODO: Load from MinIO
+                document_content=document_content,
                 record_check=True,
             )
 
@@ -398,7 +416,31 @@ async def _check_retention_warnings(db) -> dict:
                 else:
                     results["warnings_sent"] += 1
 
-                # TODO: Notification senden (Slack, Email, etc.)
+                # Send notification via Slack
+                try:
+                    from app.services.slack_service import SlackService, SlackNotificationType, SlackMessagePriority
+
+                    slack = SlackService()
+                    if slack.is_enabled:
+                        priority = SlackMessagePriority.URGENT if archive_info.get("is_critical") else SlackMessagePriority.HIGH
+                        await slack.send_notification(
+                            notification_type=SlackNotificationType.SYSTEM_ALERT,
+                            title="GoBD Aufbewahrungsfrist laeuft ab",
+                            message=f"Archiv {archive_info.get('archive_id', 'N/A')} erreicht Ende der Aufbewahrungsfrist in {archive_info.get('days_remaining', 0)} Tagen.",
+                            priority=priority,
+                            context={
+                                "archive_id": archive_info.get("archive_id"),
+                                "expires_at": archive_info.get("expires_at"),
+                                "document_count": archive_info.get("document_count"),
+                                "retention_policy": archive_info.get("policy_name"),
+                            }
+                        )
+                except Exception as notification_error:
+                    logger.warning(
+                        "retention_notification_failed",
+                        archive_id=archive_info.get("archive_id"),
+                        error_type=type(notification_error).__name__
+                    )
 
         except Exception as e:
             logger.error(

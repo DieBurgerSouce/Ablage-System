@@ -2,12 +2,12 @@ Task(
     subagent_type="opus-task",
     prompt='''ORCHESTRATED TASK (OPUS):
 
-document and commit
+/ralph-loop:ralph-loop "Guck dir bitte nochmal alles von vorne bis hinten an, was du in dieser Claude Code Instanz alles gemacht hast - ich wÃ¼rde sehr gerne das du kritisch, so als wÃ¤rst du der beste Senior Developer der Welt und ein absoluter Experte in dem worum das Projekt geht, die Arbeit reviewst und dann klare LÃ¼cken und schlampige Vorgehensweise aufdeckst! Ist wirklich alles durch und durch auf absolutem Enterprise Level? Ist unser Ethos vollkommen erfÃ¼llt?" --completion-promise "complete"
 
 ROUTING-INFO:
 - Klassifizierung: Kritischer Pfad betroffen: app/core/
 - Confidence: 100%
-- Betroffene Dateien: 211
+- Betroffene Dateien: 431
 
 KONTEXT:
 - Workspace: C:\Users\benfi\Ablage_System

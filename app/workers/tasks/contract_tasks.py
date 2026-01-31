@@ -19,7 +19,7 @@ from uuid import UUID
 from sqlalchemy import select, and_, or_, func
 from sqlalchemy.orm import selectinload
 
-from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.workers.celery_app import celery_app
 from app.db.session import get_async_session_context
 from app.db.models import (
@@ -223,6 +223,8 @@ async def _send_deadline_notification(
     days_remaining: int,
 ) -> None:
     """Sendet Benachrichtigung fuer Vertragsfrist."""
+    from app.services.notification_service import NotificationPriority, NotificationType
+
     urgency = _get_urgency(days_remaining)
 
     if deadline_type == "notice_deadline":
@@ -237,6 +239,59 @@ async def _send_deadline_notification(
             f"Der Vertrag '{contract.title}' (Nr. {contract.contract_number}) "
             f"endet am {contract.end_date}."
         )
+
+    # Prioritaet basierend auf Dringlichkeit
+    priority_map = {
+        "critical": NotificationPriority.CRITICAL,
+        "high": NotificationPriority.HIGH,
+        "medium": NotificationPriority.NORMAL,
+        "low": NotificationPriority.LOW,
+    }
+    priority = priority_map.get(urgency, NotificationPriority.NORMAL)
+
+    # In-App Benachrichtigung an Verantwortlichen
+    if contract.responsible_user_id:
+        try:
+            await notification_service.send_in_app_notification(
+                user_id=str(contract.responsible_user_id),
+                title=title,
+                message=message,
+                priority=priority,
+                notification_type=NotificationType.SYSTEM_ALERT,
+                metadata={
+                    "contract_id": str(contract.id),
+                    "deadline_type": deadline_type,
+                    "days_remaining": days_remaining,
+                },
+            )
+        except Exception as e:
+            logger.warning(
+                "contract_notification_in_app_failed",
+                contract_id=str(contract.id),
+                error_type=type(e).__name__,
+            )
+
+    # Email bei kritischen Fristen (<=7 Tage)
+    if urgency in ("critical", "high"):
+        try:
+            from app.services.email_service import EmailService
+            email_service = EmailService()
+            await email_service.send_contract_deadline_reminder(
+                contract_id=contract.id,
+                contract_title=contract.title,
+                contract_number=contract.contract_number,
+                deadline_type=deadline_type,
+                deadline_date=contract.notice_deadline if deadline_type == "notice_deadline" else contract.end_date,
+                days_remaining=days_remaining,
+                recipient_user_id=contract.responsible_user_id,
+                company_id=contract.company_id,
+            )
+        except Exception as e:
+            logger.warning(
+                "contract_notification_email_failed",
+                contract_id=str(contract.id),
+                error_type=type(e).__name__,
+            )
 
     # Update last_reminder_sent
     contract.last_reminder_sent = datetime.now(timezone.utc)
@@ -257,6 +312,8 @@ async def _send_renewal_option_notification(
     days_remaining: int,
 ) -> None:
     """Sendet Benachrichtigung fuer Verlaengerungsoption."""
+    from app.services.notification_service import NotificationPriority, NotificationType
+
     urgency = _get_urgency(days_remaining)
 
     title = f"Verlaengerungsoption laeuft in {days_remaining} Tagen ab"
@@ -264,6 +321,37 @@ async def _send_renewal_option_notification(
         f"Die Verlaengerungsoption {option.option_number} fuer Vertrag "
         f"'{contract.title}' muss bis {option.exercise_deadline} ausgeuebt werden."
     )
+
+    priority_map = {
+        "critical": NotificationPriority.CRITICAL,
+        "high": NotificationPriority.HIGH,
+        "medium": NotificationPriority.NORMAL,
+        "low": NotificationPriority.LOW,
+    }
+    priority = priority_map.get(urgency, NotificationPriority.NORMAL)
+
+    # In-App Benachrichtigung
+    if contract.responsible_user_id:
+        try:
+            await notification_service.send_in_app_notification(
+                user_id=str(contract.responsible_user_id),
+                title=title,
+                message=message,
+                priority=priority,
+                notification_type=NotificationType.SYSTEM_ALERT,
+                metadata={
+                    "contract_id": str(contract.id),
+                    "option_id": str(option.id),
+                    "days_remaining": days_remaining,
+                },
+            )
+        except Exception as e:
+            logger.warning(
+                "renewal_option_notification_failed",
+                contract_id=str(contract.id),
+                option_id=str(option.id),
+                error_type=type(e).__name__,
+            )
 
     logger.debug(
         "renewal_option_notification_sent",
@@ -280,6 +368,8 @@ async def _send_milestone_notification(
     days_remaining: int,
 ) -> None:
     """Sendet Benachrichtigung fuer Meilenstein."""
+    from app.services.notification_service import NotificationPriority, NotificationType
+
     urgency = _get_urgency(days_remaining)
 
     title = f"Meilenstein faellig in {days_remaining} Tagen"
@@ -287,6 +377,61 @@ async def _send_milestone_notification(
         f"Der Meilenstein '{milestone.title}' fuer Vertrag '{contract.title}' "
         f"ist am {milestone.scheduled_date} faellig."
     )
+
+    priority_map = {
+        "critical": NotificationPriority.CRITICAL,
+        "high": NotificationPriority.HIGH,
+        "medium": NotificationPriority.NORMAL,
+        "low": NotificationPriority.LOW,
+    }
+    priority = priority_map.get(urgency, NotificationPriority.NORMAL)
+
+    # In-App Benachrichtigung
+    if contract.responsible_user_id:
+        try:
+            await notification_service.send_in_app_notification(
+                user_id=str(contract.responsible_user_id),
+                title=title,
+                message=message,
+                priority=priority,
+                notification_type=NotificationType.SYSTEM_ALERT,
+                metadata={
+                    "contract_id": str(contract.id),
+                    "milestone_id": str(milestone.id),
+                    "milestone_title": milestone.title,
+                    "scheduled_date": str(milestone.scheduled_date),
+                    "days_remaining": days_remaining,
+                },
+            )
+        except Exception as e:
+            logger.warning(
+                "milestone_notification_failed",
+                contract_id=str(contract.id),
+                milestone_id=str(milestone.id),
+                error_type=type(e).__name__,
+            )
+
+    # Email bei kritischen Meilensteinen (<=7 Tage)
+    if urgency in ("critical", "high"):
+        try:
+            from app.services.email_service import EmailService
+            email_service = EmailService()
+            await email_service.send_contract_milestone_reminder(
+                contract_id=contract.id,
+                contract_title=contract.title,
+                milestone_title=milestone.title,
+                scheduled_date=milestone.scheduled_date,
+                days_remaining=days_remaining,
+                recipient_user_id=contract.responsible_user_id,
+                company_id=contract.company_id,
+            )
+        except Exception as e:
+            logger.warning(
+                "milestone_email_notification_failed",
+                contract_id=str(contract.id),
+                milestone_id=str(milestone.id),
+                error_type=type(e).__name__,
+            )
 
     logger.debug(
         "milestone_notification_sent",
@@ -820,9 +965,9 @@ def check_overdue_milestones_task(self) -> Dict[str, Any]:
                 "errors": [],
             }
 
-            # Query fuer nicht abgeschlossene Meilensteine
+            # Query fuer nicht abgeschlossene Meilensteine mit Vertrag
             query = (
-                select(ContractMilestone)
+                select(ContractMilestone, BusinessContract)
                 .join(BusinessContract)
                 .where(
                     and_(
@@ -839,9 +984,13 @@ def check_overdue_milestones_task(self) -> Dict[str, Any]:
             )
 
             result = await db.execute(query)
-            milestones = result.scalars().all()
+            rows = result.all()
 
-            for milestone in milestones:
+            # NotificationService laden
+            from app.services.notification_service import get_notification_service
+            notification_service = get_notification_service()
+
+            for milestone, contract in rows:
                 stats["total_checked"] += 1
 
                 try:
@@ -856,8 +1005,29 @@ def check_overdue_milestones_task(self) -> Dict[str, Any]:
                         title=milestone.title,
                     )
 
-                    # TODO: Send notification (when notification service supports it)
-                    stats["notifications_sent"] += 1
+                    # In-App Notification senden
+                    if contract.responsible_user_id:
+                        # Prioritaet basierend auf Ueberfaelligkeit
+                        priority = "high" if days_overdue > 7 else "normal"
+
+                        await notification_service.notify(
+                            notification_type="contract_milestone_overdue",
+                            context={
+                                "milestone_title": milestone.title,
+                                "contract_name": contract.name or "Unbenannter Vertrag",
+                                "days_overdue": days_overdue,
+                                "milestone_id": str(milestone.id),
+                                "contract_id": str(milestone.contract_id),
+                            },
+                            user_id=str(contract.responsible_user_id),
+                            priority=priority,
+                        )
+                        stats["notifications_sent"] += 1
+                    else:
+                        logger.debug(
+                            "milestone_notification_skipped_no_responsible",
+                            milestone_id=str(milestone.id),
+                        )
 
                 except Exception as e:
                     stats["errors"].append({

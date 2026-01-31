@@ -582,11 +582,22 @@ class FinanceAssistantService:
 
             # 3. Assistenten-Antwort speichern
             if persist and conversation:
+                # Dynamisch das verwendete Modell ermitteln
+                model_used = "ollama/unknown"
+                try:
+                    ollama = await self._get_ollama_service()
+                    if ollama and hasattr(ollama, 'config') and ollama.config:
+                        model_used = f"ollama/{ollama.config.default_model}"
+                except Exception:
+                    # Fallback auf Settings
+                    from app.core.config import settings
+                    model_used = f"ollama/{getattr(settings, 'DEFAULT_LLM_REALTIME', 'mistral')}"
+
                 assistant_msg = await self.save_assistant_response(
                     conversation=conversation,
                     response=response,
                     user_message_id=user_msg.id if user_msg else None,
-                    model_used="ollama/mistral",  # TODO: Dynamisch ermitteln
+                    model_used=model_used,
                 )
 
                 # 4. Aktionen speichern falls vorhanden

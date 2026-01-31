@@ -2579,7 +2579,7 @@ def check_goals_at_risk(self) -> dict:
     Wird taeglich ausgefuehrt um User ueber gefaehrdete Ziele zu informieren.
 
     Returns:
-        dict mit Anzahl gefaehrdeter Ziele
+        dict mit Anzahl gefaehrdeter Ziele und gesendeter Benachrichtigungen
     """
     from app.services.privat.financial_goals_service import FinancialGoalsService
 
@@ -2588,22 +2588,31 @@ def check_goals_at_risk(self) -> dict:
         task_id=self.request.id,
     )
 
-    async def _check():
+    async def _check_and_notify():
         async with get_async_session() as session:
             service = FinancialGoalsService(session)
-            at_risk = await service.get_goals_at_risk()
-            return len(at_risk)
+            at_risk_goals = await service.get_goals_at_risk()
+
+            notifications_sent = 0
+
+            if at_risk_goals:
+                # Benachrichtigungen fuer jedes gefaehrdete Ziel senden
+                notifications_sent = await _send_goals_at_risk_notifications(
+                    at_risk_goals
+                )
+
+            return len(at_risk_goals), notifications_sent
 
     try:
-        count = run_async(_check())
+        count, notifications_sent = run_async(_check_and_notify())
 
         if count > 0:
             logger.warning(
                 "goals_at_risk_found",
                 task_id=self.request.id,
                 count=count,
+                notifications_sent=notifications_sent,
             )
-            # TODO: Benachrichtigungen senden
         else:
             logger.info(
                 "no_goals_at_risk",
@@ -2613,6 +2622,7 @@ def check_goals_at_risk(self) -> dict:
         return {
             "status": "success",
             "goals_at_risk": count,
+            "notifications_sent": notifications_sent,
         }
 
     except Exception as e:
@@ -2622,6 +2632,127 @@ def check_goals_at_risk(self) -> dict:
             **safe_error_log(e),
         )
         raise self.retry(exc=e)
+
+
+async def _send_goals_at_risk_notifications(at_risk_goals) -> int:
+    """Sendet Benachrichtigungen fuer gefaehrdete Finanzziele.
+
+    Args:
+        at_risk_goals: Liste von FinancialGoal-Objekten die gefaehrdet sind
+
+    Returns:
+        Anzahl der gesendeten Benachrichtigungen
+    """
+    from app.services.notification_service import (
+        get_notification_service,
+        NotificationType,
+        NotificationPriority,
+    )
+    from datetime import date
+
+    notifications_sent = 0
+    notification_service = get_notification_service()
+
+    # Gruppiere Ziele nach Owner fuer aggregierte Benachrichtigungen
+    goals_by_owner = {}
+    for goal in at_risk_goals:
+        owner_id = str(goal.owner_id) if goal.owner_id else None
+        if owner_id:
+            if owner_id not in goals_by_owner:
+                goals_by_owner[owner_id] = []
+            goals_by_owner[owner_id].append(goal)
+
+    for owner_id, goals in goals_by_owner.items():
+        try:
+            # Bestimme Schweregrad basierend auf Anzahl und Dringlichkeit
+            today = date.today()
+            critical_count = sum(
+                1 for g in goals
+                if g.target_date and (g.target_date - today).days <= 30
+            )
+
+            if critical_count >= 3 or len(goals) >= 5:
+                priority = NotificationPriority.CRITICAL
+                severity = "critical"
+            elif critical_count >= 1 or len(goals) >= 3:
+                priority = NotificationPriority.HIGH
+                severity = "high"
+            else:
+                priority = NotificationPriority.NORMAL
+                severity = "medium"
+
+            # Erstelle Benachrichtigungs-Nachricht
+            if len(goals) == 1:
+                goal = goals[0]
+                progress = goal.progress_percent or 0
+                expected = goal.expected_progress_percent or 0
+                gap = expected - progress
+
+                title = f"Finanzziel gefaehrdet: {goal.name}"
+                message = (
+                    f"Das Ziel '{goal.name}' liegt {gap:.0f}% hinter dem Plan "
+                    f"(aktuell: {progress:.0f}%, erwartet: {expected:.0f}%)."
+                )
+            else:
+                title = f"{len(goals)} Finanzziele gefaehrdet"
+                goal_names = ", ".join(g.name for g in goals[:3])
+                if len(goals) > 3:
+                    goal_names += f" und {len(goals) - 3} weitere"
+                message = (
+                    f"Folgende Ziele liegen hinter dem Plan: {goal_names}. "
+                    f"Bitte pruefen Sie diese zeitnah."
+                )
+
+            # In-App Benachrichtigung senden
+            await notification_service.send_in_app_notification(
+                user_id=owner_id,
+                title=title,
+                message=message,
+                priority=priority,
+                notification_type=NotificationType.SYSTEM_ALERT,
+                metadata={
+                    "goal_ids": [str(g.id) for g in goals],
+                    "goal_count": len(goals),
+                    "severity": severity,
+                    "critical_count": critical_count,
+                },
+            )
+            notifications_sent += 1
+
+            # Slack-Alert fuer kritische Faelle
+            if severity == "critical":
+                try:
+                    from app.services.slack_service import (
+                        SlackService,
+                        SlackNotificationType,
+                    )
+                    slack = SlackService()
+                    await slack.send_notification(
+                        notification_type=SlackNotificationType.SYSTEM_ALERT,
+                        title=f"🚨 Kritische Finanzziele: {len(goals)} Ziele gefaehrdet",
+                        message=(
+                            f"Benutzer hat {critical_count} kritische Ziele "
+                            f"(Faelligkeit innerhalb 30 Tagen) und insgesamt "
+                            f"{len(goals)} gefaehrdete Ziele."
+                        ),
+                        severity="critical",
+                    )
+                except Exception as slack_error:
+                    logger.warning(
+                        "goals_at_risk_slack_notification_failed",
+                        owner_id=owner_id,
+                        error_type=type(slack_error).__name__,
+                    )
+
+        except Exception as e:
+            logger.warning(
+                "goals_at_risk_notification_failed",
+                owner_id=owner_id,
+                goal_count=len(goals),
+                error_type=type(e).__name__,
+            )
+
+    return notifications_sent
 
 
 # =============================================================================

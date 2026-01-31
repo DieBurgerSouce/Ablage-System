@@ -419,11 +419,23 @@ class ContractRiskScorer:
         score = 50
         details = {"score": score, "description": ""}
 
-        # Ohne externe Daten: Vereinfachte Bewertung
+        # Bewertung basierend auf Entity-Daten und optional Creditreform
         if contract.counterparty_entity_id:
-            # TODO: Hier koennte Creditreform-Integration erfolgen
-            score = 40
-            details["description"] = "Gegenpartei bekannt"
+            entity = await self.db.get(BusinessEntity, contract.counterparty_entity_id)
+            if entity:
+                # Nutze Entity Risk-Score wenn verfuegbar
+                entity_risk = getattr(entity, "risk_score", None)
+                if entity_risk is not None:
+                    # Invertiere: Niedriger Risk Score = niedrigeres Risiko
+                    score = int(entity_risk * 0.8)  # 0-80 Skala
+                    details["description"] = f"Entity Risk Score: {entity_risk}"
+                    details["entity_name"] = entity.name
+                else:
+                    score = 40
+                    details["description"] = "Gegenpartei bekannt, kein Risk-Score"
+            else:
+                score = 50
+                details["description"] = "Gegenpartei-ID vorhanden, Entity nicht gefunden"
         else:
             score = 60
             details["description"] = "Keine Gegenpartei-Informationen"

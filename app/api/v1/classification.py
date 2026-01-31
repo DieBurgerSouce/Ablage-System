@@ -457,11 +457,18 @@ async def reset_classification_stats(
     """
     Setze Klassifikations-Statistiken zurueck (Admin).
     """
-    # TODO: Admin-Check hinzufuegen wenn noetig
+    # Admin-Check: Nur Admins oder Manager duerfen Statistiken zuruecksetzen
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Nur Administratoren koennen Statistiken zuruecksetzen",
+        )
+
     classifier = get_multi_label_classifier()
     classifier.reset_stats()
 
     logger.info(
         "classification_stats_reset",
         user_id=str(current_user.id),
+        user_role=current_user.role,
     )

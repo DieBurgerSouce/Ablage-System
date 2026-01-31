@@ -1214,16 +1214,24 @@ def update_surya_metrics(self) -> Dict[str, Any]:
                 metrics.set_surya_ab_tests_active(active_ab_tests)
                 result["active_ab_tests"] = active_ab_tests
 
-                # Gesamtzahl Versionen
+                # Gesamtzahl Versionen und Checkpoint-Groesse
                 version_count_query = await session.execute(
                     select(func.count(SuryaModelVersion.id))
                 )
                 total_versions = version_count_query.scalar() or 0
+
+                # Calculate total checkpoint size from database
+                checkpoint_size_query = await session.execute(
+                    select(func.coalesce(func.sum(SuryaModelVersion.checkpoint_size_mb), 0.0))
+                )
+                total_checkpoint_size_mb = checkpoint_size_query.scalar() or 0.0
+
                 metrics.update_surya_versioning_metrics(
                     total_versions=total_versions,
-                    total_checkpoint_size_mb=0.0,  # TODO: Calculate from filesystem
+                    total_checkpoint_size_mb=float(total_checkpoint_size_mb),
                 )
                 result["total_versions"] = total_versions
+                result["total_checkpoint_size_mb"] = float(total_checkpoint_size_mb)
 
                 return result
 

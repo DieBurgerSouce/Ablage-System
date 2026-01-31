@@ -414,19 +414,33 @@ def send_task_reminder(
                 )
                 return
 
-            # TODO: Notification senden
-            # from app.services.notification_service import send_notification
-            # await send_notification(
-            #     user_id=task.assignee_id,
-            #     title=f"Erinnerung: {task.element_name}",
-            #     message="Sie haben einen offenen Task"
-            # )
+            # Send notification via NotificationService
+            if task.assignee_id:
+                from app.services.notification_service import get_notification_service
 
-            logger.info(
-                "task_reminder_sent",
-                task_id=task_id,
-                assignee_id=str(task.assignee_id) if task.assignee_id else None
-            )
+                notification_service = get_notification_service()
+                await notification_service.notify(
+                    notification_type="bpmn_task_reminder",
+                    context={
+                        "task_name": task.element_name or "Unbenannte Aufgabe",
+                        "task_id": task_id,
+                        "process_instance_id": str(task.process_instance_id),
+                    },
+                    user_id=str(task.assignee_id),
+                    priority="normal",
+                )
+
+                logger.info(
+                    "task_reminder_sent",
+                    task_id=task_id,
+                    assignee_id=str(task.assignee_id),
+                    notification_sent=True,
+                )
+            else:
+                logger.info(
+                    "task_reminder_skipped_no_assignee",
+                    task_id=task_id,
+                )
 
     try:
         asyncio.get_event_loop().run_until_complete(_send())

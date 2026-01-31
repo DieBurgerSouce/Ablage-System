@@ -271,9 +271,22 @@ class PriorityScorer:
 
         # Entity Risk Score (falls verfügbar)
         if item.entity_id:
-            # TODO: Risk Score aus BusinessEntity laden
-            # Für jetzt: Placeholder
-            pass
+            from app.db.models import BusinessEntity
+
+            entity_query = select(BusinessEntity.risk_score).where(
+                BusinessEntity.id == item.entity_id
+            )
+            entity_result = await db.execute(entity_query)
+            risk_score = entity_result.scalar()
+
+            if risk_score is not None and risk_score > 0:
+                # High risk entities get priority boost (risk_score is 0-100, higher = more risk)
+                if risk_score >= 75:
+                    score += max_score * 0.5
+                    reasons.append(f"Hochrisiko-Geschaeftspartner (Score: {risk_score:.0f})")
+                elif risk_score >= 50:
+                    score += max_score * 0.3
+                    reasons.append(f"Erhoehtes Risiko beim Geschaeftspartner (Score: {risk_score:.0f})")
 
         # Alert Severity
         if item.source_type == "alert":
