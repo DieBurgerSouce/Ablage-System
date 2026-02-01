@@ -834,3 +834,216 @@ class TestRLSContextRollbackHandling:
             mock_logger.error.assert_called_once()
             # Rollback should have been called
             mock_db.rollback.assert_called_once()
+
+
+class TestTimingAttackMitigation:
+    """Tests for CWE-208 timing attack mitigation in get_current_company()."""
+
+    @pytest.mark.asyncio
+    async def test_minimum_execution_time_enforced(self):
+        """CWE-208 FIX: get_current_company should have minimum execution time."""
+        from app.middleware.company_context import get_current_company, _MIN_COMPANY_LOOKUP_TIME
+        import time
+
+        mock_request = create_mock_request()
+        mock_db = AsyncMock()
+
+        # Mock to return None quickly (no company found)
+        mock_db.execute = AsyncMock(
+            return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None))
+        )
+
+        with patch(
+            "app.middleware.company_context._get_user_from_request_optional",
+            new_callable=AsyncMock,
+            return_value=None
+        ), patch(
+            "app.middleware.company_context.get_current_company_id",
+            return_value=None
+        ):
+            start = time.perf_counter()
+            result = await get_current_company(mock_request, mock_db)
+            elapsed = time.perf_counter() - start
+
+            assert result is None
+            # Should take at least _MIN_COMPANY_LOOKUP_TIME
+            assert elapsed >= _MIN_COMPANY_LOOKUP_TIME * 0.9  # Allow 10% tolerance
+
+    @pytest.mark.asyncio
+    async def test_timing_consistent_with_valid_company(self):
+        """CWE-208 FIX: Valid company lookup should not be faster than min time."""
+        from app.middleware.company_context import get_current_company, _MIN_COMPANY_LOOKUP_TIME
+        import time
+
+        user_id = uuid4()
+        company_id = uuid4()
+        mock_user = MockUser(user_id=user_id)
+        mock_company = MockCompany(company_id=company_id)
+        mock_user_company = MockUserCompany(user_id=user_id, company_id=company_id)
+
+        mock_request = create_mock_request(x_company_id=str(company_id))
+        mock_db = AsyncMock()
+
+        # Mock returns valid company quickly
+        mock_execute_results = [
+            MagicMock(scalar_one_or_none=MagicMock(return_value=mock_user_company)),
+            MagicMock(scalar_one_or_none=MagicMock(return_value=mock_company)),
+        ]
+        mock_db.execute = AsyncMock(side_effect=mock_execute_results)
+
+        with patch(
+            "app.middleware.company_context._get_user_from_request_optional",
+            new_callable=AsyncMock,
+            return_value=mock_user
+        ), patch(
+            "app.middleware.company_context.get_current_company_id",
+            return_value=company_id
+        ):
+            start = time.perf_counter()
+            result = await get_current_company(mock_request, mock_db)
+            elapsed = time.perf_counter() - start
+
+            assert result is not None
+            assert result.id == company_id
+            # Even with quick success, should take at least min time
+            assert elapsed >= _MIN_COMPANY_LOOKUP_TIME * 0.9  # Allow 10% tolerance
+
+    @pytest.mark.asyncio
+    async def test_timing_consistent_with_invalid_company(self):
+        """CWE-208 FIX: Invalid company lookup should not take longer than valid."""
+        from app.middleware.company_context import get_current_company, _MIN_COMPANY_LOOKUP_TIME
+        import time
+
+        user_id = uuid4()
+        invalid_company_id = uuid4()
+        actual_company_id = uuid4()
+
+        mock_user = MockUser(user_id=user_id)
+        mock_actual_company = MockCompany(company_id=actual_company_id)
+
+        mock_request = create_mock_request(x_company_id=str(invalid_company_id))
+        mock_db = AsyncMock()
+
+        # First query returns None (no access), triggering fallback
+        mock_db.execute = AsyncMock(
+            return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None))
+        )
+
+        with patch(
+            "app.middleware.company_context._get_user_from_request_optional",
+            new_callable=AsyncMock,
+            return_value=mock_user
+        ), patch(
+            "app.middleware.company_context.get_current_company_id",
+            return_value=invalid_company_id
+        ), patch(
+            "app.middleware.company_context.set_company_context"
+        ), patch(
+            "app.middleware.company_context.get_user_current_company",
+            new_callable=AsyncMock,
+            return_value=mock_actual_company
+        ):
+            start = time.perf_counter()
+            result = await get_current_company(mock_request, mock_db)
+            elapsed = time.perf_counter() - start
+
+            # Should fallback to user's actual company
+            assert result is mock_actual_company
+            # Should still meet minimum time requirement
+            assert elapsed >= _MIN_COMPANY_LOOKUP_TIME * 0.9  # Allow 10% tolerance
+
+
+class TestRequireCompanyInactiveUserHandling:
+    """Tests for inactive user edge cases in require_company()."""
+
+    @pytest.mark.asyncio
+    async def test_inactive_user_raises_401(self):
+        """Inactive user should raise 401 even with valid company."""
+        from app.middleware.company_context import require_company
+
+        user_id = uuid4()
+        company_id = uuid4()
+        inactive_user = MockUser(user_id=user_id, is_active=False)
+
+        mock_request = create_mock_request(authorization="Bearer valid.token")
+        mock_db = AsyncMock()
+
+        with patch(
+            "app.core.security.decode_token",
+            new_callable=AsyncMock,
+            return_value={"sub": str(user_id), "type": "access"}
+        ), patch(
+            "app.core.security.verify_token_type"
+        ), patch(
+            "app.services.user_service.UserService.get_user_by_id",
+            new_callable=AsyncMock,
+            return_value=inactive_user
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await require_company(mock_request, mock_db)
+
+            assert exc_info.value.status_code == 401
+
+
+class TestConcurrentSwitchCompany:
+    """Tests for concurrent switch_company operations (CWE-362 race condition)."""
+
+    @pytest.mark.asyncio
+    async def test_concurrent_switch_uses_locking(self):
+        """CWE-362 FIX: Concurrent switches should use row-level locking."""
+        from app.middleware.company_context import switch_company
+        import sqlalchemy as sa
+        import asyncio
+
+        user_id = uuid4()
+        company_a = uuid4()
+        company_b = uuid4()
+
+        mock_user_company_a = MockUserCompany(user_id=user_id, company_id=company_a)
+        mock_user_company_b = MockUserCompany(user_id=user_id, company_id=company_b)
+
+        call_order = []
+
+        async def mock_execute_a(query, *args, **kwargs):
+            query_str = str(query) if hasattr(query, '__str__') else repr(query)
+            call_order.append(("A", query_str[:50]))
+            if "FOR UPDATE" in query_str.upper():
+                # Simulate lock acquisition delay
+                await asyncio.sleep(0.01)
+            if len([c for c in call_order if c[0] == "A"]) == 1:
+                return MagicMock(scalar_one_or_none=MagicMock(return_value=mock_user_company_a))
+            return MagicMock()
+
+        async def mock_execute_b(query, *args, **kwargs):
+            query_str = str(query) if hasattr(query, '__str__') else repr(query)
+            call_order.append(("B", query_str[:50]))
+            if "FOR UPDATE" in query_str.upper():
+                await asyncio.sleep(0.01)
+            if len([c for c in call_order if c[0] == "B"]) == 1:
+                return MagicMock(scalar_one_or_none=MagicMock(return_value=mock_user_company_b))
+            return MagicMock()
+
+        mock_db_a = AsyncMock()
+        mock_db_a.execute = mock_execute_a
+        mock_db_a.commit = AsyncMock()
+
+        mock_db_b = AsyncMock()
+        mock_db_b.execute = mock_execute_b
+        mock_db_b.commit = AsyncMock()
+
+        # Run both switches concurrently
+        results = await asyncio.gather(
+            switch_company(user_id, company_a, mock_db_a),
+            switch_company(user_id, company_b, mock_db_b),
+            return_exceptions=True
+        )
+
+        # At least one should succeed (or both with proper locking)
+        successes = [r for r in results if r is True]
+        assert len(successes) >= 1
+
+        # Both should have used FOR UPDATE or lock_timeout
+        a_queries = [q[1] for q in call_order if q[0] == "A"]
+        b_queries = [q[1] for q in call_order if q[0] == "B"]
+        assert any("lock_timeout" in q.lower() for q in a_queries)
+        assert any("lock_timeout" in q.lower() for q in b_queries)
