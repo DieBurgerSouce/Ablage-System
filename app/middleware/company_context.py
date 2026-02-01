@@ -20,10 +20,11 @@ from contextvars import ContextVar
 from typing import Optional
 from uuid import UUID
 
+import jwt
 import sqlalchemy as sa
 import structlog
 from fastapi import Depends, HTTPException, Request
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -175,16 +176,19 @@ async def switch_company(
     if not target_uc:
         raise ValueError(f"Benutzer hat keinen Zugriff auf Firma {company_id}")
 
-    # Setze alle is_current auf False
-    result = await db.execute(
-        select(UserCompany)
+    # CWE-362 FIX: Atomare UPDATE-Operationen statt fetch-then-update
+    # Dies verhindert Race Conditions bei concurrent requests
+    await db.execute(
+        update(UserCompany)
         .where(UserCompany.user_id == user_id)
+        .values(is_current=False)
     )
-    user_companies = result.scalars().all()
-
-    for uc in user_companies:
-        uc.is_current = (uc.company_id == company_id)
-
+    await db.execute(
+        update(UserCompany)
+        .where(UserCompany.user_id == user_id)
+        .where(UserCompany.company_id == company_id)
+        .values(is_current=True)
+    )
     await db.commit()
 
     # Update Context
@@ -237,8 +241,9 @@ async def _get_user_from_request_optional(
 
         if user and user.is_active:
             return user
-    except Exception:
-        pass
+    except (ValueError, jwt.PyJWTError) as e:
+        # CWE-390 FIX: Spezifische Exceptions statt bare except
+        logger.debug("token_decode_failed", error_type=type(e).__name__)
 
     return None
 
@@ -345,18 +350,20 @@ async def set_rls_company_context(db: AsyncSession, company_id: UUID) -> None:
             error_type="ValueError"
         )
     except Exception as e:
+        # CWE-391 FIX: RLS-Failure ist KRITISCH - muss geloggt werden
+        logger.error(
+            "rls_context_failed",
+            error_type=type(e).__name__,
+            company_id=str(company_id)[:8] + "...",  # Nur Prefix fuer Logs (PII)
+            message="RLS-Context konnte nicht gesetzt werden - Datenzugriff ohne Tenant-Filter!"
+        )
         # Bei Fehler: Session zurückrollen um "aborted transaction" zu vermeiden
         try:
             await db.rollback()
-        except Exception as rollback_err:
-            logger.debug(
-                "rls_context_rollback_failed",
-                error_type=type(rollback_err).__name__,
-            )
-        logger.debug(
-            "rls_context_skip",
-            reason=safe_error_detail(e, "Company-Context")
-        )
+        except Exception:
+            pass  # Rollback-Fehler ist sekundaer
+        # WICHTIG: Exception weitergeben um unsicheren Zustand zu verhindern
+        raise
 
 
 async def enable_rls_bypass(db: AsyncSession) -> None:
@@ -477,7 +484,9 @@ async def _get_user_from_request_required(
 
     except HTTPException:
         raise
-    except Exception:
+    except (ValueError, jwt.PyJWTError) as e:
+        # CWE-390 FIX: Spezifische Exceptions statt bare except
+        logger.warning("auth_failed", error_type=type(e).__name__)
         raise HTTPException(
             status_code=401,
             detail="Authentifizierung fehlgeschlagen"

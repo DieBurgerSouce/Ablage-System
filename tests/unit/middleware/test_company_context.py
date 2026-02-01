@@ -10,6 +10,7 @@ Test Coverage:
 """
 
 import pytest
+import jwt
 from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 from uuid import uuid4, UUID
 from datetime import datetime
@@ -150,11 +151,12 @@ class TestGetUserFromRequestOptional:
         mock_request = create_mock_request(authorization="Bearer invalid.token")
         mock_db = AsyncMock()
 
-        # Mock decode_token to raise an exception
+        # CWE-390 FIX: Now only catches specific exceptions (ValueError, jwt.PyJWTError)
+        # Mock decode_token to raise a JWT error
         with patch(
             "app.core.security.decode_token",
             new_callable=AsyncMock,
-            side_effect=Exception("Token expired")
+            side_effect=jwt.PyJWTError("Token expired")
         ):
 
             # Should NOT raise, should return None (graceful degradation)
@@ -255,10 +257,11 @@ class TestGetUserFromRequestRequired:
         mock_request = create_mock_request(authorization="Bearer invalid.token")
         mock_db = AsyncMock()
 
+        # CWE-390 FIX: Now only catches specific exceptions (ValueError, jwt.PyJWTError)
         with patch(
             "app.core.security.decode_token",
             new_callable=AsyncMock,
-            side_effect=Exception("Token invalid")
+            side_effect=jwt.PyJWTError("Token invalid")
         ):
 
             with pytest.raises(HTTPException) as exc_info:
@@ -505,3 +508,79 @@ class TestSetRLSCompanyContext:
             mock_logger.warning.assert_called()
             # Should NOT execute the SQL
             mock_db.execute.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_db_error_propagates_exception(self):
+        """CWE-391 FIX: Database errors should propagate to prevent silent RLS bypass."""
+        from app.middleware.company_context import set_rls_company_context
+
+        company_id = uuid4()
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(side_effect=Exception("Database connection failed"))
+        mock_db.rollback = AsyncMock()
+
+        # CWE-391: Exception should be raised, not silently ignored
+        with patch("app.middleware.company_context.logger") as mock_logger:
+            with pytest.raises(Exception) as exc_info:
+                await set_rls_company_context(mock_db, company_id)
+
+            assert "Database connection failed" in str(exc_info.value)
+            # Should log error (not just debug)
+            mock_logger.error.assert_called()
+
+
+class TestSwitchCompanyAtomic:
+    """Tests for switch_company() atomic operations (CWE-362 fix)."""
+
+    @pytest.mark.asyncio
+    async def test_switch_company_uses_atomic_update(self):
+        """CWE-362 FIX: switch_company should use UPDATE, not fetch-then-update."""
+        from app.middleware.company_context import switch_company
+
+        user_id = uuid4()
+        company_id = uuid4()
+
+        mock_db = AsyncMock()
+        mock_user_company = MockUserCompany(user_id=user_id, company_id=company_id)
+
+        # First query: Check access (returns user_company)
+        # Following queries: UPDATE operations (no return needed)
+        call_count = 0
+
+        async def mock_execute(query, *args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                # First call: access check
+                return MagicMock(scalar_one_or_none=MagicMock(return_value=mock_user_company))
+            # Other calls: UPDATE operations
+            return MagicMock()
+
+        mock_db.execute = mock_execute
+        mock_db.commit = AsyncMock()
+
+        result = await switch_company(user_id, company_id, mock_db)
+
+        assert result is True
+        # Should have 3 execute calls: 1 SELECT + 2 UPDATEs
+        assert call_count == 3
+        mock_db.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_switch_company_no_access_raises(self):
+        """User without access should raise ValueError."""
+        from app.middleware.company_context import switch_company
+
+        user_id = uuid4()
+        company_id = uuid4()
+
+        mock_db = AsyncMock()
+        # No access: scalar_one_or_none returns None
+        mock_db.execute = AsyncMock(
+            return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None))
+        )
+
+        with pytest.raises(ValueError) as exc_info:
+            await switch_company(user_id, company_id, mock_db)
+
+        assert "keinen Zugriff" in str(exc_info.value)
