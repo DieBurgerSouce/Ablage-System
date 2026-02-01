@@ -199,13 +199,53 @@ async def switch_company(
     return True
 
 
-from app.api.dependencies import get_current_user_optional
+async def _get_user_from_request_optional(
+    request: Request,
+    db: AsyncSession,
+) -> Optional[User]:
+    """Extract user from request without circular import.
+
+    This implements the same logic as get_current_user_optional but inline
+    to avoid circular dependency with app.api.dependencies.
+    """
+    from app.core.security import decode_token, verify_token_type
+    from app.services.user_service import UserService
+
+    # Try to get from request state first (set by middleware)
+    if hasattr(request.state, "user") and request.state.user:
+        return request.state.user
+
+    # Try to get from Authorization header
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return None
+
+    token = auth_header[7:]  # Remove "Bearer " prefix
+    if not token:
+        return None
+
+    try:
+        payload = await decode_token(token)
+        verify_token_type(payload, "access")
+
+        user_id_str = payload.get("sub")
+        if not user_id_str:
+            return None
+
+        user_id = UUID(user_id_str)
+        user = await UserService.get_user_by_id(db, user_id)
+
+        if user and user.is_active:
+            return user
+    except Exception:
+        pass
+
+    return None
 
 
 async def get_current_company(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional),
 ) -> Optional[Company]:
     """Dependency: Holt die aktuelle Company (optional).
 
@@ -221,7 +261,9 @@ async def get_current_company(
     """
     # Erst aus ContextVar (gesetzt von Middleware aus X-Company-ID Header)
     company_id = get_current_company_id()
-    user = current_user or getattr(request.state, "user", None)
+
+    # Get user without circular import
+    user = await _get_user_from_request_optional(request, db)
 
     if company_id:
         # U.4 SECURITY FIX: Wenn company_id aus Header kommt UND User bekannt,
@@ -377,14 +419,74 @@ async def rls_bypass_context(db: AsyncSession):
         await disable_rls_bypass(db)
 
 
-from app.api.dependencies import get_current_active_user
 from app.core.safe_errors import safe_error_log, safe_error_detail
+
+
+async def _get_user_from_request_required(
+    request: Request,
+    db: AsyncSession,
+) -> User:
+    """Extract authenticated user from request, raise 401 if not found.
+
+    This implements similar logic to get_current_active_user but inline
+    to avoid circular dependency with app.api.dependencies.
+    """
+    from app.core.security import decode_token, verify_token_type
+    from app.services.user_service import UserService
+
+    # Try to get from request state first (set by middleware)
+    if hasattr(request.state, "user") and request.state.user:
+        return request.state.user
+
+    # Try to get from Authorization header
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(
+            status_code=401,
+            detail="Nicht authentifiziert"
+        )
+
+    token = auth_header[7:]  # Remove "Bearer " prefix
+    if not token:
+        raise HTTPException(
+            status_code=401,
+            detail="Nicht authentifiziert"
+        )
+
+    try:
+        payload = await decode_token(token)
+        verify_token_type(payload, "access")
+
+        user_id_str = payload.get("sub")
+        if not user_id_str:
+            raise HTTPException(
+                status_code=401,
+                detail="Ungueltiges Token"
+            )
+
+        user_id = UUID(user_id_str)
+        user = await UserService.get_user_by_id(db, user_id)
+
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=401,
+                detail="Benutzer nicht gefunden oder inaktiv"
+            )
+
+        return user
+
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=401,
+            detail="Authentifizierung fehlgeschlagen"
+        )
 
 
 async def require_company(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
 ) -> Company:
     """Dependency: Erfordert eine aktuelle Company.
 
@@ -404,20 +506,10 @@ async def require_company(
         HTTPException 401: Nicht authentifiziert
         HTTPException 403: Kein Zugriff auf Firma
     """
-    # I.5 CRITICAL: User MUSS vorhanden sein - Defense in Depth
-    # get_current_active_user sollte immer User liefern oder HTTPException werfen
-    # Aber: Falls Dependency-Bug, hier zusätzliche Validierung
-    if not current_user:
-        logger.error(
-            "require_company_no_user",
-            message="current_user ist None - Dependency-Bug oder Authentication-Bypass"
-        )
-        raise HTTPException(
-            status_code=401,
-            detail="Nicht authentifiziert"
-        )
+    # Get authenticated user (raises 401 if not authenticated)
+    current_user = await _get_user_from_request_required(request, db)
 
-    company = await get_current_company(request, db, current_user)
+    company = await get_current_company(request, db)
 
     if not company:
         raise HTTPException(
@@ -456,15 +548,14 @@ async def require_company(
 async def require_cash_permission(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
 ) -> Company:
     """Dependency: Erfordert Kassenbuch-Berechtigung.
 
     Raises:
         HTTPException 403: Keine Berechtigung fuer Kassenbuchfuehrung
     """
-    company = await require_company(request, db, current_user)
-    user = current_user
+    company = await require_company(request, db)
+    user = await _get_user_from_request_required(request, db)
 
     # J.2 CRITICAL FIX: User MUSS immer vorhanden sein nach require_company
     # Aber Defense-in-Depth: Explizite Pruefung
@@ -512,15 +603,14 @@ async def require_cash_permission(
 async def require_expense_approval_permission(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
 ) -> Company:
     """Dependency: Erfordert Spesenfreigabe-Berechtigung.
 
     Raises:
         HTTPException 403: Keine Berechtigung fuer Spesenfreigabe
     """
-    company = await require_company(request, db, current_user)
-    user = current_user
+    company = await require_company(request, db)
+    user = await _get_user_from_request_required(request, db)
 
     # J.2 CRITICAL FIX: User MUSS immer vorhanden sein nach require_company
     if not user:
