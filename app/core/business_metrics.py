@@ -697,6 +697,74 @@ def track_ocr_processing(
         )
 
 
+# =============================================================================
+# SECURITY METRIKEN (CWE-113, CWE-208, CWE-400)
+# =============================================================================
+
+# Security Event Counter fuer Header-Angriffe und Timing-Attacken
+security_header_violations_total = Counter(
+    "ablage_security_header_violations_total",
+    "Security-Verletzungen bei HTTP-Header-Validierung",
+    ["violation_type"]  # crlf_injection, header_too_long, invalid_uuid
+)
+
+# Company Context Security Events
+security_company_context_total = Counter(
+    "ablage_security_company_context_total",
+    "Security-Events bei Company-Context-Validierung",
+    ["event_type"]  # bypass_blocked, ownership_denied, timing_protected
+)
+
+# RLS Security Events
+security_rls_events_total = Counter(
+    "ablage_security_rls_events_total",
+    "RLS (Row-Level Security) Events",
+    ["event_type"]  # bypass_enabled, bypass_disabled, context_set, context_failed
+)
+
+
+def record_security_header_violation(violation_type: str) -> None:
+    """
+    Zeichne Header-Security-Verletzung auf.
+
+    CWE-113 (CRLF Injection), CWE-400 (DoS via Header Length)
+
+    Args:
+        violation_type: Art der Verletzung
+            - crlf_injection: CRLF-Injection-Versuch erkannt
+            - header_too_long: Header ueberschreitet maximale Laenge
+            - invalid_uuid: Ungueltige UUID im Header
+    """
+    security_header_violations_total.labels(violation_type=violation_type).inc()
+
+
+def record_security_company_context_event(event_type: str) -> None:
+    """
+    Zeichne Company-Context-Security-Event auf.
+
+    Args:
+        event_type: Art des Events
+            - bypass_blocked: X-Company-ID Bypass blockiert
+            - ownership_denied: Ownership-Validierung fehlgeschlagen
+            - timing_protected: Timing-Mitigation angewendet
+    """
+    security_company_context_total.labels(event_type=event_type).inc()
+
+
+def record_security_rls_event(event_type: str) -> None:
+    """
+    Zeichne RLS-Security-Event auf.
+
+    Args:
+        event_type: Art des Events
+            - bypass_enabled: RLS-Bypass aktiviert (Audit-Event!)
+            - bypass_disabled: RLS-Bypass deaktiviert
+            - context_set: RLS-Context gesetzt
+            - context_failed: RLS-Context-Fehler
+    """
+    security_rls_events_total.labels(event_type=event_type).inc()
+
+
 def get_metrics_summary() -> Dict[str, Any]:
     """
     Hole Zusammenfassung aller Business-Metriken.
@@ -728,5 +796,9 @@ def get_metrics_summary() -> Dict[str, Any]:
         "gpu": {
             "metrics_defined": 3,
             "includes": ["batch_size", "memory_efficiency", "idle_time"]
+        },
+        "security": {
+            "metrics_defined": 3,
+            "includes": ["header_violations", "company_context", "rls_events"]
         }
     }

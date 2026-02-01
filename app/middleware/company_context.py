@@ -33,6 +33,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.security import decode_token, verify_token_type
+from app.core.business_metrics import (
+    record_security_header_violation,
+    record_security_company_context_event,
+    record_security_rls_event,
+)
 from app.db.database import get_db
 from app.db.models import Company, UserCompany, User
 from app.services.user_service import UserService
@@ -93,6 +98,7 @@ class CompanyContextMiddleware(BaseHTTPMiddleware):
                     length=len(company_header),
                     max_allowed=_MAX_COMPANY_HEADER_LENGTH
                 )
+                record_security_header_violation("header_too_long")
                 company_header = None
 
             # CWE-113 CRLF Injection Prevention
@@ -102,6 +108,7 @@ class CompanyContextMiddleware(BaseHTTPMiddleware):
                     has_cr='\r' in company_header,
                     has_lf='\n' in company_header
                 )
+                record_security_header_violation("crlf_injection")
                 company_header = None
 
         if company_header:
@@ -116,6 +123,7 @@ class CompanyContextMiddleware(BaseHTTPMiddleware):
                     "invalid_company_header",
                     header_value=company_header[:50]  # Truncate for safety
                 )
+                record_security_header_violation("invalid_uuid")
 
         # 2. Falls kein Header, aus User-Session (wird in require_company gemacht)
         # Hier setzen wir nur wenn explizit angegeben
@@ -327,6 +335,7 @@ async def get_current_company(
                         attempted_company_id=str(company_id),
                         message="X-Company-ID Header ohne Berechtigung blockiert"
                     )
+                    record_security_company_context_event("bypass_blocked")
                     # Setze Context zurück und hole User's echte Company
                     set_company_context(None)
                     result_company = await get_user_current_company(user.id, db)
@@ -363,6 +372,7 @@ async def get_current_company(
         min_time = _MIN_COMPANY_LOOKUP_TIME + jitter
         if elapsed < min_time:
             await asyncio.sleep(min_time - elapsed)
+            record_security_company_context_event("timing_protected")
 
 
 async def set_rls_company_context(db: AsyncSession, company_id: UUID) -> None:
@@ -389,6 +399,7 @@ async def set_rls_company_context(db: AsyncSession, company_id: UUID) -> None:
             sa.text("SELECT set_config('app.current_company_id', :cid, true)"),
             {"cid": str(validated_uuid)}
         )
+        record_security_rls_event("context_set")
         logger.debug(
             "rls_context_set",
             company_id=str(validated_uuid)
@@ -402,6 +413,7 @@ async def set_rls_company_context(db: AsyncSession, company_id: UUID) -> None:
         )
     except sa.exc.SQLAlchemyError as e:
         # CWE-390/391 FIX: Spezifische Exception, RLS-Failure ist KRITISCH
+        record_security_rls_event("context_failed")
         logger.error(
             "rls_context_failed",
             error_type=type(e).__name__,
@@ -443,6 +455,7 @@ async def enable_rls_bypass(db: AsyncSession) -> None:
         await db.execute(
             sa.text("SELECT set_config('app.rls_bypass', 'true', true)")
         )
+        record_security_rls_event("bypass_enabled")
         # CWE-390/391 FIX: RLS-Bypass ist sicherheitskritisch - Audit-Level Logging
         logger.warning(
             "rls_bypass_enabled",
@@ -474,6 +487,7 @@ async def disable_rls_bypass(db: AsyncSession) -> None:
         await db.execute(
             sa.text("SELECT set_config('app.rls_bypass', 'false', true)")
         )
+        record_security_rls_event("bypass_disabled")
         # CWE-390/391 FIX: Audit-Level Logging fuer RLS-Bypass Ende
         logger.warning(
             "rls_bypass_disabled",
