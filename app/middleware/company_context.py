@@ -16,6 +16,9 @@ Verwendung in Endpoints:
         ...
 """
 
+import asyncio
+import time
+from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from typing import Optional
 from uuid import UUID
@@ -28,8 +31,10 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.core.security import decode_token, verify_token_type
 from app.db.database import get_db
 from app.db.models import Company, UserCompany, User
+from app.services.user_service import UserService
 
 logger = structlog.get_logger(__name__)
 
@@ -249,6 +254,10 @@ async def _get_user_from_request_optional(
     return await _extract_user_from_token(request, db)
 
 
+# CWE-208 Timing Attack Mitigation: Minimum execution time in seconds
+_MIN_COMPANY_LOOKUP_TIME: float = 0.005  # 5ms minimum
+
+
 async def get_current_company(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -256,6 +265,7 @@ async def get_current_company(
     """Dependency: Holt die aktuelle Company (optional).
 
     U.4 SECURITY FIX: Ownership-Validierung bei Company-ID aus Header.
+    CWE-208 FIX: Konstante Ausfuehrungszeit gegen Timing-Attacks.
 
     Verwendung:
         @router.get("/optional-company")
@@ -265,48 +275,66 @@ async def get_current_company(
     Returns:
         Company oder None
     """
-    # Erst aus ContextVar (gesetzt von Middleware aus X-Company-ID Header)
-    company_id = get_current_company_id()
+    # CWE-208 FIX: Start timing for constant-time execution
+    start_time = time.perf_counter()
+    result_company: Optional[Company] = None
 
-    # Get user without circular import
-    user = await _get_user_from_request_optional(request, db)
+    try:
+        # Erst aus ContextVar (gesetzt von Middleware aus X-Company-ID Header)
+        company_id = get_current_company_id()
 
-    if company_id:
-        # U.4 SECURITY FIX: Wenn company_id aus Header kommt UND User bekannt,
-        # MUSS Ownership geprueft werden um Company Context Bypass zu verhindern
+        # Get user without circular import
+        user = await _get_user_from_request_optional(request, db)
+
+        if company_id:
+            # U.4 SECURITY FIX: Wenn company_id aus Header kommt UND User bekannt,
+            # MUSS Ownership geprueft werden um Company Context Bypass zu verhindern
+            if user:
+                # P1 DRY-FIX: Nutzt _get_user_company() Helper
+                user_company = await _get_user_company(user.id, company_id, db)
+
+                if not user_company:
+                    # U.4 SECURITY FIX: User hat KEINEN Zugriff auf diese Company!
+                    # Header wurde manipuliert - ignoriere und verwende User's aktuelle Company
+                    logger.warning(
+                        "company_context_bypass_blocked",
+                        user_id=str(user.id),
+                        attempted_company_id=str(company_id),
+                        message="X-Company-ID Header ohne Berechtigung blockiert"
+                    )
+                    # Setze Context zurück und hole User's echte Company
+                    set_company_context(None)
+                    result_company = await get_user_current_company(user.id, db)
+                    return result_company
+
+            # Company-ID ist valide (entweder User hat Zugriff oder kein User bekannt)
+            db_result = await db.execute(
+                select(Company)
+                .where(Company.id == company_id)
+                .where(Company.is_active == True)
+                .where(Company.deleted_at.is_(None))
+            )
+            company = db_result.scalar_one_or_none()
+            if company:
+                result_company = company
+                return result_company
+
+        # Fallback: Aus User's is_current Company
         if user:
-            # P1 DRY-FIX: Nutzt _get_user_company() Helper
-            user_company = await _get_user_company(user.id, company_id, db)
+            result_company = await get_user_current_company(user.id, db)
+            return result_company
 
-            if not user_company:
-                # U.4 SECURITY FIX: User hat KEINEN Zugriff auf diese Company!
-                # Header wurde manipuliert - ignoriere und verwende User's aktuelle Company
-                logger.warning(
-                    "company_context_bypass_blocked",
-                    user_id=str(user.id),
-                    attempted_company_id=str(company_id),
-                    message="X-Company-ID Header ohne Berechtigung blockiert"
-                )
-                # Setze Context zurück und hole User's echte Company
-                set_company_context(None)
-                return await get_user_current_company(user.id, db)
+        return None
 
-        # Company-ID ist valide (entweder User hat Zugriff oder kein User bekannt)
-        result = await db.execute(
-            select(Company)
-            .where(Company.id == company_id)
-            .where(Company.is_active == True)
-            .where(Company.deleted_at.is_(None))
-        )
-        company = result.scalar_one_or_none()
-        if company:
-            return company
-
-    # Fallback: Aus User's is_current Company
-    if user:
-        return await get_user_current_company(user.id, db)
-
-    return None
+    finally:
+        # CWE-208 FIX: Ensure constant minimum execution time to prevent timing attacks
+        # Attackers cannot distinguish between:
+        # - Valid user + valid company (2 DB calls)
+        # - Valid user + invalid company (3 DB calls + fallback)
+        # - No user (1 DB call)
+        elapsed = time.perf_counter() - start_time
+        if elapsed < _MIN_COMPANY_LOOKUP_TIME:
+            await asyncio.sleep(_MIN_COMPANY_LOOKUP_TIME - elapsed)
 
 
 async def set_rls_company_context(db: AsyncSession, company_id: UUID) -> None:
@@ -323,10 +351,9 @@ async def set_rls_company_context(db: AsyncSession, company_id: UUID) -> None:
     """
     try:
         # I.7 CRITICAL: Strenge UUID-Validierung gegen SQL-Injection
-        from uuid import UUID as UUIDType
         company_id_str = str(company_id)
         # Validierung: Nur gültige UUIDs erlauben
-        validated_uuid = UUIDType(company_id_str)  # Wirft ValueError bei ungültiger UUID
+        validated_uuid = UUID(company_id_str)  # Wirft ValueError bei ungültiger UUID
 
         # I.7 HIGH: Verwende set_config() mit Parameter statt f-string SET
         # set_config() ist sicher gegen SQL-Injection da es den Wert als String behandelt
@@ -435,9 +462,6 @@ async def disable_rls_bypass(db: AsyncSession) -> None:
         raise  # RLS-Bypass-Fehler ist kritisch!
 
 
-from contextlib import asynccontextmanager
-
-
 @asynccontextmanager
 async def rls_bypass_context(db: AsyncSession):
     """P1.1 SECURITY: Context Manager fuer RLS-Bypass.
@@ -458,11 +482,6 @@ async def rls_bypass_context(db: AsyncSession):
         yield
     finally:
         await disable_rls_bypass(db)
-
-
-from app.core.safe_errors import safe_error_detail
-from app.core.security import decode_token, verify_token_type
-from app.services.user_service import UserService
 
 
 # =============================================================================
@@ -508,10 +527,10 @@ async def _extract_user_from_token(
         db: Datenbank-Session
 
     Returns:
-        Tuple of (User or None, error_detail or None)
-        - If user found: (user, None)
-        - If no token: (None, None) - nicht authentifiziert aber kein Fehler
-        - If token invalid: (None, "error message") - Fehler aufgetreten
+        User oder None wenn:
+        - Kein Token vorhanden
+        - Token ungueltig/abgelaufen
+        - User nicht gefunden oder inaktiv
     """
     # Try to get from request state first (set by middleware)
     if hasattr(request.state, "user") and request.state.user:
