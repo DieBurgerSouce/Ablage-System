@@ -164,6 +164,7 @@ async def switch_company(
 
     Raises:
         ValueError: Wenn User keinen Zugriff auf Company hat
+        RuntimeError: Wenn DB-Operation fehlschlaegt
     """
     # Pruefe ob User Zugriff hat
     result = await db.execute(
@@ -176,20 +177,47 @@ async def switch_company(
     if not target_uc:
         raise ValueError(f"Benutzer hat keinen Zugriff auf Firma {company_id}")
 
-    # CWE-362 FIX: Atomare UPDATE-Operationen statt fetch-then-update
-    # Dies verhindert Race Conditions bei concurrent requests
-    await db.execute(
-        update(UserCompany)
-        .where(UserCompany.user_id == user_id)
-        .values(is_current=False)
-    )
-    await db.execute(
-        update(UserCompany)
-        .where(UserCompany.user_id == user_id)
-        .where(UserCompany.company_id == company_id)
-        .values(is_current=True)
-    )
-    await db.commit()
+    # CWE-362 FIX: Row-Level Locking mit SELECT FOR UPDATE
+    # Lock timeout verhindert Deadlocks, FOR UPDATE sichert Atomaritaet
+    try:
+        await db.execute(sa.text("SET LOCAL lock_timeout = '5s'"))
+
+        # Row-Level Lock auf alle UserCompany-Eintraege des Users
+        await db.execute(
+            select(UserCompany)
+            .where(UserCompany.user_id == user_id)
+            .with_for_update()
+        )
+
+        await db.execute(
+            update(UserCompany)
+            .where(UserCompany.user_id == user_id)
+            .values(is_current=False)
+        )
+        await db.execute(
+            update(UserCompany)
+            .where(UserCompany.user_id == user_id)
+            .where(UserCompany.company_id == company_id)
+            .values(is_current=True)
+        )
+        await db.commit()
+    except sa.exc.OperationalError as e:
+        # Lock timeout oder connection error
+        await db.rollback()
+        logger.error(
+            "company_switch_lock_timeout",
+            user_id=str(user_id)[:8],
+            error_type=type(e).__name__
+        )
+        raise RuntimeError("Firmenwechsel fehlgeschlagen - bitte erneut versuchen") from e
+    except sa.exc.SQLAlchemyError as e:
+        await db.rollback()
+        logger.error(
+            "company_switch_failed",
+            user_id=str(user_id)[:8],
+            error_type=type(e).__name__
+        )
+        raise RuntimeError("Firmenwechsel fehlgeschlagen") from e
 
     # Update Context
     set_company_context(company_id)
@@ -349,19 +377,29 @@ async def set_rls_company_context(db: AsyncSession, company_id: UUID) -> None:
             attempted_value=str(company_id)[:50],  # Trunkiert für Sicherheit
             error_type="ValueError"
         )
-    except Exception as e:
-        # CWE-391 FIX: RLS-Failure ist KRITISCH - muss geloggt werden
+    except sa.exc.SQLAlchemyError as e:
+        # CWE-390/391 FIX: Spezifische Exception, RLS-Failure ist KRITISCH
         logger.error(
             "rls_context_failed",
             error_type=type(e).__name__,
             company_id=str(company_id)[:8] + "...",  # Nur Prefix fuer Logs (PII)
             message="RLS-Context konnte nicht gesetzt werden - Datenzugriff ohne Tenant-Filter!"
         )
-        # Bei Fehler: Session zurückrollen um "aborted transaction" zu vermeiden
+        # Bei Fehler: Session zurueckrollen um "aborted transaction" zu vermeiden
         try:
             await db.rollback()
-        except Exception:
-            pass  # Rollback-Fehler ist sekundaer
+        except sa.exc.SQLAlchemyError as rollback_err:
+            # CWE-391 FIX: Rollback-Fehler ist KRITISCH, nicht sekundaer!
+            logger.critical(
+                "rls_rollback_failed",
+                error_type=type(rollback_err).__name__,
+                original_error=type(e).__name__,
+                message="Rollback nach RLS-Fehler fehlgeschlagen - DB-Session in undefiniertem Zustand"
+            )
+            # Raise kombinierter Fehler
+            raise RuntimeError(
+                f"RLS-Fehler: {type(e).__name__}, Rollback-Fehler: {type(rollback_err).__name__}"
+            ) from e
         # WICHTIG: Exception weitergeben um unsicheren Zustand zu verhindern
         raise
 
@@ -374,14 +412,28 @@ async def enable_rls_bypass(db: AsyncSession) -> None:
 
     Args:
         db: Datenbank-Session
+
+    Raises:
+        sa.exc.SQLAlchemyError: Wenn RLS-Bypass nicht aktiviert werden kann
     """
     try:
         await db.execute(
             sa.text("SELECT set_config('app.rls_bypass', 'true', true)")
         )
-        logger.debug("rls_bypass_enabled")
-    except Exception as e:
-        logger.warning("rls_bypass_enable_failed", **safe_error_log(e))
+        # CWE-390/391 FIX: RLS-Bypass ist sicherheitskritisch - Audit-Level Logging
+        logger.warning(
+            "rls_bypass_enabled",
+            audit_event="RLS_BYPASS_START",
+            message="RLS-Bypass aktiviert - Cross-Tenant Zugriff moeglich"
+        )
+    except sa.exc.SQLAlchemyError as e:
+        # CWE-390 FIX: Spezifische Exception statt bare except
+        logger.error(
+            "rls_bypass_enable_failed",
+            error_type=type(e).__name__,
+            message="RLS-Bypass konnte nicht aktiviert werden"
+        )
+        raise  # RLS-Bypass-Fehler ist kritisch!
 
 
 async def disable_rls_bypass(db: AsyncSession) -> None:
@@ -391,14 +443,28 @@ async def disable_rls_bypass(db: AsyncSession) -> None:
 
     Args:
         db: Datenbank-Session
+
+    Raises:
+        sa.exc.SQLAlchemyError: Wenn RLS-Bypass nicht deaktiviert werden kann
     """
     try:
         await db.execute(
             sa.text("SELECT set_config('app.rls_bypass', 'false', true)")
         )
-        logger.debug("rls_bypass_disabled")
-    except Exception as e:
-        logger.warning("rls_bypass_disable_failed", **safe_error_log(e))
+        # CWE-390/391 FIX: Audit-Level Logging fuer RLS-Bypass Ende
+        logger.warning(
+            "rls_bypass_disabled",
+            audit_event="RLS_BYPASS_END",
+            message="RLS-Bypass deaktiviert - Normale Tenant-Isolation wiederhergestellt"
+        )
+    except sa.exc.SQLAlchemyError as e:
+        # CWE-390 FIX: Spezifische Exception statt bare except
+        logger.error(
+            "rls_bypass_disable_failed",
+            error_type=type(e).__name__,
+            message="RLS-Bypass konnte nicht deaktiviert werden - KRITISCH!"
+        )
+        raise  # RLS-Bypass-Fehler ist kritisch!
 
 
 from contextlib import asynccontextmanager
@@ -426,7 +492,7 @@ async def rls_bypass_context(db: AsyncSession):
         await disable_rls_bypass(db)
 
 
-from app.core.safe_errors import safe_error_log, safe_error_detail
+from app.core.safe_errors import safe_error_detail
 
 
 async def _get_user_from_request_required(

@@ -533,9 +533,10 @@ class TestSwitchCompanyAtomic:
     """Tests for switch_company() atomic operations (CWE-362 fix)."""
 
     @pytest.mark.asyncio
-    async def test_switch_company_uses_atomic_update(self):
-        """CWE-362 FIX: switch_company should use UPDATE, not fetch-then-update."""
+    async def test_switch_company_uses_row_level_locking(self):
+        """CWE-362 FIX: switch_company should use SELECT FOR UPDATE for row-level locking."""
         from app.middleware.company_context import switch_company
+        import sqlalchemy as sa
 
         user_id = uuid4()
         company_id = uuid4()
@@ -543,18 +544,19 @@ class TestSwitchCompanyAtomic:
         mock_db = AsyncMock()
         mock_user_company = MockUserCompany(user_id=user_id, company_id=company_id)
 
-        # First query: Check access (returns user_company)
-        # Following queries: UPDATE operations (no return needed)
-        call_count = 0
+        # Track all executed queries
+        executed_queries = []
 
         async def mock_execute(query, *args, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            if call_count == 1:
-                # First call: access check
+            # Track the query type for verification
+            query_str = str(query) if hasattr(query, '__str__') else repr(query)
+            executed_queries.append(query_str)
+
+            # First call (access check) returns user_company
+            if len(executed_queries) == 1:
                 return MagicMock(scalar_one_or_none=MagicMock(return_value=mock_user_company))
-            # Other calls: UPDATE operations
-            return MagicMock()
+            # Other calls return empty mock
+            return MagicMock(scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[]))))
 
         mock_db.execute = mock_execute
         mock_db.commit = AsyncMock()
@@ -562,8 +564,17 @@ class TestSwitchCompanyAtomic:
         result = await switch_company(user_id, company_id, mock_db)
 
         assert result is True
-        # Should have 3 execute calls: 1 SELECT + 2 UPDATEs
-        assert call_count == 3
+        # Should have 5 execute calls:
+        # 1. SELECT access check
+        # 2. SET LOCAL lock_timeout
+        # 3. SELECT FOR UPDATE (row-level lock)
+        # 4. UPDATE set all is_current=False
+        # 5. UPDATE set target is_current=True
+        assert len(executed_queries) == 5, f"Expected 5 queries, got {len(executed_queries)}"
+
+        # Verify lock_timeout was set
+        assert any("lock_timeout" in q for q in executed_queries), "lock_timeout should be set"
+
         mock_db.commit.assert_called_once()
 
     @pytest.mark.asyncio
@@ -584,3 +595,156 @@ class TestSwitchCompanyAtomic:
             await switch_company(user_id, company_id, mock_db)
 
         assert "keinen Zugriff" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_switch_company_db_error_raises_runtime_error(self):
+        """CWE-362 FIX: Database errors should raise RuntimeError and rollback."""
+        from app.middleware.company_context import switch_company
+        import sqlalchemy as sa
+
+        user_id = uuid4()
+        company_id = uuid4()
+
+        mock_db = AsyncMock()
+        mock_user_company = MockUserCompany(user_id=user_id, company_id=company_id)
+
+        call_count = 0
+
+        async def mock_execute(query, *args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                # First call: access check succeeds
+                return MagicMock(scalar_one_or_none=MagicMock(return_value=mock_user_company))
+            # Third call (SELECT FOR UPDATE): fails with lock timeout
+            if call_count == 3:
+                raise sa.exc.OperationalError("statement", {}, Exception("lock timeout"))
+            return MagicMock()
+
+        mock_db.execute = mock_execute
+        mock_db.rollback = AsyncMock()
+
+        with pytest.raises(RuntimeError) as exc_info:
+            await switch_company(user_id, company_id, mock_db)
+
+        assert "erneut versuchen" in str(exc_info.value)
+        mock_db.rollback.assert_called_once()
+
+
+class TestRLSBypassAuditLogging:
+    """Tests for RLS bypass audit logging (CWE-390/391 fix)."""
+
+    @pytest.mark.asyncio
+    async def test_enable_rls_bypass_logs_warning(self):
+        """CWE-390/391 FIX: RLS bypass enable should log audit warning."""
+        from app.middleware.company_context import enable_rls_bypass
+
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock()
+
+        with patch("app.middleware.company_context.logger") as mock_logger:
+            await enable_rls_bypass(mock_db)
+
+            # Should log warning with audit_event
+            mock_logger.warning.assert_called_once()
+            call_kwargs = mock_logger.warning.call_args[1]
+            assert call_kwargs.get("audit_event") == "RLS_BYPASS_START"
+
+    @pytest.mark.asyncio
+    async def test_disable_rls_bypass_logs_warning(self):
+        """CWE-390/391 FIX: RLS bypass disable should log audit warning."""
+        from app.middleware.company_context import disable_rls_bypass
+
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock()
+
+        with patch("app.middleware.company_context.logger") as mock_logger:
+            await disable_rls_bypass(mock_db)
+
+            # Should log warning with audit_event
+            mock_logger.warning.assert_called_once()
+            call_kwargs = mock_logger.warning.call_args[1]
+            assert call_kwargs.get("audit_event") == "RLS_BYPASS_END"
+
+    @pytest.mark.asyncio
+    async def test_enable_rls_bypass_error_raises(self):
+        """CWE-390 FIX: RLS bypass enable error should raise, not be silently ignored."""
+        from app.middleware.company_context import enable_rls_bypass
+        import sqlalchemy as sa
+
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(
+            side_effect=sa.exc.SQLAlchemyError("Connection lost")
+        )
+
+        with pytest.raises(sa.exc.SQLAlchemyError):
+            await enable_rls_bypass(mock_db)
+
+    @pytest.mark.asyncio
+    async def test_disable_rls_bypass_error_raises(self):
+        """CWE-390 FIX: RLS bypass disable error should raise, not be silently ignored."""
+        from app.middleware.company_context import disable_rls_bypass
+        import sqlalchemy as sa
+
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(
+            side_effect=sa.exc.SQLAlchemyError("Connection lost")
+        )
+
+        with pytest.raises(sa.exc.SQLAlchemyError):
+            await disable_rls_bypass(mock_db)
+
+
+class TestRLSContextRollbackHandling:
+    """Tests for RLS context rollback error handling (CWE-391 fix)."""
+
+    @pytest.mark.asyncio
+    async def test_rls_context_rollback_failure_logs_critical(self):
+        """CWE-391 FIX: Rollback failure should log critical, not be silently ignored."""
+        from app.middleware.company_context import set_rls_company_context
+        import sqlalchemy as sa
+
+        company_id = uuid4()
+        mock_db = AsyncMock()
+
+        # First execute fails, then rollback also fails
+        mock_db.execute = AsyncMock(
+            side_effect=sa.exc.SQLAlchemyError("Connection lost")
+        )
+        mock_db.rollback = AsyncMock(
+            side_effect=sa.exc.SQLAlchemyError("Rollback failed")
+        )
+
+        with patch("app.middleware.company_context.logger") as mock_logger:
+            with pytest.raises(RuntimeError) as exc_info:
+                await set_rls_company_context(mock_db, company_id)
+
+            # Should log critical for rollback failure
+            mock_logger.critical.assert_called_once()
+            # Error message should mention both errors
+            assert "RLS-Fehler" in str(exc_info.value)
+            assert "Rollback-Fehler" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_rls_context_error_propagates(self):
+        """CWE-391 FIX: RLS context error should propagate after successful rollback."""
+        from app.middleware.company_context import set_rls_company_context
+        import sqlalchemy as sa
+
+        company_id = uuid4()
+        mock_db = AsyncMock()
+
+        # Execute fails, rollback succeeds
+        mock_db.execute = AsyncMock(
+            side_effect=sa.exc.SQLAlchemyError("Connection lost")
+        )
+        mock_db.rollback = AsyncMock()  # Rollback succeeds
+
+        with patch("app.middleware.company_context.logger") as mock_logger:
+            with pytest.raises(sa.exc.SQLAlchemyError) as exc_info:
+                await set_rls_company_context(mock_db, company_id)
+
+            # Should log error
+            mock_logger.error.assert_called_once()
+            # Rollback should have been called
+            mock_db.rollback.assert_called_once()
