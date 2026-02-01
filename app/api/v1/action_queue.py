@@ -25,11 +25,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import (
-    get_current_user,
-    get_db,
-    require_permission,
-)
+from app.api.dependencies import get_current_user, get_db
+from app.core.rbac import require_permission
 from app.db.models import User
 from app.db.models_autonomy import (
     AutonomySettings,
