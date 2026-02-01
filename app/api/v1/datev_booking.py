@@ -17,7 +17,7 @@ from decimal import Decimal
 from typing import Optional, List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -471,7 +471,7 @@ async def export_to_datev(
     description="Gibt alle verfügbaren Konten eines Kontenrahmens zurück.",
 )
 async def get_kontenrahmen(
-    kontenrahmen: str = Query(..., pattern="^(skr03|skr04)$"),
+    kontenrahmen: str = Path(..., pattern="^(skr03|skr04)$"),
     current_user: User = Depends(get_current_user),
 ) -> KontenrahmenResponse:
     """
