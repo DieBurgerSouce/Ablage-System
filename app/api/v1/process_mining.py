@@ -32,7 +32,7 @@ from app.db.models_process_mining import (
     SuggestionStatus,
     SuggestionType,
 )
-from app.services.process_mining.event_tracker import EventTracker
+from app.services.process_mining.event_tracker import ProcessEventTracker as EventTracker
 from app.services.process_mining.bottleneck_detector import BottleneckDetector
 from app.services.process_mining.automation_suggester import AutomationSuggester
 from app.services.process_mining.process_discovery_service import ProcessDiscoveryService
