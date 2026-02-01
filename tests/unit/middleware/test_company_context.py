@@ -97,6 +97,92 @@ def create_mock_request(
     return mock_request
 
 
+class TestGetUserCompanyHelper:
+    """Tests for _get_user_company() helper function (P1 DRY-FIX)."""
+
+    @pytest.mark.asyncio
+    async def test_returns_user_company_when_exists(self):
+        """_get_user_company should return UserCompany when relationship exists."""
+        from app.middleware.company_context import _get_user_company
+
+        user_id = uuid4()
+        company_id = uuid4()
+        mock_user_company = MockUserCompany(user_id=user_id, company_id=company_id)
+
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(
+            return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=mock_user_company))
+        )
+
+        result = await _get_user_company(user_id, company_id, mock_db)
+
+        assert result is mock_user_company
+        mock_db.execute.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_returns_none_when_not_exists(self):
+        """_get_user_company should return None when no relationship exists."""
+        from app.middleware.company_context import _get_user_company
+
+        user_id = uuid4()
+        company_id = uuid4()
+
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(
+            return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None))
+        )
+
+        result = await _get_user_company(user_id, company_id, mock_db)
+
+        assert result is None
+
+
+class TestExtractUserFromToken:
+    """Tests for _extract_user_from_token() helper function (P1 DRY-FIX)."""
+
+    @pytest.mark.asyncio
+    async def test_returns_user_from_request_state(self):
+        """User in request.state should be returned directly."""
+        from app.middleware.company_context import _extract_user_from_token
+
+        existing_user = MockUser()
+        mock_request = create_mock_request(user_in_state=existing_user)
+        mock_db = AsyncMock()
+
+        result = await _extract_user_from_token(mock_request, mock_db)
+
+        assert result is existing_user
+
+    @pytest.mark.asyncio
+    async def test_returns_none_without_auth_header(self):
+        """No Authorization header should return None."""
+        from app.middleware.company_context import _extract_user_from_token
+
+        mock_request = create_mock_request()
+        mock_db = AsyncMock()
+
+        result = await _extract_user_from_token(mock_request, mock_db)
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_returns_none_on_jwt_error(self):
+        """JWT error should return None, not raise exception."""
+        from app.middleware.company_context import _extract_user_from_token
+
+        mock_request = create_mock_request(authorization="Bearer invalid.token")
+        mock_db = AsyncMock()
+
+        with patch(
+            "app.middleware.company_context.decode_token",
+            new_callable=AsyncMock,
+            side_effect=jwt.PyJWTError("Invalid token")
+        ):
+            result = await _extract_user_from_token(mock_request, mock_db)
+
+            assert result is None
+
+
 class TestGetUserFromRequestOptional:
     """Tests for _get_user_from_request_optional()."""
 

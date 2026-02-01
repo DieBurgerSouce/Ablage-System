@@ -235,45 +235,18 @@ async def _get_user_from_request_optional(
     request: Request,
     db: AsyncSession,
 ) -> Optional[User]:
-    """Extract user from request without circular import.
+    """Extract user from request, return None if not authenticated.
 
-    This implements the same logic as get_current_user_optional but inline
-    to avoid circular dependency with app.api.dependencies.
+    P1 DRY-FIX: Nutzt _extract_user_from_token() fuer gemeinsame Logik.
+
+    Args:
+        request: FastAPI Request
+        db: Datenbank-Session
+
+    Returns:
+        User oder None wenn nicht authentifiziert
     """
-    from app.core.security import decode_token, verify_token_type
-    from app.services.user_service import UserService
-
-    # Try to get from request state first (set by middleware)
-    if hasattr(request.state, "user") and request.state.user:
-        return request.state.user
-
-    # Try to get from Authorization header
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
-        return None
-
-    token = auth_header[7:]  # Remove "Bearer " prefix
-    if not token:
-        return None
-
-    try:
-        payload = await decode_token(token)
-        verify_token_type(payload, "access")
-
-        user_id_str = payload.get("sub")
-        if not user_id_str:
-            return None
-
-        user_id = UUID(user_id_str)
-        user = await UserService.get_user_by_id(db, user_id)
-
-        if user and user.is_active:
-            return user
-    except (ValueError, jwt.PyJWTError) as e:
-        # CWE-390 FIX: Spezifische Exceptions statt bare except
-        logger.debug("token_decode_failed", error_type=type(e).__name__)
-
-    return None
+    return await _extract_user_from_token(request, db)
 
 
 async def get_current_company(
@@ -302,13 +275,8 @@ async def get_current_company(
         # U.4 SECURITY FIX: Wenn company_id aus Header kommt UND User bekannt,
         # MUSS Ownership geprueft werden um Company Context Bypass zu verhindern
         if user:
-            # Pruefe ob User Zugriff auf diese Company hat
-            ownership_result = await db.execute(
-                select(UserCompany)
-                .where(UserCompany.user_id == user.id)
-                .where(UserCompany.company_id == company_id)
-            )
-            user_company = ownership_result.scalar_one_or_none()
+            # P1 DRY-FIX: Nutzt _get_user_company() Helper
+            user_company = await _get_user_company(user.id, company_id, db)
 
             if not user_company:
                 # U.4 SECURITY FIX: User hat KEINEN Zugriff auf diese Company!
@@ -493,6 +461,90 @@ async def rls_bypass_context(db: AsyncSession):
 
 
 from app.core.safe_errors import safe_error_detail
+from app.core.security import decode_token, verify_token_type
+from app.services.user_service import UserService
+
+
+# =============================================================================
+# P1 DRY-FIX: Konsolidierte Helper-Funktionen
+# =============================================================================
+
+
+async def _get_user_company(
+    user_id: UUID,
+    company_id: UUID,
+    db: AsyncSession
+) -> Optional[UserCompany]:
+    """Get UserCompany relationship with proper error handling.
+
+    P1 DRY-FIX: Konsolidierte Query-Funktion statt 5x identischer Code.
+
+    Args:
+        user_id: User-ID
+        company_id: Company-ID
+        db: Datenbank-Session
+
+    Returns:
+        UserCompany oder None wenn keine Beziehung existiert
+    """
+    result = await db.execute(
+        select(UserCompany)
+        .where(UserCompany.user_id == user_id)
+        .where(UserCompany.company_id == company_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def _extract_user_from_token(
+    request: Request,
+    db: AsyncSession,
+) -> Optional[User]:
+    """Core logic for extracting user from JWT token.
+
+    P1 DRY-FIX: Gemeinsame Logik fuer optional und required User extraction.
+
+    Args:
+        request: FastAPI Request
+        db: Datenbank-Session
+
+    Returns:
+        Tuple of (User or None, error_detail or None)
+        - If user found: (user, None)
+        - If no token: (None, None) - nicht authentifiziert aber kein Fehler
+        - If token invalid: (None, "error message") - Fehler aufgetreten
+    """
+    # Try to get from request state first (set by middleware)
+    if hasattr(request.state, "user") and request.state.user:
+        return request.state.user
+
+    # Try to get from Authorization header
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return None
+
+    token = auth_header[7:]  # Remove "Bearer " prefix
+    if not token:
+        return None
+
+    try:
+        payload = await decode_token(token)
+        verify_token_type(payload, "access")
+
+        user_id_str = payload.get("sub")
+        if not user_id_str:
+            return None
+
+        user_id = UUID(user_id_str)
+        user = await UserService.get_user_by_id(db, user_id)
+
+        if user and user.is_active:
+            return user
+        return None
+
+    except (ValueError, jwt.PyJWTError) as e:
+        # CWE-390 FIX: Spezifische Exceptions statt bare except
+        logger.debug("token_decode_failed", error_type=type(e).__name__)
+        return None
 
 
 async def _get_user_from_request_required(
@@ -501,62 +553,35 @@ async def _get_user_from_request_required(
 ) -> User:
     """Extract authenticated user from request, raise 401 if not found.
 
-    This implements similar logic to get_current_active_user but inline
-    to avoid circular dependency with app.api.dependencies.
+    P1 DRY-FIX: Nutzt _extract_user_from_token() und wirft HTTPException bei Fehler.
+
+    Args:
+        request: FastAPI Request
+        db: Datenbank-Session
+
+    Returns:
+        User (garantiert aktiv)
+
+    Raises:
+        HTTPException 401: Wenn nicht authentifiziert
     """
-    from app.core.security import decode_token, verify_token_type
-    from app.services.user_service import UserService
+    user = await _extract_user_from_token(request, db)
 
-    # Try to get from request state first (set by middleware)
-    if hasattr(request.state, "user") and request.state.user:
-        return request.state.user
-
-    # Try to get from Authorization header
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
-        raise HTTPException(
-            status_code=401,
-            detail="Nicht authentifiziert"
-        )
-
-    token = auth_header[7:]  # Remove "Bearer " prefix
-    if not token:
-        raise HTTPException(
-            status_code=401,
-            detail="Nicht authentifiziert"
-        )
-
-    try:
-        payload = await decode_token(token)
-        verify_token_type(payload, "access")
-
-        user_id_str = payload.get("sub")
-        if not user_id_str:
+    if not user:
+        # Detaillierte Fehlermeldung basierend auf Header-Praesenz
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header or not auth_header.startswith("Bearer "):
             raise HTTPException(
                 status_code=401,
-                detail="Ungueltiges Token"
+                detail="Nicht authentifiziert"
             )
-
-        user_id = UUID(user_id_str)
-        user = await UserService.get_user_by_id(db, user_id)
-
-        if not user or not user.is_active:
-            raise HTTPException(
-                status_code=401,
-                detail="Benutzer nicht gefunden oder inaktiv"
-            )
-
-        return user
-
-    except HTTPException:
-        raise
-    except (ValueError, jwt.PyJWTError) as e:
-        # CWE-390 FIX: Spezifische Exceptions statt bare except
-        logger.warning("auth_failed", error_type=type(e).__name__)
+        # Token war vorhanden aber ungueltig
         raise HTTPException(
             status_code=401,
             detail="Authentifizierung fehlgeschlagen"
         )
+
+    return user
 
 
 async def require_company(
@@ -593,12 +618,8 @@ async def require_company(
         )
 
     # I.5 CRITICAL: Validiere Zugriff IMMER (User ist garantiert vorhanden)
-    result = await db.execute(
-        select(UserCompany)
-        .where(UserCompany.user_id == current_user.id)
-        .where(UserCompany.company_id == company.id)
-    )
-    user_company = result.scalar_one_or_none()
+    # P1 DRY-FIX: Nutzt _get_user_company() Helper
+    user_company = await _get_user_company(current_user.id, company.id, db)
 
     if not user_company:
         logger.warning(
@@ -632,24 +653,8 @@ async def require_cash_permission(
     company = await require_company(request, db)
     user = await _get_user_from_request_required(request, db)
 
-    # J.2 CRITICAL FIX: User MUSS immer vorhanden sein nach require_company
-    # Aber Defense-in-Depth: Explizite Pruefung
-    if not user:
-        logger.error(
-            "require_cash_permission_no_user",
-            message="user ist None - sollte nie passieren nach require_company"
-        )
-        raise HTTPException(
-            status_code=401,
-            detail="Nicht authentifiziert"
-        )
-
-    result = await db.execute(
-        select(UserCompany)
-        .where(UserCompany.user_id == user.id)
-        .where(UserCompany.company_id == company.id)
-    )
-    user_company = result.scalar_one_or_none()
+    # P1 DRY-FIX: Nutzt _get_user_company() Helper
+    user_company = await _get_user_company(user.id, company.id, db)
 
     # J.2 CRITICAL FIX: user_company=None bedeutet KEIN Zugriff, nicht Durchlassen!
     if not user_company:
@@ -687,23 +692,8 @@ async def require_expense_approval_permission(
     company = await require_company(request, db)
     user = await _get_user_from_request_required(request, db)
 
-    # J.2 CRITICAL FIX: User MUSS immer vorhanden sein nach require_company
-    if not user:
-        logger.error(
-            "require_expense_approval_no_user",
-            message="user ist None - sollte nie passieren nach require_company"
-        )
-        raise HTTPException(
-            status_code=401,
-            detail="Nicht authentifiziert"
-        )
-
-    result = await db.execute(
-        select(UserCompany)
-        .where(UserCompany.user_id == user.id)
-        .where(UserCompany.company_id == company.id)
-    )
-    user_company = result.scalar_one_or_none()
+    # P1 DRY-FIX: Nutzt _get_user_company() Helper
+    user_company = await _get_user_company(user.id, company.id, db)
 
     # J.2 CRITICAL FIX: user_company=None bedeutet KEIN Zugriff!
     if not user_company:
