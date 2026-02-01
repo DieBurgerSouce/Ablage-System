@@ -6,10 +6,14 @@ Tests verify that:
 3. RLS bypass works correctly for service operations
 
 These tests require a real PostgreSQL database with RLS policies enabled.
+
+To run these tests:
+    docker-compose exec backend pytest tests/integration/test_rls_context.py -v -m integration
 """
 
 import asyncio
 import pytest
+import pytest_asyncio
 from uuid import uuid4
 from datetime import datetime
 
@@ -19,7 +23,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Company, User, UserCompany
 
 
-@pytest.fixture
+# Alias db_session to test_db from main conftest for backwards compatibility
+@pytest_asyncio.fixture
+async def db_session(test_db: AsyncSession):
+    """Alias for test_db fixture from main conftest.py."""
+    yield test_db
+
+
+@pytest_asyncio.fixture
 async def test_companies(db_session: AsyncSession):
     """Create two test companies for RLS testing."""
     company_a = Company(
@@ -47,7 +58,7 @@ async def test_companies(db_session: AsyncSession):
     await db_session.commit()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def test_user_with_companies(
     db_session: AsyncSession,
     test_companies: tuple,
@@ -153,17 +164,20 @@ class TestConcurrentCompanySwitchIntegration:
     ):
         """Verify concurrent switch_company operations use proper locking."""
         from app.middleware.company_context import switch_company
-        from app.db.database import async_session_factory
+        from app.db.database import DatabaseManager
 
         user, company_a, company_b = test_user_with_companies
 
+        # Get database manager for creating new sessions
+        db_manager = DatabaseManager()
+
         # Create separate sessions for concurrent operations
         async def switch_to_a():
-            async with async_session_factory() as session:
+            async with db_manager.get_session() as session:
                 return await switch_company(user.id, company_a.id, session)
 
         async def switch_to_b():
-            async with async_session_factory() as session:
+            async with db_manager.get_session() as session:
                 return await switch_company(user.id, company_b.id, session)
 
         # Run multiple concurrent switches
@@ -180,7 +194,7 @@ class TestConcurrentCompanySwitchIntegration:
             assert result is True or isinstance(result, RuntimeError)
 
         # Verify final state is consistent (exactly one is_current=True)
-        async with async_session_factory() as check_session:
+        async with db_manager.get_session() as check_session:
             result = await check_session.execute(
                 select(UserCompany)
                 .where(UserCompany.user_id == user.id)

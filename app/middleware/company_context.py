@@ -17,6 +17,7 @@ Verwendung in Endpoints:
 """
 
 import asyncio
+import secrets
 import time
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
@@ -37,6 +38,9 @@ from app.db.models import Company, UserCompany, User
 from app.services.user_service import UserService
 
 logger = structlog.get_logger(__name__)
+
+# CWE-113 CRLF Injection Prevention: Maximum X-Company-ID header length
+_MAX_COMPANY_HEADER_LENGTH: int = 40  # UUID is max 36 chars + margin
 
 # ContextVar fuer aktuelle Company-ID (Thread-/Async-safe)
 _current_company_id: ContextVar[Optional[UUID]] = ContextVar(
@@ -82,6 +86,25 @@ class CompanyContextMiddleware(BaseHTTPMiddleware):
         # 1. Versuche X-Company-ID Header
         company_header = request.headers.get("X-Company-ID")
         if company_header:
+            # CWE-400 DoS Prevention: Laengenpruefung
+            if len(company_header) > _MAX_COMPANY_HEADER_LENGTH:
+                logger.warning(
+                    "x_company_header_too_long",
+                    length=len(company_header),
+                    max_allowed=_MAX_COMPANY_HEADER_LENGTH
+                )
+                company_header = None
+
+            # CWE-113 CRLF Injection Prevention
+            elif '\r' in company_header or '\n' in company_header:
+                logger.warning(
+                    "x_company_header_crlf_injection_attempt",
+                    has_cr='\r' in company_header,
+                    has_lf='\n' in company_header
+                )
+                company_header = None
+
+        if company_header:
             try:
                 company_id = UUID(company_header)
                 logger.debug(
@@ -91,7 +114,7 @@ class CompanyContextMiddleware(BaseHTTPMiddleware):
             except ValueError:
                 logger.warning(
                     "invalid_company_header",
-                    header_value=company_header
+                    header_value=company_header[:50]  # Truncate for safety
                 )
 
         # 2. Falls kein Header, aus User-Session (wird in require_company gemacht)
@@ -255,7 +278,9 @@ async def _get_user_from_request_optional(
 
 
 # CWE-208 Timing Attack Mitigation: Minimum execution time in seconds
-_MIN_COMPANY_LOOKUP_TIME: float = 0.005  # 5ms minimum
+# Enterprise-Standard: 50ms minimum + random jitter for stronger protection
+_MIN_COMPANY_LOOKUP_TIME: float = 0.050  # 50ms minimum (was 5ms - too weak)
+_TIMING_JITTER_MAX_MS: int = 20  # 0-20ms random jitter
 
 
 async def get_current_company(
@@ -333,8 +358,11 @@ async def get_current_company(
         # - Valid user + invalid company (3 DB calls + fallback)
         # - No user (1 DB call)
         elapsed = time.perf_counter() - start_time
-        if elapsed < _MIN_COMPANY_LOOKUP_TIME:
-            await asyncio.sleep(_MIN_COMPANY_LOOKUP_TIME - elapsed)
+        # Add random jitter (0-20ms) to make timing analysis harder
+        jitter = secrets.randbelow(_TIMING_JITTER_MAX_MS + 1) / 1000.0
+        min_time = _MIN_COMPANY_LOOKUP_TIME + jitter
+        if elapsed < min_time:
+            await asyncio.sleep(min_time - elapsed)
 
 
 async def set_rls_company_context(db: AsyncSession, company_id: UUID) -> None:
