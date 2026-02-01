@@ -92,6 +92,9 @@ python-magic==0.4.27; sys_platform != "win32"  # Linux/Mac: requires system libm
 pyotp==2.9.0  # TOTP/HOTP for 2FA (RFC 6238)
 qrcode[pil]==7.4.2  # QR-Code generation for Authenticator Apps
 
+# Email Services
+aiosmtplib>=3.0.0  # Async SMTP client for email sending
+
 # Utilities
 python-dotenv==1.0.0
 pyyaml==6.0.2
