@@ -1502,6 +1502,134 @@ celery_app.conf.update(
             "kwargs": {"time_range_days": 7, "send_email": True},
             "options": {"queue": "maintenance"},
         },
+        # =================================================================
+        # Fraud Detection Tasks (F9 - ML-basierte Betrugserkennung)
+        # =================================================================
+        # Stuendlich: Neue Dokumente auf Betrug scannen
+        "fraud-scan-new-documents-hourly": {
+            "task": "fraud.scan_new_documents",
+            "schedule": 3600.0,  # Stuendlich
+            "kwargs": {"hours_back": 1},
+            "options": {"queue": "metadata"},
+        },
+        # Taeglich: Anomalie-Erkennung ueber alle Transaktionen
+        "fraud-daily-anomaly-check": {
+            "task": "fraud.daily_anomaly_check",
+            "schedule": crontab(hour=3, minute=0),  # Taeglich um 03:00 Uhr
+            "kwargs": {"days_back": 1},
+            "options": {"queue": "metadata"},
+        },
+        # Alle 12 Stunden: Abgelaufene IBAN-Verifizierungsanfragen pruefen
+        "fraud-check-expired-iban-requests": {
+            "task": "fraud.check_expired_iban_requests",
+            "schedule": 43200.0,  # Alle 12 Stunden
+            "options": {"queue": "metadata"},
+        },
+        # Woechentlich: Fraud-Detection-Model trainieren (Sonntag 04:00)
+        "fraud-train-model-weekly": {
+            "task": "fraud.train_model",
+            "schedule": crontab(day_of_week=0, hour=4, minute=0),  # Sonntag 04:00 Uhr
+            "options": {"queue": "gpu"},
+        },
+        # Taeglich: Fraud-Statistiken generieren
+        "fraud-generate-statistics-daily": {
+            "task": "fraud.generate_statistics",
+            "schedule": crontab(hour=5, minute=30),  # Taeglich um 05:30 Uhr
+            "kwargs": {"days": 30},
+            "options": {"queue": "metadata"},
+        },
+        # =================================================================
+        # Odoo ERP Sync Tasks (Bidirektionale Synchronisation)
+        # =================================================================
+        # Alle 30 Minuten: Fehlgeschlagene Syncs wiederholen
+        "odoo-retry-failed-syncs": {
+            "task": "odoo.retry_failed_syncs",
+            "schedule": 1800.0,  # Alle 30 Minuten
+            "options": {"queue": "erp"},
+        },
+        # =================================================================
+        # ERP Sync Tasks (Generische ERP-Integration)
+        # =================================================================
+        # Alle 15 Minuten: Geplante ERP-Synchronisation
+        "erp-scheduled-sync": {
+            "task": "erp.scheduled_sync_all",
+            "schedule": 900.0,  # Alle 15 Minuten
+            "options": {"queue": "erp"},
+        },
+        # Stuendlich: Sync-Konflikte benachrichtigen
+        "erp-notify-conflicts": {
+            "task": "erp.notify_conflicts",
+            "schedule": 3600.0,  # Stuendlich
+            "options": {"queue": "erp"},
+        },
+        # Taeglich: Alte Sync-History aufraumen (>90 Tage)
+        "erp-cleanup-history": {
+            "task": "erp.cleanup_old_history",
+            "schedule": crontab(hour=4, minute=30),  # Taeglich um 04:30 Uhr
+            "args": (90,),
+            "options": {"queue": "erp"},
+        },
+        # =================================================================
+        # Template Management Tasks (Dokumentvorlagen)
+        # =================================================================
+        # Taeglich: Temp-Dateien aufraumen
+        "cleanup-template-temp-files": {
+            "task": "app.workers.tasks.template_tasks.cleanup_temp_files",
+            "schedule": crontab(hour=2, minute=0),  # Taeglich um 02:00 Uhr
+            "options": {"queue": "maintenance"},
+        },
+        # Woechentlich: Alte Template-Versionen aufraumen (Sonntag 03:00)
+        "cleanup-old-template-versions": {
+            "task": "app.workers.tasks.template_tasks.cleanup_old_template_versions",
+            "schedule": crontab(day_of_week=0, hour=3, minute=0),  # Sonntag 03:00 Uhr
+            "options": {"queue": "maintenance"},
+        },
+        # Taeglich: Template-Statistiken sammeln
+        "collect-template-stats": {
+            "task": "app.workers.tasks.template_tasks.collect_template_stats",
+            "schedule": crontab(hour=4, minute=0),  # Taeglich um 04:00 Uhr
+            "options": {"queue": "metadata"},
+        },
+        # =================================================================
+        # Banking FinTS Tasks (Neue FinTS-Integration)
+        # =================================================================
+        # Taeglich: FinTS-Konten synchronisieren (06:00)
+        "banking-fints-sync-daily": {
+            "task": "app.workers.tasks.banking_tasks.fints_sync_all_accounts",
+            "schedule": crontab(hour=6, minute=0),  # Taeglich um 06:00 Uhr
+            "kwargs": {"sync_days": 7},
+            "options": {"queue": "default"},
+        },
+        # Alle 4 Stunden: Kontosalden aktualisieren
+        "banking-fints-refresh-balances-4h": {
+            "task": "app.workers.tasks.banking_tasks.fints_refresh_balances",
+            "schedule": 14400.0,  # Alle 4 Stunden
+            "options": {"queue": "default"},
+        },
+        # Stuendlich: Ausstehende SEPA-Ueberweisungen ausfuehren
+        "banking-execute-sepa-transfers-hourly": {
+            "task": "app.workers.tasks.banking_tasks.execute_pending_sepa_transfers",
+            "schedule": 3600.0,  # Stuendlich
+            "options": {"queue": "default"},
+        },
+        # Stuendlich: Automatische Reconciliation
+        "banking-auto-reconcile-hourly": {
+            "task": "app.workers.tasks.banking_tasks.auto_reconcile",
+            "schedule": 3600.0,  # Stuendlich
+            "options": {"queue": "default"},
+        },
+        # Taeglich: Kontosalden Update
+        "banking-update-balances-daily": {
+            "task": "app.workers.tasks.banking_tasks.update_account_balances",
+            "schedule": crontab(hour=1, minute=0),  # Taeglich um 01:00 Uhr
+            "options": {"queue": "default"},
+        },
+        # Taeglich: Ueberfaellige Zahlungen pruefen
+        "banking-check-overdue-daily": {
+            "task": "app.workers.tasks.banking_tasks.check_overdue_payments",
+            "schedule": crontab(hour=8, minute=0),  # Taeglich um 08:00 Uhr
+            "options": {"queue": "default"},
+        },
     },
 
     # Queue routing
@@ -1848,6 +1976,84 @@ celery_app.conf.update(
         "sla.escalate": {"queue": "notification", "priority": 7},
         # Tagesreport generieren (niedrige Prioritaet)
         "sla.generate_report": {"queue": "maintenance", "priority": 2},
+        # =================================================================
+        # Fraud Detection Tasks (F9 - ML-basierte Betrugserkennung)
+        # =================================================================
+        # Stuendliches Scannen neuer Dokumente
+        "fraud.scan_new_documents": {"queue": "metadata", "priority": 5},
+        # Taeglich: Anomalie-Check
+        "fraud.daily_anomaly_check": {"queue": "metadata", "priority": 4},
+        # IBAN-Verifizierung (On-Demand, hohe Prioritaet)
+        "fraud.verify_iban": {"queue": "metadata", "priority": 7},
+        # Abgelaufene IBAN-Requests pruefen
+        "fraud.check_expired_iban_requests": {"queue": "maintenance", "priority": 3},
+        # Model-Training (GPU Queue, niedrigere Prioritaet)
+        "fraud.train_model": {"queue": "gpu", "priority": 3},
+        # Statistiken generieren
+        "fraud.generate_statistics": {"queue": "maintenance", "priority": 2},
+        # Fraud-Scoring
+        "fraud.score_document": {"queue": "metadata", "priority": 6},
+        # Fraud-Report
+        "fraud.generate_report": {"queue": "maintenance", "priority": 2},
+        # =================================================================
+        # E-Invoice Tasks (XRechnung, ZUGFeRD, UBL)
+        # =================================================================
+        # E-Invoice-Konvertierung
+        "einvoice.convert": {"queue": "metadata", "priority": 5},
+        # ZUGFeRD-Einbettung
+        "einvoice.embed_zugferd": {"queue": "metadata", "priority": 5},
+        # E-Invoice-Validierung
+        "einvoice.validate": {"queue": "metadata", "priority": 6},
+        # Batch-Konvertierung
+        "einvoice.batch_convert": {"queue": "ocr_normal", "priority": 4},
+        # =================================================================
+        # Odoo ERP Sync Tasks (Bidirektionale Synchronisation)
+        # =================================================================
+        # Kontakte synchronisieren
+        "odoo.sync_contacts": {"queue": "erp", "priority": 5},
+        # Rechnungen synchronisieren
+        "odoo.sync_invoices": {"queue": "erp", "priority": 5},
+        # Webhook-Verarbeitung (hohe Prioritaet)
+        "odoo.process_webhook": {"queue": "default", "priority": 7},
+        # Fehlgeschlagene Syncs wiederholen
+        "odoo.retry_failed_syncs": {"queue": "erp", "priority": 4},
+        # Sync-Status pruefen
+        "odoo.check_sync_status": {"queue": "erp", "priority": 3},
+        # =================================================================
+        # ERP Sync Tasks (Generische ERP-Integration)
+        # =================================================================
+        # Geplante ERP-Synchronisation
+        "erp.scheduled_sync_all": {"queue": "erp", "priority": 4},
+        # Sync-Konflikte benachrichtigen
+        "erp.notify_conflicts": {"queue": "erp", "priority": 5},
+        # Alte Sync-History aufraumen
+        "erp.cleanup_old_history": {"queue": "maintenance", "priority": 2},
+        # =================================================================
+        # Template Management Tasks (Dokumentvorlagen)
+        # =================================================================
+        # Template rendern
+        "app.workers.tasks.template_tasks.render_template": {"queue": "default", "priority": 6},
+        # Template-Statistiken sammeln
+        "app.workers.tasks.template_tasks.collect_template_stats": {"queue": "metadata", "priority": 2},
+        # Temp-Dateien aufraumen
+        "app.workers.tasks.template_tasks.cleanup_temp_files": {"queue": "maintenance", "priority": 1},
+        # Alte Versionen aufraumen
+        "app.workers.tasks.template_tasks.cleanup_old_template_versions": {"queue": "maintenance", "priority": 1},
+        # =================================================================
+        # Banking FinTS Tasks (Neue FinTS-Integration)
+        # =================================================================
+        # FinTS-Konten synchronisieren
+        "app.workers.tasks.banking_tasks.fints_sync_all_accounts": {"queue": "default", "priority": 5},
+        # Kontosalden aktualisieren
+        "app.workers.tasks.banking_tasks.fints_refresh_balances": {"queue": "default", "priority": 4},
+        # SEPA-Ueberweisungen ausfuehren
+        "app.workers.tasks.banking_tasks.execute_pending_sepa_transfers": {"queue": "default", "priority": 6},
+        # Automatische Reconciliation
+        "app.workers.tasks.banking_tasks.auto_reconcile": {"queue": "default", "priority": 4},
+        # Kontosalden Update
+        "app.workers.tasks.banking_tasks.update_account_balances": {"queue": "default", "priority": 3},
+        # Ueberfaellige Zahlungen pruefen
+        "app.workers.tasks.banking_tasks.check_overdue_payments": {"queue": "default", "priority": 5},
     },
 
     # Priority settings
