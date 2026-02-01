@@ -446,8 +446,8 @@ async def create_conversation(
         )
 
 
-@router.get("/session/{session_id}", response_model=ConversationDetail)
 @limiter.limit("60/minute")
+@router.get("/session/{session_id}", response_model=ConversationDetail)
 async def get_conversation_by_session(
     session_id: str,
     request: Request,
