@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.deps import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db
 from app.core.datetime_utils import utc_now
 from app.core.safe_errors import safe_error_log
 from app.db import models
