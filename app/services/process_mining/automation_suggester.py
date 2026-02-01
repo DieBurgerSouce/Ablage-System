@@ -105,7 +105,7 @@ class AutomationSuggester:
         # Finde haeufige manuelle Klassifikations-Korrekturen
         result = await self.db.execute(
             select(
-                ProcessEvent.metadata['document_type'].astext.label('doc_type'),
+                ProcessEvent.event_metadata['document_type'].astext.label('doc_type'),
                 func.count(ProcessEvent.id).label('count'),
                 func.avg(ProcessEvent.duration_ms).label('avg_duration'),
             )
@@ -176,7 +176,7 @@ class AutomationSuggester:
         result = await self.db.execute(
             select(
                 ProcessEvent.entity_id,
-                ProcessEvent.metadata['strategy'].astext.label('strategy'),
+                ProcessEvent.event_metadata['strategy'].astext.label('strategy'),
                 func.count(ProcessEvent.id).label('count'),
             )
             .where(

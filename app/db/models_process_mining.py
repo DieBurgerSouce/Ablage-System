@@ -182,7 +182,8 @@ class ProcessEvent(Base):
     error_message = Column(Text, nullable=True)
 
     # Zusaetzliche Daten
-    metadata = Column(CrossDBJSON, default=dict)
+    # NOTE: "metadata" is reserved in SQLAlchemy 2.0, use "event_metadata" as Python attr
+    event_metadata = Column("metadata", CrossDBJSON, default=dict)
 
     # Multi-Tenant
     company_id = Column(
@@ -364,7 +365,8 @@ class ProcessMetric(Base):
     bottleneck_score = Column(Numeric(5, 4), nullable=True)
 
     # Zusaetzliche Daten
-    metadata = Column(CrossDBJSON, default=dict)
+    # NOTE: "metadata" is reserved in SQLAlchemy 2.0, use "mining_metadata" as Python attr
+    mining_metadata = Column("metadata", CrossDBJSON, default=dict)
 
     # Multi-Tenant
     company_id = Column(

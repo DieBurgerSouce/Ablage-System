@@ -41,11 +41,19 @@ from app.core.safe_errors import safe_error_log
 # - no_network=True: Verhindert das Laden externer DTDs ueber Netzwerk
 # - resolve_entities=False: KRITISCH! Verhindert Entity-Expansion-Attacks
 #   (Billion Laughs, Quadratic Blowup) auch bei lokalen Entities
-_SAFE_HTML_PARSER = HTMLParser(
-    recover=True,
-    no_network=True,
-    resolve_entities=False,
-)
+# NOTE: resolve_entities was removed in lxml 5.x, use try/except for compatibility
+try:
+    _SAFE_HTML_PARSER = HTMLParser(
+        recover=True,
+        no_network=True,
+        resolve_entities=False,
+    )
+except TypeError:
+    # lxml 5.x removed resolve_entities parameter
+    _SAFE_HTML_PARSER = HTMLParser(
+        recover=True,
+        no_network=True,
+    )
 
 logger = structlog.get_logger(__name__)
 
