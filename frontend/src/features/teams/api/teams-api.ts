@@ -4,7 +4,7 @@
  * API-Client fuer Team-Verwaltung, Mitglieder, Einladungen und Aktivitaeten.
  */
 
-import apiClient from '@/lib/api/client';
+import { apiClient } from '@/lib/api/client';
 
 // ==================== Enums ====================
 

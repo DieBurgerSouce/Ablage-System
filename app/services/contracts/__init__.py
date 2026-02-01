@@ -10,6 +10,7 @@ Unterstuetzt:
 - Fristen-Management
 - Risiko-Bewertung
 - Versionsvergleich
+- Vertragsverlaengerungs-Warnungen (Phase 1.1)
 
 Feinpoliert und durchdacht.
 """
@@ -20,6 +21,11 @@ from app.services.contracts.contract_obligation_tracker import ContractObligatio
 from app.services.contracts.contract_deadline_service import ContractDeadlineService
 from app.services.contracts.contract_risk_scorer import ContractRiskScorer
 from app.services.contracts.contract_comparison_service import ContractComparisonService
+from app.services.contracts.contract_renewal_service import (
+    ContractRenewalService,
+    ContractAlertCodes,
+    get_contract_renewal_service,
+)
 
 __all__ = [
     "ContractExtractionService",
@@ -28,4 +34,7 @@ __all__ = [
     "ContractDeadlineService",
     "ContractRiskScorer",
     "ContractComparisonService",
+    "ContractRenewalService",
+    "ContractAlertCodes",
+    "get_contract_renewal_service",
 ]

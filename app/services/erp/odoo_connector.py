@@ -769,3 +769,387 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
         except Exception as e:
             logger.error("odoo_get_currencies_error", error=self._sanitize_error(e))
             return []
+
+    # ==========================================================================
+    # Phase 6: Extended Data Types - Projects, Timesheet, Inventory
+    # ==========================================================================
+
+    async def sync_projects(
+        self,
+        since: Optional[datetime] = None,
+        batch_size: int = 100,
+    ) -> ERPSyncResult:
+        """
+        Synchronisiert Projekte aus Odoo.
+
+        Args:
+            since: Nur Aenderungen seit diesem Zeitpunkt
+            batch_size: Anzahl pro Batch
+
+        Returns:
+            ERPSyncResult mit Projektdaten
+        """
+        result = self._create_sync_result(
+            entity=ERPEntity.DOCUMENT,  # Use DOCUMENT for extended types
+            direction=ERPSyncDirection.PULL,
+        )
+        result.entity = "project"  # Override for clarity
+
+        try:
+            domain: List[Any] = [["active", "=", True]]
+
+            if since:
+                domain.append(["write_date", ">=", since.strftime("%Y-%m-%d %H:%M:%S")])
+
+            fields = [
+                "id", "name", "partner_id", "user_id",
+                "date_start", "date", "active", "stage_id",
+                "task_count", "write_date", "create_date"
+            ]
+
+            projects = await self._execute_kw(
+                "project.project",
+                "search_read",
+                [domain],
+                {"fields": fields, "limit": batch_size}
+            )
+
+            result.records_synced = len(projects)
+            result.records = projects
+            result.success = True
+
+            logger.info(
+                "odoo_projects_synced",
+                count=len(projects),
+                since=since.isoformat() if since else None,
+            )
+
+        except Exception as e:
+            result.success = False
+            result.error_message = self._sanitize_error(e)
+            logger.exception("odoo_sync_projects_error", error=self._sanitize_error(e))
+
+        return self._complete_sync_result(result)
+
+    async def sync_timesheet_entries(
+        self,
+        since: Optional[datetime] = None,
+        batch_size: int = 500,
+    ) -> ERPSyncResult:
+        """
+        Synchronisiert Zeiterfassungs-Eintraege aus Odoo.
+
+        Args:
+            since: Nur Aenderungen seit diesem Zeitpunkt
+            batch_size: Anzahl pro Batch
+
+        Returns:
+            ERPSyncResult mit Timesheet-Daten
+        """
+        result = self._create_sync_result(
+            entity=ERPEntity.DOCUMENT,
+            direction=ERPSyncDirection.PULL,
+        )
+        result.entity = "timesheet"
+
+        try:
+            domain: List[Any] = []
+
+            if since:
+                domain.append(["write_date", ">=", since.strftime("%Y-%m-%d %H:%M:%S")])
+
+            fields = [
+                "id", "date", "employee_id", "project_id", "task_id",
+                "name", "unit_amount", "account_id", "write_date"
+            ]
+
+            timesheets = await self._execute_kw(
+                "account.analytic.line",
+                "search_read",
+                [domain] if domain else [[]],
+                {"fields": fields, "limit": batch_size}
+            )
+
+            result.records_synced = len(timesheets)
+            result.records = timesheets
+            result.success = True
+
+            logger.info(
+                "odoo_timesheets_synced",
+                count=len(timesheets),
+                since=since.isoformat() if since else None,
+            )
+
+        except Exception as e:
+            result.success = False
+            result.error_message = self._sanitize_error(e)
+            logger.exception("odoo_sync_timesheets_error", error=self._sanitize_error(e))
+
+        return self._complete_sync_result(result)
+
+    async def sync_stock_moves(
+        self,
+        since: Optional[datetime] = None,
+        batch_size: int = 200,
+    ) -> ERPSyncResult:
+        """
+        Synchronisiert Lagerbewegungen aus Odoo.
+
+        Args:
+            since: Nur Aenderungen seit diesem Zeitpunkt
+            batch_size: Anzahl pro Batch
+
+        Returns:
+            ERPSyncResult mit Stock-Move-Daten
+        """
+        result = self._create_sync_result(
+            entity=ERPEntity.PRODUCT,
+            direction=ERPSyncDirection.PULL,
+        )
+        result.entity = "stock_move"
+
+        try:
+            domain: List[Any] = [["state", "!=", "cancel"]]
+
+            if since:
+                domain.append(["write_date", ">=", since.strftime("%Y-%m-%d %H:%M:%S")])
+
+            fields = [
+                "id", "name", "product_id", "product_uom_qty", "quantity_done",
+                "location_id", "location_dest_id", "state", "date",
+                "origin", "picking_id", "write_date"
+            ]
+
+            stock_moves = await self._execute_kw(
+                "stock.move",
+                "search_read",
+                [domain],
+                {"fields": fields, "limit": batch_size}
+            )
+
+            result.records_synced = len(stock_moves)
+            result.records = stock_moves
+            result.success = True
+
+            logger.info(
+                "odoo_stock_moves_synced",
+                count=len(stock_moves),
+                since=since.isoformat() if since else None,
+            )
+
+        except Exception as e:
+            result.success = False
+            result.error_message = self._sanitize_error(e)
+            logger.exception("odoo_sync_stock_moves_error", error=self._sanitize_error(e))
+
+        return self._complete_sync_result(result)
+
+    async def sync_product_catalog(
+        self,
+        since: Optional[datetime] = None,
+        batch_size: int = 200,
+    ) -> ERPSyncResult:
+        """
+        Synchronisiert Produktkatalog aus Odoo.
+
+        Args:
+            since: Nur Aenderungen seit diesem Zeitpunkt
+            batch_size: Anzahl pro Batch
+
+        Returns:
+            ERPSyncResult mit Produktdaten inkl. Bestand
+        """
+        result = self._create_sync_result(
+            entity=ERPEntity.PRODUCT,
+            direction=ERPSyncDirection.PULL,
+        )
+
+        try:
+            domain: List[Any] = []
+
+            if since:
+                domain.append(["write_date", ">=", since.strftime("%Y-%m-%d %H:%M:%S")])
+
+            fields = [
+                "id", "name", "default_code", "barcode",
+                "list_price", "standard_price", "qty_available",
+                "virtual_available", "categ_id", "uom_id",
+                "type", "active", "write_date"
+            ]
+
+            products = await self._execute_kw(
+                "product.product",
+                "search_read",
+                [domain] if domain else [[]],
+                {"fields": fields, "limit": batch_size}
+            )
+
+            result.records_synced = len(products)
+            result.records = products
+            result.success = True
+
+            logger.info(
+                "odoo_products_synced",
+                count=len(products),
+                since=since.isoformat() if since else None,
+            )
+
+        except Exception as e:
+            result.success = False
+            result.error_message = self._sanitize_error(e)
+            logger.exception("odoo_sync_products_error", error=self._sanitize_error(e))
+
+        return self._complete_sync_result(result)
+
+    # ==========================================================================
+    # Phase 6: AI Feedback Push Methods
+    # ==========================================================================
+
+    async def push_risk_score(
+        self,
+        partner_id: int,
+        score: float,
+        risk_level: str,
+        payment_score: float,
+        updated_at: str,
+    ) -> bool:
+        """
+        Pusht einen Risk Score zu einem Odoo-Partner.
+
+        Args:
+            partner_id: Odoo Partner-ID
+            score: Risiko-Score (0-100)
+            risk_level: Risiko-Level (low/medium/high/critical)
+            payment_score: Zahlungsverhalten-Score (0-100)
+            updated_at: Aktualisierungszeitpunkt
+
+        Returns:
+            True wenn erfolgreich
+        """
+        try:
+            data = {
+                "x_ablage_risk_score": round(score, 1),
+                "x_ablage_risk_level": risk_level,
+                "x_ablage_payment_score": round(payment_score, 1),
+                "x_ablage_risk_updated": updated_at,
+            }
+
+            await self._execute_kw(
+                "res.partner",
+                "write",
+                [[partner_id], data]
+            )
+
+            logger.info(
+                "odoo_risk_score_pushed",
+                partner_id=partner_id,
+                score=round(score, 1),
+                risk_level=risk_level,
+            )
+            return True
+
+        except Exception as e:
+            logger.error(
+                "odoo_push_risk_score_error",
+                partner_id=partner_id,
+                error=self._sanitize_error(e)
+            )
+            return False
+
+    async def push_payment_suggestion(
+        self,
+        partner_id: int,
+        suggested_term: str,
+        suggested_credit_limit: Optional[float],
+        reason: str,
+    ) -> bool:
+        """
+        Pusht einen Zahlungsvorschlag zu einem Odoo-Partner.
+
+        Args:
+            partner_id: Odoo Partner-ID
+            suggested_term: Empfohlene Zahlungsbedingung
+            suggested_credit_limit: Empfohlenes Kreditlimit
+            reason: Begruendung (sanitized)
+
+        Returns:
+            True wenn erfolgreich
+        """
+        try:
+            data = {
+                "x_ablage_suggested_payment_term": suggested_term,
+                "x_ablage_payment_suggestion_reason": reason[:500],  # Limit length
+            }
+
+            if suggested_credit_limit is not None:
+                data["x_ablage_suggested_credit_limit"] = round(suggested_credit_limit, 2)
+
+            await self._execute_kw(
+                "res.partner",
+                "write",
+                [[partner_id], data]
+            )
+
+            logger.info(
+                "odoo_payment_suggestion_pushed",
+                partner_id=partner_id,
+                suggested_term=suggested_term,
+            )
+            return True
+
+        except Exception as e:
+            logger.error(
+                "odoo_push_payment_suggestion_error",
+                partner_id=partner_id,
+                error=self._sanitize_error(e)
+            )
+            return False
+
+    async def push_skonto_prediction(
+        self,
+        partner_id: int,
+        skonto_probability: float,
+        avg_payment_days: float,
+        recommended_skonto: Optional[float],
+    ) -> bool:
+        """
+        Pusht eine Skonto-Vorhersage zu einem Odoo-Partner.
+
+        Args:
+            partner_id: Odoo Partner-ID
+            skonto_probability: Wahrscheinlichkeit der Skonto-Nutzung (0-1)
+            avg_payment_days: Durchschnittliche Zahlungstage
+            recommended_skonto: Empfohlener Skonto-Prozentsatz
+
+        Returns:
+            True wenn erfolgreich
+        """
+        try:
+            data = {
+                "x_ablage_skonto_probability": round(skonto_probability, 3),
+                "x_ablage_avg_payment_days": round(avg_payment_days, 1),
+            }
+
+            if recommended_skonto is not None:
+                data["x_ablage_recommended_skonto"] = round(recommended_skonto, 2)
+
+            await self._execute_kw(
+                "res.partner",
+                "write",
+                [[partner_id], data]
+            )
+
+            logger.info(
+                "odoo_skonto_prediction_pushed",
+                partner_id=partner_id,
+                probability=round(skonto_probability, 2),
+            )
+            return True
+
+        except Exception as e:
+            logger.error(
+                "odoo_push_skonto_prediction_error",
+                partner_id=partner_id,
+                error=self._sanitize_error(e)
+            )
+            return False

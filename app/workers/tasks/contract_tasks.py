@@ -1050,3 +1050,291 @@ def check_overdue_milestones_task(self) -> Dict[str, Any]:
     except Exception as e:
         logger.error("overdue_milestones_check_failed", **safe_error_log(e))
         raise self.retry(exc=e)
+
+
+# =============================================================================
+# Contract Renewal Tasks (Phase 1.1)
+# =============================================================================
+
+
+@celery_app.task(
+    name="contracts.check_renewal_deadlines",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=300,
+    queue="maintenance",
+)
+def check_contract_renewal_deadlines_task(
+    self,
+    company_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Prueft alle Vertraege auf bevorstehende Verlaengerungsfristen.
+
+    Wird taeglich um 08:00 Uhr automatisch ausgefuehrt.
+    Erstellt Alerts im Alert Center fuer:
+    - Kuendigungsfristen (30/60/90 Tage Vorlauf)
+    - Vertragsablauf
+    - Automatische Verlaengerungen
+
+    Args:
+        company_id: Optional - nur fuer spezifische Firma
+
+    Returns:
+        Dict mit Statistiken
+    """
+    from app.services.contracts.contract_renewal_service import get_contract_renewal_service
+
+    async def _check_renewals() -> Dict[str, Any]:
+        async with get_async_session_context() as db:
+            renewal_service = get_contract_renewal_service(db)
+
+            cid = UUID(company_id) if company_id else None
+            stats = await renewal_service.check_upcoming_deadlines(company_id=cid)
+
+            return stats
+
+    try:
+        result = asyncio.run(_check_renewals())
+        logger.info(
+            "contract_renewal_check_completed",
+            contracts_checked=result["contracts_checked"],
+            alerts_created=result["alerts_created"],
+            deadlines_found=result["deadlines_found"],
+            errors=result["errors"],
+        )
+        return result
+    except Exception as e:
+        logger.error("contract_renewal_check_failed", **safe_error_log(e))
+        raise self.retry(exc=e)
+
+
+@celery_app.task(
+    name="contracts.extract_dates_from_document",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=60,
+    queue="metadata",
+)
+def extract_contract_dates_task(
+    self,
+    document_id: str,
+    company_id: str,
+    create_deadlines: bool = True,
+) -> Dict[str, Any]:
+    """Extrahiert Vertragsfristen aus OCR-Text eines Dokuments.
+
+    Wird nach OCR-Abschluss automatisch fuer Vertragsdokumente aufgerufen.
+    Analysiert den Text und erkennt:
+    - Vertragslaufzeit
+    - Kuendigungsfristen
+    - Ablaufdaten
+
+    Args:
+        document_id: ID des Dokuments
+        company_id: Firmen-ID
+        create_deadlines: Ob automatisch Deadlines erstellt werden sollen
+
+    Returns:
+        Dict mit extrahierten Daten
+    """
+    from app.services.contracts.contract_renewal_service import get_contract_renewal_service
+    from app.db.models import Document
+
+    async def _extract_dates() -> Dict[str, Any]:
+        async with get_async_session_context() as db:
+            renewal_service = get_contract_renewal_service(db)
+
+            dates = await renewal_service.extract_contract_dates_from_document(
+                document_id=UUID(document_id),
+                company_id=UUID(company_id),
+            )
+
+            result = {
+                "document_id": document_id,
+                "extracted_dates": {
+                    k: v.isoformat() if v and hasattr(v, "isoformat") else v
+                    for k, v in dates.items()
+                },
+                "deadlines_created": 0,
+            }
+
+            # Create deadlines if requested and expiration date found
+            if create_deadlines and dates.get("expiration_date"):
+                # Find contract linked to this document
+                from sqlalchemy import select
+                from app.db.models_contract import Contract
+
+                contract_result = await db.execute(
+                    select(Contract).where(Contract.document_id == UUID(document_id))
+                )
+                contract = contract_result.scalar_one_or_none()
+
+                if contract:
+                    # Update contract with extracted dates
+                    if dates.get("effective_date"):
+                        contract.effective_date = dates["effective_date"]
+                    if dates.get("expiration_date"):
+                        contract.expiration_date = dates["expiration_date"]
+                    if dates.get("notice_period_days"):
+                        contract.notice_period_days = dates["notice_period_days"]
+
+                    await db.commit()
+
+                    # Schedule reminders
+                    deadlines = await renewal_service.schedule_reminders(
+                        contract_id=contract.id,
+                        deadline=dates["expiration_date"],
+                        deadline_type="termination_notice" if dates.get("notice_deadline") else "contract_expiry",
+                    )
+                    result["deadlines_created"] = len(deadlines)
+
+            return result
+
+    try:
+        result = asyncio.run(_extract_dates())
+        logger.info(
+            "contract_dates_extracted",
+            document_id=document_id,
+            dates_found=bool(result["extracted_dates"].get("expiration_date")),
+            deadlines_created=result["deadlines_created"],
+        )
+        return result
+    except Exception as e:
+        logger.error(
+            "contract_date_extraction_failed",
+            document_id=document_id,
+            **safe_error_log(e),
+        )
+        raise self.retry(exc=e)
+
+
+@celery_app.task(
+    name="contracts.send_renewal_reminder",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=120,
+    queue="notifications",
+)
+def send_contract_renewal_reminder_task(
+    self,
+    contract_id: str,
+    days_remaining: int,
+    deadline_type: str = "expiration",
+) -> Dict[str, Any]:
+    """Sendet individuelle Erinnerung fuer Vertragserneuerung.
+
+    Args:
+        contract_id: Vertrags-ID
+        days_remaining: Verbleibende Tage
+        deadline_type: "expiration" oder "notice"
+
+    Returns:
+        Dict mit Status
+    """
+    from app.services.contracts.contract_renewal_service import get_contract_renewal_service
+    from app.db.models_contract import Contract
+
+    async def _send_reminder() -> Dict[str, Any]:
+        async with get_async_session_context() as db:
+            contract = await db.get(Contract, UUID(contract_id))
+            if not contract:
+                return {"success": False, "error": "Vertrag nicht gefunden"}
+
+            renewal_service = get_contract_renewal_service(db)
+
+            # Create alert via renewal service
+            alert_created = await renewal_service._create_renewal_alert(
+                contract=contract,
+                days_remaining=days_remaining,
+                deadline_type=deadline_type,
+            )
+
+            return {
+                "success": True,
+                "contract_id": contract_id,
+                "alert_created": alert_created,
+                "days_remaining": days_remaining,
+            }
+
+    try:
+        result = asyncio.run(_send_reminder())
+        if result["success"]:
+            logger.info(
+                "contract_renewal_reminder_sent",
+                contract_id=contract_id,
+                days_remaining=days_remaining,
+                alert_created=result["alert_created"],
+            )
+        else:
+            logger.warning(
+                "contract_renewal_reminder_failed",
+                contract_id=contract_id,
+                error=result.get("error"),
+            )
+        return result
+    except Exception as e:
+        logger.error(
+            "contract_renewal_reminder_error",
+            contract_id=contract_id,
+            **safe_error_log(e),
+        )
+        raise self.retry(exc=e)
+
+
+@celery_app.task(
+    name="contracts.schedule_contract_reminders",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=60,
+    queue="maintenance",
+)
+def schedule_contract_reminders_task(
+    self,
+    contract_id: str,
+    deadline_date: str,
+    deadline_type: str = "termination_notice",
+) -> Dict[str, Any]:
+    """Plant Erinnerungen fuer einen Vertrag.
+
+    Args:
+        contract_id: Vertrags-ID
+        deadline_date: Fristdatum (ISO-Format)
+        deadline_type: Art der Frist
+
+    Returns:
+        Dict mit erstellten Erinnerungen
+    """
+    from app.services.contracts.contract_renewal_service import get_contract_renewal_service
+
+    async def _schedule() -> Dict[str, Any]:
+        async with get_async_session_context() as db:
+            renewal_service = get_contract_renewal_service(db)
+
+            deadline = date.fromisoformat(deadline_date)
+            deadlines = await renewal_service.schedule_reminders(
+                contract_id=UUID(contract_id),
+                deadline=deadline,
+                deadline_type=deadline_type,
+            )
+
+            return {
+                "contract_id": contract_id,
+                "deadlines_created": len(deadlines),
+                "deadline_ids": [str(d.id) for d in deadlines],
+            }
+
+    try:
+        result = asyncio.run(_schedule())
+        logger.info(
+            "contract_reminders_scheduled",
+            contract_id=contract_id,
+            deadlines_created=result["deadlines_created"],
+        )
+        return result
+    except Exception as e:
+        logger.error(
+            "contract_reminders_scheduling_failed",
+            contract_id=contract_id,
+            **safe_error_log(e),
+        )
+        raise self.retry(exc=e)

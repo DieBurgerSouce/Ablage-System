@@ -15,11 +15,14 @@ import {
     Building2,
     Plus,
     Eye,
-    LucideIcon,
     Columns,
     Filter,
     PieChart,
 } from 'lucide-react';
+import type { LucideProps } from 'lucide-react';
+
+// Type for Lucide React icon components
+type LucideIcon = React.ComponentType<LucideProps>;
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

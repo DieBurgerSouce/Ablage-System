@@ -42,6 +42,17 @@ from .validator_service import (
     get_validator_service,
 )
 
+from .zugferd_embedder import (
+    ZUGFeRDEmbedder,
+    get_zugferd_embedder,
+)
+
+from .zugferd_validator import (
+    ZUGFeRDValidator,
+    get_zugferd_validator,
+    ZUGFeRDProfile,
+)
+
 __all__ = [
     # Services
     "EInvoiceParserService",
@@ -60,4 +71,11 @@ __all__ = [
     "ValidatorType",
     "ValidationSeverity",
     "get_validator_service",
+    # ZUGFeRD Embedder
+    "ZUGFeRDEmbedder",
+    "get_zugferd_embedder",
+    # ZUGFeRD Validator
+    "ZUGFeRDValidator",
+    "get_zugferd_validator",
+    "ZUGFeRDProfile",
 ]

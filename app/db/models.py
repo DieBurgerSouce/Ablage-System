@@ -11501,6 +11501,181 @@ class ERPEntityMapping(Base):
 
 
 # =============================================================================
+# ODOO INTEGRATION - Phase 6: Webhooks, Extended Sync, AI Feedback
+# =============================================================================
+
+
+class OdooWebhookEvent(Base):
+    """Odoo Webhook Events fuer idempotente Verarbeitung.
+
+    Speichert empfangene Webhooks fuer:
+    - Idempotenz-Pruefung (doppelte Events ignorieren)
+    - Retry-Logik bei Fehlern
+    - Audit-Trail
+    """
+    __tablename__ = "odoo_webhook_events"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    connection_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("erp_connections.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Event-Identifikation (fuer Idempotenz)
+    event_id = Column(String(255), nullable=False, index=True, comment="Odoo webhook event ID")
+    event_type = Column(String(100), nullable=False, index=True, comment="customer, supplier, invoice, etc.")
+    action = Column(String(50), nullable=False, comment="create, update, delete")
+
+    # Payload-Tracking
+    payload_hash = Column(String(64), nullable=False, comment="SHA-256 hash of payload")
+    payload_preview = Column(CrossDBJSON, nullable=True, comment="Sanitized preview (no PII)")
+    odoo_record_id = Column(String(100), nullable=True, index=True, comment="ID of record in Odoo")
+
+    # Verarbeitungsstatus
+    status = Column(String(30), nullable=False, default="pending", index=True)
+    processed_at = Column(DateTime(timezone=True), nullable=True)
+    processing_attempts = Column(Integer, nullable=False, default=0)
+    last_attempt_at = Column(DateTime(timezone=True), nullable=True)
+    error_message = Column(Text, nullable=True)
+
+    # Task-Tracking
+    task_id = Column(String(100), nullable=True, comment="Celery task ID")
+
+    # Zeitstempel
+    received_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # Relationships
+    connection = relationship("ERPConnection", backref="webhook_events")
+
+    __table_args__ = (
+        UniqueConstraint("connection_id", "event_id", name="uq_odoo_webhook_event_id"),
+        Index("ix_odoo_webhook_events_status_received", "status", "received_at"),
+        {"comment": "Odoo webhook events for idempotent processing"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<OdooWebhookEvent {self.event_type}/{self.action} status={self.status}>"
+
+
+class OdooSyncStatus(Base):
+    """Sync-Status pro Datentyp fuer erweiterte Odoo-Synchronisation.
+
+    Trackt den Sync-Zustand fuer:
+    - Projects
+    - Timesheet
+    - Inventory/Stock Moves
+    - Products
+
+    Ermoeglicht Delta-Sync und Fehler-Tracking.
+    """
+    __tablename__ = "odoo_sync_status"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    connection_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("erp_connections.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    # Datentyp-Identifikation
+    data_type = Column(String(50), nullable=False, comment="projects, timesheet, inventory, products")
+
+    # Sync-Status
+    last_sync_at = Column(DateTime(timezone=True), nullable=True)
+    last_successful_sync_at = Column(DateTime(timezone=True), nullable=True)
+    last_sync_cursor = Column(String(255), nullable=True, comment="Cursor/offset for incremental sync")
+    sync_state = Column(CrossDBJSON, nullable=True, comment="Additional state data")
+
+    # Statistiken
+    total_records_synced = Column(BigInteger, nullable=False, default=0)
+    records_synced_today = Column(Integer, nullable=False, default=0)
+    last_record_count = Column(Integer, nullable=True)
+
+    # Fehler-Tracking
+    consecutive_failures = Column(Integer, nullable=False, default=0)
+    last_error = Column(Text, nullable=True)
+    is_paused = Column(Boolean, nullable=False, default=False, comment="Paused due to errors")
+
+    # Zeitstempel
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    connection = relationship("ERPConnection", backref="sync_statuses")
+
+    __table_args__ = (
+        UniqueConstraint("connection_id", "data_type", name="uq_odoo_sync_status_type"),
+        Index("ix_odoo_sync_status_connection", "connection_id"),
+        {"comment": "Extended sync status per data type for Odoo"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<OdooSyncStatus {self.data_type} last_sync={self.last_sync_at}>"
+
+
+class OdooAIFeedback(Base):
+    """AI-Feedback das zu Odoo gepusht wird.
+
+    Speichert:
+    - Risk Scores
+    - Payment Suggestions
+    - Skonto Predictions
+
+    Fuer Tracking und Retry-Logik.
+    """
+    __tablename__ = "odoo_ai_feedback"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    connection_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("erp_connections.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    entity_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("business_entities.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Feedback-Typ und Daten
+    feedback_type = Column(String(50), nullable=False, index=True, comment="risk_score, payment_suggestion, skonto_prediction")
+    feedback_data = Column(CrossDBJSON, nullable=False, comment="The feedback data (sanitized)")
+    odoo_field = Column(String(100), nullable=True, comment="Target field in Odoo")
+
+    # Push-Status
+    status = Column(String(30), nullable=False, default="pending", index=True)
+    pushed_at = Column(DateTime(timezone=True), nullable=True)
+    push_attempts = Column(Integer, nullable=False, default=0)
+    last_attempt_at = Column(DateTime(timezone=True), nullable=True)
+    error_message = Column(Text, nullable=True)
+
+    # Odoo-Antwort
+    odoo_record_id = Column(String(100), nullable=True, comment="ID of updated record in Odoo")
+    odoo_response = Column(CrossDBJSON, nullable=True, comment="Sanitized response")
+
+    # Zeitstempel
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    connection = relationship("ERPConnection", backref="ai_feedbacks")
+    entity = relationship("BusinessEntity", backref="odoo_ai_feedbacks")
+
+    __table_args__ = (
+        Index("ix_odoo_ai_feedback_status_created", "status", "created_at"),
+        {"comment": "AI feedback pushed to Odoo (risk scores, suggestions)"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<OdooAIFeedback {self.feedback_type} status={self.status}>"
+
+
+# =============================================================================
 # EMAIL & FOLDER IMPORT MODELS
 # =============================================================================
 

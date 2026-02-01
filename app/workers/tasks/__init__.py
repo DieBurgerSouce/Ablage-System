@@ -80,6 +80,25 @@ from app.workers.tasks.insights_tasks import (
     generate_all_daily_insights,
     check_urgent_skonto_deadlines,
 )
+from app.workers.tasks.fraud_detection_tasks import (
+    scan_new_documents_task,
+    daily_anomaly_check_task,
+    iban_verification_task,
+    check_expired_iban_requests_task,
+    train_fraud_model_task,
+    generate_fraud_statistics_task,
+    FRAUD_DETECTION_BEAT_SCHEDULE,
+)
+from app.workers.tasks.document_tasks import (
+    document_bulk_export_task,
+    document_reprocess_task,
+)
+from app.workers.tasks.einvoice_tasks import (
+    zugferd_batch_convert_task,
+    zugferd_embed_task,
+    einvoice_validate_task,
+    EINVOICE_BEAT_SCHEDULE,
+)
 
 __all__ = [
     # OCR tasks
@@ -152,4 +171,20 @@ __all__ = [
     "process_action_queue_timeouts",
     "generate_all_daily_insights",
     "check_urgent_skonto_deadlines",
+    # Fraud Detection tasks
+    "scan_new_documents_task",
+    "daily_anomaly_check_task",
+    "iban_verification_task",
+    "check_expired_iban_requests_task",
+    "train_fraud_model_task",
+    "generate_fraud_statistics_task",
+    "FRAUD_DETECTION_BEAT_SCHEDULE",
+    # Document tasks
+    "document_bulk_export_task",
+    "document_reprocess_task",
+    # E-Invoice tasks
+    "zugferd_batch_convert_task",
+    "zugferd_embed_task",
+    "einvoice_validate_task",
+    "EINVOICE_BEAT_SCHEDULE",
 ]

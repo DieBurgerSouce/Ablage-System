@@ -1,11 +1,24 @@
-import { useRef, useCallback, useMemo } from 'react';
+import { useRef, useCallback, useMemo, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { motion, AnimatePresence, type Variants } from 'framer-motion';
+import {
+    DndContext,
+    DragOverlay,
+    PointerSensor,
+    TouchSensor,
+    KeyboardSensor,
+    useSensor,
+    useSensors,
+    closestCenter,
+    type DragStartEvent,
+    type DragEndEvent,
+} from '@dnd-kit/core';
 import { useResponsiveGrid } from '@/hooks/use-responsive-grid';
 import { useGridNavigation } from '../hooks/use-grid-navigation';
 import type { Document } from '../types';
-import { DocumentCard } from './DocumentCard';
+import { DraggableDocument, DragOverlayDocument } from './DraggableDocument';
 import { EmptyState } from '@/components/ui/empty-state';
+import { toast } from 'sonner';
 
 const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -38,6 +51,8 @@ interface DocumentGridProps {
     onSelectAll?: () => void;
     /** Callback um Auswahl aufzuheben */
     onClearSelection?: () => void;
+    /** Callback wenn Dokumente in Ordner gezogen werden */
+    onMoveToFolder?: (documentIds: string[], folderId: string) => void;
 }
 
 const MotionDiv = motion.div;
@@ -50,8 +65,60 @@ export function DocumentGrid({
     onDocumentClick,
     onSelectAll,
     onClearSelection,
+    onMoveToFolder,
 }: DocumentGridProps) {
     const parentRef = useRef<HTMLDivElement>(null);
+    const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
+
+    // DnD Sensors
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: { distance: 8 }, // Start drag after 8px movement
+        }),
+        useSensor(TouchSensor, {
+            activationConstraint: { delay: 250, tolerance: 5 },
+        }),
+        useSensor(KeyboardSensor)
+    );
+
+    // Aktives Dokument fuer Drag Overlay
+    const activeDocument = activeDocumentId
+        ? documents.find((d) => d.id === activeDocumentId)
+        : null;
+
+    // Drag Handlers
+    const handleDragStart = useCallback((event: DragStartEvent) => {
+        setActiveDocumentId(event.active.id as string);
+    }, []);
+
+    const handleDragEnd = useCallback(
+        (event: DragEndEvent) => {
+            const { active, over } = event;
+            setActiveDocumentId(null);
+
+            if (!over) return;
+
+            // Pruefen ob auf Folder gedropped wurde
+            const overData = over.data.current;
+            if (overData?.type === 'folder' && onMoveToFolder) {
+                const documentId = active.id as string;
+                const folderId = over.id as string;
+
+                // Bei Multi-Select: Alle ausgewaehlten Dokumente verschieben
+                const documentIds = selectedIds.includes(documentId)
+                    ? selectedIds
+                    : [documentId];
+
+                onMoveToFolder(documentIds, folderId);
+                toast.success(
+                    documentIds.length === 1
+                        ? 'Dokument verschoben'
+                        : `${documentIds.length} Dokumente verschoben`
+                );
+            }
+        },
+        [selectedIds, onMoveToFolder]
+    );
 
     // Use responsive hook for dynamic columns
     const { columnCount } = useResponsiveGrid({
@@ -117,67 +184,90 @@ export function DocumentGrid({
     }
 
     return (
-        <div
-            ref={parentRef}
-            className="h-full overflow-auto p-4 focus:outline-none"
-            onKeyDown={handleKeyDown}
-            tabIndex={0}
-            role="grid"
-            aria-label="Dokumentenliste"
-            aria-rowcount={Math.ceil(documents.length / effectiveColumnCount)}
-            aria-colcount={effectiveColumnCount}
+        <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
         >
-            <MotionDiv
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                style={{
-                    height: rowVirtualizer.getTotalSize(),
-                    width: '100%',
-                    position: 'relative',
-                }}
+            <div
+                ref={parentRef}
+                className="h-full overflow-auto p-4 focus:outline-none"
+                onKeyDown={handleKeyDown}
+                tabIndex={0}
+                role="grid"
+                aria-label="Dokumentenliste"
+                aria-rowcount={Math.ceil(documents.length / effectiveColumnCount)}
+                aria-colcount={effectiveColumnCount}
             >
-                <AnimatePresence mode="popLayout">
-                    {rowVirtualizer.getVirtualItems().map(virtualRow => {
-                        const startIndex = virtualRow.index * effectiveColumnCount;
-                        const rowDocuments = documents.slice(startIndex, startIndex + effectiveColumnCount);
+                <MotionDiv
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="visible"
+                    style={{
+                        height: rowVirtualizer.getTotalSize(),
+                        width: '100%',
+                        position: 'relative',
+                    }}
+                >
+                    <AnimatePresence mode="popLayout">
+                        {rowVirtualizer.getVirtualItems().map(virtualRow => {
+                            const startIndex = virtualRow.index * effectiveColumnCount;
+                            const rowDocuments = documents.slice(startIndex, startIndex + effectiveColumnCount);
 
-                        return (
-                            <MotionDiv
-                                key={virtualRow.key}
-                                variants={itemVariants}
-                                className="absolute top-0 left-0 w-full grid gap-4"
-                                role="row"
-                                aria-rowindex={virtualRow.index + 1}
-                                style={{
-                                    transform: `translateY(${virtualRow.start}px)`,
-                                    gridTemplateColumns: `repeat(${effectiveColumnCount}, minmax(0, 1fr))`
-                                }}
-                            >
-                                {rowDocuments.map((doc, colIndex) => {
-                                    const itemIndex = getDocumentIndex(doc.id);
-                                    const itemProps = getItemProps(itemIndex);
+                            return (
+                                <MotionDiv
+                                    key={virtualRow.key}
+                                    variants={itemVariants}
+                                    className="absolute top-0 left-0 w-full grid gap-4"
+                                    role="row"
+                                    aria-rowindex={virtualRow.index + 1}
+                                    style={{
+                                        transform: `translateY(${virtualRow.start}px)`,
+                                        gridTemplateColumns: `repeat(${effectiveColumnCount}, minmax(0, 1fr))`
+                                    }}
+                                >
+                                    {rowDocuments.map((doc, colIndex) => {
+                                        const itemIndex = getDocumentIndex(doc.id);
+                                        const itemProps = getItemProps(itemIndex);
 
-                                    return (
-                                        <DocumentCard
-                                            key={doc.id}
-                                            document={doc}
-                                            isSelected={selectedIds.includes(doc.id)}
-                                            isFocused={itemProps['data-focused']}
-                                            onClick={() => onDocumentClick(doc.id)}
-                                            onDoubleClick={() => onDocumentClick(doc.id)}
-                                            onSelect={(checked) => onSelect(doc.id, checked)}
-                                            tabIndex={itemProps.tabIndex}
-                                            onFocus={itemProps.onFocus}
-                                            ariaColIndex={colIndex + 1}
-                                        />
-                                    );
-                                })}
-                            </MotionDiv>
-                        );
-                    })}
-                </AnimatePresence>
-            </MotionDiv>
-        </div>
+                                        return (
+                                            <DraggableDocument
+                                                key={doc.id}
+                                                document={doc}
+                                                isSelected={selectedIds.includes(doc.id)}
+                                                isFocused={itemProps['data-focused']}
+                                                selectedIds={selectedIds}
+                                                selectedCount={selectedIds.length}
+                                                onClick={() => onDocumentClick(doc.id)}
+                                                onDoubleClick={() => onDocumentClick(doc.id)}
+                                                onSelect={(checked) => onSelect(doc.id, checked)}
+                                                tabIndex={itemProps.tabIndex}
+                                                onFocus={itemProps.onFocus}
+                                                ariaColIndex={colIndex + 1}
+                                            />
+                                        );
+                                    })}
+                                </MotionDiv>
+                            );
+                        })}
+                    </AnimatePresence>
+                </MotionDiv>
+            </div>
+
+            {/* Drag Overlay - Dokument-Vorschau beim Ziehen */}
+            <DragOverlay>
+                {activeDocument && (
+                    <DragOverlayDocument
+                        document={activeDocument}
+                        selectedCount={
+                            selectedIds.includes(activeDocument.id)
+                                ? selectedIds.length
+                                : 1
+                        }
+                    />
+                )}
+            </DragOverlay>
+        </DndContext>
     );
 }

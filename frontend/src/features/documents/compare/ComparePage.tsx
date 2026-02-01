@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from '@tanstack/react-router';
+import { useSearch } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { GitCompare, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -34,9 +34,9 @@ interface DocumentListResponse {
 
 export function ComparePage() {
   // URL-Parameter fuer Deep-Linking
-  const searchParams = useSearchParams();
-  const initialDoc1 = searchParams.doc1 as string | undefined;
-  const initialDoc2 = searchParams.doc2 as string | undefined;
+  const searchParams = useSearch({ strict: false }) as { doc1?: string; doc2?: string };
+  const initialDoc1 = searchParams.doc1;
+  const initialDoc2 = searchParams.doc2;
 
   // Dokumente von API laden
   const {

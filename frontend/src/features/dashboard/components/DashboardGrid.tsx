@@ -7,7 +7,9 @@ import {
     TouchSensor,
     useSensor,
     useSensors,
+    DragOverlay,
     type DragEndEvent,
+    type DragStartEvent,
 } from '@dnd-kit/core'
 import {
     arrayMove,
@@ -16,8 +18,8 @@ import {
     rectSortingStrategy,
 } from '@dnd-kit/sortable'
 import { useDashboardStore } from '../stores/useDashboardStore'
-import { getWidgetComponent } from '../registry'
-import { SortableWidget } from './SortableWidget'
+import { getWidgetComponent, getWidgetLabel } from '../registry'
+import { DraggableWidget, WidgetDragOverlay } from './DraggableWidget'
 import { WidgetCatalogDrawer } from './WidgetCatalogDrawer'
 import { Button } from '@/components/ui/button'
 import { Settings2, RotateCcw, Plus } from 'lucide-react'
@@ -27,6 +29,7 @@ export function DashboardGrid() {
     const { widgets, setWidgets, removeWidget, resetToDefault } = useDashboardStore()
     const [isEditMode, setIsEditMode] = useState(false)
     const [showCatalog, setShowCatalog] = useState(false)
+    const [activeId, setActiveId] = useState<string | null>(null)
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -40,6 +43,10 @@ export function DashboardGrid() {
         })
     )
 
+    function handleDragStart(event: DragStartEvent) {
+        setActiveId(event.active.id as string)
+    }
+
     function handleDragEnd(event: DragEndEvent) {
         const { active, over } = event
 
@@ -48,6 +55,7 @@ export function DashboardGrid() {
             const newIndex = widgets.findIndex((w) => w.id === over.id)
             setWidgets(arrayMove(widgets, oldIndex, newIndex))
         }
+        setActiveId(null)
     }
 
     const handleRemoveWidget = useCallback((id: string) => {
@@ -56,6 +64,23 @@ export function DashboardGrid() {
             description: 'Das Widget wurde vom Dashboard entfernt.',
         })
     }, [removeWidget])
+
+    const handleConfigureWidget = useCallback((id: string) => {
+        toast.info('Widget konfigurieren', {
+            description: `Konfiguration fuer Widget ${id} wird geoeffnet...`,
+        })
+        // TODO: Widget-spezifische Konfiguration implementieren
+    }, [])
+
+    const handleMaximizeWidget = useCallback((id: string) => {
+        toast.info('Widget maximieren', {
+            description: `Widget ${id} wird maximiert...`,
+        })
+        // TODO: Widget-Maximierung implementieren
+    }, [])
+
+    // Aktives Widget fuer Drag Overlay
+    const activeWidget = activeId ? widgets.find((w) => w.id === activeId) : null
 
     return (
         <div className="space-y-4" role="region" aria-label="Dashboard">
@@ -97,6 +122,7 @@ export function DashboardGrid() {
             <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
+                onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
             >
                 <SortableContext
@@ -111,19 +137,37 @@ export function DashboardGrid() {
                         {widgets.map((widget) => {
                             const Component = getWidgetComponent(widget.type)
                             return (
-                                <SortableWidget
+                                <DraggableWidget
                                     key={widget.id}
-                                    id={widget.id}
-                                    type={widget.type}
+                                    widget={{
+                                        id: widget.id,
+                                        type: widget.type,
+                                        title: getWidgetLabel(widget.type),
+                                    }}
                                     isEditMode={isEditMode}
                                     onRemove={handleRemoveWidget}
+                                    onConfigure={handleConfigureWidget}
+                                    onMaximize={handleMaximizeWidget}
                                 >
                                     <Component />
-                                </SortableWidget>
+                                </DraggableWidget>
                             )
                         })}
                     </div>
                 </SortableContext>
+
+                {/* Drag Overlay - Widget-Vorschau beim Ziehen */}
+                <DragOverlay>
+                    {activeWidget && (
+                        <WidgetDragOverlay
+                            widget={{
+                                id: activeWidget.id,
+                                type: activeWidget.type,
+                                title: getWidgetLabel(activeWidget.type),
+                            }}
+                        />
+                    )}
+                </DragOverlay>
             </DndContext>
 
             {/* Widget Catalog Drawer */}

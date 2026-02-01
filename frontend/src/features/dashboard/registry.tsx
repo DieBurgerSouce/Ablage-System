@@ -19,6 +19,9 @@ import { ImportSyncStatusWidget } from './components/widgets/ImportSyncStatusWid
 import { ComplianceDeadlineWidget } from './components/widgets/ComplianceDeadlineWidget'
 import { MLOpsPerformanceWidget } from './components/widgets/MLOpsPerformanceWidget'
 import { CashPositionWidget } from './components/widgets/CashPositionWidget'
+import { CashFlowForecastWidget } from './components/widgets/CashFlowForecastWidget'
+import { SupplierPerformanceWidget } from './components/widgets/SupplierPerformanceWidget'
+import { CustomerLifetimeValueWidget } from './components/widgets/CustomerLifetimeValueWidget'
 import type { LucideIcon } from 'lucide-react'
 import {
     Calendar,
@@ -42,6 +45,9 @@ import {
     Scale,
     Brain,
     Banknote,
+    LineChart,
+    Truck,
+    Users,
 } from 'lucide-react'
 
 export interface WidgetRegistryEntry {
@@ -260,6 +266,37 @@ const WIDGET_DEFINITIONS: WidgetRegistryEntry[] = [
         defaultSize: { w: 4, h: 5 },
         minSize: { w: 3, h: 4 },
     },
+    // Phase 7: Dashboard Widgets
+    {
+        type: 'cash-flow-forecast',
+        component: CashFlowForecastWidget,
+        label: 'Liquiditaetsprognose',
+        description: '30/60/90 Tage Cashflow-Prognose mit Einnahmen, Ausgaben und Skonto-Auswirkungen.',
+        icon: LineChart,
+        category: 'finance',
+        defaultSize: { w: 6, h: 5 },
+        minSize: { w: 4, h: 4 },
+    },
+    {
+        type: 'supplier-performance',
+        component: SupplierPerformanceWidget,
+        label: 'Lieferanten-Performance',
+        description: 'Puenktlichkeit, Genauigkeit und Preistrend der Top-Lieferanten.',
+        icon: Truck,
+        category: 'data',
+        defaultSize: { w: 6, h: 5 },
+        minSize: { w: 4, h: 4 },
+    },
+    {
+        type: 'customer-ltv',
+        component: CustomerLifetimeValueWidget,
+        label: 'Kundenwert (LTV)',
+        description: 'Customer Lifetime Value mit Trend-Analyse und Churn-Risiko-Indikator.',
+        icon: Users,
+        category: 'finance',
+        defaultSize: { w: 6, h: 5 },
+        minSize: { w: 4, h: 4 },
+    },
 ]
 
 // Create registry map for fast lookup
@@ -315,4 +352,9 @@ export function getAllWidgets(): WidgetRegistryEntry[] {
 
 export function getWidgetsByCategory(category: WidgetRegistryEntry['category']): WidgetRegistryEntry[] {
     return WIDGET_DEFINITIONS.filter((w) => w.category === category)
+}
+
+export function getWidgetIcon(type: string): LucideIcon | undefined {
+    const normalizedType = normalizeWidgetType(type)
+    return widgetRegistry[normalizedType]?.icon
 }

@@ -106,6 +106,23 @@ from app.services.bpmn.document_tasks import (
     complete_classification,
     get_document_type_display_name,
 )
+from app.services.bpmn.sla_service import (
+    SLAService,
+    get_sla_service,
+    SLAStatus,
+    SLAAlertThreshold,
+)
+from app.services.bpmn.approval_service import (
+    ParallelApprovalService,
+    get_parallel_approval_service,
+    ConsensusType,
+    ApprovalDecision,
+    ParallelApprovalStatus,
+)
+from app.services.bpmn.workflow_analytics_service import (
+    WorkflowAnalyticsService,
+    get_workflow_analytics_service,
+)
 
 __all__ = [
     # Services
@@ -113,11 +130,24 @@ __all__ = [
     "ProcessExecutionService",
     "ProcessTaskService",
     "TimerService",
+    "SLAService",
+    "ParallelApprovalService",
+    "WorkflowAnalyticsService",
     # Factory Functions
     "get_process_definition_service",
     "get_process_execution_service",
     "get_task_service",
     "get_timer_service",
+    "get_sla_service",
+    "get_parallel_approval_service",
+    "get_workflow_analytics_service",
+    # SLA Enums
+    "SLAStatus",
+    "SLAAlertThreshold",
+    # Approval Enums
+    "ConsensusType",
+    "ApprovalDecision",
+    "ParallelApprovalStatus",
     # Parser
     "BPMNParser",
     "BPMNElement",

@@ -20,8 +20,11 @@ import {
     Receipt,
     Users,
     BarChart3,
-    LucideIcon,
 } from 'lucide-react';
+import type { LucideProps } from 'lucide-react';
+
+// Type for Lucide React icon components
+type LucideIcon = React.ComponentType<LucideProps>;
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

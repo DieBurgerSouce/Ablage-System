@@ -782,6 +782,7 @@ from app.api.v1.activity import router as activity_router
 from app.api.v1.archive import router as archive_router
 from app.api.v1.tax_advisor import router as tax_advisor_router
 from app.api.v1.dashboards import router as dashboards_router  # Enterprise Dashboard API
+from app.api.v1.dashboard_widgets import router as dashboard_widgets_router  # Phase 7: Dashboard Widgets
 from app.api.v1.imports import router as imports_router
 from app.api.v1.ai_autonomy import router as ai_autonomy_router
 from app.api.v1.reports import router as reports_router
@@ -792,6 +793,7 @@ from app.api.v1.orchestration import router as orchestration_router
 from app.api.v1.ai import router as ai_router
 from app.api.v1.lexware import router as lexware_router
 from app.api.v1.invoices import router as invoices_router
+from app.api.v1.predictions import router as predictions_router  # Phase 3: Predictive Payment AI
 from app.api.v1.approvals import router as approvals_router
 from app.api.v1.oneclick import router as oneclick_router
 from app.api.v1.document_chains import router as document_chains_router
@@ -888,6 +890,10 @@ from app.api.v1.action_queue import router as action_queue_router  # Vision 2.0 
 from app.api.v1.financial_insights import router as financial_insights_router  # Vision 2.0 Phase 6: Financial Insights
 from app.api.v1.xai import router as xai_router  # Vision 2.0 Phase 6: Explainable AI
 from app.api.v1.sso import router as sso_router  # Enterprise SSO (OIDC/SAML)
+from app.api.v1.lineage import router as lineage_router  # Phase 1.3: Document Lineage Timeline
+from app.api.v1.workflow_analytics import router as workflow_analytics_router  # Phase 4: Workflow Analytics, SLA, Approvals
+from app.api.v1.odoo_webhooks import router as odoo_webhooks_router  # Phase 6: Odoo Integration Deepening
+from app.api.v1.documents_bulk import router as documents_bulk_router  # Phase 2.3: Bulk Actions
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -947,6 +953,7 @@ app.include_router(activity_router, prefix="/api/v1")
 app.include_router(archive_router, prefix="/api/v1")
 app.include_router(tax_advisor_router, prefix="/api/v1")
 app.include_router(dashboards_router, prefix="/api/v1")
+app.include_router(dashboard_widgets_router, prefix="/api/v1")  # Phase 7: Dashboard Widgets
 app.include_router(imports_router, prefix="/api/v1")
 app.include_router(ai_autonomy_router, prefix="/api/v1")
 app.include_router(reports_router, prefix="/api/v1")
@@ -957,6 +964,7 @@ app.include_router(orchestration_router, prefix="/api/v1")
 app.include_router(ai_router, prefix="/api/v1")
 app.include_router(lexware_router, prefix="/api/v1")
 app.include_router(invoices_router, prefix="/api/v1")
+app.include_router(predictions_router, prefix="/api/v1")  # Phase 3: Predictive Payment AI
 app.include_router(approvals_router, prefix="/api/v1")
 app.include_router(oneclick_router, prefix="/api/v1")
 app.include_router(document_chains_router, prefix="/api/v1")
@@ -988,6 +996,8 @@ app.include_router(dpia_router, prefix="/api/v1")
 app.include_router(help_router, prefix="/api/v1")
 app.include_router(mfa_router, prefix="/api/v1")
 app.include_router(sso_router, prefix="/api/v1")  # Enterprise SSO (OIDC/SAML)
+app.include_router(lineage_router, prefix="/api/v1")  # Phase 1.3: Document Lineage Timeline
+app.include_router(documents_bulk_router, prefix="/api/v1")  # Phase 2.3: Bulk Actions
 app.include_router(dlp_router, prefix="/api/v1")
 app.include_router(transactions_router, prefix="/api/v1")
 app.include_router(teams_router, prefix="/api/v1")
@@ -1053,6 +1063,8 @@ app.include_router(predictive_health_router, prefix="/api/v1")  # Vision 2.0 Pha
 app.include_router(action_queue_router, prefix="/api/v1")  # Vision 2.0 Phase 6: Action Approval Queue
 app.include_router(financial_insights_router, prefix="/api/v1")  # Vision 2.0 Phase 6: Financial Insights
 app.include_router(xai_router, prefix="/api/v1")  # Vision 2.0 Phase 6: Explainable AI
+app.include_router(workflow_analytics_router, prefix="/api/v1")  # Phase 4: Workflow Analytics, SLA, Approvals
+app.include_router(odoo_webhooks_router, prefix="/api/v1")  # Phase 6: Odoo Integration Deepening
 
 
 # ==================== Health & Status Endpoints ====================

@@ -8,7 +8,8 @@
  * - Accessibility Support
  */
 
-import { useSwipeable, SwipeEventData } from 'react-swipeable';
+import { useSwipeable } from 'react-swipeable';
+import type { SwipeEventData } from 'react-swipeable';
 import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {

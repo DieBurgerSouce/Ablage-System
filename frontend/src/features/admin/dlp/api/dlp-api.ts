@@ -4,7 +4,7 @@
  * Verwaltet DLP-Policies, Zugriffskontrollen und Sensitive-Data-Scanning.
  */
 
-import apiClient from '@/lib/api/client';
+import { apiClient } from '@/lib/api/client';
 
 // ==================== Types ====================
 

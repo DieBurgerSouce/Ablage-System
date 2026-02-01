@@ -18,7 +18,7 @@ import {
 } from 'recharts';
 import { Users, TrendingUp, AlertTriangle, DollarSign } from 'lucide-react';
 import type { PortfolioRiskOverview } from '../api/risk-intelligence-api';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrencyDE as formatCurrency } from '@/lib/format';
 
 interface PortfolioOverviewProps {
   portfolio: PortfolioRiskOverview;

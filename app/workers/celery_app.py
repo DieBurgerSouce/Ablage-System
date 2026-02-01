@@ -280,6 +280,7 @@ celery_app = Celery(
         "app.workers.tasks.approval_tasks",  # Approval Workflow Tasks (Escalation, Reminders, Stats)
         "app.workers.tasks.collaboration_tasks",  # Collaboration Tasks (Digest, Task Reminders, Escalation)
         "app.workers.tasks.mlops_tasks",  # MLOps Pipeline (Model Registry, Retraining, Rollback)
+        "app.workers.tasks.sla_tasks",  # SLA Monitoring (Phase 4: Workflow Extensions)
     ]
 )
 
@@ -1073,6 +1074,11 @@ celery_app.conf.update(
             "task": "contracts.check_overdue_milestones",
             "schedule": crontab(hour=9, minute=30),  # Taeglich um 09:30 Uhr
         },
+        # Taeglich: Vertragsverlaengerungs-Warnungen (Phase 1.1) um 08:00 Uhr
+        "contract-check-renewal-deadlines-daily": {
+            "task": "contracts.check_renewal_deadlines",
+            "schedule": crontab(hour=8, minute=0),  # Taeglich um 08:00 Uhr
+        },
         # =================================================================
         # Collaboration Tasks (Team-Aufgaben, Digest-Emails)
         # =================================================================
@@ -1386,6 +1392,25 @@ celery_app.conf.update(
             "kwargs": {"max_age_hours": 24},
         },
         # =================================================================
+        # Predictive Payment AI Tasks (Phase 3)
+        # ML-basierte Zahlungsverhalten-Vorhersagen
+        # =================================================================
+        # Woechentlich: Model Training (Sonntag 03:00)
+        "predictive-payment-train-model-weekly": {
+            "task": "predictive.train_payment_model",
+            "schedule": crontab(hour=3, minute=0, day_of_week=0),  # Sonntag 03:00
+        },
+        # Taeglich: Batch-Vorhersagen fuer alle Entities (06:00)
+        "predictive-payment-batch-predict-daily": {
+            "task": "predictive.batch_predict_payments",
+            "schedule": crontab(hour=6, minute=15),  # Taeglich um 06:15 Uhr
+        },
+        # Woechentlich: Model Evaluation (Sonntag 04:00)
+        "predictive-payment-evaluate-model-weekly": {
+            "task": "predictive.evaluate_payment_model",
+            "schedule": crontab(hour=4, minute=0, day_of_week=0),  # Sonntag 04:00
+        },
+        # =================================================================
         # Financial Insights Tasks (Vision 2.0 Phase 6)
         # Proaktive Cashflow, Fraud, Skonto Insights
         # =================================================================
@@ -1459,6 +1484,23 @@ celery_app.conf.update(
         "datev-auto-festschreibung-monthly": {
             "task": "datev.auto_festschreibung",
             "schedule": crontab(day_of_month=5, hour=3, minute=0),  # Am 5. jeden Monats um 03:00 Uhr
+        },
+        # =================================================================
+        # SLA Monitoring Tasks (Phase 4: Workflow Extensions)
+        # SLA-Ueberwachung mit progressiven Alerts (50%, 75%, 90%, 100%)
+        # =================================================================
+        # Alle 15 Minuten: SLA-Status aller aktiven Workflows pruefen
+        "sla-check-all-15min": {
+            "task": "sla.check_all",
+            "schedule": 900.0,  # Alle 15 Minuten
+            "options": {"queue": "metadata"},
+        },
+        # Taeglich: SLA-Report an Company-Admins senden
+        "sla-generate-report-daily": {
+            "task": "sla.generate_report",
+            "schedule": crontab(hour=7, minute=0),  # Taeglich um 07:00 Uhr
+            "kwargs": {"time_range_days": 7, "send_email": True},
+            "options": {"queue": "maintenance"},
         },
     },
 
@@ -1602,6 +1644,14 @@ celery_app.conf.update(
         "app.workers.tasks.privat_tasks.cleanup_old_projections": {"queue": "maintenance", "priority": 1},
         "app.workers.tasks.privat_tasks.get_predictive_insights_summary": {"queue": "maintenance", "priority": 4},  # On-demand - hohe Prioritaet
         # =================================================================
+        # Predictive Payment AI Tasks (Phase 3)
+        # =================================================================
+        "predictive.train_payment_model": {"queue": "maintenance", "priority": 3},
+        "predictive.batch_predict_payments": {"queue": "metadata", "priority": 4},
+        "predictive.update_cash_flow_forecast": {"queue": "metadata", "priority": 5},
+        "predictive.evaluate_payment_model": {"queue": "maintenance", "priority": 3},
+        "predictive.skonto_impact_analysis": {"queue": "metadata", "priority": 4},
+        # =================================================================
         # Cross-Module Orchestration Tasks (Phase 2 - INTELLIGENT ROUTING)
         # =================================================================
         "app.workers.tasks.orchestration_tasks.process_pending_orchestration_actions": {"queue": "orchestration", "priority": 5},  # Hoch - verarbeitet proaktiv
@@ -1705,6 +1755,11 @@ celery_app.conf.update(
         "contracts.check_renewal_option_expiry": {"queue": "maintenance", "priority": 3},
         # Taeglich: Ueberfaellige Meilensteine pruefen
         "contracts.check_overdue_milestones": {"queue": "maintenance", "priority": 4},
+        # Phase 1.1: Vertragsverlaengerungs-Warnungen
+        "contracts.check_renewal_deadlines": {"queue": "maintenance", "priority": 4},
+        "contracts.extract_dates_from_document": {"queue": "metadata", "priority": 5},
+        "contracts.send_renewal_reminder": {"queue": "notifications", "priority": 7},
+        "contracts.schedule_contract_reminders": {"queue": "maintenance", "priority": 3},
         # =================================================================
         # Zero-Touch OCR Tasks (F1 - Vollautomatische Dokumentenverarbeitung)
         # =================================================================
@@ -1782,6 +1837,17 @@ celery_app.conf.update(
         # GoBD Compliance (hohe Prioritaet - Compliance-kritisch)
         "datev.gobd_compliance_check": {"queue": "maintenance", "priority": 6},
         "datev.auto_festschreibung": {"queue": "maintenance", "priority": 7},
+        # =================================================================
+        # SLA Monitoring Tasks (Phase 4: Workflow Extensions)
+        # =================================================================
+        # Periodische SLA-Pruefung (alle 15 Min)
+        "sla.check_all": {"queue": "metadata", "priority": 4},
+        # SLA-Warnungen senden (hohe Prioritaet)
+        "sla.send_warning": {"queue": "notification", "priority": 6},
+        # SLA-Eskalation (sehr hohe Prioritaet)
+        "sla.escalate": {"queue": "notification", "priority": 7},
+        # Tagesreport generieren (niedrige Prioritaet)
+        "sla.generate_report": {"queue": "maintenance", "priority": 2},
     },
 
     # Priority settings

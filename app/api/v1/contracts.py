@@ -1556,3 +1556,279 @@ async def get_ai_deadline_statistics(
     stats = await deadline_service.get_statistics(company_id=company.company_id)
 
     return stats
+
+
+# =============================================================================
+# Contract Renewal Endpoints (Phase 1.1)
+# =============================================================================
+
+
+@router.get("/upcoming-renewals", response_model=List[dict])
+async def get_upcoming_renewals(
+    days_ahead: int = Query(90, ge=1, le=365, description="Tage voraus"),
+    include_auto_renewal: bool = Query(True, description="Auto-Verlaengerungen einbeziehen"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> List[dict]:
+    """
+    Liste aller Vertraege mit bevorstehenden Verlaengerungen/Ablauf.
+
+    Liefert:
+    - Vertraege mit Ablaufdatum in den naechsten X Tagen
+    - Kuendigungsfristen
+    - Automatische Verlaengerungen
+    - Dringlichkeitsstufe
+
+    Sortiert nach Dringlichkeit (kritisch zuerst).
+    """
+    from app.services.contracts import get_contract_renewal_service
+
+    renewal_service = get_contract_renewal_service(db)
+    renewals = await renewal_service.get_upcoming_renewals(
+        company_id=company.company_id,
+        days_ahead=days_ahead,
+        include_auto_renewal=include_auto_renewal,
+    )
+
+    return renewals
+
+
+@router.post("/{contract_id}/set-deadline", response_model=dict)
+async def set_contract_deadline(
+    contract_id: UUID,
+    deadline_date: date,
+    deadline_type: str = Query(
+        "termination_notice",
+        description="Art der Frist: termination_notice, contract_expiry, renewal_decision"
+    ),
+    description: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> dict:
+    """
+    Manuelle Frist fuer einen Vertrag setzen oder ueberschreiben.
+
+    Erstellt eine neue Frist oder aktualisiert eine bestehende.
+    Automatische Erinnerungen werden geplant (30/60/90 Tage).
+
+    Frist-Typen:
+    - termination_notice: Kuendigungsfrist
+    - contract_expiry: Vertragsablauf
+    - renewal_decision: Verlaengerungsentscheidung
+    """
+    from app.services.contracts import get_contract_renewal_service
+    from app.db.models_contract import Contract
+
+    # Verify contract access
+    contract = await db.get(Contract, contract_id)
+    if not contract or contract.company_id != company.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vertrag nicht gefunden",
+        )
+
+    # Validate deadline type
+    valid_types = ["termination_notice", "contract_expiry", "renewal_decision", "price_adjustment"]
+    if deadline_type not in valid_types:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ungueltiger Frist-Typ. Erlaubt: {', '.join(valid_types)}",
+        )
+
+    renewal_service = get_contract_renewal_service(db)
+
+    try:
+        deadline = await renewal_service.set_manual_deadline(
+            contract_id=contract_id,
+            deadline_date=deadline_date,
+            deadline_type=deadline_type,
+            user_id=current_user.id,
+            description=description,
+        )
+        return deadline.to_dict()
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=safe_error_detail(e, "Frist-Setzung"),
+        )
+
+
+@router.get("/{contract_id}/reminders", response_model=List[dict])
+async def get_contract_reminders(
+    contract_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> List[dict]:
+    """
+    Erinnerungsplan fuer einen Vertrag abrufen.
+
+    Liefert alle geplanten Erinnerungen mit:
+    - Datum
+    - Typ (Kuendigung, Ablauf, Verlaengerung)
+    - Status (ausstehend, gesendet, ueberfaellig)
+    - Prioritaet
+    """
+    from app.services.contracts import get_contract_renewal_service
+    from app.db.models_contract import Contract
+
+    # Verify contract access
+    contract = await db.get(Contract, contract_id)
+    if not contract or contract.company_id != company.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vertrag nicht gefunden",
+        )
+
+    renewal_service = get_contract_renewal_service(db)
+    reminders = await renewal_service.get_reminder_schedule(contract_id=contract_id)
+
+    return reminders
+
+
+@router.post("/{contract_id}/extract-dates", response_model=dict)
+async def extract_contract_dates(
+    contract_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> dict:
+    """
+    Extrahiert Vertragsfristen aus dem verknuepften Dokument.
+
+    Analysiert den OCR-Text und erkennt:
+    - Vertragsbeginn
+    - Vertragsende/Ablaufdatum
+    - Kuendigungsfristen
+    - Laufzeiten
+
+    Die erkannten Daten werden zum Vertrag hinzugefuegt
+    und automatische Erinnerungen werden geplant.
+    """
+    from app.services.contracts import get_contract_renewal_service
+    from app.db.models_contract import Contract
+
+    # Verify contract access
+    contract = await db.get(Contract, contract_id)
+    if not contract or contract.company_id != company.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vertrag nicht gefunden",
+        )
+
+    if not contract.document_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Kein Dokument mit diesem Vertrag verknuepft",
+        )
+
+    renewal_service = get_contract_renewal_service(db)
+
+    # Extract dates from document
+    dates = await renewal_service.extract_contract_dates_from_document(
+        document_id=contract.document_id,
+        company_id=company.company_id,
+    )
+
+    # Update contract with extracted dates
+    updates_made = []
+    if dates.get("effective_date") and not contract.effective_date:
+        contract.effective_date = dates["effective_date"]
+        updates_made.append("effective_date")
+
+    if dates.get("expiration_date") and not contract.expiration_date:
+        contract.expiration_date = dates["expiration_date"]
+        updates_made.append("expiration_date")
+
+    if dates.get("notice_period_days") and not contract.notice_period_days:
+        contract.notice_period_days = dates["notice_period_days"]
+        updates_made.append("notice_period_days")
+
+    if updates_made:
+        await db.commit()
+
+    # Schedule reminders if expiration date found
+    reminders_scheduled = 0
+    if dates.get("expiration_date"):
+        deadlines = await renewal_service.schedule_reminders(
+            contract_id=contract_id,
+            deadline=dates["expiration_date"],
+            deadline_type="termination_notice" if dates.get("notice_deadline") else "contract_expiry",
+        )
+        reminders_scheduled = len(deadlines)
+
+    return {
+        "contract_id": str(contract_id),
+        "extracted_dates": {
+            k: v.isoformat() if v and hasattr(v, "isoformat") else v
+            for k, v in dates.items()
+        },
+        "fields_updated": updates_made,
+        "reminders_scheduled": reminders_scheduled,
+    }
+
+
+@router.post("/{contract_id}/schedule-reminders", response_model=dict)
+async def schedule_contract_reminders(
+    contract_id: UUID,
+    deadline_date: Optional[date] = None,
+    reminder_days: Optional[List[int]] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> dict:
+    """
+    Plant Erinnerungen fuer einen Vertrag.
+
+    Falls kein Datum angegeben, wird das Vertragsende verwendet.
+    Standard-Erinnerungen: 90, 60, 30 Tage vor Ablauf.
+
+    Kann mit benutzerdefinierten Erinnerungstagen aufgerufen werden:
+    reminder_days: [90, 60, 30, 14, 7]
+    """
+    from app.services.contracts import get_contract_renewal_service
+    from app.db.models_contract import Contract
+
+    # Verify contract access
+    contract = await db.get(Contract, contract_id)
+    if not contract or contract.company_id != company.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vertrag nicht gefunden",
+        )
+
+    # Determine deadline date
+    if deadline_date is None:
+        if contract.expiration_date:
+            deadline_date = contract.expiration_date
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Kein Ablaufdatum vorhanden. Bitte Datum angeben.",
+            )
+
+    renewal_service = get_contract_renewal_service(db)
+
+    deadlines = await renewal_service.schedule_reminders(
+        contract_id=contract_id,
+        deadline=deadline_date,
+        deadline_type="termination_notice" if contract.notice_period_days else "contract_expiry",
+        reminder_days=reminder_days,
+    )
+
+    return {
+        "contract_id": str(contract_id),
+        "deadline_date": deadline_date.isoformat(),
+        "reminders_created": len(deadlines),
+        "reminder_dates": [
+            {
+                "id": str(d.id),
+                "date": d.deadline_date.isoformat(),
+                "type": d.deadline_type,
+                "priority": d.priority,
+            }
+            for d in deadlines
+        ],
+    }

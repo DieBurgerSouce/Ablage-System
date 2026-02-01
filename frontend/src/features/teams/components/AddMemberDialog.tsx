@@ -52,7 +52,7 @@ import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { TeamMemberRole } from '../api/teams-api';
 import { useAddMember } from '../hooks/use-teams';
-import apiClient from '@/lib/api/client';
+import { apiClient } from '@/lib/api/client';
 
 interface AddMemberDialogProps {
   teamId: string;

@@ -31,11 +31,11 @@ from app.db.models_alert import (
     AlertDigestSubscription,
 )
 from app.services.notification_service import (
-
     NotificationService,
     get_notification_service,
     NotificationPriority,
 )
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -52,6 +52,10 @@ class AlertCodes:
     FRAUD_PRICE_ANOMALY = "FRAUD_002"
     FRAUD_PHANTOM_SUPPLIER = "FRAUD_003"
     FRAUD_INTERNAL_PATTERN = "FRAUD_004"
+    FRAUD_CEO_FRAUD = "FRAUD_005"
+    FRAUD_IBAN_MANIPULATION = "FRAUD_006"
+    FRAUD_DUPLICATE_PAYMENT = "FRAUD_007"
+    FRAUD_SELF_APPROVAL = "FRAUD_008"
 
     # Risk Intelligence
     RISK_HIGH_SCORE = "RISK_001"
@@ -71,6 +75,16 @@ class AlertCodes:
     DEADLINE_INVOICE_OVERDUE = "DEAD_002"
     DEADLINE_CONTRACT_EXPIRY = "DEAD_003"
     DEADLINE_APPROVAL_PENDING = "DEAD_004"
+
+    # Contract Renewal Deadlines (Phase 1.1)
+    DEADLINE_CONTRACT_90_DAYS = "DEAD_CONTRACT_90"
+    DEADLINE_CONTRACT_60_DAYS = "DEAD_CONTRACT_60"
+    DEADLINE_CONTRACT_30_DAYS = "DEAD_CONTRACT_30"
+    DEADLINE_CONTRACT_14_DAYS = "DEAD_CONTRACT_14"
+    DEADLINE_CONTRACT_7_DAYS = "DEAD_CONTRACT_7"
+    DEADLINE_CONTRACT_1_DAY = "DEAD_CONTRACT_1"
+    DEADLINE_NOTICE_CRITICAL = "DEAD_NOTICE_CRITICAL"
+    DEADLINE_AUTO_RENEWAL = "DEAD_AUTO_RENEWAL"
 
     # System
     SYSTEM_GPU_MEMORY = "SYS_001"
@@ -109,6 +123,22 @@ ALERT_TEMPLATES: Dict[str, Dict[str, str]] = {
         "title": "Preisanomalie erkannt",
         "message": "Der Preis fuer {item} weicht um {deviation}% vom historischen Durchschnitt ab.",
     },
+    AlertCodes.FRAUD_CEO_FRAUD: {
+        "title": "CEO-Betrug vermutet",
+        "message": "Ein Dokument zeigt Anzeichen von CEO-Betrug: Dringlichkeit, Vertraulichkeit, unbekannter Absender.",
+    },
+    AlertCodes.FRAUD_IBAN_MANIPULATION: {
+        "title": "IBAN-Aenderung erfordert Verifizierung",
+        "message": "Eine IBAN-Aenderung wurde erkannt. Bitte verifizieren Sie die neuen Bankdaten vor Zahlung.",
+    },
+    AlertCodes.FRAUD_DUPLICATE_PAYMENT: {
+        "title": "Moegliche Duplikat-Zahlung erkannt",
+        "message": "Die Rechnung koennte ein Duplikat sein. Manuelle Pruefung vor Zahlung erforderlich.",
+    },
+    AlertCodes.FRAUD_SELF_APPROVAL: {
+        "title": "Selbst-Genehmigung erkannt",
+        "message": "Ein Benutzer hat versucht, einen eigenen Vorgang zu genehmigen. Vier-Augen-Prinzip verletzt.",
+    },
     AlertCodes.RISK_HIGH_SCORE: {
         "title": "Hoher Risiko-Score",
         "message": "Der Geschaeftspartner hat einen Risiko-Score von {score}/100 erreicht.",
@@ -116,6 +146,39 @@ ALERT_TEMPLATES: Dict[str, Dict[str, str]] = {
     AlertCodes.DEADLINE_SKONTO_EXPIRING: {
         "title": "Skonto-Frist laeuft ab",
         "message": "Die Skonto-Frist fuer Rechnung {invoice_number} laeuft in {days} Tagen ab. Ersparnis: {savings} EUR.",
+    },
+    # Contract Renewal Templates (Phase 1.1)
+    AlertCodes.DEADLINE_CONTRACT_90_DAYS: {
+        "title": "Vertragsablauf in 90 Tagen",
+        "message": "Der Vertrag '{contract_title}' laeuft in 90 Tagen ab. Bitte pruefen Sie die Verlaengerungsoptionen.",
+    },
+    AlertCodes.DEADLINE_CONTRACT_60_DAYS: {
+        "title": "Vertragsablauf in 60 Tagen",
+        "message": "Der Vertrag '{contract_title}' laeuft in 60 Tagen ab. Eine Entscheidung zur Verlaengerung sollte zeitnah erfolgen.",
+    },
+    AlertCodes.DEADLINE_CONTRACT_30_DAYS: {
+        "title": "Vertragsablauf in 30 Tagen",
+        "message": "Der Vertrag '{contract_title}' laeuft in 30 Tagen ab. Dringende Pruefung erforderlich.",
+    },
+    AlertCodes.DEADLINE_CONTRACT_14_DAYS: {
+        "title": "Vertragsablauf in 14 Tagen",
+        "message": "Der Vertrag '{contract_title}' laeuft in 14 Tagen ab. Sofortige Massnahmen erforderlich.",
+    },
+    AlertCodes.DEADLINE_CONTRACT_7_DAYS: {
+        "title": "Vertragsablauf in 7 Tagen - KRITISCH",
+        "message": "Der Vertrag '{contract_title}' laeuft in 7 Tagen ab. Letzte Moeglichkeit zur Kuendigung oder Verlaengerung.",
+    },
+    AlertCodes.DEADLINE_CONTRACT_1_DAY: {
+        "title": "Vertragsablauf MORGEN",
+        "message": "Der Vertrag '{contract_title}' laeuft morgen ab. Ohne Aktion tritt automatische Verlaengerung in Kraft.",
+    },
+    AlertCodes.DEADLINE_NOTICE_CRITICAL: {
+        "title": "Kuendigungsfrist kritisch",
+        "message": "Die Kuendigungsfrist fuer Vertrag '{contract_title}' endet in {days} Tagen.",
+    },
+    AlertCodes.DEADLINE_AUTO_RENEWAL: {
+        "title": "Automatische Vertragsverlaengerung",
+        "message": "Der Vertrag '{contract_title}' wird automatisch verlaengert, wenn bis {deadline} keine Kuendigung erfolgt.",
     },
     AlertCodes.DEADLINE_INVOICE_OVERDUE: {
         "title": "Rechnung ueberfaellig",
