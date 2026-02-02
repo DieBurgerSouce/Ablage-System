@@ -25,3 +25,6 @@ export { SpaceDetailPage } from './SpaceDetailPage';
 
 // Portfolio & Goals
 export { PortfolioPage } from './PortfolioPage';
+
+// Net Worth Dashboard
+export { NetWorthDashboard } from './NetWorthDashboard';

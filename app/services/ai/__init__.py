@@ -12,6 +12,8 @@ Services:
 - NLQService: Natural Language Queries (deutsch)
 - RoutingIntelligenceService: Intelligentes Dokumenten-Routing
 - PredictiveActionService: Proaktive Handlungsvorschlaege
+- AutoCategorizationV2Service: LLM-basierte Dokument-Kategorisierung 2.0
+- SmartDunningService: Intelligentes Mahnwesen mit KI-Unterstuetzung
 """
 
 from app.services.ai.decision_service import AIDecisionService
@@ -83,6 +85,31 @@ from app.services.ai.insight_generator_service import (
     InsightContext,
     get_insight_generator_service,
 )
+from app.services.ai.auto_categorization_v2_service import (
+    AutoCategorizationV2Service,
+    CategorizationV2Result,
+    CategoryLabel,
+    CategoryExplanation,
+    DocumentType,
+    CategorizationMethod,
+    get_auto_categorization_v2_service,
+)
+from app.services.ai.smart_dunning_service import (
+    SmartDunningService,
+    DunningLevel,
+    DunningTone,
+    DunningStrategy,
+    DunningText,
+    DunningTiming,
+    DunningResult,
+    PaymentPrediction,
+    PaymentLikelihood,
+    CustomerProfile,
+    CustomerSegment,
+    ABTest,
+    ABTestVariant,
+    get_smart_dunning_service,
+)
 
 __all__ = [
     # Core Decision Service
@@ -148,4 +175,27 @@ __all__ = [
     "Insight",
     "InsightContext",
     "get_insight_generator_service",
+    # Auto-Kategorisierung 2.0 (Februar 2026)
+    "AutoCategorizationV2Service",
+    "CategorizationV2Result",
+    "CategoryLabel",
+    "CategoryExplanation",
+    "DocumentType",
+    "CategorizationMethod",
+    "get_auto_categorization_v2_service",
+    # Smart Dunning (Februar 2026)
+    "SmartDunningService",
+    "DunningLevel",
+    "DunningTone",
+    "DunningStrategy",
+    "DunningText",
+    "DunningTiming",
+    "DunningResult",
+    "PaymentPrediction",
+    "PaymentLikelihood",
+    "CustomerProfile",
+    "CustomerSegment",
+    "ABTest",
+    "ABTestVariant",
+    "get_smart_dunning_service",
 ]

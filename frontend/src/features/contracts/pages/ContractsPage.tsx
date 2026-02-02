@@ -6,6 +6,8 @@
  * - Fristen-Warnungen
  * - Vertrags-Liste mit Filtern
  * - CRUD-Operationen
+ * - Kalender-Export (iCal)
+ * - Timeline-Ansicht
  */
 
 import { useState, useCallback } from 'react';
@@ -23,7 +25,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { RefreshCw, AlertTriangle, FileText } from 'lucide-react';
+import { RefreshCw, AlertTriangle, FileText, Calendar } from 'lucide-react';
 import type { Contract, ContractDetail, ContractListParams, ContractCreateRequest, ContractUpdateRequest } from '../types/contract-types';
 import {
   useContracts,
@@ -41,6 +43,7 @@ import { ContractFilters } from '../components/ContractFilters';
 import { ContractTable } from '../components/ContractTable';
 import { ContractDetailSheet } from '../components/ContractDetailSheet';
 import { ContractFormDialog } from '../components/ContractFormDialog';
+import { ContractCalendarExport } from '../components/ContractCalendarExport';
 
 const DEFAULT_PAGE_SIZE = 20;
 
@@ -241,15 +244,25 @@ export function ContractsPage() {
             Verwalten Sie Ihre B2B-Vertraege, Fristen und Verlaengerungen
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetchContracts()}
-          disabled={isFetching}
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-          Aktualisieren
-        </Button>
+        <div className="flex items-center gap-2">
+          <ContractCalendarExport
+            trigger={
+              <Button variant="outline" size="sm">
+                <Calendar className="h-4 w-4 mr-2" />
+                Kalender-Export
+              </Button>
+            }
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetchContracts()}
+            disabled={isFetching}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+            Aktualisieren
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}

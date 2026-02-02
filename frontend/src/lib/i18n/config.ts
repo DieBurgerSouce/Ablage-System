@@ -1,55 +1,26 @@
-import i18n from 'i18next';
-import { initReactI18next } from 'react-i18next';
+/**
+ * i18n Configuration (Legacy Compatibility)
+ *
+ * This file provides backwards compatibility with the old i18n setup.
+ * For new code, import from '@/lib/i18n' instead.
+ *
+ * @deprecated Use `import { ... } from '@/lib/i18n'` instead
+ */
 
-// Import translations
-import de from '@/locales/de.json';
-import en from '@/locales/en.json';
+// Re-export from new i18n module
+import i18n, {
+    changeLanguage as newChangeLanguage,
+    getCurrentLanguage as newGetCurrentLanguage,
+    type SupportedLanguage,
+} from './i18n';
 
-// i18n Konfiguration für Ablage-System
-// Primärsprache: Deutsch (de)
-// Sekundärsprache: Englisch (en)
-
-const resources = {
-    de: { translation: de },
-    en: { translation: en },
-};
-
-i18n
-    .use(initReactI18next)
-    .init({
-        resources,
-        lng: localStorage.getItem('language') || 'de', // Default: Deutsch
-        fallbackLng: 'de',
-
-        interpolation: {
-            escapeValue: false, // React bereits XSS-sicher
-        },
-
-        // Namespace-Konfiguration
-        defaultNS: 'translation',
-        ns: ['translation'],
-
-        // Debug-Modus (nur in Development)
-        debug: import.meta.env.DEV,
-
-        // Performance-Optimierungen
-        load: 'languageOnly', // Nur 'de' statt 'de-DE'
-
-        // React-spezifische Optionen
-        react: {
-            useSuspense: false, // Für bessere Kompatibilität
-        },
-    });
-
-// Sprache wechseln und persistieren
+// Legacy exports for backwards compatibility
 export const changeLanguage = (lang: 'de' | 'en') => {
-    localStorage.setItem('language', lang);
-    i18n.changeLanguage(lang);
+    return newChangeLanguage(lang as SupportedLanguage);
 };
 
-// Aktuelle Sprache abrufen
 export const getCurrentLanguage = (): 'de' | 'en' => {
-    return (i18n.language as 'de' | 'en') || 'de';
+    return newGetCurrentLanguage() as 'de' | 'en';
 };
 
 export default i18n;

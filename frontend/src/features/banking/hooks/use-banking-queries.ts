@@ -828,7 +828,7 @@ export function useRejectMatch() {
 }
 
 /**
- * Nicht-verknüpfte Dokumente abrufen
+ * Nicht-verknuepfte Dokumente abrufen
  */
 export function useUnmatchedDocuments() {
     return useQuery({
@@ -846,6 +846,142 @@ export function useUnmatchedDocuments() {
             }>;
         },
         staleTime: STALE_TIMES.transactions,
+    });
+}
+
+// ==================== Enhanced Reconciliation Hooks (New API) ====================
+
+/**
+ * Query Keys fuer erweiterte Reconciliation API
+ */
+export const enhancedReconciliationQueryKeys = {
+    stats: (bankAccountId?: string) =>
+        [...bankingQueryKeys.reconciliation(), 'stats', bankAccountId] as const,
+    unmatchedEnhanced: (params?: Record<string, unknown>) =>
+        [...bankingQueryKeys.reconciliation(), 'unmatched-enhanced', params] as const,
+    suggestionsEnhanced: (transactionId: string) =>
+        [...bankingQueryKeys.reconciliation(), 'suggestions-enhanced', transactionId] as const,
+};
+
+/**
+ * Reconciliation-Statistiken abrufen
+ */
+export function useReconciliationStats(bankAccountId?: string) {
+    return useQuery({
+        queryKey: enhancedReconciliationQueryKeys.stats(bankAccountId),
+        queryFn: () => bankingService.getReconciliationStats(bankAccountId),
+        staleTime: STALE_TIMES.stats,
+    });
+}
+
+/**
+ * Unabgeglichene Transaktionen mit erweiterten Infos
+ */
+export function useUnmatchedTransactionsEnhanced(params?: {
+    bank_account_id?: string;
+    min_amount?: number;
+    max_amount?: number;
+    days_old?: number;
+    sort_by?: 'booking_date' | 'amount' | 'counterparty';
+    sort_order?: 'asc' | 'desc';
+    offset?: number;
+    limit?: number;
+}) {
+    return useQuery({
+        queryKey: enhancedReconciliationQueryKeys.unmatchedEnhanced(params),
+        queryFn: () => bankingService.getUnmatchedTransactionsEnhanced(params),
+        staleTime: STALE_TIMES.transactions,
+    });
+}
+
+/**
+ * Erweiterte Match-Vorschlaege fuer eine Transaktion
+ */
+export function useMatchSuggestionsEnhanced(
+    transactionId: string,
+    params?: { limit?: number; min_confidence?: number },
+    enabled = true
+) {
+    return useQuery({
+        queryKey: enhancedReconciliationQueryKeys.suggestionsEnhanced(transactionId),
+        queryFn: () => bankingService.getMatchSuggestionsEnhanced(transactionId, params),
+        staleTime: STALE_TIMES.transactions,
+        enabled: enabled && !!transactionId,
+    });
+}
+
+/**
+ * Bulk Auto-Match durchfuehren
+ */
+export function useAutoMatchTransactions() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (params?: { bank_account_id?: string; min_confidence?: number; limit?: number }) =>
+            bankingService.autoMatchTransactions(params),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: bankingQueryKeys.transactions() });
+            queryClient.invalidateQueries({ queryKey: bankingQueryKeys.reconciliation() });
+            queryClient.invalidateQueries({ queryKey: bankingQueryKeys.aging() });
+        },
+    });
+}
+
+/**
+ * Manueller Abgleich mit erweiterten Optionen
+ */
+export function useCreateManualMatch() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({
+            transactionId,
+            data,
+        }: {
+            transactionId: string;
+            data: {
+                document_id: string;
+                notes?: string;
+                is_partial?: boolean;
+                allocated_amount?: number;
+            };
+        }) => bankingService.createManualMatch(transactionId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: bankingQueryKeys.transactions() });
+            queryClient.invalidateQueries({ queryKey: bankingQueryKeys.reconciliation() });
+            queryClient.invalidateQueries({ queryKey: bankingQueryKeys.aging() });
+        },
+    });
+}
+
+/**
+ * Match-Vorschlag ablehnen
+ */
+export function useRejectMatchEnhanced() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({
+            transactionId,
+            documentId,
+            reason,
+            neverSuggestAgain = false,
+        }: {
+            transactionId: string;
+            documentId: string;
+            reason: string;
+            neverSuggestAgain?: boolean;
+        }) =>
+            bankingService.rejectMatch(transactionId, documentId, {
+                reason,
+                never_suggest_again: neverSuggestAgain,
+            }),
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: enhancedReconciliationQueryKeys.suggestionsEnhanced(variables.transactionId),
+            });
+            queryClient.invalidateQueries({ queryKey: bankingQueryKeys.reconciliation() });
+        },
     });
 }
 

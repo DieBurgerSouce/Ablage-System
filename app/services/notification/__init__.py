@@ -3,6 +3,7 @@
 Beinhaltet:
 - NotificationRuleEngine: Event-basierte Regel-Auswertung
 - SkontoNotificationService: Multi-Channel Skonto-Deadline-Alerts
+- UnifiedNotificationHub: Zentraler Orchestrator fuer alle Kanaele
 """
 
 from app.services.notification.rule_engine import (
@@ -19,6 +20,19 @@ from app.services.notification.skonto_notifications import (
     get_skonto_notification_service,
     send_skonto_alerts,
 )
+from app.services.notification.unified_hub import (
+    UnifiedNotificationHub,
+    get_unified_notification_hub,
+    send_notification,
+    NotificationChannel,
+    NotificationSeverity,
+    NotificationCategory,
+    NotificationPayload,
+    NotificationRecipient,
+    NotificationDeliveryResult,
+    UserNotificationPreferences,
+    EscalationLevel,
+)
 
 __all__ = [
     # Rule Engine
@@ -33,4 +47,16 @@ __all__ = [
     "SkontoUrgencyLevel",
     "get_skonto_notification_service",
     "send_skonto_alerts",
+    # Unified Notification Hub
+    "UnifiedNotificationHub",
+    "get_unified_notification_hub",
+    "send_notification",
+    "NotificationChannel",
+    "NotificationSeverity",
+    "NotificationCategory",
+    "NotificationPayload",
+    "NotificationRecipient",
+    "NotificationDeliveryResult",
+    "UserNotificationPreferences",
+    "EscalationLevel",
 ]

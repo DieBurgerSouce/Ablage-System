@@ -762,6 +762,7 @@ from app.api.v1.extracted_data import router as extracted_data_router
 from app.api.v1.rag import router as rag_router
 from app.api.v1.einvoice import router as einvoice_router
 from app.api.v1.banking import router as banking_router
+from app.api.v1.reconciliation import router as reconciliation_router
 from app.api.v1.banking_fints import fints_router, sepa_router, dashboard_router as banking_dashboard_router
 from app.api.v1.datev import router as datev_router
 from app.api.v1.finance import router as finance_router
@@ -815,6 +816,7 @@ from app.api.v1.supplier_ranking import router as supplier_ranking_router
 from app.api.v1.payment_behavior import router as payment_behavior_router
 from app.api.v1.knowledge import router as knowledge_router
 from app.api.v1.slack import router as slack_router
+from app.api.v1.ms_teams import router as ms_teams_router
 from app.api.v1.shipments import router as shipments_router
 from app.api.v1.websocket import router as websocket_router
 from app.api.v1.predictive_actions import router as predictive_actions_router
@@ -823,6 +825,7 @@ from app.api.v1.tenant_rate_limits import router as tenant_rate_limits_router
 from app.api.v1.subscriptions import router as subscriptions_router
 from app.api.v1.holding import router as holding_router
 from app.api.v1.predictive_cashflow import router as predictive_cashflow_router
+from app.api.v1.cashflow_prediction import router as cashflow_prediction_router  # Monte Carlo Cashflow Prediction
 from app.api.v1.fraud_detection import router as fraud_detection_router
 from app.api.v1.risk_intelligence import router as risk_intelligence_router
 from app.api.v1.ocr_learning import router as ocr_learning_router
@@ -893,7 +896,9 @@ from app.api.v1.sso import router as sso_router  # Enterprise SSO (OIDC/SAML)
 from app.api.v1.lineage import router as lineage_router  # Phase 1.3: Document Lineage Timeline
 from app.api.v1.workflow_analytics import router as workflow_analytics_router  # Phase 4: Workflow Analytics, SLA, Approvals
 from app.api.v1.odoo_webhooks import router as odoo_webhooks_router  # Phase 6: Odoo Integration Deepening
+from app.api.v1.bpmn_converter import router as bpmn_converter_router  # BPMN 2.0 Import/Export Converter
 from app.api.v1.documents_bulk import router as documents_bulk_router  # Phase 2.3: Bulk Actions
+from app.api.v1.assistant import router as assistant_router  # Conversational Assistant mit Ollama
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -931,6 +936,7 @@ app.include_router(extracted_data_router, prefix="/api/v1")
 app.include_router(rag_router, prefix="/api/v1")
 app.include_router(einvoice_router, prefix="/api/v1")
 app.include_router(banking_router, prefix="/api/v1")
+app.include_router(reconciliation_router, prefix="/api/v1")  # Payment Reconciliation API
 app.include_router(fints_router, prefix="/api/v1")
 app.include_router(sepa_router, prefix="/api/v1")
 app.include_router(banking_dashboard_router, prefix="/api/v1")
@@ -979,6 +985,7 @@ app.include_router(supplier_ranking_router, prefix="/api/v1")
 app.include_router(payment_behavior_router, prefix="/api/v1")
 app.include_router(knowledge_router, prefix="/api/v1")
 app.include_router(slack_router, prefix="/api/v1")
+app.include_router(ms_teams_router, prefix="/api/v1")
 app.include_router(shipments_router, prefix="/api/v1")
 app.include_router(websocket_router, prefix="/api/v1", tags=["websocket"])
 app.include_router(predictive_actions_router, prefix="/api/v1")
@@ -987,6 +994,7 @@ app.include_router(tenant_rate_limits_router, prefix="/api/v1")
 app.include_router(subscriptions_router, prefix="/api/v1")
 app.include_router(holding_router, prefix="/api/v1")
 app.include_router(predictive_cashflow_router, prefix="/api/v1")
+app.include_router(cashflow_prediction_router, prefix="/api/v1")  # Monte Carlo Cashflow Prediction
 app.include_router(fraud_detection_router, prefix="/api/v1")
 app.include_router(risk_intelligence_router, prefix="/api/v1")
 app.include_router(ocr_learning_router, prefix="/api/v1")
@@ -1013,6 +1021,7 @@ app.include_router(alerts_router, prefix="/api/v1")
 app.include_router(inventory_router, prefix="/api/v1")
 app.include_router(finance_assistant_router, prefix="/api/v1")  # Vision 2.0: KI-Finanzassistent
 app.include_router(ai_conversations_router, prefix="/api/v1")  # Vision 2.0: KI-Konversationen Persistenz
+app.include_router(assistant_router, prefix="/api/v1")  # Conversational Assistant mit Ollama
 app.include_router(zero_touch_router, prefix="/api/v1")  # Vision 2.0: Zero-Touch OCR
 app.include_router(nlq_router, prefix="/api/v1")  # Vision 2.0: NLQ 2.0
 app.include_router(smart_inbox_router, prefix="/api/v1")  # Vision 2.0: Smart Inbox
@@ -1065,6 +1074,7 @@ app.include_router(financial_insights_router, prefix="/api/v1")  # Vision 2.0 Ph
 app.include_router(xai_router, prefix="/api/v1")  # Vision 2.0 Phase 6: Explainable AI
 app.include_router(workflow_analytics_router, prefix="/api/v1")  # Phase 4: Workflow Analytics, SLA, Approvals
 app.include_router(odoo_webhooks_router, prefix="/api/v1")  # Phase 6: Odoo Integration Deepening
+app.include_router(bpmn_converter_router, prefix="/api/v1")  # BPMN 2.0 Import/Export Converter
 
 
 # ==================== Health & Status Endpoints ====================

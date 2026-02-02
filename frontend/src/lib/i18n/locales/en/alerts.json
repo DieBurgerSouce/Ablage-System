@@ -1,0 +1,107 @@
+{
+  "title": "Alerts",
+  "subtitle": "Notifications and warnings",
+  "center": {
+    "title": "Alert Center",
+    "subtitle": "All alerts at a glance",
+    "noAlerts": "No alerts available",
+    "markAllRead": "Mark all as read",
+    "clearAll": "Clear all"
+  },
+  "severity": {
+    "info": "Information",
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "critical": "Critical"
+  },
+  "status": {
+    "new": "New",
+    "acknowledged": "Acknowledged",
+    "inProgress": "In progress",
+    "resolved": "Resolved",
+    "dismissed": "Dismissed",
+    "escalated": "Escalated"
+  },
+  "category": {
+    "fraud": "Fraud suspicion",
+    "risk": "Risk warning",
+    "compliance": "Compliance",
+    "deadline": "Deadline warning",
+    "system": "System",
+    "security": "Security",
+    "quality": "Quality",
+    "workflow": "Workflow"
+  },
+  "actions": {
+    "acknowledge": "Mark as seen",
+    "dismiss": "Dismiss",
+    "resolve": "Mark as resolved",
+    "escalate": "Escalate",
+    "assign": "Assign",
+    "viewDetails": "View details",
+    "viewDocument": "View document",
+    "viewEntity": "View business partner"
+  },
+  "codes": {
+    "FRAUD_001": "Unusually high amount",
+    "FRAUD_002": "Duplicate invoice detected",
+    "FRAUD_003": "Suspicious account details",
+    "FRAUD_004": "Unknown recipient",
+    "RISK_001": "High default risk",
+    "RISK_002": "Payment delay",
+    "RISK_003": "Credit limit exceeded",
+    "RISK_004": "Unusual pattern",
+    "COMP_001": "GDPR violation",
+    "COMP_002": "Missing documents",
+    "COMP_003": "Invalid VAT ID",
+    "COMP_004": "Retention period",
+    "COMP_005": "GoBD violation",
+    "DEAD_001": "Invoice overdue",
+    "DEAD_002": "Discount deadline approaching",
+    "DEAD_003": "Contract expiring",
+    "DEAD_004": "Approval overdue",
+    "SYS_001": "Low disk space",
+    "SYS_002": "Backup failed",
+    "SYS_003": "Service unreachable",
+    "SYS_004": "High system load",
+    "SYS_005": "Maintenance required",
+    "SEC_001": "Suspicious login",
+    "SEC_002": "Too many failed attempts",
+    "SEC_003": "Unusual activity",
+    "SEC_004": "Certificate expiring",
+    "QUAL_001": "Low OCR quality",
+    "QUAL_002": "Review required",
+    "QUAL_003": "Data conflict",
+    "WORK_001": "Approval required",
+    "WORK_002": "Workflow blocked",
+    "WORK_003": "Escalation required"
+  },
+  "filter": {
+    "all": "All",
+    "unread": "Unread",
+    "byCategory": "By category",
+    "bySeverity": "By severity",
+    "byStatus": "By status",
+    "dateRange": "Date range"
+  },
+  "stats": {
+    "total": "Total",
+    "new": "New",
+    "critical": "Critical",
+    "today": "Today"
+  },
+  "notification": {
+    "title": "Notification settings",
+    "email": "Email notification",
+    "push": "Push notification",
+    "slack": "Slack notification",
+    "teams": "Teams notification",
+    "frequency": {
+      "immediate": "Immediate",
+      "hourly": "Hourly",
+      "daily": "Daily",
+      "weekly": "Weekly"
+    }
+  }
+}

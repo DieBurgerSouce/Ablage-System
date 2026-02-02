@@ -1,32 +1,36 @@
-import { useTranslation } from 'react-i18next';
-import { changeLanguage, getCurrentLanguage } from './config';
-
 /**
- * Hook für Sprachwechsel im Ablage-System
+ * Hook for language switching in Ablage-System (Legacy Compatibility)
  *
- * Verwendung:
+ * This hook provides backwards compatibility with the old useLanguage pattern.
+ * For new code, use `useAppTranslation` from '@/lib/i18n' instead.
+ *
+ * @deprecated Use `useAppTranslation` from '@/lib/i18n' for new code
+ *
+ * @example
  * ```tsx
+ * // Legacy usage (still supported)
  * const { language, setLanguage, t } = useLanguage();
  *
- * // Sprache wechseln
- * setLanguage('en');
- *
- * // Übersetzung verwenden
- * <span>{t('common.save')}</span>
+ * // New recommended usage
+ * const { language, setLanguage, t, format } = useAppTranslation();
  * ```
  */
+
+import { useTranslation } from 'react-i18next';
+import { changeLanguage, getCurrentLanguage, type SupportedLanguage } from './i18n';
+
 export function useLanguage() {
     const { t, i18n } = useTranslation();
 
     const language = getCurrentLanguage();
 
-    const setLanguage = (lang: 'de' | 'en') => {
-        changeLanguage(lang);
+    const setLanguage = async (lang: 'de' | 'en') => {
+        await changeLanguage(lang as SupportedLanguage);
     };
 
-    const toggleLanguage = () => {
+    const toggleLanguage = async () => {
         const newLang = language === 'de' ? 'en' : 'de';
-        setLanguage(newLang);
+        await setLanguage(newLang);
     };
 
     return {

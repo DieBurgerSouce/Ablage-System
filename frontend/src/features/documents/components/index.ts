@@ -28,3 +28,10 @@ export {
   type DroppableFolderProps,
   type FolderDropZoneProps,
 } from "./DroppableFolder"
+
+// Bulk Operations - re-export from bulk module
+export {
+  DocumentBulkActionsBar,
+  type DocumentBulkActionsBarProps,
+  type Folder as BulkActionFolder,
+} from "../bulk"

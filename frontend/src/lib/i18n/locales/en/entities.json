@@ -1,0 +1,163 @@
+{
+  "title": "Business Partners",
+  "subtitle": "Customer and supplier management",
+  "entity": "Business partner",
+  "entities": "Business partners",
+  "customer": "Customer",
+  "customers": "Customers",
+  "supplier": "Supplier",
+  "suppliers": "Suppliers",
+  "partner": "Partner",
+  "partners": "Partners",
+  "list": {
+    "title": "Business partner list",
+    "empty": "No business partners available",
+    "searchPlaceholder": "Search business partners...",
+    "columns": {
+      "name": "Name",
+      "type": "Type",
+      "customerNumber": "Customer number",
+      "supplierNumber": "Supplier number",
+      "vatId": "VAT ID",
+      "taxNumber": "Tax number",
+      "email": "Email",
+      "phone": "Phone",
+      "address": "Address",
+      "city": "City",
+      "country": "Country",
+      "status": "Status",
+      "riskScore": "Risk score",
+      "balance": "Balance",
+      "documents": "Documents",
+      "lastActivity": "Last activity"
+    }
+  },
+  "type": {
+    "customer": "Customer",
+    "supplier": "Supplier",
+    "both": "Customer & Supplier",
+    "prospect": "Prospect",
+    "partner": "Partner",
+    "other": "Other"
+  },
+  "status": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "blocked": "Blocked",
+    "prospect": "Prospect",
+    "archived": "Archived"
+  },
+  "detail": {
+    "title": "Business partner details",
+    "overview": "Overview",
+    "documents": "Documents",
+    "transactions": "Transactions",
+    "invoices": "Invoices",
+    "contacts": "Contacts",
+    "notes": "Notes",
+    "history": "History",
+    "riskAnalysis": "Risk analysis"
+  },
+  "fields": {
+    "companyName": "Company name",
+    "legalForm": "Legal form",
+    "customerNumber": "Customer number",
+    "supplierNumber": "Supplier number",
+    "vatId": "VAT ID",
+    "taxNumber": "Tax number",
+    "commercialRegister": "Commercial register",
+    "email": "Email",
+    "phone": "Phone",
+    "fax": "Fax",
+    "website": "Website",
+    "address": {
+      "title": "Address",
+      "street": "Street",
+      "houseNumber": "House number",
+      "postalCode": "Postal code",
+      "city": "City",
+      "state": "State",
+      "country": "Country"
+    },
+    "bankDetails": {
+      "title": "Bank details",
+      "bankName": "Bank name",
+      "iban": "IBAN",
+      "bic": "BIC",
+      "accountHolder": "Account holder"
+    },
+    "paymentTerms": {
+      "title": "Payment terms",
+      "paymentDays": "Payment days",
+      "skontoDays": "Discount days",
+      "skontoPercent": "Discount (%)",
+      "creditLimit": "Credit limit"
+    }
+  },
+  "actions": {
+    "create": "Create business partner",
+    "edit": "Edit",
+    "delete": "Delete",
+    "archive": "Archive",
+    "restore": "Restore",
+    "block": "Block",
+    "unblock": "Unblock",
+    "merge": "Merge",
+    "linkDocument": "Link document",
+    "sendEmail": "Send email",
+    "exportData": "Export data"
+  },
+  "risk": {
+    "title": "Risk Score",
+    "score": "Score: {{score}}/100",
+    "low": "Low risk",
+    "medium": "Medium risk",
+    "high": "High risk",
+    "critical": "Critical risk",
+    "factors": {
+      "paymentDelay": "Payment delay",
+      "defaultRate": "Default rate",
+      "invoiceVolume": "Invoice volume",
+      "documentFrequency": "Document frequency",
+      "relationshipAge": "Relationship age"
+    },
+    "lastCalculated": "Last calculated: {{date}}",
+    "recalculate": "Recalculate"
+  },
+  "import": {
+    "title": "Import business partners",
+    "lexware": "Import from Lexware",
+    "csv": "CSV import",
+    "excel": "Excel import",
+    "mapping": "Field mapping",
+    "preview": "Preview",
+    "conflicts": "Conflicts",
+    "success": "{{count}} business partners imported",
+    "duplicates": "{{count}} duplicates found",
+    "errors": "{{count}} errors"
+  },
+  "linking": {
+    "title": "Automatic linking",
+    "subtitle": "Automatically assign documents to business partners",
+    "confidence": "Confidence: {{percent}}%",
+    "matchBy": "Matched by:",
+    "matchTypes": {
+      "customerNumber": "Customer number",
+      "supplierNumber": "Supplier number",
+      "vatId": "VAT ID",
+      "iban": "IBAN",
+      "email": "Email",
+      "name": "Name"
+    },
+    "approve": "Confirm link",
+    "reject": "Reject link",
+    "manual": "Manual assignment"
+  },
+  "validation": {
+    "vatIdInvalid": "Invalid VAT ID",
+    "ibanInvalid": "Invalid IBAN",
+    "emailInvalid": "Invalid email address",
+    "customerNumberExists": "Customer number already exists",
+    "supplierNumberExists": "Supplier number already exists"
+  }
+}

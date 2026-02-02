@@ -1,0 +1,203 @@
+{
+  "title": "Banking",
+  "subtitle": "Financial management",
+  "accounts": {
+    "title": "Accounts",
+    "subtitle": "Bank account management",
+    "add": "Add account",
+    "edit": "Edit account",
+    "delete": "Delete account",
+    "noAccounts": "No accounts available",
+    "iban": "IBAN",
+    "bic": "BIC",
+    "bankName": "Bank name",
+    "accountHolder": "Account holder",
+    "accountNumber": "Account number",
+    "balance": "Balance",
+    "currency": "Currency",
+    "lastSync": "Last synchronization",
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "blocked": "Blocked"
+    }
+  },
+  "transactions": {
+    "title": "Transactions",
+    "subtitle": "Account movements",
+    "import": "Import transactions",
+    "export": "Export transactions",
+    "noTransactions": "No transactions available",
+    "fields": {
+      "date": "Booking date",
+      "valueDate": "Value date",
+      "amount": "Amount",
+      "description": "Description",
+      "counterparty": "Counterparty account",
+      "counterpartyName": "Recipient/Sender",
+      "counterpartyIban": "Counterparty IBAN",
+      "reference": "Reference",
+      "transactionType": "Transaction type",
+      "status": "Status",
+      "category": "Category"
+    },
+    "type": {
+      "credit": "Credit",
+      "debit": "Debit",
+      "transfer": "Transfer",
+      "standing": "Standing order",
+      "directDebit": "Direct debit",
+      "fee": "Fee",
+      "interest": "Interest",
+      "other": "Other"
+    },
+    "import": {
+      "title": "Import transactions",
+      "formats": {
+        "mt940": "MT940 (SWIFT)",
+        "camt053": "CAMT.053 (ISO 20022)",
+        "csv": "CSV",
+        "excel": "Excel"
+      },
+      "success": "{{count}} transactions imported",
+      "error": "Import error",
+      "duplicates": "{{count}} duplicates skipped"
+    }
+  },
+  "reconciliation": {
+    "title": "Reconciliation",
+    "subtitle": "Match transactions with documents",
+    "matched": "Matched",
+    "unmatched": "Unmatched",
+    "pending": "Pending",
+    "partial": "Partially matched",
+    "noMatches": "No matching transactions found",
+    "autoMatch": "Auto-match",
+    "manualMatch": "Manual match",
+    "unmatch": "Remove match",
+    "suggestions": "Suggestions",
+    "confidence": "Match: {{percent}}%",
+    "matchCriteria": {
+      "amount": "Amount",
+      "date": "Date",
+      "reference": "Reference",
+      "counterparty": "Business partner"
+    },
+    "status": {
+      "matched": "Matched",
+      "unmatched": "Open",
+      "partialMatch": "Partial",
+      "manualReview": "Manual review"
+    }
+  },
+  "payments": {
+    "title": "Payments",
+    "subtitle": "Payment management",
+    "create": "Create payment",
+    "edit": "Edit payment",
+    "delete": "Delete payment",
+    "approve": "Approve payment",
+    "reject": "Reject payment",
+    "execute": "Execute payment",
+    "cancel": "Cancel payment",
+    "noPayments": "No payments available",
+    "fields": {
+      "amount": "Amount",
+      "currency": "Currency",
+      "recipient": "Recipient",
+      "recipientIban": "Recipient IBAN",
+      "recipientBic": "Recipient BIC",
+      "reference": "Reference",
+      "executionDate": "Execution date",
+      "urgency": "Urgency"
+    },
+    "status": {
+      "draft": "Draft",
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "executing": "Executing",
+      "executed": "Executed",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "type": {
+      "single": "Single transfer",
+      "batch": "Batch transfer",
+      "scheduled": "Scheduled transfer",
+      "standing": "Standing order"
+    }
+  },
+  "invoices": {
+    "title": "Invoice tracking",
+    "subtitle": "Open invoices and payment status",
+    "open": "Open invoices",
+    "paid": "Paid invoices",
+    "overdue": "Overdue invoices",
+    "total": "Total amount",
+    "outstanding": "Outstanding",
+    "fields": {
+      "invoiceNumber": "Invoice number",
+      "invoiceDate": "Invoice date",
+      "dueDate": "Due date",
+      "amount": "Amount",
+      "paidAmount": "Paid",
+      "outstandingAmount": "Outstanding",
+      "status": "Status",
+      "entity": "Business partner"
+    },
+    "status": {
+      "open": "Open",
+      "partiallyPaid": "Partially paid",
+      "paid": "Paid",
+      "overdue": "Overdue",
+      "dunning1": "1st reminder",
+      "dunning2": "2nd reminder",
+      "dunning3": "3rd reminder",
+      "collection": "Collection",
+      "cancelled": "Cancelled"
+    },
+    "actions": {
+      "markPaid": "Mark as paid",
+      "sendReminder": "Send reminder",
+      "increaseDunning": "Increase dunning level",
+      "addPayment": "Record payment"
+    }
+  },
+  "skonto": {
+    "title": "Discount tracking",
+    "available": "Discount available",
+    "deadline": "Discount deadline",
+    "percentage": "Discount: {{percent}}%",
+    "amount": "Discount amount: {{amount}}",
+    "daysRemaining": "{{days}} days remaining",
+    "expired": "Discount expired",
+    "applied": "Discount applied",
+    "missed": "Discount missed",
+    "savings": "Savings: {{amount}}"
+  },
+  "cashflow": {
+    "title": "Cash flow",
+    "subtitle": "Liquidity overview",
+    "inflow": "Inflow",
+    "outflow": "Outflow",
+    "balance": "Balance",
+    "forecast": "Forecast",
+    "periods": {
+      "today": "Today",
+      "thisWeek": "This week",
+      "thisMonth": "This month",
+      "thisQuarter": "This quarter",
+      "thisYear": "This year"
+    }
+  },
+  "reports": {
+    "title": "Reports",
+    "accountStatement": "Account statement",
+    "transactionReport": "Transaction report",
+    "reconciliationReport": "Reconciliation report",
+    "paymentReport": "Payment report",
+    "generate": "Generate report",
+    "download": "Download"
+  }
+}

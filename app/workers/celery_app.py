@@ -281,6 +281,8 @@ celery_app = Celery(
         "app.workers.tasks.collaboration_tasks",  # Collaboration Tasks (Digest, Task Reminders, Escalation)
         "app.workers.tasks.mlops_tasks",  # MLOps Pipeline (Model Registry, Retraining, Rollback)
         "app.workers.tasks.sla_tasks",  # SLA Monitoring (Phase 4: Workflow Extensions)
+        "app.workers.tasks.liquidity_tasks",  # Liquidity Monitoring (Cashflow Alerts, Large Outflows)
+        "app.workers.tasks.push_notification_tasks",  # Push Notification Management (Cleanup, Health Check)
     ]
 )
 
@@ -1217,6 +1219,25 @@ celery_app.conf.update(
             "kwargs": {"archive_older_than_days": 90},
         },
         # =================================================================
+        # Cashflow Prediction Tasks (Monte Carlo Forecasting)
+        # Enterprise Feature: Februar 2026
+        # =================================================================
+        # Taeglich: Cashflow-Prognose aktualisieren um 06:00 Uhr
+        "cashflow-prediction-daily-forecast": {
+            "task": "cashflow_prediction.update_daily_forecast",
+            "schedule": crontab(hour=6, minute=0),
+        },
+        # Woechentlich: Vorhersagegenauigkeit evaluieren (Sonntag 04:00)
+        "cashflow-prediction-weekly-evaluation": {
+            "task": "cashflow_prediction.evaluate_accuracy",
+            "schedule": crontab(day_of_week=0, hour=4, minute=0),
+        },
+        # Stuendlich: Forecast-Cache waermen
+        "cashflow-prediction-cache-warming": {
+            "task": "cashflow_prediction.warm_cache",
+            "schedule": 3600.0,  # Stuendlich
+        },
+        # =================================================================
         # Zero-Touch OCR Tasks (F1 - Vollautomatische Dokumentenverarbeitung)
         # =================================================================
         # Alle 10 Sekunden: Neue Uploads auf Zero-Touch pruefen
@@ -1630,6 +1651,115 @@ celery_app.conf.update(
             "schedule": crontab(hour=8, minute=0),  # Taeglich um 08:00 Uhr
             "options": {"queue": "default"},
         },
+        # =================================================================
+        # Extended Alerts Tasks (Compliance Agent - Februar 2026)
+        # Cashflow, Contract, Compliance, Supplier Alerts
+        # =================================================================
+        # Taeglich: Cashflow-Alerts pruefen (Liquiditaetsengpaesse)
+        "extended-alerts-cashflow-daily": {
+            "task": "extended_alerts.check_cashflow",
+            "schedule": crontab(hour=6, minute=0),  # Taeglich um 06:00 Uhr
+            "options": {"queue": "metadata"},
+        },
+        # Taeglich: Vertrags-Alerts pruefen (Auslauf, Kuendigung)
+        "extended-alerts-contracts-daily": {
+            "task": "extended_alerts.check_contracts",
+            "schedule": crontab(hour=7, minute=0),  # Taeglich um 07:00 Uhr
+            "options": {"queue": "metadata"},
+        },
+        # Taeglich: Compliance-Alerts pruefen (GDPR, Aufbewahrung)
+        "extended-alerts-compliance-daily": {
+            "task": "extended_alerts.check_compliance",
+            "schedule": crontab(hour=5, minute=0),  # Taeglich um 05:00 Uhr
+            "options": {"queue": "metadata"},
+        },
+        # Taeglich: Alle Extended-Alerts in einem Durchlauf
+        "extended-alerts-all-daily": {
+            "task": "extended_alerts.run_all_checks",
+            "schedule": crontab(hour=5, minute=30),  # Taeglich um 05:30 Uhr
+            "options": {"queue": "metadata"},
+        },
+        # Woechentlich: Alte Extended-Alerts aufraumen
+        "extended-alerts-cleanup-weekly": {
+            "task": "extended_alerts.cleanup_old",
+            "schedule": crontab(day_of_week=0, hour=4, minute=15),  # Sonntag 04:15 Uhr
+            "kwargs": {"days_old": 90},
+            "options": {"queue": "maintenance"},
+        },
+        # =================================================================
+        # Contract V2 Tasks (Enhanced Contract Tracking)
+        # Deadline-Reminders, iCal-Export, OCR-Extraktion
+        # =================================================================
+        # Taeglich: Bevorstehende Vertragsfristen pruefen
+        "contract-v2-upcoming-deadlines-daily": {
+            "task": "contracts_v2.check_upcoming_deadlines",
+            "schedule": crontab(hour=8, minute=0),  # Taeglich um 08:00 Uhr
+            "options": {"queue": "metadata"},
+        },
+        # Taeglich: Abgelaufene Vertraege pruefen (Auto-Renewal Kandidaten)
+        "contract-v2-check-expired-daily": {
+            "task": "contracts_v2.check_expired",
+            "schedule": crontab(hour=0, minute=30),  # Taeglich um 00:30 Uhr
+            "options": {"queue": "metadata"},
+        },
+        # Taeglich: Vertragsstatistiken aktualisieren
+        "contract-v2-statistics-daily": {
+            "task": "contracts_v2.update_statistics",
+            "schedule": crontab(hour=4, minute=0),  # Taeglich um 04:00 Uhr
+            "options": {"queue": "metadata"},
+        },
+        # =================================================================
+        # Liquidity Monitoring Tasks (Enhanced Cashflow Alerts)
+        # =================================================================
+        # Taeglich: Liquiditaets-Alerts pruefen um 07:00 Uhr
+        "liquidity-check-daily": {
+            "task": "liquidity.check_daily",
+            "schedule": crontab(hour=7, minute=0),  # Taeglich um 07:00 Uhr
+            "kwargs": {"days_ahead": 30, "warning_threshold_days": 14},
+            "options": {"queue": "maintenance"},
+        },
+        # Taeglich: Grosse Zahlungen erkennen um 07:30 Uhr
+        "liquidity-detect-large-outflows-daily": {
+            "task": "liquidity.detect_large_outflows",
+            "schedule": crontab(hour=7, minute=30),  # Taeglich um 07:30 Uhr
+            "kwargs": {"days_ahead": 14, "threshold_percentage": 20.0},
+            "options": {"queue": "maintenance"},
+        },
+        # Woechentlich: Liquiditaets-Zusammenfassung (Montag 07:00)
+        "liquidity-weekly-summary": {
+            "task": "liquidity.generate_weekly_summary",
+            "schedule": crontab(day_of_week=1, hour=7, minute=0),  # Montag 07:00 Uhr
+            "options": {"queue": "maintenance"},
+        },
+        # =================================================================
+        # Push Notification Management Tasks
+        # =================================================================
+        # Woechentlich: Abgelaufene/fehlerhafte Subscriptions bereinigen (Sonntag 03:00)
+        "push-cleanup-subscriptions-weekly": {
+            "task": "push.cleanup_expired_subscriptions",
+            "schedule": crontab(day_of_week=0, hour=3, minute=0),  # Sonntag 03:00 Uhr
+            "kwargs": {"max_error_count": 5, "stale_days": 90, "dry_run": False},
+            "options": {"queue": "maintenance"},
+        },
+        # Taeglich: Push-Subscription Health Check um 06:00 Uhr
+        "push-health-check-daily": {
+            "task": "push.health_check",
+            "schedule": crontab(hour=6, minute=0),  # Taeglich um 06:00 Uhr
+            "options": {"queue": "maintenance"},
+        },
+        # Woechentlich: Notification-History bereinigen (Sonntag 03:30)
+        "push-cleanup-history-weekly": {
+            "task": "push.cleanup_notification_history",
+            "schedule": crontab(day_of_week=0, hour=3, minute=30),  # Sonntag 03:30 Uhr
+            "kwargs": {"retention_days": 30, "dry_run": False},
+            "options": {"queue": "maintenance"},
+        },
+        # Woechentlich: Push-Statistiken generieren (Montag 06:00)
+        "push-statistics-weekly": {
+            "task": "push.generate_weekly_statistics",
+            "schedule": crontab(day_of_week=1, hour=6, minute=0),  # Montag 06:00 Uhr
+            "options": {"queue": "maintenance"},
+        },
     },
 
     # Queue routing
@@ -1716,6 +1846,18 @@ celery_app.conf.update(
         "mlops.rollback_if_degraded": {"queue": "maintenance", "priority": 8},  # Hohe Prioritaet fuer Rollback
         "mlops.cleanup_old_versions": {"queue": "maintenance", "priority": 1},
         "mlops.get_stats": {"queue": "metadata", "priority": 1},
+        # =================================================================
+        # Cashflow Prediction Tasks (Monte Carlo Forecasting)
+        # Enterprise Feature: Februar 2026
+        # =================================================================
+        # Taeglich: Cashflow-Prognose aktualisieren
+        "cashflow_prediction.update_daily_forecast": {"queue": "metadata", "priority": 2},
+        # Woechentlich: Vorhersagegenauigkeit evaluieren
+        "cashflow_prediction.evaluate_accuracy": {"queue": "maintenance", "priority": 3},
+        # Alert-Generation (hohe Prioritaet bei kritischem Cashflow)
+        "cashflow_prediction.generate_alerts": {"queue": "metadata", "priority": 1},
+        # Cache-Warming (niedrige Prioritaet)
+        "cashflow_prediction.warm_cache": {"queue": "maintenance", "priority": 3},
         # DLQ Management tasks (CPU)
         "app.workers.tasks.dlq_management_tasks.check_dlq_health": {"queue": "metrics", "priority": 1},
         "app.workers.tasks.dlq_management_tasks.cleanup_old_dlq_tasks": {"queue": "maintenance", "priority": 1},
@@ -2054,6 +2196,61 @@ celery_app.conf.update(
         "app.workers.tasks.banking_tasks.update_account_balances": {"queue": "default", "priority": 3},
         # Ueberfaellige Zahlungen pruefen
         "app.workers.tasks.banking_tasks.check_overdue_payments": {"queue": "default", "priority": 5},
+        # =================================================================
+        # Extended Alerts Tasks (Compliance Agent - Februar 2026)
+        # Cashflow, Contract, Compliance, Supplier Alerts
+        # =================================================================
+        # Cashflow-Alerts (Liquiditaetsengpaesse)
+        "extended_alerts.check_cashflow": {"queue": "metadata", "priority": 5},
+        # Vertrags-Alerts (Auslauf, Kuendigung)
+        "extended_alerts.check_contracts": {"queue": "metadata", "priority": 5},
+        # Compliance-Alerts (GDPR, Aufbewahrung)
+        "extended_alerts.check_compliance": {"queue": "metadata", "priority": 5},
+        # Alle Checks in einem Durchlauf
+        "extended_alerts.run_all_checks": {"queue": "metadata", "priority": 4},
+        # Cleanup alte Alerts
+        "extended_alerts.cleanup_old": {"queue": "maintenance", "priority": 2},
+        # Supplier-Alerts (manuell getriggert)
+        "extended_alerts.supplier_insolvency": {"queue": "metadata", "priority": 7},
+        "extended_alerts.supplier_ownership_change": {"queue": "metadata", "priority": 6},
+        # =================================================================
+        # Contract V2 Tasks (Enhanced Contract Tracking)
+        # Deadline-Reminders, iCal-Export, OCR-Extraktion
+        # =================================================================
+        # Bevorstehende Deadlines pruefen
+        "contracts_v2.check_upcoming_deadlines": {"queue": "metadata", "priority": 5},
+        # Abgelaufene Vertraege pruefen
+        "contracts_v2.check_expired": {"queue": "metadata", "priority": 4},
+        # Statistiken aktualisieren
+        "contracts_v2.update_statistics": {"queue": "metadata", "priority": 3},
+        # OCR-Datenextraktion (GPU-intensiv)
+        "contracts_v2.extract_dates_from_document": {"queue": "ocr_normal", "priority": 5},
+        # iCal-Export generieren
+        "contracts_v2.generate_ical_export": {"queue": "metadata", "priority": 4},
+        # Deadline-Completion markieren
+        "contracts_v2.complete_deadline": {"queue": "metadata", "priority": 6},
+        # Dokument zu Vertrag verknuepfen
+        "contracts_v2.link_document": {"queue": "metadata", "priority": 5},
+        # =================================================================
+        # Liquidity Monitoring Tasks (Enhanced Cashflow Alerts)
+        # =================================================================
+        # Taeglich: Liquiditaets-Alerts pruefen
+        "liquidity.check_daily": {"queue": "maintenance", "priority": 4},
+        # Grosse Zahlungen erkennen
+        "liquidity.detect_large_outflows": {"queue": "maintenance", "priority": 4},
+        # Woechentliche Liquiditaets-Zusammenfassung
+        "liquidity.generate_weekly_summary": {"queue": "maintenance", "priority": 2},
+        # =================================================================
+        # Push Notification Management Tasks
+        # =================================================================
+        # Abgelaufene/fehlerhafte Subscriptions bereinigen
+        "push.cleanup_expired_subscriptions": {"queue": "maintenance", "priority": 2},
+        # Health Check
+        "push.health_check": {"queue": "maintenance", "priority": 2},
+        # Notification-History bereinigen
+        "push.cleanup_notification_history": {"queue": "maintenance", "priority": 1},
+        # Woechentliche Statistiken
+        "push.generate_weekly_statistics": {"queue": "maintenance", "priority": 2},
     },
 
     # Priority settings

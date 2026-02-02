@@ -22,6 +22,11 @@ Enterprise KPI-Berechnungs-Services:
 
 Enterprise Analytics-Services:
 - FinanceAnalyticsService: Trends, YoY-Vergleiche, Prognosen
+
+Personal Finance Services (7.2-7.4):
+- TaxOptimizationService: Steueroptimierung, Abzuege, Fristen
+- EstatePlanningService: Nachlassplanung, Erbschaftsteuer, Vollmachten
+- RetirementService: Altersvorsorge, Rentenluecke, Monte-Carlo
 """
 
 from app.services.privat.space_service import PrivatSpaceService
@@ -112,6 +117,38 @@ from app.services.privat.predictive_intelligence_service import (
     TrendAnalysis,
 )
 
+# Personal Finance Services (7.2-7.4)
+from app.services.privat.tax_optimization_service import (
+    TaxOptimizationService,
+    get_tax_optimization_service,
+    TaxCategory,
+    TaxDeadlineType,
+    TaxOptimizationResult,
+    TaxDeductionSummary,
+    TaxSavingsEstimate,
+)
+from app.services.privat.estate_planning_service import (
+    EstatePlanningService,
+    get_estate_planning_service,
+    RelationshipType,
+    PowerOfAttorneyType,
+    InheritanceTaxScenario,
+    EstateSummary,
+    TenYearGiftPlan,
+)
+from app.services.privat.retirement_service import (
+    RetirementService,
+    get_retirement_service,
+    PensionType,
+    WithdrawalStrategy,
+    RiskProfile,
+    PensionSource,
+    RentenlueckeResult,
+    WithdrawalPlan,
+    MonteCarloResult,
+    RetirementSummary,
+)
+
 __all__ = [
     "PrivatSpaceService",
     "PrivatFolderService",
@@ -171,4 +208,31 @@ __all__ = [
     "EarlyWarningAlert",
     "PredictiveInsightsSummary",
     "TrendAnalysis",
+    # Tax Optimization (7.2)
+    "TaxOptimizationService",
+    "get_tax_optimization_service",
+    "TaxCategory",
+    "TaxDeadlineType",
+    "TaxOptimizationResult",
+    "TaxDeductionSummary",
+    "TaxSavingsEstimate",
+    # Estate Planning (7.3)
+    "EstatePlanningService",
+    "get_estate_planning_service",
+    "RelationshipType",
+    "PowerOfAttorneyType",
+    "InheritanceTaxScenario",
+    "EstateSummary",
+    "TenYearGiftPlan",
+    # Retirement Planning (7.4)
+    "RetirementService",
+    "get_retirement_service",
+    "PensionType",
+    "WithdrawalStrategy",
+    "RiskProfile",
+    "PensionSource",
+    "RentenlueckeResult",
+    "WithdrawalPlan",
+    "MonteCarloResult",
+    "RetirementSummary",
 ]

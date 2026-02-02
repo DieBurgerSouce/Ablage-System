@@ -1,0 +1,253 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "K6 Load Test Thresholds for Ablage-System",
+  "version": "1.0.0",
+
+  "global": {
+    "http_req_duration": {
+      "p95": 500,
+      "p99": 1000,
+      "description": "Overall HTTP request duration"
+    },
+    "http_req_failed": {
+      "rate": 0.01,
+      "description": "Maximum 1% error rate"
+    },
+    "http_reqs": {
+      "rate": 10,
+      "description": "Minimum requests per second"
+    },
+    "vus_max": {
+      "value": 100,
+      "description": "Maximum concurrent virtual users"
+    }
+  },
+
+  "endpoints": {
+    "health": {
+      "http_req_duration": {
+        "p95": 50,
+        "p99": 100
+      },
+      "http_req_failed": {
+        "rate": 0.001
+      },
+      "description": "Health check endpoint - must be very fast"
+    },
+
+    "login": {
+      "http_req_duration": {
+        "p95": 200,
+        "p99": 500
+      },
+      "http_req_failed": {
+        "rate": 0.02
+      },
+      "description": "Authentication login endpoint"
+    },
+
+    "refresh": {
+      "http_req_duration": {
+        "p95": 150,
+        "p99": 300
+      },
+      "http_req_failed": {
+        "rate": 0.02
+      },
+      "description": "Token refresh endpoint"
+    },
+
+    "upload": {
+      "http_req_duration": {
+        "p95": 500,
+        "p99": 1000
+      },
+      "http_req_failed": {
+        "rate": 0.05
+      },
+      "description": "Document upload endpoint"
+    },
+
+    "search": {
+      "http_req_duration": {
+        "p95": 100,
+        "p99": 200,
+        "avg": 80
+      },
+      "http_req_failed": {
+        "rate": 0.02
+      },
+      "description": "Full-text search endpoint"
+    },
+
+    "search_fulltext": {
+      "http_req_duration": {
+        "p95": 100,
+        "p99": 200
+      },
+      "description": "Full-text search"
+    },
+
+    "search_entity": {
+      "http_req_duration": {
+        "p95": 100,
+        "p99": 200
+      },
+      "description": "Entity search (customers/suppliers)"
+    },
+
+    "search_filter": {
+      "http_req_duration": {
+        "p95": 80,
+        "p99": 150
+      },
+      "description": "Filter-based search"
+    },
+
+    "search_advanced": {
+      "http_req_duration": {
+        "p95": 150,
+        "p99": 300
+      },
+      "description": "Advanced multi-criteria search"
+    },
+
+    "ocr_submit": {
+      "http_req_duration": {
+        "p95": 500,
+        "p99": 1000
+      },
+      "http_req_failed": {
+        "rate": 0.05
+      },
+      "description": "OCR job submission"
+    },
+
+    "ocr_status": {
+      "http_req_duration": {
+        "p95": 100,
+        "p99": 200
+      },
+      "description": "OCR job status check"
+    },
+
+    "document_list": {
+      "http_req_duration": {
+        "p95": 500,
+        "p99": 1000
+      },
+      "http_req_failed": {
+        "rate": 0.02
+      },
+      "description": "Document list with pagination"
+    },
+
+    "document_detail": {
+      "http_req_duration": {
+        "p95": 200,
+        "p99": 400
+      },
+      "description": "Single document detail view"
+    }
+  },
+
+  "ocr_processing": {
+    "gpu": {
+      "duration_p95": 2000,
+      "duration_p99": 5000,
+      "description": "OCR processing on GPU (per page)"
+    },
+    "cpu": {
+      "duration_p95": 10000,
+      "duration_p99": 30000,
+      "description": "OCR processing on CPU fallback (per page)"
+    },
+    "queue_wait": {
+      "duration_p95": 5000,
+      "duration_avg": 2000,
+      "description": "Queue wait time"
+    }
+  },
+
+  "throughput": {
+    "documents_per_hour": {
+      "target": 500,
+      "minimum": 200,
+      "description": "Document processing throughput"
+    },
+    "searches_per_minute": {
+      "target": 1000,
+      "minimum": 500,
+      "description": "Search query throughput"
+    },
+    "concurrent_users": {
+      "target": 100,
+      "minimum": 50,
+      "description": "Concurrent user support"
+    }
+  },
+
+  "error_rates": {
+    "submit_errors": {
+      "max_rate": 0.05,
+      "description": "Maximum submission error rate"
+    },
+    "processing_errors": {
+      "max_rate": 0.10,
+      "description": "Maximum processing error rate"
+    },
+    "rate_limit_hits": {
+      "max_rate": 0.20,
+      "description": "Maximum acceptable rate limit hits"
+    },
+    "login_errors": {
+      "max_rate": 0.02,
+      "description": "Maximum login error rate"
+    },
+    "search_errors": {
+      "max_rate": 0.02,
+      "description": "Maximum search error rate"
+    }
+  },
+
+  "custom_metrics": {
+    "session_success": {
+      "min_count": 1,
+      "description": "At least one successful session"
+    },
+    "documents_submitted": {
+      "min_count": 100,
+      "description": "Minimum documents submitted in backpressure test"
+    },
+    "documents_processed": {
+      "min_count": 50,
+      "description": "Minimum documents processed"
+    }
+  },
+
+  "k6_thresholds_format": {
+    "_comment": "This section shows how to use these thresholds in k6 options",
+    "example": {
+      "http_req_duration": ["p(95)<500", "p(99)<1000"],
+      "http_req_failed": ["rate<0.01"],
+      "http_req_duration{endpoint:health}": ["p(95)<50", "p(99)<100"],
+      "http_req_duration{endpoint:login}": ["p(95)<200", "p(99)<500"],
+      "http_req_duration{endpoint:upload}": ["p(95)<500", "p(99)<1000"],
+      "http_req_duration{endpoint:search}": ["p(95)<100", "p(99)<200"],
+      "http_req_duration{endpoint:ocr}": ["p(95)<10000", "p(99)<30000"],
+      "login_duration": ["p(95)<200", "p(99)<500"],
+      "search_duration": ["p(95)<100", "p(99)<200", "avg<80"],
+      "ocr_submit_duration": ["p(95)<500", "p(99)<1000"],
+      "ocr_processing_duration": ["p(95)<10000", "p(99)<30000"],
+      "ocr_queue_wait_time": ["p(95)<5000", "avg<2000"],
+      "login_errors": ["rate<0.02"],
+      "api_errors": ["rate<0.05"],
+      "search_errors": ["rate<0.02"],
+      "ocr_submit_errors": ["rate<0.05"],
+      "ocr_processing_errors": ["rate<0.10"],
+      "rate_limit_hits": ["rate<0.20"],
+      "successful_sessions": ["count>0"],
+      "documents_submitted": ["count>100"]
+    }
+  }
+}

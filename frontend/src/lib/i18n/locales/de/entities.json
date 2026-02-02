@@ -1,0 +1,163 @@
+{
+  "title": "Geschaeftspartner",
+  "subtitle": "Kunden- und Lieferantenverwaltung",
+  "entity": "Geschaeftspartner",
+  "entities": "Geschaeftspartner",
+  "customer": "Kunde",
+  "customers": "Kunden",
+  "supplier": "Lieferant",
+  "suppliers": "Lieferanten",
+  "partner": "Partner",
+  "partners": "Partner",
+  "list": {
+    "title": "Geschaeftspartnerliste",
+    "empty": "Keine Geschaeftspartner vorhanden",
+    "searchPlaceholder": "Geschaeftspartner suchen...",
+    "columns": {
+      "name": "Name",
+      "type": "Typ",
+      "customerNumber": "Kundennummer",
+      "supplierNumber": "Lieferantennummer",
+      "vatId": "USt-IdNr.",
+      "taxNumber": "Steuernummer",
+      "email": "E-Mail",
+      "phone": "Telefon",
+      "address": "Adresse",
+      "city": "Stadt",
+      "country": "Land",
+      "status": "Status",
+      "riskScore": "Risiko-Score",
+      "balance": "Saldo",
+      "documents": "Dokumente",
+      "lastActivity": "Letzte Aktivitaet"
+    }
+  },
+  "type": {
+    "customer": "Kunde",
+    "supplier": "Lieferant",
+    "both": "Kunde & Lieferant",
+    "prospect": "Interessent",
+    "partner": "Partner",
+    "other": "Sonstiges"
+  },
+  "status": {
+    "active": "Aktiv",
+    "inactive": "Inaktiv",
+    "blocked": "Gesperrt",
+    "prospect": "Interessent",
+    "archived": "Archiviert"
+  },
+  "detail": {
+    "title": "Geschaeftspartnerdetails",
+    "overview": "Uebersicht",
+    "documents": "Dokumente",
+    "transactions": "Transaktionen",
+    "invoices": "Rechnungen",
+    "contacts": "Kontakte",
+    "notes": "Notizen",
+    "history": "Verlauf",
+    "riskAnalysis": "Risikoanalyse"
+  },
+  "fields": {
+    "companyName": "Firmenname",
+    "legalForm": "Rechtsform",
+    "customerNumber": "Kundennummer",
+    "supplierNumber": "Lieferantennummer",
+    "vatId": "USt-IdNr.",
+    "taxNumber": "Steuernummer",
+    "commercialRegister": "Handelsregister",
+    "email": "E-Mail",
+    "phone": "Telefon",
+    "fax": "Fax",
+    "website": "Website",
+    "address": {
+      "title": "Adresse",
+      "street": "Strasse",
+      "houseNumber": "Hausnummer",
+      "postalCode": "Postleitzahl",
+      "city": "Stadt",
+      "state": "Bundesland",
+      "country": "Land"
+    },
+    "bankDetails": {
+      "title": "Bankverbindung",
+      "bankName": "Bankname",
+      "iban": "IBAN",
+      "bic": "BIC",
+      "accountHolder": "Kontoinhaber"
+    },
+    "paymentTerms": {
+      "title": "Zahlungsbedingungen",
+      "paymentDays": "Zahlungsziel (Tage)",
+      "skontoDays": "Skonto-Frist (Tage)",
+      "skontoPercent": "Skonto (%)",
+      "creditLimit": "Kreditlimit"
+    }
+  },
+  "actions": {
+    "create": "Geschaeftspartner anlegen",
+    "edit": "Bearbeiten",
+    "delete": "Loeschen",
+    "archive": "Archivieren",
+    "restore": "Wiederherstellen",
+    "block": "Sperren",
+    "unblock": "Entsperren",
+    "merge": "Zusammenfuehren",
+    "linkDocument": "Dokument verknuepfen",
+    "sendEmail": "E-Mail senden",
+    "exportData": "Daten exportieren"
+  },
+  "risk": {
+    "title": "Risiko-Score",
+    "score": "Score: {{score}}/100",
+    "low": "Niedriges Risiko",
+    "medium": "Mittleres Risiko",
+    "high": "Hohes Risiko",
+    "critical": "Kritisches Risiko",
+    "factors": {
+      "paymentDelay": "Zahlungsverzoegerung",
+      "defaultRate": "Ausfallrate",
+      "invoiceVolume": "Rechnungsvolumen",
+      "documentFrequency": "Dokumenthaeufigkeit",
+      "relationshipAge": "Beziehungsdauer"
+    },
+    "lastCalculated": "Zuletzt berechnet: {{date}}",
+    "recalculate": "Neu berechnen"
+  },
+  "import": {
+    "title": "Geschaeftspartner importieren",
+    "lexware": "Aus Lexware importieren",
+    "csv": "CSV-Import",
+    "excel": "Excel-Import",
+    "mapping": "Felderzuordnung",
+    "preview": "Vorschau",
+    "conflicts": "Konflikte",
+    "success": "{{count}} Geschaeftspartner importiert",
+    "duplicates": "{{count}} Duplikate gefunden",
+    "errors": "{{count}} Fehler"
+  },
+  "linking": {
+    "title": "Automatische Verknuepfung",
+    "subtitle": "Dokumente automatisch Geschaeftspartnern zuordnen",
+    "confidence": "Sicherheit: {{percent}}%",
+    "matchBy": "Erkannt anhand:",
+    "matchTypes": {
+      "customerNumber": "Kundennummer",
+      "supplierNumber": "Lieferantennummer",
+      "vatId": "USt-IdNr.",
+      "iban": "IBAN",
+      "email": "E-Mail",
+      "name": "Name"
+    },
+    "approve": "Verknuepfung bestaetigen",
+    "reject": "Verknuepfung ablehnen",
+    "manual": "Manuell zuordnen"
+  },
+  "validation": {
+    "vatIdInvalid": "Ungueltige USt-IdNr.",
+    "ibanInvalid": "Ungueltige IBAN",
+    "emailInvalid": "Ungueltige E-Mail-Adresse",
+    "customerNumberExists": "Kundennummer bereits vergeben",
+    "supplierNumberExists": "Lieferantennummer bereits vergeben"
+  }
+}

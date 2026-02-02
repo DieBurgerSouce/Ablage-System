@@ -10,6 +10,7 @@ Provides REST API endpoints for:
 from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime, timezone
 from uuid import UUID
+from enum import Enum
 import io
 import asyncio
 import os
@@ -87,7 +88,7 @@ def build_content_disposition(filename: str, disposition: str = "attachment") ->
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile, File, Form, Request, status
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import func
 
@@ -4063,4 +4064,369 @@ async def bulk_delete_documents(
         raise HTTPException(
             status_code=500,
             detail="Fehler beim Loeschen der Dokumente"
+        )
+
+
+# =============================================================================
+# UNIFIED BULK OPERATIONS ENDPOINT
+# =============================================================================
+
+class BulkOperationAction(str, Enum):
+    """Supported bulk operation actions."""
+    TAG = "tag"
+    MOVE = "move"
+    DELETE = "delete"
+    EXPORT = "export"
+    CATEGORIZE = "categorize"
+
+
+class UnifiedBulkOperationRequest(BaseModel):
+    """Unified request for all bulk operations on documents.
+
+    Allows performing multiple types of bulk actions through a single endpoint.
+    """
+    document_ids: List[UUID] = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="Liste der Dokument-IDs (max. 100)"
+    )
+    action: BulkOperationAction = Field(
+        ...,
+        description="Auszufuehrende Aktion: tag, move, delete, export, categorize"
+    )
+    params: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Aktions-spezifische Parameter"
+    )
+
+    model_config = ConfigDict(use_enum_values=True)
+
+
+class UnifiedBulkOperationResponse(BaseModel):
+    """Response for unified bulk operations."""
+    success: bool
+    action: str
+    total_requested: int
+    processed: int
+    failed: int
+    errors: List[Dict[str, str]] = Field(default_factory=list)
+    message: str
+    task_id: Optional[str] = Field(
+        None,
+        description="Task-ID fuer asynchrone Operationen (z.B. Export)"
+    )
+    download_url: Optional[str] = Field(
+        None,
+        description="Download-URL fuer Export-Operationen"
+    )
+
+
+@router.post(
+    "/bulk",
+    response_model=UnifiedBulkOperationResponse,
+    summary="Einheitliche Bulk-Operationen",
+    description="""
+    Fuehrt Massenaktionen auf mehreren Dokumenten aus.
+
+    **Unterstuetzte Aktionen:**
+
+    1. **tag** - Tags hinzufuegen/entfernen
+       - `params.tags`: Liste der Tags (string[])
+       - `params.operation`: "add" | "remove" | "set" (Standard: "add")
+
+    2. **move** - In Ordner verschieben
+       - `params.folder_id`: Zielordner-UUID (erforderlich)
+
+    3. **delete** - Soft-Delete (GDPR-konform)
+       - `params.reason`: Loeschgrund (optional)
+
+    4. **export** - Dokumente exportieren
+       - `params.format`: "zip" | "pdf" | "csv" (Standard: "zip")
+       - `params.include_metadata`: Boolean (Standard: true)
+
+    5. **categorize** - Kategorie setzen
+       - `params.category`: Zielkategorie (erforderlich)
+
+    **Limits:** Maximal 100 Dokumente pro Request
+
+    **Beispiel (Tags):**
+    ```json
+    {
+      "document_ids": ["uuid1", "uuid2"],
+      "action": "tag",
+      "params": {"tags": ["wichtig", "archiv"], "operation": "add"}
+    }
+    ```
+    """,
+    responses={
+        200: {"description": "Operation erfolgreich ausgefuehrt"},
+        400: {"description": "Ungueltige Anfrage"},
+        404: {"description": "Dokument(e) nicht gefunden"},
+        429: {"description": "Rate Limit ueberschritten"},
+    }
+)
+async def unified_bulk_operation(
+    request: UnifiedBulkOperationRequest,
+    current_user: User = Depends(check_batch_rate_limit),
+    db: AsyncSession = Depends(get_db),
+    company: Company = Depends(require_company),
+) -> UnifiedBulkOperationResponse:
+    """Einheitlicher Endpoint fuer alle Bulk-Operationen."""
+    from app.services.document_services.ablage_service import get_ablage_service
+    from app.services.document_services.batch_service import get_batch_service
+
+    ablage_service = get_ablage_service()
+    batch_service = get_batch_service()
+    params = request.params or {}
+
+    try:
+        if request.action == BulkOperationAction.TAG:
+            # Tag operation
+            tags = params.get("tags", [])
+            if not tags or not isinstance(tags, list):
+                raise HTTPException(
+                    status_code=400,
+                    detail="params.tags erforderlich (Liste von Strings)"
+                )
+
+            # Validate tags
+            for tag in tags:
+                if not isinstance(tag, str) or len(tag) > 50:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Tags muessen Strings mit max. 50 Zeichen sein"
+                    )
+
+            operation_str = params.get("operation", "add")
+            try:
+                tag_operation = TagOperation(operation_str)
+            except ValueError:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Ungueltige Tag-Operation: {operation_str}. Erlaubt: add, remove, set"
+                )
+
+            result = await batch_service.batch_tag(
+                db=db,
+                document_ids=request.document_ids,
+                tags=tags,
+                user_id=current_user.id,
+                operation=tag_operation,
+            )
+
+            logger.info(
+                "unified_bulk_tag",
+                user_id=str(current_user.id),
+                operation=tag_operation.value,
+                tags=tags,
+                processed=result.processed
+            )
+
+            return UnifiedBulkOperationResponse(
+                success=result.success,
+                action="tag",
+                total_requested=result.total_requested,
+                processed=result.processed,
+                failed=result.failed,
+                errors=[{"id": str(e.document_id), "error": e.error} for e in result.errors],
+                message=result.message,
+            )
+
+        elif request.action == BulkOperationAction.MOVE:
+            # Move to folder
+            folder_id_str = params.get("folder_id")
+            if not folder_id_str:
+                raise HTTPException(
+                    status_code=400,
+                    detail="params.folder_id erforderlich"
+                )
+
+            try:
+                folder_id = UUID(str(folder_id_str))
+            except ValueError:
+                raise HTTPException(
+                    status_code=400,
+                    detail="params.folder_id muss eine gueltige UUID sein"
+                )
+
+            # Verify folder exists and user has access
+            from sqlalchemy import select, update, and_
+            from app.db.models import Document, Folder
+
+            folder_query = select(Folder).where(
+                and_(
+                    Folder.id == folder_id,
+                    Folder.owner_id == current_user.id
+                )
+            )
+            folder_result = await db.execute(folder_query)
+            target_folder = folder_result.scalar_one_or_none()
+
+            if not target_folder:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Zielordner nicht gefunden oder keine Berechtigung"
+                )
+
+            # Execute bulk move
+            update_stmt = update(Document).where(
+                and_(
+                    Document.id.in_(request.document_ids),
+                    Document.owner_id == current_user.id,
+                    Document.company_id == company.id,
+                )
+            ).values(folder_id=folder_id)
+
+            result = await db.execute(update_stmt)
+            await db.commit()
+
+            processed = result.rowcount
+            failed = len(request.document_ids) - processed
+
+            logger.info(
+                "unified_bulk_move",
+                user_id=str(current_user.id),
+                folder_id=str(folder_id),
+                processed=processed
+            )
+
+            return UnifiedBulkOperationResponse(
+                success=failed == 0,
+                action="move",
+                total_requested=len(request.document_ids),
+                processed=processed,
+                failed=failed,
+                errors=[],
+                message=f"{processed} Dokument(e) verschoben" if failed == 0
+                       else f"{processed} von {len(request.document_ids)} Dokument(en) verschoben",
+            )
+
+        elif request.action == BulkOperationAction.DELETE:
+            # Soft delete
+            reason = params.get("reason")
+
+            result = await ablage_service.bulk_delete(
+                db=db,
+                user_id=current_user.id,
+                document_ids=request.document_ids,
+                reason=reason,
+            )
+
+            logger.info(
+                "unified_bulk_delete",
+                user_id=str(current_user.id),
+                success_count=result.success_count
+            )
+
+            return UnifiedBulkOperationResponse(
+                success=result.failed_count == 0,
+                action="delete",
+                total_requested=result.success_count + result.failed_count,
+                processed=result.success_count,
+                failed=result.failed_count,
+                errors=[{"id": e.document_id if hasattr(e, 'document_id') else 'unknown', "error": str(e.error) if hasattr(e, 'error') else str(e)} for e in result.errors],
+                message=result.message,
+            )
+
+        elif request.action == BulkOperationAction.EXPORT:
+            # Export documents
+            from app.workers.tasks import document_bulk_export_task
+
+            export_format = params.get("format", "zip")
+            if export_format not in ["zip", "pdf", "csv"]:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Ungueltiges Export-Format: {export_format}. Erlaubt: zip, pdf, csv"
+                )
+
+            include_metadata = params.get("include_metadata", True)
+
+            # Start Celery task
+            task = document_bulk_export_task.delay(
+                document_ids=[str(doc_id) for doc_id in request.document_ids],
+                user_id=str(current_user.id),
+                export_format=export_format,
+                include_metadata=include_metadata,
+            )
+
+            logger.info(
+                "unified_bulk_export_started",
+                user_id=str(current_user.id),
+                task_id=task.id,
+                format=export_format,
+                document_count=len(request.document_ids)
+            )
+
+            return UnifiedBulkOperationResponse(
+                success=True,
+                action="export",
+                total_requested=len(request.document_ids),
+                processed=len(request.document_ids),
+                failed=0,
+                errors=[],
+                message=f"Export von {len(request.document_ids)} Dokumenten gestartet",
+                task_id=task.id,
+            )
+
+        elif request.action == BulkOperationAction.CATEGORIZE:
+            # Set category
+            category = params.get("category")
+            if not category:
+                raise HTTPException(
+                    status_code=400,
+                    detail="params.category erforderlich"
+                )
+
+            # Validate category
+            valid_categories = list(CATEGORY_TO_DOCTYPE.keys())
+            if category not in valid_categories:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Ungueltige Kategorie: {category}. Erlaubt: {', '.join(valid_categories)}"
+                )
+
+            result = await ablage_service.bulk_move_category(
+                db=db,
+                user_id=current_user.id,
+                document_ids=request.document_ids,
+                target_category=category,
+            )
+
+            logger.info(
+                "unified_bulk_categorize",
+                user_id=str(current_user.id),
+                category=category,
+                success_count=result.success_count
+            )
+
+            return UnifiedBulkOperationResponse(
+                success=result.failed_count == 0,
+                action="categorize",
+                total_requested=result.success_count + result.failed_count,
+                processed=result.success_count,
+                failed=result.failed_count,
+                errors=[{"id": e.document_id if hasattr(e, 'document_id') else 'unknown', "error": str(e.error) if hasattr(e, 'error') else str(e)} for e in result.errors],
+                message=result.message,
+            )
+
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unbekannte Aktion: {request.action}"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "unified_bulk_operation_error",
+            user_id=str(current_user.id),
+            action=request.action,
+            **safe_error_log(e),
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Fehler bei der Bulk-Operation"
         )

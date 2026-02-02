@@ -1,0 +1,130 @@
+{
+  "main": {
+    "home": "Home",
+    "dashboard": "Dashboard",
+    "documents": "Documents",
+    "upload": "Upload",
+    "search": "Search",
+    "entities": "Business Partners",
+    "customers": "Customers",
+    "suppliers": "Suppliers",
+    "banking": "Banking",
+    "accounts": "Accounts",
+    "transactions": "Transactions",
+    "payments": "Payments",
+    "reconciliation": "Reconciliation",
+    "invoices": "Invoices",
+    "workflows": "Workflows",
+    "chat": "Chat",
+    "reports": "Reports",
+    "analytics": "Analytics",
+    "alerts": "Alerts"
+  },
+  "admin": {
+    "title": "Administration",
+    "users": "User management",
+    "companies": "Company management",
+    "roles": "Roles & Permissions",
+    "settings": "Settings",
+    "system": "System",
+    "health": "System status",
+    "metrics": "Metrics",
+    "logs": "Logs",
+    "backup": "Backup",
+    "integrations": "Integrations",
+    "datev": "DATEV",
+    "slack": "Slack",
+    "teams": "Microsoft Teams",
+    "ocr": "OCR settings",
+    "ocrLearning": "OCR training"
+  },
+  "user": {
+    "profile": "Profile",
+    "settings": "Settings",
+    "preferences": "Preferences",
+    "notifications": "Notifications",
+    "security": "Security",
+    "sessions": "Sessions",
+    "apiKeys": "API keys",
+    "help": "Help",
+    "support": "Support",
+    "documentation": "Documentation",
+    "logout": "Sign out"
+  },
+  "settings": {
+    "title": "Settings",
+    "general": {
+      "title": "General",
+      "language": "Language",
+      "timezone": "Timezone",
+      "dateFormat": "Date format",
+      "numberFormat": "Number format"
+    },
+    "display": {
+      "title": "Display",
+      "theme": "Theme",
+      "displayMode": "Display mode",
+      "modes": {
+        "system": "System",
+        "light": "Light",
+        "dark": "Dark",
+        "whitescreen": "Whitescreen (High contrast)",
+        "blackscreen": "Blackscreen (OLED)"
+      },
+      "density": "Information density",
+      "densityOptions": {
+        "compact": "Compact",
+        "comfortable": "Comfortable",
+        "spacious": "Spacious"
+      }
+    },
+    "notifications": {
+      "title": "Notifications",
+      "email": "Email notifications",
+      "browser": "Browser notifications",
+      "push": "Push notifications",
+      "sound": "Notification sound",
+      "types": {
+        "documents": "Documents",
+        "workflows": "Workflows",
+        "payments": "Payments",
+        "alerts": "Alerts",
+        "system": "System"
+      }
+    },
+    "security": {
+      "title": "Security",
+      "changePassword": "Change password",
+      "twoFactor": "Two-factor authentication",
+      "sessions": "Active sessions",
+      "loginHistory": "Login history",
+      "apiKeys": "API keys"
+    },
+    "privacy": {
+      "title": "Privacy",
+      "dataExport": "Export data",
+      "deleteAccount": "Delete account",
+      "analytics": "Usage analytics",
+      "cookies": "Cookie settings"
+    }
+  },
+  "breadcrumb": {
+    "home": "Home",
+    "back": "Back",
+    "separator": "/"
+  },
+  "footer": {
+    "copyright": "Ablage-System",
+    "version": "Version {{version}}",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy",
+    "imprint": "Imprint",
+    "support": "Support"
+  },
+  "mobile": {
+    "menu": "Menu",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "swipeToClose": "Swipe to close"
+  }
+}

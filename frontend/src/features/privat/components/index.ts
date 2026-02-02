@@ -53,3 +53,11 @@ export {
     NetWorthChart,
     IntelligenceErrorBoundary,
 } from './intelligence';
+
+// Net Worth Dashboard Components
+export {
+    AssetBreakdownCard,
+    LiabilityBreakdownCard,
+    NetWorthLineChartCard,
+    AllocationPieChart,
+} from './networth';

@@ -45,6 +45,7 @@ import { Route as FinanzenRouteImport } from './app/routes/finanzen'
 import { Route as DocumentGroupsRouteImport } from './app/routes/document-groups'
 import { Route as DocumentChainsRouteImport } from './app/routes/document-chains'
 import { Route as DeveloperRouteImport } from './app/routes/developer'
+import { Route as ContractsRouteImport } from './app/routes/contracts'
 import { Route as ChatRouteImport } from './app/routes/chat'
 import { Route as CashflowRouteImport } from './app/routes/cashflow'
 import { Route as BerichteRouteImport } from './app/routes/berichte'
@@ -78,6 +79,7 @@ import { Route as StreckengeschaeftEinstellungenRouteImport } from './app/routes
 import { Route as StreckengeschaeftClassificationIdRouteImport } from './app/routes/streckengeschaeft.$classificationId'
 import { Route as SpesenReportIdRouteImport } from './app/routes/spesen.$reportId'
 import { Route as SettingsSecurityRouteImport } from './app/routes/settings.security'
+import { Route as SettingsNotificationsRouteImport } from './app/routes/settings.notifications'
 import { Route as SettingsDelegationsRouteImport } from './app/routes/settings.delegations'
 import { Route as SettingsConsentRouteImport } from './app/routes/settings.consent'
 import { Route as SendungenNeuRouteImport } from './app/routes/sendungen.neu'
@@ -89,12 +91,16 @@ import { Route as ProzesseNeuRouteImport } from './app/routes/prozesse.neu'
 import { Route as ProzesseAufgabenRouteImport } from './app/routes/prozesse.aufgaben'
 import { Route as ProzesseDefinitionIdRouteImport } from './app/routes/prozesse.$definitionId'
 import { Route as PrivatVersicherungenRouteImport } from './app/routes/privat.versicherungen'
+import { Route as PrivatSteuernRouteImport } from './app/routes/privat.steuern'
 import { Route as PrivatPortfolioRouteImport } from './app/routes/privat.portfolio'
 import { Route as PrivatNotfallRouteImport } from './app/routes/privat.notfall'
+import { Route as PrivatNetworthRouteImport } from './app/routes/privat.networth'
+import { Route as PrivatNachlassplanungRouteImport } from './app/routes/privat.nachlassplanung'
 import { Route as PrivatImmobilienRouteImport } from './app/routes/privat.immobilien'
 import { Route as PrivatFristenRouteImport } from './app/routes/privat.fristen'
 import { Route as PrivatFinanzenRouteImport } from './app/routes/privat.finanzen'
 import { Route as PrivatFahrzeugeRouteImport } from './app/routes/privat.fahrzeuge'
+import { Route as PrivatAltersvorsorgeRouteImport } from './app/routes/privat.altersvorsorge'
 import { Route as PersonalEmployeeIdRouteImport } from './app/routes/personal.$employeeId'
 import { Route as LieferantenRankingRouteImport } from './app/routes/lieferanten.ranking'
 import { Route as LieferantenSupplierIdRouteImport } from './app/routes/lieferanten.$supplierId'
@@ -125,6 +131,7 @@ import { Route as AdminProcessOptimizationRouteImport } from './app/routes/admin
 import { Route as AdminOcrTrainingRouteImport } from './app/routes/admin.ocr-training'
 import { Route as AdminOcrReviewRouteImport } from './app/routes/admin.ocr-review'
 import { Route as AdminOcrLearningRouteImport } from './app/routes/admin.ocr-learning'
+import { Route as AdminOcrFeedbackRouteImport } from './app/routes/admin.ocr-feedback'
 import { Route as AdminOcrBackendsRouteImport } from './app/routes/admin.ocr-backends'
 import { Route as AdminMlopsRouteImport } from './app/routes/admin.mlops'
 import { Route as AdminMahnungenRouteImport } from './app/routes/admin.mahnungen'
@@ -155,6 +162,7 @@ import { Route as AdminErpIndexRouteImport } from './app/routes/admin.erp.index'
 import { Route as AdminDatevIndexRouteImport } from './app/routes/admin.datev.index'
 import { Route as AdminDatevConnectIndexRouteImport } from './app/routes/admin.datev-connect.index'
 import { Route as AdminBankingIndexRouteImport } from './app/routes/admin.banking.index'
+import { Route as WorkflowsWorkflowIdVersionsRouteImport } from './app/routes/workflows.$workflowId.versions'
 import { Route as WorkflowsWorkflowIdHistoryRouteImport } from './app/routes/workflows.$workflowId.history'
 import { Route as PrivatVersicherungenInsuranceIdRouteImport } from './app/routes/privat.versicherungen.$insuranceId'
 import { Route as PrivatSpacesSpaceIdRouteImport } from './app/routes/privat.spaces.$spaceId'
@@ -389,6 +397,11 @@ const DeveloperRoute = DeveloperRouteImport.update({
   path: '/developer',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContractsRoute = ContractsRouteImport.update({
+  id: '/contracts',
+  path: '/contracts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChatRoute = ChatRouteImport.update({
   id: '/chat',
   path: '/chat',
@@ -559,6 +572,11 @@ const SettingsSecurityRoute = SettingsSecurityRouteImport.update({
   path: '/security',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsNotificationsRoute = SettingsNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsDelegationsRoute = SettingsDelegationsRouteImport.update({
   id: '/delegations',
   path: '/delegations',
@@ -614,6 +632,11 @@ const PrivatVersicherungenRoute = PrivatVersicherungenRouteImport.update({
   path: '/versicherungen',
   getParentRoute: () => PrivatRoute,
 } as any)
+const PrivatSteuernRoute = PrivatSteuernRouteImport.update({
+  id: '/steuern',
+  path: '/steuern',
+  getParentRoute: () => PrivatRoute,
+} as any)
 const PrivatPortfolioRoute = PrivatPortfolioRouteImport.update({
   id: '/portfolio',
   path: '/portfolio',
@@ -622,6 +645,16 @@ const PrivatPortfolioRoute = PrivatPortfolioRouteImport.update({
 const PrivatNotfallRoute = PrivatNotfallRouteImport.update({
   id: '/notfall',
   path: '/notfall',
+  getParentRoute: () => PrivatRoute,
+} as any)
+const PrivatNetworthRoute = PrivatNetworthRouteImport.update({
+  id: '/networth',
+  path: '/networth',
+  getParentRoute: () => PrivatRoute,
+} as any)
+const PrivatNachlassplanungRoute = PrivatNachlassplanungRouteImport.update({
+  id: '/nachlassplanung',
+  path: '/nachlassplanung',
   getParentRoute: () => PrivatRoute,
 } as any)
 const PrivatImmobilienRoute = PrivatImmobilienRouteImport.update({
@@ -642,6 +675,11 @@ const PrivatFinanzenRoute = PrivatFinanzenRouteImport.update({
 const PrivatFahrzeugeRoute = PrivatFahrzeugeRouteImport.update({
   id: '/fahrzeuge',
   path: '/fahrzeuge',
+  getParentRoute: () => PrivatRoute,
+} as any)
+const PrivatAltersvorsorgeRoute = PrivatAltersvorsorgeRouteImport.update({
+  id: '/altersvorsorge',
+  path: '/altersvorsorge',
   getParentRoute: () => PrivatRoute,
 } as any)
 const PersonalEmployeeIdRoute = PersonalEmployeeIdRouteImport.update({
@@ -797,6 +835,11 @@ const AdminOcrLearningRoute = AdminOcrLearningRouteImport.update({
   path: '/ocr-learning',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminOcrFeedbackRoute = AdminOcrFeedbackRouteImport.update({
+  id: '/ocr-feedback',
+  path: '/ocr-feedback',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminOcrBackendsRoute = AdminOcrBackendsRouteImport.update({
   id: '/ocr-backends',
   path: '/ocr-backends',
@@ -949,6 +992,12 @@ const AdminBankingIndexRoute = AdminBankingIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminBankingRoute,
 } as any)
+const WorkflowsWorkflowIdVersionsRoute =
+  WorkflowsWorkflowIdVersionsRouteImport.update({
+    id: '/versions',
+    path: '/versions',
+    getParentRoute: () => WorkflowsWorkflowIdRoute,
+  } as any)
 const WorkflowsWorkflowIdHistoryRoute =
   WorkflowsWorkflowIdHistoryRouteImport.update({
     id: '/history',
@@ -1249,6 +1298,7 @@ export interface FileRoutesByFullPath {
   '/berichte': typeof BerichteRoute
   '/cashflow': typeof CashflowRoute
   '/chat': typeof ChatRoute
+  '/contracts': typeof ContractsRoute
   '/developer': typeof DeveloperRoute
   '/document-chains': typeof DocumentChainsRouteWithChildren
   '/document-groups': typeof DocumentGroupsRouteWithChildren
@@ -1303,6 +1353,7 @@ export interface FileRoutesByFullPath {
   '/admin/mahnungen': typeof AdminMahnungenRouteWithChildren
   '/admin/mlops': typeof AdminMlopsRoute
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
+  '/admin/ocr-feedback': typeof AdminOcrFeedbackRoute
   '/admin/ocr-learning': typeof AdminOcrLearningRoute
   '/admin/ocr-review': typeof AdminOcrReviewRoute
   '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
@@ -1333,12 +1384,16 @@ export interface FileRoutesByFullPath {
   '/lieferanten/$supplierId': typeof LieferantenSupplierIdRouteWithChildren
   '/lieferanten/ranking': typeof LieferantenRankingRoute
   '/personal/$employeeId': typeof PersonalEmployeeIdRouteWithChildren
+  '/privat/altersvorsorge': typeof PrivatAltersvorsorgeRoute
   '/privat/fahrzeuge': typeof PrivatFahrzeugeRouteWithChildren
   '/privat/finanzen': typeof PrivatFinanzenRouteWithChildren
   '/privat/fristen': typeof PrivatFristenRoute
   '/privat/immobilien': typeof PrivatImmobilienRouteWithChildren
+  '/privat/nachlassplanung': typeof PrivatNachlassplanungRoute
+  '/privat/networth': typeof PrivatNetworthRoute
   '/privat/notfall': typeof PrivatNotfallRoute
   '/privat/portfolio': typeof PrivatPortfolioRoute
+  '/privat/steuern': typeof PrivatSteuernRoute
   '/privat/versicherungen': typeof PrivatVersicherungenRouteWithChildren
   '/prozesse/$definitionId': typeof ProzesseDefinitionIdRoute
   '/prozesse/aufgaben': typeof ProzesseAufgabenRoute
@@ -1350,6 +1405,7 @@ export interface FileRoutesByFullPath {
   '/sendungen/neu': typeof SendungenNeuRoute
   '/settings/consent': typeof SettingsConsentRoute
   '/settings/delegations': typeof SettingsDelegationsRoute
+  '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/security': typeof SettingsSecurityRoute
   '/spesen/$reportId': typeof SpesenReportIdRoute
   '/streckengeschaeft/$classificationId': typeof StreckengeschaeftClassificationIdRoute
@@ -1418,6 +1474,7 @@ export interface FileRoutesByFullPath {
   '/privat/spaces/$spaceId': typeof PrivatSpacesSpaceIdRoute
   '/privat/versicherungen/$insuranceId': typeof PrivatVersicherungenInsuranceIdRoute
   '/workflows/$workflowId/history': typeof WorkflowsWorkflowIdHistoryRoute
+  '/workflows/$workflowId/versions': typeof WorkflowsWorkflowIdVersionsRoute
   '/admin/banking/': typeof AdminBankingIndexRoute
   '/admin/datev-connect/': typeof AdminDatevConnectIndexRoute
   '/admin/datev/': typeof AdminDatevIndexRoute
@@ -1449,6 +1506,7 @@ export interface FileRoutesByTo {
   '/berichte': typeof BerichteRoute
   '/cashflow': typeof CashflowRoute
   '/chat': typeof ChatRoute
+  '/contracts': typeof ContractsRoute
   '/developer': typeof DeveloperRoute
   '/document-chains': typeof DocumentChainsRouteWithChildren
   '/document-groups': typeof DocumentGroupsRouteWithChildren
@@ -1484,6 +1542,7 @@ export interface FileRoutesByTo {
   '/admin/job-queue': typeof AdminJobQueueRoute
   '/admin/mlops': typeof AdminMlopsRoute
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
+  '/admin/ocr-feedback': typeof AdminOcrFeedbackRoute
   '/admin/ocr-learning': typeof AdminOcrLearningRoute
   '/admin/ocr-review': typeof AdminOcrReviewRoute
   '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
@@ -1509,12 +1568,16 @@ export interface FileRoutesByTo {
   '/finanzen/zahlungsverhalten': typeof FinanzenZahlungsverhaltenRoute
   '/holding/reconciliation': typeof HoldingReconciliationRoute
   '/lieferanten/ranking': typeof LieferantenRankingRoute
+  '/privat/altersvorsorge': typeof PrivatAltersvorsorgeRoute
   '/privat/fahrzeuge': typeof PrivatFahrzeugeRouteWithChildren
   '/privat/finanzen': typeof PrivatFinanzenRouteWithChildren
   '/privat/fristen': typeof PrivatFristenRoute
   '/privat/immobilien': typeof PrivatImmobilienRouteWithChildren
+  '/privat/nachlassplanung': typeof PrivatNachlassplanungRoute
+  '/privat/networth': typeof PrivatNetworthRoute
   '/privat/notfall': typeof PrivatNotfallRoute
   '/privat/portfolio': typeof PrivatPortfolioRoute
+  '/privat/steuern': typeof PrivatSteuernRoute
   '/privat/versicherungen': typeof PrivatVersicherungenRouteWithChildren
   '/prozesse/$definitionId': typeof ProzesseDefinitionIdRoute
   '/prozesse/aufgaben': typeof ProzesseAufgabenRoute
@@ -1526,6 +1589,7 @@ export interface FileRoutesByTo {
   '/sendungen/neu': typeof SendungenNeuRoute
   '/settings/consent': typeof SettingsConsentRoute
   '/settings/delegations': typeof SettingsDelegationsRoute
+  '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/security': typeof SettingsSecurityRoute
   '/spesen/$reportId': typeof SpesenReportIdRoute
   '/streckengeschaeft/$classificationId': typeof StreckengeschaeftClassificationIdRoute
@@ -1592,6 +1656,7 @@ export interface FileRoutesByTo {
   '/privat/spaces/$spaceId': typeof PrivatSpacesSpaceIdRoute
   '/privat/versicherungen/$insuranceId': typeof PrivatVersicherungenInsuranceIdRoute
   '/workflows/$workflowId/history': typeof WorkflowsWorkflowIdHistoryRoute
+  '/workflows/$workflowId/versions': typeof WorkflowsWorkflowIdVersionsRoute
   '/admin/banking': typeof AdminBankingIndexRoute
   '/admin/datev-connect': typeof AdminDatevConnectIndexRoute
   '/admin/datev': typeof AdminDatevIndexRoute
@@ -1625,6 +1690,7 @@ export interface FileRoutesById {
   '/berichte': typeof BerichteRoute
   '/cashflow': typeof CashflowRoute
   '/chat': typeof ChatRoute
+  '/contracts': typeof ContractsRoute
   '/developer': typeof DeveloperRoute
   '/document-chains': typeof DocumentChainsRouteWithChildren
   '/document-groups': typeof DocumentGroupsRouteWithChildren
@@ -1679,6 +1745,7 @@ export interface FileRoutesById {
   '/admin/mahnungen': typeof AdminMahnungenRouteWithChildren
   '/admin/mlops': typeof AdminMlopsRoute
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
+  '/admin/ocr-feedback': typeof AdminOcrFeedbackRoute
   '/admin/ocr-learning': typeof AdminOcrLearningRoute
   '/admin/ocr-review': typeof AdminOcrReviewRoute
   '/admin/ocr-training': typeof AdminOcrTrainingRouteWithChildren
@@ -1709,12 +1776,16 @@ export interface FileRoutesById {
   '/lieferanten/$supplierId': typeof LieferantenSupplierIdRouteWithChildren
   '/lieferanten/ranking': typeof LieferantenRankingRoute
   '/personal/$employeeId': typeof PersonalEmployeeIdRouteWithChildren
+  '/privat/altersvorsorge': typeof PrivatAltersvorsorgeRoute
   '/privat/fahrzeuge': typeof PrivatFahrzeugeRouteWithChildren
   '/privat/finanzen': typeof PrivatFinanzenRouteWithChildren
   '/privat/fristen': typeof PrivatFristenRoute
   '/privat/immobilien': typeof PrivatImmobilienRouteWithChildren
+  '/privat/nachlassplanung': typeof PrivatNachlassplanungRoute
+  '/privat/networth': typeof PrivatNetworthRoute
   '/privat/notfall': typeof PrivatNotfallRoute
   '/privat/portfolio': typeof PrivatPortfolioRoute
+  '/privat/steuern': typeof PrivatSteuernRoute
   '/privat/versicherungen': typeof PrivatVersicherungenRouteWithChildren
   '/prozesse/$definitionId': typeof ProzesseDefinitionIdRoute
   '/prozesse/aufgaben': typeof ProzesseAufgabenRoute
@@ -1726,6 +1797,7 @@ export interface FileRoutesById {
   '/sendungen/neu': typeof SendungenNeuRoute
   '/settings/consent': typeof SettingsConsentRoute
   '/settings/delegations': typeof SettingsDelegationsRoute
+  '/settings/notifications': typeof SettingsNotificationsRoute
   '/settings/security': typeof SettingsSecurityRoute
   '/spesen/$reportId': typeof SpesenReportIdRoute
   '/streckengeschaeft/$classificationId': typeof StreckengeschaeftClassificationIdRoute
@@ -1794,6 +1866,7 @@ export interface FileRoutesById {
   '/privat/spaces/$spaceId': typeof PrivatSpacesSpaceIdRoute
   '/privat/versicherungen/$insuranceId': typeof PrivatVersicherungenInsuranceIdRoute
   '/workflows/$workflowId/history': typeof WorkflowsWorkflowIdHistoryRoute
+  '/workflows/$workflowId/versions': typeof WorkflowsWorkflowIdVersionsRoute
   '/admin/banking/': typeof AdminBankingIndexRoute
   '/admin/datev-connect/': typeof AdminDatevConnectIndexRoute
   '/admin/datev/': typeof AdminDatevIndexRoute
@@ -1828,6 +1901,7 @@ export interface FileRouteTypes {
     | '/berichte'
     | '/cashflow'
     | '/chat'
+    | '/contracts'
     | '/developer'
     | '/document-chains'
     | '/document-groups'
@@ -1882,6 +1956,7 @@ export interface FileRouteTypes {
     | '/admin/mahnungen'
     | '/admin/mlops'
     | '/admin/ocr-backends'
+    | '/admin/ocr-feedback'
     | '/admin/ocr-learning'
     | '/admin/ocr-review'
     | '/admin/ocr-training'
@@ -1912,12 +1987,16 @@ export interface FileRouteTypes {
     | '/lieferanten/$supplierId'
     | '/lieferanten/ranking'
     | '/personal/$employeeId'
+    | '/privat/altersvorsorge'
     | '/privat/fahrzeuge'
     | '/privat/finanzen'
     | '/privat/fristen'
     | '/privat/immobilien'
+    | '/privat/nachlassplanung'
+    | '/privat/networth'
     | '/privat/notfall'
     | '/privat/portfolio'
+    | '/privat/steuern'
     | '/privat/versicherungen'
     | '/prozesse/$definitionId'
     | '/prozesse/aufgaben'
@@ -1929,6 +2008,7 @@ export interface FileRouteTypes {
     | '/sendungen/neu'
     | '/settings/consent'
     | '/settings/delegations'
+    | '/settings/notifications'
     | '/settings/security'
     | '/spesen/$reportId'
     | '/streckengeschaeft/$classificationId'
@@ -1997,6 +2077,7 @@ export interface FileRouteTypes {
     | '/privat/spaces/$spaceId'
     | '/privat/versicherungen/$insuranceId'
     | '/workflows/$workflowId/history'
+    | '/workflows/$workflowId/versions'
     | '/admin/banking/'
     | '/admin/datev-connect/'
     | '/admin/datev/'
@@ -2028,6 +2109,7 @@ export interface FileRouteTypes {
     | '/berichte'
     | '/cashflow'
     | '/chat'
+    | '/contracts'
     | '/developer'
     | '/document-chains'
     | '/document-groups'
@@ -2063,6 +2145,7 @@ export interface FileRouteTypes {
     | '/admin/job-queue'
     | '/admin/mlops'
     | '/admin/ocr-backends'
+    | '/admin/ocr-feedback'
     | '/admin/ocr-learning'
     | '/admin/ocr-review'
     | '/admin/ocr-training'
@@ -2088,12 +2171,16 @@ export interface FileRouteTypes {
     | '/finanzen/zahlungsverhalten'
     | '/holding/reconciliation'
     | '/lieferanten/ranking'
+    | '/privat/altersvorsorge'
     | '/privat/fahrzeuge'
     | '/privat/finanzen'
     | '/privat/fristen'
     | '/privat/immobilien'
+    | '/privat/nachlassplanung'
+    | '/privat/networth'
     | '/privat/notfall'
     | '/privat/portfolio'
+    | '/privat/steuern'
     | '/privat/versicherungen'
     | '/prozesse/$definitionId'
     | '/prozesse/aufgaben'
@@ -2105,6 +2192,7 @@ export interface FileRouteTypes {
     | '/sendungen/neu'
     | '/settings/consent'
     | '/settings/delegations'
+    | '/settings/notifications'
     | '/settings/security'
     | '/spesen/$reportId'
     | '/streckengeschaeft/$classificationId'
@@ -2171,6 +2259,7 @@ export interface FileRouteTypes {
     | '/privat/spaces/$spaceId'
     | '/privat/versicherungen/$insuranceId'
     | '/workflows/$workflowId/history'
+    | '/workflows/$workflowId/versions'
     | '/admin/banking'
     | '/admin/datev-connect'
     | '/admin/datev'
@@ -2203,6 +2292,7 @@ export interface FileRouteTypes {
     | '/berichte'
     | '/cashflow'
     | '/chat'
+    | '/contracts'
     | '/developer'
     | '/document-chains'
     | '/document-groups'
@@ -2257,6 +2347,7 @@ export interface FileRouteTypes {
     | '/admin/mahnungen'
     | '/admin/mlops'
     | '/admin/ocr-backends'
+    | '/admin/ocr-feedback'
     | '/admin/ocr-learning'
     | '/admin/ocr-review'
     | '/admin/ocr-training'
@@ -2287,12 +2378,16 @@ export interface FileRouteTypes {
     | '/lieferanten/$supplierId'
     | '/lieferanten/ranking'
     | '/personal/$employeeId'
+    | '/privat/altersvorsorge'
     | '/privat/fahrzeuge'
     | '/privat/finanzen'
     | '/privat/fristen'
     | '/privat/immobilien'
+    | '/privat/nachlassplanung'
+    | '/privat/networth'
     | '/privat/notfall'
     | '/privat/portfolio'
+    | '/privat/steuern'
     | '/privat/versicherungen'
     | '/prozesse/$definitionId'
     | '/prozesse/aufgaben'
@@ -2304,6 +2399,7 @@ export interface FileRouteTypes {
     | '/sendungen/neu'
     | '/settings/consent'
     | '/settings/delegations'
+    | '/settings/notifications'
     | '/settings/security'
     | '/spesen/$reportId'
     | '/streckengeschaeft/$classificationId'
@@ -2372,6 +2468,7 @@ export interface FileRouteTypes {
     | '/privat/spaces/$spaceId'
     | '/privat/versicherungen/$insuranceId'
     | '/workflows/$workflowId/history'
+    | '/workflows/$workflowId/versions'
     | '/admin/banking/'
     | '/admin/datev-connect/'
     | '/admin/datev/'
@@ -2405,6 +2502,7 @@ export interface RootRouteChildren {
   BerichteRoute: typeof BerichteRoute
   CashflowRoute: typeof CashflowRoute
   ChatRoute: typeof ChatRoute
+  ContractsRoute: typeof ContractsRoute
   DeveloperRoute: typeof DeveloperRoute
   DocumentChainsRoute: typeof DocumentChainsRouteWithChildren
   DocumentGroupsRoute: typeof DocumentGroupsRouteWithChildren
@@ -2703,6 +2801,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DeveloperRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/contracts': {
+      id: '/contracts'
+      path: '/contracts'
+      fullPath: '/contracts'
+      preLoaderRoute: typeof ContractsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/chat': {
       id: '/chat'
       path: '/chat'
@@ -2934,6 +3039,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsSecurityRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/notifications': {
+      id: '/settings/notifications'
+      path: '/notifications'
+      fullPath: '/settings/notifications'
+      preLoaderRoute: typeof SettingsNotificationsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/settings/delegations': {
       id: '/settings/delegations'
       path: '/delegations'
@@ -3011,6 +3123,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrivatVersicherungenRouteImport
       parentRoute: typeof PrivatRoute
     }
+    '/privat/steuern': {
+      id: '/privat/steuern'
+      path: '/steuern'
+      fullPath: '/privat/steuern'
+      preLoaderRoute: typeof PrivatSteuernRouteImport
+      parentRoute: typeof PrivatRoute
+    }
     '/privat/portfolio': {
       id: '/privat/portfolio'
       path: '/portfolio'
@@ -3023,6 +3142,20 @@ declare module '@tanstack/react-router' {
       path: '/notfall'
       fullPath: '/privat/notfall'
       preLoaderRoute: typeof PrivatNotfallRouteImport
+      parentRoute: typeof PrivatRoute
+    }
+    '/privat/networth': {
+      id: '/privat/networth'
+      path: '/networth'
+      fullPath: '/privat/networth'
+      preLoaderRoute: typeof PrivatNetworthRouteImport
+      parentRoute: typeof PrivatRoute
+    }
+    '/privat/nachlassplanung': {
+      id: '/privat/nachlassplanung'
+      path: '/nachlassplanung'
+      fullPath: '/privat/nachlassplanung'
+      preLoaderRoute: typeof PrivatNachlassplanungRouteImport
       parentRoute: typeof PrivatRoute
     }
     '/privat/immobilien': {
@@ -3051,6 +3184,13 @@ declare module '@tanstack/react-router' {
       path: '/fahrzeuge'
       fullPath: '/privat/fahrzeuge'
       preLoaderRoute: typeof PrivatFahrzeugeRouteImport
+      parentRoute: typeof PrivatRoute
+    }
+    '/privat/altersvorsorge': {
+      id: '/privat/altersvorsorge'
+      path: '/altersvorsorge'
+      fullPath: '/privat/altersvorsorge'
+      preLoaderRoute: typeof PrivatAltersvorsorgeRouteImport
       parentRoute: typeof PrivatRoute
     }
     '/personal/$employeeId': {
@@ -3263,6 +3403,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOcrLearningRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/ocr-feedback': {
+      id: '/admin/ocr-feedback'
+      path: '/ocr-feedback'
+      fullPath: '/admin/ocr-feedback'
+      preLoaderRoute: typeof AdminOcrFeedbackRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/ocr-backends': {
       id: '/admin/ocr-backends'
       path: '/ocr-backends'
@@ -3472,6 +3619,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/banking/'
       preLoaderRoute: typeof AdminBankingIndexRouteImport
       parentRoute: typeof AdminBankingRoute
+    }
+    '/workflows/$workflowId/versions': {
+      id: '/workflows/$workflowId/versions'
+      path: '/versions'
+      fullPath: '/workflows/$workflowId/versions'
+      preLoaderRoute: typeof WorkflowsWorkflowIdVersionsRouteImport
+      parentRoute: typeof WorkflowsWorkflowIdRoute
     }
     '/workflows/$workflowId/history': {
       id: '/workflows/$workflowId/history'
@@ -4057,6 +4211,7 @@ interface AdminRouteChildren {
   AdminMahnungenRoute: typeof AdminMahnungenRouteWithChildren
   AdminMlopsRoute: typeof AdminMlopsRoute
   AdminOcrBackendsRoute: typeof AdminOcrBackendsRouteWithChildren
+  AdminOcrFeedbackRoute: typeof AdminOcrFeedbackRoute
   AdminOcrLearningRoute: typeof AdminOcrLearningRoute
   AdminOcrReviewRoute: typeof AdminOcrReviewRoute
   AdminOcrTrainingRoute: typeof AdminOcrTrainingRouteWithChildren
@@ -4095,6 +4250,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminMahnungenRoute: AdminMahnungenRouteWithChildren,
   AdminMlopsRoute: AdminMlopsRoute,
   AdminOcrBackendsRoute: AdminOcrBackendsRouteWithChildren,
+  AdminOcrFeedbackRoute: AdminOcrFeedbackRoute,
   AdminOcrLearningRoute: AdminOcrLearningRoute,
   AdminOcrReviewRoute: AdminOcrReviewRoute,
   AdminOcrTrainingRoute: AdminOcrTrainingRouteWithChildren,
@@ -4367,24 +4523,32 @@ const PrivatVersicherungenRouteWithChildren =
   PrivatVersicherungenRoute._addFileChildren(PrivatVersicherungenRouteChildren)
 
 interface PrivatRouteChildren {
+  PrivatAltersvorsorgeRoute: typeof PrivatAltersvorsorgeRoute
   PrivatFahrzeugeRoute: typeof PrivatFahrzeugeRouteWithChildren
   PrivatFinanzenRoute: typeof PrivatFinanzenRouteWithChildren
   PrivatFristenRoute: typeof PrivatFristenRoute
   PrivatImmobilienRoute: typeof PrivatImmobilienRouteWithChildren
+  PrivatNachlassplanungRoute: typeof PrivatNachlassplanungRoute
+  PrivatNetworthRoute: typeof PrivatNetworthRoute
   PrivatNotfallRoute: typeof PrivatNotfallRoute
   PrivatPortfolioRoute: typeof PrivatPortfolioRoute
+  PrivatSteuernRoute: typeof PrivatSteuernRoute
   PrivatVersicherungenRoute: typeof PrivatVersicherungenRouteWithChildren
   PrivatIndexRoute: typeof PrivatIndexRoute
   PrivatSpacesSpaceIdRoute: typeof PrivatSpacesSpaceIdRoute
 }
 
 const PrivatRouteChildren: PrivatRouteChildren = {
+  PrivatAltersvorsorgeRoute: PrivatAltersvorsorgeRoute,
   PrivatFahrzeugeRoute: PrivatFahrzeugeRouteWithChildren,
   PrivatFinanzenRoute: PrivatFinanzenRouteWithChildren,
   PrivatFristenRoute: PrivatFristenRoute,
   PrivatImmobilienRoute: PrivatImmobilienRouteWithChildren,
+  PrivatNachlassplanungRoute: PrivatNachlassplanungRoute,
+  PrivatNetworthRoute: PrivatNetworthRoute,
   PrivatNotfallRoute: PrivatNotfallRoute,
   PrivatPortfolioRoute: PrivatPortfolioRoute,
+  PrivatSteuernRoute: PrivatSteuernRoute,
   PrivatVersicherungenRoute: PrivatVersicherungenRouteWithChildren,
   PrivatIndexRoute: PrivatIndexRoute,
   PrivatSpacesSpaceIdRoute: PrivatSpacesSpaceIdRoute,
@@ -4444,12 +4608,14 @@ const SendungenRouteWithChildren = SendungenRoute._addFileChildren(
 interface SettingsRouteChildren {
   SettingsConsentRoute: typeof SettingsConsentRoute
   SettingsDelegationsRoute: typeof SettingsDelegationsRoute
+  SettingsNotificationsRoute: typeof SettingsNotificationsRoute
   SettingsSecurityRoute: typeof SettingsSecurityRoute
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsConsentRoute: SettingsConsentRoute,
   SettingsDelegationsRoute: SettingsDelegationsRoute,
+  SettingsNotificationsRoute: SettingsNotificationsRoute,
   SettingsSecurityRoute: SettingsSecurityRoute,
 }
 
@@ -4509,10 +4675,12 @@ const ValidationQueueRouteWithChildren = ValidationQueueRoute._addFileChildren(
 
 interface WorkflowsWorkflowIdRouteChildren {
   WorkflowsWorkflowIdHistoryRoute: typeof WorkflowsWorkflowIdHistoryRoute
+  WorkflowsWorkflowIdVersionsRoute: typeof WorkflowsWorkflowIdVersionsRoute
 }
 
 const WorkflowsWorkflowIdRouteChildren: WorkflowsWorkflowIdRouteChildren = {
   WorkflowsWorkflowIdHistoryRoute: WorkflowsWorkflowIdHistoryRoute,
+  WorkflowsWorkflowIdVersionsRoute: WorkflowsWorkflowIdVersionsRoute,
 }
 
 const WorkflowsWorkflowIdRouteWithChildren =
@@ -4557,6 +4725,7 @@ const rootRouteChildren: RootRouteChildren = {
   BerichteRoute: BerichteRoute,
   CashflowRoute: CashflowRoute,
   ChatRoute: ChatRoute,
+  ContractsRoute: ContractsRoute,
   DeveloperRoute: DeveloperRoute,
   DocumentChainsRoute: DocumentChainsRouteWithChildren,
   DocumentGroupsRoute: DocumentGroupsRouteWithChildren,

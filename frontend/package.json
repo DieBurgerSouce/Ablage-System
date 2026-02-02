@@ -13,7 +13,12 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "test:storybook": "test-storybook",
+    "test:visual": "percy storybook ./storybook-static",
+    "test:visual:ci": "build-storybook && percy storybook ./storybook-static"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -1,0 +1,107 @@
+{
+  "title": "Warnungen",
+  "subtitle": "Benachrichtigungen und Warnmeldungen",
+  "center": {
+    "title": "Alert-Center",
+    "subtitle": "Alle Warnungen im Ueberblick",
+    "noAlerts": "Keine Warnungen vorhanden",
+    "markAllRead": "Alle als gelesen markieren",
+    "clearAll": "Alle loeschen"
+  },
+  "severity": {
+    "info": "Information",
+    "low": "Niedrig",
+    "medium": "Mittel",
+    "high": "Hoch",
+    "critical": "Kritisch"
+  },
+  "status": {
+    "new": "Neu",
+    "acknowledged": "Gesehen",
+    "inProgress": "In Bearbeitung",
+    "resolved": "Geloest",
+    "dismissed": "Verworfen",
+    "escalated": "Eskaliert"
+  },
+  "category": {
+    "fraud": "Betrugsverdacht",
+    "risk": "Risikowarnung",
+    "compliance": "Compliance",
+    "deadline": "Fristwarnung",
+    "system": "System",
+    "security": "Sicherheit",
+    "quality": "Qualitaet",
+    "workflow": "Workflow"
+  },
+  "actions": {
+    "acknowledge": "Als gesehen markieren",
+    "dismiss": "Verwerfen",
+    "resolve": "Als geloest markieren",
+    "escalate": "Eskalieren",
+    "assign": "Zuweisen",
+    "viewDetails": "Details anzeigen",
+    "viewDocument": "Dokument anzeigen",
+    "viewEntity": "Geschaeftspartner anzeigen"
+  },
+  "codes": {
+    "FRAUD_001": "Ungewoehnlich hoher Betrag",
+    "FRAUD_002": "Doppelte Rechnung erkannt",
+    "FRAUD_003": "Verdaechtige Kontodaten",
+    "FRAUD_004": "Unbekannter Empfaenger",
+    "RISK_001": "Hohes Ausfallrisiko",
+    "RISK_002": "Zahlungsverzoegerung",
+    "RISK_003": "Kreditlimit ueberschritten",
+    "RISK_004": "Ungewoehnliches Muster",
+    "COMP_001": "DSGVO-Verletzung",
+    "COMP_002": "Fehlende Dokumente",
+    "COMP_003": "Ungueltige USt-IdNr.",
+    "COMP_004": "Aufbewahrungsfrist",
+    "COMP_005": "GoBD-Verletzung",
+    "DEAD_001": "Rechnung ueberfaellig",
+    "DEAD_002": "Skonto-Frist endet",
+    "DEAD_003": "Vertrag laeuft aus",
+    "DEAD_004": "Genehmigung ueberfaellig",
+    "SYS_001": "Speicherplatz niedrig",
+    "SYS_002": "Backup fehlgeschlagen",
+    "SYS_003": "Dienst nicht erreichbar",
+    "SYS_004": "Hohe Systemlast",
+    "SYS_005": "Wartung erforderlich",
+    "SEC_001": "Verdaechtiger Login",
+    "SEC_002": "Zu viele Fehlversuche",
+    "SEC_003": "Ungewoehnliche Aktivitaet",
+    "SEC_004": "Zertifikat laeuft ab",
+    "QUAL_001": "Niedrige OCR-Qualitaet",
+    "QUAL_002": "Pruefung erforderlich",
+    "QUAL_003": "Datenkonflikt",
+    "WORK_001": "Genehmigung erforderlich",
+    "WORK_002": "Workflow blockiert",
+    "WORK_003": "Eskalation erforderlich"
+  },
+  "filter": {
+    "all": "Alle",
+    "unread": "Ungelesen",
+    "byCategory": "Nach Kategorie",
+    "bySeverity": "Nach Schweregrad",
+    "byStatus": "Nach Status",
+    "dateRange": "Zeitraum"
+  },
+  "stats": {
+    "total": "Gesamt",
+    "new": "Neu",
+    "critical": "Kritisch",
+    "today": "Heute"
+  },
+  "notification": {
+    "title": "Benachrichtigungseinstellungen",
+    "email": "E-Mail-Benachrichtigung",
+    "push": "Push-Benachrichtigung",
+    "slack": "Slack-Benachrichtigung",
+    "teams": "Teams-Benachrichtigung",
+    "frequency": {
+      "immediate": "Sofort",
+      "hourly": "Stuendlich",
+      "daily": "Taeglich",
+      "weekly": "Woechentlich"
+    }
+  }
+}

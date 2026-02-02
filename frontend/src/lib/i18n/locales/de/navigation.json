@@ -1,0 +1,130 @@
+{
+  "main": {
+    "home": "Startseite",
+    "dashboard": "Dashboard",
+    "documents": "Dokumente",
+    "upload": "Hochladen",
+    "search": "Suche",
+    "entities": "Geschaeftspartner",
+    "customers": "Kunden",
+    "suppliers": "Lieferanten",
+    "banking": "Banking",
+    "accounts": "Konten",
+    "transactions": "Transaktionen",
+    "payments": "Zahlungen",
+    "reconciliation": "Abstimmung",
+    "invoices": "Rechnungen",
+    "workflows": "Workflows",
+    "chat": "Chat",
+    "reports": "Berichte",
+    "analytics": "Analysen",
+    "alerts": "Warnungen"
+  },
+  "admin": {
+    "title": "Administration",
+    "users": "Benutzerverwaltung",
+    "companies": "Firmenverwaltung",
+    "roles": "Rollen & Berechtigungen",
+    "settings": "Einstellungen",
+    "system": "System",
+    "health": "Systemstatus",
+    "metrics": "Metriken",
+    "logs": "Protokolle",
+    "backup": "Backup",
+    "integrations": "Integrationen",
+    "datev": "DATEV",
+    "slack": "Slack",
+    "teams": "Microsoft Teams",
+    "ocr": "OCR-Einstellungen",
+    "ocrLearning": "OCR-Training"
+  },
+  "user": {
+    "profile": "Profil",
+    "settings": "Einstellungen",
+    "preferences": "Praeferenzen",
+    "notifications": "Benachrichtigungen",
+    "security": "Sicherheit",
+    "sessions": "Sitzungen",
+    "apiKeys": "API-Schluessel",
+    "help": "Hilfe",
+    "support": "Support",
+    "documentation": "Dokumentation",
+    "logout": "Abmelden"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "general": {
+      "title": "Allgemein",
+      "language": "Sprache",
+      "timezone": "Zeitzone",
+      "dateFormat": "Datumsformat",
+      "numberFormat": "Zahlenformat"
+    },
+    "display": {
+      "title": "Anzeige",
+      "theme": "Design",
+      "displayMode": "Anzeigemodus",
+      "modes": {
+        "system": "Systemeinstellung",
+        "light": "Hell",
+        "dark": "Dunkel",
+        "whitescreen": "Weissschirm (Hoher Kontrast)",
+        "blackscreen": "Schwarzschirm (OLED)"
+      },
+      "density": "Informationsdichte",
+      "densityOptions": {
+        "compact": "Kompakt",
+        "comfortable": "Komfortabel",
+        "spacious": "Grosszuegig"
+      }
+    },
+    "notifications": {
+      "title": "Benachrichtigungen",
+      "email": "E-Mail-Benachrichtigungen",
+      "browser": "Browser-Benachrichtigungen",
+      "push": "Push-Benachrichtigungen",
+      "sound": "Ton bei Benachrichtigungen",
+      "types": {
+        "documents": "Dokumente",
+        "workflows": "Workflows",
+        "payments": "Zahlungen",
+        "alerts": "Warnungen",
+        "system": "System"
+      }
+    },
+    "security": {
+      "title": "Sicherheit",
+      "changePassword": "Passwort aendern",
+      "twoFactor": "Zwei-Faktor-Authentifizierung",
+      "sessions": "Aktive Sitzungen",
+      "loginHistory": "Anmeldeverlauf",
+      "apiKeys": "API-Schluessel"
+    },
+    "privacy": {
+      "title": "Datenschutz",
+      "dataExport": "Daten exportieren",
+      "deleteAccount": "Konto loeschen",
+      "analytics": "Nutzungsanalyse",
+      "cookies": "Cookie-Einstellungen"
+    }
+  },
+  "breadcrumb": {
+    "home": "Startseite",
+    "back": "Zurueck",
+    "separator": "/"
+  },
+  "footer": {
+    "copyright": "Ablage-System",
+    "version": "Version {{version}}",
+    "terms": "Nutzungsbedingungen",
+    "privacy": "Datenschutz",
+    "imprint": "Impressum",
+    "support": "Support"
+  },
+  "mobile": {
+    "menu": "Menue",
+    "openMenu": "Menue oeffnen",
+    "closeMenu": "Menue schliessen",
+    "swipeToClose": "Wischen zum Schliessen"
+  }
+}

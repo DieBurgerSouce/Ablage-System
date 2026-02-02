@@ -1,0 +1,121 @@
+{
+  "title": "Fehler",
+  "general": {
+    "unexpected": "Ein unerwarteter Fehler ist aufgetreten",
+    "unknown": "Unbekannter Fehler",
+    "tryAgain": "Bitte versuchen Sie es erneut",
+    "contactSupport": "Bitte kontaktieren Sie den Support",
+    "technicalDetails": "Technische Details"
+  },
+  "http": {
+    "400": "Ungueltige Anfrage",
+    "401": "Nicht autorisiert",
+    "403": "Zugriff verweigert",
+    "404": "Nicht gefunden",
+    "405": "Methode nicht erlaubt",
+    "408": "Zeituberschreitung",
+    "409": "Konflikt",
+    "413": "Datei zu gross",
+    "415": "Nicht unterstuetztes Format",
+    "422": "Validierungsfehler",
+    "429": "Zu viele Anfragen",
+    "500": "Interner Serverfehler",
+    "502": "Bad Gateway",
+    "503": "Dienst nicht verfuegbar",
+    "504": "Gateway-Zeituberschreitung"
+  },
+  "network": {
+    "offline": "Keine Internetverbindung",
+    "timeout": "Die Anfrage hat das Zeitlimit ueberschritten",
+    "connectionFailed": "Verbindung zum Server fehlgeschlagen",
+    "connectionLost": "Verbindung zum Server verloren",
+    "retrying": "Verbindung wird wiederhergestellt...",
+    "reconnected": "Verbindung wiederhergestellt"
+  },
+  "auth": {
+    "invalidCredentials": "Ungueltige Anmeldedaten",
+    "sessionExpired": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
+    "tokenExpired": "Sitzung abgelaufen. Bitte erneut anmelden.",
+    "tokenInvalid": "Ungueltiger Authentifizierungstoken",
+    "notAuthenticated": "Authentifizierung erforderlich",
+    "permissionDenied": "Zugriff verweigert",
+    "insufficientPermissions": "Unzureichende Berechtigungen",
+    "accountDisabled": "Konto deaktiviert",
+    "accountLocked": "Konto gesperrt. Bitte kontaktieren Sie den Administrator.",
+    "tooManyAttempts": "Zu viele Anmeldeversuche. Bitte warten Sie {{minutes}} Minuten."
+  },
+  "validation": {
+    "required": "Dieses Feld ist erforderlich",
+    "email": "Bitte geben Sie eine gueltige E-Mail-Adresse ein",
+    "minLength": "Mindestens {{min}} Zeichen erforderlich",
+    "maxLength": "Maximal {{max}} Zeichen erlaubt",
+    "pattern": "Ungueltiges Format",
+    "numeric": "Bitte geben Sie eine Zahl ein",
+    "integer": "Bitte geben Sie eine ganze Zahl ein",
+    "positive": "Der Wert muss positiv sein",
+    "date": "Ungueltiges Datumsformat",
+    "dateRange": "Enddatum muss nach Startdatum liegen",
+    "url": "Bitte geben Sie eine gueltige URL ein",
+    "phone": "Bitte geben Sie eine gueltige Telefonnummer ein",
+    "iban": "Ungueltige IBAN",
+    "bic": "Ungueltiger BIC",
+    "vatId": "Ungueltige USt-IdNr.",
+    "passwordMismatch": "Passwoerter stimmen nicht ueberein",
+    "passwordTooWeak": "Passwort ist zu schwach",
+    "fileType": "Ungueltiger Dateityp",
+    "fileSize": "Datei ist zu gross (max. {{max}})"
+  },
+  "file": {
+    "uploadFailed": "Fehler beim Hochladen der Datei",
+    "downloadFailed": "Fehler beim Herunterladen der Datei",
+    "invalidType": "Ungueltiger Dateityp. Erlaubt: {{types}}",
+    "tooLarge": "Datei zu gross: {{size}} (max: {{max}})",
+    "corrupted": "Datei beschaedigt oder nicht lesbar",
+    "virusDetected": "Malware erkannt. Datei wurde blockiert."
+  },
+  "document": {
+    "notFound": "Dokument nicht gefunden",
+    "uploadFailed": "Fehler beim Hochladen des Dokuments",
+    "processingFailed": "Dokumentverarbeitung fehlgeschlagen",
+    "deleteFailed": "Fehler beim Loeschen des Dokuments",
+    "accessDenied": "Kein Zugriff auf dieses Dokument"
+  },
+  "ocr": {
+    "processingFailed": "OCR-Verarbeitung fehlgeschlagen",
+    "backendUnavailable": "OCR-Backend nicht verfuegbar",
+    "gpuOom": "GPU-Speicher voll. Fallback auf CPU wird verwendet.",
+    "timeout": "OCR-Zeituberschreitung",
+    "invalidDocument": "Dokument kann nicht verarbeitet werden",
+    "noTextExtracted": "Kein Text konnte extrahiert werden"
+  },
+  "database": {
+    "connectionFailed": "Datenbankverbindung fehlgeschlagen",
+    "queryFailed": "Datenbankabfrage fehlgeschlagen",
+    "saveFailed": "Speichern fehlgeschlagen",
+    "deleteFailed": "Loeschen fehlgeschlagen",
+    "duplicateEntry": "Eintrag existiert bereits"
+  },
+  "entity": {
+    "notFound": "Geschaeftspartner nicht gefunden",
+    "createFailed": "Geschaeftspartner konnte nicht erstellt werden",
+    "updateFailed": "Geschaeftspartner konnte nicht aktualisiert werden",
+    "deleteFailed": "Geschaeftspartner konnte nicht geloescht werden",
+    "duplicateCustomerNumber": "Kundennummer bereits vergeben",
+    "duplicateSupplierNumber": "Lieferantennummer bereits vergeben"
+  },
+  "payment": {
+    "failed": "Zahlung fehlgeschlagen",
+    "insufficientFunds": "Unzureichende Deckung",
+    "invalidAccount": "Ungueltiges Konto",
+    "executionFailed": "Zahlungsausfuehrung fehlgeschlagen"
+  },
+  "rateLimit": {
+    "exceeded": "Zu viele Anfragen. Bitte warten Sie {{seconds}} Sekunden.",
+    "quotaExceeded": "Tageskontingent erreicht. Bitte versuchen Sie es morgen erneut."
+  },
+  "service": {
+    "unavailable": "Dienst voruebergehend nicht verfuegbar",
+    "maintenance": "Wartungsarbeiten. Bitte versuchen Sie es spaeter.",
+    "overloaded": "System ueberlastet. Bitte versuchen Sie es spaeter."
+  }
+}

@@ -604,6 +604,98 @@ class Settings(BaseSettings):
         description="Maximale Slack-Nachrichten pro Minute"
     )
 
+    # =============================================================================
+    # Microsoft Teams Integration
+    # =============================================================================
+    # Webhook-URL: Erstellen in Teams-Kanal -> Connectors -> Incoming Webhook
+    # Oder via Power Automate: https://flow.microsoft.com
+    TEAMS_WEBHOOK_URL: Optional[SecretStr] = Field(
+        default=None,
+        description="Microsoft Teams Incoming Webhook URL fuer Benachrichtigungen"
+    )
+    # Standard-Kanal Name (nur fuer Logging/Anzeige, nicht fuer Routing)
+    TEAMS_DEFAULT_CHANNEL: Optional[str] = Field(
+        default=None,
+        description="Standard-Teams-Kanal Name (fuer Anzeige)"
+    )
+    # Aktivierung der Teams-Integration
+    TEAMS_ENABLED: bool = Field(
+        default=False,
+        description="Microsoft Teams-Integration aktivieren"
+    )
+    # Notification-Typen die an Teams gesendet werden
+    TEAMS_NOTIFICATION_TYPES: List[str] = Field(
+        default_factory=lambda: [
+            "document_processed",
+            "document_error",
+            "approval_required",
+            "approval_completed",
+            "workflow_completed",
+            "high_risk_entity",
+            "dunning_escalation",
+            "payment_reminder",
+            "system_alert",
+            "error_notification",
+        ],
+        description="Notification-Typen die an Teams weitergeleitet werden"
+    )
+    # Rate Limiting fuer Teams (max Nachrichten pro Minute)
+    TEAMS_RATE_LIMIT_PER_MINUTE: int = Field(
+        default=30,
+        ge=1, le=100,
+        description="Maximale Teams-Nachrichten pro Minute"
+    )
+
+    # =============================================================================
+    # Twilio SMS/WhatsApp Integration
+    # =============================================================================
+    # Account SID und Auth Token: Erstellen unter https://console.twilio.com
+    TWILIO_ACCOUNT_SID: Optional[str] = Field(
+        default=None,
+        description="Twilio Account SID"
+    )
+    TWILIO_AUTH_TOKEN: Optional[SecretStr] = Field(
+        default=None,
+        description="Twilio Auth Token"
+    )
+    # Telefonnummern fuer SMS und WhatsApp
+    TWILIO_PHONE_NUMBER: Optional[str] = Field(
+        default=None,
+        description="Twilio Absender-Telefonnummer (E.164 Format: +49...)"
+    )
+    TWILIO_WHATSAPP_NUMBER: Optional[str] = Field(
+        default=None,
+        description="Twilio WhatsApp-Nummer (Format: whatsapp:+14155238886)"
+    )
+    # Feature-Flags
+    TWILIO_ENABLED: bool = Field(
+        default=False,
+        description="Twilio SMS/WhatsApp Integration aktivieren"
+    )
+    # Budget-Schutz: Maximale SMS pro Tag
+    TWILIO_MAX_SMS_PER_DAY: int = Field(
+        default=100,
+        ge=1, le=1000,
+        description="Maximale SMS pro Tag (Budget-Schutz)"
+    )
+    # Budget-Schutz: Maximales monatliches Budget in EUR
+    TWILIO_MAX_MONTHLY_BUDGET_EUR: float = Field(
+        default=50.0,
+        ge=1.0, le=1000.0,
+        description="Maximales monatliches Twilio-Budget in EUR"
+    )
+    # Notification-Typen die SMS ausloesen (nur kritische)
+    TWILIO_SMS_NOTIFICATION_TYPES: List[str] = Field(
+        default_factory=lambda: [
+            "critical_alert",
+            "fraud_detected",
+            "security_incident",
+            "system_down",
+            "escalation",
+        ],
+        description="Notification-Typen die SMS ausloesen"
+    )
+
     # Development
     TESTING: bool = False
 
@@ -657,6 +749,38 @@ class Settings(BaseSettings):
     RAG_SEMANTIC_THRESHOLD: float = 0.7  # Minimum Cosine Similarity
     RAG_RERANK_ENABLED: bool = True
     RAG_RERANK_TOP_K: int = 10
+
+    # =============================================================================
+    # Conversational Assistant (Chat mit Ollama)
+    # =============================================================================
+    ASSISTANT_ENABLED: bool = Field(
+        default=True,
+        description="Conversational Assistant aktivieren"
+    )
+    ASSISTANT_MAX_CONTEXT_DOCS: int = Field(
+        default=5,
+        ge=1, le=20,
+        description="Maximale Anzahl Dokumente fuer RAG-Kontext"
+    )
+    ASSISTANT_OLLAMA_MODEL: str = Field(
+        default="llama3.1",
+        description="Ollama-Modell fuer Conversational Assistant"
+    )
+    ASSISTANT_TEMPERATURE: float = Field(
+        default=0.3,
+        ge=0.0, le=2.0,
+        description="Temperatur fuer LLM-Antworten (0=deterministisch, 2=kreativ)"
+    )
+    ASSISTANT_MAX_HISTORY: int = Field(
+        default=50,
+        ge=10, le=200,
+        description="Maximale Anzahl Nachrichten pro Session"
+    )
+    ASSISTANT_SESSION_EXPIRY_DAYS: int = Field(
+        default=30,
+        ge=1, le=365,
+        description="Tage bis Session-Archivierung"
+    )
 
     # =============================================================================
     # E-Invoice Settings (ZUGFeRD / XRechnung)

@@ -1,0 +1,143 @@
+{
+  "title": "Workflows",
+  "subtitle": "Prozessautomatisierung",
+  "workflow": "Workflow",
+  "workflows": "Workflows",
+  "process": "Prozess",
+  "processes": "Prozesse",
+  "list": {
+    "title": "Workflow-Uebersicht",
+    "empty": "Keine Workflows vorhanden",
+    "active": "Aktive Workflows",
+    "completed": "Abgeschlossene Workflows",
+    "pending": "Wartende Workflows"
+  },
+  "status": {
+    "draft": "Entwurf",
+    "pending": "Ausstehend",
+    "inProgress": "In Bearbeitung",
+    "waitingApproval": "Wartet auf Genehmigung",
+    "approved": "Genehmigt",
+    "rejected": "Abgelehnt",
+    "completed": "Abgeschlossen",
+    "cancelled": "Abgebrochen",
+    "failed": "Fehlgeschlagen",
+    "onHold": "Pausiert"
+  },
+  "type": {
+    "documentApproval": "Dokumentgenehmigung",
+    "invoiceApproval": "Rechnungsgenehmigung",
+    "paymentApproval": "Zahlungsgenehmigung",
+    "contractApproval": "Vertragsgenehmigung",
+    "purchaseOrder": "Bestellgenehmigung",
+    "expenseReport": "Spesenabrechnung",
+    "custom": "Benutzerdefiniert"
+  },
+  "steps": {
+    "title": "Workflow-Schritte",
+    "current": "Aktueller Schritt",
+    "next": "Naechster Schritt",
+    "previous": "Vorheriger Schritt",
+    "completed": "Abgeschlossen",
+    "pending": "Ausstehend",
+    "skipped": "Uebersprungen"
+  },
+  "actions": {
+    "start": "Workflow starten",
+    "approve": "Genehmigen",
+    "reject": "Ablehnen",
+    "cancel": "Abbrechen",
+    "pause": "Pausieren",
+    "resume": "Fortsetzen",
+    "reassign": "Neu zuweisen",
+    "escalate": "Eskalieren",
+    "comment": "Kommentar hinzufuegen",
+    "delegate": "Delegieren"
+  },
+  "approval": {
+    "title": "Genehmigung",
+    "required": "Genehmigung erforderlich",
+    "approvedBy": "Genehmigt von {{name}}",
+    "rejectedBy": "Abgelehnt von {{name}}",
+    "pendingApproval": "Wartet auf Genehmigung von {{name}}",
+    "approvalDate": "Genehmigt am {{date}}",
+    "rejectionReason": "Ablehnungsgrund",
+    "comment": "Kommentar",
+    "commentPlaceholder": "Optionaler Kommentar zur Genehmigung...",
+    "history": "Genehmigungsverlauf"
+  },
+  "rules": {
+    "title": "Workflow-Regeln",
+    "condition": "Bedingung",
+    "action": "Aktion",
+    "trigger": "Ausloeser",
+    "assignment": "Zuweisung",
+    "deadline": "Frist",
+    "escalation": "Eskalation",
+    "notification": "Benachrichtigung"
+  },
+  "assignment": {
+    "title": "Zuweisung",
+    "assignedTo": "Zugewiesen an",
+    "assignedBy": "Zugewiesen von",
+    "assignedAt": "Zugewiesen am",
+    "unassigned": "Nicht zugewiesen",
+    "reassign": "Neu zuweisen",
+    "delegate": "Delegieren",
+    "selectUser": "Benutzer auswaehlen"
+  },
+  "deadline": {
+    "title": "Frist",
+    "dueDate": "Faelligkeit",
+    "overdue": "Ueberfaellig",
+    "daysRemaining": "{{days}} Tage verbleibend",
+    "hoursRemaining": "{{hours}} Stunden verbleibend",
+    "dueSoon": "Bald faellig",
+    "dueToday": "Heute faellig",
+    "noDueDate": "Keine Frist"
+  },
+  "escalation": {
+    "title": "Eskalation",
+    "escalated": "Eskaliert",
+    "escalatedTo": "Eskaliert an {{name}}",
+    "escalationReason": "Eskalationsgrund",
+    "autoEscalation": "Automatische Eskalation",
+    "manualEscalation": "Manuelle Eskalation",
+    "escalationLevel": "Eskalationsstufe {{level}}"
+  },
+  "notification": {
+    "title": "Benachrichtigungen",
+    "email": "E-Mail-Benachrichtigung",
+    "slack": "Slack-Benachrichtigung",
+    "teams": "Teams-Benachrichtigung",
+    "inApp": "In-App-Benachrichtigung",
+    "reminder": "Erinnerung",
+    "sent": "Benachrichtigung gesendet"
+  },
+  "template": {
+    "title": "Workflow-Vorlagen",
+    "create": "Vorlage erstellen",
+    "edit": "Vorlage bearbeiten",
+    "delete": "Vorlage loeschen",
+    "duplicate": "Vorlage duplizieren",
+    "useTemplate": "Vorlage verwenden",
+    "noTemplates": "Keine Vorlagen vorhanden"
+  },
+  "automation": {
+    "title": "Automatisierung",
+    "autoApprove": "Automatisch genehmigen",
+    "autoReject": "Automatisch ablehnen",
+    "autoAssign": "Automatisch zuweisen",
+    "autoEscalate": "Automatisch eskalieren",
+    "conditions": "Bedingungen",
+    "threshold": "Schwellenwert"
+  },
+  "metrics": {
+    "title": "Workflow-Metriken",
+    "averageTime": "Durchschnittliche Bearbeitungszeit",
+    "completionRate": "Abschlussrate",
+    "approvalRate": "Genehmigungsrate",
+    "escalationRate": "Eskalationsrate",
+    "bottlenecks": "Engpaesse"
+  }
+}

@@ -37,6 +37,22 @@ from app.services.ocr.cross_backend_consistency_service import (
     check_backend_consistency,
     calculate_backend_agreement,
 )
+from app.services.ocr.feedback_service import (
+    EnhancedOCRFeedbackService,
+    CorrectionFeedback as FeedbackCorrectionFeedback,
+    CorrectionResult,
+    QueueItem,
+    LeaderboardEntry,
+    UserStats,
+    BatchCorrectionResult,
+    LeaderboardPeriod,
+    QueuePriority,
+    CorrectionStatus,
+    get_feedback_service,
+    POINTS_CONFIG,
+    LEADERBOARD_CONFIG,
+    LOW_CONFIDENCE_THRESHOLD,
+)
 
 # Re-export quick_ocr_preview from the ocr.py module (legacy)
 # Note: app/services/ocr.py coexists with app/services/ocr/ package
@@ -87,4 +103,19 @@ __all__ = [
     "calculate_backend_agreement",
     # Legacy
     "quick_ocr_preview",
+    # Enhanced Feedback Service
+    "EnhancedOCRFeedbackService",
+    "FeedbackCorrectionFeedback",
+    "CorrectionResult",
+    "QueueItem",
+    "LeaderboardEntry",
+    "UserStats",
+    "BatchCorrectionResult",
+    "LeaderboardPeriod",
+    "QueuePriority",
+    "CorrectionStatus",
+    "get_feedback_service",
+    "POINTS_CONFIG",
+    "LEADERBOARD_CONFIG",
+    "LOW_CONFIDENCE_THRESHOLD",
 ]

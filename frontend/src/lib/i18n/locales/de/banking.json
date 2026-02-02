@@ -1,0 +1,203 @@
+{
+  "title": "Banking",
+  "subtitle": "Finanzverwaltung",
+  "accounts": {
+    "title": "Konten",
+    "subtitle": "Bankkontenverwaltung",
+    "add": "Konto hinzufuegen",
+    "edit": "Konto bearbeiten",
+    "delete": "Konto loeschen",
+    "noAccounts": "Keine Konten vorhanden",
+    "iban": "IBAN",
+    "bic": "BIC",
+    "bankName": "Bankname",
+    "accountHolder": "Kontoinhaber",
+    "accountNumber": "Kontonummer",
+    "balance": "Kontostand",
+    "currency": "Waehrung",
+    "lastSync": "Letzte Synchronisation",
+    "status": {
+      "active": "Aktiv",
+      "inactive": "Inaktiv",
+      "blocked": "Gesperrt"
+    }
+  },
+  "transactions": {
+    "title": "Transaktionen",
+    "subtitle": "Kontobewegungen",
+    "import": "Transaktionen importieren",
+    "export": "Transaktionen exportieren",
+    "noTransactions": "Keine Transaktionen vorhanden",
+    "fields": {
+      "date": "Buchungsdatum",
+      "valueDate": "Wertstellungsdatum",
+      "amount": "Betrag",
+      "description": "Verwendungszweck",
+      "counterparty": "Gegenkonto",
+      "counterpartyName": "Empfaenger/Auftraggeber",
+      "counterpartyIban": "IBAN Gegenkonto",
+      "reference": "Referenz",
+      "transactionType": "Transaktionsart",
+      "status": "Status",
+      "category": "Kategorie"
+    },
+    "type": {
+      "credit": "Gutschrift",
+      "debit": "Lastschrift",
+      "transfer": "Ueberweisung",
+      "standing": "Dauerauftrag",
+      "directDebit": "Lastschrifteinzug",
+      "fee": "Gebuehr",
+      "interest": "Zinsen",
+      "other": "Sonstiges"
+    },
+    "import": {
+      "title": "Transaktionen importieren",
+      "formats": {
+        "mt940": "MT940 (SWIFT)",
+        "camt053": "CAMT.053 (ISO 20022)",
+        "csv": "CSV",
+        "excel": "Excel"
+      },
+      "success": "{{count}} Transaktionen importiert",
+      "error": "Fehler beim Import",
+      "duplicates": "{{count}} Duplikate uebersprungen"
+    }
+  },
+  "reconciliation": {
+    "title": "Kontoabstimmung",
+    "subtitle": "Transaktionen mit Dokumenten abgleichen",
+    "matched": "Abgestimmt",
+    "unmatched": "Nicht abgestimmt",
+    "pending": "Ausstehend",
+    "partial": "Teilweise abgestimmt",
+    "noMatches": "Keine passenden Transaktionen gefunden",
+    "autoMatch": "Automatisch abgleichen",
+    "manualMatch": "Manuell zuordnen",
+    "unmatch": "Zuordnung aufheben",
+    "suggestions": "Vorschlaege",
+    "confidence": "Uebereinstimmung: {{percent}}%",
+    "matchCriteria": {
+      "amount": "Betrag",
+      "date": "Datum",
+      "reference": "Referenz",
+      "counterparty": "Geschaeftspartner"
+    },
+    "status": {
+      "matched": "Abgestimmt",
+      "unmatched": "Offen",
+      "partialMatch": "Teilweise",
+      "manualReview": "Manuelle Pruefung"
+    }
+  },
+  "payments": {
+    "title": "Zahlungen",
+    "subtitle": "Zahlungsverwaltung",
+    "create": "Zahlung erstellen",
+    "edit": "Zahlung bearbeiten",
+    "delete": "Zahlung loeschen",
+    "approve": "Zahlung genehmigen",
+    "reject": "Zahlung ablehnen",
+    "execute": "Zahlung ausfuehren",
+    "cancel": "Zahlung stornieren",
+    "noPayments": "Keine Zahlungen vorhanden",
+    "fields": {
+      "amount": "Betrag",
+      "currency": "Waehrung",
+      "recipient": "Empfaenger",
+      "recipientIban": "Empfaenger-IBAN",
+      "recipientBic": "Empfaenger-BIC",
+      "reference": "Verwendungszweck",
+      "executionDate": "Ausfuehrungsdatum",
+      "urgency": "Dringlichkeit"
+    },
+    "status": {
+      "draft": "Entwurf",
+      "pending": "Ausstehend",
+      "approved": "Genehmigt",
+      "rejected": "Abgelehnt",
+      "executing": "Wird ausgefuehrt",
+      "executed": "Ausgefuehrt",
+      "failed": "Fehlgeschlagen",
+      "cancelled": "Storniert"
+    },
+    "type": {
+      "single": "Einzelueberweisung",
+      "batch": "Sammelueberweisung",
+      "scheduled": "Terminueberweisung",
+      "standing": "Dauerauftrag"
+    }
+  },
+  "invoices": {
+    "title": "Rechnungsverfolgung",
+    "subtitle": "Offene Rechnungen und Zahlungsstatus",
+    "open": "Offene Rechnungen",
+    "paid": "Bezahlte Rechnungen",
+    "overdue": "Ueberfaellige Rechnungen",
+    "total": "Gesamtbetrag",
+    "outstanding": "Ausstehend",
+    "fields": {
+      "invoiceNumber": "Rechnungsnummer",
+      "invoiceDate": "Rechnungsdatum",
+      "dueDate": "Faelligkeitsdatum",
+      "amount": "Betrag",
+      "paidAmount": "Bezahlt",
+      "outstandingAmount": "Ausstehend",
+      "status": "Status",
+      "entity": "Geschaeftspartner"
+    },
+    "status": {
+      "open": "Offen",
+      "partiallyPaid": "Teilweise bezahlt",
+      "paid": "Bezahlt",
+      "overdue": "Ueberfaellig",
+      "dunning1": "1. Mahnung",
+      "dunning2": "2. Mahnung",
+      "dunning3": "3. Mahnung",
+      "collection": "Inkasso",
+      "cancelled": "Storniert"
+    },
+    "actions": {
+      "markPaid": "Als bezahlt markieren",
+      "sendReminder": "Erinnerung senden",
+      "increaseDunning": "Mahnstufe erhoehen",
+      "addPayment": "Zahlung erfassen"
+    }
+  },
+  "skonto": {
+    "title": "Skonto-Tracking",
+    "available": "Skonto verfuegbar",
+    "deadline": "Skonto-Frist",
+    "percentage": "Skonto: {{percent}}%",
+    "amount": "Skonto-Betrag: {{amount}}",
+    "daysRemaining": "Noch {{days}} Tage",
+    "expired": "Skonto abgelaufen",
+    "applied": "Skonto angewendet",
+    "missed": "Skonto verpasst",
+    "savings": "Ersparnis: {{amount}}"
+  },
+  "cashflow": {
+    "title": "Cashflow",
+    "subtitle": "Liquiditaetsuebersicht",
+    "inflow": "Einnahmen",
+    "outflow": "Ausgaben",
+    "balance": "Saldo",
+    "forecast": "Prognose",
+    "periods": {
+      "today": "Heute",
+      "thisWeek": "Diese Woche",
+      "thisMonth": "Diesen Monat",
+      "thisQuarter": "Dieses Quartal",
+      "thisYear": "Dieses Jahr"
+    }
+  },
+  "reports": {
+    "title": "Berichte",
+    "accountStatement": "Kontoauszug",
+    "transactionReport": "Transaktionsbericht",
+    "reconciliationReport": "Abstimmungsbericht",
+    "paymentReport": "Zahlungsbericht",
+    "generate": "Bericht erstellen",
+    "download": "Herunterladen"
+  }
+}

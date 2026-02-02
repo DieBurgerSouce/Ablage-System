@@ -379,6 +379,91 @@ export interface SplitItem {
     amount: number;
 }
 
+// Enhanced Reconciliation Types (New API)
+export interface BulkAutoMatchResponse {
+    total_processed: number;
+    matched_count: number;
+    high_confidence_matches: number;
+    partial_count: number;
+    unmatched_count: number;
+    queued_for_review: number;
+    processing_time_ms: number;
+    results: Array<{
+        transaction_id: string;
+        status: string;
+        matched_document_id: string | null;
+        confidence: number | null;
+        method: string | null;
+    }>;
+}
+
+export interface UnmatchedTransactionEnhanced {
+    id: string;
+    bank_account_id: string;
+    booking_date: string;
+    value_date: string;
+    amount: number;
+    currency: string;
+    counterparty_name: string | null;
+    counterparty_iban: string | null;
+    reference_text: string | null;
+    transaction_type: string | null;
+    suggestion_count: number;
+    best_match_confidence: number | null;
+    days_since_booking: number;
+}
+
+export interface ManualMatchResponse {
+    success: boolean;
+    transaction_id: string;
+    status: string;
+    matched_document_id: string;
+    allocated_amount?: number;
+    confidence?: number;
+    method?: string;
+    message: string;
+}
+
+export interface MatchSuggestionEnhanced {
+    document_id: string;
+    invoice_number: string | null;
+    invoice_date: string | null;
+    due_date: string | null;
+    gross_amount: number;
+    counterparty_name: string | null;
+    counterparty_iban: string | null;
+    customer_number: string | null;
+    confidence: number;
+    match_method: string;
+    match_type: 'exact' | 'fuzzy' | 'partial' | 'manual';
+    match_reasons: string[];
+    discrepancy_amount: number | null;
+}
+
+export interface RejectMatchResponse {
+    success: boolean;
+    transaction_id: string;
+    document_id: string;
+    reason: string;
+    never_suggest_again: boolean;
+    message: string;
+}
+
+export interface ReconciliationStatsResponse {
+    total_transactions: number;
+    matched_count: number;
+    unmatched_count: number;
+    partial_count: number;
+    manual_count: number;
+    ignored_count: number;
+    match_rate: number;
+    auto_match_success_rate: number;
+    avg_confidence: number | null;
+    total_matched_amount: number;
+    total_unmatched_amount: number;
+    by_method: Record<string, number>;
+}
+
 // Payment Types
 export type PaymentStatus =
     | 'draft'
@@ -794,6 +879,82 @@ export const bankingService = {
 
     autoReconcileSingle: async (transactionId: string) => {
         const response = await apiClient.post<{ matched: boolean; document_id?: string; confidence?: number }>(`/banking/reconciliation/auto/${transactionId}`);
+        return response.data;
+    },
+
+    // ==================== Enhanced Reconciliation (New API) ====================
+
+    /**
+     * Startet automatischen Bulk-Abgleich fuer alle unabgeglichenen Transaktionen
+     */
+    autoMatchTransactions: async (params?: {
+        bank_account_id?: string;
+        min_confidence?: number;
+        limit?: number;
+    }) => {
+        const response = await apiClient.post<BulkAutoMatchResponse>('/reconciliation/auto-match', null, { params });
+        return response.data;
+    },
+
+    /**
+     * Listet unabgeglichene Transaktionen mit erweiterten Informationen
+     */
+    getUnmatchedTransactionsEnhanced: async (params?: {
+        bank_account_id?: string;
+        min_amount?: number;
+        max_amount?: number;
+        days_old?: number;
+        sort_by?: 'booking_date' | 'amount' | 'counterparty';
+        sort_order?: 'asc' | 'desc';
+        offset?: number;
+        limit?: number;
+    }) => {
+        const response = await apiClient.get<UnmatchedTransactionEnhanced[]>('/reconciliation/unmatched', { params });
+        return response.data;
+    },
+
+    /**
+     * Manueller Abgleich mit erweiterten Optionen (Teilzahlungen)
+     */
+    createManualMatch: async (transactionId: string, data: {
+        document_id: string;
+        notes?: string;
+        is_partial?: boolean;
+        allocated_amount?: number;
+    }) => {
+        const response = await apiClient.post<ManualMatchResponse>(`/reconciliation/match/${transactionId}`, data);
+        return response.data;
+    },
+
+    /**
+     * Holt erweiterte Match-Vorschlaege fuer eine Transaktion
+     */
+    getMatchSuggestionsEnhanced: async (transactionId: string, params?: {
+        limit?: number;
+        min_confidence?: number;
+    }) => {
+        const response = await apiClient.get<MatchSuggestionEnhanced[]>(`/reconciliation/suggestions/${transactionId}`, { params });
+        return response.data;
+    },
+
+    /**
+     * Lehnt einen Match-Vorschlag ab
+     */
+    rejectMatch: async (transactionId: string, documentId: string, data: {
+        reason: string;
+        never_suggest_again?: boolean;
+    }) => {
+        const response = await apiClient.post<RejectMatchResponse>(`/reconciliation/reject/${transactionId}/${documentId}`, data);
+        return response.data;
+    },
+
+    /**
+     * Holt Reconciliation-Statistiken
+     */
+    getReconciliationStats: async (bankAccountId?: string) => {
+        const response = await apiClient.get<ReconciliationStatsResponse>('/reconciliation/stats', {
+            params: bankAccountId ? { bank_account_id: bankAccountId } : undefined,
+        });
         return response.data;
     },
 
