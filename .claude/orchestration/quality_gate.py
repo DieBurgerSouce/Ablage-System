@@ -1,20 +1,39 @@
 """
-Quality Gate für Multi-Model Orchestration.
+Quality Gate fuer Multi-Model Orchestration.
 
-Validiert Output von Subagents und entscheidet über Eskalation:
+Validiert Output von Subagents und entscheidet ueber Eskalation:
 - Type-Hints Validierung
 - Deutsche Nachrichten Check
 - GPU-Pattern Validierung
 - Security Anti-Pattern Detection
+
+NOTE: For Team Workflow quality gates (gate_1_research through gate_6_integration),
+use quality_gates.py (plural) instead. This module handles single-agent output
+validation for the Orchestrator's model routing system.
 """
 
 import re
 import ast
 import subprocess
 from dataclasses import dataclass
-from typing import List, Optional, Callable, Dict, Any
+from typing import List, Optional, Callable, Dict
 from enum import Enum
 from pathlib import Path
+
+
+class CheckStatus(Enum):
+    """Status eines einzelnen Quality Checks."""
+    PASSED = "passed"
+    WARNING = "warning"
+    FAILED = "failed"
+
+
+@dataclass
+class SingleCheckResult:
+    """Typisiertes Ergebnis eines einzelnen Checks."""
+    name: str
+    status: CheckStatus
+    message: str = ""
 
 
 class QualityLevel(Enum):
@@ -33,14 +52,14 @@ class QualityResult:
     warnings: List[str]
     should_escalate: bool
     escalation_reason: Optional[str] = None
-    details: Dict[str, Any] = None
+    details: Optional[Dict[str, str]] = None
 
 
 class QualityGate:
     """Validiert Output von Subagents."""
 
-    def __init__(self):
-        self.checks: List[Callable] = [
+    def __init__(self) -> None:
+        self.checks: List[Callable[[str, str, Dict[str, str]], SingleCheckResult]] = [
             self._check_type_hints,
             self._check_german_messages,
             self._check_gpu_patterns,
@@ -54,35 +73,35 @@ class QualityGate:
         code: str,
         file_path: str,
         model_used: str,
-        context: Dict[str, Any] = None
+        context: Optional[Dict[str, str]] = None
     ) -> QualityResult:
         """
-        Führt alle Quality Checks durch.
+        Fuehrt alle Quality Checks durch.
 
         Args:
             code: Zu validierender Code
             file_path: Pfad der Datei
             model_used: Verwendetes Modell
-            context: Zusätzlicher Kontext
+            context: Zusaetzlicher Kontext
 
         Returns:
             QualityResult mit Validierungsergebnis
         """
 
-        passed = []
-        failed = []
-        warnings = []
+        passed: List[str] = []
+        failed: List[str] = []
+        warnings: List[str] = []
         context = context or {}
 
         for check in self.checks:
             try:
                 result = check(code, file_path, context)
-                if result["status"] == "passed":
-                    passed.append(result["name"])
-                elif result["status"] == "warning":
-                    warnings.append(f"{result['name']}: {result['message']}")
+                if result.status == CheckStatus.PASSED:
+                    passed.append(result.name)
+                elif result.status == CheckStatus.WARNING:
+                    warnings.append(f"{result.name}: {result.message}")
                 else:
-                    failed.append(f"{result['name']}: {result['message']}")
+                    failed.append(f"{result.name}: {result.message}")
             except Exception as e:
                 warnings.append(f"Check-Fehler ({check.__name__}): {e}")
 
@@ -115,7 +134,7 @@ class QualityGate:
             details={
                 "model_used": model_used,
                 "file_path": file_path,
-                "total_checks": len(self.checks),
+                "total_checks": str(len(self.checks)),
             }
         )
 
@@ -129,58 +148,57 @@ class QualityGate:
         ]
         return any(cp in file_path for cp in critical_paths)
 
-    def _check_syntax(self, code: str, path: str, context: Dict) -> Dict:
-        """Prüft Python-Syntax."""
+    def _check_syntax(self, code: str, path: str, context: Dict[str, str]) -> SingleCheckResult:
+        """Prueft Python-Syntax."""
         if not path.endswith('.py'):
-            return {"name": "syntax", "status": "passed"}
+            return SingleCheckResult(name="syntax", status=CheckStatus.PASSED)
 
         try:
             ast.parse(code)
-            return {"name": "syntax", "status": "passed"}
+            return SingleCheckResult(name="syntax", status=CheckStatus.PASSED)
         except SyntaxError as e:
-            return {
-                "name": "syntax",
-                "status": "failed",
-                "message": f"Syntax-Fehler: {e.msg} (Zeile {e.lineno})"
-            }
+            return SingleCheckResult(
+                name="syntax",
+                status=CheckStatus.FAILED,
+                message=f"Syntax-Fehler: {e.msg} (Zeile {e.lineno})",
+            )
 
-    def _check_type_hints(self, code: str, path: str, context: Dict) -> Dict:
-        """Prüft Type-Hints in Python-Code."""
+    def _check_type_hints(self, code: str, path: str, context: Dict[str, str]) -> SingleCheckResult:
+        """Prueft Type-Hints in Python-Code."""
         if not path.endswith('.py'):
-            return {"name": "type_hints", "status": "passed"}
+            return SingleCheckResult(name="type_hints", status=CheckStatus.PASSED)
 
         try:
             tree = ast.parse(code)
         except SyntaxError:
-            return {"name": "type_hints", "status": "failed", "message": "Syntax-Fehler"}
+            return SingleCheckResult(
+                name="type_hints", status=CheckStatus.FAILED, message="Syntax-Fehler"
+            )
 
-        functions = []
-        missing_hints = []
+        missing_hints: List[str] = []
 
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef):
-                functions.append(node.name)
-
-                # Prüfe Return-Type
+                # Pruefe Return-Type
                 if node.returns is None and node.name != "__init__":
                     missing_hints.append(f"Funktion '{node.name}' ohne Return-Type")
 
-                # Prüfe Parameter-Types
+                # Pruefe Parameter-Types
                 for arg in node.args.args:
                     if arg.annotation is None and arg.arg != "self":
                         missing_hints.append(f"Parameter '{arg.arg}' in '{node.name}' ohne Type-Hint")
 
         if missing_hints:
-            return {
-                "name": "type_hints",
-                "status": "failed",
-                "message": f"{len(missing_hints)} fehlende Type-Hints: {missing_hints[:3]}"
-            }
+            return SingleCheckResult(
+                name="type_hints",
+                status=CheckStatus.FAILED,
+                message=f"{len(missing_hints)} fehlende Type-Hints: {missing_hints[:3]}",
+            )
 
-        return {"name": "type_hints", "status": "passed"}
+        return SingleCheckResult(name="type_hints", status=CheckStatus.PASSED)
 
-    def _check_german_messages(self, code: str, path: str, context: Dict) -> Dict:
-        """Prüft auf englische User-Facing Strings."""
+    def _check_german_messages(self, code: str, path: str, context: Dict[str, str]) -> SingleCheckResult:
+        """Prueft auf englische User-Facing Strings."""
         english_patterns = [
             r'"Error\s*:',
             r'"Warning\s*:',
@@ -194,12 +212,11 @@ class QualityGate:
             r'"Internal server error"',
         ]
 
-        found_english = []
+        found_english: List[str] = []
 
         for pattern in english_patterns:
             matches = re.finditer(pattern, code, re.IGNORECASE)
             for match in matches:
-                # Prüfe ob es in einem Kommentar oder Docstring ist
                 line_start = code.rfind('\n', 0, match.start()) + 1
                 line = code[line_start:code.find('\n', match.start())]
 
@@ -207,16 +224,16 @@ class QualityGate:
                     found_english.append(match.group())
 
         if found_english:
-            return {
-                "name": "german_messages",
-                "status": "failed",
-                "message": f"Englische Texte gefunden: {found_english[:3]}"
-            }
+            return SingleCheckResult(
+                name="german_messages",
+                status=CheckStatus.FAILED,
+                message=f"Englische Texte gefunden: {found_english[:3]}",
+            )
 
-        return {"name": "german_messages", "status": "passed"}
+        return SingleCheckResult(name="german_messages", status=CheckStatus.PASSED)
 
-    def _check_gpu_patterns(self, code: str, path: str, context: Dict) -> Dict:
-        """Prüft GPU-Management Patterns."""
+    def _check_gpu_patterns(self, code: str, path: str, context: Dict[str, str]) -> SingleCheckResult:
+        """Prueft GPU-Management Patterns."""
         gpu_usage_patterns = [
             r'\.cuda\(\)',
             r'torch\.cuda',
@@ -227,40 +244,37 @@ class QualityGate:
         has_gpu_usage = any(re.search(pattern, code) for pattern in gpu_usage_patterns)
 
         if has_gpu_usage:
-            # Prüfe auf gpu_memory_guard
             if 'gpu_memory_guard' not in code:
-                return {
-                    "name": "gpu_patterns",
-                    "status": "warning",
-                    "message": "GPU-Nutzung ohne gpu_memory_guard Context Manager"
-                }
+                return SingleCheckResult(
+                    name="gpu_patterns",
+                    status=CheckStatus.WARNING,
+                    message="GPU-Nutzung ohne gpu_memory_guard Context Manager",
+                )
 
-            # Prüfe auf VRAM-Limits
             if 'vram' not in code.lower() and '16gb' not in code.lower():
-                return {
-                    "name": "gpu_patterns",
-                    "status": "warning",
-                    "message": "GPU-Code ohne VRAM-Limit Berücksichtigung"
-                }
+                return SingleCheckResult(
+                    name="gpu_patterns",
+                    status=CheckStatus.WARNING,
+                    message="GPU-Code ohne VRAM-Limit Beruecksichtigung",
+                )
 
-        return {"name": "gpu_patterns", "status": "passed"}
+        return SingleCheckResult(name="gpu_patterns", status=CheckStatus.PASSED)
 
-    def _check_security_patterns(self, code: str, path: str, context: Dict) -> Dict:
-        """Prüft Sicherheits-Anti-Patterns."""
+    def _check_security_patterns(self, code: str, path: str, context: Dict[str, str]) -> SingleCheckResult:
+        """Prueft Sicherheits-Anti-Patterns."""
         dangerous_patterns = [
-            (r'\beval\s*\(', 'eval() ist gefährlich'),
-            (r'\bexec\s*\(', 'exec() ist gefährlich'),
+            (r'\beval\s*\(', 'eval() ist gefaehrlich'),
+            (r'\bexec\s*\(', 'exec() ist gefaehrlich'),
             (r'shell\s*=\s*True', 'shell=True vermeiden'),
             (r'subprocess\.call\([^)]*shell\s*=\s*True', 'subprocess mit shell=True'),
             (r'os\.system\s*\(', 'os.system() ist unsicher'),
             (r'pickle\.loads?\s*\(', 'pickle.load() kann unsicher sein'),
         ]
 
-        found_issues = []
+        found_issues: List[str] = []
 
         for pattern, message in dangerous_patterns:
             if re.search(pattern, code):
-                # Prüfe ob es in einem Kommentar ist
                 matches = re.finditer(pattern, code)
                 for match in matches:
                     line_start = code.rfind('\n', 0, match.start()) + 1
@@ -271,13 +285,12 @@ class QualityGate:
                         break
 
         if found_issues:
-            return {
-                "name": "security",
-                "status": "failed",
-                "message": f"Sicherheitsprobleme: {', '.join(found_issues)}"
-            }
+            return SingleCheckResult(
+                name="security",
+                status=CheckStatus.FAILED,
+                message=f"Sicherheitsprobleme: {', '.join(found_issues)}",
+            )
 
-        # Prüfe auf Secrets im Code
         secret_patterns = [
             r'password\s*=\s*["\'][^"\']+["\']',
             r'api_key\s*=\s*["\'][^"\']+["\']',
@@ -287,21 +300,21 @@ class QualityGate:
 
         for pattern in secret_patterns:
             if re.search(pattern, code, re.IGNORECASE):
-                return {
-                    "name": "security",
-                    "status": "failed",
-                    "message": "Mögliche Secrets im Code gefunden"
-                }
+                return SingleCheckResult(
+                    name="security",
+                    status=CheckStatus.FAILED,
+                    message="Moegliche Secrets im Code gefunden",
+                )
 
-        return {"name": "security", "status": "passed"}
+        return SingleCheckResult(name="security", status=CheckStatus.PASSED)
 
-    def _check_imports(self, code: str, path: str, context: Dict) -> Dict:
-        """Prüft Import-Sortierung und -Struktur."""
+    def _check_imports(self, code: str, path: str, context: Dict[str, str]) -> SingleCheckResult:
+        """Prueft Import-Sortierung und -Struktur."""
         if not path.endswith('.py'):
-            return {"name": "imports", "status": "passed"}
+            return SingleCheckResult(name="imports", status=CheckStatus.PASSED)
 
         lines = code.split('\n')
-        import_lines = []
+        import_lines: List[tuple] = []
 
         for i, line in enumerate(lines):
             stripped = line.strip()
@@ -309,12 +322,10 @@ class QualityGate:
                 import_lines.append((i, stripped))
 
         if not import_lines:
-            return {"name": "imports", "status": "passed"}
+            return SingleCheckResult(name="imports", status=CheckStatus.PASSED)
 
-        # Einfache Checks
-        issues = []
+        issues: List[str] = []
 
-        # Prüfe auf relative Imports vor absoluten
         has_relative = False
         has_absolute_after_relative = False
 
@@ -327,21 +338,20 @@ class QualityGate:
         if has_absolute_after_relative:
             issues.append("Absolute Imports nach relativen Imports")
 
-        # Prüfe auf doppelte Imports
-        import_modules = set()
+        import_modules: set = set()
         for _, import_line in import_lines:
             if import_line in import_modules:
                 issues.append("Doppelte Imports gefunden")
             import_modules.add(import_line)
 
         if issues:
-            return {
-                "name": "imports",
-                "status": "warning",
-                "message": f"Import-Probleme: {', '.join(issues)}"
-            }
+            return SingleCheckResult(
+                name="imports",
+                status=CheckStatus.WARNING,
+                message=f"Import-Probleme: {', '.join(issues)}",
+            )
 
-        return {"name": "imports", "status": "passed"}
+        return SingleCheckResult(name="imports", status=CheckStatus.PASSED)
 
     def get_quality_report(self, result: QualityResult) -> str:
         """
@@ -353,28 +363,27 @@ class QualityGate:
         Returns:
             Formatierter Report
         """
-        report = f"""
-🔍 Quality Gate Report:
-
-Status: {result.level.value.upper()}
-Eskalation erforderlich: {'Ja' if result.should_escalate else 'Nein'}
-"""
+        report = (
+            f"Quality Gate Report:\n\n"
+            f"Status: {result.level.value.upper()}\n"
+            f"Eskalation erforderlich: {'Ja' if result.should_escalate else 'Nein'}\n"
+        )
 
         if result.escalation_reason:
             report += f"Eskalationsgrund: {result.escalation_reason}\n"
 
         if result.checks_passed:
-            report += f"\n✅ Bestanden ({len(result.checks_passed)}):\n"
+            report += f"\nBestanden ({len(result.checks_passed)}):\n"
             for check in result.checks_passed:
                 report += f"  - {check}\n"
 
         if result.warnings:
-            report += f"\n⚠️  Warnungen ({len(result.warnings)}):\n"
+            report += f"\nWarnungen ({len(result.warnings)}):\n"
             for warning in result.warnings:
                 report += f"  - {warning}\n"
 
         if result.checks_failed:
-            report += f"\n❌ Fehlgeschlagen ({len(result.checks_failed)}):\n"
+            report += f"\nFehlgeschlagen ({len(result.checks_failed)}):\n"
             for failed in result.checks_failed:
                 report += f"  - {failed}\n"
 

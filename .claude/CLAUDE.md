@@ -960,6 +960,94 @@ Before completing any task:
 
 ---
 
+## TEAM WORKFLOW PROTOCOL
+
+When `[TEAM_WORKFLOW_ACTIVE]` appears in context (injected by team_router_hook), follow this protocol:
+
+### Step 1: Classify
+
+Run the team executor to get detailed classification:
+```bash
+python .claude/helpers/team_executor.py classify --task "<full task description>"
+```
+
+### Step 2: Phase Loop
+
+For each phase N (1 through total_phases):
+
+**a) Get phase instructions:**
+```bash
+python .claude/helpers/team_executor.py phase --number N --task "<task>"
+```
+
+**b) Spawn agent(s):**
+- SEQUENTIAL phase: Use `Task(prompt=..., subagent_type=..., model=...)`
+- PARALLEL phase: Spawn ALL agents in ONE message with `run_in_background: true`
+
+**c) Save result when agent(s) complete:**
+```bash
+python .claude/helpers/team_executor.py save-result --phase N --result "<output>"
+# For parallel phases, save each agent separately:
+python .claude/helpers/team_executor.py save-result --phase N --agent coder_a --result "<output>"
+python .claude/helpers/team_executor.py save-result --phase N --agent coder_b --result "<output>"
+```
+
+**d) Run quality gate (if phase has one):**
+```bash
+python .claude/helpers/team_executor.py gate --name gate_X_name --phase N
+```
+- PASSED: proceed to phase N+1
+- FAILED: fix issues and re-run the phase (see Gate Failure Recovery below)
+- WARNING: proceed but note the warnings
+
+**Gate Failure Recovery:**
+When a gate returns FAILED:
+1. Read the BLOCK findings from the gate output
+2. Spawn the phase agent AGAIN with an adjusted prompt:
+   - Include the original task description
+   - Add: "KORREKTUR ERFORDERLICH: [paste gate BLOCK findings here]"
+3. Save the new result (overwrites the old one):
+   `python .claude/helpers/team_executor.py save-result --phase N --result "<new_result>"`
+4. Re-run the gate
+5. After 2 failed attempts: Inform the user with a summary of the
+   gate findings and ask for manual intervention
+
+### Step 3: Phase 6 Integration (Special)
+
+For templates with `requires_shared_file_integration`:
+```bash
+python .claude/helpers/team_executor.py integrate --phase 3
+```
+This merges parallel coder manifests and returns concrete append-only instructions for bottleneck files.
+
+### Step 4: Complete
+```bash
+python .claude/helpers/team_executor.py complete
+```
+
+### Critical Rules
+
+- NEVER edit bottleneck files (main.py, models.py, celery_app.py, tasks/__init__.py) outside Phase 6
+- Parallel agents MUST stay in their assigned zones
+- Satellite models go in `app/db/models_{feature}.py`, NOT in models.py
+- Phase 6 integrator does ONLY append operations on shared files
+- Quality gates MUST pass before proceeding (BLOCK findings = re-run)
+
+### Team Templates
+
+| Trigger | Team | Phases | Agents |
+|---------|------|--------|--------|
+| C1 x M1 | No Team (Haiku) | 1 | 1 |
+| C1 x M2 | No Team (Sonnet) | 1 | 1 |
+| C2 x M1 | Feature Small | 3 | 3 |
+| C2 x M2/M3 | Feature Standard | 6 | 6 |
+| C3 x M2/M3 | Feature Full | 6 | 6+ |
+| C4 | Refactor | 6 | 6 |
+| Security keyword | Security Audit | 4 | 5 |
+| Review keyword | Review | 1 | 3 (parallel) |
+
+---
+
 ## CLAUDE.md Maintenance
 
 Claude SOLL diese Dateien automatisch pflegen:

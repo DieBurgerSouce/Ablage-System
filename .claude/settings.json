@@ -78,6 +78,12 @@
             "command": "[ -n \"$PROMPT\" ] && npx @claude-flow/cli@latest hooks route --task \"$PROMPT\" || true",
             "timeout": 5000,
             "continueOnError": true
+          },
+          {
+            "type": "command",
+            "command": "[ -n \"$PROMPT\" ] && PROMPT_TEXT=\"$PROMPT\" python .claude/hooks/team_router_hook.py 2>/dev/null || true",
+            "timeout": 8000,
+            "continueOnError": true
           }
         ]
       }

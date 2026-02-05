@@ -9,7 +9,7 @@ import os
 import json
 import logging
 from dataclasses import dataclass, asdict
-from typing import Optional, List, Dict, Any, Callable
+from typing import Optional, List, Dict, Any, Callable, Tuple
 from enum import Enum
 from pathlib import Path
 from datetime import datetime
@@ -497,7 +497,7 @@ class Orchestrator:
         task: str,
         context: CompressedContext,
         cached_decisions: List[str]
-    ) -> tuple[str, int]:
+    ) -> Tuple[str, int]:
         """
         Führt Task mit Claude aus (Enterprise-Integration).
 
