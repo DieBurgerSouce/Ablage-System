@@ -18,7 +18,7 @@ Feinpoliert und durchdacht - Enterprise-grade Security.
 
 import re
 import json
-from typing import Any, Dict, List, Optional, Pattern, Callable
+from typing import Dict, List, Optional, Pattern, Callable
 from dataclasses import dataclass
 from enum import Enum
 from datetime import datetime
@@ -339,10 +339,10 @@ def redact_value(
 
 
 def redact_dict(
-    data: Dict[str, Any],
+    data: Dict[str, object],
     config: RedactionConfig = DEFAULT_CONFIG,
     path: str = ""
-) -> Dict[str, Any]:
+) -> Dict[str, object]:
     """
     Redaktiere alle sensitiven Felder in einem Dictionary.
 
@@ -502,10 +502,10 @@ class CredentialRedactionProcessor:
 
     def __call__(
         self,
-        logger: Any,
+        logger: object,
         method_name: str,
-        event_dict: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        event_dict: Dict[str, object]
+    ) -> Dict[str, object]:
         """Redaktiere alle sensitiven Daten im Log Event."""
         return redact_dict(event_dict, self.config)
 
@@ -527,7 +527,7 @@ class CredentialRedactionMiddleware(BaseHTTPMiddleware):
     Stellt sicher, dass keine Credentials in Request/Response Logs erscheinen.
     """
 
-    def __init__(self, app: Any, config: RedactionConfig = DEFAULT_CONFIG):
+    def __init__(self, app: object, config: RedactionConfig = DEFAULT_CONFIG):
         super().__init__(app)
         self.config = config
         self.logger = structlog.get_logger("credential_redaction")
@@ -579,7 +579,7 @@ def get_redaction_processor(
     return CredentialRedactionProcessor(config)
 
 
-def setup_credential_redaction(app: Any, level: RedactionLevel = RedactionLevel.STANDARD) -> None:
+def setup_credential_redaction(app: object, level: RedactionLevel = RedactionLevel.STANDARD) -> None:
     """
     Richte Credential-Redaktion fuer FastAPI App ein.
 
@@ -602,7 +602,7 @@ def is_sensitive_key(key: str) -> bool:
     return any(sensitive in key_lower for sensitive in SENSITIVE_FIELD_NAMES)
 
 
-def redact_for_logging(data: Any) -> Any:
+def redact_for_logging(data: object) -> object:
     """
     Convenience Function fuer schnelle Redaktion.
 

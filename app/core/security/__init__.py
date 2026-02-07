@@ -5,6 +5,8 @@ Provides secure alternatives to dangerous operations:
 - SafeModuleLoader: Whitelisted module/function loading
 - SensitiveDataFilter: PII masking in logs
 - SafeAttributeAccess: Controlled model attribute updates
+- CertificateAuthority: Internal CA for mTLS certificates
+- MTLSService: Service-to-service mTLS authentication
 
 Also re-exports authentication functions from security_auth.py for backwards compatibility.
 """
@@ -13,6 +15,30 @@ from app.core.security.safe_expression_evaluator import SafeExpressionEvaluator
 from app.core.security.safe_module_loader import SafeModuleLoader, safe_load_function
 from app.core.security.sensitive_data_filter import sensitive_data_filter, mask_pii
 from app.core.security.safe_attribute_access import safe_update, SafeAttributeAccess
+
+# mTLS / Certificate Authority
+from app.core.security.certificate_authority import (
+    CertificateAuthority,
+    CertificateInfo,
+    CertificateRequest,
+    CertificateType,
+    KeyAlgorithm,
+    CertificateAuthorityError,
+    get_certificate_authority,
+    ALLOWED_SERVICE_TYPES,
+    SERVICE_CERT_VALIDITY_DAYS,
+    SPIFFE_TRUST_DOMAIN,
+)
+from app.core.security.mtls_service import (
+    MTLSService,
+    MTLSAuthMiddleware,
+    MTLSAuthResult,
+    ServiceIdentity,
+    ServiceCertificate,
+    get_mtls_service,
+    get_service_identity,
+    require_service_type,
+)
 
 # Re-export auth functions from security_auth.py for backwards compatibility
 from app.core.security_auth import (
@@ -63,6 +89,25 @@ __all__ = [
     "mask_pii",
     "safe_update",
     "SafeAttributeAccess",
+    # Certificate Authority / mTLS
+    "CertificateAuthority",
+    "CertificateInfo",
+    "CertificateRequest",
+    "CertificateType",
+    "KeyAlgorithm",
+    "CertificateAuthorityError",
+    "get_certificate_authority",
+    "ALLOWED_SERVICE_TYPES",
+    "SERVICE_CERT_VALIDITY_DAYS",
+    "SPIFFE_TRUST_DOMAIN",
+    "MTLSService",
+    "MTLSAuthMiddleware",
+    "MTLSAuthResult",
+    "ServiceIdentity",
+    "ServiceCertificate",
+    "get_mtls_service",
+    "get_service_identity",
+    "require_service_type",
     # Auth functions (from security_auth.py)
     "verify_password",
     "get_password_hash",

@@ -19,7 +19,7 @@ from __future__ import annotations
 import re
 import logging
 import functools
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Callable, Dict, List, Optional, Set, Union
 import structlog
 
 logger = logging.getLogger(__name__)
@@ -270,10 +270,10 @@ def mask_pii(
 
 
 def mask_dict_values(
-    data: Dict[str, Any],
+    data: Dict[str, object],
     sensitive_keys: Optional[Set[str]] = None,
     deep: bool = True,
-) -> Dict[str, Any]:
+) -> Dict[str, object]:
     """Maskiert PII in Dict-Werten.
 
     Args:
@@ -346,7 +346,7 @@ class PIIMaskingLogger:
 
     def __init__(
         self,
-        wrapped_logger: Any,
+        wrapped_logger: object,
         mask_all_strings: bool = True,
         sensitive_keys: Optional[Set[str]] = None,
     ):
@@ -361,31 +361,31 @@ class PIIMaskingLogger:
         self._mask_all_strings = mask_all_strings
         self._sensitive_keys = sensitive_keys or set()
 
-    def _mask_kwargs(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    def _mask_kwargs(self, kwargs: Dict[str, object]) -> Dict[str, object]:
         """Maskiert PII in Keyword-Argumenten."""
         return mask_dict_values(kwargs, self._sensitive_keys, deep=True)
 
-    def debug(self, event: str, **kwargs: Any) -> None:
+    def debug(self, event: str, **kwargs: object) -> None:
         """Debug log mit PII-Masking."""
         self._logger.debug(event, **self._mask_kwargs(kwargs))
 
-    def info(self, event: str, **kwargs: Any) -> None:
+    def info(self, event: str, **kwargs: object) -> None:
         """Info log mit PII-Masking."""
         self._logger.info(event, **self._mask_kwargs(kwargs))
 
-    def warning(self, event: str, **kwargs: Any) -> None:
+    def warning(self, event: str, **kwargs: object) -> None:
         """Warning log mit PII-Masking."""
         self._logger.warning(event, **self._mask_kwargs(kwargs))
 
-    def error(self, event: str, **kwargs: Any) -> None:
+    def error(self, event: str, **kwargs: object) -> None:
         """Error log mit PII-Masking."""
         self._logger.error(event, **self._mask_kwargs(kwargs))
 
-    def exception(self, event: str, **kwargs: Any) -> None:
+    def exception(self, event: str, **kwargs: object) -> None:
         """Exception log mit PII-Masking."""
         self._logger.exception(event, **self._mask_kwargs(kwargs))
 
-    def critical(self, event: str, **kwargs: Any) -> None:
+    def critical(self, event: str, **kwargs: object) -> None:
         """Critical log mit PII-Masking."""
         self._logger.critical(event, **self._mask_kwargs(kwargs))
 
@@ -409,7 +409,7 @@ def get_pii_safe_logger(name: str) -> PIIMaskingLogger:
 # DECORATOR
 # =============================================================================
 
-def mask_pii_in_logs(func):
+def mask_pii_in_logs(func: Callable[..., object]) -> Callable[..., object]:
     """Decorator zum automatischen PII-Masking in Log-Ausgaben.
 
     Usage:

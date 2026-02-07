@@ -7,7 +7,7 @@ Speichert Ergebnisse in Redis mit konfigurierbarem TTL.
 Feinpoliert und durchdacht - Robuste API-Operationen.
 """
 
-from typing import Optional, Any, Dict, Callable, TypeVar
+from typing import Optional, Dict, Callable, TypeVar
 from functools import wraps
 import json
 import hashlib
@@ -30,7 +30,7 @@ class IdempotencyService:
     um bei wiederholten Requests das gleiche Ergebnis zurückzugeben.
     """
 
-    def __init__(self, redis_client: Any = None):
+    def __init__(self, redis_client: Optional[object] = None):
         """
         Initialize IdempotencyService.
 
@@ -41,7 +41,7 @@ class IdempotencyService:
         self._prefix = "idempotency:"
         self._default_ttl = 86400  # 24 Stunden
 
-    async def _get_redis(self) -> Any:
+    async def _get_redis(self) -> Optional[object]:
         """Get Redis client, lazy loading if needed."""
         if self._redis is None:
             from app.core.rate_limiting import get_redis_storage
@@ -68,7 +68,7 @@ class IdempotencyService:
         self,
         idempotency_key: str,
         user_id: Optional[str] = None
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[Dict[str, object]]:
         """
         Get cached response for idempotency key.
 
@@ -103,7 +103,7 @@ class IdempotencyService:
     async def cache_response(
         self,
         idempotency_key: str,
-        response_data: Dict[str, Any],
+        response_data: Dict[str, object],
         status_code: int = 200,
         user_id: Optional[str] = None,
         ttl: Optional[int] = None
@@ -250,7 +250,7 @@ async def check_idempotency(
     request: Request,
     idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
     x_idempotency_key: Optional[str] = Header(None, alias="X-Idempotency-Key"),
-) -> Optional[Dict[str, Any]]:
+) -> Optional[Dict[str, object]]:
     """
     FastAPI Dependency für Idempotency-Check.
 
@@ -303,7 +303,7 @@ async def check_idempotency(
 
 
 def generate_idempotency_key(
-    *args: Any,
+    *args: object,
     prefix: str = "auto"
 ) -> str:
     """

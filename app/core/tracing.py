@@ -23,7 +23,7 @@ Usage:
 import functools
 import os
 from contextlib import contextmanager
-from typing import Any, Callable, Dict, Optional, TypeVar
+from typing import Callable, Dict, Optional, TypeVar, Union
 
 import structlog
 
@@ -49,7 +49,7 @@ except ImportError:
 
 logger = structlog.get_logger(__name__)
 
-F = TypeVar('F', bound=Callable[..., Any])
+F = TypeVar('F', bound=Callable[..., object])
 
 
 class TracingService:
@@ -96,11 +96,11 @@ class TracingService:
             "true"
         ).lower() == "true"
 
-        self._tracer: Optional[Any] = None
-        self._provider: Optional[Any] = None
+        self._tracer: Optional[object] = None
+        self._provider: Optional[object] = None
         self._initialized = False
 
-    def setup(self, app: Optional[Any] = None) -> bool:
+    def setup(self, app: Optional[object] = None) -> bool:
         """Initialisiert OpenTelemetry Tracing.
 
         Args:
@@ -188,7 +188,7 @@ class TracingService:
             logger.exception("tracing_setup_failed", **safe_error_log(e))
             return False
 
-    def _setup_auto_instrumentation(self, app: Optional[Any]) -> None:
+    def _setup_auto_instrumentation(self, app: Optional[object]) -> None:
         """Konfiguriert Auto-Instrumentierung fuer Frameworks."""
         if not OPENTELEMETRY_AVAILABLE:
             return
@@ -225,7 +225,7 @@ class TracingService:
         except Exception as e:
             logger.warning("celery_instrumentation_failed", **safe_error_log(e))
 
-    def instrument_sqlalchemy(self, engine: Any) -> None:
+    def instrument_sqlalchemy(self, engine: object) -> None:
         """Instrumentiert SQLAlchemy Engine.
 
         Args:
@@ -240,7 +240,7 @@ class TracingService:
         except Exception as e:
             logger.warning("sqlalchemy_instrumentation_failed", **safe_error_log(e))
 
-    def get_tracer(self) -> Optional[Any]:
+    def get_tracer(self) -> Optional[object]:
         """Hole den Tracer.
 
         Returns:
@@ -254,8 +254,8 @@ class TracingService:
     def span(
         self,
         name: str,
-        kind: Optional[Any] = None,
-        attributes: Optional[Dict[str, Any]] = None
+        kind: Optional[object] = None,
+        attributes: Optional[Dict[str, Union[str, int, float, bool]]] = None
     ):
         """Context Manager fuer manuelles Span-Tracing.
 
@@ -310,7 +310,7 @@ def get_tracing_service() -> TracingService:
 def trace_span(
     name: Optional[str] = None,
     kind: str = "internal",
-    attributes: Optional[Dict[str, Any]] = None
+    attributes: Optional[Dict[str, Union[str, int, float, bool]]] = None
 ) -> Callable[[F], F]:
     """Decorator fuer automatisches Span-Tracing.
 
@@ -341,13 +341,13 @@ def trace_span(
         span_kind = kind_map.get(kind)
 
         @functools.wraps(func)
-        async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
+        async def async_wrapper(*args: object, **kwargs: object) -> object:
             tracing = get_tracing_service()
             with tracing.span(span_name, kind=span_kind, attributes=attributes):
                 return await func(*args, **kwargs)
 
         @functools.wraps(func)
-        def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
+        def sync_wrapper(*args: object, **kwargs: object) -> object:
             tracing = get_tracing_service()
             with tracing.span(span_name, kind=span_kind, attributes=attributes):
                 return func(*args, **kwargs)
@@ -360,7 +360,7 @@ def trace_span(
     return decorator
 
 
-def asyncio_iscoroutinefunction(func: Any) -> bool:
+def asyncio_iscoroutinefunction(func: Callable[..., object]) -> bool:
     """Prueft ob Funktion async ist (ohne asyncio Import)."""
     import asyncio
     return asyncio.iscoroutinefunction(func)
@@ -368,7 +368,7 @@ def asyncio_iscoroutinefunction(func: Any) -> bool:
 
 # OCR-spezifische Tracing Helfer
 def set_ocr_span_attributes(
-    span: Any,
+    span: Optional[object],
     document_id: str,
     backend: str,
     page_count: Optional[int] = None,

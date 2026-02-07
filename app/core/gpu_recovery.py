@@ -276,7 +276,7 @@ class GPURecoveryManager:
         backend: str,
         batch: List[Any],
         max_retries: int = 3,
-        **kwargs: Any,
+        **kwargs: object,
     ) -> List[T]:
         """
         Execute batch processing with OOM recovery.

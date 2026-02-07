@@ -7,7 +7,7 @@ von Idempotency-Keys. Speichert Responses für Wiederholung.
 import hashlib
 import json
 import time
-from typing import Any, Dict, Optional, Set
+from typing import Any, Dict, Optional, Set, Union
 
 import structlog
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -112,7 +112,7 @@ class RedisIdempotencyStore:
 
     def __init__(
         self,
-        redis_client: Any,  # redis.asyncio.Redis
+        redis_client: "redis.asyncio.Redis[bytes]",
         ttl: int = DEFAULT_TTL_SECONDS,
         prefix: str = "idempotency:"
     ):
@@ -198,7 +198,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app: ASGIApp,
-        store: Optional[Any] = None,
+        store: Optional[Union["InMemoryIdempotencyStore", "RedisIdempotencyStore"]] = None,
         require_key: bool = False,
         auto_generate_key: bool = True,
         exclude_paths: Optional[Set[str]] = None
@@ -354,7 +354,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
 
 
 def create_idempotency_middleware(
-    store: Optional[Any] = None,
+    store: Optional[Union["InMemoryIdempotencyStore", "RedisIdempotencyStore"]] = None,
     require_key: bool = False
 ) -> type:
     """Factory für Idempotency Middleware."""

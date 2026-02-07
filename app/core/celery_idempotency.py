@@ -15,7 +15,7 @@ Verwendet Redis fuer verteilte Idempotency-Pruefung.
 import hashlib
 import json
 from datetime import datetime, timezone, date
-from typing import Any, Dict, Optional, Union
+from typing import Dict, Optional, Union
 from functools import wraps
 
 from redis import Redis
@@ -64,7 +64,7 @@ class IdempotencyKey:
     @staticmethod
     def generate(
         task_name: str,
-        *args: Any,
+        *args: object,
         date_scope: Optional[Union[date, datetime]] = None,
     ) -> str:
         """
@@ -125,7 +125,7 @@ class IdempotencyKey:
             return False
 
     @staticmethod
-    def get_result(key: str) -> Optional[Dict[str, Any]]:
+    def get_result(key: str) -> Optional[Dict[str, object]]:
         """
         Holt das gespeicherte Ergebnis eines bereits ausgefuehrten Tasks.
 
@@ -157,7 +157,7 @@ class IdempotencyKey:
     @staticmethod
     def set_result(
         key: str,
-        result: Any,
+        result: object,
         ttl: int = _DEFAULT_TTL,
     ) -> bool:
         """
@@ -350,9 +350,9 @@ def idempotent_task(
 
 def check_task_idempotency(
     task_name: str,
-    *args: Any,
+    *args: object,
     date_scope: Optional[date] = None,
-) -> Optional[Dict[str, Any]]:
+) -> Optional[Dict[str, object]]:
     """
     Prueft ob ein Task mit diesen Argumenten heute bereits ausgefuehrt wurde.
 
@@ -372,8 +372,8 @@ def check_task_idempotency(
 
 def mark_task_executed(
     task_name: str,
-    result: Any,
-    *args: Any,
+    result: object,
+    *args: object,
     date_scope: Optional[date] = None,
     ttl: int = _DEFAULT_TTL,
 ) -> str:
@@ -397,7 +397,7 @@ def mark_task_executed(
 
 def clear_task_idempotency(
     task_name: str,
-    *args: Any,
+    *args: object,
     date_scope: Optional[date] = None,
 ) -> bool:
     """

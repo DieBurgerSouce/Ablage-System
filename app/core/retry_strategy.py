@@ -10,7 +10,7 @@ import random
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Dict, Optional, Set, Type, TypeVar
+from typing import Callable, Dict, Optional, Set, Type, TypeVar, Union
 
 import structlog
 from app.core.safe_errors import safe_error_log
@@ -199,10 +199,10 @@ class RetryStrategy:
         self,
         func: Callable[..., T],
         phase: WorkflowPhase,
-        *args: Any,
+        *args: object,
         config: Optional[RetryConfig] = None,
         on_retry: Optional[Callable[[int, Exception], None]] = None,
-        **kwargs: Any,
+        **kwargs: object,
     ) -> T:
         """
         Execute function with retry logic.
@@ -342,15 +342,15 @@ class RetryContext:
     async def execute(
         self,
         func: Callable[..., T],
-        *args: Any,
-        **kwargs: Any,
+        *args: object,
+        **kwargs: object,
     ) -> T:
         """Execute function with retry."""
         return await self.strategy.execute_with_retry(
             func, self.phase, *args, **kwargs
         )
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> Dict[str, Union[str, int, float]]:
         """Get execution statistics."""
         return {
             "phase": self.phase.value,

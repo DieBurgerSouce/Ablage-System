@@ -15,7 +15,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, Optional, TypeVar
+from typing import Callable, Dict, Optional, TypeVar
 
 import structlog
 
@@ -158,7 +158,7 @@ class CircuitBreaker:
                 return True
         return False
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> Dict[str, object]:
         """Get circuit breaker statistics."""
         return {
             "service": self.service_name,
@@ -184,8 +184,8 @@ class CircuitBreaker:
     async def call(
         self,
         func: Callable[..., T],
-        *args: Any,
-        **kwargs: Any,
+        *args: object,
+        **kwargs: object,
     ) -> T:
         """
         Execute function through circuit breaker.
@@ -371,8 +371,8 @@ class CircuitBreakerManager:
         self,
         service_name: str,
         func: Callable[..., T],
-        *args: Any,
-        **kwargs: Any,
+        *args: object,
+        **kwargs: object,
     ) -> T:
         """
         Execute function through circuit breaker.
@@ -391,7 +391,7 @@ class CircuitBreakerManager:
         breaker = await self.get_breaker(service_name)
         return await breaker.call(func, *args, **kwargs)
 
-    def get_all_stats(self) -> Dict[str, Dict[str, Any]]:
+    def get_all_stats(self) -> Dict[str, Dict[str, object]]:
         """Get statistics for all circuit breakers."""
         return {
             name: breaker.get_stats()

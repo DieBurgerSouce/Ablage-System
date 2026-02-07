@@ -11,11 +11,14 @@ Feinpoliert und durchdacht - Production-ready DB Monitoring.
 import re
 import time
 from contextlib import contextmanager
-from typing import Any, Optional, Dict
+from typing import Callable, Optional, Dict, Generator
+
+from starlette.requests import Request
+from starlette.responses import Response
 
 import structlog
 from sqlalchemy import event
-from sqlalchemy.engine import Engine, Connection
+from sqlalchemy.engine import Engine, Connection, ExceptionContext
 from sqlalchemy.orm import Session
 
 logger = structlog.get_logger(__name__)
@@ -69,10 +72,10 @@ def setup_db_metrics(engine: Engine) -> None:
     @event.listens_for(engine, "before_cursor_execute")
     def before_cursor_execute(
         conn: Connection,
-        cursor: Any,
+        cursor: object,
         statement: str,
-        parameters: Any,
-        context: Any,
+        parameters: object,
+        context: object,
         executemany: bool
     ) -> None:
         """Record query start time."""
@@ -82,10 +85,10 @@ def setup_db_metrics(engine: Engine) -> None:
     @event.listens_for(engine, "after_cursor_execute")
     def after_cursor_execute(
         conn: Connection,
-        cursor: Any,
+        cursor: object,
         statement: str,
-        parameters: Any,
-        context: Any,
+        parameters: object,
+        context: object,
         executemany: bool
     ) -> None:
         """Record query execution time and metrics."""
@@ -127,7 +130,7 @@ def setup_db_metrics(engine: Engine) -> None:
             )
 
     @event.listens_for(engine, "handle_error")
-    def handle_error(exception_context: Any) -> None:
+    def handle_error(exception_context: ExceptionContext) -> None:
         """Record query errors."""
         conn = exception_context.connection
         if conn is None:
@@ -208,7 +211,7 @@ def update_pool_metrics(engine: Engine) -> None:
 
 
 @contextmanager
-def track_db_operation(operation: str, table: str):
+def track_db_operation(operation: str, table: str) -> Generator[None, None, None]:
     """
     Context manager for tracking database operations.
 
@@ -263,7 +266,7 @@ class DBMetricsMiddleware:
         self._last_pool_update = 0
         self._pool_update_interval = 60  # Update pool metrics every 60s
 
-    async def __call__(self, request: Any, call_next: Any) -> Any:
+    async def __call__(self, request: Request, call_next: Callable[[Request], object]) -> Response:
         """Process request and update metrics."""
         import time
 

@@ -18,13 +18,16 @@ Example:
 
 import functools
 import re
-from typing import Any, Callable, Dict, List, Optional, Set, TypeVar, Union
+from typing import Callable, Dict, List, Optional, Set, TypeVar, Union
 import structlog
 
 logger = structlog.get_logger(__name__)
 
+# Type alias for JSON-like data structures handled by PII masking
+PIIData = Union[str, int, float, bool, None, Dict[str, "PIIData"], List["PIIData"]]
+
 # Type variables for decorator
-F = TypeVar("F", bound=Callable[..., Any])
+F = TypeVar("F", bound=Callable[..., object])
 
 
 # ============================================================================
@@ -179,10 +182,10 @@ def mask_email(email: str) -> str:
 
 
 def mask_pii(
-    data: Any,
+    data: PIIData,
     sensitive_fields: Optional[Set[str]] = None,
     mask_patterns: bool = True,
-) -> Any:
+) -> PIIData:
     """Recursively mask PII in data structures.
 
     Args:
@@ -201,10 +204,10 @@ def mask_pii(
 
 
 def _mask_recursive(
-    data: Any,
+    data: PIIData,
     fields_to_mask: Set[str],
     mask_patterns: bool,
-) -> Any:
+) -> PIIData:
     """Internal recursive masking function."""
     if data is None:
         return None
@@ -234,7 +237,7 @@ def _mask_recursive(
     return data
 
 
-def _mask_value_by_type(value: Any, field_hint: str) -> Any:
+def _mask_value_by_type(value: PIIData, field_hint: str) -> PIIData:
     """Mask a value based on its type and field hint."""
     if value is None:
         return None
@@ -255,7 +258,7 @@ def _mask_value_by_type(value: Any, field_hint: str) -> Any:
     return mask_value(value)
 
 
-def _mask_all_strings(data: Any) -> Any:
+def _mask_all_strings(data: PIIData) -> PIIData:
     """Mask all string values in a structure."""
     if data is None:
         return None
@@ -326,7 +329,7 @@ def sensitive_data_filter(
 
     def decorator(func: F) -> F:
         @functools.wraps(func)
-        async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
+        async def async_wrapper(*args: object, **kwargs: object) -> object:
             # Create masked versions for logging
             if mask_args:
                 masked_kwargs = mask_pii(kwargs, extra_fields)
@@ -358,7 +361,7 @@ def sensitive_data_filter(
                 raise
 
         @functools.wraps(func)
-        def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
+        def sync_wrapper(*args: object, **kwargs: object) -> object:
             # Create masked versions for logging
             if mask_args:
                 masked_kwargs = mask_pii(kwargs, extra_fields)
@@ -403,10 +406,10 @@ def sensitive_data_filter(
 # ============================================================================
 
 def pii_masking_processor(
-    _logger: Any,
+    _logger: object,
     _method_name: str,
-    event_dict: Dict[str, Any],
-) -> Dict[str, Any]:
+    event_dict: Dict[str, PIIData],
+) -> Dict[str, PIIData]:
     """Structlog processor to mask PII in all log events.
 
     Add this to your structlog configuration:

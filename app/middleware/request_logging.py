@@ -14,7 +14,7 @@ Feinpoliert und durchdacht - Enterprise-grade Logging.
 import json
 import re
 import time
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Callable, Dict, List, Optional, Set
 from uuid import uuid4
 
 import structlog
@@ -111,12 +111,12 @@ class PIIFilterConfig:
     }
 
 
-def redact_value(value: Any) -> str:
+def redact_value(value: object) -> str:
     """Entfernt sensitiven Wert komplett."""
     return "[REDACTED]"
 
 
-def mask_value(value: Any) -> str:
+def mask_value(value: object) -> str:
     """Maskiert Wert, zeigt nur letzte 4 Zeichen."""
     if not isinstance(value, str):
         value = str(value)
@@ -125,7 +125,7 @@ def mask_value(value: Any) -> str:
     return f"***{value[-4:]}"
 
 
-def truncate_value(value: Any) -> str:
+def truncate_value(value: object) -> str:
     """Kuerzt Wert auf erste 3 Zeichen."""
     if not isinstance(value, str):
         value = str(value)
@@ -134,7 +134,7 @@ def truncate_value(value: Any) -> str:
     return f"{value[:3]}***"
 
 
-def filter_pii_from_dict(data: Dict[str, Any], depth: int = 0) -> Dict[str, Any]:
+def filter_pii_from_dict(data: Dict[str, object], depth: int = 0) -> Dict[str, object]:
     """
     Filtert PII aus einem Dictionary.
 
@@ -310,7 +310,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         self,
         request: Request,
         request_id: str
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, object]:
         """Sammelt und filtert Request-Informationen."""
         info = {
             "request_id": request_id,
@@ -362,7 +362,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         response: Response,
         request_id: str,
         duration_ms: int
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, object]:
         """Sammelt Response-Informationen."""
         return {
             "request_id": request_id,
@@ -392,7 +392,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         return "unknown"
 
 
-def get_request_logging_stats() -> Dict[str, Any]:
+def get_request_logging_stats() -> Dict[str, object]:
     """Gibt Statistiken ueber Request Logging zurueck."""
     return {
         "pii_redacted_fields": len(PIIFilterConfig.REDACTED_FIELDS),

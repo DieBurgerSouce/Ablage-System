@@ -15,7 +15,7 @@ import json
 import hashlib
 import os
 import structlog
-from typing import Any, Callable, Optional, TypeVar, Union, List, Dict
+from typing import Callable, Optional, TypeVar, Union, List, Dict
 from functools import wraps
 from datetime import datetime
 
@@ -32,7 +32,7 @@ T = TypeVar("T")
 # =============================================================================
 
 # Erlaubte primitive Typen fuer Cache-Werte
-CacheValueType = Union[str, int, float, bool, None, List[Any], Dict[str, Any]]
+CacheValueType = Union[str, int, float, bool, None, List[object], Dict[str, object]]
 
 
 class DatetimeCacheValue(BaseModel):
@@ -69,7 +69,7 @@ class CacheValueSchema(BaseModel):
     model_config = {"extra": "forbid"}
 
 
-def _validate_cache_depth(data: Any, current_depth: int = 0, max_depth: int = 20) -> bool:
+def _validate_cache_depth(data: object, current_depth: int = 0, max_depth: int = 20) -> bool:
     """Pruefe maximale Verschachtelungstiefe von Cache-Daten.
 
     Verhindert DoS-Angriffe durch extrem tief verschachtelte JSON-Strukturen.
@@ -98,7 +98,7 @@ def _validate_cache_depth(data: Any, current_depth: int = 0, max_depth: int = 20
     return True
 
 
-def _validate_cached_value(data: Any) -> CacheValueType:
+def _validate_cached_value(data: object) -> CacheValueType:
     """Validiere deserialisierte Cache-Daten mit Pydantic.
 
     Args:
@@ -159,7 +159,7 @@ class CacheConfig:
     PREFIX_USER = "cache:user"
 
 
-def _serialize_value(value: Any) -> str:
+def _serialize_value(value: object) -> str:
     """Serialisiere Wert fuer Redis."""
     if isinstance(value, datetime):
         return json.dumps({"__datetime__": value.isoformat()})

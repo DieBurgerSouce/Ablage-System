@@ -13,7 +13,7 @@ CRITICAL: German is the source of truth. All keys must exist in German first.
 
 import re
 from contextvars import ContextVar
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Type
 
 import structlog
 
@@ -135,6 +135,50 @@ _TRANSLATIONS_DE: Dict[str, str] = {
     "validation.invalid_format": "Ungueltiges Format",
     "validation.password_weak": "Passwort entspricht nicht den Anforderungen",
     "validation.passwords_mismatch": "Passwoerter stimmen nicht ueberein",
+
+    # Retention
+    "retention.active_lock": "Aufbewahrungsfrist aktiv - Loeschung gesperrt",
+    "retention.expires_in_days": "Aufbewahrungsfrist laeuft in {days} Tagen ab",
+    "retention.expired": "Aufbewahrungsfrist abgelaufen",
+    "retention.gdpr_conflict": "DSGVO-Loeschantrag kollidiert mit Aufbewahrungspflicht",
+    "retention.gdpr_retention_wins": "Aufbewahrungspflicht hat Vorrang (§147 AO)",
+    "retention.review_scheduled": "Pruefung nach Fristablauf geplant",
+    "retention.compliance_ok": "Alle Aufbewahrungsfristen eingehalten",
+    "retention.violation_found": "Aufbewahrungsfrist-Verletzung gefunden",
+
+    # Compliance
+    "compliance.gobd_compliant": "GoBD-konform",
+    "compliance.gobd_violation": "GoBD-Verstoss",
+    "compliance.audit_trail_complete": "Audit-Trail vollstaendig",
+    "compliance.data_integrity_verified": "Datenintegritaet verifiziert",
+    "compliance.report_generated": "Compliance-Bericht erstellt",
+
+    # Reporting
+    "reporting.generating": "Bericht wird erstellt...",
+    "reporting.export_ready": "Export bereit zum Herunterladen",
+    "reporting.no_data": "Keine Daten fuer den gewaehlten Zeitraum",
+    "reporting.date_range_invalid": "Ungueltiger Zeitraum",
+
+    # Procurement
+    "procurement.po_created": "Bestellung erfolgreich erstellt",
+    "procurement.delivery_confirmed": "Wareneingang bestaetigt",
+    "procurement.invoice_matched": "Rechnung zugeordnet",
+    "procurement.matching_failed": "Zuordnung fehlgeschlagen",
+    "procurement.three_way_match": "Drei-Wege-Abgleich erfolgreich",
+
+    # AI
+    "ai.trust_level_auto": "Automatische Verarbeitung (Trust Level 1)",
+    "ai.trust_level_confirm": "Bestaetigung erforderlich (Trust Level 2)",
+    "ai.trust_level_explicit": "Explizite Genehmigung erforderlich (Trust Level 3)",
+    "ai.confidence_high": "Hohe Erkennungssicherheit",
+    "ai.confidence_low": "Niedrige Erkennungssicherheit - manuelle Pruefung empfohlen",
+    "ai.decision_explanation": "KI-Entscheidungserklaerung",
+
+    # Archive
+    "archive.signed_successfully": "Dokument erfolgreich signiert",
+    "archive.signature_verified": "Signatur verifiziert",
+    "archive.signature_invalid": "Signatur ungueltig",
+    "archive.pdf_a3_created": "PDF/A-3 Archiv erstellt",
 }
 
 # English translations
@@ -238,6 +282,50 @@ _TRANSLATIONS_EN: Dict[str, str] = {
     "validation.invalid_format": "Invalid format",
     "validation.password_weak": "Password does not meet requirements",
     "validation.passwords_mismatch": "Passwords do not match",
+
+    # Retention
+    "retention.active_lock": "Retention period active - deletion locked",
+    "retention.expires_in_days": "Retention expires in {days} days",
+    "retention.expired": "Retention period expired",
+    "retention.gdpr_conflict": "GDPR deletion request conflicts with retention obligation",
+    "retention.gdpr_retention_wins": "Retention obligation takes precedence (§147 AO)",
+    "retention.review_scheduled": "Review after expiry scheduled",
+    "retention.compliance_ok": "All retention periods complied with",
+    "retention.violation_found": "Retention period violation found",
+
+    # Compliance
+    "compliance.gobd_compliant": "GoBD compliant",
+    "compliance.gobd_violation": "GoBD violation",
+    "compliance.audit_trail_complete": "Audit trail complete",
+    "compliance.data_integrity_verified": "Data integrity verified",
+    "compliance.report_generated": "Compliance report generated",
+
+    # Reporting
+    "reporting.generating": "Generating report...",
+    "reporting.export_ready": "Export ready for download",
+    "reporting.no_data": "No data for the selected period",
+    "reporting.date_range_invalid": "Invalid date range",
+
+    # Procurement
+    "procurement.po_created": "Purchase order created successfully",
+    "procurement.delivery_confirmed": "Delivery confirmed",
+    "procurement.invoice_matched": "Invoice matched",
+    "procurement.matching_failed": "Matching failed",
+    "procurement.three_way_match": "Three-way match successful",
+
+    # AI
+    "ai.trust_level_auto": "Automatic processing (Trust Level 1)",
+    "ai.trust_level_confirm": "Confirmation required (Trust Level 2)",
+    "ai.trust_level_explicit": "Explicit approval required (Trust Level 3)",
+    "ai.confidence_high": "High recognition confidence",
+    "ai.confidence_low": "Low recognition confidence - manual review recommended",
+    "ai.decision_explanation": "AI decision explanation",
+
+    # Archive
+    "archive.signed_successfully": "Document signed successfully",
+    "archive.signature_verified": "Signature verified",
+    "archive.signature_invalid": "Signature invalid",
+    "archive.pdf_a3_created": "PDF/A-3 archive created",
 }
 
 # Translation catalog by language
@@ -335,7 +423,7 @@ def detect_language_from_header(accept_language: Optional[str]) -> str:
     return DEFAULT_LANGUAGE
 
 
-def t(key: str, **kwargs: Any) -> str:
+def t(key: str, **kwargs: object) -> str:
     """
     Translate a key to the current language.
 
@@ -380,7 +468,7 @@ def t(key: str, **kwargs: Any) -> str:
     return message
 
 
-def tn(namespace: str, key: str, **kwargs: Any) -> str:
+def tn(namespace: str, key: str, **kwargs: object) -> str:
     """
     Translate a key with explicit namespace.
 
@@ -417,6 +505,6 @@ class TranslationContext:
         set_language(self.language)
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[object]) -> None:
         if self.previous_language is not None:
             set_language(self.previous_language)

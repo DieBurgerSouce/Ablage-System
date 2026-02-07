@@ -14,7 +14,7 @@ Feinpoliert und durchdacht - Enterprise-grade Sicherheit.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Tuple, Union
 import structlog
 
 from app.core.config import settings
@@ -55,7 +55,7 @@ _fallback_lock: asyncio.Lock = asyncio.Lock()  # Thread-Safety fuer Fallback-Dic
 _fallback_warned: bool = False
 
 # Redis-Client (lazy-loaded)
-_redis_client: Optional[Any] = None
+_redis_client: Optional[object] = None
 _redis_available: Optional[bool] = None
 
 
@@ -69,7 +69,7 @@ class AccountLockoutStorageError(Exception):
     pass
 
 
-async def _get_redis_client() -> Optional[Any]:
+async def _get_redis_client() -> Optional[object]:
     """
     Hole Redis-Client für Account-Lockout-Operationen.
 
@@ -479,7 +479,7 @@ async def admin_unlock_account(
 async def get_lockout_status(
     ip: Optional[str] = None,
     username: Optional[str] = None
-) -> Dict[str, Any]:
+) -> Dict[str, Union[str, int, bool, None]]:
     """
     Hole detaillierten Lockout-Status für Admin-Dashboard.
 

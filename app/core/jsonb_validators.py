@@ -7,14 +7,17 @@ Addresses CWE-89 (SQL Injection via JSONB) and CWE-400 (Resource Exhaustion).
 """
 
 import json
-from typing import Any, Optional, Set
+from typing import Dict, List, Optional, Set, Union
+
+# JSON-compatible data type for JSONB payloads
+JsonValue = Union[str, int, float, bool, None, Dict[str, object], List[object]]
 
 MAX_JSONB_SIZE_BYTES = 50 * 1024  # 50KB
 MAX_NESTING_DEPTH = 5
 MAX_ARRAY_LENGTH = 100
 
 
-def validate_jsonb_size(data: Any, max_bytes: int = MAX_JSONB_SIZE_BYTES) -> None:
+def validate_jsonb_size(data: JsonValue, max_bytes: int = MAX_JSONB_SIZE_BYTES) -> None:
     """Validate that JSONB payload does not exceed size limit."""
     serialized = json.dumps(data, default=str)
     if len(serialized.encode("utf-8")) > max_bytes:
@@ -24,7 +27,7 @@ def validate_jsonb_size(data: Any, max_bytes: int = MAX_JSONB_SIZE_BYTES) -> Non
 
 
 def validate_jsonb_depth(
-    data: Any,
+    data: JsonValue,
     max_depth: int = MAX_NESTING_DEPTH,
     _current_depth: int = 0,
 ) -> None:
@@ -47,7 +50,7 @@ def validate_jsonb_depth(
 
 
 def validate_jsonb_keys(
-    data: Any,
+    data: JsonValue,
     allowed_keys: Optional[Set[str]] = None,
 ) -> None:
     """Validate that JSONB dict keys don't contain injection patterns.
@@ -79,7 +82,7 @@ def validate_jsonb_keys(
 
 
 def validate_jsonb_payload(
-    data: Any,
+    data: JsonValue,
     max_bytes: int = MAX_JSONB_SIZE_BYTES,
     max_depth: int = MAX_NESTING_DEPTH,
     allowed_keys: Optional[Set[str]] = None,

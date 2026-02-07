@@ -492,7 +492,7 @@ def verify_2fa_login_encrypted(
 async def setup_2fa(
     user_id: str,
     email: str,
-    db_session: Any
+    db_session: "AsyncSession"
 ) -> Dict[str, Any]:
     """
     Initiiert 2FA-Setup für einen Benutzer.

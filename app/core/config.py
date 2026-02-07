@@ -182,6 +182,17 @@ class Settings(BaseSettings):
     REDIS_SOCKET_KEEPALIVE: bool = True
     REDIS_HEALTH_CHECK_INTERVAL: int = 30
 
+    # Redis Sentinel (HA) - Set REDIS_SENTINEL_HOSTS to enable
+    # Format: "host1:port1,host2:port2,host3:port3"
+    REDIS_SENTINEL_HOSTS: Optional[str] = Field(
+        default=None,
+        description="Komma-getrennte Sentinel-Hosts (z.B. 'sentinel1:26379,sentinel2:26379,sentinel3:26379')"
+    )
+    REDIS_SENTINEL_MASTER_NAME: str = Field(
+        default="mymaster",
+        description="Name des Redis-Master-Sets in Sentinel-Konfiguration"
+    )
+
     # Celery
     CELERY_BROKER_URL: Optional[str] = None
     CELERY_RESULT_BACKEND: Optional[str] = None
@@ -1338,8 +1349,24 @@ class Settings(BaseSettings):
             )
 
         # Build CELERY_BROKER_URL if not set
+        # When Redis Sentinel is configured, use sentinel:// scheme for Celery broker
         if not self.CELERY_BROKER_URL:
-            object.__setattr__(self, 'CELERY_BROKER_URL', self.REDIS_URL)
+            if self.REDIS_SENTINEL_HOSTS:
+                password = self.REDIS_PASSWORD
+                if password:
+                    if isinstance(password, SecretStr):
+                        password = password.get_secret_value()
+                    auth = f":{password}@"
+                else:
+                    auth = ""
+                # Build sentinel URL: sentinel://:password@host1:port1;host2:port2/db
+                sentinel_hosts = ";".join(
+                    f"{auth}{h.strip()}" for h in self.REDIS_SENTINEL_HOSTS.split(",")
+                )
+                sentinel_url = f"sentinel://{sentinel_hosts}/{self.REDIS_DB}"
+                object.__setattr__(self, 'CELERY_BROKER_URL', sentinel_url)
+            else:
+                object.__setattr__(self, 'CELERY_BROKER_URL', self.REDIS_URL)
 
         # Build CELERY_RESULT_BACKEND if not set
         if not self.CELERY_RESULT_BACKEND:
