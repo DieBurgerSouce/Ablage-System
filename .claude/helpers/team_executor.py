@@ -12,11 +12,11 @@ Called by Claude during team workflow orchestration to:
 
 Usage:
     python team_executor.py classify --task "Implement banking API"
-    python team_executor.py phase --number 1 --task "Implement banking API"
-    python team_executor.py save-result --phase 1 --result "Research findings..."
-    python team_executor.py gate --name gate_1_research --phase 1
-    python team_executor.py integrate --phase 6
-    python team_executor.py complete
+    python team_executor.py phase --number 1 --workflow-id abcd1234
+    python team_executor.py save-result --phase 1 --result "Research findings..." --workflow-id abcd1234
+    python team_executor.py gate --name gate_1_research --phase 1 --workflow-id abcd1234
+    python team_executor.py integrate --phase 6 --workflow-id abcd1234
+    python team_executor.py complete --workflow-id abcd1234
 """
 
 import argparse
@@ -24,13 +24,53 @@ import json
 import os
 import re
 import sys
-from dataclasses import asdict
+import uuid
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Set
+from typing import Callable, Dict, List, Optional, Set
 
 # Resolve project root: go up 2 levels from .claude/helpers/
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(_SCRIPT_DIR))
+
+# --- Input validation patterns (path traversal prevention) ---
+_SAFE_AGENT_PATTERN = re.compile(r"^[a-zA-Z][a-zA-Z0-9_]{0,63}$")
+_SAFE_GATE_PATTERN = re.compile(r"^gate_[1-6]_[a-z_]{1,32}$")
+_SAFE_WORKFLOW_ID_PATTERN = re.compile(r"^[a-f0-9]{8}$")
+
+CommandHandler = Callable[[argparse.Namespace], None]
+
+
+def _validate_agent_name(agent: str) -> str:
+    """Validate agent name to prevent path traversal.
+
+    Raises:
+        ValueError: If the agent name contains unsafe characters.
+    """
+    if not _SAFE_AGENT_PATTERN.match(agent):
+        raise ValueError(f"Ungueltiger Agent-Name: '{agent}'")
+    return agent
+
+
+def _validate_gate_name(gate_name: str) -> str:
+    """Validate gate name to prevent injection.
+
+    Raises:
+        ValueError: If the gate name does not match expected pattern.
+    """
+    if not _SAFE_GATE_PATTERN.match(gate_name):
+        raise ValueError(f"Ungueltiger Gate-Name: '{gate_name}'")
+    return gate_name
+
+
+def _validate_workflow_id(wid: str) -> str:
+    """Validate workflow ID to prevent path traversal.
+
+    Raises:
+        ValueError: If the workflow ID does not match expected hex pattern.
+    """
+    if not _SAFE_WORKFLOW_ID_PATTERN.match(wid):
+        raise ValueError(f"Ungueltige Workflow-ID: '{wid}'")
+    return wid
 
 # Insert project root so we can import from .claude.orchestration
 sys.path.insert(0, _PROJECT_ROOT)
@@ -45,27 +85,62 @@ def _ensure_cache_dir() -> None:
     os.makedirs(_CACHE_DIR, exist_ok=True)
 
 
-def _load_state() -> Dict[str, object]:
-    """Load workflow state from the cache file."""
-    if not os.path.isfile(_STATE_FILE):
+def _state_file_for(workflow_id: Optional[str] = None) -> str:
+    """Return the state file path for a given workflow ID.
+
+    If workflow_id is provided, returns a workflow-specific state file.
+    Otherwise returns the default global state file for backwards compatibility.
+    """
+    if workflow_id is not None:
+        _validate_workflow_id(workflow_id)
+        return os.path.join(_CACHE_DIR, f"team_state_{workflow_id}.json")
+    return _STATE_FILE
+
+
+def _load_state(workflow_id: Optional[str] = None) -> Dict[str, object]:
+    """Load workflow state from the cache file.
+
+    When workflow_id is None, checks for a pointer (latest_workflow_id) in the
+    default state file and follows it to the workflow-specific state. This
+    provides backwards compatibility for sequential callers that omit --workflow-id.
+    """
+    state_file = _state_file_for(workflow_id)
+    if not os.path.isfile(state_file):
         return {}
-    with open(_STATE_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)  # type: ignore[no-any-return]
+    with open(state_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    if not isinstance(data, dict):
+        return {}
+    # Follow pointer: if this is a redirect to a workflow-specific state, load that
+    if workflow_id is None and "latest_workflow_id" in data and "template_serialized" not in data:
+        pointer_wid = data["latest_workflow_id"]
+        if isinstance(pointer_wid, str) and _SAFE_WORKFLOW_ID_PATTERN.match(pointer_wid):
+            return _load_state(workflow_id=pointer_wid)
+    return data
 
 
-def _save_state(state: Dict[str, object]) -> None:
-    """Save workflow state to the cache file."""
+def _save_state(state: Dict[str, object], workflow_id: Optional[str] = None) -> None:
+    """Save workflow state atomically via tmp + os.replace."""
     _ensure_cache_dir()
-    with open(_STATE_FILE, "w", encoding="utf-8") as f:
+    state_file = _state_file_for(workflow_id)
+    tmp_path = state_file + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
         json.dump(state, f, indent=2, ensure_ascii=False)
+    os.replace(tmp_path, state_file)
 
 
-def _read_phase_result(phase_number: int, agent: Optional[str] = None) -> str:
+def _read_phase_result(
+    phase_number: int, agent: Optional[str] = None, workflow_id: Optional[str] = None
+) -> str:
     """Read a cached phase result file. Returns empty string if not found."""
+    if workflow_id is not None:
+        _validate_workflow_id(workflow_id)
+    prefix = f"team_{workflow_id}_" if workflow_id else "team_"
     if agent:
-        filename = f"team_phase_{phase_number}_{agent}_result.txt"
+        _validate_agent_name(agent)
+        filename = f"{prefix}phase_{phase_number}_{agent}_result.txt"
     else:
-        filename = f"team_phase_{phase_number}_result.txt"
+        filename = f"{prefix}phase_{phase_number}_result.txt"
     filepath = os.path.join(_CACHE_DIR, filename)
     if not os.path.isfile(filepath):
         return ""
@@ -74,14 +149,21 @@ def _read_phase_result(phase_number: int, agent: Optional[str] = None) -> str:
 
 
 def _write_phase_result(
-    phase_number: int, result: str, agent: Optional[str] = None
+    phase_number: int,
+    result: str,
+    agent: Optional[str] = None,
+    workflow_id: Optional[str] = None,
 ) -> str:
     """Write a phase result to cache. Returns the filepath written."""
+    if workflow_id is not None:
+        _validate_workflow_id(workflow_id)
     _ensure_cache_dir()
+    prefix = f"team_{workflow_id}_" if workflow_id else "team_"
     if agent:
-        filename = f"team_phase_{phase_number}_{agent}_result.txt"
+        _validate_agent_name(agent)
+        filename = f"{prefix}phase_{phase_number}_{agent}_result.txt"
     else:
-        filename = f"team_phase_{phase_number}_result.txt"
+        filename = f"{prefix}phase_{phase_number}_result.txt"
     filepath = os.path.join(_CACHE_DIR, filename)
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(result)
@@ -142,8 +224,12 @@ def cmd_classify(args: argparse.Namespace) -> None:
             f"{len(first_phase.agents)} agent(s)"
         )
 
+    # Generate unique workflow ID for parallel workflow isolation
+    workflow_id = str(uuid.uuid4())[:8]
+
     # Save initial state with serialized template for consistent phase lookups
     state: Dict[str, object] = {
+        "workflow_id": workflow_id,
         "task_description": args.task,
         "team_type": result.team_type.value,
         "current_phase": 0,
@@ -179,9 +265,12 @@ def cmd_classify(args: argparse.Namespace) -> None:
             ],
         },
     }
-    _save_state(state)
+    _save_state(state, workflow_id=workflow_id)
+    # Write pointer to default state file for backwards-compat (sequential callers)
+    _save_state({"latest_workflow_id": workflow_id}, workflow_id=None)
 
     output = {
+        "workflow_id": workflow_id,
         "team_type": result.team_type.value,
         "complexity": result.complexity.value,
         "coupling": result.coupling.value,
@@ -217,7 +306,10 @@ def cmd_phase(args: argparse.Namespace) -> None:
     re-classification which could produce different results if git state changed.
     Falls back to re-classification for backwards compatibility.
     """
-    state = _load_state()
+    wid: Optional[str] = getattr(args, "workflow_id", None) or None
+    if wid:
+        _validate_workflow_id(wid)
+    state = _load_state(workflow_id=wid)
     if not state:
         print(
             json.dumps(
@@ -325,7 +417,7 @@ def cmd_phase(args: argparse.Namespace) -> None:
 
     # Load all previous phase results
     for prev_phase_num in range(1, phase_number):
-        result_text = _read_phase_result(prev_phase_num)
+        result_text = _read_phase_result(prev_phase_num, workflow_id=wid)
         context[f"phase_{prev_phase_num}_result"] = result_text
 
     # Special handling for phase_3_manifests (used by Phase 6 integration)
@@ -333,12 +425,12 @@ def cmd_phase(args: argparse.Namespace) -> None:
     if phase_number >= 6:
         impl_phase = _find_implementation_phase(state)
         manifests_parts: List[str] = []
-        impl_main = _read_phase_result(impl_phase)
+        impl_main = _read_phase_result(impl_phase, workflow_id=wid)
         if impl_main:
             manifests_parts.append(impl_main)
         # Also check for parallel agent results
         for agent_suffix in ["coder_a", "coder_b", "coder_c", "coder_d"]:
-            agent_result = _read_phase_result(impl_phase, agent=agent_suffix)
+            agent_result = _read_phase_result(impl_phase, agent=agent_suffix, workflow_id=wid)
             if agent_result:
                 manifests_parts.append(f"--- {agent_suffix} ---\n{agent_result}")
         context["phase_3_manifests"] = "\n\n".join(manifests_parts) if manifests_parts else "(no manifests found)"
@@ -346,7 +438,7 @@ def cmd_phase(args: argparse.Namespace) -> None:
     # Special handling for security audit parallel phases (phase_2a_result, phase_2b_result)
     for suffix in ["a", "b", "c", "d"]:
         agent_role = f"auditor_{suffix}"
-        agent_result = _read_phase_result(2, agent=agent_role)
+        agent_result = _read_phase_result(2, agent=agent_role, workflow_id=wid)
         if agent_result:
             context[f"phase_2{suffix}_result"] = agent_result
 
@@ -374,7 +466,7 @@ def cmd_phase(args: argparse.Namespace) -> None:
     # Update state
     state["current_phase"] = phase_number
     state["status"] = "in_progress"
-    _save_state(state)
+    _save_state(state, workflow_id=wid)
 
     output = {
         "phase_number": phase_number,
@@ -395,11 +487,14 @@ def cmd_save_result(args: argparse.Namespace) -> None:
     phase_number: int = args.phase
     agent_role: Optional[str] = args.agent if hasattr(args, "agent") else None
     result_text: str = args.result
+    wid: Optional[str] = getattr(args, "workflow_id", None) or None
+    if wid:
+        _validate_workflow_id(wid)
 
-    filepath = _write_phase_result(phase_number, result_text, agent=agent_role)
+    filepath = _write_phase_result(phase_number, result_text, agent=agent_role, workflow_id=wid)
 
     # Update state
-    state = _load_state()
+    state = _load_state(workflow_id=wid)
     if state:
         state["current_phase"] = phase_number
         state["status"] = "in_progress"
@@ -413,7 +508,7 @@ def cmd_save_result(args: argparse.Namespace) -> None:
             "file": filepath,
         }
         state["phase_results"] = phase_results
-        _save_state(state)
+        _save_state(state, workflow_id=wid)
 
     output = {
         "status": "saved",
@@ -449,10 +544,14 @@ def cmd_gate(args: argparse.Namespace) -> None:
             sys.exit(1)
 
     gate_name: str = args.name
+    _validate_gate_name(gate_name)
     phase_number: int = args.phase
+    wid: Optional[str] = getattr(args, "workflow_id", None) or None
+    if wid:
+        _validate_workflow_id(wid)
 
     # Read the phase result
-    result_text = _read_phase_result(phase_number)
+    result_text = _read_phase_result(phase_number, workflow_id=wid)
     if not result_text:
         print(
             json.dumps(
@@ -488,10 +587,10 @@ def cmd_gate(args: argparse.Namespace) -> None:
     elif gate_name == "gate_5_review":
         kwargs["review_output"] = result_text
         # Gate 5 also needs code_output from phase 3
-        code_result = _read_phase_result(3)
+        code_result = _read_phase_result(3, workflow_id=wid)
         if not code_result:
             # Try phase 2 as fallback (for bugfix templates where code is phase 2)
-            code_result = _read_phase_result(2)
+            code_result = _read_phase_result(2, workflow_id=wid)
         kwargs["code_output"] = code_result if code_result else ""
 
     elif gate_name == "gate_6_integration":
@@ -642,22 +741,25 @@ def cmd_integrate(args: argparse.Namespace) -> None:
             sys.exit(1)
 
     phase_number: int = args.phase
+    wid: Optional[str] = getattr(args, "workflow_id", None) or None
+    if wid:
+        _validate_workflow_id(wid)
 
     # Determine the implementation phase from state (not hardcoded to 3)
-    state = _load_state()
+    state = _load_state(workflow_id=wid)
     impl_phase = _find_implementation_phase(state)
 
     # Collect all parallel coder outputs from the implementation phase
     coder_outputs: List[str] = []
 
     # Check the main phase result
-    main_result = _read_phase_result(impl_phase)
+    main_result = _read_phase_result(impl_phase, workflow_id=wid)
     if main_result:
         coder_outputs.append(main_result)
 
     # Check agent-specific results
     for agent_suffix in ["coder_a", "coder_b", "coder_c", "coder_d"]:
-        agent_result = _read_phase_result(impl_phase, agent=agent_suffix)
+        agent_result = _read_phase_result(impl_phase, agent=agent_suffix, workflow_id=wid)
         if agent_result:
             coder_outputs.append(agent_result)
 
@@ -876,7 +978,10 @@ def _best_effort_manifest(
 
 def cmd_complete(args: argparse.Namespace) -> None:
     """Mark the workflow as complete and output a summary."""
-    state = _load_state()
+    wid: Optional[str] = getattr(args, "workflow_id", None) or None
+    if wid:
+        _validate_workflow_id(wid)
+    state = _load_state(workflow_id=wid)
     if not state:
         print(
             json.dumps(
@@ -890,7 +995,7 @@ def cmd_complete(args: argparse.Namespace) -> None:
 
     state["status"] = "completed"
     state["completed_at"] = datetime.now(timezone.utc).isoformat()
-    _save_state(state)
+    _save_state(state, workflow_id=wid)
 
     phase_results = state.get("phase_results", {})
     phases_completed = len(phase_results) if isinstance(phase_results, dict) else 0
@@ -949,6 +1054,12 @@ def build_parser() -> argparse.ArgumentParser:
         default="",
         help="Task description (overrides state if provided).",
     )
+    p_phase.add_argument(
+        "--workflow-id",
+        default=None,
+        dest="workflow_id",
+        help="Workflow ID from classify (for parallel workflow isolation).",
+    )
 
     # save-result
     p_save = subparsers.add_parser(
@@ -971,6 +1082,12 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Result text to save.",
     )
+    p_save.add_argument(
+        "--workflow-id",
+        default=None,
+        dest="workflow_id",
+        help="Workflow ID from classify (for parallel workflow isolation).",
+    )
 
     # gate
     p_gate = subparsers.add_parser(
@@ -988,6 +1105,12 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Phase number whose result to check.",
     )
+    p_gate.add_argument(
+        "--workflow-id",
+        default=None,
+        dest="workflow_id",
+        help="Workflow ID from classify (for parallel workflow isolation).",
+    )
 
     # integrate
     p_integrate = subparsers.add_parser(
@@ -1000,11 +1123,23 @@ def build_parser() -> argparse.ArgumentParser:
         default=6,
         help="Phase number for integration (default: 6).",
     )
+    p_integrate.add_argument(
+        "--workflow-id",
+        default=None,
+        dest="workflow_id",
+        help="Workflow ID from classify (for parallel workflow isolation).",
+    )
 
     # complete
-    subparsers.add_parser(
+    p_complete = subparsers.add_parser(
         "complete",
         help="Mark the workflow as completed.",
+    )
+    p_complete.add_argument(
+        "--workflow-id",
+        default=None,
+        dest="workflow_id",
+        help="Workflow ID from classify (for parallel workflow isolation).",
     )
 
     return parser
@@ -1025,7 +1160,7 @@ def main() -> None:
 
     _ensure_cache_dir()
 
-    command_map: Dict[str, object] = {
+    command_map: Dict[str, CommandHandler] = {
         "classify": cmd_classify,
         "phase": cmd_phase,
         "save-result": cmd_save_result,
@@ -1046,7 +1181,7 @@ def main() -> None:
         )
         sys.exit(1)
 
-    handler(args)  # type: ignore[operator]
+    handler(args)
 
 
 if __name__ == "__main__":
