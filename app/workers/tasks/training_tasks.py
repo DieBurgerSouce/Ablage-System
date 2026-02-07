@@ -1513,7 +1513,7 @@ def run_surya_hf_training(
         # asyncio.run() für sauberes Event-Loop Cleanup
         result = asyncio.run(run_training())
 
-        # Checkpoint registrieren
+        # Checkpoint registrieren und A/B-Test einrichten
         if result.get("status") == "completed":
             checkpoint_manager = CheckpointManager()
             version = checkpoint_manager.create_version(
@@ -1526,6 +1526,47 @@ def run_surya_hf_training(
                 notes=f"Celery Task {task_id}"
             )
             result["registered_version"] = version
+
+            # Auto A/B-Test: Neues Modell gegen Produktion testen
+            if output_version and output_version.startswith("v_auto_"):
+                try:
+                    from app.ml.finetuning.surya_checkpoint_manager import (
+                        SuryaCheckpointManager,
+                    )
+
+                    async def setup_ab_test():
+                        from app.db.session import get_async_session_context
+
+                        async with get_async_session_context() as session:
+                            surya_mgr = SuryaCheckpointManager()
+                            active = await surya_mgr.get_active_version(session)
+
+                            if active and version != active.version:
+                                ab_id = await surya_mgr.start_ab_test(
+                                    db=session,
+                                    test_name=f"Auto-Retraining {output_version}",
+                                    control_version=active.version,
+                                    treatment_version=version,
+                                    treatment_traffic_pct=10.0,
+                                )
+                                await session.commit()
+                                return str(ab_id) if ab_id else None
+                        return None
+
+                    ab_test_id = asyncio.run(setup_ab_test())
+                    if ab_test_id:
+                        result["ab_test_id"] = ab_test_id
+                        logger.info(
+                            "auto_ab_test_created",
+                            task_id=task_id,
+                            ab_test_id=ab_test_id,
+                        )
+                except Exception as ab_err:
+                    logger.warning(
+                        "auto_ab_test_setup_failed",
+                        task_id=task_id,
+                        **safe_error_log(ab_err),
+                    )
 
         logger.info(
             "surya_hf_training_completed",
@@ -1599,6 +1640,18 @@ def check_retraining_conditions(self) -> Dict[str, Any]:
             should_retrain=result["should_retrain"],
             urgency=result["urgency"],
         )
+
+        # Auto-Trigger: Training spawnen wenn Bedingungen erfuellt
+        if result["should_retrain"]:
+            logger.info(
+                "auto_trigger_retraining_spawning",
+                task_id=task_id,
+                urgency=result["urgency"],
+            )
+            auto_trigger_retraining.apply_async(
+                kwargs={"urgency": result["urgency"]},
+                queue="gpu",
+            )
 
         return result
 
@@ -2085,6 +2138,195 @@ def llm_review_batch(
         raise
 
 
+# ==================== Active Learning Bridge Tasks ====================
+
+
+@celery_app.task(
+    bind=True,
+    base=GPUTask,
+    name="app.workers.tasks.training_tasks.auto_trigger_retraining",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 1},
+    retry_backoff=True,
+    soft_time_limit=86400,
+    time_limit=90000,
+    acks_late=True,
+    reject_on_worker_lost=True,
+)
+def auto_trigger_retraining(
+    self,
+    urgency: str = "medium",
+) -> Dict[str, Any]:
+    """
+    Automatisches Retraining wenn Korrektur-Schwellwert erreicht.
+
+    Wird von check_retraining_conditions ausgeloest. Erstellt einen
+    Retraining-Job, exportiert Trainingsdaten und startet das Training.
+    Nach erfolgreichem Training wird automatisch ein A/B-Test eingerichtet.
+    """
+    task_id = self.request.id
+
+    logger.info(
+        "auto_trigger_retraining_starting",
+        task_id=task_id,
+        urgency=urgency,
+    )
+
+    try:
+        from app.db.session import get_async_session_context
+        from app.services.mlops.retraining_service import RetrainingService
+
+        async def trigger_training():
+            async with get_async_session_context() as session:
+                retrain_service = RetrainingService(session)
+
+                # Schwellwert nochmals pruefen (Race-Condition vermeiden)
+                should_retrain, trigger = await retrain_service.should_retrain(
+                    model_type=retrain_service.registry.ModelType.OCR_SURYA
+                )
+
+                if not should_retrain:
+                    return {
+                        "status": "skipped",
+                        "reason": "Bedingungen nicht mehr erfuellt",
+                    }
+
+                # Retraining-Job erstellen
+                job = await retrain_service.create_retraining_job(
+                    model_type=retrain_service.registry.ModelType.OCR_SURYA,
+                    trigger=trigger,
+                )
+
+                # Trainingsdaten exportieren
+                training_data = await retrain_service.export_training_data(job.id)
+
+                if not training_data:
+                    await retrain_service.update_job_status(
+                        job.id,
+                        status=retrain_service.RetrainingStatus.FAILED,
+                        error_message="Keine Trainingsdaten vorhanden",
+                    )
+                    return {
+                        "status": "failed",
+                        "reason": "Keine Trainingsdaten",
+                        "job_id": job.id,
+                    }
+
+                # Trainingsdaten als JSONL speichern
+                import json
+                import tempfile
+                import os
+
+                train_dir = os.path.join(
+                    tempfile.gettempdir(), "ocr_retraining"
+                )
+                os.makedirs(train_dir, exist_ok=True)
+                train_path = os.path.join(train_dir, f"train_{job.id}.jsonl")
+
+                with open(train_path, "w", encoding="utf-8") as f:
+                    for sample in training_data:
+                        f.write(json.dumps(sample, ensure_ascii=False) + "\n")
+
+                # Job-Status aktualisieren
+                await retrain_service.update_job_status(
+                    job.id,
+                    status=retrain_service.RetrainingStatus.RUNNING,
+                )
+
+                await session.commit()
+
+                return {
+                    "status": "triggered",
+                    "job_id": job.id,
+                    "train_path": train_path,
+                    "training_samples": len(training_data),
+                }
+
+        result = asyncio.run(trigger_training())
+
+        if result["status"] == "triggered":
+            # Training-Task spawnen
+            training_result = run_surya_hf_training.apply_async(
+                kwargs={
+                    "train_data_path": result["train_path"],
+                    "output_version": f"v_auto_{result['job_id']}",
+                },
+                queue="gpu",
+            )
+            result["training_task_id"] = training_result.id
+
+        logger.info(
+            "auto_trigger_retraining_completed",
+            task_id=task_id,
+            **{k: v for k, v in result.items() if k != "train_path"},
+        )
+
+        return result
+
+    except Exception as e:
+        logger.exception(
+            "auto_trigger_retraining_failed",
+            task_id=task_id,
+            **safe_error_log(e),
+        )
+        raise
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.training_tasks.auto_promote_ab_test_winners",
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 3},
+    retry_backoff=True,
+    soft_time_limit=300,
+    time_limit=360,
+    acks_late=True,
+)
+def auto_promote_ab_test_winners(self) -> Dict[str, Any]:
+    """
+    Prüfe laufende A/B-Tests und befördere Gewinner automatisch.
+
+    Wird täglich ausgeführt. Nutzt die bestehende
+    check_and_apply_winners() Infrastruktur aus ab_testing.py.
+    """
+    task_id = self.request.id
+
+    logger.info("auto_promote_ab_test_winners_starting", task_id=task_id)
+
+    try:
+        from app.db.session import get_async_session_context
+        from app.ml.ab_testing import ABTestManager
+
+        async def check_winners():
+            async with get_async_session_context() as session:
+                ab_manager = ABTestManager(db=session)
+                results = await ab_manager.check_and_apply_winners()
+                await session.commit()
+                return results
+
+        result = asyncio.run(check_winners())
+
+        logger.info(
+            "auto_promote_ab_test_winners_completed",
+            task_id=task_id,
+            promoted=len(result) if isinstance(result, list) else 0,
+        )
+
+        return {
+            "status": "completed",
+            "promoted_tests": result if isinstance(result, list) else [],
+        }
+
+    except Exception as e:
+        logger.exception(
+            "auto_promote_ab_test_winners_failed",
+            task_id=task_id,
+            **safe_error_log(e),
+        )
+        raise
+
+
 # Erweitere Beat Schedule mit Bulk Processing und Fine-Tuning Tasks
 CELERY_BEAT_TRAINING_SCHEDULE.update({
     "quality-snapshot-hourly": {
@@ -2117,6 +2359,12 @@ CELERY_BEAT_TRAINING_SCHEDULE.update({
     "llm-review-batch": {
         "task": "app.workers.tasks.training_tasks.llm_review_batch",
         "schedule": 7200.0,  # Alle 2 Stunden
+        "options": {"queue": "default"},
+    },
+    # Active Learning Bridge: A/B-Test Gewinner taeglich befoerdern
+    "auto-promote-ab-test-winners-daily": {
+        "task": "app.workers.tasks.training_tasks.auto_promote_ab_test_winners",
+        "schedule": 86400.0,  # Taeglich um 04:00
         "options": {"queue": "default"},
     },
 })

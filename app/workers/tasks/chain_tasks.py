@@ -526,6 +526,229 @@ def generate_chain_statistics_task(company_id: Optional[str] = None) -> Dict[str
 
 
 # =============================================================================
+# Chain Validation Task (Phase 1.3 - Beat Schedule Activated)
+# =============================================================================
+
+
+@celery_app.task(
+    name="app.workers.tasks.chain_tasks.validate_document_chains",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=300,
+)
+def validate_document_chains(
+    self,
+    company_id: Optional[str] = None,
+    max_chains: int = 500,
+    check_discrepancies: bool = True,
+) -> Dict[str, Any]:
+    """
+    Validiert Document Chains auf Integritaet und Vollstaendigkeit.
+
+    Wird taeglich um 03:15 Uhr automatisch ausgefuehrt.
+    Prueft:
+    - Chain-Struktur (Position, Verknuepfung)
+    - Dokumenten-Konsistenz innerhalb der Chain
+    - Abweichungen zwischen Dokumenten
+    - Verwaiste Dokumente (chain_id aber keine anderen in Chain)
+
+    Args:
+        company_id: Optional - nur fuer spezifische Firma
+        max_chains: Maximale Anzahl zu pruefender Chains
+        check_discrepancies: Abweichungen pruefen (performance-intensiv)
+
+    Returns:
+        Dict mit Validierungsergebnissen und Statistiken
+    """
+    from app.db.models import Document
+    from sqlalchemy import select, func, and_
+
+    async def _validate_chains():
+        async with get_async_session_context() as db:
+            stats = {
+                "started_at": datetime.now(timezone.utc).isoformat(),
+                "chains_validated": 0,
+                "chains_valid": 0,
+                "chains_with_issues": 0,
+                "orphaned_documents": 0,
+                "discrepancies_found": 0,
+                "issues": [],
+                "companies_checked": 0,
+                "errors": [],
+            }
+
+            # Base query fuer distinct chains
+            base_condition = Document.deleted_at.is_(None)
+
+            if company_id:
+                base_condition = and_(
+                    base_condition,
+                    Document.company_id == UUID(company_id),
+                )
+
+            # Distinct chain_ids ermitteln
+            chains_query = (
+                select(
+                    Document.chain_id,
+                    Document.company_id,
+                    func.count().label("doc_count"),
+                )
+                .where(
+                    and_(
+                        base_condition,
+                        Document.chain_id.isnot(None),
+                    )
+                )
+                .group_by(Document.chain_id, Document.company_id)
+                .limit(max_chains)
+            )
+
+            chains_result = await db.execute(chains_query)
+            chains = chains_result.all()
+
+            company_ids_seen = set()
+
+            for chain_row in chains:
+                chain_id = chain_row.chain_id
+                chain_company_id = chain_row.company_id
+                doc_count = chain_row.doc_count
+
+                company_ids_seen.add(chain_company_id)
+                stats["chains_validated"] += 1
+
+                try:
+                    chain_issues: List[Dict[str, Any]] = []
+
+                    # 1. Pruefe ob Chain nur 1 Dokument hat (verwaist)
+                    if doc_count == 1:
+                        stats["orphaned_documents"] += 1
+                        chain_issues.append({
+                            "type": "orphaned",
+                            "message": "Chain enthaelt nur ein Dokument",
+                        })
+
+                    # 2. Hole alle Dokumente der Chain fuer weitere Pruefungen
+                    if doc_count > 1:
+                        docs_query = (
+                            select(Document)
+                            .where(
+                                and_(
+                                    Document.chain_id == chain_id,
+                                    Document.deleted_at.is_(None),
+                                )
+                            )
+                            .order_by(Document.chain_position.asc())
+                        )
+
+                        docs_result = await db.execute(docs_query)
+                        docs = docs_result.scalars().all()
+
+                        # 3. Pruefe Position-Kontinuitaet
+                        positions = [d.chain_position for d in docs if d.chain_position is not None]
+                        if positions:
+                            # Gaps in Positionen pruefen
+                            sorted_positions = sorted(positions)
+                            for i in range(1, len(sorted_positions)):
+                                gap = sorted_positions[i] - sorted_positions[i - 1]
+                                if gap > 10:  # Tolerance fuer Luecken
+                                    chain_issues.append({
+                                        "type": "position_gap",
+                                        "message": f"Grosse Luecke in Positionen: {sorted_positions[i - 1]} -> {sorted_positions[i]}",
+                                    })
+
+                        # 4. Discrepancy-Check (optional, performance-intensiv)
+                        if check_discrepancies and doc_count <= 10:
+                            # Betraege vergleichen (falls vorhanden)
+                            amounts = []
+                            for doc in docs:
+                                if doc.metadata and isinstance(doc.metadata, dict):
+                                    amount = doc.metadata.get("total_amount") or doc.metadata.get("betrag")
+                                    if amount is not None:
+                                        try:
+                                            amounts.append(float(amount))
+                                        except (ValueError, TypeError):
+                                            pass
+
+                            if len(amounts) >= 2:
+                                # Pruefen ob Betraege stark abweichen
+                                avg_amount = sum(amounts) / len(amounts)
+                                for amount in amounts:
+                                    if avg_amount > 0:
+                                        deviation = abs(amount - avg_amount) / avg_amount
+                                        if deviation > 0.1:  # >10% Abweichung
+                                            stats["discrepancies_found"] += 1
+                                            chain_issues.append({
+                                                "type": "amount_discrepancy",
+                                                "message": f"Betragsabweichung >10%: {amount:.2f} vs Durchschnitt {avg_amount:.2f}",
+                                            })
+                                            break
+
+                    # Zusammenfassung fuer diese Chain
+                    if chain_issues:
+                        stats["chains_with_issues"] += 1
+                        if len(stats["issues"]) < 100:  # Limit fuer Issues
+                            stats["issues"].append({
+                                "chain_id": chain_id,
+                                "company_id": str(chain_company_id),
+                                "doc_count": doc_count,
+                                "issues": chain_issues,
+                            })
+                    else:
+                        stats["chains_valid"] += 1
+
+                except Exception as chain_e:
+                    stats["errors"].append({
+                        "chain_id": chain_id,
+                        "error": str(chain_e)[:100],
+                    })
+                    logger.warning(
+                        "chain_validation_error",
+                        chain_id=chain_id,
+                        **safe_error_log(chain_e),
+                    )
+
+            stats["companies_checked"] = len(company_ids_seen)
+            stats["completed_at"] = datetime.now(timezone.utc).isoformat()
+
+            # Erfolgsrate
+            if stats["chains_validated"] > 0:
+                stats["validity_rate_percent"] = round(
+                    stats["chains_valid"] / stats["chains_validated"] * 100, 1
+                )
+            else:
+                stats["validity_rate_percent"] = 100.0
+
+            return stats
+
+    try:
+        result = asyncio.get_event_loop().run_until_complete(_validate_chains())
+
+        logger.info(
+            "document_chains_validation_completed",
+            chains_validated=result["chains_validated"],
+            chains_valid=result["chains_valid"],
+            chains_with_issues=result["chains_with_issues"],
+            orphaned=result["orphaned_documents"],
+            discrepancies=result["discrepancies_found"],
+            validity_rate=result["validity_rate_percent"],
+        )
+
+        # Alert bei vielen fehlerhaften Chains
+        if result["chains_with_issues"] > 50:
+            logger.warning(
+                "document_chains_many_issues",
+                chains_with_issues=result["chains_with_issues"],
+                total_validated=result["chains_validated"],
+            )
+
+        return result
+
+    except Exception as e:
+        logger.error("document_chains_validation_failed", **safe_error_log(e))
+        raise self.retry(exc=e)
+
+
+# =============================================================================
 # Celery Beat Schedule
 # =============================================================================
 

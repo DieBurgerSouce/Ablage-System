@@ -832,6 +832,180 @@ def push_entity_to_lexware_task(
 # =============================================================================
 
 
+# =============================================================================
+# Combined Sync Task (fuer Beat Schedule)
+# =============================================================================
+
+
+@shared_task(
+    name="app.workers.tasks.lexware_sync_tasks.sync_all_entities",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=120,
+    queue="erp",
+    time_limit=1800,  # 30 Minuten
+)
+def sync_all_entities(
+    self,
+    sync_customers: bool = True,
+    sync_suppliers: bool = True,
+    sync_invoices: bool = False,
+    since_hours: int = 24,
+) -> Dict[str, Any]:
+    """
+    Synchronisiert alle aktivierten Entity-Typen mit Lexware.
+
+    Wird taeglich um 06:40 Uhr automatisch ausgefuehrt.
+    Kombiniert Kunden-, Lieferanten- und optional Rechnungs-Sync.
+
+    Args:
+        sync_customers: Kunden synchronisieren
+        sync_suppliers: Lieferanten synchronisieren
+        sync_invoices: Rechnungen synchronisieren (optional)
+        since_hours: Zeitraum fuer Delta-Sync (default 24h)
+
+    Returns:
+        Dict mit aggregierten Sync-Ergebnissen
+    """
+    import asyncio
+
+    async def _sync_all() -> Dict[str, Any]:
+        connector = get_lexware_connector()
+        if not connector:
+            logger.warning("lexware_sync_all_entities_not_configured")
+            return {
+                "success": False,
+                "error": "Lexware Connector nicht konfiguriert",
+                "timestamp": utc_now().isoformat(),
+            }
+
+        if not await connector.connect():
+            return {
+                "success": False,
+                "error": "Verbindung zu Lexware fehlgeschlagen",
+                "timestamp": utc_now().isoformat(),
+            }
+
+        results: Dict[str, Any] = {
+            "success": True,
+            "timestamp": utc_now().isoformat(),
+            "entities_synced": {},
+            "total_synced": 0,
+            "total_created": 0,
+            "total_updated": 0,
+            "errors": [],
+        }
+
+        try:
+            since = utc_now() - timedelta(hours=since_hours)
+
+            # Kunden synchronisieren
+            if sync_customers:
+                try:
+                    customer_result = await connector.sync_customers(
+                        direction=ERPSyncDirection.BIDIRECTIONAL,
+                        since=since,
+                    )
+                    results["entities_synced"]["customers"] = customer_result.to_dict()
+                    results["total_synced"] += customer_result.records_synced
+                    results["total_created"] += customer_result.records_created
+                    results["total_updated"] += customer_result.records_updated
+
+                    if not customer_result.success:
+                        results["errors"].append(f"customers: {customer_result.error_message}")
+
+                    logger.info(
+                        "lexware_sync_all_customers_done",
+                        synced=customer_result.records_synced,
+                        created=customer_result.records_created,
+                        updated=customer_result.records_updated,
+                    )
+                except Exception as e:
+                    results["errors"].append(f"customers: {safe_error_detail(e, 'Kundensync')}")
+                    logger.error("lexware_sync_all_customers_error", **safe_error_log(e))
+
+            # Lieferanten synchronisieren
+            if sync_suppliers:
+                try:
+                    supplier_result = await connector.sync_suppliers(
+                        direction=ERPSyncDirection.BIDIRECTIONAL,
+                        since=since,
+                    )
+                    results["entities_synced"]["suppliers"] = supplier_result.to_dict()
+                    results["total_synced"] += supplier_result.records_synced
+                    results["total_created"] += supplier_result.records_created
+                    results["total_updated"] += supplier_result.records_updated
+
+                    if not supplier_result.success:
+                        results["errors"].append(f"suppliers: {supplier_result.error_message}")
+
+                    logger.info(
+                        "lexware_sync_all_suppliers_done",
+                        synced=supplier_result.records_synced,
+                        created=supplier_result.records_created,
+                        updated=supplier_result.records_updated,
+                    )
+                except Exception as e:
+                    results["errors"].append(f"suppliers: {safe_error_detail(e, 'Lieferantensync')}")
+                    logger.error("lexware_sync_all_suppliers_error", **safe_error_log(e))
+
+            # Rechnungen synchronisieren (optional)
+            if sync_invoices:
+                try:
+                    invoice_result = await connector.sync_invoices(
+                        direction=ERPSyncDirection.PULL,
+                        since=since,
+                    )
+                    results["entities_synced"]["invoices"] = invoice_result.to_dict()
+                    results["total_synced"] += invoice_result.records_synced
+                    results["total_created"] += invoice_result.records_created
+                    results["total_updated"] += invoice_result.records_updated
+
+                    if not invoice_result.success:
+                        results["errors"].append(f"invoices: {invoice_result.error_message}")
+
+                    logger.info(
+                        "lexware_sync_all_invoices_done",
+                        synced=invoice_result.records_synced,
+                        created=invoice_result.records_created,
+                        updated=invoice_result.records_updated,
+                    )
+                except Exception as e:
+                    results["errors"].append(f"invoices: {safe_error_detail(e, 'Rechnungssync')}")
+                    logger.error("lexware_sync_all_invoices_error", **safe_error_log(e))
+
+            results["success"] = len(results["errors"]) == 0
+
+            logger.info(
+                "lexware_sync_all_entities_completed",
+                total_synced=results["total_synced"],
+                total_created=results["total_created"],
+                total_updated=results["total_updated"],
+                entity_types=list(results["entities_synced"].keys()),
+                errors=len(results["errors"]),
+            )
+
+            return results
+
+        finally:
+            await connector.disconnect()
+
+    try:
+        return asyncio.get_event_loop().run_until_complete(_sync_all())
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            return loop.run_until_complete(_sync_all())
+        finally:
+            loop.close()
+
+
+# =============================================================================
+# Connection Health Check
+# =============================================================================
+
+
 @shared_task(
     name="lexware_sync.health_check",
     bind=True,

@@ -23,7 +23,7 @@ from redis import Redis
 from redis.exceptions import RedisError
 
 from app.core.config import settings
-from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.workers.celery_app import celery_app, CPUTask
 
 
@@ -517,6 +517,162 @@ def cleanup_old_dlq_tasks(max_age_days: int = 7) -> Dict[str, Any]:
     except RedisError as e:
         logger.error("dlq_cleanup_error", **safe_error_log(e))
         return {"success": False, **safe_error_log(e)}
+
+
+# =============================================================================
+# Critical DLQ Alert Task (Phase 1.3 - Beat Schedule Activated)
+# =============================================================================
+
+
+@celery_app.task(
+    base=CPUTask,
+    name="app.workers.tasks.dlq_management_tasks.alert_on_critical_dlq_count",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=30,
+)
+def alert_on_critical_dlq_count(
+    self,
+    threshold: int = 100,
+) -> Dict[str, Any]:
+    """Alarmiert bei kritischer DLQ-Anzahl.
+
+    Wird alle 5 Minuten von Celery Beat ausgefuehrt.
+    Erzeugt Alerts und Incidents wenn DLQ-Anzahl ueber Schwellenwert liegt.
+
+    Args:
+        threshold: Schwellenwert fuer kritische Anzahl (default 100)
+
+    Returns:
+        Dict mit DLQ-Status und Alert-Information
+    """
+    from app.core.safe_errors import safe_error_detail
+
+    try:
+        redis = _get_redis_client()
+        dlq_count = redis.llen(DLQ_REDIS_KEY)
+
+        result = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "dlq_count": dlq_count,
+            "threshold": threshold,
+            "alert_triggered": False,
+            "severity": "normal",
+        }
+
+        if dlq_count >= threshold:
+            result["alert_triggered"] = True
+
+            # Schweregrad bestimmen
+            if dlq_count >= DLQ_CRITICAL_THRESHOLD:  # 500+
+                result["severity"] = "critical"
+            elif dlq_count >= DLQ_ALERT_THRESHOLD:  # 100+
+                result["severity"] = "high"
+            else:
+                result["severity"] = "medium"
+
+            logger.warning(
+                "dlq_critical_count_alert",
+                dlq_count=dlq_count,
+                threshold=threshold,
+                severity=result["severity"],
+            )
+
+            # Incident-Reporting fuer kritische DLQ-Zustaende
+            if result["severity"] == "critical":
+                try:
+                    from app.services.incident_response_service import (
+                        report_system_incident, IncidentType, IncidentSeverity
+                    )
+
+                    # Zusaetzliche Details sammeln
+                    stats = get_dlq_stats()
+
+                    report_system_incident(
+                        IncidentType.DLQ_CRITICAL,
+                        IncidentSeverity.HIGH if result["severity"] == "high" else IncidentSeverity.CRITICAL,
+                        f"DLQ kritischer Schwellenwert erreicht: {dlq_count} Tasks (Grenzwert: {threshold})",
+                        details={
+                            "dlq_count": dlq_count,
+                            "threshold": threshold,
+                            "critical_threshold": DLQ_CRITICAL_THRESHOLD,
+                            "poison_pills": len(stats.get("poison_pills", [])),
+                            "task_types": stats.get("task_types", {}),
+                        }
+                    )
+                    result["incident_reported"] = True
+
+                except ImportError:
+                    # Incident-Service nicht verfuegbar
+                    logger.debug("incident_service_not_available")
+                    result["incident_reported"] = False
+                except Exception as incident_e:
+                    logger.warning(
+                        "dlq_incident_report_failed",
+                        error_type=type(incident_e).__name__,
+                    )
+                    result["incident_reported"] = False
+
+            # Alert Center benachrichtigen (falls vorhanden)
+            try:
+                from app.services.alert_center_service import AlertCenterService
+                from app.db.session import get_async_session_context
+                import asyncio
+
+                async def _create_alert():
+                    async with get_async_session_context() as db:
+                        alert_service = AlertCenterService(db)
+                        await alert_service.create_alert(
+                            alert_code="SYS_003",  # System Performance Alert
+                            title=f"DLQ kritisch: {dlq_count} fehlgeschlagene Tasks",
+                            message=f"Die Dead Letter Queue enthaelt {dlq_count} fehlgeschlagene Tasks. "
+                                   f"Schwellenwert: {threshold}. Manuelles Eingreifen erforderlich.",
+                            category="system",
+                            severity=result["severity"],
+                            metadata={
+                                "dlq_count": dlq_count,
+                                "threshold": threshold,
+                            },
+                        )
+
+                try:
+                    asyncio.get_event_loop().run_until_complete(_create_alert())
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        loop.run_until_complete(_create_alert())
+                    finally:
+                        loop.close()
+
+                result["alert_center_notified"] = True
+
+            except ImportError:
+                # Alert Center nicht verfuegbar
+                result["alert_center_notified"] = False
+            except Exception as alert_e:
+                logger.debug(
+                    "dlq_alert_center_notification_failed",
+                    error_type=type(alert_e).__name__,
+                )
+                result["alert_center_notified"] = False
+
+        else:
+            logger.debug(
+                "dlq_count_below_threshold",
+                dlq_count=dlq_count,
+                threshold=threshold,
+            )
+
+        return result
+
+    except RedisError as e:
+        logger.error("dlq_alert_redis_error", **safe_error_log(e))
+        return {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "error": safe_error_detail(e, "DLQ-Pruefung"),
+            "alert_triggered": False,
+        }
 
 
 # =============================================================================

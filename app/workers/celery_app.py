@@ -12,7 +12,7 @@ from celery.signals import (
     worker_ready, worker_shutdown, celeryd_init
 )
 from contextlib import contextmanager
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 import torch
 from redis import Redis
 from redis.exceptions import RedisError
@@ -274,6 +274,7 @@ celery_app = Celery(
         "app.workers.tasks.export_tasks",  # Export Tasks (Batch, Scheduled)
         "app.workers.tasks.privat_tasks",  # Privat-Modul Intelligence Tasks (KPIs, Deadlines, Financial Health)
         "app.workers.tasks.orchestration_tasks",  # Cross-Module Orchestration (Phase 2 - Intelligent Event Routing)
+        "app.workers.tasks.orchestration_extended_tasks",  # Orchestration Extensions (Phase 4 - Health, Investigation, Seasonal)
         "app.workers.tasks.entity_linking_tasks",  # Entity Linking (Lexware Integration - Document-Entity Matching)
         "app.workers.tasks.workflow_tasks",  # Document Workflow Triggers (on_document_created)
         "app.workers.tasks.notification_tasks",  # Notification Tasks (Daily Digest, Cleanup)
@@ -299,9 +300,10 @@ celery_app.conf.update(
     # Task execution
     task_track_started=True,
     task_send_sent_event=True,
-    task_time_limit=settings.OCR_TIMEOUT_SECONDS,
-    task_soft_time_limit=settings.OCR_TIMEOUT_SECONDS - 30,
+    task_time_limit=600,  # Hard kill after 10 min (covers long OCR + retries)
+    task_soft_time_limit=540,  # SoftTimeLimitExceeded after 9 min (graceful shutdown)
     task_acks_late=True,
+    task_default_retry_delay=60,  # 1 min between retries
     worker_prefetch_multiplier=1,  # Critical for GPU tasks - one task at a time
 
     # Result backend
@@ -311,10 +313,16 @@ celery_app.conf.update(
     result_compression="gzip",
 
     # Worker settings
-    worker_max_tasks_per_child=10,  # Restart worker after 10 tasks (memory management)
+    worker_max_tasks_per_child=100,  # Restart workers after 100 tasks (memory leak prevention)
     worker_disable_rate_limits=False,
     worker_send_task_events=True,
-    worker_pool="solo",  # Single process pool for GPU isolation
+    worker_pool="solo",  # Single process pool for GPU isolation (CUDA not fork-safe)
+
+    # Distributed Beat Scheduler (celery-redbeat)
+    # Allows multiple Beat processes - only one acquires the Redis lock
+    beat_scheduler="redbeat.RedBeatScheduler",
+    redbeat_redis_url=settings.CELERY_BROKER_URL,
+    redbeat_lock_timeout=300,  # Lock TTL 5 min (re-acquired automatically)
 
     # ==========================================================================
     # PRIORITY QUEUE CONFIGURATION
@@ -328,6 +336,9 @@ celery_app.conf.update(
         "sep": ":",
         "queue_order_strategy": "priority",  # Process high priority first
         "visibility_timeout": 43200,  # 12 hours (for long-running OCR tasks)
+        # Redis Sentinel support: master_name used when broker URL is sentinel://
+        **({"master_name": settings.REDIS_SENTINEL_MASTER_NAME}
+           if settings.REDIS_SENTINEL_HOSTS else {}),
     },
 
     # ==========================================================================
@@ -934,6 +945,37 @@ celery_app.conf.update(
             "schedule": crontab(day_of_week=0, hour=3, minute=0),
             "kwargs": {"days_to_keep": 30},
         },
+        # -----------------------------------------------------------------
+        # Orchestration Extended Tasks (Phase 4 - Health, Investigation, Seasonal)
+        # -----------------------------------------------------------------
+        # Entity Health Degradation Check - Taeglich 07:00 Uhr
+        "orchestration-entity-health-check": {
+            "task": "orchestration.check_entity_health_degradation",
+            "schedule": crontab(hour=7, minute=0),
+            "kwargs": {"limit": 500},
+        },
+        # Seasonal Pattern Detection - Woechentlich Montag 06:00 Uhr
+        "orchestration-seasonal-detection": {
+            "task": "orchestration.detect_seasonal_patterns",
+            "schedule": crontab(day_of_week=1, hour=6, minute=0),
+            "kwargs": {"months_history": 24},
+        },
+        # Process Pending Investigations - Stuendlich
+        "orchestration-process-investigations": {
+            "task": "orchestration.process_pending_investigations",
+            "schedule": 3600.0,  # Stuendlich
+            "kwargs": {"limit": 20},
+        },
+        # Extended Approval Escalation (with deputy routing) - Alle 30 Minuten
+        "orchestration-escalate-approvals-extended": {
+            "task": "orchestration.escalate_overdue_approvals_extended",
+            "schedule": 1800.0,  # Alle 30 Minuten
+        },
+        # Assign Deputy Approvers - Taeglich 07:30 Uhr
+        "orchestration-assign-deputies": {
+            "task": "orchestration.assign_deputy_approvers",
+            "schedule": crontab(hour=7, minute=30),
+        },
         # =================================================================
         # Approval System Tasks
         # =================================================================
@@ -1236,6 +1278,28 @@ celery_app.conf.update(
         "cashflow-prediction-cache-warming": {
             "task": "cashflow_prediction.warm_cache",
             "schedule": 3600.0,  # Stuendlich
+        },
+        # =================================================================
+        # Entity-Based Cashflow Prediction Tasks (Phase 2.2)
+        # Entity Payment Behavior Analysis & Liquidity Forecasting
+        # =================================================================
+        # Woechentlich: Entity Payment Profiles aktualisieren (Sonntag 03:00)
+        "cashflow-entity-profiles-weekly": {
+            "task": "cashflow_prediction.update_entity_profiles",
+            "schedule": crontab(day_of_week=0, hour=3, minute=0),
+            "options": {"queue": "maintenance"},
+        },
+        # Alle 4 Stunden: Liquidity Alerts pruefen
+        "cashflow-liquidity-alerts": {
+            "task": "cashflow_prediction.check_liquidity_alerts",
+            "schedule": crontab(hour="*/4"),  # Alle 4 Stunden
+            "options": {"queue": "metadata"},
+        },
+        # Taeglich: Entity-basierte Cashflow-Prognose um 06:15 Uhr (nach Monte Carlo)
+        "cashflow-entity-forecast-daily": {
+            "task": "cashflow_prediction.calculate_daily_forecast_v2",
+            "schedule": crontab(hour=6, minute=15),  # Nach der bestehenden Monte Carlo Prognose
+            "options": {"queue": "metadata"},
         },
         # =================================================================
         # Zero-Touch OCR Tasks (F1 - Vollautomatische Dokumentenverarbeitung)
@@ -1760,6 +1824,119 @@ celery_app.conf.update(
             "schedule": crontab(day_of_week=1, hour=6, minute=0),  # Montag 06:00 Uhr
             "options": {"queue": "maintenance"},
         },
+        # =================================================================
+        # Lexware Integration Tasks (Phase 1.3 - Activated)
+        # Automatische Synchronisation mit Lexware ERP
+        # =================================================================
+        # Taeglich: Alle Entities synchronisieren (Kunden + Lieferanten)
+        "lexware-sync-daily": {
+            "task": "app.workers.tasks.lexware_sync_tasks.sync_all_entities",
+            "schedule": crontab(hour=6, minute=40),  # Taeglich um 06:40 Uhr
+            "kwargs": {"sync_customers": True, "sync_suppliers": True},
+            "options": {"queue": "erp"},
+        },
+        # =================================================================
+        # DLQ Critical Alerting (Phase 1.3 - Activated)
+        # Fruehwarnung bei kritischen DLQ-Zustaenden
+        # =================================================================
+        # Alle 5 Minuten: Kritische DLQ-Anzahl pruefen
+        "dlq-alert-on-critical": {
+            "task": "app.workers.tasks.dlq_management_tasks.alert_on_critical_dlq_count",
+            "schedule": 300.0,  # Alle 5 Minuten
+            "kwargs": {"threshold": 100},
+            "options": {"queue": "maintenance"},
+        },
+        # =================================================================
+        # Contract V2 Auto-Renewal Tasks (Phase 1.3 - Activated)
+        # Automatische Vertragsverlängerungen pruefen und ausfuehren
+        # =================================================================
+        # Taeglich: Automatische Vertragsverlaengerungen pruefen
+        "contract-execute-renewals": {
+            "task": "contracts_v2.check_auto_renewals",
+            "schedule": crontab(hour=9, minute=15),  # Taeglich um 09:15 Uhr
+            "options": {"queue": "metadata"},
+        },
+        # =================================================================
+        # Document Chain Validation (Phase 1.3 - Activated)
+        # Integritaetspruefung der Auftragsketten
+        # =================================================================
+        # Taeglich: Document-Chain-Validierung
+        "document-chain-validation": {
+            "task": "app.workers.tasks.chain_tasks.validate_document_chains",
+            "schedule": crontab(hour=3, minute=15),  # Taeglich um 03:15 Uhr
+            "options": {"queue": "metadata"},
+        },
+        # =================================================================
+        # mTLS Certificate Management Tasks (Phase 1.1 - Security)
+        # Automatische Zertifikat-Rotation und Validierung
+        # =================================================================
+        # Taeglich: Ablaufende Zertifikate rotieren (03:00)
+        "mtls-rotate-certificates-daily": {
+            "task": "app.workers.tasks.mtls_tasks.rotate_expiring_certificates_task",
+            "schedule": crontab(hour=3, minute=0),  # Taeglich um 03:00 Uhr
+            "kwargs": {"threshold_days": 7},
+            "options": {"queue": "maintenance"},
+        },
+        # Woechentlich: Alle Zertifikate verifizieren (Sonntag 04:00)
+        "mtls-verify-certificates-weekly": {
+            "task": "app.workers.tasks.mtls_tasks.verify_all_certificates_task",
+            "schedule": crontab(day_of_week=0, hour=4, minute=0),  # Sonntag 04:00 Uhr
+            "options": {"queue": "maintenance"},
+        },
+        # Alle 5 Minuten: Zertifikat-Registry synchronisieren
+        "mtls-sync-registry-5min": {
+            "task": "app.workers.tasks.mtls_tasks.sync_certificate_registry_task",
+            "schedule": 300.0,  # Alle 5 Minuten
+            "options": {"queue": "maintenance"},
+        },
+        # Monatlich: Widerrufene Zertifikate aufraumen (1. des Monats 02:00)
+        "mtls-cleanup-revoked-monthly": {
+            "task": "app.workers.tasks.mtls_tasks.cleanup_revoked_certificates_task",
+            "schedule": crontab(day_of_month=1, hour=2, minute=0),  # Monatlich am 1. um 02:00 Uhr
+            "kwargs": {"max_age_days": 90},
+            "options": {"queue": "maintenance"},
+        },
+        # Woechentlich: mTLS Audit-Bericht erstellen (Montag 06:00)
+        "mtls-audit-report-weekly": {
+            "task": "app.workers.tasks.mtls_tasks.generate_mtls_audit_report_task",
+            "schedule": crontab(day_of_week=1, hour=6, minute=0),  # Montag 06:00 Uhr
+            "kwargs": {"days": 7},
+            "options": {"queue": "maintenance"},
+        },
+        # =================================================================
+        # Autonomous Trust System Tasks (Phase 2.1)
+        # =================================================================
+        # Alle 15 Minuten: Faellige Proposals verarbeiten
+        "autonomous-process-due-proposals": {
+            "task": "app.workers.tasks.autonomous_trust_tasks.process_due_proposals",
+            "schedule": 900.0,  # Alle 15 Minuten
+            "options": {"queue": "maintenance"},
+        },
+        # Taeglich: Trust-Metriken aktualisieren (02:30 Uhr)
+        "autonomous-update-trust-metrics": {
+            "task": "app.workers.tasks.autonomous_trust_tasks.update_trust_metrics",
+            "schedule": crontab(hour=2, minute=30),  # Taeglich um 02:30 Uhr
+            "options": {"queue": "maintenance"},
+        },
+        # Woechentlich: Trust-Level Upgrades evaluieren (Sonntag 03:00 Uhr)
+        "autonomous-evaluate-trust-upgrades": {
+            "task": "app.workers.tasks.autonomous_trust_tasks.evaluate_trust_upgrades",
+            "schedule": crontab(day_of_week=0, hour=3, minute=0),  # Sonntag 03:00 Uhr
+            "options": {"queue": "maintenance"},
+        },
+        # Taeglich: Abgelaufene Proposals bereinigen (04:00 Uhr)
+        "autonomous-cleanup-expired-proposals": {
+            "task": "app.workers.tasks.autonomous_trust_tasks.cleanup_expired_proposals",
+            "schedule": crontab(hour=4, minute=0),  # Taeglich um 04:00 Uhr
+            "kwargs": {"retention_days": 90},
+            "options": {"queue": "maintenance"},
+        },
+        # Stuendlich: Benachrichtigungen ueber ausstehende Proposals
+        "autonomous-notify-pending-proposals": {
+            "task": "app.workers.tasks.autonomous_trust_tasks.notify_pending_proposals",
+            "schedule": crontab(minute=0),  # Jede volle Stunde
+            "options": {"queue": "notifications"},
+        },
     },
 
     # Queue routing
@@ -1858,6 +2035,10 @@ celery_app.conf.update(
         "cashflow_prediction.generate_alerts": {"queue": "metadata", "priority": 1},
         # Cache-Warming (niedrige Prioritaet)
         "cashflow_prediction.warm_cache": {"queue": "maintenance", "priority": 3},
+        # Entity-Based Cashflow Prediction Tasks (Phase 2.2)
+        "cashflow_prediction.update_entity_profiles": {"queue": "maintenance", "priority": 2},
+        "cashflow_prediction.check_liquidity_alerts": {"queue": "metadata", "priority": 1},
+        "cashflow_prediction.calculate_daily_forecast_v2": {"queue": "metadata", "priority": 2},
         # DLQ Management tasks (CPU)
         "app.workers.tasks.dlq_management_tasks.check_dlq_health": {"queue": "metrics", "priority": 1},
         "app.workers.tasks.dlq_management_tasks.cleanup_old_dlq_tasks": {"queue": "maintenance", "priority": 1},
@@ -1929,6 +2110,16 @@ celery_app.conf.update(
         "app.workers.tasks.orchestration_tasks.check_and_emit_threshold_events": {"queue": "orchestration", "priority": 4},  # Mittel - periodische Pruefung
         "app.workers.tasks.orchestration_tasks.get_orchestration_metrics": {"queue": "metrics", "priority": 1},  # Niedrig - Monitoring
         "app.workers.tasks.orchestration_tasks.cleanup_old_decisions": {"queue": "maintenance", "priority": 1},  # Niedrig - Maintenance
+        # =================================================================
+        # Orchestration Extended Tasks (Phase 4 - Health, Investigation, Seasonal)
+        # =================================================================
+        "orchestration.check_entity_health_degradation": {"queue": "orchestration", "priority": 4},
+        "orchestration.detect_seasonal_patterns": {"queue": "maintenance", "priority": 2},
+        "orchestration.process_pending_investigations": {"queue": "orchestration", "priority": 5},
+        "orchestration.escalate_overdue_approvals_extended": {"queue": "orchestration", "priority": 6},
+        "orchestration.start_fraud_investigation": {"queue": "orchestration", "priority": 8},  # Hoch - Security
+        "orchestration.apply_health_action": {"queue": "orchestration", "priority": 5},
+        "orchestration.assign_deputy_approvers": {"queue": "orchestration", "priority": 3},
         # =================================================================
         # Workflow Automation Tasks
         # =================================================================
@@ -2065,6 +2256,25 @@ celery_app.conf.update(
         # =================================================================
         "app.workers.tasks.audit_chain_tasks.verify_integrity": {"queue": "maintenance", "priority": 3},
         "app.workers.tasks.audit_chain_tasks.build_merkle_tree": {"queue": "maintenance", "priority": 2},
+        # =================================================================
+        # mTLS Certificate Management Tasks (Phase 1.1 - Security)
+        # =================================================================
+        "app.workers.tasks.mtls_tasks.rotate_expiring_certificates_task": {"queue": "maintenance", "priority": 4},
+        "app.workers.tasks.mtls_tasks.verify_all_certificates_task": {"queue": "maintenance", "priority": 3},
+        "app.workers.tasks.mtls_tasks.cleanup_revoked_certificates_task": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.mtls_tasks.sync_certificate_registry_task": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.mtls_tasks.generate_mtls_audit_report_task": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.mtls_tasks.initialize_service_certificates_task": {"queue": "maintenance", "priority": 5},
+        "app.workers.tasks.mtls_tasks.revoke_certificate_task": {"queue": "maintenance", "priority": 6},
+        "app.workers.tasks.mtls_tasks.get_ca_status_task": {"queue": "maintenance", "priority": 1},
+        # =================================================================
+        # Autonomous Trust System Tasks (Phase 2.1)
+        # =================================================================
+        "app.workers.tasks.autonomous_trust_tasks.process_due_proposals": {"queue": "maintenance", "priority": 4},
+        "app.workers.tasks.autonomous_trust_tasks.update_trust_metrics": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.autonomous_trust_tasks.evaluate_trust_upgrades": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.autonomous_trust_tasks.cleanup_expired_proposals": {"queue": "maintenance", "priority": 1},
+        "app.workers.tasks.autonomous_trust_tasks.notify_pending_proposals": {"queue": "notifications", "priority": 3},
         # =================================================================
         # KI-Ethik Tasks (F7 - Bias-Detection & Fairness)
         # =================================================================
@@ -2293,7 +2503,7 @@ class GPUTask(Task):
     # Minimum interval between refreshes (30 seconds)
     _LOCK_REFRESH_INTERVAL: float = 30.0
 
-    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+    def __call__(self, *args: object, **kwargs: object) -> object:
         """Execute task with GPU memory management."""
         with gpu_memory_guard():
             return super().__call__(*args, **kwargs)
@@ -2348,11 +2558,11 @@ class GPUTask(Task):
     def after_return(
         self,
         status: str,
-        retval: Any,
+        retval: object,
         task_id: str,
         args: tuple,
         kwargs: dict,
-        einfo: Optional[Any]
+        einfo: Optional[object]
     ) -> None:
         """Release GPU resources after task completion."""
         try:
@@ -2375,7 +2585,7 @@ class GPUTask(Task):
         task_id: str,
         args: tuple,
         kwargs: dict,
-        einfo: Any
+        einfo: object
     ) -> None:
         """Handle task retry."""
         logger.warning("gpu_task_retrying", task_id=task_id, task_name=self.name, exception=str(exc), retry_count=self.request.retries)
@@ -2425,7 +2635,7 @@ def task_prerun_handler(
     task: Optional[Task] = None,
     args: Optional[tuple] = None,
     kwargs: Optional[dict] = None,
-    **extra: Any
+    **extra: object
 ) -> None:
     """Log task start and update database status."""
     task_name = task.name if task else "unknown"
@@ -2444,9 +2654,9 @@ def task_postrun_handler(
     task: Optional[Task] = None,
     args: Optional[tuple] = None,
     kwargs: Optional[dict] = None,
-    retval: Optional[Any] = None,
+    retval: Optional[object] = None,
     state: Optional[str] = None,
-    **extra: Any
+    **extra: object
 ) -> None:
     """Log task completion and cleanup GPU memory."""
     task_name = task.name if task else "unknown"
@@ -2472,9 +2682,9 @@ def task_failure_handler(
     exception: Optional[Exception] = None,
     args: Optional[tuple] = None,
     kwargs: Optional[dict] = None,
-    traceback: Optional[Any] = None,
-    einfo: Optional[Any] = None,
-    **extra: Any
+    traceback: Optional[object] = None,
+    einfo: Optional[object] = None,
+    **extra: object
 ) -> None:
     """Log task failure and cleanup resources."""
     task_name = sender.name if sender else "unknown"
@@ -2504,8 +2714,8 @@ def task_retry_handler(
     sender: Optional[Task] = None,
     task_id: Optional[str] = None,
     reason: Optional[str] = None,
-    einfo: Optional[Any] = None,
-    **extra: Any
+    einfo: Optional[object] = None,
+    **extra: object
 ) -> None:
     """Log task retry attempts."""
     task_name = sender.name if sender else "unknown"
@@ -2518,8 +2728,8 @@ def task_retry_handler(
 @task_success.connect
 def task_success_handler(
     sender: Optional[Task] = None,
-    result: Optional[Any] = None,
-    **extra: Any
+    result: Optional[object] = None,
+    **extra: object
 ) -> None:
     """Log successful task completion."""
     task_name = sender.name if sender else None
@@ -2535,7 +2745,7 @@ _models_preloaded = False
 
 
 @worker_ready.connect
-def preload_ocr_models(sender: Any = None, **kwargs: Any) -> None:
+def preload_ocr_models(sender: object = None, **kwargs: object) -> None:
     """
     Preload OCR models when worker starts to eliminate cold start latency.
 
@@ -2688,7 +2898,7 @@ def _preload_surya_gpu() -> None:
 # =============================================================================
 
 @worker_shutdown.connect
-def cleanup_gpu_on_worker_shutdown(sender: Any = None, **kwargs: Any) -> None:
+def cleanup_gpu_on_worker_shutdown(sender: object = None, **kwargs: object) -> None:
     """
     Clean up GPU resources when worker shuts down.
 
@@ -2739,11 +2949,11 @@ STALE_TASK_THRESHOLD_SECONDS = 600  # Tasks aelter als 10 Min gelten als stuck
 WORKER_UNRESPONSIVE_THRESHOLD_SECONDS = 120  # Worker gilt als tot nach 2 Min ohne Heartbeat
 
 # Globaler Health-Status Cache
-_worker_health_cache: Dict[str, Any] = {}
+_worker_health_cache: Dict[str, object] = {}
 _last_health_check: Optional[datetime] = None
 
 
-def get_worker_health_status() -> Dict[str, Any]:
+def get_worker_health_status() -> Dict[str, object]:
     """
     Ermittle den Gesundheitsstatus aller Celery Worker.
 
@@ -2877,7 +3087,7 @@ def get_worker_health_status() -> Dict[str, Any]:
     return result
 
 
-def get_cached_worker_health() -> Dict[str, Any]:
+def get_cached_worker_health() -> Dict[str, object]:
     """
     Hole gecachten Worker-Health-Status.
 
@@ -2900,7 +3110,7 @@ def get_cached_worker_health() -> Dict[str, Any]:
     return _worker_health_cache
 
 
-def restart_stuck_tasks(force: bool = False) -> Dict[str, Any]:
+def restart_stuck_tasks(force: bool = False) -> Dict[str, object]:
     """
     Beende und starte stuck Tasks neu.
 
@@ -2944,7 +3154,7 @@ def restart_stuck_tasks(force: bool = False) -> Dict[str, Any]:
     return result
 
 
-def get_worker_heartbeat_status() -> Dict[str, Any]:
+def get_worker_heartbeat_status() -> Dict[str, object]:
     """
     Pruefe Worker-Heartbeats via Celery Events.
 
@@ -2987,9 +3197,9 @@ def enhanced_oom_recovery_handler(
     exception: Optional[Exception] = None,
     args: Optional[tuple] = None,
     kwargs: Optional[dict] = None,
-    traceback: Optional[Any] = None,
-    einfo: Optional[Any] = None,
-    **extra: Any
+    traceback: Optional[object] = None,
+    einfo: Optional[object] = None,
+    **extra: object
 ) -> None:
     """
     Enhanced OOM recovery handler with GPU memory cleanup.

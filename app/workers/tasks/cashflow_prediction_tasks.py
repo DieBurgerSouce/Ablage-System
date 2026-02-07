@@ -553,3 +553,400 @@ async def _create_cashflow_alert(
         await session.rollback()
 
     return alerts_created
+
+
+# =============================================================================
+# Phase 2.2: Entity-based Prediction Tasks
+# =============================================================================
+
+
+@celery_app.task(
+    base=CPUTask,
+    name="cashflow_prediction.update_entity_profiles",
+    queue="maintenance",
+    priority=3,
+    ignore_result=True,
+    soft_time_limit=590,
+    time_limit=600,
+)
+def update_entity_profiles(company_id: Optional[str] = None) -> TaskResult:
+    """
+    Aktualisiert alle Entity-Zahlungsprofile.
+
+    Wird woechentlich (Sonntag 03:00) via Celery Beat ausgefuehrt.
+    Berechnet Payment Consistency, Seasonal Patterns und Risk-adjusted Probability.
+
+    Args:
+        company_id: Optional - nur fuer bestimmte Firma
+
+    Returns:
+        Dict mit Task-Ergebnissen
+    """
+    import asyncio
+    from uuid import UUID
+    from app.db.async_session import get_async_session
+
+    result: TaskResult = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "success": True,
+        "task": "update_entity_profiles",
+        "companies_processed": 0,
+        "profiles_updated": 0,
+    }
+
+    async def _update_profiles() -> Dict:
+        """Async Profile-Update Logik."""
+        from sqlalchemy import select
+        from app.db.models import Company
+        from app.services.predictive.cashflow_predictor_service import (
+            get_cashflow_predictor_service,
+        )
+
+        update_result: Dict = {
+            "companies_processed": 0,
+            "profiles_updated": 0,
+            "errors": [],
+        }
+
+        async for session in get_async_session():
+            try:
+                service = get_cashflow_predictor_service(session)
+
+                # Company IDs ermitteln
+                if company_id:
+                    company_ids = [UUID(company_id)]
+                else:
+                    # Alle aktiven Companies
+                    company_query = select(Company.id).where(
+                        Company.is_active == True
+                    ).limit(50)
+                    company_result = await session.execute(company_query)
+                    company_ids = [row[0] for row in company_result.fetchall()]
+
+                for cid in company_ids:
+                    try:
+                        updated = await service.update_all_entity_profiles(
+                            company_id=cid,
+                            limit=100,
+                        )
+                        update_result["profiles_updated"] += updated
+                        update_result["companies_processed"] += 1
+
+                    except Exception as e:
+                        logger.warning(
+                            "company_profile_update_failed",
+                            company_id=str(cid),
+                            **safe_error_log(e),
+                        )
+                        update_result["errors"].append({
+                            "company_id": str(cid),
+                            "error": safe_error_detail(e, "ProfileUpdate"),
+                        })
+
+            except Exception as e:
+                logger.error("profile_update_failed", **safe_error_log(e))
+                update_result["error"] = safe_error_detail(e, "ProfileUpdate")
+            finally:
+                await session.close()
+
+        return update_result
+
+    try:
+        update_result = asyncio.run(_update_profiles())
+        result.update(update_result)
+
+        logger.info(
+            "entity_profiles_update_completed",
+            companies=result.get("companies_processed"),
+            profiles=result.get("profiles_updated"),
+        )
+
+    except Exception as e:
+        logger.error("entity_profiles_update_failed", **safe_error_log(e))
+        result["success"] = False
+        result["error"] = safe_error_detail(e, "ProfileUpdate")
+
+    return result
+
+
+@celery_app.task(
+    base=CPUTask,
+    name="cashflow_prediction.check_liquidity_alerts",
+    queue="metadata",
+    priority=1,
+    ignore_result=True,
+    soft_time_limit=230,
+    time_limit=240,
+)
+def check_liquidity_alerts(company_id: Optional[str] = None) -> TaskResult:
+    """
+    Prueft auf Liquiditaetsprobleme und erstellt Alerts.
+
+    Wird alle 4 Stunden via Celery Beat ausgefuehrt.
+    Integriert mit Alert Center Service.
+
+    Args:
+        company_id: Optional - nur fuer bestimmte Firma
+
+    Returns:
+        Dict mit Task-Ergebnissen
+    """
+    import asyncio
+    from uuid import UUID
+    from app.db.async_session import get_async_session
+
+    result: TaskResult = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "success": True,
+        "task": "check_liquidity_alerts",
+        "companies_checked": 0,
+        "alerts_created": 0,
+        "critical_alerts": 0,
+    }
+
+    async def _check_alerts() -> Dict:
+        """Async Alert-Check Logik."""
+        from sqlalchemy import select
+        from app.db.models import Company
+        from app.services.predictive.cashflow_predictor_service import (
+            get_cashflow_predictor_service,
+        )
+        from app.services.alert_center_service import (
+            AlertCenterService,
+            AlertCodes,
+        )
+        from app.db.models_alert import AlertCategory, AlertSeverity
+
+        check_result: Dict = {
+            "companies_checked": 0,
+            "alerts_created": 0,
+            "critical_alerts": 0,
+            "errors": [],
+        }
+
+        async for session in get_async_session():
+            try:
+                predictor = get_cashflow_predictor_service(session)
+                alert_service = AlertCenterService(session)
+
+                # Company IDs ermitteln
+                if company_id:
+                    company_ids = [UUID(company_id)]
+                else:
+                    company_query = select(Company.id).where(
+                        Company.is_active == True
+                    ).limit(100)
+                    company_result = await session.execute(company_query)
+                    company_ids = [row[0] for row in company_result.fetchall()]
+
+                for cid in company_ids:
+                    try:
+                        # Liquiditaetswarnungen generieren
+                        alerts = await predictor.get_liquidity_alerts(
+                            company_id=cid,
+                            forecast_days=30,
+                        )
+
+                        check_result["companies_checked"] += 1
+
+                        # Kritische Alerts an Alert Center weiterleiten
+                        for alert in alerts:
+                            if alert.severity.value == "critical":
+                                await alert_service.create_alert(
+                                    company_id=cid,
+                                    alert_code="CASH_002",
+                                    category=AlertCategory.RISK,
+                                    severity=AlertSeverity.CRITICAL,
+                                    title="Kritischer Liquiditaetsengpass erwartet",
+                                    message=alert.message,
+                                    context={
+                                        "alert_type": alert.alert_type.value,
+                                        "trigger_date": alert.trigger_date.isoformat(),
+                                        "predicted_balance": float(alert.predicted_balance),
+                                        "recommendations": alert.recommendations,
+                                    },
+                                    recurrence_key=f"cashflow_{cid}_{alert.trigger_date.isoformat()}",
+                                    auto_dismiss_hours=48,
+                                )
+                                check_result["alerts_created"] += 1
+                                check_result["critical_alerts"] += 1
+
+                            elif alert.severity.value == "warning" and alert.days_until_trigger <= 7:
+                                await alert_service.create_alert(
+                                    company_id=cid,
+                                    alert_code="CASH_003",
+                                    category=AlertCategory.RISK,
+                                    severity=AlertSeverity.HIGH,
+                                    title="Liquiditaetswarnung",
+                                    message=alert.message,
+                                    context={
+                                        "alert_type": alert.alert_type.value,
+                                        "trigger_date": alert.trigger_date.isoformat(),
+                                        "predicted_balance": float(alert.predicted_balance),
+                                        "recommendations": alert.recommendations,
+                                    },
+                                    recurrence_key=f"cashflow_warn_{cid}_{alert.trigger_date.isoformat()}",
+                                    auto_dismiss_hours=72,
+                                )
+                                check_result["alerts_created"] += 1
+
+                        await session.commit()
+
+                    except Exception as e:
+                        logger.warning(
+                            "company_alert_check_failed",
+                            company_id=str(cid),
+                            **safe_error_log(e),
+                        )
+                        check_result["errors"].append({
+                            "company_id": str(cid),
+                            "error": safe_error_detail(e, "AlertCheck"),
+                        })
+                        await session.rollback()
+
+            except Exception as e:
+                logger.error("alert_check_failed", **safe_error_log(e))
+                check_result["error"] = safe_error_detail(e, "AlertCheck")
+            finally:
+                await session.close()
+
+        return check_result
+
+    try:
+        check_result = asyncio.run(_check_alerts())
+        result.update(check_result)
+
+        logger.info(
+            "liquidity_alert_check_completed",
+            companies=result.get("companies_checked"),
+            alerts=result.get("alerts_created"),
+            critical=result.get("critical_alerts"),
+        )
+
+    except Exception as e:
+        logger.error("liquidity_alert_check_failed", **safe_error_log(e))
+        result["success"] = False
+        result["error"] = safe_error_detail(e, "AlertCheck")
+
+    return result
+
+
+@celery_app.task(
+    base=CPUTask,
+    name="cashflow_prediction.calculate_daily_forecast_v2",
+    queue="metadata",
+    priority=2,
+    ignore_result=True,
+    soft_time_limit=290,
+    time_limit=300,
+)
+def calculate_daily_forecast_v2(company_id: Optional[str] = None) -> TaskResult:
+    """
+    Berechnet taegliche Cashflow-Prognose (V2 mit Entity-Profilen).
+
+    Wird taeglich um 06:00 via Celery Beat ausgefuehrt.
+    Verwendet Entity-basierte Zahlungsprofile fuer praezisere Vorhersagen.
+
+    Args:
+        company_id: Optional - nur fuer bestimmte Firma
+
+    Returns:
+        Dict mit Task-Ergebnissen
+    """
+    import asyncio
+    from uuid import UUID
+    from app.db.async_session import get_async_session
+
+    result: TaskResult = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "success": True,
+        "task": "calculate_daily_forecast_v2",
+        "companies_processed": 0,
+        "forecasts_created": 0,
+    }
+
+    async def _calculate_forecasts() -> Dict:
+        """Async Forecast-Berechnung Logik."""
+        from sqlalchemy import select
+        from app.db.models import Company
+        from app.services.predictive.cashflow_predictor_service import (
+            get_cashflow_predictor_service,
+        )
+
+        calc_result: Dict = {
+            "companies_processed": 0,
+            "forecasts_created": 0,
+            "min_balances": [],
+            "errors": [],
+        }
+
+        async for session in get_async_session():
+            try:
+                service = get_cashflow_predictor_service(session)
+
+                # Company IDs ermitteln
+                if company_id:
+                    company_ids = [UUID(company_id)]
+                else:
+                    company_query = select(Company.id).where(
+                        Company.is_active == True
+                    ).limit(100)
+                    company_result = await session.execute(company_query)
+                    company_ids = [row[0] for row in company_result.fetchall()]
+
+                for cid in company_ids:
+                    try:
+                        # 30-Tage Prognose erstellen
+                        forecasts = await service.get_cashflow_forecast(
+                            company_id=cid,
+                            days=30,
+                        )
+
+                        if forecasts:
+                            calc_result["forecasts_created"] += 1
+                            min_balance = min(f.confidence_mid for f in forecasts)
+                            calc_result["min_balances"].append(float(min_balance))
+
+                        calc_result["companies_processed"] += 1
+
+                    except Exception as e:
+                        logger.warning(
+                            "company_forecast_v2_failed",
+                            company_id=str(cid),
+                            **safe_error_log(e),
+                        )
+                        calc_result["errors"].append({
+                            "company_id": str(cid),
+                            "error": safe_error_detail(e, "ForecastV2"),
+                        })
+
+            except Exception as e:
+                logger.error("forecast_v2_calculation_failed", **safe_error_log(e))
+                calc_result["error"] = safe_error_detail(e, "ForecastV2")
+            finally:
+                await session.close()
+
+        return calc_result
+
+    try:
+        calc_result = asyncio.run(_calculate_forecasts())
+        result.update(calc_result)
+
+        # Durchschnittliche Min-Balance berechnen
+        if calc_result.get("min_balances"):
+            avg_min = sum(calc_result["min_balances"]) / len(calc_result["min_balances"])
+            result["avg_min_balance"] = round(avg_min, 2)
+
+        logger.info(
+            "daily_forecast_v2_completed",
+            companies=result.get("companies_processed"),
+            forecasts=result.get("forecasts_created"),
+            avg_min_balance=result.get("avg_min_balance"),
+        )
+
+    except Exception as e:
+        logger.error("daily_forecast_v2_failed", **safe_error_log(e))
+        result["success"] = False
+        result["error"] = safe_error_detail(e, "ForecastV2")
+
+    return result

@@ -620,9 +620,367 @@ def einvoice_validate_task(
 
 
 # =============================================================================
+# PEPPOL TRANSMISSION TASKS
+# =============================================================================
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="einvoice.send_peppol",
+    queue="default",
+    max_retries=3,
+    soft_time_limit=120,
+    time_limit=180,
+)
+def einvoice_send_peppol_task(
+    self,
+    einvoice_id: str,
+    fallback_email: Optional[str] = None,
+) -> dict:
+    """
+    Sendet E-Rechnung ueber Peppol oder Email-Fallback.
+
+    Args:
+        einvoice_id: EInvoiceDocument UUID
+        fallback_email: Email fuer Fallback wenn Peppol nicht moeglich
+
+    Returns:
+        dict mit Transmissionsergebnis
+    """
+    import asyncio
+
+    async def _do_send():
+        async with get_async_session_context() as db:
+            from app.services.einvoice.peppol_sender_service import get_peppol_sender
+
+            sender = get_peppol_sender()
+            result = await sender.send_einvoice(
+                einvoice_id=UUID(einvoice_id),
+                db=db,
+                fallback_email=fallback_email,
+            )
+
+            return {
+                "success": result.success,
+                "message_id": result.message_id,
+                "channel": result.channel,
+                "sent_at": result.sent_at.isoformat() if result.sent_at else None,
+                "error": result.error,
+                "error_code": result.error_code,
+            }
+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(_do_send())
+        loop.close()
+
+        if not result["success"] and result.get("error_code") != "NO_CHANNEL_AVAILABLE":
+            # Retry bei temporaeren Fehlern
+            raise self.retry(countdown=60 * (self.request.retries + 1))
+
+        return result
+
+    except Exception as e:
+        logger.error("einvoice_send_peppol_failed", **safe_error_log(e))
+        return {"success": False, "error": safe_error_detail(e, "Peppol-Versand")}
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="einvoice.check_transmission_status",
+    queue="default",
+    max_retries=1,
+)
+def einvoice_check_transmission_status_task(
+    self,
+    transmission_id: str,
+) -> dict:
+    """
+    Prueft Status einer Peppol-Uebertragung.
+
+    Args:
+        transmission_id: EInvoiceTransmission UUID
+
+    Returns:
+        dict mit Statusabfrage-Ergebnis
+    """
+    import asyncio
+
+    async def _do_check():
+        async with get_async_session_context() as db:
+            from app.db.models_einvoice import EInvoiceTransmission, EInvoiceTransmissionStatus
+            from app.services.einvoice.peppol_sender_service import get_peppol_sender
+
+            # Transmission laden
+            query = select(EInvoiceTransmission).where(
+                EInvoiceTransmission.id == UUID(transmission_id)
+            )
+            result = await db.execute(query)
+            transmission = result.scalar_one_or_none()
+
+            if not transmission:
+                return {"success": False, "error": "Transmission nicht gefunden"}
+
+            if not transmission.peppol_message_id:
+                return {"success": False, "error": "Keine Peppol Message ID"}
+
+            sender = get_peppol_sender()
+            status = await sender.check_transmission_status(transmission.peppol_message_id)
+
+            # Status aktualisieren wenn moeglich
+            if status.get("status") == "delivered":
+                transmission.mark_delivered()
+            elif status.get("status") == "acknowledged":
+                transmission.mark_acknowledged(status.get("mdn_content"))
+            elif status.get("status") == "rejected":
+                transmission.status = EInvoiceTransmissionStatus.REJECTED.value
+                transmission.last_error = status.get("error")
+
+            await db.commit()
+
+            return {
+                "success": True,
+                "transmission_id": str(transmission.id),
+                "status": transmission.status,
+                "peppol_status": status,
+            }
+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(_do_check())
+        loop.close()
+        return result
+
+    except Exception as e:
+        logger.error("einvoice_check_status_failed", **safe_error_log(e))
+        return {"success": False, "error": safe_error_detail(e, "Statusabfrage")}
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="einvoice.send_pending",
+    queue="default",
+)
+def einvoice_send_pending_task(self) -> dict:
+    """
+    Sendet alle ausstehenden E-Rechnungen (Status: queued).
+
+    Wird periodisch ausgefuehrt (alle 15 Minuten).
+    """
+    import asyncio
+
+    async def _do_send_pending():
+        async with get_async_session_context() as db:
+            from app.db.models_einvoice import EInvoiceTransmission, EInvoiceTransmissionStatus
+            from app.services.einvoice.peppol_sender_service import get_peppol_sender
+
+            # Queued Transmissions laden
+            query = select(EInvoiceTransmission).where(
+                EInvoiceTransmission.status == EInvoiceTransmissionStatus.QUEUED.value,
+                EInvoiceTransmission.retry_count < EInvoiceTransmission.max_retries
+            ).limit(50)
+
+            result = await db.execute(query)
+            transmissions = result.scalars().all()
+
+            sent = 0
+            failed = 0
+
+            for transmission in transmissions:
+                try:
+                    # Einzelne Transmission als Sub-Task
+                    einvoice_send_peppol_task.delay(
+                        str(transmission.einvoice_id),
+                        fallback_email=transmission.email_recipient,
+                    )
+                    sent += 1
+                except Exception as e:
+                    logger.warning(
+                        "einvoice_pending_send_failed",
+                        transmission_id=str(transmission.id),
+                        **safe_error_log(e)
+                    )
+                    failed += 1
+
+            return {
+                "success": True,
+                "queued_for_send": sent,
+                "failed_to_queue": failed,
+                "total_pending": len(transmissions),
+            }
+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(_do_send_pending())
+        loop.close()
+        return result
+
+    except Exception as e:
+        logger.error("einvoice_send_pending_failed", **safe_error_log(e))
+        return {"success": False, "error": safe_error_detail(e, "Pending senden")}
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="einvoice.validate_incoming",
+    queue="default",
+)
+def einvoice_validate_incoming_task(
+    self,
+    incoming_id: str,
+) -> dict:
+    """
+    Validiert eine eingehende E-Rechnung.
+
+    Args:
+        incoming_id: IncomingEInvoice UUID
+
+    Returns:
+        dict mit Validierungsergebnis
+    """
+    import asyncio
+
+    async def _do_validate():
+        async with get_async_session_context() as db:
+            from app.db.models_einvoice import IncomingEInvoice
+            from app.services.einvoice import get_validator_service
+
+            # Incoming laden
+            query = select(IncomingEInvoice).where(
+                IncomingEInvoice.id == UUID(incoming_id)
+            )
+            result = await db.execute(query)
+            incoming = result.scalar_one_or_none()
+
+            if not incoming:
+                return {"success": False, "error": "Incoming nicht gefunden"}
+
+            if not incoming.xml_content:
+                return {"success": False, "error": "Kein XML-Inhalt"}
+
+            validator = get_validator_service()
+            validation_result = await validator.validate_xml(
+                incoming.xml_content,
+                format_hint=incoming.format
+            )
+
+            # Ergebnis speichern
+            incoming.is_valid = validation_result.valid
+            incoming.validation_errors = [
+                {"code": m.code, "message": m.message, "location": m.location}
+                for m in validation_result.messages
+                if m.severity.value in ("fatal", "error")
+            ]
+            incoming.validation_warnings = [
+                {"code": m.code, "message": m.message, "location": m.location}
+                for m in validation_result.messages
+                if m.severity.value == "warning"
+            ]
+
+            if validation_result.valid:
+                incoming.status = "validated"
+            else:
+                incoming.status = "validation_failed"
+
+            await db.commit()
+
+            return {
+                "success": True,
+                "valid": validation_result.valid,
+                "error_count": validation_result.error_count,
+                "warning_count": validation_result.warning_count,
+            }
+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(_do_validate())
+        loop.close()
+        return result
+
+    except Exception as e:
+        logger.error("einvoice_validate_incoming_failed", **safe_error_log(e))
+        return {"success": False, "error": safe_error_detail(e, "Validierung")}
+
+
+# =============================================================================
 # BEAT SCHEDULE
 # =============================================================================
 
 EINVOICE_BEAT_SCHEDULE = {
-    # Keine periodischen Tasks fuer E-Invoice aktuell
+    # Ausstehende E-Rechnungen senden (alle 15 Minuten)
+    "einvoice-send-pending": {
+        "task": "einvoice.send_pending",
+        "schedule": 900,  # 15 Minuten
+        "options": {"queue": "default"},
+    },
+    # Transmission Status pruefen (stuendlich)
+    "einvoice-check-transmission-status": {
+        "task": "einvoice.check_all_transmissions",
+        "schedule": 3600,  # 1 Stunde
+        "options": {"queue": "default"},
+    },
 }
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="einvoice.check_all_transmissions",
+    queue="default",
+)
+def einvoice_check_all_transmissions_task(self) -> dict:
+    """
+    Prueft Status aller aktiven Transmissions (Status: sent).
+
+    Wird stuendlich ausgefuehrt.
+    """
+    import asyncio
+
+    async def _do_check_all():
+        async with get_async_session_context() as db:
+            from app.db.models_einvoice import EInvoiceTransmission, EInvoiceTransmissionStatus
+            from datetime import timedelta
+
+            # Sent Transmissions der letzten 7 Tage
+            cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+
+            query = select(EInvoiceTransmission).where(
+                EInvoiceTransmission.status == EInvoiceTransmissionStatus.SENT.value,
+                EInvoiceTransmission.sent_at >= cutoff,
+                EInvoiceTransmission.peppol_message_id.isnot(None)
+            ).limit(100)
+
+            result = await db.execute(query)
+            transmissions = result.scalars().all()
+
+            checked = 0
+            for transmission in transmissions:
+                try:
+                    einvoice_check_transmission_status_task.delay(str(transmission.id))
+                    checked += 1
+                except Exception:
+                    pass
+
+            return {
+                "success": True,
+                "queued_for_check": checked,
+                "total_active": len(transmissions),
+            }
+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(_do_check_all())
+        loop.close()
+        return result
+
+    except Exception as e:
+        logger.error("einvoice_check_all_failed", **safe_error_log(e))
+        return {"success": False, "error": safe_error_detail(e, "Status-Check")}

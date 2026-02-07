@@ -11,7 +11,7 @@ Feinpoliert und durchdacht - Zuverlässige Aufgabenverfolgung und Benachrichtigu
 """
 
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional
+from typing import Coroutine, Dict, Optional, Union
 from uuid import UUID
 import asyncio
 
@@ -28,7 +28,7 @@ from app.db.models import Document, ProcessingJob, ProcessingStatus, User
 logger = structlog.get_logger(__name__)
 
 
-def _run_async_callback(coro) -> Any:
+def _run_async_callback(coro: Coroutine[object, object, object]) -> object:
     """
     Run async callback safely using asyncio.run().
 
@@ -86,7 +86,7 @@ _WEBHOOK_RETRY_DELAY_SECONDS = 2.0
 async def _dispatch_webhook_event(
     document_id: str,
     event_type: str,
-    payload: Dict[str, Any],
+    payload: Dict[str, object],
     retry_count: int = 0
 ) -> None:
     """Dispatcht Webhook-Event für Dokument-Owner.
@@ -163,7 +163,7 @@ async def _dispatch_webhook_event(
 # ==================== Success Callbacks ====================
 
 def on_success(
-    retval: Any,
+    retval: object,
     task_id: str,
     args: tuple,
     kwargs: dict
@@ -272,7 +272,7 @@ def on_failure(
     task_id: str,
     args: tuple,
     kwargs: dict,
-    einfo: Any
+    einfo: object
 ) -> None:
     """Handle task failure.
 
@@ -361,7 +361,7 @@ def on_retry(
     task_id: str,
     args: tuple,
     kwargs: dict,
-    einfo: Any
+    einfo: object
 ) -> None:
     """Handle task retry.
 
@@ -503,8 +503,8 @@ async def send_task_notification(
     email: Optional[str] = None,
     user_id: Optional[str] = None,
     webhook_url: Optional[str] = None,
-    metadata: Optional[Dict[str, Any]] = None
-) -> Dict[str, bool]:
+    metadata: Optional[Dict[str, object]] = None
+) -> Dict[str, Union[bool, str]]:
     """
     Send task completion notification via all configured channels.
 
@@ -635,7 +635,7 @@ def get_german_error_message(exc: Exception) -> str:
 
 # ==================== Notification Integration ====================
 
-def _send_success_notification(document_id: str, result: Dict[str, Any]) -> None:
+def _send_success_notification(document_id: str, result: Dict[str, object]) -> None:
     """Send success notification to document owner.
 
     Args:

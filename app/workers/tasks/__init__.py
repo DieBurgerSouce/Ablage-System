@@ -99,6 +99,19 @@ from app.workers.tasks.einvoice_tasks import (
     einvoice_validate_task,
     EINVOICE_BEAT_SCHEDULE,
 )
+from app.workers.tasks.banking_psd2_tasks import (
+    sync_all_bank_accounts,
+    sync_single_connection,
+    refresh_psd2_consents,
+    check_expired_connections,
+    auto_reconcile_transactions,
+    reconcile_pending_batch,
+    process_scheduled_payments,
+    check_payment_status,
+    update_connection_health,
+    cleanup_old_sync_logs,
+    PSD2_BANKING_BEAT_SCHEDULE,
+)
 
 __all__ = [
     # OCR tasks
@@ -187,4 +200,16 @@ __all__ = [
     "zugferd_embed_task",
     "einvoice_validate_task",
     "EINVOICE_BEAT_SCHEDULE",
+    # PSD2/FinTS Banking tasks
+    "sync_all_bank_accounts",
+    "sync_single_connection",
+    "refresh_psd2_consents",
+    "check_expired_connections",
+    "auto_reconcile_transactions",
+    "reconcile_pending_batch",
+    "process_scheduled_payments",
+    "check_payment_status",
+    "update_connection_health",
+    "cleanup_old_sync_logs",
+    "PSD2_BANKING_BEAT_SCHEDULE",
 ]

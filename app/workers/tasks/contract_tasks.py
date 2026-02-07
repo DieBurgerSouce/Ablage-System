@@ -13,7 +13,7 @@ Feinpoliert und durchdacht - Enterprise Contract Management.
 import asyncio
 import structlog
 from datetime import date, datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
 
 from sqlalchemy import select, and_, or_, func
@@ -50,7 +50,7 @@ def send_contract_deadline_reminders_task(
     self,
     days_ahead: int = 90,
     company_id: Optional[str] = None,
-) -> Dict[str, Any]:
+) -> Dict[str, object]:
     """Sendet Erinnerungen fuer anstehende Vertragsfristen.
 
     Wird taeglich um 08:00 Uhr automatisch ausgefuehrt.
@@ -69,7 +69,7 @@ def send_contract_deadline_reminders_task(
     """
     from app.services.notification_service import get_notification_service
 
-    async def _send_reminders() -> Dict[str, Any]:
+    async def _send_reminders() -> Dict[str, object]:
         async with get_async_session_context() as db:
             notification_service = get_notification_service()
             today = date.today()
@@ -217,7 +217,7 @@ def send_contract_deadline_reminders_task(
 
 
 async def _send_deadline_notification(
-    notification_service: Any,
+    notification_service: object,
     contract: BusinessContract,
     deadline_type: str,
     days_remaining: int,
@@ -306,7 +306,7 @@ async def _send_deadline_notification(
 
 
 async def _send_renewal_option_notification(
-    notification_service: Any,
+    notification_service: object,
     contract: BusinessContract,
     option: ContractRenewalOption,
     days_remaining: int,
@@ -362,7 +362,7 @@ async def _send_renewal_option_notification(
 
 
 async def _send_milestone_notification(
-    notification_service: Any,
+    notification_service: object,
     contract: BusinessContract,
     milestone: ContractMilestone,
     days_remaining: int,
@@ -467,7 +467,7 @@ def _get_urgency(days_remaining: int) -> str:
 def check_expiring_contracts_task(
     self,
     days_ahead_list: Optional[List[int]] = None,
-) -> Dict[str, Any]:
+) -> Dict[str, object]:
     """Prueft ablaufende Vertraege und aktualisiert Status.
 
     Wird taeglich um 08:30 Uhr automatisch ausgefuehrt.
@@ -484,7 +484,7 @@ def check_expiring_contracts_task(
     if days_ahead_list is None:
         days_ahead_list = [30, 60, 90]
 
-    async def _check_expiring() -> Dict[str, Any]:
+    async def _check_expiring() -> Dict[str, object]:
         async with get_async_session_context() as db:
             today = date.today()
 
@@ -583,7 +583,7 @@ def check_expiring_contracts_task(
     default_retry_delay=300,
     queue="maintenance",
 )
-def auto_renew_contracts_task(self) -> Dict[str, Any]:
+def auto_renew_contracts_task(self) -> Dict[str, object]:
     """Verlaengert Vertraege automatisch wenn konfiguriert.
 
     Wird taeglich um 09:00 Uhr automatisch ausgefuehrt.
@@ -595,7 +595,7 @@ def auto_renew_contracts_task(self) -> Dict[str, Any]:
     Returns:
         Dict mit Statistiken
     """
-    async def _auto_renew() -> Dict[str, Any]:
+    async def _auto_renew() -> Dict[str, object]:
         async with get_async_session_context() as db:
             today = date.today()
 
@@ -720,7 +720,7 @@ def _add_months(d: date, months: int) -> date:
     default_retry_delay=300,
     queue="maintenance",
 )
-def generate_contract_report_task(self) -> Dict[str, Any]:
+def generate_contract_report_task(self) -> Dict[str, object]:
     """Generiert woechentlichen Vertragsreport.
 
     Wird jeden Montag um 07:00 Uhr automatisch ausgefuehrt.
@@ -733,7 +733,7 @@ def generate_contract_report_task(self) -> Dict[str, Any]:
     Returns:
         Dict mit Report-Daten
     """
-    async def _generate_report() -> Dict[str, Any]:
+    async def _generate_report() -> Dict[str, object]:
         async with get_async_session_context() as db:
             today = date.today()
 
@@ -867,7 +867,7 @@ def generate_contract_report_task(self) -> Dict[str, Any]:
     default_retry_delay=300,
     queue="maintenance",
 )
-def check_renewal_option_expiry_task(self) -> Dict[str, Any]:
+def check_renewal_option_expiry_task(self) -> Dict[str, object]:
     """Markiert abgelaufene Verlaengerungsoptionen als EXPIRED.
 
     Wird taeglich um 00:30 Uhr automatisch ausgefuehrt.
@@ -875,7 +875,7 @@ def check_renewal_option_expiry_task(self) -> Dict[str, Any]:
     Returns:
         Dict mit Statistiken
     """
-    async def _check_expiry() -> Dict[str, Any]:
+    async def _check_expiry() -> Dict[str, object]:
         async with get_async_session_context() as db:
             today = date.today()
 
@@ -946,7 +946,7 @@ def check_renewal_option_expiry_task(self) -> Dict[str, Any]:
     default_retry_delay=300,
     queue="maintenance",
 )
-def check_overdue_milestones_task(self) -> Dict[str, Any]:
+def check_overdue_milestones_task(self) -> Dict[str, object]:
     """Prueft auf ueberfaellige Meilensteine und sendet Benachrichtigungen.
 
     Wird taeglich um 09:30 Uhr automatisch ausgefuehrt.
@@ -954,7 +954,7 @@ def check_overdue_milestones_task(self) -> Dict[str, Any]:
     Returns:
         Dict mit Statistiken
     """
-    async def _check_overdue() -> Dict[str, Any]:
+    async def _check_overdue() -> Dict[str, object]:
         async with get_async_session_context() as db:
             today = date.today()
 
@@ -1067,7 +1067,7 @@ def check_overdue_milestones_task(self) -> Dict[str, Any]:
 def check_contract_renewal_deadlines_task(
     self,
     company_id: Optional[str] = None,
-) -> Dict[str, Any]:
+) -> Dict[str, object]:
     """Prueft alle Vertraege auf bevorstehende Verlaengerungsfristen.
 
     Wird taeglich um 08:00 Uhr automatisch ausgefuehrt.
@@ -1084,7 +1084,7 @@ def check_contract_renewal_deadlines_task(
     """
     from app.services.contracts.contract_renewal_service import get_contract_renewal_service
 
-    async def _check_renewals() -> Dict[str, Any]:
+    async def _check_renewals() -> Dict[str, object]:
         async with get_async_session_context() as db:
             renewal_service = get_contract_renewal_service(db)
 
@@ -1120,7 +1120,7 @@ def extract_contract_dates_task(
     document_id: str,
     company_id: str,
     create_deadlines: bool = True,
-) -> Dict[str, Any]:
+) -> Dict[str, object]:
     """Extrahiert Vertragsfristen aus OCR-Text eines Dokuments.
 
     Wird nach OCR-Abschluss automatisch fuer Vertragsdokumente aufgerufen.
@@ -1140,7 +1140,7 @@ def extract_contract_dates_task(
     from app.services.contracts.contract_renewal_service import get_contract_renewal_service
     from app.db.models import Document
 
-    async def _extract_dates() -> Dict[str, Any]:
+    async def _extract_dates() -> Dict[str, object]:
         async with get_async_session_context() as db:
             renewal_service = get_contract_renewal_service(db)
 
@@ -1220,7 +1220,7 @@ def send_contract_renewal_reminder_task(
     contract_id: str,
     days_remaining: int,
     deadline_type: str = "expiration",
-) -> Dict[str, Any]:
+) -> Dict[str, object]:
     """Sendet individuelle Erinnerung fuer Vertragserneuerung.
 
     Args:
@@ -1234,7 +1234,7 @@ def send_contract_renewal_reminder_task(
     from app.services.contracts.contract_renewal_service import get_contract_renewal_service
     from app.db.models_contract import Contract
 
-    async def _send_reminder() -> Dict[str, Any]:
+    async def _send_reminder() -> Dict[str, object]:
         async with get_async_session_context() as db:
             contract = await db.get(Contract, UUID(contract_id))
             if not contract:
@@ -1293,7 +1293,7 @@ def schedule_contract_reminders_task(
     contract_id: str,
     deadline_date: str,
     deadline_type: str = "termination_notice",
-) -> Dict[str, Any]:
+) -> Dict[str, object]:
     """Plant Erinnerungen fuer einen Vertrag.
 
     Args:
@@ -1306,7 +1306,7 @@ def schedule_contract_reminders_task(
     """
     from app.services.contracts.contract_renewal_service import get_contract_renewal_service
 
-    async def _schedule() -> Dict[str, Any]:
+    async def _schedule() -> Dict[str, object]:
         async with get_async_session_context() as db:
             renewal_service = get_contract_renewal_service(db)
 
