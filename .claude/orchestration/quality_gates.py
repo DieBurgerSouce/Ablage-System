@@ -13,7 +13,7 @@ Quality Gates fuer Team-Workflow.
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Optional, Dict, Union
+from typing import List, Optional, Dict, Protocol, Union, runtime_checkable
 from pathlib import Path
 
 from .shared_file_protocol import BOTTLENECK_FILES as _BOTTLENECK_FILES
@@ -31,6 +31,13 @@ class CheckSeverity(Enum):
     BLOCK = "BLOCK"
     WARN = "WARN"
     INFO = "INFO"
+
+
+@runtime_checkable
+class GateProtocol(Protocol):
+    """Protocol fuer alle Quality Gates."""
+
+    def check(self, **kwargs: object) -> "GateResult": ...
 
 
 @dataclass
@@ -613,7 +620,7 @@ GateType = Union[
 
 # --- Gate Registry ---
 
-GATES: Dict[str, GateType] = {
+GATES: Dict[str, GateProtocol] = {
     "gate_1_research": Gate1ResearchComplete(),
     "gate_2_design": Gate2DesignApproved(),
     "gate_3_code_quality": Gate3CodeQuality(),
@@ -635,4 +642,4 @@ def run_gate(gate_name: str, **kwargs: object) -> GateResult:
             f"Verfuegbare Gates: {', '.join(sorted(GATES.keys()))}"
         )
     gate = GATES[gate_name]
-    return gate.check(**kwargs)  # type: ignore[union-attr]
+    return gate.check(**kwargs)

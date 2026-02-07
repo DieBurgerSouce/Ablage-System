@@ -79,12 +79,12 @@ def _is_trivial_prompt(prompt: str) -> bool:
     trivial_patterns: List[str] = [
         r"^(hi|hello|hey|hallo)\b",
         r"^/",  # Slash commands
-        r"^(what|how|where|why|when|wer|was|wie|wo|warum|wann)\s",
-        r"^(explain|describe|show|list|find|search|erklaere|zeige|finde|suche)\s",
+        r"^(what|how|where|why|when|wer|was|wie|wo|warum|wann)\s+(is|are|does|do|ist|sind|macht)\b",
+        r"^(show|list|find|search|zeige|finde|suche)\s",
         r"^(read|lies|cat|open|oeffne)\s",
         r"^(help|hilfe)$",
         r"^(yes|no|ja|nein|ok|okay|mach das|go ahead|weiter|fertig|done|danke|thanks)$",
-        r"^commit",
+        r"^commit\s*(message|msg)?$",
         r"^(git|npm|docker|pytest)\s",
     ]
     prompt_lower = prompt.strip().lower()

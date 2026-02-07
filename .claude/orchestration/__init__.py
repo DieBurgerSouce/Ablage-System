@@ -90,6 +90,7 @@ from .quality_gates import (
     CheckResult,
     CheckSeverity,
     GateType,
+    GateProtocol,
     # Gate Implementations
     Gate1ResearchComplete,
     Gate2DesignApproved,
@@ -219,6 +220,7 @@ __all__ = [
     "CheckResult",
     "CheckSeverity",
     "GateType",
+    "GateProtocol",
     "Gate1ResearchComplete",
     "Gate2DesignApproved",
     "Gate3CodeQuality",

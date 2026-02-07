@@ -1115,12 +1115,24 @@ class TeamClassifier:
         coupling: Coupling,
         input_data: ClassificationInput,
     ) -> float:
-        """Berechnet Confidence der Klassifikation."""
-        base = 0.7
+        """Berechnet Confidence der Klassifikation.
+
+        Bezieht Komplexitaet und Kopplung in die Berechnung ein,
+        nicht nur Datei-Anzahl und Beschreibungslaenge.
+        """
+        base = 0.5
         if len(input_data.affected_files) > 0:
             base += 0.1
         if len(input_data.task_description) > 100:
             base += 0.1
+        if complexity in (Complexity.C1_TRIVIAL, Complexity.C2_CONTAINED):
+            base += 0.15
+        else:
+            base += 0.05
+        if coupling == Coupling.M1_ISOLATED:
+            base += 0.1
+        else:
+            base += 0.05
         return min(base, 1.0)
 
     def _build_reasoning(
