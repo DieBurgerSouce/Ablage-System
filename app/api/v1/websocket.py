@@ -252,6 +252,113 @@ async def get_event_types():
     }
 
 
+@router.get("/ws/presence/{document_id}")
+async def get_document_presence(
+    document_id: str,
+    token: Optional[str] = Query(None, description="JWT Token fuer Authentifizierung"),
+):
+    """
+    Gibt alle User zurueck die ein Dokument gerade betrachten.
+
+    Args:
+        document_id: Dokument ID
+
+    Returns:
+        Liste von Usern mit Presence-Informationen
+    """
+    # Validate token
+    if not token:
+        raise HTTPException(status_code=401, detail="Token erforderlich")
+
+    user = await get_user_from_token(token)
+    if not user or not user.get("id"):
+        raise HTTPException(status_code=401, detail="Ungueltiges Token")
+
+    ws_manager = get_realtime_ws_manager()
+    viewers = await ws_manager.get_document_viewers(document_id)
+
+    return {
+        "document_id": document_id,
+        "viewers": viewers,
+        "viewer_count": len(viewers),
+    }
+
+
+@router.get("/ws/presence/company/{company_id}")
+async def get_company_presence_endpoint(
+    company_id: str,
+    token: Optional[str] = Query(None, description="JWT Token fuer Authentifizierung"),
+):
+    """
+    Gibt Presence-Informationen aller User einer Company zurueck.
+
+    Args:
+        company_id: Company ID
+
+    Returns:
+        Liste von User-Presence-Informationen
+    """
+    # Validate token
+    if not token:
+        raise HTTPException(status_code=401, detail="Token erforderlich")
+
+    user = await get_user_from_token(token)
+    if not user or not user.get("id"):
+        raise HTTPException(status_code=401, detail="Ungueltiges Token")
+
+    # Verify user belongs to company
+    if user.get("company_id") != company_id:
+        raise HTTPException(status_code=403, detail="Zugriff verweigert")
+
+    ws_manager = get_realtime_ws_manager()
+    presence = await ws_manager.get_company_presence(company_id)
+
+    return {
+        "company_id": company_id,
+        "users": presence,
+        "online_count": len(presence),
+    }
+
+
+@router.get("/ws/rooms")
+async def get_user_rooms(
+    token: Optional[str] = Query(None, description="JWT Token fuer Authentifizierung"),
+):
+    """
+    Gibt alle Rooms zurueck in denen der User Mitglied ist.
+
+    Returns:
+        Liste von Rooms
+    """
+    # Validate token
+    if not token:
+        raise HTTPException(status_code=401, detail="Token erforderlich")
+
+    user = await get_user_from_token(token)
+    if not user or not user.get("id"):
+        raise HTTPException(status_code=401, detail="Ungueltiges Token")
+
+    user_id = user["id"]
+    ws_manager = get_realtime_ws_manager()
+
+    rooms_info = []
+    async with ws_manager._lock:
+        for room_id, room in ws_manager._rooms.items():
+            if user_id in room.members:
+                rooms_info.append({
+                    "room_id": room_id,
+                    "room_type": room.room_type,
+                    "member_count": len(room.members),
+                    "created_at": room.created_at.isoformat(),
+                })
+
+    return {
+        "user_id": user_id,
+        "rooms": rooms_info,
+        "room_count": len(rooms_info),
+    }
+
+
 # Startup/Shutdown Events
 async def startup_realtime_services():
     """Startet Realtime Services beim Server-Start."""

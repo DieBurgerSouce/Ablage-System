@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, Union
 from uuid import UUID
 
 from pydantic import BaseModel, Field, ConfigDict
@@ -64,7 +64,7 @@ class TemplateVariableSchema(BaseModel):
     label: str = Field(..., min_length=1, max_length=100)
     description: str | None = None
     required: bool = False
-    default: Any = None
+    default: Union[str, int, float, bool, None] = None
     options: list[str] | None = None  # Fuer SELECT-Typ
     entity_type: str | None = None  # Fuer ENTITY-Typ (z.B. "customer", "supplier")
 

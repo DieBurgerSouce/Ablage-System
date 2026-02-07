@@ -8,7 +8,7 @@ Endpoints for managing document templates including:
 - Template preview and validation
 """
 
-from typing import Optional, List, Any
+from typing import Optional, List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -41,7 +41,7 @@ from app.api.schemas.document_template import (
     TemplateCategoryEnum,
 )
 from app.services.document_template_service import DocumentTemplateService
-from app.db.models import User, Company
+from app.db.models import User, Company, DocumentTemplate, GeneratedDocument, TemplateSnippet
 
 import structlog
 
@@ -54,7 +54,7 @@ router = APIRouter(prefix="/document-templates", tags=["Dokumentvorlagen"])
 # Helper Functions
 # =============================================================================
 
-def _template_to_response(template: Any) -> TemplateResponse:
+def _template_to_response(template: DocumentTemplate) -> TemplateResponse:
     """Convert a template model to a response schema."""
     return TemplateResponse(
         id=template.id,
@@ -85,7 +85,7 @@ def _template_to_response(template: Any) -> TemplateResponse:
     )
 
 
-def _template_to_brief(template: Any) -> TemplateBriefResponse:
+def _template_to_brief(template: DocumentTemplate) -> TemplateBriefResponse:
     """Convert a template model to a brief response schema."""
     return TemplateBriefResponse(
         id=template.id,
@@ -101,7 +101,7 @@ def _template_to_brief(template: Any) -> TemplateBriefResponse:
     )
 
 
-def _generated_to_response(doc: Any) -> GeneratedDocumentResponse:
+def _generated_to_response(doc: GeneratedDocument) -> GeneratedDocumentResponse:
     """Convert a generated document model to a response schema."""
     return GeneratedDocumentResponse(
         id=doc.id,
@@ -124,7 +124,7 @@ def _generated_to_response(doc: Any) -> GeneratedDocumentResponse:
     )
 
 
-def _snippet_to_response(snippet: Any) -> SnippetResponse:
+def _snippet_to_response(snippet: TemplateSnippet) -> SnippetResponse:
     """Convert a snippet model to a response schema."""
     return SnippetResponse(
         id=snippet.id,

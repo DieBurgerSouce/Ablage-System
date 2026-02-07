@@ -139,7 +139,7 @@ class ContractBase(BaseModel):
 
     @field_validator('reminder_days', mode='before')
     @classmethod
-    def validate_reminder_days(cls, v: Any) -> List[int]:
+    def validate_reminder_days(cls, v: Optional[List[int]]) -> List[int]:
         if v is None:
             return [90, 60, 30, 14, 7]
         if isinstance(v, list):
@@ -535,3 +535,227 @@ class ContractListParams(BaseModel):
     limit: int = Field(default=50, ge=1, le=200)
     order_by: str = Field(default="end_date", pattern="^(contract_number|title|start_date|end_date|notice_deadline|total_value|created_at)$")
     order_dir: str = Field(default="asc", pattern="^(asc|desc)$")
+
+
+# =============================================================================
+# Contract V2 Enhancements - Clause Recognition Schemas (Phase 5)
+# =============================================================================
+
+
+class ClauseType(str, Enum):
+    """Types of contract clauses that can be recognized."""
+    PRICE_ADJUSTMENT = "price_adjustment"
+    MINIMUM_TERM = "minimum_term"
+    AUTO_RENEWAL = "auto_renewal"
+    TERMINATION_NOTICE = "termination_notice"
+    PENALTY = "penalty"
+    LIABILITY_LIMIT = "liability_limit"
+    JURISDICTION = "jurisdiction"
+    WARRANTY = "warranty"
+    CONFIDENTIALITY = "confidentiality"
+    FORCE_MAJEURE = "force_majeure"
+    PAYMENT_TERMS = "payment_terms"
+    DELIVERY_TERMS = "delivery_terms"
+    INDEMNIFICATION = "indemnification"
+    INTELLECTUAL_PROPERTY = "intellectual_property"
+    NON_COMPETE = "non_compete"
+    DATA_PROTECTION = "data_protection"
+    OTHER = "other"
+
+
+class ContractClauseResponse(BaseModel):
+    """Response schema for extracted contract clauses."""
+    id: UUID
+    contract_id: UUID
+    clause_type: ClauseType
+    extracted_text: str
+    extracted_value: Optional[Dict[str, Any]] = None
+    confidence: float = Field(ge=0.0, le=1.0)
+    risk_level: str  # "low", "medium", "high"
+    risk_notes: Optional[str] = None
+    verified: bool = False
+    verified_by_id: Optional[UUID] = None
+    verified_at: Optional[datetime] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ClauseExtractionResult(BaseModel):
+    """Result of clause extraction."""
+    contract_id: UUID
+    clauses_found: int
+    clause_types: List[str]
+    high_confidence_count: int
+    high_risk_count: int
+
+
+# =============================================================================
+# Contract V2 Enhancements - Benchmark Schemas (Phase 5)
+# =============================================================================
+
+
+class BenchmarkMetricResponse(BaseModel):
+    """Response for a single benchmark metric comparison."""
+    metric_name: str
+    contract_value: Optional[float] = None
+    benchmark_value: float
+    percentile: float = Field(ge=0.0, le=100.0)
+    assessment: str  # "below_average", "average", "above_average", "excellent"
+    recommendation: Optional[str] = None
+
+
+class ContractBenchmarkResponse(BaseModel):
+    """Response schema for contract benchmark comparison."""
+    contract_id: UUID
+    benchmark_category: str
+    overall_assessment: str
+    metrics: List[BenchmarkMetricResponse]
+    negotiation_suggestions: List[str] = Field(default_factory=list)
+
+
+class BenchmarkCategoryInfo(BaseModel):
+    """Information about a benchmark category."""
+    name: str
+    description: Optional[str] = None
+    contracts_count: int
+    last_updated: Optional[datetime] = None
+
+
+# =============================================================================
+# Contract V2 Enhancements - Auto-Cancellation Schemas (Phase 5)
+# =============================================================================
+
+
+class CancellationType(str, Enum):
+    """Types of contract cancellation."""
+    STANDARD = "standard"
+    EXTRAORDINARY = "extraordinary"
+    MUTUAL = "mutual"
+    NON_RENEWAL = "non_renewal"
+
+
+class CancellationStatus(str, Enum):
+    """Status of a cancellation."""
+    DRAFT = "draft"
+    PENDING_APPROVAL = "pending_approval"
+    APPROVED = "approved"
+    SENT = "sent"
+    ACKNOWLEDGED = "acknowledged"
+    COMPLETED = "completed"
+    REJECTED = "rejected"
+    CANCELLED = "cancelled"
+
+
+class CancellationPrepareRequest(BaseModel):
+    """Request to prepare a contract cancellation."""
+    cancellation_type: CancellationType = CancellationType.STANDARD
+    reason: Optional[str] = Field(None, max_length=1000)
+    effective_date: Optional[date] = None
+    send_date: Optional[date] = None
+    recipient_email: Optional[str] = Field(None, max_length=255)
+    recipient_address: Optional[str] = Field(None, max_length=500)
+
+
+class ContractCancellationResponse(BaseModel):
+    """Response schema for contract cancellation."""
+    id: UUID
+    contract_id: UUID
+    cancellation_type: CancellationType
+    status: CancellationStatus
+    reason: Optional[str] = None
+    effective_date: Optional[date] = None
+    send_date: Optional[date] = None
+    letter_content: Optional[str] = None
+    sent_at: Optional[datetime] = None
+    sent_via: Optional[str] = None
+    acknowledged_at: Optional[datetime] = None
+    acknowledged_by: Optional[str] = None
+    prepared_by_id: Optional[UUID] = None
+    approved_by_id: Optional[UUID] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CancellationApproveRequest(BaseModel):
+    """Request to approve a cancellation."""
+    send_date: Optional[date] = None
+    notes: Optional[str] = Field(None, max_length=500)
+
+
+class CancellationSendRequest(BaseModel):
+    """Request to send a cancellation."""
+    send_method: str = Field(default="email", pattern="^(email|postal|both)$")
+    recipient_email: Optional[str] = Field(None, max_length=255)
+    recipient_address: Optional[str] = Field(None, max_length=500)
+
+
+# =============================================================================
+# Contract V2 Enhancements - Cost Analysis Schemas (Phase 5)
+# =============================================================================
+
+
+class CostBreakdownItem(BaseModel):
+    """A single item in cost breakdown."""
+    category: str
+    amount: Decimal
+    percentage: float = Field(ge=0.0, le=100.0)
+    description: Optional[str] = None
+
+
+class CostProjection(BaseModel):
+    """Cost projection for a future period."""
+    period: str  # e.g., "2026-Q1", "2026"
+    projected_costs: Decimal
+    confidence: float = Field(ge=0.0, le=1.0)
+    assumptions: Optional[List[str]] = None
+
+
+class ContractCostAnalysisResponse(BaseModel):
+    """Response schema for contract cost analysis."""
+    contract_id: UUID
+    total_costs: Decimal
+    annual_costs: Decimal
+    monthly_costs: Decimal
+    cost_breakdown: List[CostBreakdownItem] = Field(default_factory=list)
+    trend: str  # "increasing", "stable", "decreasing"
+    trend_percentage: Optional[Decimal] = None
+    projections: Optional[List[CostProjection]] = None
+    optimization_potential: Decimal
+    optimization_suggestions: List[str] = Field(default_factory=list)
+    benchmark_comparison: Optional[Dict[str, Any]] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PortfolioCostSummary(BaseModel):
+    """Cost summary for entire contract portfolio."""
+    total_annual_costs: Decimal
+    total_monthly_costs: Decimal
+    contracts_count: int
+    by_type: Dict[str, Decimal] = Field(default_factory=dict)
+    by_status: Dict[str, Decimal] = Field(default_factory=dict)
+    optimization_potential: Decimal
+    top_cost_contracts: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class CostTrendData(BaseModel):
+    """Monthly cost trend data."""
+    month: str  # "YYYY-MM"
+    total_costs: Decimal
+    contracts_count: int
+    change_from_previous: Optional[Decimal] = None
+    change_percentage: Optional[float] = None
+
+
+class OptimizationSuggestion(BaseModel):
+    """A cost optimization suggestion."""
+    contract_id: UUID
+    contract_title: str
+    suggestion_type: str  # "renegotiate", "consolidate", "terminate", "benchmark"
+    description: str
+    estimated_savings: Decimal
+    priority: str  # "low", "medium", "high"
+    action_deadline: Optional[date] = None

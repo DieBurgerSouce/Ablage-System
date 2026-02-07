@@ -3208,3 +3208,590 @@ async def get_seasonality_stats(
         average_confidence=stats["average_confidence"],
         peak_months_identified=stats["peak_months_identified"],
     )
+
+
+# =============================================================================
+# PHASE 4: Orchestration Extensions - Schemas
+# =============================================================================
+
+
+class HealthActionResponse(BaseModel):
+    """Eine empfohlene Gesundheits-Massnahme."""
+    id: str = Field(..., description="Massnahmen-ID")
+    action: str = Field(..., description="Aktionstyp")
+    status: str = Field(..., description="Status der Massnahme")
+    entity_id: str = Field(..., description="Entity-ID")
+    trigger_risk_score: float = Field(..., description="Ausloesender Risk Score")
+    trigger_risk_level: str = Field(..., description="Ausloesender Risk Level")
+    description: str = Field(..., description="Beschreibung der Massnahme")
+    reason: str = Field(..., description="Begruendung")
+    impact_description: str = Field(..., description="Auswirkungsbeschreibung")
+    parameters: Dict[str, Any] = Field(default={}, description="Massnahmen-Parameter")
+    created_at: str = Field(..., description="Erstellungszeitpunkt")
+    applied_at: Optional[str] = Field(None, description="Anwendungszeitpunkt")
+
+
+class HealthAssessmentResponse(BaseModel):
+    """Bewertung des Entity-Gesundheitszustands."""
+    entity_id: str = Field(..., description="Entity-ID")
+    current_risk_score: float = Field(..., description="Aktueller Risk Score")
+    current_risk_level: str = Field(..., description="Aktuelles Risk Level")
+    previous_risk_score: Optional[float] = Field(None, description="Vorheriger Risk Score")
+    score_change: float = Field(..., description="Score-Aenderung")
+    is_degrading: bool = Field(..., description="Verschlechtert sich")
+    recommended_actions: List[HealthActionResponse] = Field(
+        default=[], description="Empfohlene Massnahmen"
+    )
+    assessment_time: str = Field(..., description="Bewertungszeitpunkt")
+
+
+class ApplyHealthActionsRequest(BaseModel):
+    """Request zum Anwenden von Gesundheits-Massnahmen."""
+    action_ids: List[str] = Field(..., description="IDs der anzuwendenden Massnahmen")
+
+    @field_validator("action_ids")
+    @classmethod
+    def validate_action_ids(cls, v: List[str]) -> List[str]:
+        """Validiert die Aktions-IDs."""
+        if not v:
+            raise ValueError("Mindestens eine Aktions-ID erforderlich")
+        if len(v) > 20:
+            raise ValueError("Maximal 20 Aktionen auf einmal anwendbar")
+        # UUID-Format pruefen
+        uuid_pattern = re.compile(
+            r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+            re.IGNORECASE
+        )
+        for action_id in v:
+            if not uuid_pattern.match(action_id):
+                raise ValueError(f"Ungueltige Aktions-ID: {action_id[:50]}")
+        return v
+
+
+class ApplyHealthActionsResponse(BaseModel):
+    """Response nach Anwendung von Gesundheits-Massnahmen."""
+    applied_count: int = Field(..., description="Anzahl angewendeter Massnahmen")
+    failed_count: int = Field(..., description="Anzahl fehlgeschlagener Massnahmen")
+    results: List[Dict[str, Any]] = Field(default=[], description="Ergebnisse pro Massnahme")
+
+
+class InvestigationReportResponse(BaseModel):
+    """Ein Untersuchungsbericht."""
+    id: str = Field(..., description="Berichts-ID")
+    investigation_id: str = Field(..., description="Untersuchungs-ID")
+    created_at: str = Field(..., description="Erstellungszeitpunkt")
+    entity_id: Optional[str] = Field(None, description="Entity-ID")
+    document_id: Optional[str] = Field(None, description="Dokument-ID")
+    anomaly_type: str = Field(..., description="Anomalie-Typ")
+    summary: str = Field(..., description="Zusammenfassung")
+    detailed_findings: List[str] = Field(default=[], description="Detaillierte Erkenntnisse")
+    risk_assessment: str = Field(..., description="Risikobewertung")
+    confidence: float = Field(..., description="Konfidenz (0-1)")
+    related_documents_count: int = Field(..., description="Anzahl zugehoeriger Dokumente")
+    related_transactions_count: int = Field(..., description="Anzahl zugehoeriger Transaktionen")
+    timeline_entries_count: int = Field(..., description="Anzahl Timeline-Eintraege")
+    recommendations: List[str] = Field(default=[], description="Empfehlungen")
+    immediate_actions: List[str] = Field(default=[], description="Sofortmassnahmen")
+    data_collection_time_ms: int = Field(..., description="Datensammlungszeit in ms")
+    analysis_time_ms: int = Field(..., description="Analysezeit in ms")
+
+
+class StartInvestigationRequest(BaseModel):
+    """Request zum Starten einer Untersuchung."""
+    anomaly_type: str = Field(..., description="Typ der Anomalie")
+    entity_id: Optional[str] = Field(None, description="Entity-ID")
+    document_id: Optional[str] = Field(None, description="Dokument-ID")
+    trigger_description: str = Field(default="", max_length=500, description="Beschreibung des Ausloesers")
+
+    @field_validator("anomaly_type")
+    @classmethod
+    def validate_anomaly_type(cls, v: str) -> str:
+        """Validiert den Anomalie-Typ."""
+        allowed_types = {
+            "duplicate_invoice", "price_deviation", "unusual_timing",
+            "iban_change", "phantom_supplier", "ceo_fraud",
+            "pattern_break", "volume_anomaly"
+        }
+        v_lower = v.lower().strip()
+        if v_lower not in allowed_types:
+            raise ValueError(
+                f"Ungueltiger Anomalie-Typ. Erlaubt: {', '.join(sorted(allowed_types))}"
+            )
+        return v_lower
+
+    @field_validator("entity_id", "document_id")
+    @classmethod
+    def validate_uuid_field(cls, v: Optional[str]) -> Optional[str]:
+        """Validiert UUID-Felder."""
+        if v is None:
+            return v
+        uuid_pattern = re.compile(
+            r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+            re.IGNORECASE
+        )
+        if not uuid_pattern.match(v):
+            raise ValueError("Ungueltige UUID")
+        return v
+
+    @model_validator(mode="after")
+    def validate_target(self) -> "StartInvestigationRequest":
+        """Validiert, dass mindestens ein Ziel angegeben ist."""
+        if not self.entity_id and not self.document_id:
+            raise ValueError("Entity-ID oder Dokument-ID muss angegeben werden")
+        return self
+
+
+class StartInvestigationResponse(BaseModel):
+    """Response nach Start einer Untersuchung."""
+    investigation_id: str = Field(..., description="Untersuchungs-ID")
+    status: str = Field(..., description="Status der Untersuchung")
+    message: str = Field(..., description="Statusmeldung")
+
+
+class SeasonalPatternResponse(BaseModel):
+    """Ein erkanntes saisonales Muster."""
+    id: str = Field(..., description="Muster-ID")
+    pattern_type: str = Field(..., description="Mustertyp")
+    description: str = Field(..., description="Beschreibung")
+    peak_months: List[int] = Field(default=[], description="Spitzenmonate (1-12)")
+    low_months: List[int] = Field(default=[], description="Tiefpunktmonate (1-12)")
+    peak_factor: float = Field(..., description="Spitzenfaktor")
+    low_factor: float = Field(..., description="Tiefpunktfaktor")
+    variability_coefficient: float = Field(..., description="Variabilitaetskoeffizient")
+    confidence: float = Field(..., description="Konfidenz (0-1)")
+    data_points: int = Field(..., description="Anzahl Datenpunkte")
+
+
+class YearComparisonResponse(BaseModel):
+    """Vergleich zwischen Jahren."""
+    current_year: int = Field(..., description="Aktuelles Jahr")
+    previous_year: int = Field(..., description="Vorheriges Jahr")
+    revenue_change_percent: float = Field(..., description="Umsatzaenderung in %")
+    expense_change_percent: float = Field(..., description="Ausgabenaenderung in %")
+    invoice_volume_change_percent: float = Field(..., description="Rechnungsvolumenaenderung in %")
+    monthly_differences: Dict[str, float] = Field(
+        default={}, description="Monatliche Unterschiede (Monat -> %)"
+    )
+    anomalies: List[str] = Field(default=[], description="Auffaelligkeiten")
+
+
+class SeasonalWarningResponse(BaseModel):
+    """Eine saisonale Warnung."""
+    id: str = Field(..., description="Warnungs-ID")
+    title: str = Field(..., description="Titel")
+    description: str = Field(..., description="Beschreibung")
+    priority: str = Field(..., description="Prioritaet")
+    affected_period: str = Field(..., description="Betroffener Zeitraum")
+    expected_impact_amount: float = Field(..., description="Erwartete Auswirkung in EUR")
+    recommendations: List[str] = Field(default=[], description="Empfehlungen")
+    created_at: str = Field(..., description="Erstellungszeitpunkt")
+
+
+class LiquidityAdjustmentResponse(BaseModel):
+    """Vorgeschlagene Liquiditaetsanpassung."""
+    id: str = Field(..., description="Anpassungs-ID")
+    adjustment_type: str = Field(..., description="Anpassungstyp")
+    description: str = Field(..., description="Beschreibung")
+    amount: float = Field(..., description="Betrag in EUR")
+    effective_from: str = Field(..., description="Gueltig ab")
+    effective_until: str = Field(..., description="Gueltig bis")
+    reason: str = Field(..., description="Begruendung")
+
+
+class SeasonalAnalysisResponse(BaseModel):
+    """Vollstaendige saisonale Analyse."""
+    id: str = Field(..., description="Analyse-ID")
+    analysis_date: str = Field(..., description="Analysedatum")
+    patterns: List[SeasonalPatternResponse] = Field(default=[], description="Erkannte Muster")
+    year_comparison: Optional[YearComparisonResponse] = Field(
+        None, description="Jahresvergleich"
+    )
+    warnings: List[SeasonalWarningResponse] = Field(default=[], description="Warnungen")
+    liquidity_adjustments: List[LiquidityAdjustmentResponse] = Field(
+        default=[], description="Liquiditaetsanpassungen"
+    )
+    overall_trend: str = Field(..., description="Gesamttrend")
+    summary: str = Field(..., description="Zusammenfassung")
+
+
+# =============================================================================
+# PHASE 4: Orchestration Extensions - Endpoints
+# =============================================================================
+
+
+@limiter.limit("60/minute", key_func=get_user_identifier)
+@router.get(
+    "/entity/{entity_id}/health-actions",
+    response_model=HealthAssessmentResponse,
+    summary="Entity-Gesundheitsmassnahmen abrufen",
+    description="""
+    Gibt empfohlene Massnahmen fuer eine Entity basierend auf ihrem Risk Score zurueck.
+
+    Analysiert:
+    - Aktuellen Risk Score und Level
+    - Veraenderung gegenueber vorherigem Score
+    - Automatisch empfohlene Massnahmen
+
+    **Enterprise Feature** - Teil der Entity Health Degradation Handling.
+    """,
+)
+async def get_entity_health_actions(
+    request: Request,
+    entity_id: UUID = Path(..., description="Entity-ID"),
+    current_user: User = Depends(get_current_active_user),
+) -> HealthAssessmentResponse:
+    """Gibt Gesundheits-Massnahmen fuer eine Entity zurueck."""
+    from app.api.dependencies import get_db
+    from app.services.orchestration import get_entity_health_handler
+
+    async for db in get_db():
+        handler = get_entity_health_handler()
+
+        # Bewertung abrufen
+        assessment = await handler.assess_entity_health(
+            db=db,
+            entity_id=entity_id,
+            company_id=current_user.company_id,
+        )
+
+        if not assessment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Entity nicht gefunden oder keine Bewertung moeglich",
+            )
+
+        return HealthAssessmentResponse(
+            entity_id=str(assessment.entity_id),
+            current_risk_score=assessment.current_risk_score,
+            current_risk_level=assessment.current_risk_level.value,
+            previous_risk_score=assessment.previous_risk_score,
+            score_change=assessment.score_change,
+            is_degrading=assessment.is_degrading,
+            recommended_actions=[
+                HealthActionResponse(
+                    id=str(action.id),
+                    action=action.action.value,
+                    status=action.status.value,
+                    entity_id=str(action.entity_id),
+                    trigger_risk_score=action.trigger_risk_score,
+                    trigger_risk_level=action.trigger_risk_level.value,
+                    description=action.description,
+                    reason=action.reason,
+                    impact_description=action.impact_description,
+                    parameters=action.parameters,
+                    created_at=action.created_at.isoformat(),
+                    applied_at=action.applied_at.isoformat() if action.applied_at else None,
+                )
+                for action in assessment.recommended_actions
+            ],
+            assessment_time=assessment.assessment_time.isoformat(),
+        )
+
+
+@limiter.limit("10/minute", key_func=get_user_identifier)
+@router.post(
+    "/entity/{entity_id}/apply-health-actions",
+    response_model=ApplyHealthActionsResponse,
+    summary="Gesundheits-Massnahmen anwenden",
+    description="""
+    Wendet die angegebenen Gesundheits-Massnahmen auf eine Entity an.
+
+    Moegliche Massnahmen:
+    - Kreditlimit reduzieren
+    - Zahlungsziel verkuerzen
+    - Vorkasse verlangen
+    - Mahnprozess beschleunigen
+
+    **Erfordert Genehmigung** - Bestimmte Massnahmen benoetigen Admin-Rechte.
+    """,
+)
+async def apply_entity_health_actions(
+    fastapi_request: Request,
+    entity_id: UUID = Path(..., description="Entity-ID"),
+    request: ApplyHealthActionsRequest = ...,
+    current_user: User = Depends(get_current_active_user),
+) -> ApplyHealthActionsResponse:
+    """Wendet Gesundheits-Massnahmen an."""
+    from app.api.dependencies import get_db
+    from app.services.orchestration import get_entity_health_handler
+
+    async for db in get_db():
+        handler = get_entity_health_handler()
+
+        results = []
+        applied_count = 0
+        failed_count = 0
+
+        for action_id_str in request.action_ids:
+            try:
+                action_id = UUID(action_id_str)
+                success = await handler.apply_recommendation(
+                    db=db,
+                    recommendation_id=action_id,
+                    applied_by_id=current_user.id,
+                )
+
+                if success:
+                    applied_count += 1
+                    results.append({
+                        "action_id": action_id_str,
+                        "status": "applied",
+                        "message": "Massnahme erfolgreich angewendet",
+                    })
+                else:
+                    failed_count += 1
+                    results.append({
+                        "action_id": action_id_str,
+                        "status": "failed",
+                        "message": "Massnahme konnte nicht angewendet werden",
+                    })
+            except ValueError:
+                failed_count += 1
+                results.append({
+                    "action_id": action_id_str,
+                    "status": "failed",
+                    "message": "Ungueltige Aktions-ID",
+                })
+            except Exception as e:
+                failed_count += 1
+                results.append({
+                    "action_id": action_id_str,
+                    "status": "failed",
+                    "message": safe_error_detail(str(e)),
+                })
+
+        return ApplyHealthActionsResponse(
+            applied_count=applied_count,
+            failed_count=failed_count,
+            results=results,
+        )
+
+
+@limiter.limit("60/minute", key_func=get_user_identifier)
+@router.get(
+    "/investigation/{investigation_id}",
+    response_model=InvestigationReportResponse,
+    summary="Untersuchungsbericht abrufen",
+    description="""
+    Gibt den Bericht einer Anomalie-Untersuchung zurueck.
+
+    Der Bericht enthaelt:
+    - Zusammenfassung und detaillierte Erkenntnisse
+    - Risikobewertung und Konfidenz
+    - Zugehoerige Dokumente und Transaktionen
+    - Entity-Timeline
+    - Empfehlungen und Sofortmassnahmen
+
+    **Enterprise Feature** - Teil des Anomaly Investigation Workflows.
+    """,
+)
+async def get_investigation_report(
+    request: Request,
+    investigation_id: UUID = Path(..., description="Untersuchungs-ID"),
+    current_user: User = Depends(get_current_active_user),
+) -> InvestigationReportResponse:
+    """Gibt einen Untersuchungsbericht zurueck."""
+    from app.services.orchestration import get_anomaly_investigation_service
+
+    service = get_anomaly_investigation_service()
+
+    investigation = await service.get_investigation(
+        investigation_id=investigation_id,
+        company_id=current_user.company_id,
+    )
+
+    if not investigation or not investigation.report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Untersuchung nicht gefunden oder Bericht noch nicht erstellt",
+        )
+
+    report = investigation.report
+    return InvestigationReportResponse(
+        id=str(report.id),
+        investigation_id=str(report.investigation_id),
+        created_at=report.created_at.isoformat(),
+        entity_id=str(report.entity_id) if report.entity_id else None,
+        document_id=str(report.document_id) if report.document_id else None,
+        anomaly_type=report.anomaly_type.value,
+        summary=report.summary,
+        detailed_findings=report.detailed_findings,
+        risk_assessment=report.risk_assessment.value,
+        confidence=report.confidence,
+        related_documents_count=len(report.related_documents),
+        related_transactions_count=len(report.related_transactions),
+        timeline_entries_count=len(report.entity_timeline),
+        recommendations=report.recommendations,
+        immediate_actions=report.immediate_actions,
+        data_collection_time_ms=report.data_collection_time_ms,
+        analysis_time_ms=report.analysis_time_ms,
+    )
+
+
+@limiter.limit("5/minute", key_func=get_user_identifier)
+@router.post(
+    "/investigation/start",
+    response_model=StartInvestigationResponse,
+    summary="Untersuchung starten",
+    description="""
+    Startet eine neue Anomalie-Untersuchung.
+
+    Der Workflow:
+    1. Alle zugehoerigen Dokumente sammeln
+    2. Entity-Timeline aufbauen
+    3. Relevante Transaktionen zusammentragen
+    4. Untersuchungsbericht generieren
+    5. Alert im Alert Center erstellen
+
+    **Enterprise Feature** - Automatisierte Fraud Investigation.
+    """,
+)
+async def start_investigation(
+    fastapi_request: Request,
+    request: StartInvestigationRequest,
+    current_user: User = Depends(get_current_active_user),
+) -> StartInvestigationResponse:
+    """Startet eine neue Untersuchung."""
+    from app.api.dependencies import get_db
+    from app.services.orchestration import get_anomaly_investigation_service, AnomalyType
+
+    async for db in get_db():
+        service = get_anomaly_investigation_service()
+
+        # Anomalie-Typ ermitteln
+        anomaly_type = AnomalyType(request.anomaly_type)
+
+        # Untersuchung starten
+        investigation = await service.start_investigation(
+            db=db,
+            company_id=current_user.company_id,
+            anomaly_type=anomaly_type,
+            entity_id=UUID(request.entity_id) if request.entity_id else None,
+            document_id=UUID(request.document_id) if request.document_id else None,
+            trigger_type="manual",
+            trigger_description=request.trigger_description,
+            initiated_by_id=current_user.id,
+        )
+
+        return StartInvestigationResponse(
+            investigation_id=str(investigation.id),
+            status=investigation.status.value,
+            message="Untersuchung wurde gestartet und wird im Hintergrund ausgefuehrt",
+        )
+
+
+@limiter.limit("30/minute", key_func=get_user_identifier)
+@router.get(
+    "/seasonal-analysis",
+    response_model=SeasonalAnalysisResponse,
+    summary="Saisonale Analyse abrufen",
+    description="""
+    Fuehrt eine vollstaendige saisonale Analyse durch.
+
+    Analysiert:
+    - Historische Muster (Q4-Spitzen, Sommer-Einbrueche, etc.)
+    - Vergleich aktuelles vs. vorheriges Jahr
+    - Proaktive Warnungen
+    - Liquiditaetsanpassungen
+
+    **Enterprise Feature** - Proaktive Finanzplanung.
+    """,
+)
+async def get_seasonal_analysis(
+    request: Request,
+    months_history: int = Query(
+        default=24,
+        ge=6,
+        le=60,
+        description="Anzahl Monate fuer historische Analyse"
+    ),
+    current_user: User = Depends(get_current_active_user),
+) -> SeasonalAnalysisResponse:
+    """Fuehrt eine saisonale Analyse durch."""
+    from app.api.dependencies import get_db
+    from app.services.orchestration import get_seasonal_detector_service
+
+    async for db in get_db():
+        service = get_seasonal_detector_service()
+
+        analysis = await service.analyze_company_seasonality(
+            db=db,
+            company_id=current_user.company_id,
+            months_history=months_history,
+        )
+
+        if not analysis:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Nicht genuegend Daten fuer saisonale Analyse",
+            )
+
+        # Patterns konvertieren
+        pattern_responses = []
+        for pattern in analysis.patterns:
+            pattern_responses.append(SeasonalPatternResponse(
+                id=str(pattern.id),
+                pattern_type=pattern.pattern_type,
+                description=pattern.description,
+                peak_months=pattern.peak_months,
+                low_months=pattern.low_months,
+                peak_factor=pattern.peak_factor,
+                low_factor=pattern.low_factor,
+                variability_coefficient=pattern.variability_coefficient,
+                confidence=pattern.confidence,
+                data_points=pattern.data_points,
+            ))
+
+        # Year comparison konvertieren
+        year_comparison_response = None
+        if analysis.year_comparison:
+            yc = analysis.year_comparison
+            year_comparison_response = YearComparisonResponse(
+                current_year=yc.current_year,
+                previous_year=yc.previous_year,
+                revenue_change_percent=yc.revenue_change_percent,
+                expense_change_percent=yc.expense_change_percent,
+                invoice_volume_change_percent=yc.invoice_volume_change_percent,
+                monthly_differences={
+                    str(k): v for k, v in yc.monthly_differences.items()
+                },
+                anomalies=yc.anomalies,
+            )
+
+        # Warnings konvertieren
+        warning_responses = []
+        for warning in analysis.warnings:
+            warning_responses.append(SeasonalWarningResponse(
+                id=str(warning.id),
+                title=warning.title,
+                description=warning.description,
+                priority=warning.priority.value,
+                affected_period=warning.affected_period,
+                expected_impact_amount=float(warning.expected_impact_amount),
+                recommendations=warning.recommendations,
+                created_at=warning.created_at.isoformat(),
+            ))
+
+        # Liquidity adjustments konvertieren
+        adjustment_responses = []
+        for adj in analysis.liquidity_adjustments:
+            adjustment_responses.append(LiquidityAdjustmentResponse(
+                id=str(adj.id),
+                adjustment_type=adj.adjustment_type,
+                description=adj.description,
+                amount=float(adj.amount),
+                effective_from=adj.effective_from.isoformat(),
+                effective_until=adj.effective_until.isoformat(),
+                reason=adj.reason,
+            ))
+
+        return SeasonalAnalysisResponse(
+            id=str(analysis.id),
+            analysis_date=analysis.analysis_date.isoformat(),
+            patterns=pattern_responses,
+            year_comparison=year_comparison_response,
+            warnings=warning_responses,
+            liquidity_adjustments=adjustment_responses,
+            overall_trend=analysis.overall_trend.value if hasattr(analysis, 'overall_trend') else "stable",
+            summary=analysis.summary if hasattr(analysis, 'summary') else "",
+        )

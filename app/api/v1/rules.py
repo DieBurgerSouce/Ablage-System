@@ -13,7 +13,7 @@ Phase 4 der Strategischen Roadmap (Januar 2026).
 
 import logging
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
@@ -54,7 +54,7 @@ class ConditionSchema(BaseModel):
     """Schema fuer eine Regel-Bedingung."""
     field: str = Field(..., description="Feld-Pfad (z.B. 'amount', 'supplier.is_new')")
     op: ConditionOperator = Field(..., description="Operator")
-    value: Any = Field(default=None, description="Vergleichswert")
+    value: Union[str, int, float, bool, List[str], None] = Field(default=None, description="Vergleichswert")
     case_sensitive: bool = Field(default=False)
     negate: bool = Field(default=False)
 

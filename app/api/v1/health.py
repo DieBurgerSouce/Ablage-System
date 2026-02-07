@@ -270,6 +270,69 @@ def _check_disk_space() -> KomponentenStatus:
         )
 
 
+def _check_ocr_models() -> KomponentenStatus:
+    """Pruefe OCR-Modell-Verfuegbarkeit."""
+    try:
+        from app.services.model_preloader import get_model_preloader
+
+        preloader = get_model_preloader()
+        status_info = preloader.get_status()
+
+        if not status_info.get("enabled"):
+            return KomponentenStatus(
+                gesund=True,
+                nachricht="Model-Preloading deaktiviert",
+                details={"enabled": False},
+            )
+
+        models = status_info.get("models", {})
+        summary = status_info.get("summary", {})
+        loaded = summary.get("loaded", 0)
+        total = summary.get("total", 0)
+        failed = summary.get("failed", 0)
+
+        model_details = {
+            name: info.get("status", "unknown")
+            for name, info in models.items()
+        }
+
+        if not status_info.get("preload_completed"):
+            return KomponentenStatus(
+                gesund=True,
+                nachricht="Modelle werden noch geladen...",
+                details={
+                    "preload_completed": False,
+                    "models": model_details,
+                },
+            )
+
+        if failed > 0 and loaded == 0:
+            return KomponentenStatus(
+                gesund=False,
+                nachricht=f"Kein OCR-Modell verfuegbar ({failed} fehlgeschlagen)",
+                details={"models": model_details, "summary": summary},
+            )
+
+        return KomponentenStatus(
+            gesund=loaded > 0,
+            nachricht=f"{loaded}/{total} OCR-Modelle geladen",
+            details={"models": model_details, "summary": summary},
+        )
+
+    except ImportError:
+        return KomponentenStatus(
+            gesund=True,
+            nachricht="Model-Preloader nicht verfuegbar",
+            details={"available": False},
+        )
+    except Exception as e:
+        logger.error("health_check_ocr_models_failed", **safe_error_log(e))
+        return KomponentenStatus(
+            gesund=False,
+            nachricht=f"OCR-Modell-Pruefung fehlgeschlagen: {safe_error_detail(e, 'OCR')}",
+        )
+
+
 async def _check_minio() -> KomponentenStatus:
     """Pruefe MinIO-Verbindung."""
     import time
@@ -361,12 +424,14 @@ async def detailed_health(
     redis_status = await _check_redis()
     gpu_status = _check_gpu()
     disk_status = _check_disk_space()
+    ocr_status = _check_ocr_models()
 
     komponenten = {
         "datenbank": db_status,
         "cache": redis_status,
         "gpu": gpu_status,
         "speicherplatz": disk_status,
+        "ocr_modelle": ocr_status,
     }
 
     # Bestimme Gesamtstatus
@@ -437,6 +502,25 @@ async def check_dependencies(
         cache=redis_status,
         speicher=minio_status,
     )
+
+
+@router.get(
+    "/models",
+    summary="OCR-Modell-Status",
+    description="Zeigt Verfuegbarkeit und Ladezustand aller OCR-Modelle.",
+)
+async def model_health() -> Dict[str, Any]:
+    """OCR-Modell-Verfuegbarkeit pruefen."""
+    ocr_status = _check_ocr_models()
+    return {
+        "status": "gesund" if ocr_status.gesund else "beeintraechtigt",
+        "zeitstempel": datetime.now(timezone.utc).isoformat(),
+        "ocr_modelle": {
+            "gesund": ocr_status.gesund,
+            "nachricht": ocr_status.nachricht,
+            "details": ocr_status.details,
+        },
+    }
 
 
 @router.get(

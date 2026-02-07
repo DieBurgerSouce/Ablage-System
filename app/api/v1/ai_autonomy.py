@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -815,7 +815,7 @@ class NLQQueryRequest(BaseModel):
 class NLQEntityResponse(BaseModel):
     """Extrahierte Entity aus der Abfrage."""
     entity_type: str
-    value: Any
+    value: Union[str, int, float, bool]
     original_text: str
     confidence: float
 

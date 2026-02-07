@@ -2,13 +2,15 @@
 
 import structlog
 import re
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Set, Tuple, Type, Union
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, desc, asc
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.sql import Select
 
 from app.api.dependencies import get_db, get_current_user
 from app.core.safe_errors import safe_error_detail, safe_error_log
@@ -29,7 +31,7 @@ class GraphQLQueryRequest(BaseModel):
 
     entity_type: str = Field(..., description="Entitätstyp (document, entity, invoice, alert)")
     fields: List[str] = Field(..., description="Auszuwählende Felder")
-    filters: Dict[str, Any] = Field(default_factory=dict, description="Filter-Bedingungen")
+    filters: Dict[str, object] = Field(default_factory=dict, description="Filter-Bedingungen")
     limit: int = Field(20, ge=1, le=100, description="Max. Ergebnisse")
     offset: int = Field(0, ge=0, description="Offset für Paginierung")
     order_by: Optional[str] = Field(None, description="Sortierfeld")
@@ -68,7 +70,7 @@ class GraphQLQueryResponse(BaseModel):
 
     entity_type: str
     total_count: int
-    items: List[Dict[str, Any]]
+    items: List[Dict[str, object]]
     has_more: bool
     offset: int
     limit: int
@@ -174,7 +176,7 @@ class QueryBuilder:
         request: GraphQLQueryRequest,
         company_id: UUID,
         db: AsyncSession,
-    ) -> tuple[Any, int]:
+    ) -> Tuple[object, int]:
         """Baut Query und führt sie aus.
 
         Args:
@@ -238,7 +240,7 @@ class QueryBuilder:
         return items, total_count
 
     @staticmethod
-    def _get_model_class(entity_type: str) -> Any:
+    def _get_model_class(entity_type: str) -> Type[DeclarativeBase]:
         """Gibt Model-Klasse für Entity-Typ zurück."""
         from app.db.models import Document, BusinessEntity, InvoiceTracking
         from app.db.models_alert import Alert
@@ -253,7 +255,7 @@ class QueryBuilder:
         return mapping[entity_type]
 
     @staticmethod
-    def _get_available_fields(model_class: Any) -> set[str]:
+    def _get_available_fields(model_class: Type[DeclarativeBase]) -> Set[str]:
         """Gibt verfügbare Felder für Model zurück."""
         from sqlalchemy.inspection import inspect
 
@@ -261,7 +263,7 @@ class QueryBuilder:
         return {col.key for col in mapper.columns}
 
     @staticmethod
-    def _apply_filters(stmt: Any, model_class: Any, filters: Dict[str, Any]) -> Any:
+    def _apply_filters(stmt: Select, model_class: Type[DeclarativeBase], filters: Dict[str, object]) -> Select:
         """Wendet Filter auf Query an."""
         for field_name, field_value in filters.items():
             field = getattr(model_class, field_name, None)
@@ -299,7 +301,7 @@ class QueryBuilder:
         return stmt
 
     @staticmethod
-    def _project_fields(item: Any, fields: List[str]) -> Dict[str, Any]:
+    def _project_fields(item: object, fields: List[str]) -> Dict[str, object]:
         """Projiziert nur angeforderte Felder."""
         result = {}
         for field in fields:

@@ -1957,7 +1957,7 @@ ALLOWED_EXTRACTED_DATA_PATHS: set[str] = {
 }
 
 
-def _set_nested_value(obj: Dict[str, Any], path: str, value: Any) -> None:
+def _set_nested_value(obj: Dict[str, Any], path: str, value: object) -> None:
     """Setzt einen verschachtelten Wert in einem Dict.
 
     Args:

@@ -4,7 +4,7 @@ Natural Language Query (NLQ) API Router.
 Ermöglicht natürlichsprachige Datenbankabfragen mit KI-gestützter SQL-Generierung.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -164,7 +164,7 @@ async def execute_nlq_query_stream(
         HTTPException: Bei ungültiger Query oder Ausführungsfehler
     """
 
-    async def event_generator() -> Any:
+    async def event_generator() -> AsyncGenerator[str, None]:
         """Generiert SSE-Events für Query-Ausführung."""
         try:
             redis_manager = await get_redis()

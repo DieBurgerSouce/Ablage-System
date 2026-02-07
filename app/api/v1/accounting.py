@@ -10,7 +10,7 @@ REST API fuer integrierte Buchhaltung:
 GoBD-konform und Enterprise-Ready.
 """
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Union
 from uuid import UUID
 from datetime import date, datetime
 from decimal import Decimal
@@ -25,6 +25,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import User
 from app.api.dependencies import get_db, get_current_active_user, validate_company_access
 from app.core.safe_errors import safe_error_detail, safe_error_log
+from app.services.accounting.vat_service import VATSummary, VATReport
+from app.services.accounting.eur_service import EURCategorySummary, EURReport
 from app.services.accounting import (
     get_open_items_service,
     get_vat_service,
@@ -39,6 +41,21 @@ from app.services.accounting import (
     BookingType,
     TaxCode,
 )
+from app.services.accounting.fx_rate_service import (
+    FXRateService,
+    get_fx_rate_service,
+    ConversionResult,
+)
+from app.services.accounting.fx_gain_loss_service import (
+    FXGainLossService,
+    get_fx_gain_loss_service,
+    FXGainLossResult,
+)
+
+# For build_content_disposition helper
+def build_content_disposition(filename: str, disposition: str = "attachment") -> str:
+    """Builds Content-Disposition header."""
+    return f'{disposition}; filename="{filename}"'
 
 logger = structlog.get_logger(__name__)
 
@@ -215,7 +232,7 @@ class YTDSummarySchema(BaseModel):
     cumulative_profit: Decimal
     avg_monthly_income: Decimal
     avg_monthly_expenses: Decimal
-    monthly_data: List[Dict[str, Any]]
+    monthly_data: List[Dict[str, Union[str, int, float, Decimal, None]]]
 
 
 class OptimizeForEnum(str, Enum):
@@ -231,7 +248,7 @@ class OptimizeForEnum(str, Enum):
 # =============================================================================
 
 
-def _map_vat_summary(summary: Any) -> VATSummarySchema:
+def _map_vat_summary(summary: VATSummary) -> VATSummarySchema:
     """Mappt VATSummary zu VATSummarySchema."""
     return VATSummarySchema(
         kennziffer=summary.kennziffer,
@@ -242,7 +259,7 @@ def _map_vat_summary(summary: Any) -> VATSummarySchema:
     )
 
 
-def _map_vat_report(report: Any) -> VATReportSchema:
+def _map_vat_report(report: VATReport) -> VATReportSchema:
     """Mappt VATReport zu VATReportSchema."""
     return VATReportSchema(
         company_id=report.company_id,
@@ -267,7 +284,7 @@ def _map_vat_report(report: Any) -> VATReportSchema:
     )
 
 
-def _map_eur_category(category: Any) -> EURCategorySummarySchema:
+def _map_eur_category(category: EURCategorySummary) -> EURCategorySummarySchema:
     """Mappt EURCategorySummary zu EURCategorySummarySchema."""
     return EURCategorySummarySchema(
         category=category.category,
@@ -277,7 +294,7 @@ def _map_eur_category(category: Any) -> EURCategorySummarySchema:
     )
 
 
-def _map_eur_report(report: Any) -> EURReportSchema:
+def _map_eur_report(report: EURReport) -> EURReportSchema:
     """Mappt EURReport zu EURReportSchema."""
     return EURReportSchema(
         company_id=report.company_id,
@@ -889,7 +906,7 @@ async def export_anlage_eur(
     fiscal_year: int = Query(..., description="Geschaeftsjahr"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> Dict[str, object]:
     """
     Exportiert die EUER als Anlage EUER fuer die Steuererklaerung.
 
@@ -935,7 +952,7 @@ async def get_accounting_statistics(
     year: Optional[int] = Query(None, description="Jahr (Standard: aktuelles Jahr)"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> Dict[str, object]:
     """
     Liefert aggregierte Buchhaltungs-Kennzahlen fuer das Dashboard.
 
@@ -1020,7 +1037,7 @@ class AutoBookingResultSchema(BaseModel):
     primary_suggestion: BookingSuggestionSchema
     alternative_suggestions: List[AlternativeSuggestionSchema] = []
     booking_type: str = Field(..., description="expense, revenue, etc.")
-    analysis_details: Dict[str, Any] = Field(default_factory=dict)
+    analysis_details: Dict[str, object] = Field(default_factory=dict)
     can_auto_book: bool = Field(
         False, description="True wenn Confidence >= 90% (HIGH)"
     )
@@ -1368,7 +1385,7 @@ async def get_auto_booking_statistics(
     period_days: int = Query(30, ge=1, le=365, description="Zeitraum in Tagen"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> Dict[str, object]:
     """
     Zeigt Statistiken zur Auto-Booking Performance.
 
@@ -1417,7 +1434,7 @@ async def get_kontenrahmen(
     account_class: Optional[str] = Query(None, description="Kontenklasse (0-9)"),
     search: Optional[str] = Query(None, description="Suchbegriff"),
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> Dict[str, object]:
     """
     Gibt die Konten eines Kontenrahmens zurueck.
 
@@ -1478,3 +1495,794 @@ async def get_kontenrahmen(
         "accounts": result[:100],  # Limitieren auf 100
         "has_more": len(result) > 100,
     }
+
+
+# =============================================================================
+# GL-POSTING (GENERAL LEDGER)
+# =============================================================================
+
+
+class JournalEntryLineSchema(BaseModel):
+    """Schema fuer Buchungszeile."""
+    account_number: str = Field(..., max_length=5, description="Kontonummer")
+    account_name: str = Field(..., max_length=100, description="Kontobezeichnung")
+    debit_amount: Decimal = Field(default=Decimal("0"), description="Soll-Betrag")
+    credit_amount: Decimal = Field(default=Decimal("0"), description="Haben-Betrag")
+    tax_code: Optional[str] = Field(None, max_length=10, description="BU-Schluessel")
+    tax_rate: Optional[Decimal] = Field(None, description="Steuersatz")
+    cost_center: Optional[str] = Field(None, max_length=20, description="Kostenstelle")
+    text: str = Field(default="", max_length=60, description="Buchungstext")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class JournalEntrySchema(BaseModel):
+    """Schema fuer Buchungssatz."""
+    id: UUID
+    company_id: UUID
+    document_id: Optional[UUID] = None
+    posting_date: date
+    fiscal_year: int
+    fiscal_period: int
+    entry_number: str
+    description: Optional[str] = None
+    total_amount: Optional[Decimal] = None
+    currency: str = "EUR"
+    status: str
+    source: Optional[str] = None
+    confidence: Optional[Decimal] = None
+    created_at: datetime
+    posted_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class JournalEntryCreateRequest(BaseModel):
+    """Request zum Erstellen eines Buchungssatzes."""
+    lines: List[JournalEntryLineSchema] = Field(..., min_length=2, description="Buchungszeilen (min. 2)")
+    posting_date: date = Field(..., description="Buchungsdatum")
+    description: Optional[str] = Field(None, max_length=60, description="Beschreibung")
+    document_id: Optional[UUID] = Field(None, description="Verknuepftes Dokument")
+
+
+class TrialBalanceRowSchema(BaseModel):
+    """Schema fuer Summen-Saldenliste Zeile."""
+    account_number: str
+    account_name: str
+    total_debit: Decimal
+    total_credit: Decimal
+    balance: Decimal
+
+
+class LedgerEntrySchema(BaseModel):
+    """Schema fuer Kontoblatt-Zeile."""
+    entry_id: UUID
+    posting_date: date
+    entry_number: str
+    description: str
+    debit_amount: Decimal
+    credit_amount: Decimal
+    running_balance: Decimal
+
+
+class TaxPeriodSchema(BaseModel):
+    """Schema fuer Steuerperiode."""
+    id: UUID
+    company_id: UUID
+    fiscal_year: int
+    period_type: str
+    period_number: int
+    period_start: date
+    period_end: date
+    status: str
+    total_output_vat: Decimal
+    total_input_vat: Decimal
+    vat_payable: Decimal
+    filed_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UStVAReportSchema(BaseModel):
+    """Schema fuer USt-VA Report."""
+    company_id: UUID
+    fiscal_year: int
+    period_type: str
+    period_number: int
+    period_start: date
+    period_end: date
+    total_output_vat: Decimal
+    total_input_vat: Decimal
+    vat_payable: Decimal
+
+
+class EUeRReportSchema(BaseModel):
+    """Schema fuer EUeR Report."""
+    company_id: UUID
+    fiscal_year: int
+    period_start: date
+    period_end: date
+    total_revenue: Decimal
+    total_expenses: Decimal
+    profit_loss: Decimal
+
+
+@router.post(
+    "/journal-entries",
+    response_model=JournalEntrySchema,
+    status_code=status.HTTP_201_CREATED,
+    summary="Buchungssatz erstellen",
+    description="Erstellt einen neuen Buchungssatz (status=draft)",
+)
+async def create_journal_entry(
+    request: JournalEntryCreateRequest,
+    company_id: UUID = Query(..., description="Firmen-ID"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> JournalEntrySchema:
+    """Erstellt einen Buchungssatz im Entwurfs-Status."""
+    validate_company_access(company_id, current_user)
+
+    from app.services.accounting.gl_posting_service import (
+        GLPostingService,
+        JournalEntryLineCreate,
+    )
+
+    service = GLPostingService(db)
+
+    lines = [
+        JournalEntryLineCreate(
+            account_number=line.account_number,
+            account_name=line.account_name,
+            debit_amount=line.debit_amount,
+            credit_amount=line.credit_amount,
+            tax_code=line.tax_code,
+            tax_rate=line.tax_rate,
+            cost_center=line.cost_center,
+            text=line.text,
+        )
+        for line in request.lines
+    ]
+
+    entry = await service.create_journal_entry(
+        company_id=company_id,
+        lines=lines,
+        posting_date=request.posting_date,
+        description=request.description,
+        document_id=request.document_id,
+        source="manual",
+        created_by=current_user.id,
+    )
+    await db.commit()
+
+    return JournalEntrySchema.model_validate(entry)
+
+
+@router.get(
+    "/journal-entries",
+    response_model=List[JournalEntrySchema],
+    summary="Buchungssaetze auflisten",
+    description="Listet Buchungssaetze mit Filtern",
+)
+async def list_journal_entries(
+    company_id: UUID = Query(..., description="Firmen-ID"),
+    fiscal_year: Optional[int] = Query(None, description="Geschaeftsjahr"),
+    fiscal_period: Optional[int] = Query(None, ge=1, le=12, description="Periode 1-12"),
+    status_filter: Optional[str] = Query(None, description="Status-Filter"),
+    limit: int = Query(50, ge=1, le=100, description="Max Anzahl"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> List[JournalEntrySchema]:
+    """Listet Buchungssaetze."""
+    validate_company_access(company_id, current_user)
+
+    from app.db.models_gl_posting import JournalEntry
+
+    stmt = select(JournalEntry).where(JournalEntry.company_id == company_id)
+
+    if fiscal_year:
+        stmt = stmt.where(JournalEntry.fiscal_year == fiscal_year)
+    if fiscal_period:
+        stmt = stmt.where(JournalEntry.fiscal_period == fiscal_period)
+    if status_filter:
+        stmt = stmt.where(JournalEntry.status == status_filter)
+
+    stmt = stmt.order_by(JournalEntry.posting_date.desc(), JournalEntry.entry_number.desc()).limit(limit)
+
+    result = await db.execute(stmt)
+    entries = result.scalars().all()
+
+    return [JournalEntrySchema.model_validate(e) for e in entries]
+
+
+@router.get(
+    "/journal-entries/{entry_id}",
+    response_model=JournalEntrySchema,
+    summary="Buchungssatz abrufen",
+    description="Ruft einzelnen Buchungssatz ab",
+)
+async def get_journal_entry(
+    entry_id: UUID,
+    company_id: UUID = Query(..., description="Firmen-ID"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> JournalEntrySchema:
+    """Ruft einzelnen Buchungssatz ab."""
+    validate_company_access(company_id, current_user)
+
+    from app.db.models_gl_posting import JournalEntry
+
+    stmt = select(JournalEntry).where(
+        and_(JournalEntry.id == entry_id, JournalEntry.company_id == company_id)
+    )
+    result = await db.execute(stmt)
+    entry = result.scalar_one_or_none()
+
+    if not entry:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Buchungssatz nicht gefunden",
+        )
+
+    return JournalEntrySchema.model_validate(entry)
+
+
+@router.post(
+    "/journal-entries/{entry_id}/post",
+    response_model=JournalEntrySchema,
+    summary="Buchungssatz buchen",
+    description="Bucht einen Entwurf (draft -> posted)",
+)
+async def post_journal_entry(
+    entry_id: UUID,
+    company_id: UUID = Query(..., description="Firmen-ID"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> JournalEntrySchema:
+    """Bucht einen Buchungssatz."""
+    validate_company_access(company_id, current_user)
+
+    from app.services.accounting.gl_posting_service import GLPostingService
+
+    service = GLPostingService(db)
+    entry = await service.post_journal_entry(entry_id, current_user.id)
+    await db.commit()
+
+    return JournalEntrySchema.model_validate(entry)
+
+
+@router.post(
+    "/journal-entries/{entry_id}/reverse",
+    response_model=JournalEntrySchema,
+    summary="Buchungssatz stornieren",
+    description="Storniert einen gebuchten Eintrag (GoBD-konform)",
+)
+async def reverse_journal_entry(
+    entry_id: UUID,
+    reason: str = Query(..., description="Stornierungsgrund"),
+    company_id: UUID = Query(..., description="Firmen-ID"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> JournalEntrySchema:
+    """Storniert einen Buchungssatz."""
+    validate_company_access(company_id, current_user)
+
+    from app.services.accounting.gl_posting_service import GLPostingService
+
+    service = GLPostingService(db)
+    reversal = await service.reverse_journal_entry(entry_id, current_user.id, reason)
+    await db.commit()
+
+    return JournalEntrySchema.model_validate(reversal)
+
+
+@router.post(
+    "/journal-entries/from-document/{document_id}",
+    response_model=JournalEntrySchema,
+    status_code=status.HTTP_201_CREATED,
+    summary="Buchung aus Dokument",
+    description="Erstellt und bucht Entry aus OCR-Dokument",
+)
+async def create_entry_from_document(
+    document_id: UUID,
+    company_id: UUID = Query(..., description="Firmen-ID"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> JournalEntrySchema:
+    """Erstellt Buchung aus Dokument."""
+    validate_company_access(company_id, current_user)
+
+    from app.services.accounting.gl_posting_service import GLPostingService
+
+    service = GLPostingService(db)
+    entry = await service.post_from_invoice(company_id, document_id, current_user.id)
+    await db.commit()
+
+    return JournalEntrySchema.model_validate(entry)
+
+
+@router.get(
+    "/trial-balance",
+    response_model=List[TrialBalanceRowSchema],
+    summary="Summen-Saldenliste",
+    description="Erstellt Summen-Saldenliste (Trial Balance)",
+)
+async def get_trial_balance(
+    company_id: UUID = Query(..., description="Firmen-ID"),
+    fiscal_year: int = Query(..., description="Geschaeftsjahr"),
+    period: Optional[int] = Query(None, ge=1, le=12, description="Periode (optional)"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> List[TrialBalanceRowSchema]:
+    """Erstellt Summen-Saldenliste."""
+    validate_company_access(company_id, current_user)
+
+    from app.services.accounting.gl_posting_service import GLPostingService
+
+    service = GLPostingService(db)
+    rows = await service.get_trial_balance(company_id, fiscal_year, period)
+
+    return [TrialBalanceRowSchema.model_validate(r) for r in rows]
+
+
+@router.get(
+    "/account-ledger/{account_number}",
+    response_model=List[LedgerEntrySchema],
+    summary="Kontoblatt",
+    description="Erstellt Kontoblatt fuer ein Konto",
+)
+async def get_account_ledger(
+    account_number: str,
+    company_id: UUID = Query(..., description="Firmen-ID"),
+    fiscal_year: int = Query(..., description="Geschaeftsjahr"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> List[LedgerEntrySchema]:
+    """Erstellt Kontoblatt."""
+    validate_company_access(company_id, current_user)
+
+    from app.services.accounting.gl_posting_service import GLPostingService
+
+    service = GLPostingService(db)
+    entries = await service.get_account_ledger(company_id, account_number, fiscal_year)
+
+    return [LedgerEntrySchema.model_validate(e) for e in entries]
+
+
+@router.get(
+    "/tax-periods",
+    response_model=List[TaxPeriodSchema],
+    summary="Steuerperioden auflisten",
+    description="Listet USt-VA Perioden",
+)
+async def list_tax_periods(
+    company_id: UUID = Query(..., description="Firmen-ID"),
+    fiscal_year: Optional[int] = Query(None, description="Geschaeftsjahr"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> List[TaxPeriodSchema]:
+    """Listet Steuerperioden."""
+    validate_company_access(company_id, current_user)
+
+    from app.db.models_gl_posting import TaxPeriod
+
+    stmt = select(TaxPeriod).where(TaxPeriod.company_id == company_id)
+    if fiscal_year:
+        stmt = stmt.where(TaxPeriod.fiscal_year == fiscal_year)
+    stmt = stmt.order_by(TaxPeriod.fiscal_year.desc(), TaxPeriod.period_number.desc())
+
+    result = await db.execute(stmt)
+    periods = result.scalars().all()
+
+    return [TaxPeriodSchema.model_validate(p) for p in periods]
+
+
+@router.post(
+    "/tax-periods",
+    response_model=TaxPeriodSchema,
+    status_code=status.HTTP_201_CREATED,
+    summary="USt-VA erstellen",
+    description="Erstellt USt-Voranmeldung",
+)
+async def create_tax_period(
+    fiscal_year: int = Query(..., description="Jahr"),
+    period_type: str = Query(..., description="monthly oder quarterly"),
+    period_number: int = Query(..., description="Monat 1-12 oder Quartal 1-4"),
+    company_id: UUID = Query(..., description="Firmen-ID"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> TaxPeriodSchema:
+    """Erstellt USt-VA."""
+    validate_company_access(company_id, current_user)
+
+    from app.services.accounting.ust_voranmeldung_service import UStVoranmeldungService
+
+    service = UStVoranmeldungService(db)
+    report = await service.generate_ust_voranmeldung(
+        company_id, fiscal_year, period_type, period_number
+    )
+    tax_period = await service.file_ust_voranmeldung(company_id, report)
+    await db.commit()
+
+    return TaxPeriodSchema.model_validate(tax_period)
+
+
+@router.post(
+    "/tax-periods/{tax_period_id}/file",
+    response_model=TaxPeriodSchema,
+    summary="USt-VA einreichen",
+    description="Reicht USt-VA ein (Status filed)",
+)
+async def file_tax_period(
+    tax_period_id: UUID,
+    company_id: UUID = Query(..., description="Firmen-ID"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> TaxPeriodSchema:
+    """Reicht USt-VA ein."""
+    validate_company_access(company_id, current_user)
+
+    from app.db.models_gl_posting import TaxPeriod, TaxPeriodStatus
+    from app.core.datetime_utils import utc_now
+
+    stmt = select(TaxPeriod).where(
+        and_(TaxPeriod.id == tax_period_id, TaxPeriod.company_id == company_id)
+    )
+    result = await db.execute(stmt)
+    period = result.scalar_one_or_none()
+
+    if not period:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Steuerperiode nicht gefunden",
+        )
+
+    period.status = TaxPeriodStatus.FILED.value
+    period.filed_at = utc_now()
+    await db.commit()
+
+    return TaxPeriodSchema.model_validate(period)
+
+
+@router.get(
+    "/euer",
+    response_model=EUeRReportSchema,
+    summary="EUeR Report",
+    description="Generiert Einnahmen-Ueberschuss-Rechnung",
+)
+async def get_euer_report(
+    company_id: UUID = Query(..., description="Firmen-ID"),
+    fiscal_year: int = Query(..., description="Geschaeftsjahr"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> EUeRReportSchema:
+    """Generiert EUeR."""
+    validate_company_access(company_id, current_user)
+
+    from app.services.accounting.euer_report_service import EUeRReportService
+
+    service = EUeRReportService(db)
+    report = await service.generate_euer(company_id, fiscal_year)
+
+    return EUeRReportSchema.model_validate(report)
+
+
+# =============================================================================
+# FX RATE & CURRENCY ENDPOINTS
+# =============================================================================
+
+
+class ExchangeRateSchema(BaseModel):
+    """Schema fuer Wechselkurs."""
+    base_currency: str = "EUR"
+    target_currency: str
+    rate: Decimal
+    rate_date: date
+    source: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ConversionRequest(BaseModel):
+    """Anfrage zur Waehrungsumrechnung."""
+    amount: Decimal = Field(..., gt=0, description="Betrag")
+    from_currency: str = Field(..., min_length=3, max_length=3, description="Von Waehrung")
+    to_currency: str = Field(default="EUR", min_length=3, max_length=3, description="Zu Waehrung")
+    rate_date: Optional[date] = Field(None, description="Stichtag (optional)")
+
+
+class ConversionResultSchema(BaseModel):
+    """Ergebnis einer Waehrungsumrechnung."""
+    original_amount: Decimal
+    original_currency: str
+    converted_amount: Decimal
+    target_currency: str
+    rate_used: Decimal
+    rate_date: date
+    rate_source: str
+
+
+class FXGainLossSchema(BaseModel):
+    """Schema fuer Kursgewinn/-verlust."""
+    id: UUID
+    original_currency: str
+    original_amount: Decimal
+    booking_rate: Decimal
+    settlement_rate: Decimal
+    gain_loss_amount: Decimal
+    gain_loss_account: str
+    realized: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class FXGainLossCalculateRequest(BaseModel):
+    """Anfrage zur Berechnung von Kursgewinn/-verlust."""
+    original_amount: Decimal = Field(..., gt=0, description="Ursprungsbetrag")
+    original_currency: str = Field(..., min_length=3, max_length=3, description="Waehrung")
+    booking_rate: Decimal = Field(..., gt=0, description="Buchungskurs")
+    settlement_rate: Decimal = Field(..., gt=0, description="Zahlungskurs")
+
+
+class FXGainLossCalculateResponse(BaseModel):
+    """Vorschau der Kursgewinn/-verlust Berechnung."""
+    original_currency: str
+    original_amount: Decimal
+    booking_rate: Decimal
+    settlement_rate: Decimal
+    booking_eur_amount: Decimal
+    settlement_eur_amount: Decimal
+    gain_loss_amount: Decimal
+    gain_loss_account: str
+    is_gain: bool
+
+
+@router.get(
+    "/fx-rates",
+    response_model=ExchangeRateSchema,
+    summary="Wechselkurs abfragen",
+    description="Holt ECB-Referenzkurs fuer eine Waehrung",
+)
+async def get_exchange_rate(
+    currency: str = Query(..., description="Waehrung (z.B. USD, GBP)"),
+    rate_date: Optional[date] = Query(None, description="Stichtag (optional)"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> ExchangeRateSchema:
+    """
+    Gibt den ECB-Wechselkurs fuer eine Waehrung zurueck.
+
+    Falls kein exakter Kurs vorhanden, wird auf den naechsten verfuegbaren
+    Kurs innerhalb von 7 Tagen zurueckgegriffen.
+    """
+    logger.info(
+        "fx_rate_requested",
+        user_id=str(current_user.id),
+        currency=currency,
+        rate_date=str(rate_date) if rate_date else "today",
+    )
+
+    service = get_fx_rate_service(db)
+    rate = await service.get_rate(currency, rate_date)
+
+    if rate is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Kein Wechselkurs verfuegbar fuer {currency}",
+        )
+
+    lookup_date = rate_date or date.today()
+
+    return ExchangeRateSchema(
+        base_currency="EUR",
+        target_currency=currency,
+        rate=rate,
+        rate_date=lookup_date,
+        source="ecb",
+    )
+
+
+@router.post(
+    "/fx-rates/fetch",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="ECB Kurse abrufen (Admin)",
+    description="Triggert Abruf der aktuellen ECB-Referenzkurse",
+)
+async def fetch_ecb_rates(
+    historical: bool = Query(False, description="Historische Kurse (90 Tage)"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, object]:
+    """
+    Triggert den Abruf von ECB-Referenzkursen.
+
+    **Nur fuer Administratoren.**
+
+    - historical=False: Aktuelle Tageskurse
+    - historical=True: Letzte 90 Tage
+    """
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Nur Administratoren koennen Kurse abrufen",
+        )
+
+    logger.info(
+        "fx_rates_fetch_triggered",
+        user_id=str(current_user.id),
+        historical=historical,
+    )
+
+    from app.workers.tasks.fx_rate_tasks import (
+        fetch_ecb_rates_daily,
+        fetch_ecb_rates_historical,
+    )
+
+    if historical:
+        task = fetch_ecb_rates_historical.delay()
+    else:
+        task = fetch_ecb_rates_daily.delay()
+
+    return {
+        "status": "accepted",
+        "task_id": task.id,
+        "message": "Kursabruf wurde gestartet",
+    }
+
+
+@router.post(
+    "/fx-rates/convert",
+    response_model=ConversionResultSchema,
+    summary="Waehrungsumrechnung",
+    description="Rechnet Betrag in andere Waehrung um",
+)
+async def convert_currency(
+    request: ConversionRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> ConversionResultSchema:
+    """
+    Rechnet einen Betrag von einer Waehrung in eine andere um.
+
+    Verwendet ECB-Referenzkurse. Bei Cross-Rates wird ueber EUR gerechnet.
+    """
+    logger.info(
+        "fx_conversion_requested",
+        user_id=str(current_user.id),
+        amount=str(request.amount),
+        from_currency=request.from_currency,
+        to_currency=request.to_currency,
+    )
+
+    service = get_fx_rate_service(db)
+
+    try:
+        result = await service.convert(
+            amount=request.amount,
+            from_currency=request.from_currency,
+            to_currency=request.to_currency,
+            rate_date=request.rate_date,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    return ConversionResultSchema(
+        original_amount=result.original_amount,
+        original_currency=result.original_currency,
+        converted_amount=result.converted_amount,
+        target_currency=result.target_currency,
+        rate_used=result.rate_used,
+        rate_date=result.rate_date,
+        rate_source=result.rate_source,
+    )
+
+
+@router.get(
+    "/fx-rates/currencies",
+    response_model=List[str],
+    summary="Verfuegbare Waehrungen",
+    description="Listet alle Waehrungen mit verfuegbaren ECB-Kursen",
+)
+async def get_available_currencies(
+    for_date: Optional[date] = Query(None, description="Stichtag (optional)"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> List[str]:
+    """
+    Gibt Liste aller Waehrungen zurueck, fuer die ECB-Kurse verfuegbar sind.
+    """
+    service = get_fx_rate_service(db)
+    currencies = await service.get_available_currencies(for_date)
+
+    return ["EUR"] + sorted(currencies)
+
+
+@router.get(
+    "/fx-gain-loss",
+    response_model=List[FXGainLossSchema],
+    summary="Kursgewinne/-verluste",
+    description="Listet Kursgewinne und -verluste",
+)
+async def get_fx_gain_loss_entries(
+    company_id: UUID = Query(..., description="Firmen-ID"),
+    realized: Optional[bool] = Query(None, description="Nur realisierte (True) oder unrealisierte (False)"),
+    currency: Optional[str] = Query(None, description="Waehrung filtern"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> List[FXGainLossSchema]:
+    """
+    Listet alle Kursgewinn-/verlust-Eintraege fuer eine Firma.
+
+    **Filter:**
+    - realized: True (realisiert), False (unrealisiert), None (alle)
+    - currency: Waehrung (z.B. USD)
+    """
+    validate_company_access(company_id, current_user)
+
+    logger.info(
+        "fx_gain_loss_list_requested",
+        company_id=str(company_id),
+        user_id=str(current_user.id),
+        realized=realized,
+        currency=currency,
+    )
+
+    service = get_fx_gain_loss_service(db)
+    entries = await service.get_fx_entries(
+        company_id=company_id,
+        realized=realized,
+        currency=currency,
+    )
+
+    return [FXGainLossSchema.model_validate(e) for e in entries]
+
+
+@router.post(
+    "/fx-gain-loss/calculate",
+    response_model=FXGainLossCalculateResponse,
+    summary="Kursgewinn/-verlust berechnen",
+    description="Berechnet Vorschau von Kursgewinn oder -verlust",
+)
+async def calculate_fx_gain_loss(
+    request: FXGainLossCalculateRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> FXGainLossCalculateResponse:
+    """
+    Berechnet einen Kursgewinn oder -verlust als Vorschau.
+
+    Zeigt, wie viel Gewinn (Konto 2650) oder Verlust (Konto 2150)
+    bei gegebenem Buchungs- und Zahlungskurs entsteht.
+
+    **Keine Buchung** - nur Vorschau!
+    """
+    logger.info(
+        "fx_gain_loss_calculate_requested",
+        user_id=str(current_user.id),
+        currency=request.original_currency,
+        amount=str(request.original_amount),
+    )
+
+    service = get_fx_gain_loss_service(db)
+    result = service.calculate_realized_gain_loss(
+        original_amount=request.original_amount,
+        original_currency=request.original_currency,
+        booking_rate=request.booking_rate,
+        settlement_rate=request.settlement_rate,
+    )
+
+    return FXGainLossCalculateResponse(
+        original_currency=result.original_currency,
+        original_amount=result.original_amount,
+        booking_rate=result.booking_rate,
+        settlement_rate=result.settlement_rate,
+        booking_eur_amount=result.booking_eur_amount,
+        settlement_eur_amount=result.settlement_eur_amount,
+        gain_loss_amount=result.gain_loss_amount,
+        gain_loss_account=result.gain_loss_account,
+        is_gain=result.is_gain,
+    )

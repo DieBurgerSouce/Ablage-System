@@ -10,7 +10,7 @@ Pydantic Schemas fuer:
 """
 
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from uuid import UUID
 from enum import Enum
 
@@ -571,7 +571,7 @@ class BIQueryResponse(BaseModel):
     """Antwort auf eine Business Intelligence Anfrage."""
     query_type: BIQueryType
     summary: str = Field(..., description="Menschenlesbare Zusammenfassung auf Deutsch")
-    data: Optional[Any] = Field(None, description="Strukturierte Daten je nach query_type")
+    data: Optional[Dict[str, object]] = Field(None, description="Strukturierte Daten je nach query_type")
     suggestions: List[str] = Field(default_factory=list, description="Follow-up Fragen")
     query_time_ms: int = Field(ge=0)
 
@@ -650,7 +650,7 @@ class AIActionStatus(str, Enum):
 class AIActionParameter(BaseModel):
     """Parameter einer AI-Aktion."""
     name: str = Field(..., description="Parameter-Name")
-    value: Any = Field(..., description="Parameter-Wert")
+    value: Union[str, int, float, bool] = Field(..., description="Parameter-Wert")
     label: str = Field(..., description="Anzeige-Label auf Deutsch")
     editable: bool = Field(default=False, description="Kann vom User geaendert werden")
 

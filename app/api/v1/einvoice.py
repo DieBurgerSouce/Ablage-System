@@ -1072,3 +1072,404 @@ async def batch_convert_to_zugferd(
             status_code=500,
             detail="Batch-Konvertierung konnte nicht gestartet werden"
         )
+
+
+# =============================================================================
+# E-RECHNUNG 2025: TRANSMISSION ENDPOINTS (PEPPOL/EMAIL)
+# =============================================================================
+
+@router.post(
+    "/{document_id}/send",
+    response_model=dict,
+    summary="E-Rechnung versenden",
+    description="""
+    Versendet eine E-Rechnung ueber Peppol oder Email-Fallback.
+
+    **Peppol-Versand:**
+    - Prueft automatisch ob Empfaenger Peppol-faehig ist (SMP Lookup)
+    - Sendet ueber konfigurierten Peppol Access Point
+    - Tracking der Zustellung und Bestaetigung (MDN)
+
+    **Email-Fallback:**
+    - Wenn Peppol nicht verfuegbar, wird Email verwendet
+    - XRechnung-XML als Anhang
+
+    **Voraussetzungen:**
+    - E-Invoice muss fuer Dokument existieren
+    - Leitweg-ID (BT-10) muss gesetzt sein
+    """
+)
+async def send_einvoice(
+    document_id: UUID,
+    fallback_email: Optional[str] = Query(None, description="Email fuer Fallback"),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user),
+) -> dict:
+    """Versendet E-Rechnung ueber Peppol oder Email."""
+    from app.workers.tasks.einvoice_tasks import einvoice_send_peppol_task
+
+    # E-Invoice pruefen
+    stmt = select(EInvoiceDocument).where(
+        EInvoiceDocument.document_id == document_id
+    )
+    result = await db.execute(stmt)
+    einvoice = result.scalar_one_or_none()
+
+    if not einvoice:
+        raise HTTPException(
+            status_code=404,
+            detail="Keine E-Invoice fuer dieses Dokument gefunden. Bitte zuerst generieren."
+        )
+
+    # Berechtigung pruefen
+    doc_stmt = select(Document).where(Document.id == document_id)
+    doc_result = await db.execute(doc_stmt)
+    document = doc_result.scalar_one_or_none()
+
+    if document and document.owner_id != current_user.id and not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Keine Berechtigung")
+
+    try:
+        task = einvoice_send_peppol_task.delay(
+            einvoice_id=str(einvoice.id),
+            fallback_email=fallback_email,
+        )
+
+        return {
+            "task_id": task.id,
+            "status": "queued",
+            "message": "E-Rechnung wurde in Versandwarteschlange eingereiht",
+            "einvoice_id": str(einvoice.id),
+            "leitweg_id": einvoice.leitweg_id,
+        }
+
+    except Exception as e:
+        logger.error("einvoice_send_failed", **safe_error_log(e))
+        raise HTTPException(
+            status_code=500,
+            detail="Versand konnte nicht gestartet werden"
+        )
+
+
+@router.get(
+    "/{document_id}/transmission",
+    response_model=dict,
+    summary="Transmission Status",
+    description="Gibt den Uebertragungsstatus einer E-Rechnung zurueck."
+)
+async def get_transmission_status(
+    document_id: UUID,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user),
+) -> dict:
+    """Gibt Transmission Status zurueck."""
+    from app.db.models_einvoice import EInvoiceTransmission
+
+    # E-Invoice laden
+    stmt = select(EInvoiceDocument).where(
+        EInvoiceDocument.document_id == document_id
+    )
+    result = await db.execute(stmt)
+    einvoice = result.scalar_one_or_none()
+
+    if not einvoice:
+        raise HTTPException(status_code=404, detail="Keine E-Invoice gefunden")
+
+    # Transmissions laden
+    trans_stmt = select(EInvoiceTransmission).where(
+        EInvoiceTransmission.einvoice_id == einvoice.id
+    ).order_by(EInvoiceTransmission.created_at.desc())
+
+    trans_result = await db.execute(trans_stmt)
+    transmissions = trans_result.scalars().all()
+
+    return {
+        "einvoice_id": str(einvoice.id),
+        "leitweg_id": einvoice.leitweg_id,
+        "transmissions": [
+            {
+                "id": str(t.id),
+                "channel": t.channel,
+                "status": t.status,
+                "sent_at": t.sent_at.isoformat() if t.sent_at else None,
+                "delivered_at": t.delivered_at.isoformat() if t.delivered_at else None,
+                "acknowledged_at": t.acknowledged_at.isoformat() if t.acknowledged_at else None,
+                "peppol_message_id": t.peppol_message_id,
+                "error": t.last_error,
+                "retry_count": t.retry_count,
+            }
+            for t in transmissions
+        ],
+        "has_transmissions": len(transmissions) > 0,
+        "latest_status": transmissions[0].status if transmissions else None,
+    }
+
+
+@router.post(
+    "/check-peppol",
+    response_model=dict,
+    summary="Peppol-Faehigkeit pruefen",
+    description="Prueft ob ein Empfaenger Peppol-faehig ist (SMP Lookup)."
+)
+async def check_peppol_capability(
+    leitweg_id: str = Query(..., description="Leitweg-ID des Empfaengers"),
+    current_user: User = Depends(get_current_active_user),
+) -> dict:
+    """Prueft Peppol-Faehigkeit eines Empfaengers."""
+    from app.services.einvoice import get_peppol_sender
+
+    sender = get_peppol_sender()
+
+    if not sender.is_configured:
+        return {
+            "peppol_available": False,
+            "reason": "Peppol nicht konfiguriert",
+            "fallback_required": True,
+        }
+
+    can_peppol, endpoint = await sender.check_peppol_capability(leitweg_id)
+
+    return {
+        "leitweg_id": leitweg_id,
+        "peppol_available": can_peppol,
+        "endpoint": {
+            "participant_id": endpoint.participant_id if endpoint else None,
+            "endpoint_url": endpoint.endpoint_url[:50] + "..." if endpoint and len(endpoint.endpoint_url) > 50 else (endpoint.endpoint_url if endpoint else None),
+            "is_active": endpoint.is_active if endpoint else None,
+        } if endpoint else None,
+        "fallback_required": not can_peppol,
+    }
+
+
+# =============================================================================
+# E-RECHNUNG 2025: INCOMING E-INVOICE ENDPOINTS
+# =============================================================================
+
+@router.post(
+    "/receive",
+    response_model=dict,
+    summary="E-Rechnung empfangen (Webhook)",
+    description="""
+    Webhook-Endpunkt fuer eingehende E-Rechnungen.
+
+    **Unterstuetzte Quellen:**
+    - Peppol AS4 (automatisch via Access Point)
+    - Manueller Upload (XML oder PDF)
+
+    **Verarbeitung:**
+    - Automatische Format-Erkennung
+    - Validierung gegen XRechnung/ZUGFeRD
+    - Entity-Linking (Absender erkennen)
+    - Alert bei Validierungsfehlern
+    """
+)
+async def receive_einvoice(
+    file: Optional[UploadFile] = File(None, description="E-Rechnung Datei"),
+    peppol_payload: Optional[str] = Query(None, description="Peppol XML Payload"),
+    source: str = Query("upload", description="Quelle: peppol, email, portal, upload"),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user),
+) -> dict:
+    """Empfaengt und verarbeitet eingehende E-Rechnung."""
+    from app.services.einvoice import get_receiver_service
+
+    receiver = get_receiver_service()
+
+    # Content ermitteln
+    xml_content: Optional[str] = None
+    pdf_content: Optional[bytes] = None
+    filename: Optional[str] = None
+
+    if file:
+        content = await file.read()
+        filename = file.filename
+
+        if filename and filename.lower().endswith(".pdf"):
+            # PDF: XML extrahieren
+            from app.services.einvoice import get_zugferd_embedder
+            embedder = get_zugferd_embedder()
+            xml_content = embedder.extract_xml_from_pdf(content)
+            pdf_content = content
+
+            if not xml_content:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Kein eingebettetes XML im PDF gefunden"
+                )
+        else:
+            # XML direkt
+            try:
+                xml_content = content.decode("utf-8")
+            except UnicodeDecodeError:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Datei ist kein gueltiges UTF-8 XML"
+                )
+
+    elif peppol_payload:
+        xml_content = peppol_payload
+        source = "peppol"
+
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Entweder 'file' oder 'peppol_payload' erforderlich"
+        )
+
+    # Company ID ermitteln (aus User)
+    company_id = current_user.company_id if hasattr(current_user, 'company_id') else current_user.id
+
+    try:
+        result = await receiver.process_incoming_invoice(
+            xml_content=xml_content,
+            source=source,
+            company_id=company_id,
+            db=db,
+            pdf_content=pdf_content,
+            original_filename=filename,
+            auto_link_entity=True,
+            create_document=True,
+        )
+
+        if result.success:
+            return {
+                "success": True,
+                "incoming_id": str(result.incoming_invoice_id) if result.incoming_invoice_id else None,
+                "document_id": str(result.document_id) if result.document_id else None,
+                "entity_id": str(result.entity_id) if result.entity_id else None,
+                "validation_passed": result.validation_passed,
+                "validation_errors": len(result.validation_errors),
+                "validation_warnings": len(result.validation_warnings),
+                "invoice_info": {
+                    "invoice_number": result.invoice_info.invoice_number if result.invoice_info else None,
+                    "invoice_date": result.invoice_info.invoice_date.isoformat() if result.invoice_info and result.invoice_info.invoice_date else None,
+                    "seller_name": result.invoice_info.seller_name if result.invoice_info else None,
+                    "gross_amount": str(result.invoice_info.gross_amount) if result.invoice_info and result.invoice_info.gross_amount else None,
+                    "format": result.invoice_info.format if result.invoice_info else None,
+                } if result.invoice_info else None,
+                "alerts_created": len(result.alerts_created),
+            }
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=result.error or "Verarbeitung fehlgeschlagen"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("einvoice_receive_failed")
+        raise HTTPException(
+            status_code=500,
+            detail="Verarbeitung fehlgeschlagen"
+        )
+
+
+@router.get(
+    "/incoming",
+    response_model=dict,
+    summary="Eingehende E-Rechnungen",
+    description="Listet alle eingehenden E-Rechnungen auf."
+)
+async def list_incoming_einvoices(
+    status: Optional[str] = Query(None, description="Filter nach Status"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user),
+) -> dict:
+    """Listet eingehende E-Rechnungen."""
+    from app.db.models_einvoice import IncomingEInvoice
+
+    # Company ID
+    company_id = current_user.company_id if hasattr(current_user, 'company_id') else current_user.id
+
+    query = select(IncomingEInvoice).where(
+        IncomingEInvoice.company_id == company_id
+    )
+
+    if status:
+        query = query.where(IncomingEInvoice.status == status)
+
+    query = query.order_by(IncomingEInvoice.received_at.desc()).offset(offset).limit(limit)
+
+    result = await db.execute(query)
+    items = result.scalars().all()
+
+    return {
+        "items": [
+            {
+                "id": str(item.id),
+                "channel": item.channel,
+                "status": item.status,
+                "received_at": item.received_at.isoformat() if item.received_at else None,
+                "invoice_number": item.invoice_number,
+                "invoice_date": item.invoice_date.isoformat() if item.invoice_date else None,
+                "seller_name": item.seller_name,
+                "total_amount": str(item.total_amount) if item.total_amount else None,
+                "currency": item.currency,
+                "is_valid": item.is_valid,
+                "format": item.format,
+                "document_id": str(item.document_id) if item.document_id else None,
+                "entity_id": str(item.entity_id) if item.entity_id else None,
+            }
+            for item in items
+        ],
+        "total": len(items),
+        "offset": offset,
+        "limit": limit,
+    }
+
+
+@router.get(
+    "/incoming/{incoming_id}",
+    response_model=dict,
+    summary="Eingehende E-Rechnung Details",
+    description="Gibt Details einer eingehenden E-Rechnung zurueck."
+)
+async def get_incoming_einvoice(
+    incoming_id: UUID,
+    include_xml: bool = Query(False, description="XML-Inhalt einschliessen"),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: User = Depends(get_current_active_user),
+) -> dict:
+    """Gibt Details einer eingehenden E-Rechnung zurueck."""
+    from app.db.models_einvoice import IncomingEInvoice
+
+    query = select(IncomingEInvoice).where(
+        IncomingEInvoice.id == incoming_id
+    )
+    result = await db.execute(query)
+    item = result.scalar_one_or_none()
+
+    if not item:
+        raise HTTPException(status_code=404, detail="Eingehende E-Rechnung nicht gefunden")
+
+    response = {
+        "id": str(item.id),
+        "channel": item.channel,
+        "status": item.status,
+        "received_at": item.received_at.isoformat() if item.received_at else None,
+        "processed_at": item.processed_at.isoformat() if item.processed_at else None,
+        "format": item.format,
+        "invoice_number": item.invoice_number,
+        "invoice_date": item.invoice_date.isoformat() if item.invoice_date else None,
+        "seller_name": item.seller_name,
+        "buyer_reference": item.buyer_reference,
+        "total_amount": str(item.total_amount) if item.total_amount else None,
+        "currency": item.currency,
+        "is_valid": item.is_valid,
+        "validation_errors": item.validation_errors,
+        "validation_warnings": item.validation_warnings,
+        "document_id": str(item.document_id) if item.document_id else None,
+        "entity_id": str(item.entity_id) if item.entity_id else None,
+        "peppol_message_id": item.peppol_message_id,
+        "peppol_sender_id": item.peppol_sender_id,
+        "email_sender": item.email_sender,
+        "email_subject": item.email_subject,
+    }
+
+    if include_xml:
+        response["xml_content"] = item.xml_content
+
+    return response

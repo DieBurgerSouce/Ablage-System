@@ -13,7 +13,7 @@ Vision 2026 Q2 - AI Decision Explorer UI API
 
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from uuid import UUID
 
 import structlog
@@ -40,14 +40,14 @@ class ExplanationFactorSchema(BaseModel):
     """Schema für einen Erklärungsfaktor."""
     name: str = Field(..., description="Name des Faktors")
     contribution: float = Field(..., description="Beitrag zur Entscheidung (0.0-1.0)")
-    value: Optional[Any] = Field(None, description="Wert des Faktors")
+    value: Optional[Union[str, int, float, bool]] = Field(None, description="Wert des Faktors")
     explanation: str = Field("", description="Erklärungstext")
     visualization_type: str = Field("bar", description="Visualisierungstyp")
 
 
 class AlternativeSchema(BaseModel):
     """Schema für eine Alternative."""
-    value: Any = Field(..., description="Alternativer Wert")
+    value: Union[str, int, float, bool] = Field(..., description="Alternativer Wert")
     confidence: float = Field(..., description="Confidence für diese Alternative")
     reason: str = Field("", description="Grund warum nicht gewählt")
 

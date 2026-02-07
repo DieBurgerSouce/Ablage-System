@@ -13,7 +13,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Tuple
 import sys
 from pathlib import Path
 import structlog
@@ -774,6 +774,7 @@ from app.api.v1.expenses import router as expenses_router
 from app.api.v1.streckengeschaeft import router as streckengeschaeft_router
 from app.api.v1.privat import router as privat_router
 from app.api.v1.privat_analytics import router as privat_analytics_router
+from app.api.v1.privat.tax import router as privat_tax_router  # Phase 3.1: Tax Optimization
 from app.api.v1.personal import router as personal_router
 from app.api.v1.validation import router as validation_router
 from app.api.v1.comments import router as comments_router
@@ -786,6 +787,7 @@ from app.api.v1.dashboards import router as dashboards_router  # Enterprise Dash
 from app.api.v1.dashboard_widgets import router as dashboard_widgets_router  # Phase 7: Dashboard Widgets
 from app.api.v1.imports import router as imports_router
 from app.api.v1.ai_autonomy import router as ai_autonomy_router
+from app.api.v1.autonomous import router as autonomous_trust_router  # Phase 2.1: Multi-Level Trust
 from app.api.v1.reports import router as reports_router
 from app.api.v1.workflows import router as workflows_router
 from app.api.v1.push_notifications import router as push_notifications_router
@@ -801,6 +803,7 @@ from app.api.v1.document_chains import router as document_chains_router
 from app.api.v1.hygiene import router as hygiene_router
 from app.api.v1.tax_advisor_packages import router as tax_advisor_packages_router
 from app.api.v1.accounting import router as accounting_router
+from app.api.v1.kanban import router as kanban_router
 from app.api.v1.calendar import router as calendar_router
 from app.api.v1.magic_buttons import router as magic_buttons_router
 from app.api.v1.contracts import router as contracts_router
@@ -826,6 +829,7 @@ from app.api.v1.subscriptions import router as subscriptions_router
 from app.api.v1.holding import router as holding_router
 from app.api.v1.predictive_cashflow import router as predictive_cashflow_router
 from app.api.v1.cashflow_prediction import router as cashflow_prediction_router  # Monte Carlo Cashflow Prediction
+from app.api.v1.cashflow import router as entity_cashflow_router  # Phase 2.2: Entity-based Cashflow Prediction
 from app.api.v1.fraud_detection import router as fraud_detection_router
 from app.api.v1.risk_intelligence import router as risk_intelligence_router
 from app.api.v1.ocr_learning import router as ocr_learning_router
@@ -897,8 +901,12 @@ from app.api.v1.lineage import router as lineage_router  # Phase 1.3: Document L
 from app.api.v1.workflow_analytics import router as workflow_analytics_router  # Phase 4: Workflow Analytics, SLA, Approvals
 from app.api.v1.odoo_webhooks import router as odoo_webhooks_router  # Phase 6: Odoo Integration Deepening
 from app.api.v1.bpmn_converter import router as bpmn_converter_router  # BPMN 2.0 Import/Export Converter
+from app.api.v1.banking.connections import router as psd2_banking_router  # Phase 6: PSD2/FinTS Banking Integration
 from app.api.v1.documents_bulk import router as documents_bulk_router  # Phase 2.3: Bulk Actions
 from app.api.v1.assistant import router as assistant_router  # Conversational Assistant mit Ollama
+from app.api.v1.portal import router as portal_router  # Phase 5.2: Kundenportal Self-Service
+from app.api.v1.esg import router as esg_router  # Phase 7.4: ESG-Reporting
+from app.api.v1.reporting import router as reporting_router  # Executive Dashboard Reporting
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -940,6 +948,7 @@ app.include_router(reconciliation_router, prefix="/api/v1")  # Payment Reconcili
 app.include_router(fints_router, prefix="/api/v1")
 app.include_router(sepa_router, prefix="/api/v1")
 app.include_router(banking_dashboard_router, prefix="/api/v1")
+app.include_router(psd2_banking_router, prefix="/api/v1")  # Phase 6: PSD2/FinTS Banking Integration
 app.include_router(datev_router, prefix="/api/v1")
 app.include_router(finance_router, prefix="/api/v1")
 app.include_router(exports_router, prefix="/api/v1")
@@ -950,6 +959,7 @@ app.include_router(expenses_router, prefix="/api/v1")
 app.include_router(streckengeschaeft_router, prefix="/api/v1")
 app.include_router(privat_router, prefix="/api/v1")
 app.include_router(privat_analytics_router, prefix="/api/v1")
+app.include_router(privat_tax_router, prefix="/api/v1/privat")  # Phase 3.1: Tax Optimization
 app.include_router(personal_router, prefix="/api/v1")
 app.include_router(validation_router, prefix="/api/v1")
 app.include_router(comments_router, prefix="/api/v1")
@@ -962,6 +972,7 @@ app.include_router(dashboards_router, prefix="/api/v1")
 app.include_router(dashboard_widgets_router, prefix="/api/v1")  # Phase 7: Dashboard Widgets
 app.include_router(imports_router, prefix="/api/v1")
 app.include_router(ai_autonomy_router, prefix="/api/v1")
+app.include_router(autonomous_trust_router, prefix="/api/v1")  # Phase 2.1: Multi-Level Trust
 app.include_router(reports_router, prefix="/api/v1")
 app.include_router(workflows_router, prefix="/api/v1")
 app.include_router(push_notifications_router, prefix="/api/v1")
@@ -995,6 +1006,7 @@ app.include_router(subscriptions_router, prefix="/api/v1")
 app.include_router(holding_router, prefix="/api/v1")
 app.include_router(predictive_cashflow_router, prefix="/api/v1")
 app.include_router(cashflow_prediction_router, prefix="/api/v1")  # Monte Carlo Cashflow Prediction
+app.include_router(entity_cashflow_router, prefix="/api/v1")  # Phase 2.2: Entity-based Cashflow Prediction
 app.include_router(fraud_detection_router, prefix="/api/v1")
 app.include_router(risk_intelligence_router, prefix="/api/v1")
 app.include_router(ocr_learning_router, prefix="/api/v1")
@@ -1075,6 +1087,18 @@ app.include_router(xai_router, prefix="/api/v1")  # Vision 2.0 Phase 6: Explaina
 app.include_router(workflow_analytics_router, prefix="/api/v1")  # Phase 4: Workflow Analytics, SLA, Approvals
 app.include_router(odoo_webhooks_router, prefix="/api/v1")  # Phase 6: Odoo Integration Deepening
 app.include_router(bpmn_converter_router, prefix="/api/v1")  # BPMN 2.0 Import/Export Converter
+
+# Phase 5.2: Kundenportal Self-Service
+app.include_router(portal_router, prefix="/api/v1")
+
+# Phase 7.4: ESG-Reporting (Environmental, Social, Governance)
+app.include_router(esg_router, prefix="/api/v1")
+
+# Executive Dashboard Reporting
+app.include_router(reporting_router, prefix="/api/v1")
+
+# Phase 2: Kanban Document Workflow
+app.include_router(kanban_router, prefix="/api/v1")
 
 
 # ==================== Health & Status Endpoints ====================
@@ -1215,8 +1239,8 @@ async def process_document(
     language: Optional[str] = Form("de"),
     detect_layout: Optional[bool] = Form(True),
     run_quick_classification: Optional[bool] = Form(True),  # NEU: Quick Classification aktivieren
-    cached_response: Optional[Dict[str, Any]] = Depends(check_idempotency),
-    backpressure: Dict[str, Any] = Depends(backpressure_dependency),
+    cached_response: Optional[Dict[str, object]] = Depends(check_idempotency),
+    backpressure: Dict[str, object] = Depends(backpressure_dependency),
     current_user: User = Depends(get_current_active_user),  # CC.1 SECURITY FIX: Auth required
     db: AsyncSession = Depends(get_db),  # NEU: DB Session fuer Quick Classification
 ):
@@ -1628,7 +1652,7 @@ async def process_batch(
     files: List[UploadFile] = File(...),
     backend: Optional[str] = Form("auto"),
     language: Optional[str] = Form("de"),
-    backpressure: Dict[str, Any] = Depends(backpressure_dependency),
+    backpressure: Dict[str, object] = Depends(backpressure_dependency),
     current_user: User = Depends(get_current_active_user)  # CC.2 SECURITY FIX: Auth required
 ):
     """

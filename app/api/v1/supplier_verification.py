@@ -27,6 +27,7 @@ from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.services.external.supplier_verification_service import (
 
     SupplierVerificationService,
+    VerificationResult,
     VerificationSource,
     VerificationStatus,
     VerificationSeverity,
@@ -352,7 +353,7 @@ async def get_entities_needing_verification(
 # =============================================================================
 
 
-def _convert_result_to_response(result: Any) -> VerificationResultResponse:
+def _convert_result_to_response(result: "VerificationResult") -> VerificationResultResponse:
     """Konvertiert VerificationResult zu Response-Schema."""
     findings = [
         VerificationFindingResponse(

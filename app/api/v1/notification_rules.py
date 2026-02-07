@@ -13,7 +13,7 @@ Feinpoliert und durchdacht - Benutzerdefinierte Benachrichtigungsregeln.
 """
 
 import structlog
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from uuid import UUID
 from datetime import time
 
@@ -41,7 +41,7 @@ class RuleConditionSchema(BaseModel):
     """Schema fuer eine einzelne Bedingung."""
     field: str = Field(..., description="Feld im Event-Payload")
     op: str = Field(..., description="Operator: eq, ne, gt, gte, lt, lte, contains, in, etc.")
-    value: Any = Field(..., description="Erwarteter Wert")
+    value: Union[str, int, float, bool, List[str]] = Field(..., description="Erwarteter Wert")
 
 
 class RuleConditionsSchema(BaseModel):

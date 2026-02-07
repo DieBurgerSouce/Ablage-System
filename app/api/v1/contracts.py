@@ -49,6 +49,28 @@ from app.api.schemas.contract import (
     ContractType,
     MilestoneType,
     AmendmentStatus,
+    # V2 Enhancements - Clause Recognition (Phase 5)
+    ClauseType,
+    ContractClauseResponse,
+    ClauseExtractionResult,
+    # V2 Enhancements - Benchmark (Phase 5)
+    BenchmarkMetricResponse,
+    ContractBenchmarkResponse,
+    BenchmarkCategoryInfo,
+    # V2 Enhancements - Auto-Cancellation (Phase 5)
+    CancellationType,
+    CancellationStatus,
+    CancellationPrepareRequest,
+    ContractCancellationResponse,
+    CancellationApproveRequest,
+    CancellationSendRequest,
+    # V2 Enhancements - Cost Analysis (Phase 5)
+    CostBreakdownItem,
+    CostProjection,
+    ContractCostAnalysisResponse,
+    PortfolioCostSummary,
+    CostTrendData,
+    OptimizationSuggestion,
 )
 from app.services.contract_service import (
     get_contract_service,
@@ -1832,3 +1854,592 @@ async def schedule_contract_reminders(
             for d in deadlines
         ],
     }
+
+
+# =============================================================================
+# Contract V2 Enhancements - Clause Recognition (Phase 5)
+# =============================================================================
+
+
+@router.get("/{contract_id}/clauses", response_model=List[dict])
+async def get_contract_clauses(
+    contract_id: UUID,
+    clause_type: Optional[str] = Query(None, description="Filter nach Klauseltyp"),
+    min_confidence: float = Query(0.0, ge=0.0, le=1.0, description="Mindest-Konfidenz"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> List[dict]:
+    """
+    Extrahierte Klauseln eines Vertrags abrufen.
+
+    Liefert alle erkannten Klauseln mit:
+    - Klauseltyp (Preisanpassung, Kuendigung, etc.)
+    - Extrahierter Wert
+    - Konfidenz-Score
+    - Risikobewertung
+    """
+    from app.services.contracts import get_clause_recognition_service
+    from app.db.models_contract import Contract
+
+    contract = await db.get(Contract, contract_id)
+    if not contract or contract.company_id != company.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vertrag nicht gefunden",
+        )
+
+    service = get_clause_recognition_service(db)
+    clauses = await service.get_clauses_for_contract(
+        contract_id=contract_id,
+        clause_type=clause_type,
+        min_confidence=min_confidence,
+    )
+
+    return [
+        {
+            "id": str(c.id),
+            "clause_type": c.clause_type.value,
+            "extracted_text": c.extracted_text[:200] + "..." if len(c.extracted_text) > 200 else c.extracted_text,
+            "extracted_value": c.extracted_value,
+            "confidence": float(c.confidence),
+            "risk_level": c.risk_level,
+            "risk_notes": c.risk_notes,
+            "verified": c.verified,
+            "verified_by_id": str(c.verified_by_id) if c.verified_by_id else None,
+            "created_at": c.created_at.isoformat() if c.created_at else None,
+        }
+        for c in clauses
+    ]
+
+
+@router.post("/{contract_id}/clauses/extract", response_model=dict)
+async def extract_contract_clauses(
+    contract_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> dict:
+    """
+    Extrahiert Klauseln aus dem verknuepften Dokument.
+
+    Analysiert OCR-Text und erkennt:
+    - Preisanpassungsklauseln
+    - Mindestlaufzeiten
+    - Kuendigungsfristen
+    - Automatische Verlaengerung
+    - Vertragsstrafen
+    - Haftungsbegrenzungen
+    - Gerichtsstand
+    """
+    from app.services.contracts import get_clause_recognition_service
+    from app.db.models_contract import Contract
+    from app.db.models import Document
+
+    contract = await db.get(Contract, contract_id)
+    if not contract or contract.company_id != company.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vertrag nicht gefunden",
+        )
+
+    if not contract.document_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Kein Dokument mit diesem Vertrag verknuepft",
+        )
+
+    document = await db.get(Document, contract.document_id)
+    if not document or not document.extracted_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Dokument hat keinen extrahierten Text",
+        )
+
+    service = get_clause_recognition_service(db)
+    clauses = await service.extract_and_store_clauses(
+        contract_id=contract_id,
+        company_id=company.company_id,
+        text=document.extracted_text,
+    )
+
+    return {
+        "contract_id": str(contract_id),
+        "clauses_found": len(clauses),
+        "clause_types": list(set(c.clause_type.value for c in clauses)),
+        "high_confidence_count": sum(1 for c in clauses if c.confidence >= 0.8),
+        "high_risk_count": sum(1 for c in clauses if c.risk_level == "high"),
+    }
+
+
+@router.post("/{contract_id}/clauses/{clause_id}/verify", response_model=dict)
+async def verify_contract_clause(
+    contract_id: UUID,
+    clause_id: UUID,
+    verified: bool = True,
+    notes: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> dict:
+    """
+    Klausel als verifiziert markieren.
+
+    Erlaubt manuelle Ueberpruefung der automatisch erkannten Klauseln.
+    """
+    from app.services.contracts import get_clause_recognition_service
+    from app.db.models_contract import Contract
+
+    contract = await db.get(Contract, contract_id)
+    if not contract or contract.company_id != company.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vertrag nicht gefunden",
+        )
+
+    service = get_clause_recognition_service(db)
+
+    try:
+        clause = await service.verify_clause(
+            clause_id=clause_id,
+            verified_by_id=current_user.id,
+            verified=verified,
+            notes=notes,
+        )
+        return {
+            "success": True,
+            "clause_id": str(clause_id),
+            "verified": clause.verified,
+            "verified_by_id": str(clause.verified_by_id),
+        }
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=safe_error_detail(e, "Klausel-Verifizierung"),
+        )
+
+
+# =============================================================================
+# Contract V2 Enhancements - Benchmark Comparison (Phase 5)
+# =============================================================================
+
+
+@router.get("/{contract_id}/benchmark", response_model=dict)
+async def get_contract_benchmark(
+    contract_id: UUID,
+    category: Optional[str] = Query(None, description="Benchmark-Kategorie"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> dict:
+    """
+    Vergleicht Vertrag mit Markt-Benchmarks.
+
+    Liefert:
+    - Vergleich mit Marktdurchschnitt
+    - Perzentil-Einordnung
+    - Verhandlungsempfehlungen
+    - Optimierungspotenzial
+    """
+    from app.services.contracts import get_contract_benchmark_service
+    from app.db.models_contract import Contract
+
+    contract = await db.get(Contract, contract_id)
+    if not contract or contract.company_id != company.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vertrag nicht gefunden",
+        )
+
+    service = get_contract_benchmark_service(db)
+
+    result = await service.compare_contract_to_benchmark(
+        contract=contract,
+        category=category,
+    )
+
+    suggestions = await service.get_negotiation_suggestions(result)
+
+    return {
+        "contract_id": str(contract_id),
+        "benchmark_category": result.category,
+        "overall_assessment": result.overall_assessment,
+        "metrics": [
+            {
+                "name": m.metric_name,
+                "contract_value": m.contract_value,
+                "benchmark_value": m.benchmark_value,
+                "percentile": m.percentile,
+                "assessment": m.assessment,
+                "recommendation": m.recommendation,
+            }
+            for m in result.metrics
+        ],
+        "negotiation_suggestions": suggestions,
+    }
+
+
+@router.get("/benchmarks/categories", response_model=List[str])
+async def get_benchmark_categories(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> List[str]:
+    """
+    Verfuegbare Benchmark-Kategorien abrufen.
+    """
+    from app.services.contracts import get_contract_benchmark_service
+
+    service = get_contract_benchmark_service(db)
+    categories = await service.get_available_categories()
+
+    return categories
+
+
+# =============================================================================
+# Contract V2 Enhancements - Auto-Cancellation (Phase 5)
+# =============================================================================
+
+
+@router.post("/{contract_id}/prepare-cancellation", response_model=dict, status_code=status.HTTP_201_CREATED)
+async def prepare_contract_cancellation(
+    contract_id: UUID,
+    cancellation_type: str = Query(
+        "standard",
+        description="Art der Kuendigung: standard, extraordinary, mutual, non_renewal"
+    ),
+    reason: Optional[str] = None,
+    effective_date: Optional[date] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> dict:
+    """
+    Bereitet Vertragskuendigung vor.
+
+    Erstellt Kuendigungsschreiben-Entwurf mit:
+    - Deutschem Brief-Template
+    - Automatischer Fristberechnung
+    - Versandoptionen (Email, Post)
+    """
+    from app.services.contracts import get_auto_cancellation_service
+    from app.db.models_contract import Contract, CancellationType
+
+    contract = await db.get(Contract, contract_id)
+    if not contract or contract.company_id != company.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vertrag nicht gefunden",
+        )
+
+    # Validate cancellation type
+    valid_types = ["standard", "extraordinary", "mutual", "non_renewal"]
+    if cancellation_type not in valid_types:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ungueltiger Kuendigungstyp. Erlaubt: {', '.join(valid_types)}",
+        )
+
+    service = get_auto_cancellation_service(db)
+
+    try:
+        cancellation = await service.prepare_cancellation(
+            contract_id=contract_id,
+            company_id=company.company_id,
+            cancellation_type=CancellationType(cancellation_type),
+            reason=reason,
+            effective_date=effective_date,
+            prepared_by_id=current_user.id,
+        )
+
+        return {
+            "id": str(cancellation.id),
+            "contract_id": str(contract_id),
+            "cancellation_type": cancellation.cancellation_type.value,
+            "status": cancellation.status.value,
+            "effective_date": cancellation.effective_date.isoformat() if cancellation.effective_date else None,
+            "send_date": cancellation.send_date.isoformat() if cancellation.send_date else None,
+            "letter_content": cancellation.letter_content[:500] + "..." if len(cancellation.letter_content) > 500 else cancellation.letter_content,
+        }
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=safe_error_detail(e, "Kuendigungs-Vorbereitung"),
+        )
+
+
+@router.get("/{contract_id}/cancellations", response_model=List[dict])
+async def get_contract_cancellations(
+    contract_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> List[dict]:
+    """
+    Alle Kuendigungen fuer einen Vertrag abrufen.
+    """
+    from app.db.models_contract import Contract, ContractCancellation
+    from sqlalchemy import select
+
+    contract = await db.get(Contract, contract_id)
+    if not contract or contract.company_id != company.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vertrag nicht gefunden",
+        )
+
+    result = await db.execute(
+        select(ContractCancellation).where(
+            ContractCancellation.contract_id == contract_id
+        ).order_by(ContractCancellation.created_at.desc())
+    )
+    cancellations = result.scalars().all()
+
+    return [
+        {
+            "id": str(c.id),
+            "cancellation_type": c.cancellation_type.value,
+            "status": c.status.value,
+            "reason": c.reason,
+            "effective_date": c.effective_date.isoformat() if c.effective_date else None,
+            "send_date": c.send_date.isoformat() if c.send_date else None,
+            "sent_at": c.sent_at.isoformat() if c.sent_at else None,
+            "acknowledged_at": c.acknowledged_at.isoformat() if c.acknowledged_at else None,
+            "created_at": c.created_at.isoformat() if c.created_at else None,
+        }
+        for c in cancellations
+    ]
+
+
+@router.post("/{contract_id}/cancellations/{cancellation_id}/approve", response_model=dict)
+async def approve_cancellation(
+    contract_id: UUID,
+    cancellation_id: UUID,
+    send_date: Optional[date] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> dict:
+    """
+    Kuendigung genehmigen.
+
+    Nach Genehmigung kann die Kuendigung versendet werden.
+    """
+    from app.services.contracts import get_auto_cancellation_service
+    from app.db.models_contract import Contract
+
+    contract = await db.get(Contract, contract_id)
+    if not contract or contract.company_id != company.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vertrag nicht gefunden",
+        )
+
+    service = get_auto_cancellation_service(db)
+
+    try:
+        cancellation = await service.approve_cancellation(
+            cancellation_id=cancellation_id,
+            company_id=company.company_id,
+            approved_by_id=current_user.id,
+            send_date=send_date,
+        )
+        return {
+            "success": True,
+            "cancellation_id": str(cancellation_id),
+            "status": cancellation.status.value,
+            "send_date": cancellation.send_date.isoformat() if cancellation.send_date else None,
+        }
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=safe_error_detail(e, "Kuendigungs-Genehmigung"),
+        )
+
+
+@router.post("/{contract_id}/cancellations/{cancellation_id}/send", response_model=dict)
+async def send_cancellation(
+    contract_id: UUID,
+    cancellation_id: UUID,
+    send_method: str = Query("email", description="Versandmethode: email, postal, both"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> dict:
+    """
+    Kuendigung versenden.
+
+    Sendet das Kuendigungsschreiben per Email und/oder Post.
+    """
+    from app.services.contracts import get_auto_cancellation_service
+    from app.db.models_contract import Contract
+
+    contract = await db.get(Contract, contract_id)
+    if not contract or contract.company_id != company.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vertrag nicht gefunden",
+        )
+
+    valid_methods = ["email", "postal", "both"]
+    if send_method not in valid_methods:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ungueltige Versandmethode. Erlaubt: {', '.join(valid_methods)}",
+        )
+
+    service = get_auto_cancellation_service(db)
+
+    try:
+        cancellation = await service.send_cancellation(
+            cancellation_id=cancellation_id,
+            company_id=company.company_id,
+            send_method=send_method,
+        )
+        return {
+            "success": True,
+            "cancellation_id": str(cancellation_id),
+            "status": cancellation.status.value,
+            "sent_at": cancellation.sent_at.isoformat() if cancellation.sent_at else None,
+            "send_method": send_method,
+        }
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=safe_error_detail(e, "Kuendigungs-Versand"),
+        )
+
+
+# =============================================================================
+# Contract V2 Enhancements - Cost Analysis (Phase 5)
+# =============================================================================
+
+
+@router.get("/{contract_id}/cost-analysis", response_model=dict)
+async def get_contract_cost_analysis(
+    contract_id: UUID,
+    include_projections: bool = Query(True, description="Zukunftsprognosen einbeziehen"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> dict:
+    """
+    Kostenanalyse fuer einen Vertrag.
+
+    Liefert:
+    - Gesamtkosten und jaehrliche Kosten
+    - Kostenaufschluesselung nach Kategorie
+    - Trend-Analyse
+    - Zukunftsprognosen
+    - Optimierungsvorschlaege
+    """
+    from app.services.contracts import get_contract_cost_analyzer
+    from app.db.models_contract import Contract
+
+    contract = await db.get(Contract, contract_id)
+    if not contract or contract.company_id != company.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vertrag nicht gefunden",
+        )
+
+    service = get_contract_cost_analyzer(db)
+
+    analysis = await service.analyze_contract_costs(
+        contract=contract,
+        include_projections=include_projections,
+    )
+
+    return {
+        "contract_id": str(contract_id),
+        "total_costs": float(analysis.total_costs),
+        "annual_costs": float(analysis.annual_costs),
+        "monthly_costs": float(analysis.monthly_costs),
+        "cost_breakdown": analysis.cost_breakdown,
+        "trend": analysis.trend,
+        "trend_percentage": float(analysis.trend_percentage) if analysis.trend_percentage else None,
+        "projections": analysis.projections if include_projections else None,
+        "optimization_potential": float(analysis.optimization_potential),
+        "optimization_suggestions": analysis.optimization_suggestions,
+        "benchmark_comparison": analysis.benchmark_comparison,
+    }
+
+
+@router.get("/costs/portfolio-summary", response_model=dict)
+async def get_cost_portfolio_summary(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> dict:
+    """
+    Kosten-Zusammenfassung fuer alle Vertraege.
+
+    Liefert:
+    - Gesamtkosten aller Vertraege
+    - Aufschluesselung nach Vertragstyp
+    - Optimierungspotenzial
+    """
+    from app.services.contracts import get_contract_cost_analyzer
+
+    service = get_contract_cost_analyzer(db)
+
+    summary = await service.get_portfolio_summary(
+        company_id=company.company_id,
+    )
+
+    return summary
+
+
+@router.get("/costs/trends", response_model=dict)
+async def get_cost_trends(
+    months: int = Query(12, ge=1, le=36, description="Anzahl Monate"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> dict:
+    """
+    Kostentrends ueber Zeit.
+
+    Zeigt monatliche Kostenentwicklung.
+    """
+    from app.services.contracts import get_contract_cost_analyzer
+
+    service = get_contract_cost_analyzer(db)
+
+    trends = await service.get_cost_trends(
+        company_id=company.company_id,
+        months=months,
+    )
+
+    return {
+        "company_id": str(company.company_id),
+        "period_months": months,
+        "trends": trends,
+    }
+
+
+@router.get("/costs/optimization", response_model=List[dict])
+async def get_cost_optimization_suggestions(
+    min_savings: float = Query(0, ge=0, description="Minimum Einsparungen in EUR"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
+) -> List[dict]:
+    """
+    Optimierungsvorschlaege fuer alle Vertraege.
+
+    Findet Einsparpotenziale basierend auf:
+    - Benchmark-Vergleichen
+    - Vertragskonditionen
+    - Kuendigungsmoeglichkeiten
+    """
+    from app.services.contracts import get_contract_cost_analyzer
+
+    service = get_contract_cost_analyzer(db)
+
+    suggestions = await service.get_all_optimization_suggestions(
+        company_id=company.company_id,
+        min_savings=min_savings,
+    )
+
+    return suggestions

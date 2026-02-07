@@ -29,6 +29,7 @@ from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.services.finanzki.liquidity_scenario_service import (
     LiquidityScenarioService,
+    ScenarioResult,
     ScenarioType,
     RiskLevel,
 )
@@ -537,7 +538,7 @@ async def compare_scenarios(
 
 
 def _convert_scenario_to_response(
-    result: Any,
+    result: "ScenarioResult",
     include_daily: bool = False,
 ) -> ScenarioResponse:
     """Konvertiert ScenarioResult zu Response-Schema."""
