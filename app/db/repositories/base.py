@@ -181,7 +181,7 @@ class BaseRepository(Generic[ModelType], ABC):
 
         return True
 
-    async def count(self, **filters: Any) -> int:
+    async def count(self, **filters: object) -> int:
         """
         Zählt Objekte mit optionalen Filtern.
 

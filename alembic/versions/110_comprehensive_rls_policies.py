@@ -5,7 +5,7 @@ KRITISCH: Diese Migration implementiert RLS fuer ALLE 80+ tenant-sensitiven Tabe
 Dies stellt Database-Level Isolation sicher, selbst wenn Application-Layer kompromittiert wird.
 
 Revision ID: 110_comprehensive_rls_policies
-Revises: 109
+Revises: 110_add_team_collaboration
 Create Date: 2026-01-21
 
 Security Architecture:
@@ -34,8 +34,8 @@ Kategorien der geschuetzten Tabellen:
 from alembic import op
 
 # revision identifiers
-revision = "110"
-down_revision = "109"
+revision = "110_comprehensive_rls_policies"
+down_revision = "110_add_team_collaboration"
 branch_labels = None
 depends_on = None
 

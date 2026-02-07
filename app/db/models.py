@@ -12250,6 +12250,228 @@ class PaymentPrediction(Base):
 
 
 # =============================================================================
+# AUTONOMOUS TRUST SYSTEM MODELS (Phase 2.1)
+# Multi-Level Trust fuer autonome KI-Aktionen
+# =============================================================================
+
+
+class AutonomousTrustConfig(Base):
+    """Trust-Level Konfiguration pro Company.
+
+    Speichert das aktuelle Trust-Level und Konfiguration fuer
+    autonome KI-Aktionen. Kann global oder pro Dokumenttyp sein.
+
+    Trust-Level:
+    - LEVEL_1_ASSISTANCE: Alle Aktionen erfordern Bestaetigung
+    - LEVEL_2_AUTO_ACCEPT: >90% Confidence, 24h Auto-Accept
+    - LEVEL_3_CONFIDENCE: >95% sofort, 80-95% verzoegert (4h)
+    - LEVEL_4_AUTONOMOUS: Volle Autonomie, nur Exceptions
+    """
+    __tablename__ = "autonomous_trust_config"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Trust Level
+    trust_level = Column(
+        String(50),
+        nullable=False,
+        default="assistance",
+        comment="Trust-Level: assistance, auto_accept, confidence, autonomous"
+    )
+
+    # Optional: Spezifisch fuer Dokumenttyp
+    document_type = Column(
+        String(50),
+        nullable=True,
+        comment="Optional: Spezifisches Level fuer diesen Dokumenttyp"
+    )
+
+    # Konfiguration
+    is_enabled = Column(Boolean, default=True)
+
+    # Schwellenwerte (Override der Defaults)
+    immediate_threshold = Column(
+        Float,
+        nullable=True,
+        comment="Ab hier sofortige Aktion (Override)"
+    )
+    delayed_threshold = Column(
+        Float,
+        nullable=True,
+        comment="Ab hier verzoegerte Aktion (Override)"
+    )
+    delay_hours = Column(
+        Integer,
+        nullable=True,
+        comment="Wartezeit in Stunden (Override)"
+    )
+
+    # Metriken-Snapshot (wird periodisch aktualisiert)
+    metrics_snapshot = Column(
+        CrossDBJSON,
+        nullable=True,
+        comment="Letzter Metriken-Snapshot (total_decisions, approval_rate, etc.)"
+    )
+    metrics_updated_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Trust-Level Aenderungshistorie
+    level_changed_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Zeitpunkt der letzten Level-Aenderung"
+    )
+    change_reason = Column(
+        Text,
+        nullable=True,
+        comment="Grund fuer letzte Level-Aenderung"
+    )
+
+    # Audit
+    updated_by_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    company = relationship("Company", backref="autonomous_trust_configs")
+    updated_by = relationship("User", foreign_keys=[updated_by_id])
+
+    __table_args__ = (
+        UniqueConstraint("company_id", "document_type", name="uq_trust_config_company_doctype"),
+        {"comment": "Trust-Level Konfiguration fuer autonome KI-Aktionen"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<AutonomousTrustConfig company={self.company_id} level={self.trust_level} doc_type={self.document_type}>"
+
+
+class AutonomousProposalQueue(Base):
+    """Queue fuer verzoegerte Auto-Akzeptanz.
+
+    Speichert Vorschlaege, die nicht sofort ausgefuehrt werden:
+    - Level 2: 24h Wartezeit bei >90% Confidence
+    - Level 3: 4h Wartezeit bei 80-95% Confidence
+
+    Features:
+    - Timeout-Handling mit automatischer Ausfuehrung
+    - User-Intervention (vorzeitige Genehmigung/Ablehnung)
+    - Rollback-Faehigkeit fuer 7 Tage
+    """
+    __tablename__ = "autonomous_proposal_queue"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Proposal Details
+    proposal_type = Column(
+        String(50),
+        nullable=False,
+        index=True,
+        comment="Typ: file_document, approve_payment, send_dunning, update_master_data, assign_entity, classify_document"
+    )
+    target_id = Column(
+        UUID(as_uuid=True),
+        nullable=False,
+        index=True,
+        comment="ID des Ziel-Objekts (Document, Invoice, Entity, etc.)"
+    )
+    proposed_value = Column(
+        CrossDBJSON,
+        nullable=False,
+        comment="Vorgeschlagener Wert als JSON"
+    )
+
+    # Confidence und Timing
+    confidence = Column(Float, nullable=False)
+    delay_hours = Column(
+        Integer,
+        nullable=False,
+        comment="Urspruengliche Verzoegerung in Stunden"
+    )
+    scheduled_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        index=True,
+        comment="Geplante Ausfuehrungszeit"
+    )
+
+    # Status
+    status = Column(
+        String(20),
+        nullable=False,
+        default="pending",
+        index=True,
+        comment="pending, approved, rejected, auto_accepted, expired, rolled_back, cancelled"
+    )
+
+    # Ausfuehrung
+    executed_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Zeitpunkt der Ausfuehrung"
+    )
+    executed_by = Column(
+        String(100),
+        nullable=True,
+        comment="User-ID oder 'system' bei Auto-Accept"
+    )
+
+    # Rollback
+    rollback_until = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Bis wann Rollback moeglich ist"
+    )
+
+    # Referenzen
+    ai_decision_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("ai_decisions.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="Referenz zur urspruenglichen AI-Decision"
+    )
+    reasoning = Column(
+        Text,
+        nullable=True,
+        comment="Begruendung des Vorschlags"
+    )
+    proposal_metadata = Column(
+        CrossDBJSON,
+        nullable=True,
+        comment="Zusaetzliche Metadaten"
+    )
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    company = relationship("Company", backref="autonomous_proposals")
+    ai_decision = relationship("AIDecision", backref="proposal_queue_items")
+
+    __table_args__ = (
+        {"comment": "Queue fuer verzoegerte Auto-Akzeptanz mit Rollback"}
+    )
+
+    def __repr__(self) -> str:
+        return f"<AutonomousProposalQueue {self.proposal_type} status={self.status} conf={self.confidence:.2f}>"
+
+
+# =============================================================================
 # REPORT BUILDER MODELS (Feature 08)
 # =============================================================================
 
@@ -18230,3 +18452,16 @@ class RiskScoreHistory(Base):
 
 # Aliases for backward compatibility
 Comment = DocumentComment
+
+# Import additional model modules to ensure they are discovered by SQLAlchemy/Alembic
+# Phase 6: PSD2/FinTS Banking Integration
+from app.db.models_banking_connection import (
+    BankConnection,
+    ConnectedBankAccount,
+    ImportedTransaction,
+    TransactionSplitAllocation,
+    BankSyncLog,
+    PaymentInitiation,
+    ReconciliationRule,
+    SupportedBank,
+)

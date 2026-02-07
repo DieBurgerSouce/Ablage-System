@@ -8108,7 +8108,7 @@ class EntityRiskResponse(BaseModel):
     )
 
     @classmethod
-    def from_entity(cls, entity: Any, factors: Optional[Dict[str, Any]] = None) -> "EntityRiskResponse":
+    def from_entity(cls, entity: "BusinessEntity", factors: Optional[Dict[str, Any]] = None) -> "EntityRiskResponse":
         """Erstellt EntityRiskResponse aus BusinessEntity."""
         risk_factors = RiskFactorsResponse(**(factors or entity.risk_factors or {}))
 

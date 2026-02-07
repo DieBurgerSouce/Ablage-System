@@ -11,7 +11,7 @@ Feinpoliert und durchdacht - Type-Safe Odoo Integration.
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -97,7 +97,7 @@ class OdooWebhookPayload(BaseModel):
     action: OdooWebhookAction = Field(..., description="Aktion (create/update/delete)")
     timestamp: datetime = Field(..., description="Zeitpunkt des Events in Odoo")
     record_id: int = Field(..., gt=0, description="ID des betroffenen Records in Odoo")
-    data: Dict[str, Any] = Field(default_factory=dict, description="Event-Daten")
+    data: Dict[str, object] = Field(default_factory=dict, description="Event-Daten")
 
     @field_validator("event_id")
     @classmethod
@@ -285,7 +285,7 @@ class RiskScoreFeedback(BaseModel):
     score: float = Field(..., ge=0, le=100, description="Risiko-Score 0-100")
     payment_behavior_score: float = Field(..., ge=0, le=100, description="Zahlungsverhalten-Score")
     risk_level: str = Field(..., pattern="^(low|medium|high|critical)$")
-    factors: Dict[str, Any] = Field(default_factory=dict, description="Risikofaktoren (ohne PII)")
+    factors: Dict[str, object] = Field(default_factory=dict, description="Risikofaktoren (ohne PII)")
     calculated_at: datetime = Field(..., description="Berechnungszeitpunkt")
 
 

@@ -1,6 +1,6 @@
 """Enhance DocumentComment with Multi-Tenant Support and Field Reference.
 
-Revision ID: 103_enhance_comments
+Revision ID: 103_enhance_document_comments
 Revises: 102_task_reminder_fields
 Create Date: 2026-01-17
 
@@ -23,7 +23,7 @@ from sqlalchemy.dialects import postgresql
 
 
 # revision identifiers
-revision = '103_enhance_comments'
+revision = '103_enhance_document_comments'
 down_revision = '102_task_reminder_fields'
 branch_labels = None
 depends_on = None

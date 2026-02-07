@@ -23,7 +23,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 revision = "111_add_delegation_tables"
-down_revision = "110_add_team_collaboration"
+down_revision = "110_comprehensive_rls_policies"
 branch_labels = None
 depends_on = None
 
