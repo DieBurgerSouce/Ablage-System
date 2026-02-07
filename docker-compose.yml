@@ -148,6 +148,145 @@ services:
     networks:
       - data-network
 
+  # Redis Replica (HA Profile - Sentinel-Architektur)
+  redis-replica:
+    profiles: ["ha"]
+    image: redis:7-alpine
+    container_name: ablage-redis-replica
+    command: redis-server --appendonly yes --appendfsync everysec --maxmemory 4gb --maxmemory-policy allkeys-lfu --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env} --replicaof redis 6379 --masterauth ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
+    volumes:
+      - redis_replica_data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD:-} ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 5G
+        reservations:
+          cpus: '0.25'
+          memory: 1G
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=redis-replica"
+    networks:
+      - data-network
+
+  # Redis Sentinel 1 (HA Profile - Automatic Failover)
+  redis-sentinel-1:
+    profiles: ["ha"]
+    image: redis:7-alpine
+    container_name: ablage-redis-sentinel-1
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - ./infrastructure/redis/sentinel.conf:/etc/redis/sentinel.conf:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:26379:26379"
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
+    restart: unless-stopped
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=redis-sentinel-1"
+    networks:
+      - data-network
+
+  # Redis Sentinel 2 (HA Profile)
+  redis-sentinel-2:
+    profiles: ["ha"]
+    image: redis:7-alpine
+    container_name: ablage-redis-sentinel-2
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - ./infrastructure/redis/sentinel.conf:/etc/redis/sentinel.conf:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:26380:26379"
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
+    restart: unless-stopped
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=redis-sentinel-2"
+    networks:
+      - data-network
+
+  # Redis Sentinel 3 (HA Profile)
+  redis-sentinel-3:
+    profiles: ["ha"]
+    image: redis:7-alpine
+    container_name: ablage-redis-sentinel-3
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - ./infrastructure/redis/sentinel.conf:/etc/redis/sentinel.conf:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:26381:26379"
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
+    restart: unless-stopped
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=redis-sentinel-3"
+    networks:
+      - data-network
+
   # MinIO Object Storage (Data-Network only)
   minio:
     image: minio/minio:RELEASE.2024-11-07T00-52-20Z
@@ -630,7 +769,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: ablage-worker-cpu
-    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=1 --pool=solo -n cpu_worker@%h -Q ocr_high,ocr_normal,maintenance,metadata,metrics,validation,backup,dlq
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=4 --pool=prefork -n cpu_worker@%h -Q validation,metadata,maintenance,metrics,backup,dlq,workflow,approval,orchestration,tracking,privat
     environment:
       # Vault Configuration
       VAULT_ENABLED: ${VAULT_ENABLED:-false}
@@ -736,6 +875,66 @@ services:
         max-size: "100m"
         max-file: "10"
         labels: "service=worker-cpu"
+    networks:
+      - backend-network
+      - data-network
+
+  # Celery Beat Scheduler (Distributed via RedBeat)
+  # RedBeat speichert Schedule in Redis - nur eine Beat-Instanz haelt den Lock.
+  # Bei Multi-Node: Mehrere Beat-Instanzen starten, nur eine ist aktiv.
+  beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ablage-beat
+    command: celery -A app.workers.celery_app beat --loglevel=info
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?MINIO_ROOT_USER muss gesetzt sein}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD muss gesetzt sein}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY muss gesetzt sein}
+      DEBUG: ${DEBUG:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CUDA_VISIBLE_DEVICES: ""
+    volumes:
+      - ./app:/app/app:ro
+      - ./alembic:/app/alembic:ro
+      - ./alembic.ini:/app/alembic.ini:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=256M,mode=1777
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'celery.*beat' > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=beat"
     networks:
       - backend-network
       - data-network
@@ -1254,6 +1453,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  redis_replica_data:  # Redis Replica Storage (HA Profile)
   minio_data:
   clamav_data:  # ClamAV Virus-Signaturen
   qdrant_data:  # Qdrant Vector Database Storage

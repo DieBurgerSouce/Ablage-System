@@ -49,3 +49,63 @@ spec:
           periodSeconds: 30
       selectPolicy: Max
 {{- end }}
+{{- if and .Values.worker.enabled .Values.worker.autoscaling.enabled }}
+---
+# Worker HPA - Queue-based autoscaling via Prometheus custom metrics
+# Scales GPU workers based on Celery queue depth (celery_queue_length)
+# Requires: prometheus-adapter for custom.metrics.k8s.io API
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "ablage-system.fullname" . }}-worker
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "ablage-system.worker.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "ablage-system.fullname" . }}-worker
+  minReplicas: {{ .Values.worker.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.worker.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.worker.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.worker.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- range .Values.worker.autoscaling.metrics }}
+    - type: {{ .type }}
+      {{- if eq .type "External" }}
+      external:
+        metric:
+          name: {{ .external.metric.name }}
+          {{- if .external.metric.selector }}
+          selector:
+            {{- toYaml .external.metric.selector | nindent 12 }}
+          {{- end }}
+        target:
+          type: {{ .external.target.type }}
+          averageValue: {{ .external.target.averageValue | quote }}
+      {{- end }}
+    {{- end }}
+  behavior:
+    scaleDown:
+      # GPU workers are expensive to start - slow scale-down
+      stabilizationWindowSeconds: 600
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 300
+    scaleUp:
+      # Scale up quickly when queue grows
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+      selectPolicy: Max
+{{- end }}

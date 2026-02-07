@@ -24,6 +24,7 @@ pgvector==0.2.4  # PostgreSQL vector extension for semantic search
 
 # Task Queue
 celery==5.3.4
+celery-redbeat==2.2.0  # Redis-backed distributed Beat scheduler (HA)
 redis==5.0.1
 flower==2.0.1  # Celery monitoring tool
 kombu==5.3.4  # Celery messaging library
