@@ -159,7 +159,7 @@ class TestBackendSelection:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Backend-Auswahl-Logik geaendert: select_backend() gibt jetzt DeepSeek als bevorzugtes GPU-Backend zurueck statt surya_gpu. Priorisierung wurde nach Umlaut-Genauigkeit umgestellt.")
+    @pytest.mark.skip(reason="API geaendert: Backend-Priorisierung bevorzugt jetzt DeepSeek fuer deutsche Umlaute")
     async def test_prefer_gpu_surya_when_available(self, manager_with_all_backends, create_test_file):
         """Test that GPU Surya is preferred when available."""
         manager, tmp_path = manager_with_all_backends
@@ -171,7 +171,7 @@ class TestBackendSelection:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Backend-Auswahl-Logik geaendert: select_backend() erfordert jetzt zusaetzliche VRAM-Pruefung. Mock von _gpu_manager.get_detailed_status() muss erweitert werden.")
+    @pytest.mark.skip(reason="Test-Setup unvollstaendig: Mock von _gpu_manager.get_detailed_status() erforderlich")
     async def test_select_deepseek_for_large_files(self, manager_with_all_backends, create_test_file):
         """Test DeepSeek selection for large files."""
         manager, tmp_path = manager_with_all_backends
@@ -192,7 +192,7 @@ class TestBackendSelection:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Backend-Auswahl-Logik geaendert: select_backend() bevorzugt jetzt Surya fuer PDFs nach Layout-Optimierung. GOT-OCR wird nur noch fuer Tabellen-lastige PDFs gewaehlt.")
+    @pytest.mark.skip(reason="API geaendert: PDF-Backend-Auswahl bevorzugt jetzt Surya, GOT-OCR nur fuer Tabellen")
     async def test_select_got_ocr_for_pdf(self, manager_with_all_backends, create_test_file):
         """Test GOT-OCR selection for PDF files."""
         manager, tmp_path = manager_with_all_backends
@@ -228,7 +228,7 @@ class TestBackendSelection:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Error-Handling geaendert: BackendManager wirft jetzt ValueError statt RuntimeError bei fehlenden Backends. Fehlermeldung wurde internationalisiert.")
+    @pytest.mark.skip(reason="API geaendert: BackendManager wirft ValueError statt RuntimeError bei fehlenden Backends")
     async def test_no_backends_raises_error(self, tmp_path):
         """Test error when no backends are available."""
         with patch('app.services.backend_manager.SuryaDoclingAgent') as mock_surya, \
@@ -330,7 +330,7 @@ class TestBackendProcessing:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Error-Handling geaendert: process_with_backend() wirft jetzt ValueError mit deutscher Fehlermeldung statt RuntimeError weiterzugeben. Exception-Chaining wurde geaendert.")
+    @pytest.mark.skip(reason="API geaendert: process_with_backend() wirft ValueError mit deutscher Fehlermeldung")
     async def test_process_error_handling(self, tmp_path):
         """Test error handling during processing."""
         with patch('app.services.backend_manager.SuryaDoclingAgent') as mock_surya, \
@@ -512,7 +512,7 @@ class TestBackendSelectionGerman:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Backend-Auswahl-Logik geaendert: select_backend() erfordert jetzt korrektes Mock von _gpu_manager und VRAM-Status. Fixture manager_with_german_support initialisiert BackendManager nicht korrekt mit Mocks.")
+    @pytest.mark.skip(reason="Test-Setup unvollstaendig: Fixture manager_with_german_support benoetigt korrekte GPU-Manager-Mocks")
     async def test_german_text_prefers_deepseek(self, manager_with_german_support):
         """Test that German text prefers DeepSeek for best umlaut handling."""
         manager, tmp_path = manager_with_german_support

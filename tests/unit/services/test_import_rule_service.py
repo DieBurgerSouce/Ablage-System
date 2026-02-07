@@ -541,5 +541,6 @@ class TestAsyncRuleOperations:
 
         result = await service.delete_rule(rule_id, user_id)
 
-        # Should succeed or return result
-        assert result is not None or mock_db.commit.called
+        # Starke Assertion: Delete-Operation muss erfolgreich sein
+        assert result is not None, "delete_rule sollte ein Ergebnis zurueckgeben (True/DeletedRule)"
+        mock_db.commit.assert_called()  # Verifiziere, dass Transaktion committed wurde
