@@ -48,7 +48,7 @@
 |----------|------|
 | **Coding Standards** | `.claude/Docs/Guides/Coding-Standards.md` |
 | **Testing Requirements** | `.claude/Docs/Testing/Requirements.md` |
-| **Lexware Integration** | See "Lexware Integration (NEU: Januar 2026)" section below |
+| **Lexware Integration** | `.claude/Docs/Integrations/Lexware.md` |
 | **API Documentation** | `.claude/Docs/API/` |
 | **Architecture** | `.claude/Docs/Architecture/` |
 | **Operations/Runbooks** | `.claude/Docs/Operations/` |
@@ -73,7 +73,18 @@
 | Compliance | GDPR Checklist | `.claude/Docs/Compliance/gdpr-checklist.md` |
 | Guides | Development Setup | `.claude/Docs/Guides/Development-Setup.md` |
 | | Troubleshooting | `.claude/Docs/Guides/Troubleshooting-Guide.md` |
-| **Integrations** | **Lexware Integration** | **See dedicated section: "Lexware Integration (NEU: Januar 2026)"** |
+| Features | Entity Risk Scoring | `.claude/Docs/Features/Entity-Risk-Scoring.md` |
+| | Skonto-Tracking | `.claude/Docs/Features/Skonto-Tracking.md` |
+| | Document Lineage | `.claude/Docs/Features/Document-Lineage.md` |
+| | Document Chains | `.claude/Docs/Features/Document-Chains.md` |
+| | Email & Folder Import | `.claude/Docs/Features/Email-Folder-Import.md` |
+| | OCR Self-Learning | `.claude/Docs/Features/OCR-Self-Learning.md` |
+| | MLOps Pipeline | `.claude/Docs/Features/MLOps-Pipeline.md` |
+| | Alert Center | `.claude/Docs/Features/Alert-Center.md` |
+| Integrations | DATEV Connect | `.claude/Docs/Integrations/DATEV-Connect.md` |
+| | Lexware | `.claude/Docs/Integrations/Lexware.md` |
+| | Slack | `.claude/Docs/Integrations/Slack.md` |
+| | Shipment Tracking | `.claude/Docs/Integrations/ShipmentTracking.md` |
 
 ---
 
@@ -252,634 +263,24 @@ Ablage_System/
 
 ---
 
-## DATEV Connect Integration (NEU: Januar 2026)
-
-**Status**: ✅ Production-Ready
-**Migration**: 145 (add_datev_connect)
-
-**Core Services** (`app/services/datev/connect/`):
-- `DATEVConnector` - ERPConnector-basiert, OAuth2-Authentifizierung
-- `DATEVAuthService` - OAuth2-Flow, Token-Refresh, CSRF-Schutz
-- `KontierungsvorschlagService` - ML-basierte Kontierungsvorschlaege
-- `GoBDComplianceService` - Festschreibung mit SHA-256 Hash
-
-**Features**:
-| Feature | Beschreibung |
-|---------|--------------|
-| OAuth2 | DATEVconnect OAuth2-Authentifizierung mit Token-Refresh |
-| Stammdaten | Bidirektionale Sync von Kunden/Lieferanten/Konten |
-| Buchungsstapel | Push zu DATEV mit GoBD-konformer Festschreibung |
-| Belegbilder | Upload zu DATEV Unternehmen Online (DUO) |
-| Kontierung | ML-basierte Vorschlaege mit Learning-Loop |
-| GoBD | SHA-256 Hash, Unveraenderbarkeit, Audit-Trail |
-
-**API Endpoints**: `/api/v1/datev-connect/*`
-
-**Celery Tasks** (automatisch):
-- `datev.refresh_all_tokens` - Alle 4 Stunden
-- `datev.sync_all_stammdaten` - Taeglich 06:45
-- `datev.sync_kontenplan` - Taeglich 06:50
-- `datev.push_buchungsstapel` - Alle 2 Stunden
-- `datev.upload_pending_belege` - Stuendlich
-- `datev.gobd_compliance_check` - Taeglich 05:55
-- `datev.auto_festschreibung` - Monatlich am 5.
-
-**Datenmodell** (6 neue Tabellen):
-- `datev_connections` - OAuth2-Verbindungen
-- `datev_kontenplan` - SKR03/SKR04 Cache
-- `datev_buchungen` - GoBD-konforme Buchungssaetze
-- `datev_beleglinks` - Belegbild-Verknuepfungen
-- `datev_kontierung_patterns` - ML-Lernmuster
-- `datev_sync_history` - Sync-Audit-Trail
-
-**SECURITY**: Alle Credentials verschluesselt (AES-256-GCM), GoBD-Hash unveraenderbar.
-
-**Frontend** (`/admin/datev-connect/*`):
-- `ConnectionsPage` - Verbindungs-Verwaltung mit OAuth2-Flow
-- `SyncStatusPage` - Sync-Dashboard mit manuellen Triggers
-- `BuchungenPage` - Buchungen-Liste mit Festschreibung
-- `KontierungPage` - ML-Kontierungsvorschlaege
-- `KontenplanPage` - Kontenrahmen-Ansicht
-
-**Tests**:
-- Unit Tests: `tests/unit/services/datev/test_datev_connect.py`
-- Integration Tests: `tests/integration/test_datev_connect_api.py`
-
----
-
-## Lexware Integration (NEU: Januar 2026)
-
-> **Detaillierte Dokumentation**: `.claude/Docs/Integrations/Lexware.md`
-
-**Status**: ✅ Production-Ready (commit 5f9b5e55)
-**Migration**: 089, 090
-
-**Core Services**:
-- `LexwareImportService` - Excel-Import, Konflikt-Erkennung
-- `EntitySearchService` - Multi-Strategie-Suche (Kundennr, IBAN, VAT-ID)
-- `DocumentEntityLinkerService` - Auto-Linking nach OCR (>75% Confidence)
-
-**API Endpoints**: `/api/v1/lexware/*`, `/api/v1/entities/*`
-
-**Frontend**: KundenPage, LieferantenPage mit Infinite Scroll (100 Items/Page)
-
----
-
-## Entity Risk Scoring (NEU: Januar 2026)
-
-**Status**: ✅ Production-Ready
-**Migration**: 092 (entity_risk_scoring), 093 (invoice_tracking)
-
-**Core Services**:
-- `RiskScoringService` - Score-Berechnung (0-100) basierend auf 5 Faktoren
-- `InvoiceTracking` - Rechnungsverfolgung mit Mahnstufen
-
-**Risk Faktoren (Gewichtung)**:
-| Faktor | Gewicht | Beschreibung |
-|--------|---------|--------------|
-| payment_delay | 35% | Durchschnittliche Zahlungsverzögerung |
-| default_rate | 25% | Ausfallrate (überfällige/gesamt) |
-| invoice_volume | 15% | Gesamtvolumen (höher = weniger Risiko) |
-| document_frequency | 10% | Dokumente/Monat (regelmäßig = weniger Risiko) |
-| relationship_age | 15% | Beziehungsdauer (länger = weniger Risiko) |
-
-**Celery Tasks (automatisch)**:
-- `risk_scoring.calculate_all` - Täglich 02:00 (maintenance queue)
-- `risk_scoring.calculate_single` - Nach Invoice-Updates (metadata queue)
-- `risk_scoring.check_high_risk_entities` - Nach Batch (threshold: 75)
-- `risk_scoring.generate_statistics` - Wöchentlich (Reporting)
-
-**API Endpoints**: `/api/v1/invoices/*` (CRUD + mark-paid + increase-dunning)
-
-**SECURITY**: NIEMALS Entity-Namen in Logs oder Responses (PII)!
-
----
-
-## Skonto-Tracking (NEU: Januar 2026)
-
-**Status**: ✅ Production-Ready
-**Migration**: 094 (skonto_and_partial_payments)
-
-**Core Services**:
-- `SkontoService` - Skonto-Berechnung, Deadline-Tracking, Auto-Detection
-- `PartialPaymentService` - Teilzahlungs-Verwaltung, Bank-Reconciliation
-
-**Features**:
-| Feature | Beschreibung |
-|---------|--------------|
-| Skonto-Berechnung | Automatische Berechnung von Skonto-Betrag und Deadline |
-| Deadline-Alerts | Warnungen vor ablaufenden Skonto-Fristen |
-| Auto-Detection | Erkennung von Skonto-Bedingungen aus OCR-Text |
-| Teilzahlungen | Mehrere Zahlungen pro Rechnung, Status-Updates |
-| Bank-Reconciliation | Verknuepfung mit Bank-Transaktionen |
-
-**API Endpoints**:
-- `GET /api/v1/invoices/{id}/skonto` - Skonto-Informationen abrufen
-- `PATCH /api/v1/invoices/{id}/skonto` - Skonto-Bedingungen aktualisieren
-- `POST /api/v1/invoices/{id}/apply-skonto` - Skonto anwenden
-- `GET /api/v1/invoices/skonto/upcoming` - Bevorstehende Skonto-Fristen
-- `POST /api/v1/invoices/{id}/payments` - Teilzahlung erfassen
-- `GET /api/v1/invoices/{id}/payments` - Zahlungsuebersicht
-
-**Datenmodell (InvoiceTracking erweitert)**:
-```
-skonto_percentage: Float    # z.B. 2.0 fuer 2%
-skonto_days: Integer        # Tage fuer Skonto-Frist
-skonto_deadline: DateTime   # Berechnete Frist
-skonto_amount: Float        # Berechneter Betrag
-skonto_used: Boolean        # True wenn genutzt
-outstanding_amount: Float   # Ausstehender Betrag
-is_partial_payment: Boolean # True bei Teilzahlungen
-```
-
----
-
-## Document Lineage Timeline (NEU: Februar 2026)
-
-**Status**: Production-Ready
-**Migration**: 147 (add_document_lineage)
-
-**Core Services** (`app/services/lineage/`):
-- `DocumentLineageService` - Lineage-Event Recording und Timeline-Abruf
-- Integration Helpers - record_document_import, record_ocr_result, etc.
-
-**Features**:
-| Feature | Beschreibung |
-|---------|--------------|
-| Import-Tracking | Email, Ordner, API, Manueller Upload |
-| OCR-Verarbeitung | Start, Ende, Dauer, Konfidenz, Backend |
-| Klassifikation | Dokumenttyp mit Konfidenz |
-| Entity-Linking | Verknuepfung mit Geschaeftspartnern |
-| Modifikationen | Aenderungen mit Benutzer und Zeitstempel |
-| Export-History | Alle Exporte mit Format und Ziel |
-
-**Event Types**:
-- `import` - Dokument importiert
-- `ocr_start`, `ocr_complete`, `ocr_failed` - OCR-Verarbeitung
-- `classification` - Dokumenttyp klassifiziert
-- `extraction` - Daten extrahiert
-- `entity_link`, `entity_unlink` - Entity-Verknuepfung
-- `modification` - Manuelle Aenderung
-- `approval`, `rejection`, `escalation` - Workflow
-- `export` - Dokument exportiert
-- `archive`, `restore` - Archivierung
-- `soft_delete`, `hard_delete` - Loeschung (DSGVO)
-
-**API Endpoints**:
-- `GET /api/v1/documents/{id}/lineage` - Vollstaendige Timeline
-- `GET /api/v1/documents/{id}/lineage/stats` - Aggregierte Statistiken
-- `GET /api/v1/documents/{id}/lineage/summary` - Lineage-Zusammenfassung
-- `GET /api/v1/documents/{id}/lineage/export` - Export als JSON/PDF
-- `GET /api/v1/documents/lineage/event-types` - Verfuegbare Event-Typen
-- `GET /api/v1/documents/lineage/import-source-types` - Import-Quelltypen
-
-**Datenmodell** (2 neue Tabellen):
-- `document_lineage_events` - Alle Ereignisse mit JSONB-Details
-- `document_lineage_summaries` - Cache fuer schnelle Abfragen
-
-**Integration in bestehende Services**:
-```python
-from app.services.lineage import (
-    record_document_import,
-    record_ocr_result,
-    record_entity_linking,
-    record_document_modification,
-)
-
-# Nach Document-Upload
-await record_document_import(db, document_id, company_id, ImportSourceType.MANUAL_UPLOAD, user_id=user_id)
-
-# Nach OCR-Verarbeitung
-await record_ocr_result(db, document_id, company_id, backend="deepseek", duration_ms=1500, confidence=0.95)
-
-# Nach Entity-Linking
-await record_entity_linking(db, document_id, company_id, entity_id, confidence=0.85, match_type="customer_number", reason="Matched by customer number")
-```
-
-**SECURITY**: Niemals PII in Lineage-Events speichern! Details werden automatisch gefiltert.
-
----
-
-## Document Chain Tracking (NEU: Januar 2026)
-
-**Status**: ✅ Production-Ready
-**Migration**: 095 (document_chain_tracking)
-
-**Core Service**: `DocumentChainService`
-
-**Features**:
-| Feature | Beschreibung |
-|---------|--------------|
-| Auftragsketten | Angebot → Auftrag → Lieferschein → Rechnung |
-| Auto-Matching | Automatische Erkennung zusammengehoeriger Dokumente |
-| Abweichungserkennung | Warnung bei Differenzen (Betraege, Mengen) |
-| Chain-Status | Uebersicht ueber Kettenfortschritt |
-
-**Relationship Types**:
-- `QUOTE_TO_ORDER` - Angebot zu Auftrag
-- `ORDER_TO_DELIVERY` - Auftrag zu Lieferschein
-- `DELIVERY_TO_INVOICE` - Lieferschein zu Rechnung
-- `QUOTE_TO_INVOICE` - Direktverknuepfung Angebot zu Rechnung
-
-**API Endpoints**:
-- `POST /api/v1/document-chains` - Neue Kette erstellen
-- `GET /api/v1/document-chains` - Ketten auflisten
-- `GET /api/v1/document-chains/{chain_id}` - Ketten-Details
-- `POST /api/v1/document-chains/link` - Dokumente verknuepfen
-- `GET /api/v1/document-chains/auto-match/{document_id}` - Auto-Match
-- `GET /api/v1/document-chains/{chain_id}/discrepancies` - Abweichungen
-
-**Matching-Kriterien (Confidence)**:
-- Referenznummer identisch: 95%+ Confidence
-- Kundennummer + Betrag: 85%+ Confidence
-- Nur Betrag aehnlich: 70%+ Confidence
-
----
-
-## Slack Integration (NEU: Januar 2026)
-
-**Status**: ✅ Production-Ready
-**Migration**: 100 (add_slack_integration)
-
-**Core Service**: `SlackService` (`app/services/slack_service.py`)
-
-**Features**:
-| Feature | Beschreibung |
-|---------|--------------|
-| Webhook Support | Incoming Webhooks fuer einfache Nachrichten |
-| Bot Token | Full Bot API mit erweiterten Funktionen |
-| Rate Limiting | Sliding Window (30/min default) |
-| Block Kit | Rich Message Formatting |
-| Multi-Tenant | Company-spezifische Kanaele |
-
-**Notification Types**:
-- `document_processed` - Dokument verarbeitet
-- `approval_required` - Genehmigung erforderlich
-- `workflow_completed` - Workflow abgeschlossen
-- `system_alert` - System-Benachrichtigung
-- `payment_reminder` - Zahlungserinnerung
-- `error_notification` - Fehlermeldung
-
-**API Endpoints**: `/api/v1/slack/*`
-
-**Frontend**: Admin-Seite unter `/admin/slack`
-
-**Konfiguration**:
-```python
-SLACK_WEBHOOK_URL: SecretStr   # Incoming Webhook URL
-SLACK_BOT_TOKEN: SecretStr     # Bot OAuth Token (xoxb-...)
-SLACK_DEFAULT_CHANNEL: str     # Standard-Kanal
-SLACK_ENABLED: bool            # Integration aktiviert
-```
-
----
-
-## Shipment Tracking (NEU: Januar 2026)
-
-**Status**: ✅ Production-Ready
-**Migration**: 100 (add_shipment_tracking)
-
-**Core Service**: `CarrierService` (`app/services/shipping/carrier_service.py`)
-
-**Unterstuetzte Carrier**:
-| Carrier | Pattern | API |
-|---------|---------|-----|
-| DHL | `00340...`, `JJD...` | DHL Geschaeftskundenportal |
-| DPD | 14-stellig, `01...` | DPD myDPD Business |
-| Hermes | `H...` Prefix | Hermes ProfiPaketService |
-| UPS | `1Z...` (18 Zeichen) | UPS Developer Kit (OAuth2) |
-| GLS | 11-stellig | GLS Web API |
-| FedEx | 12/15/20-stellig | FedEx Web Services (OAuth2) |
-| Deutsche Post | `RR...DE`, `LX...` | Brief-API via DHL |
-
-**Features**:
-| Feature | Beschreibung |
-|---------|--------------|
-| Auto-Detection | Automatische Carrier-Erkennung via Tracking-Nummer-Pattern |
-| Status-Normalisierung | Einheitliche Status ueber alle Carrier |
-| Benachrichtigungen | Bei Zustellung, Problemen, Ruecksendung |
-| Celery Tasks | Stuendlich aktive Sendungen, taeglich Verspaetungen |
-| Multi-Tenant | Company-Isolation via RLS |
-
-**API Endpoints**: `/api/v1/shipments/*`
-
-**SECURITY**: Tracking-Nummern werden validiert (CWE-20) und URL-encoded (CWE-116).
-
-**Celery Tasks**:
-- `shipment_tracking.refresh_active` - Stuendlich um :15
-- `shipment_tracking.check_delayed` - Taeglich um 09:00
-
-**Konfiguration** (optional, Mock wenn nicht gesetzt):
-```python
-DHL_API_KEY: SecretStr          # DHL Geschaeftskundenportal
-DPD_API_USER: str               # DPD myDPD User
-DPD_API_PASSWORD: SecretStr     # DPD myDPD Password
-UPS_CLIENT_ID: str              # UPS OAuth Client ID
-UPS_CLIENT_SECRET: SecretStr    # UPS OAuth Secret
-GLS_API_USER: str               # GLS API User
-GLS_API_PASSWORD: SecretStr     # GLS API Password
-FEDEX_CLIENT_ID: str            # FedEx OAuth Client ID
-FEDEX_CLIENT_SECRET: SecretStr  # FedEx OAuth Secret
-HERMES_API_KEY: SecretStr       # Hermes ProfiPaket Key
-```
-
----
-
-## Email & Folder Import (NEU: Januar 2026)
-
-**Status**: ⚠️ Backend Ready (95%), Frontend Pending
-**Migration**: Via IMPORT_BEAT_SCHEDULE in Celery
-
-**Core Services**:
-- `EmailImportService` - IMAP/SMTP Email-Abruf, Attachment-Extraktion
-- `FolderImportService` - Dateisystem-Ueberwachung, Datei-Import
-- `ImportRuleService` - Regelbasierte Verarbeitung (Bedingungen + Aktionen)
-- `EmailSenderMatcherService` - Absender → Entity Zuordnung
-
-**Features**:
-| Feature | Beschreibung |
-|---------|--------------|
-| IMAP Support | Verschluesselte Email-Verbindung (SSL/TLS) |
-| Absender-Matching | Automatische Entity-Zuordnung via Absender-Adresse |
-| Folder-Watching | Verzeichnis-Ueberwachung mit konfigurierbarem Polling |
-| Import Rules | Bedingungsbasierte Aktionen (Tags, Ordner, Auto-OCR) |
-| Fehler-Retry | Automatische Wiederholung fehlgeschlagener Imports |
-
-**API Endpoints - Email Configs**:
-- `GET /api/v1/imports/email/configs` - Alle Email-Konfigurationen
-- `POST /api/v1/imports/email/configs` - Neue Konfiguration erstellen
-- `GET /api/v1/imports/email/configs/{id}` - Konfiguration abrufen
-- `PATCH /api/v1/imports/email/configs/{id}` - Konfiguration aktualisieren
-- `DELETE /api/v1/imports/email/configs/{id}` - Konfiguration loeschen
-- `POST /api/v1/imports/email/configs/{id}/test` - IMAP-Verbindung testen
-- `POST /api/v1/imports/email/configs/{id}/sync` - Manueller Email-Sync
-
-**API Endpoints - Folder Configs**:
-- `GET /api/v1/imports/folder/configs` - Alle Folder-Konfigurationen
-- `POST /api/v1/imports/folder/configs` - Neue Konfiguration erstellen
-- `PATCH /api/v1/imports/folder/configs/{id}` - Konfiguration aktualisieren
-- `DELETE /api/v1/imports/folder/configs/{id}` - Konfiguration loeschen
-- `POST /api/v1/imports/folder/configs/{id}/start` - Watcher starten
-- `POST /api/v1/imports/folder/configs/{id}/stop` - Watcher stoppen
-- `POST /api/v1/imports/folder/configs/{id}/poll` - Manueller Folder-Scan
-
-**API Endpoints - Import Rules**:
-- `GET /api/v1/imports/rules` - Alle Regeln auflisten
-- `POST /api/v1/imports/rules` - Neue Regel erstellen
-- `GET /api/v1/imports/rules/{id}` - Regel abrufen
-- `PATCH /api/v1/imports/rules/{id}` - Regel aktualisieren
-- `DELETE /api/v1/imports/rules/{id}` - Regel loeschen
-- `POST /api/v1/imports/rules/{id}/test` - Regel testen
-- `POST /api/v1/imports/rules/reorder` - Regelreihenfolge aendern
-- `GET /api/v1/imports/rules/schema` - Verfuegbare Bedingungen/Aktionen
-
-**API Endpoints - Import Logs**:
-- `GET /api/v1/imports/logs` - Import-Logs mit Filterung
-- `GET /api/v1/imports/logs/{id}` - Log-Details
-- `POST /api/v1/imports/logs/{id}/retry` - Import wiederholen
-- `GET /api/v1/imports/logs/stats` - Import-Statistiken
-
-**Celery Tasks (IMPORT_BEAT_SCHEDULE)**:
-- `import.sync_all_email_configs` - Alle 15 Min
-- `import.poll_all_folder_configs` - Alle 5 Min
-- `import.retry_failed_imports` - Alle 30 Min
-- `import.cleanup_old_logs` - Taeglich 03:00
-- `import.check_connection_health` - Alle 30 Min
-
-**Datenmodell (EmailImportConfig)**:
-```python
-name: str                    # Anzeigename
-email_address: str           # IMAP-Adresse
-imap_server: str             # z.B. imap.gmail.com
-imap_port: int               # 993 (SSL) oder 143 (STARTTLS)
-use_ssl: bool                # True fuer Port 993
-folder_filter: str           # INBOX, Rechnungen, etc.
-subject_filter: Optional[str] # Regex-Filter fuer Betreff
-sender_filter: Optional[str]  # Regex-Filter fuer Absender
-auto_archive: bool           # Email nach Import archivieren
-enabled: bool                # Konfiguration aktiv
-last_sync_at: DateTime       # Letzter Sync-Zeitpunkt
-```
-
-**Datenmodell (FolderImportConfig)**:
-```python
-name: str                    # Anzeigename
-folder_path: str             # Absoluter Pfad
-file_patterns: List[str]     # ["*.pdf", "*.jpg", "*.png"]
-recursive: bool              # Unterordner einbeziehen
-delete_after_import: bool    # Datei nach Import loeschen
-polling_interval: int        # Sekunden zwischen Scans
-enabled: bool                # Konfiguration aktiv
-watcher_active: bool         # Watcher laeuft aktuell
-```
-
-**Datenmodell (ImportRule)**:
-```python
-name: str                    # Regelname
-description: Optional[str]   # Beschreibung
-priority: int                # Ausfuehrungsreihenfolge (niedrig = zuerst)
-conditions: List[dict]       # Bedingungen (AND-verknuepft)
-actions: List[dict]          # Auszufuehrende Aktionen
-enabled: bool                # Regel aktiv
-apply_to_email: bool         # Auf Email-Imports anwenden
-apply_to_folder: bool        # Auf Folder-Imports anwenden
-```
-
-**Rule Conditions (Beispiele)**:
-- `{"field": "sender", "operator": "contains", "value": "@amazon.de"}`
-- `{"field": "subject", "operator": "matches", "value": "Rechnung.*"}`
-- `{"field": "filename", "operator": "ends_with", "value": ".pdf"}`
-- `{"field": "file_size", "operator": "greater_than", "value": 1048576}`
-
-**Rule Actions (Beispiele)**:
-- `{"type": "set_folder", "folder_id": "uuid-..."}`
-- `{"type": "add_tags", "tags": ["rechnung", "amazon"]}`
-- `{"type": "set_entity", "entity_id": "uuid-..."}`
-- `{"type": "trigger_ocr", "ocr_backend": "auto"}`
-- `{"type": "send_notification", "channel": "slack"}`
-
-**SECURITY**:
-- Email-Passwoerter werden verschluesselt gespeichert (AES-256-GCM)
-- Folder-Paths werden gegen Path-Traversal validiert
-- NIEMALS Email-Inhalte in Logs
-
----
-
-## OCR Self-Learning System (NEU: Januar 2026)
-
-**Status**: ✅ Production-Ready
-**Migration**: Keine DB-Migration erforderlich (JSONB-basiert)
-
-**Core Service**: `SelfLearningOCRService` (`app/services/ocr/self_learning_service.py`)
-
-**Features**:
-| Feature | Beschreibung |
-|---------|--------------|
-| Confidence-Kalibrierung | EMA-basierte Anpassung basierend auf User-Korrekturen |
-| A/B Testing | Vergleich von Modell-Versionen mit Traffic-Split |
-| Learning Modes | Aggressive (sofort), Cautious (verifiziert), Batch (taeglich) |
-| Rollback | Automatischer Rollback bei Qualitaetsverschlechterung |
-
-**Learning Modes**:
-- `aggressive`: Jede User-Korrektur fliesst sofort ins System ein
-- `cautious`: Nur verifizierte Korrekturen werden uebernommen
-- `batch`: Korrekturen werden taeglich im Batch verarbeitet
-
-**API Endpoints** (alle erfordern Authentifizierung):
-- `POST /api/v1/ocr-learning/feedback` - Korrektur-Feedback uebermitteln
-- `POST /api/v1/ocr-learning/calibrate` - Kalibrierte Confidence abrufen
-- `GET /api/v1/ocr-learning/confidence-stats` - Confidence-Statistiken
-- `POST /api/v1/ocr-learning/ab-test/start` - A/B Test starten (Admin)
-- `GET /api/v1/ocr-learning/ab-test/{test_id}` - Test-Ergebnis abrufen
-- `POST /api/v1/ocr-learning/ab-test/{test_id}/end` - Test beenden (Admin)
-- `GET /api/v1/ocr-learning/stats` - Learning-Statistiken
-- `POST /api/v1/ocr-learning/mode/{mode}` - Learning-Modus setzen (Admin)
-- `GET /api/v1/ocr-learning/model-version` - Aktuelle Modell-Version
-
-**Datenmodell (JSONB in AppConfig)**:
-```python
-CONFIDENCE_ADJUSTMENTS_KEY = "ocr_confidence_adjustments"
-# Struktur:
-{
-    "backend": {"deepseek": -0.05, "got_ocr": 0.02},
-    "field": {"deepseek": {"invoice_number": -0.03}},  # [backend][field] = adjustment
-    "learning_mode": "aggressive",
-    "updated_at": "2026-01-19T12:00:00Z"
-}
-```
-
-**Frontend**:
-- Route: `/admin/ocr-learning`
-- Dashboard mit Statistiken, A/B Test Management, Mode Selection
-- Komponenten: LearningStatsCards, ConfidenceAdjustmentsChart, ABTestCard, etc.
-
-**SECURITY (Input-Validierung)**:
-- OCR-Backends: Whitelist-Validierung (`ALLOWED_OCR_BACKENDS`)
-- Feldnamen: Regex-Pattern (`^[a-zA-Z][a-zA-Z0-9_]{0,63}$`)
-- Korrektur-Typen: Whitelist (`text`, `amount`, `date`, `entity`)
-- Confidence-Werte: Range-Validierung (0.0 - 1.0)
-- Test-IDs: Regex-Pattern (`^[a-zA-Z0-9][a-zA-Z0-9_-]{2,63}$`) - Laengenbegrenzung 3-64 Zeichen, Path-Traversal-Schutz
-
----
-
-## MLOps Pipeline (NEU: Januar 2026)
-
-**Status**: ✅ Production-Ready
-**Migration**: Keine (JSONB in AppConfig)
-
-**Core Services**:
-- `ModelRegistry` (`app/services/mlops/model_registry.py`) - Model Versioning, Rollback
-- `RetrainingService` (`app/services/mlops/retraining_service.py`) - Retraining Orchestration
-
-**Features**:
-| Feature | Beschreibung |
-|---------|--------------|
-| Model Versioning | Versionierte Modelle mit Lineage-Tracking |
-| Automatic Retraining | Bei 100+ Korrekturen oder wöchentlich |
-| Quality Monitoring | Automatische Rollback bei >5% Degradation |
-| Model Lifecycle | DRAFT → CANDIDATE → ACTIVE → DEPRECATED |
-
-**Model Types**:
-- `ocr_confidence` - OCR Confidence Calibration
-- `ocr_backend_router` - Backend Selection Router
-- `document_classifier` - Document Type Classification
-- `entity_matcher` - Entity Matching Model
-- `amount_extractor` - Amount/Currency Extraction
-- `date_extractor` - Date Extraction
-
-**Retraining Triggers**:
-- `threshold` - 100+ unverarbeitete Korrekturen
-- `scheduled` - Wöchentlich Sonntag 02:00
-- `drift` - Qualitäts-Drift erkannt
-- `manual` - Admin-Trigger
-- `ab_test_winner` - A/B Test Gewinner
-
-**Celery Tasks**:
-- `mlops.check_retraining_threshold` - Täglich 03:00 (maintenance queue)
-- `mlops.run_retraining` - GPU queue, max 1h
-- `mlops.evaluate_model` - Nach Training, entscheidet Promotion
-- `mlops.rollback_if_degraded` - Automatisch bei Qualitätsverlust
-- `mlops.cleanup_old_versions` - Wöchentlich, archiviert >90 Tage
-- `mlops.get_stats` - MLOps Statistiken abrufen
-
-**Model Lifecycle**:
-```
-DRAFT → CANDIDATE → ACTIVE → DEPRECATED
-                  ↓
-            ROLLED_BACK → ARCHIVED
-```
-
-**Datenmodell (JSONB in AppConfig)**:
-```python
-MODEL_REGISTRY_KEY = "mlops_model_registry"
-RETRAINING_CONFIG_KEY = "mlops_retraining_config"
-RETRAINING_JOBS_KEY = "mlops_retraining_jobs"
-```
-
----
-
-## Alert Center (NEU: Januar 2026)
-
-**Status**: ✅ Production-Ready
-**Migration**: 117 (add_alerts_center)
-
-**Core Service**: `AlertCenterService` (`app/services/alert_center_service.py`)
-
-**Features**:
-| Feature | Beschreibung |
-|---------|--------------|
-| Kategorisierung | 8 Alert-Kategorien (fraud, risk, compliance, deadline, system, security, quality, workflow) |
-| Schweregrade | 5 Stufen (info, low, medium, high, critical) |
-| Status-Workflow | new → acknowledged → in_progress → resolved/dismissed/escalated |
-| Bulk Actions | Massenaktionen auf mehrere Alerts |
-| Email-Digest | Konfigurierbare Zusammenfassungen (taeglich/woechentlich) |
-
-**Alert-Kategorien**:
-- `fraud` - Betrugsverdacht (FRAUD_001 bis FRAUD_004)
-- `risk` - Risikowarnungen (RISK_001 bis RISK_004)
-- `compliance` - Compliance-Verletzungen (COMP_001 bis COMP_005)
-- `deadline` - Fristwarnungen (DEAD_001 bis DEAD_004)
-- `system` - Systemwarnungen (SYS_001 bis SYS_005)
-- `security` - Sicherheitswarnungen (SEC_001 bis SEC_004)
-- `quality` - Qualitaetswarnungen (QUAL_001 bis QUAL_003)
-- `workflow` - Workflow-Alerts (WORK_001 bis WORK_003)
-
-**API Endpoints**:
-- `GET /api/v1/alerts` - Alert-Liste mit Filterung und Paginierung
-- `GET /api/v1/alerts/stats` - Dashboard-Statistiken
-- `GET /api/v1/alerts/counts` - Zaehler nach Kategorie/Schweregrad/Status
-- `GET /api/v1/alerts/{id}` - Einzelner Alert
-- `POST /api/v1/alerts` - Manuellen Alert erstellen
-- `POST /api/v1/alerts/{id}/acknowledge` - Als gelesen markieren
-- `POST /api/v1/alerts/{id}/dismiss` - Verwerfen
-- `POST /api/v1/alerts/{id}/resolve` - Als geloest markieren
-- `POST /api/v1/alerts/{id}/escalate` - An Benutzer eskalieren
-- `POST /api/v1/alerts/{id}/assign` - Benutzer zuweisen
-- `POST /api/v1/alerts/bulk` - Massenaktionen
-
-**Frontend**: `/alerts` - Vollstaendiges Dashboard mit:
-- Statistik-Karten (total, new, critical, 24h)
-- Kategorie-Zusammenfassung
-- Filterbare Alert-Liste
-- Quick-Actions (Acknowledge, Dismiss, Resolve)
-- Detail-Dialog mit Kontext und Metadaten
-- Bulk-Selection und Massenaktionen
-
-**Datenmodell (Alert)**:
-```python
-id: UUID
-alert_code: str              # z.B. FRAUD_001, RISK_002
-title: str
-message: str
-category: AlertCategory      # fraud, risk, compliance, ...
-severity: AlertSeverity      # info, low, medium, high, critical
-status: AlertStatus          # new, acknowledged, resolved, ...
-document_id: Optional[UUID]  # Verknuepftes Dokument
-entity_id: Optional[UUID]    # Verknuepfter Geschaeftspartner
-company_id: UUID             # Multi-Tenant
-metadata: JSONB              # Kategorie-spezifische Daten
-context: JSONB               # UI-Kontext
-```
+## Feature & Integration Reference
+
+> Detaillierte Dokumentation zu jedem Feature in `.claude/Docs/Features/` und `.claude/Docs/Integrations/`
+
+| Feature | Status | Migration | Core Service | Docs |
+|---------|--------|-----------|--------------|------|
+| DATEV Connect | Production-Ready | 145 | `datev/connect/datev_connector.py` | `.claude/Docs/Integrations/DATEV-Connect.md` |
+| Lexware Import | Production-Ready | 089, 090 | `lexware_import_service.py` | `.claude/Docs/Integrations/Lexware.md` |
+| Entity Risk Scoring | Production-Ready | 092, 093 | `risk_scoring_service.py` | `.claude/Docs/Features/Entity-Risk-Scoring.md` |
+| Skonto-Tracking | Production-Ready | 094 | `banking/skonto_service.py` | `.claude/Docs/Features/Skonto-Tracking.md` |
+| Document Lineage | Production-Ready | 147 | `lineage/document_lineage_service.py` | `.claude/Docs/Features/Document-Lineage.md` |
+| Document Chains | Production-Ready | 095 | `document_chain_service.py` | `.claude/Docs/Features/Document-Chains.md` |
+| Slack | Production-Ready | 100 | `slack_service.py` | `.claude/Docs/Integrations/Slack.md` |
+| Shipment Tracking | Production-Ready | 100 | `shipping/carrier_service.py` | `.claude/Docs/Integrations/ShipmentTracking.md` |
+| Email & Folder Import | Backend Ready 95% | via Beat | `imports/email_import_service.py` | `.claude/Docs/Features/Email-Folder-Import.md` |
+| OCR Self-Learning | Production-Ready | JSONB | `ocr/self_learning_service.py` | `.claude/Docs/Features/OCR-Self-Learning.md` |
+| MLOps Pipeline | Production-Ready | JSONB | `mlops/model_registry.py` | `.claude/Docs/Features/MLOps-Pipeline.md` |
+| Alert Center | Production-Ready | 117 | `alert_center_service.py` | `.claude/Docs/Features/Alert-Center.md` |
 
 ---
 
@@ -971,13 +372,18 @@ Run the team executor to get detailed classification:
 python .claude/helpers/team_executor.py classify --task "<full task description>"
 ```
 
+Die Ausgabe enthaelt eine `workflow_id`. Diese MUSS bei allen Folgebefehlen mitgegeben werden:
+```json
+{ "workflow_id": "abcd1234", ... }
+```
+
 ### Step 2: Phase Loop
 
 For each phase N (1 through total_phases):
 
 **a) Get phase instructions:**
 ```bash
-python .claude/helpers/team_executor.py phase --number N --task "<task>"
+python .claude/helpers/team_executor.py phase --number N --workflow-id <workflow_id>
 ```
 
 **b) Spawn agent(s):**
@@ -986,15 +392,15 @@ python .claude/helpers/team_executor.py phase --number N --task "<task>"
 
 **c) Save result when agent(s) complete:**
 ```bash
-python .claude/helpers/team_executor.py save-result --phase N --result "<output>"
+python .claude/helpers/team_executor.py save-result --phase N --result "<output>" --workflow-id <workflow_id>
 # For parallel phases, save each agent separately:
-python .claude/helpers/team_executor.py save-result --phase N --agent coder_a --result "<output>"
-python .claude/helpers/team_executor.py save-result --phase N --agent coder_b --result "<output>"
+python .claude/helpers/team_executor.py save-result --phase N --agent coder_a --result "<output>" --workflow-id <workflow_id>
+python .claude/helpers/team_executor.py save-result --phase N --agent coder_b --result "<output>" --workflow-id <workflow_id>
 ```
 
 **d) Run quality gate (if phase has one):**
 ```bash
-python .claude/helpers/team_executor.py gate --name gate_X_name --phase N
+python .claude/helpers/team_executor.py gate --name gate_X_name --phase N --workflow-id <workflow_id>
 ```
 - PASSED: proceed to phase N+1
 - FAILED: fix issues and re-run the phase (see Gate Failure Recovery below)
@@ -1007,7 +413,7 @@ When a gate returns FAILED:
    - Include the original task description
    - Add: "KORREKTUR ERFORDERLICH: [paste gate BLOCK findings here]"
 3. Save the new result (overwrites the old one):
-   `python .claude/helpers/team_executor.py save-result --phase N --result "<new_result>"`
+   `python .claude/helpers/team_executor.py save-result --phase N --result "<new_result>" --workflow-id <workflow_id>`
 4. Re-run the gate
 5. After 2 failed attempts: Inform the user with a summary of the
    gate findings and ask for manual intervention
@@ -1016,13 +422,13 @@ When a gate returns FAILED:
 
 For templates with `requires_shared_file_integration`:
 ```bash
-python .claude/helpers/team_executor.py integrate --phase 3
+python .claude/helpers/team_executor.py integrate --phase 3 --workflow-id <workflow_id>
 ```
 This merges parallel coder manifests and returns concrete append-only instructions for bottleneck files.
 
 ### Step 4: Complete
 ```bash
-python .claude/helpers/team_executor.py complete
+python .claude/helpers/team_executor.py complete --workflow-id <workflow_id>
 ```
 
 ### Critical Rules
