@@ -10,6 +10,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Enterprise DB models: AutonomousTrustConfig, satellite models (banking, einvoice, esg, fx, gl_posting, portal, workflow_stage)
+- Migrations 148, 202-208 (einvoice transmission, autonomous trust, contract V2, PSD2, portal/ESG, retention, GL posting, FX, kanban)
+- mTLS Service and Certificate Authority for internal PKI
+- Enterprise services: trust levels, PSD2 banking, ESG compliance, contract analysis, portal, accounting (GL/FX/EUeR/USt)
+- OCR A/B testing support and ML router training pipeline
+- API endpoints: banking PSD2, portal, ESG, kanban, executive dashboard, cashflow prediction, autonomous trust
+- Celery tasks: banking, trust, FX rates, GL posting, mTLS rotation, OCR router training, retention enforcement
+- Frontend: portal (invoices, documents, complaints), ESG dashboard, kanban board, executive dashboard, mobile features
+- Accessibility E2E tests, offline indicator, service worker enhancements
+- Session-documenter agent and /docu slash command
+
+### Fixed
+- Alembic migration down_revision chain references (13 migrations)
+- Type safety: removed Any types across all agents, services, core modules
+- Team workflow quality gates and router hook hardening
+
+### Changed
+- Celery worker settings: task timeouts, prefetch tuning, retry delay configuration
+- Docker Compose: new service configurations, Redis tuning
+- Helm values: HPA scaling config, production tuning
 
 #### Two-Factor Authentication (2FA/TOTP) - Security Enhancement
 - **TOTP Implementation** (`app/core/totp.py`)

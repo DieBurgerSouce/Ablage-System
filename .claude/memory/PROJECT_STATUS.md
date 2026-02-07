@@ -73,12 +73,17 @@ Final 3 TODOs resolved:
 
 | Migration | Description |
 |-----------|-------------|
+| 208 | Kanban Workflow Stages |
+| 207 | FX Service (rates, conversions) |
+| 206 | GL Posting System |
+| 205 | Retention Enforcement |
+| 204 | Portal and ESG |
+| 203 | Contract V2 Enhancements + PSD2 Banking |
+| 202 | Autonomous Trust System |
+| 148 | E-Invoice Transmission |
 | 140 | Project Document Chains |
 | 139 | Supplier OCR Templates |
 | 138 | Communication Hub (PhoneNote, CommunicationSummary) |
 | 137 | GoBD Compliance Checks |
 | 136 | Document Versioning & Signatures |
 | 135 | Project Management |
-| 091 | Expense reports soft delete (deleted_at, deleted_by_id) |
-| 090 | Lexware streckengeschaeft merge |
-| 089 | Lexware fields (lexware_ids, company_presence) |
