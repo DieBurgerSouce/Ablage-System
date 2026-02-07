@@ -1,5 +1,10 @@
 # Recent Changes
 
+## 2026-02-08
+- **fix(db)**: Alembic env.py asyncpg multi-statement workaround (SQL-Splitting, lazy model loading)
+- **fix(db)**: 17 Migrationen asyncpg-kompatibel gemacht (text() wrapping, checkfirst=True, bedingte FKs, Spalten-Checks)
+- **chore(config)**: .gitignore um .claude/cache/ erweitert
+
 ## 2026-02-07
 - **feat(db)**: Enterprise-Modelle und Migrationen 148, 202-208 (Trust, Banking, ESG, Portal, FX, Kanban)
 - **feat(security)**: mTLS Service, Certificate Authority, Core-Module Type-Safety-Haertung

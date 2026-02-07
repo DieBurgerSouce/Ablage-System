@@ -22,6 +22,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Session-documenter agent and /docu slash command
 
 ### Fixed
+- Alembic env.py: asyncpg multi-statement SQL splitting workaround, lazy model loading (saves 2-3GB RAM)
+- 17 alembic migrations hardened for asyncpg: text() wrapping, checkfirst=True enums, conditional FKs, column/table existence checks
+- Migration 110: RLS policies now verify FK column existence before creating parent-join policies
+- Migration 121: All index creation guarded by column/table/index existence checks
+- Migration 134: company_id backfill now checks users.company_id column exists
+- Migration 135: kostenstellen FK added conditionally (table may not exist)
+- Migration 146: folders FK added conditionally (table may not exist)
+- Migrations 148, 150: Removed hard FKs to tables that may not exist (workflow_executions, bpmn_process_*)
+- Migrations 200-203: Deferred FKs for tables not yet created (erp_connections, ai_decisions, bank_accounts)
+- Migration 128: Removed duplicate company_id indexes (already created by column definition)
 - Alembic migration down_revision chain references (13 migrations)
 - Type safety: removed Any types across all agents, services, core modules
 - Team workflow quality gates and router hook hardening

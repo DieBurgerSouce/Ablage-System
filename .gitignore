@@ -71,6 +71,7 @@ uploads/
 # Cache
 .cache/
 *.cache
+.claude/cache/
 nul
 frontend/lint_report*.txt
 lint_report*.txt
