@@ -14,7 +14,7 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 # revision identifiers, used by Alembic
 revision = '133_add_missing_v2_models'
-down_revision = '132_life_events'
+down_revision = '132'
 branch_labels = None
 depends_on = None
 

@@ -20,7 +20,7 @@ from sqlalchemy.dialects import postgresql
 
 # Revision identifiers
 revision = "145_add_datev_connect"
-down_revision = "144_add_insights_and_autonomy"
+down_revision = "144_insights_autonomy"
 branch_labels = None
 depends_on = None
 

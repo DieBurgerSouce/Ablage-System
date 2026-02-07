@@ -19,7 +19,7 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 # revision identifiers
 revision = '203_add_contract_v2_enhancements'
-down_revision = '202_add_autonomous_trust_system'
+down_revision = '202'
 branch_labels = None
 depends_on = None
 

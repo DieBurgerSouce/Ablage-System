@@ -19,7 +19,7 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 # revision identifiers, used by Alembic.
 revision: str = '200_add_fraud_detection_tables'
-down_revision: Union[str, None] = None  # Will be set by alembic
+down_revision: Union[str, None] = '150_workflow_sla'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

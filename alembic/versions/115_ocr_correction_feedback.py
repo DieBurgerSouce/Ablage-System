@@ -22,7 +22,7 @@ from alembic import op
 
 # revision identifiers
 revision = "115"
-down_revision = "114"
+down_revision = "113_add_gdpr_consent"
 branch_labels = None
 depends_on = None
 

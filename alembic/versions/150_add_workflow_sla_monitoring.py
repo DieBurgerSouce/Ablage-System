@@ -16,7 +16,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers
 revision = '150_workflow_sla'
-down_revision = None  # Wird angepasst bei Migration
+down_revision = '148'
 branch_labels = None
 depends_on = None
 

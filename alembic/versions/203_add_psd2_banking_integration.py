@@ -25,8 +25,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = "203"
-down_revision = "202"
+revision = "203_add_psd2_banking_integration"
+down_revision = "203_add_contract_v2_enhancements"
 branch_labels = None
 depends_on = None
 

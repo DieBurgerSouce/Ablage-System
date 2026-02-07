@@ -24,7 +24,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "116_add_saved_filters"
-down_revision: Union[str, None] = "115_ocr_correction_feedback"
+down_revision: Union[str, None] = "115"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

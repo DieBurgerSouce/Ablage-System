@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 revision = "202"
-down_revision = "201"
+down_revision = "201_add_odoo_webhooks"
 branch_labels = None
 depends_on = None
 
