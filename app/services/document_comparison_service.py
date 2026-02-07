@@ -27,7 +27,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Set
+from typing import Dict, List, Optional, Tuple, Set, Union
 from uuid import UUID
 
 import structlog
@@ -92,8 +92,8 @@ class FieldChange:
     """Aenderung in einem strukturierten Feld."""
     field_name: str
     field_category: FieldCategory
-    old_value: Any
-    new_value: Any
+    old_value: object
+    new_value: object
     diff_type: DifferenceType
     confidence: float = 1.0
     is_critical: bool = False  # Kritische Aenderung (z.B. Betrag)
@@ -143,8 +143,8 @@ class ComparisonResult:
 class DiffReport:
     """Vollstaendiger Diff-Report."""
     comparison: ComparisonResult
-    document_1_info: Dict[str, Any]
-    document_2_info: Dict[str, Any]
+    document_1_info: Dict[str, object]
+    document_2_info: Dict[str, object]
     summary: str
     recommendations: List[str]
     generated_at: datetime = field(default_factory=datetime.utcnow)
@@ -510,8 +510,8 @@ class DocumentComparisonService:
 
     def _compare_structure(
         self,
-        data1: Dict[str, Any],
-        data2: Dict[str, Any]
+        data1: Dict[str, object],
+        data2: Dict[str, object]
     ) -> Tuple[List[FieldChange], float]:
         """Vergleicht strukturierte Daten.
 
@@ -592,7 +592,7 @@ class DocumentComparisonService:
 
         return FieldCategory.TEXT
 
-    def _values_equal(self, val1: Any, val2: Any) -> bool:
+    def _values_equal(self, val1: object, val2: object) -> bool:
         """Prueft ob zwei Werte gleich sind (mit Toleranz fuer Zahlen)."""
         # None-Handling
         if val1 is None and val2 is None:
@@ -622,8 +622,8 @@ class DocumentComparisonService:
 
     def _calculate_quick_similarity(
         self,
-        data1: Dict[str, Any],
-        data2: Dict[str, Any]
+        data1: Dict[str, object],
+        data2: Dict[str, object]
     ) -> Tuple[float, List[str]]:
         """Berechnet schnelle Aehnlichkeit basierend auf wichtigen Feldern.
 

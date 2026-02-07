@@ -174,7 +174,7 @@ class EscalationService:
         self,
         rule_id: UUID,
         company_id: UUID,
-        **kwargs: Any,
+        **kwargs: object,
     ) -> Optional[EscalationRule]:
         """Aktualisiert eine Eskalationsregel.
 

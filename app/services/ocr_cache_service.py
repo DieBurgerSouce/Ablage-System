@@ -18,7 +18,7 @@ import asyncio
 import hashlib
 import sys
 import threading
-from typing import Any, Optional, Dict, List, Union
+from typing import Optional, Dict, List, Union
 
 # JSON-serializable types
 JsonValue = Union[str, int, float, bool, None, Dict[str, "JsonValue"], List["JsonValue"]]
@@ -96,14 +96,14 @@ class TTLCache:
             ttl: Time-to-live in seconds (default 5 minutes)
             max_memory_mb: Maximum memory usage in MB (default: 256MB)
         """
-        self._cache: OrderedDict[str, Dict[str, Any]] = OrderedDict()
+        self._cache: OrderedDict[str, Dict[str, object]] = OrderedDict()
         self._maxsize = maxsize
         self._ttl = ttl
         self._max_memory_bytes = int((max_memory_mb or self.DEFAULT_MAX_MEMORY_MB) * 1024 * 1024)
         self._current_memory_bytes = 0
         self._lock = threading.RLock()
 
-    def _estimate_size(self, value: Any) -> int:
+    def _estimate_size(self, value: object) -> int:
         """Estimate memory size of a value in bytes."""
         try:
             # sys.getsizeof gives shallow size, add estimate for nested objects
@@ -127,7 +127,7 @@ class TTLCache:
             # Fallback: assume 1KB per item
             return 1024
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Optional[object]:
         """Get item from cache if not expired."""
         with self._lock:
             if key not in self._cache:
@@ -144,7 +144,7 @@ class TTLCache:
             self._cache.move_to_end(key)
             return item['value']
 
-    def set(self, key: str, value: Any) -> None:
+    def set(self, key: str, value: object) -> None:
         """Set item in cache with TTL and memory limit enforcement."""
         with self._lock:
             # Estimate size of new item
@@ -207,7 +207,7 @@ class TTLCache:
                 del self._cache[k]
             return len(self._cache)
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> Dict[str, object]:
         """Get cache statistics including memory usage."""
         with self._lock:
             return {
@@ -262,7 +262,7 @@ class OCRCacheService:
 
     def __init__(
         self,
-        redis_client: Any = None,
+        redis_client: object = None,
         l1_maxsize: int = L1_MAXSIZE,
         l1_ttl: int = L1_TTL,
         l1_max_memory_mb: float = L1_MAX_MEMORY_MB,
@@ -300,7 +300,7 @@ class OCRCacheService:
             l2_ttl=l2_ttl
         )
 
-    async def _get_redis(self) -> Optional[Any]:
+    async def _get_redis(self) -> Optional[object]:
         """Get Redis client, lazy loading if needed."""
         if self._redis is None:
             try:
@@ -360,8 +360,8 @@ class OCRCacheService:
         content: bytes,
         backend: str,
         language: str = "de",
-        options: Optional[Dict[str, Any]] = None
-    ) -> Optional[Dict[str, Any]]:
+        options: Optional[Dict[str, object]] = None
+    ) -> Optional[Dict[str, object]]:
         """
         Get cached OCR result using Multi-Level Cache.
 
@@ -496,9 +496,9 @@ class OCRCacheService:
         self,
         content: bytes,
         backend: str,
-        result: Dict[str, Any],
+        result: Dict[str, object],
         language: str = "de",
-        options: Optional[Dict[str, Any]] = None,
+        options: Optional[Dict[str, object]] = None,
         ttl: Optional[int] = None
     ) -> bool:
         """
@@ -675,7 +675,7 @@ class OCRCacheService:
                     **safe_error_log(e),
                 )
 
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> Dict[str, object]:
         """
         Get comprehensive multi-level cache statistics.
 
@@ -801,8 +801,8 @@ async def get_cached_ocr_result(
     content: bytes,
     backend: str,
     language: str = "de",
-    options: Optional[Dict[str, Any]] = None
-) -> Optional[Dict[str, Any]]:
+    options: Optional[Dict[str, object]] = None
+) -> Optional[Dict[str, object]]:
     """Convenience function to get cached OCR result."""
     return await get_ocr_cache_service().get_cached_result(
         content, backend, language, options
@@ -812,9 +812,9 @@ async def get_cached_ocr_result(
 async def cache_ocr_result(
     content: bytes,
     backend: str,
-    result: Dict[str, Any],
+    result: Dict[str, object],
     language: str = "de",
-    options: Optional[Dict[str, Any]] = None,
+    options: Optional[Dict[str, object]] = None,
     ttl: Optional[int] = None
 ) -> bool:
     """Convenience function to cache OCR result."""

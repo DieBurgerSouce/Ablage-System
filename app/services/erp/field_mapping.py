@@ -14,10 +14,10 @@ import structlog
 from abc import ABC, abstractmethod
 from datetime import datetime, date
 from decimal import Decimal
-from typing import Any, Callable, Dict, List, Optional, Type, Union
+from typing import Dict, List, Optional, Type, Union
 
 # Type alias for transformed values from ERP field transformations
-TransformedValue = Union[str, int, float, bool, Decimal, datetime, date, Dict[str, Any], None]
+TransformedValue = Union[str, int, float, bool, Decimal, datetime, date, Dict[str, object], None]
 from uuid import UUID
 
 logger = structlog.get_logger(__name__)
@@ -32,12 +32,12 @@ class FieldTransformer(ABC):
     """Abstrakte Basisklasse fuer Feld-Transformatoren."""
 
     @abstractmethod
-    def to_erp(self, value: Any, config: Optional[Dict[str, Any]] = None) -> TransformedValue:
+    def to_erp(self, value: TransformedValue, config: Optional[Dict[str, object]] = None) -> TransformedValue:
         """Transformiert Wert fuer ERP-System."""
         pass
 
     @abstractmethod
-    def from_erp(self, value: Any, config: Optional[Dict[str, Any]] = None) -> TransformedValue:
+    def from_erp(self, value: TransformedValue, config: Optional[Dict[str, object]] = None) -> TransformedValue:
         """Transformiert Wert aus ERP-System."""
         pass
 
@@ -45,17 +45,17 @@ class FieldTransformer(ABC):
 class PassthroughTransformer(FieldTransformer):
     """Keine Transformation - Wert durchreichen."""
 
-    def to_erp(self, value: Any, config: Optional[Dict[str, Any]] = None) -> TransformedValue:
+    def to_erp(self, value: TransformedValue, config: Optional[Dict[str, object]] = None) -> TransformedValue:
         return value
 
-    def from_erp(self, value: Any, config: Optional[Dict[str, Any]] = None) -> TransformedValue:
+    def from_erp(self, value: TransformedValue, config: Optional[Dict[str, object]] = None) -> TransformedValue:
         return value
 
 
 class DateTransformer(FieldTransformer):
     """Datums-Transformation (ISO <-> Odoo Format)."""
 
-    def to_erp(self, value: Any, config: Optional[Dict[str, Any]] = None) -> Optional[str]:
+    def to_erp(self, value: TransformedValue, config: Optional[Dict[str, object]] = None) -> Optional[str]:
         """Konvertiert Python date/datetime zu Odoo-Format."""
         if value is None:
             return None
@@ -68,7 +68,7 @@ class DateTransformer(FieldTransformer):
             return value
         return str(value)
 
-    def from_erp(self, value: Any, config: Optional[Dict[str, Any]] = None) -> Optional[datetime]:
+    def from_erp(self, value: TransformedValue, config: Optional[Dict[str, object]] = None) -> Optional[datetime]:
         """Konvertiert Odoo-Format zu Python datetime."""
         if value is None or value is False:
             return None
@@ -95,7 +95,7 @@ class DateTransformer(FieldTransformer):
 class CurrencyTransformer(FieldTransformer):
     """Waehrungs-Transformation (Decimal <-> Float)."""
 
-    def to_erp(self, value: Any, config: Optional[Dict[str, Any]] = None) -> Optional[float]:
+    def to_erp(self, value: TransformedValue, config: Optional[Dict[str, object]] = None) -> Optional[float]:
         """Konvertiert Decimal zu Float fuer ERP."""
         if value is None:
             return None
@@ -111,7 +111,7 @@ class CurrencyTransformer(FieldTransformer):
                 return None
         return None
 
-    def from_erp(self, value: Any, config: Optional[Dict[str, Any]] = None) -> Optional[Decimal]:
+    def from_erp(self, value: TransformedValue, config: Optional[Dict[str, object]] = None) -> Optional[Decimal]:
         """Konvertiert Float zu Decimal aus ERP."""
         if value is None or value is False:
             return None
@@ -125,13 +125,13 @@ class CurrencyTransformer(FieldTransformer):
 class BooleanTransformer(FieldTransformer):
     """Boolean-Transformation (Odoo False = None)."""
 
-    def to_erp(self, value: Any, config: Optional[Dict[str, Any]] = None) -> bool:
+    def to_erp(self, value: TransformedValue, config: Optional[Dict[str, object]] = None) -> bool:
         """Konvertiert zu Boolean fuer ERP."""
         if value is None:
             return False
         return bool(value)
 
-    def from_erp(self, value: Any, config: Optional[Dict[str, Any]] = None) -> bool:
+    def from_erp(self, value: TransformedValue, config: Optional[Dict[str, object]] = None) -> bool:
         """Konvertiert Boolean aus ERP (False = None in Odoo)."""
         if value is None or value is False:
             return False
@@ -141,7 +141,7 @@ class BooleanTransformer(FieldTransformer):
 class LookupTransformer(FieldTransformer):
     """Lookup-Transformation fuer Related Fields (z.B. country_id)."""
 
-    def to_erp(self, value: Any, config: Optional[Dict[str, Any]] = None) -> Optional[int]:
+    def to_erp(self, value: TransformedValue, config: Optional[Dict[str, object]] = None) -> Optional[int]:
         """Konvertiert UUID oder ID zu ERP-ID."""
         if value is None:
             return None
@@ -165,7 +165,7 @@ class LookupTransformer(FieldTransformer):
 
         return None
 
-    def from_erp(self, value: Any, config: Optional[Dict[str, Any]] = None) -> Optional[str]:
+    def from_erp(self, value: TransformedValue, config: Optional[Dict[str, object]] = None) -> Optional[str]:
         """Konvertiert ERP-ID zu lokalem Wert."""
         if value is None or value is False:
             return None
@@ -191,7 +191,7 @@ class LookupTransformer(FieldTransformer):
 class StringNormalizer(FieldTransformer):
     """String-Normalisierung (Trimmen, None-Handling)."""
 
-    def to_erp(self, value: Any, config: Optional[Dict[str, Any]] = None) -> str:
+    def to_erp(self, value: TransformedValue, config: Optional[Dict[str, object]] = None) -> str:
         """Normalisiert String fuer ERP."""
         if value is None or value is False:
             return ""
@@ -206,7 +206,7 @@ class StringNormalizer(FieldTransformer):
 
         return result
 
-    def from_erp(self, value: Any, config: Optional[Dict[str, Any]] = None) -> Optional[str]:
+    def from_erp(self, value: TransformedValue, config: Optional[Dict[str, object]] = None) -> Optional[str]:
         """Normalisiert String aus ERP."""
         if value is None or value is False:
             return None
@@ -217,7 +217,7 @@ class StringNormalizer(FieldTransformer):
 class AddressTransformer(FieldTransformer):
     """Adress-Transformation (Dict <-> einzelne Felder)."""
 
-    def to_erp(self, value: Any, config: Optional[Dict[str, Any]] = None) -> Dict[str, str]:
+    def to_erp(self, value: TransformedValue, config: Optional[Dict[str, object]] = None) -> Dict[str, str]:
         """Konvertiert Address-Dict zu flachen Feldern."""
         if not isinstance(value, dict):
             return {}
@@ -231,7 +231,7 @@ class AddressTransformer(FieldTransformer):
             "country_id": value.get("country_id"),
         }
 
-    def from_erp(self, value: Any, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def from_erp(self, value: TransformedValue, config: Optional[Dict[str, object]] = None) -> Dict[str, object]:
         """Konvertiert flache Felder zu Address-Dict."""
         if not isinstance(value, dict):
             return {}
@@ -281,10 +281,10 @@ class FieldMappingConfig:
         local_field: str,
         remote_field: str,
         transformer: str = "passthrough",
-        transformer_config: Optional[Dict[str, Any]] = None,
+        transformer_config: Optional[Dict[str, object]] = None,
         direction: str = "bidirectional",
         required: bool = False,
-        default_value: Any = None,
+        default_value: TransformedValue = None,
     ) -> None:
         self.local_field = local_field
         self.remote_field = remote_field
@@ -294,13 +294,13 @@ class FieldMappingConfig:
         self.required = required
         self.default_value = default_value
 
-    def to_erp(self, value: Any) -> TransformedValue:
+    def to_erp(self, value: TransformedValue) -> TransformedValue:
         """Transformiert Wert fuer ERP."""
         if value is None and self.default_value is not None:
             value = self.default_value
         return self.transformer.to_erp(value, self.transformer_config)
 
-    def from_erp(self, value: Any) -> TransformedValue:
+    def from_erp(self, value: TransformedValue) -> TransformedValue:
         """Transformiert Wert aus ERP."""
         result = self.transformer.from_erp(value, self.transformer_config)
         if result is None and self.default_value is not None:
@@ -321,7 +321,7 @@ class EntityMappingService:
     """
 
     # Default Mappings pro Entity
-    DEFAULT_MAPPINGS: Dict[str, List[Dict[str, Any]]] = {
+    DEFAULT_MAPPINGS: Dict[str, List[Dict[str, object]]] = {
         "customer": [
             {"local_field": "name", "remote_field": "name", "transformer": "string", "required": True},
             {"local_field": "email", "remote_field": "email", "transformer": "string"},
@@ -359,7 +359,7 @@ class EntityMappingService:
         ],
     }
 
-    def __init__(self, custom_mappings: Optional[Dict[str, List[Dict[str, Any]]]] = None) -> None:
+    def __init__(self, custom_mappings: Optional[Dict[str, List[Dict[str, object]]]] = None) -> None:
         """Initialisiert den Mapping-Service.
 
         Args:
@@ -378,7 +378,7 @@ class EntityMappingService:
                 FieldMappingConfig(**m) for m in mappings
             ]
 
-    def _apply_custom_mappings(self, custom_mappings: Dict[str, List[Dict[str, Any]]]) -> None:
+    def _apply_custom_mappings(self, custom_mappings: Dict[str, List[Dict[str, object]]]) -> None:
         """Wendet Custom-Mappings an."""
         for entity, mappings in custom_mappings.items():
             if entity not in self._mappings:
@@ -401,7 +401,7 @@ class EntityMappingService:
         """Gibt alle Mappings fuer eine Entity zurueck."""
         return self._mappings.get(entity, [])
 
-    def to_erp(self, entity: str, local_data: Dict[str, Any]) -> Dict[str, Any]:
+    def to_erp(self, entity: str, local_data: Dict[str, object]) -> Dict[str, TransformedValue]:
         """Transformiert lokale Daten zu ERP-Format.
 
         Args:
@@ -411,7 +411,7 @@ class EntityMappingService:
         Returns:
             Transformierte Daten im ERP-Format
         """
-        result: Dict[str, Any] = {}
+        result: Dict[str, TransformedValue] = {}
         mappings = self.get_mappings(entity)
 
         for mapping in mappings:
@@ -426,7 +426,7 @@ class EntityMappingService:
 
         return result
 
-    def from_erp(self, entity: str, erp_data: Dict[str, Any]) -> Dict[str, Any]:
+    def from_erp(self, entity: str, erp_data: Dict[str, object]) -> Dict[str, object]:
         """Transformiert ERP-Daten zu lokalem Format.
 
         Args:
@@ -436,7 +436,7 @@ class EntityMappingService:
         Returns:
             Transformierte Daten im lokalen Format
         """
-        result: Dict[str, Any] = {}
+        result: Dict[str, object] = {}
         mappings = self.get_mappings(entity)
 
         for mapping in mappings:
@@ -451,7 +451,7 @@ class EntityMappingService:
 
         return result
 
-    def _get_nested_value(self, data: Dict[str, Any], path: str) -> TransformedValue:
+    def _get_nested_value(self, data: Dict[str, object], path: str) -> TransformedValue:
         """Holt verschachtelten Wert ueber Punkt-Notation."""
         parts = path.split(".")
         current = data
@@ -464,7 +464,7 @@ class EntityMappingService:
 
         return current
 
-    def _set_nested_value(self, data: Dict[str, Any], path: str, value: Any) -> None:
+    def _set_nested_value(self, data: Dict[str, object], path: str, value: TransformedValue) -> None:
         """Setzt verschachtelten Wert ueber Punkt-Notation."""
         parts = path.split(".")
 
@@ -486,7 +486,7 @@ _mapping_service: Optional[EntityMappingService] = None
 
 
 def get_mapping_service(
-    custom_mappings: Optional[Dict[str, List[Dict[str, Any]]]] = None,
+    custom_mappings: Optional[Dict[str, List[Dict[str, object]]]] = None,
 ) -> EntityMappingService:
     """Gibt den Mapping-Service zurueck (Singleton mit optionalen Custom-Mappings)."""
     global _mapping_service

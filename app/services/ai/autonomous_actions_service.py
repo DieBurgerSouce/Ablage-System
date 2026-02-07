@@ -216,6 +216,12 @@ class AutonomousActionsService:
     mit dem AIDecisionService fuer Audit-Trail und Self-Learning.
 
     Die Thresholds werden aus app.core.config.settings geladen.
+
+    Phase 2.1: Integriert Multi-Level Trust System:
+    - Level 1 (ASSISTANCE): Alle Aktionen erfordern Bestaetigung
+    - Level 2 (AUTO_ACCEPT): >90% Confidence, 24h Auto-Accept
+    - Level 3 (CONFIDENCE): >95% sofort, 80-95% verzoegert (4h)
+    - Level 4 (AUTONOMOUS): Volle Autonomie, nur Exceptions
     """
 
     def __init__(
@@ -234,6 +240,10 @@ class AutonomousActionsService:
         self.config = config or create_autonomy_config()
         self.decision_service = get_ai_decision_service()
 
+        # Trust-Level Service (lazy init)
+        self._trust_service = None
+        self._delayed_service = None
+
         logger.debug(
             "autonomous_actions_service_initialized",
             classification_threshold=self.config.document_classification_threshold,
@@ -242,6 +252,241 @@ class AutonomousActionsService:
             payment_matching_threshold=self.config.payment_matching_threshold,
             auto_approval_max=float(self.config.payment_auto_approve_limit),
         )
+
+    @property
+    def trust_service(self):
+        """Lazy-init Trust-Level Service."""
+        if self._trust_service is None:
+            from app.services.ai.trust_level_service import TrustLevelService
+            self._trust_service = TrustLevelService(self.db)
+        return self._trust_service
+
+    @property
+    def delayed_service(self):
+        """Lazy-init Delayed Acceptance Service."""
+        if self._delayed_service is None:
+            from app.services.ai.delayed_acceptance_service import DelayedAcceptanceService
+            self._delayed_service = DelayedAcceptanceService(self.db)
+        return self._delayed_service
+
+    async def _notify_autonomous_action(
+        self,
+        action_type: AutonomousAction,
+        target_id: uuid.UUID,
+        details: Dict[str, Any],
+        company_id: Optional[uuid.UUID] = None,
+    ) -> None:
+        """Sendet Benachrichtigung nach autonomer Aktion.
+
+        Args:
+            action_type: Typ der ausgefuehrten Aktion
+            target_id: Ziel-ID (Invoice, Entity, etc.)
+            details: Zusaetzliche Details
+            company_id: Mandanten-ID
+        """
+        try:
+            from app.services.notification.unified_hub import send_notification
+            from app.services.notification.unified_hub import (
+                NotificationCategory,
+                NotificationSeverity,
+            )
+
+            action_labels = {
+                AutonomousAction.APPROVE_PAYMENT: "Zahlungsfreigabe",
+                AutonomousAction.SEND_DUNNING: "Mahnung",
+                AutonomousAction.UPDATE_MASTER_DATA: "Stammdaten-Korrektur",
+                AutonomousAction.ASSIGN_ENTITY: "Entity-Zuweisung",
+                AutonomousAction.CLASSIFY_DOCUMENT: "Dokument-Klassifikation",
+            }
+            label = action_labels.get(action_type, str(action_type.value))
+
+            # Lade Admin fuer Benachrichtigung
+            from app.db.models import User
+            stmt = (
+                select(User)
+                .where(User.is_active == True)
+                .where(User.is_superuser == True)
+                .limit(1)
+            )
+            result = await self.db.execute(stmt)
+            admin = result.scalar_one_or_none()
+
+            if not admin:
+                logger.debug(
+                    "no_admin_for_notification",
+                    action_type=action_type.value,
+                    company_id=str(company_id) if company_id else None,
+                )
+                return
+
+            await send_notification(
+                recipient_user_id=admin.id,
+                recipient_email=admin.email or "",
+                notification_type="autonomous_action",
+                title=f"KI-Aktion: {label}",
+                message=(
+                    f"Das System hat automatisch eine {label} durchgefuehrt. "
+                    f"Details: {details.get('summary', str(target_id))}"
+                ),
+                category=NotificationCategory.SYSTEM,
+                severity=NotificationSeverity.MEDIUM,
+                company_id=company_id,
+                reference_type=action_type.value,
+                reference_id=str(target_id),
+                session=self.db,
+            )
+            logger.info(
+                "autonomous_action_notification_sent",
+                action_type=action_type.value,
+                target_id=str(target_id),
+                admin_id=str(admin.id),
+            )
+        except Exception:
+            logger.warning(
+                "autonomous_action_notification_failed",
+                action_type=action_type.value,
+                target_id=str(target_id),
+                exc_info=True,
+            )
+
+    async def evaluate_action_mode(
+        self,
+        company_id: uuid.UUID,
+        confidence: float,
+        action_type: AutonomousAction,
+        document_type: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Evaluiert den Aktions-Modus basierend auf Trust-Level und Confidence.
+
+        Args:
+            company_id: Company-ID
+            confidence: Confidence-Score der Aktion
+            action_type: Typ der Aktion
+            document_type: Optional Dokumenttyp
+
+        Returns:
+            Dict mit mode, delay_hours, requires_confirmation
+        """
+        try:
+            from app.services.ai.trust_level_service import TrustLevel
+
+            trust_config = await self.trust_service.get_trust_config(
+                company_id, document_type
+            )
+
+            # Level 1: Immer Bestaetigung
+            if trust_config.level == TrustLevel.LEVEL_1_ASSISTANCE:
+                return {
+                    "mode": "confirmation_required",
+                    "delay_hours": 0,
+                    "requires_confirmation": True,
+                    "auto_apply": False,
+                    "reason": "Trust-Level erfordert manuelle Bestaetigung",
+                }
+
+            # Level 2-4: Pruefen ob Confidence ausreicht
+            if confidence >= trust_config.immediate_threshold:
+                # Sofortige Ausfuehrung
+                return {
+                    "mode": "immediate",
+                    "delay_hours": 0,
+                    "requires_confirmation": False,
+                    "auto_apply": True,
+                    "reason": f"Confidence {confidence:.1%} >= {trust_config.immediate_threshold:.1%}",
+                }
+            elif confidence >= trust_config.delayed_threshold:
+                # Verzoegerte Ausfuehrung
+                return {
+                    "mode": "delayed",
+                    "delay_hours": trust_config.delay_hours,
+                    "requires_confirmation": False,
+                    "auto_apply": True,
+                    "reason": f"Confidence {confidence:.1%} in verzoegetrem Bereich, {trust_config.delay_hours}h Wartezeit",
+                }
+            else:
+                # Manuelle Bestaetigung
+                return {
+                    "mode": "confirmation_required",
+                    "delay_hours": 0,
+                    "requires_confirmation": True,
+                    "auto_apply": False,
+                    "reason": f"Confidence {confidence:.1%} unter Schwelle {trust_config.delayed_threshold:.1%}",
+                }
+
+        except Exception as e:
+            logger.warning(
+                "evaluate_action_mode_error",
+                **safe_error_log(e),
+            )
+            # Fallback: Bestaetigung erfordern
+            return {
+                "mode": "confirmation_required",
+                "delay_hours": 0,
+                "requires_confirmation": True,
+                "auto_apply": False,
+                "reason": "Fallback wegen Fehler",
+            }
+
+    async def create_delayed_proposal(
+        self,
+        company_id: uuid.UUID,
+        action_type: AutonomousAction,
+        target_id: uuid.UUID,
+        proposed_value: Dict[str, Any],
+        confidence: float,
+        delay_hours: int,
+        ai_decision_id: Optional[uuid.UUID] = None,
+        reasoning: str = "",
+    ) -> uuid.UUID:
+        """Erstellt einen verzoegerten Vorschlag in der Queue.
+
+        Args:
+            company_id: Company-ID
+            action_type: Typ der Aktion
+            target_id: Ziel-ID
+            proposed_value: Vorgeschlagener Wert
+            confidence: Confidence-Score
+            delay_hours: Verzoegerung
+            ai_decision_id: Optional AI-Decision Referenz
+            reasoning: Begruendung
+
+        Returns:
+            Proposal-ID
+        """
+        from app.services.ai.delayed_acceptance_service import ProposalType
+
+        # Map AutonomousAction to ProposalType
+        proposal_type_map = {
+            AutonomousAction.FILE_DOCUMENT: ProposalType.FILE_DOCUMENT,
+            AutonomousAction.APPROVE_PAYMENT: ProposalType.APPROVE_PAYMENT,
+            AutonomousAction.SEND_DUNNING: ProposalType.SEND_DUNNING,
+            AutonomousAction.UPDATE_MASTER_DATA: ProposalType.UPDATE_MASTER_DATA,
+            AutonomousAction.ASSIGN_ENTITY: ProposalType.ASSIGN_ENTITY,
+            AutonomousAction.CLASSIFY_DOCUMENT: ProposalType.CLASSIFY_DOCUMENT,
+        }
+
+        proposal_type = proposal_type_map.get(action_type, ProposalType.CLASSIFY_DOCUMENT)
+
+        proposal = await self.delayed_service.create_proposal(
+            company_id=company_id,
+            proposal_type=proposal_type,
+            target_id=target_id,
+            proposed_value=proposed_value,
+            confidence=confidence,
+            delay_hours=delay_hours,
+            ai_decision_id=ai_decision_id,
+            reasoning=reasoning,
+        )
+
+        logger.info(
+            "delayed_proposal_created",
+            proposal_id=str(proposal.id),
+            action_type=action_type.value,
+            delay_hours=delay_hours,
+            confidence=confidence,
+        )
+
+        return proposal.id
 
     # ========================================================================
     # 1. Ablageort automatisch bestimmen
@@ -462,11 +707,21 @@ class AutonomousActionsService:
         invoice.updated_at = utc_now()
         await self.db.commit()
 
+        amount_str = f"{float(invoice.amount):.2f} EUR" if invoice.amount else "unbekannt"
+
         logger.info(
             "payment_approved_autonomously",
             invoice_id=str(invoice_id),
             amount=float(invoice.amount) if invoice.amount else 0,
             decision_id=str(decision_id) if decision_id else None,
+        )
+
+        # Benachrichtigung senden
+        await self._notify_autonomous_action(
+            action_type=AutonomousAction.APPROVE_PAYMENT,
+            target_id=invoice_id,
+            details={"summary": f"Rechnung {invoice_id} ({amount_str}) freigegeben"},
+            company_id=company_id,
         )
 
         return ActionResult(
@@ -602,6 +857,53 @@ class AutonomousActionsService:
             old_level=old_level,
             new_level=new_level,
             decision_id=str(decision_id) if decision_id else None,
+        )
+
+        # Mahnbrief generieren wenn DunningRecord vorhanden
+        try:
+            from app.db.models import DunningRecord
+            from app.services.banking.dunning_letter_service import DunningLetterService
+
+            dr_stmt = select(DunningRecord).where(
+                DunningRecord.document_id == invoice.document_id
+            )
+            dr_result = await self.db.execute(dr_stmt)
+            dunning_record = dr_result.scalar_one_or_none()
+
+            if dunning_record:
+                dunning_record.dunning_level = new_level
+                dunning_record.status = "active"
+                await self.db.commit()
+
+                letter_service = DunningLetterService()
+                letter_bytes = await letter_service.generate_letter(
+                    db=self.db,
+                    dunning_record_id=dunning_record.id,
+                    dunning_level=new_level,
+                    is_b2b=getattr(dunning_record, "is_b2b", True),
+                )
+                logger.info(
+                    "dunning_letter_generated",
+                    invoice_id=str(invoice_id),
+                    dunning_record_id=str(dunning_record.id),
+                    level=new_level,
+                    size_bytes=len(letter_bytes),
+                )
+        except Exception:
+            logger.warning(
+                "dunning_letter_generation_skipped",
+                invoice_id=str(invoice_id),
+                exc_info=True,
+            )
+
+        # Benachrichtigung senden
+        await self._notify_autonomous_action(
+            action_type=AutonomousAction.SEND_DUNNING,
+            target_id=invoice_id,
+            details={
+                "summary": f"Mahnstufe {old_level} -> {new_level} fuer Rechnung {invoice_id}",
+            },
+            company_id=company_id,
         )
 
         return ActionResult(
@@ -772,9 +1074,9 @@ class AutonomousActionsService:
             "master_data_updated_autonomously",
             entity_id=str(entity_id),
             field=field,
-            old_value=old_value,
+            had_old_value=old_value is not None,
             decision_id=str(decision_id) if decision_id else None,
-            # SECURITY: new_value nicht loggen (PII)
+            # SECURITY: old_value und new_value nicht loggen (PII)
         )
 
         return ActionResult(

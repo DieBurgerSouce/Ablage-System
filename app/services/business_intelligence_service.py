@@ -148,7 +148,7 @@ class BusinessIntelligenceResponse:
     """Unified response for BI queries."""
     query_type: QueryType
     summary: str  # Human-readable summary in German
-    data: Any  # Type depends on query_type
+    data: object  # Type depends on query_type
     suggestions: List[str]  # Follow-up questions
     query_time_ms: int
 

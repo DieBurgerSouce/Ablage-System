@@ -18,7 +18,7 @@ Gesetzliche Grundlagen:
 import hashlib
 import uuid
 from datetime import datetime, timezone, timedelta
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -136,7 +136,7 @@ class ConsentRecord:
     status: ConsentStatus
 
     @classmethod
-    def from_db_model(cls, model: Any) -> "ConsentRecord":
+    def from_db_model(cls, model: "GDPRConsentLog") -> "ConsentRecord":
         """Erstellt ConsentRecord aus DB-Model."""
         # Bestimme Status
         if model.withdrawn_at:

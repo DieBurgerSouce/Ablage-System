@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import structlog
 from sqlalchemy import and_, or_, select, update, delete
@@ -55,8 +55,8 @@ class ReportTemplateService:
         description: Optional[str] = None,
         default_format: str = "excel",
         is_public: bool = False,
-        layout_config: Optional[Dict[str, Any]] = None,
-        sort_config: Optional[List[Dict[str, Any]]] = None,
+        layout_config: Optional[Dict[str, object]] = None,
+        sort_config: Optional[List[Dict[str, object]]] = None,
         group_by_config: Optional[List[str]] = None,
     ) -> ReportTemplate:
         """Erstellt ein neues Report-Template."""
@@ -177,7 +177,7 @@ class ReportTemplateService:
         db: AsyncSession,
         template_id: uuid.UUID,
         user_id: uuid.UUID,
-        **updates: Any,
+        **updates: object,
     ) -> Optional[ReportTemplate]:
         """Aktualisiert ein Template."""
         template = await self.get_template(db, template_id, include_relations=False)
@@ -355,7 +355,7 @@ class ReportTemplateService:
         sort_order: int = 0,
         is_visible: bool = True,
         aggregation: Optional[str] = None,
-        conditional_format: Optional[List[Dict[str, Any]]] = None,
+        conditional_format: Optional[List[Dict[str, object]]] = None,
     ) -> ReportColumn:
         """Fuegt eine Spalte zu einem Template hinzu."""
         column = ReportColumn(
@@ -380,7 +380,7 @@ class ReportTemplateService:
         self,
         db: AsyncSession,
         column_id: uuid.UUID,
-        **updates: Any,
+        **updates: object,
     ) -> Optional[ReportColumn]:
         """Aktualisiert eine Spalte."""
         result = await db.execute(
@@ -420,7 +420,7 @@ class ReportTemplateService:
         self,
         db: AsyncSession,
         template_id: uuid.UUID,
-        column_orders: List[Dict[str, Any]],
+        column_orders: List[Dict[str, object]],
     ) -> bool:
         """Sortiert Spalten neu."""
         for order_info in column_orders:
@@ -443,7 +443,7 @@ class ReportTemplateService:
         template_id: uuid.UUID,
         field_path: str,
         operator: str,
-        value: Optional[Any] = None,
+        value: Optional[Union[str, int, float, bool]] = None,
         logic_operator: str = "AND",
         group_id: Optional[int] = None,
         sort_order: int = 0,
@@ -472,7 +472,7 @@ class ReportTemplateService:
         self,
         db: AsyncSession,
         filter_id: uuid.UUID,
-        **updates: Any,
+        **updates: object,
     ) -> Optional[ReportFilter]:
         """Aktualisiert einen Filter."""
         result = await db.execute(
@@ -555,7 +555,7 @@ class ReportTemplateService:
         self,
         db: AsyncSession,
         chart_id: uuid.UUID,
-        **updates: Any,
+        **updates: object,
     ) -> Optional[ReportChart]:
         """Aktualisiert einen Chart."""
         result = await db.execute(

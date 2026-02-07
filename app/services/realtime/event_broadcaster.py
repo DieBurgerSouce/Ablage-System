@@ -91,6 +91,12 @@ class RealtimeEventType(str, Enum):
     WIDGET_DATA_CHANGED = "widget.data_changed"
     WIDGET_REFRESH_REQUIRED = "widget.refresh_required"
 
+    # Presence Events
+    USER_PRESENCE = "user.presence"
+    DOCUMENT_VIEWER_JOINED = "document.viewer_joined"
+    DOCUMENT_VIEWER_LEFT = "document.viewer_left"
+    CURSOR_MOVED = "cursor.moved"
+
 
 @dataclass
 class RealtimeEvent:

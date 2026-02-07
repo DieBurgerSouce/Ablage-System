@@ -17,8 +17,12 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta, date
 from decimal import Decimal
 from enum import Enum
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, List, Tuple, Union
 from uuid import UUID, uuid4
+
+# Type aliases for JSON data
+JSONValue = Union[str, int, float, bool, None, Dict[str, "JSONValue"], List["JSONValue"]]
+JSONDict = Dict[str, JSONValue]
 
 import structlog
 from sqlalchemy import select, func, and_, or_, update
@@ -215,7 +219,7 @@ class PaymentSchedule:
     company_id: UUID
     period_start: date
     period_end: date
-    entries: List[Dict[str, Any]] = field(default_factory=list)
+    entries: List[JSONDict] = field(default_factory=list)
     total_amount: Decimal = Decimal("0")
     total_skonto_savings: Decimal = Decimal("0")
     by_date: Dict[str, List[PaymentSuggestion]] = field(default_factory=dict)
@@ -1139,7 +1143,7 @@ class PaymentAutomationService:
         self,
         db: AsyncSession,
         company_id: UUID,
-        **updates: Any,
+        **updates: object,
     ) -> AutomationConfig:
         """Aktualisiere Automatisierungs-Konfiguration.
 

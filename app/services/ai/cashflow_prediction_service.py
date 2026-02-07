@@ -24,8 +24,12 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 from uuid import UUID
+
+# Type aliases for JSON data
+JSONValue = Union[str, int, float, bool, None, Dict[str, "JSONValue"], List["JSONValue"]]
+JSONDict = Dict[str, JSONValue]
 import math
 import random
 import statistics
@@ -446,7 +450,7 @@ class CashflowPredictionService:
         self,
         company_id: UUID,
         scenario_type: ScenarioType,
-        parameters: Dict[str, Any],
+        parameters: JSONDict,
     ) -> ScenarioResult:
         """
         Fuehrt eine What-If Szenario-Simulation durch.
@@ -678,7 +682,7 @@ class CashflowPredictionService:
         self,
         company_id: UUID,
         days: int,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[JSONDict]:
         """
         Holt offene Forderungen (Ausgangsrechnungen - wir erwarten Geld).
 
@@ -728,7 +732,7 @@ class CashflowPredictionService:
         self,
         company_id: UUID,
         days: int,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[JSONDict]:
         """
         Holt offene Verbindlichkeiten (Eingangsrechnungen - wir muessen zahlen).
 
@@ -943,8 +947,8 @@ class CashflowPredictionService:
     async def _run_monte_carlo_simulation(
         self,
         current_balance: Decimal,
-        receivables: List[Dict[str, Any]],
-        payables: List[Dict[str, Any]],
+        receivables: List[JSONDict],
+        payables: List[JSONDict],
         recurring: List[RecurringPattern],
         days: int,
         confidence_level: float,
@@ -1086,7 +1090,7 @@ class CashflowPredictionService:
         self,
         company_id: UUID,
         base_forecasts: List[CashflowForecast],
-        parameters: Dict[str, Any],
+        parameters: JSONDict,
     ) -> ScenarioResult:
         """Simuliert: Was wenn Kunde X spaeter zahlt?"""
         entity_id = parameters.get("entity_id")
@@ -1177,7 +1181,7 @@ class CashflowPredictionService:
         self,
         company_id: UUID,
         base_forecasts: List[CashflowForecast],
-        parameters: Dict[str, Any],
+        parameters: JSONDict,
     ) -> ScenarioResult:
         """Simuliert: Was wenn wir Zahlung Y verschieben?"""
         invoice_id = parameters.get("invoice_id")
@@ -1263,7 +1267,7 @@ class CashflowPredictionService:
         self,
         company_id: UUID,
         base_forecasts: List[CashflowForecast],
-        parameters: Dict[str, Any],
+        parameters: JSONDict,
     ) -> ScenarioResult:
         """Simuliert: Was wenn wir neuen Auftrag Z bekommen?"""
         order_amount = Decimal(str(parameters.get("amount", 10000)))
@@ -1312,7 +1316,7 @@ class CashflowPredictionService:
         self,
         company_id: UUID,
         base_forecasts: List[CashflowForecast],
-        parameters: Dict[str, Any],
+        parameters: JSONDict,
     ) -> ScenarioResult:
         """Simuliert: Was wenn Kunde X komplett ausfaellt?"""
         entity_id = parameters.get("entity_id")
@@ -1380,7 +1384,7 @@ class CashflowPredictionService:
         self,
         company_id: UUID,
         base_forecasts: List[CashflowForecast],
-        parameters: Dict[str, Any],
+        parameters: JSONDict,
     ) -> ScenarioResult:
         """Simuliert: Was wenn wir Forderungseinzug beschleunigen?"""
         days_improvement = parameters.get("days_improvement", 7)

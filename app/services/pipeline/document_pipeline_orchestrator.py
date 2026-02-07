@@ -76,6 +76,7 @@ class PipelineStep(str, Enum):
     CATEGORIZE = "categorize"
     ANOMALY_CHECK = "anomaly_check"
     WORKFLOW_TRIGGER = "workflow_trigger"
+    GL_POSTING = "gl_posting"
 
 
 class PipelineStatus(str, Enum):
@@ -106,7 +107,7 @@ class PipelineDecision:
 
     # Ergebnis
     action: str = ""                       # z.B. "classify", "link_entity"
-    result: Any = None                     # Das Ergebnis der Entscheidung
+    result: object = None                     # Das Ergebnis der Entscheidung
     confidence: float = 0.0                # 0.0 - 1.0
     confidence_level: DecisionConfidence = DecisionConfidence.MANUAL
 

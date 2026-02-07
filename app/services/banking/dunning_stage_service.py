@@ -19,8 +19,12 @@ from datetime import datetime
 from app.core.datetime_utils import utc_now
 from decimal import Decimal
 from enum import Enum
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Union
 from uuid import UUID, uuid4
+
+# Type aliases for JSON data
+JSONValue = Union[str, int, float, bool, None, Dict[str, "JSONValue"], List["JSONValue"]]
+JSONDict = Dict[str, JSONValue]
 import structlog
 
 from sqlalchemy import select, func, and_, delete
@@ -125,7 +129,7 @@ class DunningStageConfigService:
         self,
         db: AsyncSession,
         user_id: UUID,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[JSONDict]:
         """Hole alle Mahnstufen fuer Benutzer.
 
         Args:
@@ -155,7 +159,7 @@ class DunningStageConfigService:
         db: AsyncSession,
         user_id: UUID,
         stage_id: UUID,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[JSONDict]:
         """Hole einzelne Mahnstufe.
 
         Args:
@@ -186,7 +190,7 @@ class DunningStageConfigService:
         action_type: DunningActionType,
         fee_amount: Decimal = Decimal("0.00"),
         template_id: Optional[UUID] = None,
-    ) -> Dict[str, Any]:
+    ) -> JSONDict:
         """Erstelle neue Mahnstufe.
 
         Args:
@@ -251,7 +255,7 @@ class DunningStageConfigService:
         fee_amount: Optional[Decimal] = None,
         template_id: Optional[UUID] = None,
         is_active: Optional[bool] = None,
-    ) -> Dict[str, Any]:
+    ) -> JSONDict:
         """Aktualisiere Mahnstufe.
 
         Args:
@@ -332,7 +336,7 @@ class DunningStageConfigService:
         db: AsyncSession,
         user_id: UUID,
         stage_ids: List[UUID],
-    ) -> List[Dict[str, Any]]:
+    ) -> List[JSONDict]:
         """Ordne Mahnstufen neu (Drag-and-Drop).
 
         Args:
@@ -372,7 +376,7 @@ class DunningStageConfigService:
         self,
         db: AsyncSession,
         user_id: UUID,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[JSONDict]:
         """Setze Mahnstufen auf Standard zurueck.
 
         Args:
@@ -407,7 +411,7 @@ class DunningStageConfigService:
         self,
         db: AsyncSession,
         business_entity_id: UUID,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[JSONDict]:
         """Hole kundenspezifische Mahneinstellungen.
 
         Args:
@@ -435,7 +439,7 @@ class DunningStageConfigService:
         exclude_from_auto_dunning: bool = False,
         exclusion_reason: Optional[str] = None,
         notes: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> JSONDict:
         """Setze kundenspezifische Mahneinstellungen.
 
         Args:
@@ -741,7 +745,7 @@ class DunningStageConfigService:
 
         return stages
 
-    def _stage_to_dict(self, stage: DunningStageConfig) -> Dict[str, Any]:
+    def _stage_to_dict(self, stage: DunningStageConfig) -> JSONDict:
         """Konvertiere Mahnstufe zu Dictionary."""
         return {
             "id": str(stage.id),
@@ -758,7 +762,7 @@ class DunningStageConfigService:
             "updated_at": stage.updated_at.isoformat() if stage.updated_at else None,
         }
 
-    def _override_to_dict(self, override: CustomerDunningOverride) -> Dict[str, Any]:
+    def _override_to_dict(self, override: CustomerDunningOverride) -> JSONDict:
         """Konvertiere Override zu Dictionary."""
         return {
             "id": str(override.id),

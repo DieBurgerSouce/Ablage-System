@@ -26,7 +26,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Set
+from typing import Dict, List, Optional, Tuple, Set, Union
 
 import structlog
 from prometheus_client import Counter, Histogram, Gauge
@@ -50,6 +50,10 @@ from app.core.config import settings
 from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
+
+# Type aliases
+JSONValue = Union[str, int, float, bool, None, Dict[str, "JSONValue"], List["JSONValue"]]
+JSONDict = Dict[str, JSONValue]
 
 
 # =============================================================================
@@ -185,7 +189,7 @@ class DunningTiming:
     days_from_now: int
     reasoning: str
     confidence: float
-    factors: Dict[str, Any]
+    factors: JSONDict
 
 
 @dataclass
@@ -195,7 +199,7 @@ class PaymentPrediction:
     probability: float  # 0.0-1.0
     expected_payment_date: Optional[datetime]
     expected_delay_days: int
-    factors: Dict[str, Any]
+    factors: JSONDict
     recommendations: List[str]
 
 
@@ -528,7 +532,7 @@ class SmartDunningService:
         )
         entity_id = doc_result.scalar_one_or_none()
 
-        factors: Dict[str, Any] = {
+        factors: JSONDict = {
             "invoice_amount": invoice.amount,
             "days_overdue": 0,
             "dunning_level": dunning_level.value,
@@ -610,7 +614,7 @@ class SmartDunningService:
 
     def _build_timing_reasoning(
         self,
-        factors: Dict[str, Any],
+        factors: JSONDict,
         profile: Optional[CustomerProfile],
     ) -> str:
         """Erstellt Begruendung fuer Timing-Empfehlung."""
@@ -742,7 +746,7 @@ class SmartDunningService:
 
     def _calculate_payment_probability(
         self,
-        factors: Dict[str, Any],
+        factors: JSONDict,
         profile: Optional[CustomerProfile],
     ) -> float:
         """Berechnet Zahlungswahrscheinlichkeit."""
@@ -799,7 +803,7 @@ class SmartDunningService:
 
     def _estimate_payment_delay(
         self,
-        factors: Dict[str, Any],
+        factors: JSONDict,
         profile: Optional[CustomerProfile],
     ) -> int:
         """Schaetzt erwartete Zahlungsverzoegerung in Tagen."""
@@ -826,7 +830,7 @@ class SmartDunningService:
     def _generate_payment_recommendations(
         self,
         likelihood: PaymentLikelihood,
-        factors: Dict[str, Any],
+        factors: JSONDict,
         profile: Optional[CustomerProfile],
     ) -> List[str]:
         """Generiert Empfehlungen basierend auf Vorhersage."""
@@ -996,7 +1000,7 @@ class SmartDunningService:
 
         return self._generate_fallback_text(dunning_level, profile, tone, strategy)
 
-    def _parse_llm_response(self, response: str) -> Optional[Dict[str, Any]]:
+    def _parse_llm_response(self, response: str) -> Optional[JSONDict]:
         """Parst LLM-Antwort."""
         if not response:
             return None
@@ -1109,7 +1113,7 @@ class SmartDunningService:
 
         return factors
 
-    def _assemble_full_text(self, text_data: Dict[str, Any]) -> str:
+    def _assemble_full_text(self, text_data: JSONDict) -> str:
         """Setzt vollstaendigen Text zusammen."""
         parts = [
             text_data.get("greeting", "Sehr geehrte Damen und Herren,"),
@@ -1185,7 +1189,7 @@ class SmartDunningService:
         name: str,
         description: str,
         dunning_level: DunningLevel,
-        variants: List[Dict[str, Any]],
+        variants: List[JSONDict],
         end_date: Optional[datetime] = None,
     ) -> ABTest:
         """
@@ -1316,7 +1320,7 @@ class SmartDunningService:
         self,
         db: AsyncSession,
         test_id: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[JSONDict]:
         """
         Gibt A/B Test Ergebnisse zurueck.
 
@@ -1495,7 +1499,7 @@ class SmartDunningService:
     async def get_strategy_statistics(
         self,
         db: AsyncSession,
-    ) -> Dict[str, Any]:
+    ) -> JSONDict:
         """Gibt Strategie-Statistiken zurueck."""
         stats = {}
 

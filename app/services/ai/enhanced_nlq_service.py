@@ -23,9 +23,13 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import structlog
+
+# Type aliases for JSON data
+JSONValue = Union[str, int, float, bool, None, Dict[str, "JSONValue"], List["JSONValue"]]
+JSONDict = Dict[str, JSONValue]
 from prometheus_client import Counter, Histogram
 from sqlalchemy import and_, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -69,7 +73,7 @@ class QueryInterpretation:
     """Erklaerung wie die Query interpretiert wurde."""
     original_query: str
     interpreted_as: str
-    entities_found: List[Dict[str, Any]]
+    entities_found: List[JSONDict]
     filters_applied: List[str]
     confidence: float
     ambiguities: List[str] = field(default_factory=list)
@@ -79,7 +83,7 @@ class QueryInterpretation:
 class SQLPreview:
     """SQL-Vorschau fuer Power-User."""
     sql_query: str
-    parameters: Dict[str, Any]
+    parameters: JSONDict
     estimated_rows: Optional[int]
     tables_used: List[str]
     warning: Optional[str] = None
@@ -102,7 +106,7 @@ class EnhancedNLQResult:
     sql_preview: Optional[SQLPreview]
     suggestions: List[QuerySuggestion]
     related_queries: List[str]
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: JSONDict = field(default_factory=dict)
 
 
 # =============================================================================
@@ -154,7 +158,7 @@ class EnhancedNLQService:
         """Initialisiert den Service."""
         self.db = db
         self._base_service: Optional[NLQService] = None
-        self._query_history: List[Dict[str, Any]] = []
+        self._query_history: List[JSONDict] = []
         self._max_history = 100
 
     async def _get_base_service(self) -> NLQService:

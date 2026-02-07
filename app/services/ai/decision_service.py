@@ -18,7 +18,14 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Awaitable, Callable, Dict, List, Optional, Union
+
+# JSON-compatible value type for JSONB columns (decision_value, explanation, features)
+JSONValue = Union[str, int, float, bool, None, Dict[str, "JSONValue"], List["JSONValue"]]
+JSONDict = Dict[str, JSONValue]
+
+# Callback type for auto-applying decisions
+ApplyCallback = Callable[[JSONDict], Awaitable[None]]
 
 import structlog
 from prometheus_client import Counter, Histogram, Gauge
@@ -124,13 +131,13 @@ class AIDecisionResult:
     """Ergebnis einer KI-Entscheidung."""
     decision_id: uuid.UUID
     decision_type: DecisionType
-    decision_value: Dict[str, Any]
+    decision_value: JSONDict
     confidence: float
     calibrated_confidence: Optional[float]
     confidence_level: ConfidenceLevel
     auto_applied: bool
     requires_review: bool
-    explanation: Optional[Dict[str, Any]] = None
+    explanation: Optional[JSONDict] = None
     model_version: Optional[str] = None
     processing_time_ms: int = 0
 
@@ -141,10 +148,10 @@ class PendingReview:
     decision_id: uuid.UUID
     decision_type: DecisionType
     document_id: Optional[uuid.UUID]
-    decision_value: Dict[str, Any]
+    decision_value: JSONDict
     confidence: float
     confidence_level: ConfidenceLevel
-    explanation: Optional[Dict[str, Any]]
+    explanation: Optional[JSONDict]
     created_at: datetime
 
 
@@ -365,14 +372,14 @@ class AIDecisionService:
         self,
         db: AsyncSession,
         decision_type: DecisionType,
-        decision_value: Dict[str, Any],
+        decision_value: JSONDict,
         confidence: float,
         document_id: Optional[uuid.UUID] = None,
         company_id: Optional[uuid.UUID] = None,
-        explanation: Optional[Dict[str, Any]] = None,
-        features_used: Optional[Dict[str, Any]] = None,
+        explanation: Optional[JSONDict] = None,
+        features_used: Optional[JSONDict] = None,
         calibrated_confidence: Optional[float] = None,
-        apply_callback: Optional[Any] = None,
+        apply_callback: Optional[ApplyCallback] = None,
     ) -> AIDecisionResult:
         """
         Erstellt eine KI-Entscheidung mit Autonomie-Logik.
@@ -575,7 +582,7 @@ class AIDecisionService:
         decision_id: uuid.UUID,
         reviewer_id: uuid.UUID,
         action: ReviewAction,
-        modified_value: Optional[Dict[str, Any]] = None,
+        modified_value: Optional[JSONDict] = None,
         comment: Optional[str] = None,
     ) -> bool:
         """
@@ -664,7 +671,7 @@ class AIDecisionService:
         company_id: Optional[uuid.UUID] = None,
         decision_type: Optional[DecisionType] = None,
         days: int = 30,
-    ) -> Dict[str, Any]:
+    ) -> JSONDict:
         """
         Berechnet Genauigkeits-Statistiken.
 

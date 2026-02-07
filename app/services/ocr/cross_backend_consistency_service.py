@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Set, Tuple
 import re
 
 import structlog
@@ -229,7 +229,7 @@ class CrossBackendConsistencyService:
         document_id: str,
         results: List[OCRResult],
         trigger_third_backend: bool = True,
-        third_backend_callback: Optional[Any] = None,
+        third_backend_callback: Optional[Callable[[str], "Awaitable[Optional[OCRResult]]"]] = None,
     ) -> ConsistencyReport:
         """
         Analysiert die Konsistenz zwischen OCR-Backend-Ergebnissen.
@@ -591,7 +591,7 @@ class CrossBackendConsistencyService:
     async def _trigger_third_backend(
         self,
         existing_results: List[OCRResult],
-        callback: Any,
+        callback: Callable[[str], "Awaitable[Optional[OCRResult]]"],
     ) -> Optional[OCRResult]:
         """Triggert ein drittes Backend für bessere Konsistenz."""
         existing_backends = {r.backend for r in existing_results}

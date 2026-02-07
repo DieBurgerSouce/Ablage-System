@@ -371,7 +371,7 @@ class ConditionEvaluator:
 # =============================================================================
 
 
-def _safe_float(value: Any) -> float:
+def _safe_float(value: object) -> float:
     """Konvertiert Wert sicher zu Float."""
     if value is None:
         return 0.0

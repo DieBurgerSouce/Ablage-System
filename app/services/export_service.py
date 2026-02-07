@@ -172,7 +172,7 @@ def _extract_contract_row(doc: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _format_value(value: Any) -> str:
+def _format_value(value: object) -> str:
     """Formatiert einen Wert fuer CSV-Export."""
     if value is None:
         return ""
@@ -185,7 +185,7 @@ def _format_value(value: Any) -> str:
     return str(value)
 
 
-def _format_decimal_german(value: Any) -> Optional[float]:
+def _format_decimal_german(value: object) -> Optional[float]:
     """Konvertiert zu float fuer Excel-Formatierung."""
     if value is None:
         return None

@@ -21,6 +21,7 @@ from typing import Any, Callable, Dict, List, Optional, Set
 from fastapi import WebSocket, WebSocketDisconnect
 import structlog
 
+from app.core.safe_errors import safe_error_log
 from app.services.realtime.event_broadcaster import (
 
     EventBroadcaster,
@@ -52,11 +53,24 @@ class UserConnection:
     last_ping: datetime
     subscribed_events: Set[RealtimeEventType] = field(default_factory=set)
     state: ConnectionState = ConnectionState.CONNECTED
+    viewing_document_id: Optional[str] = None
+    cursor_position: Optional[Dict[str, int]] = None
+    status: str = "online"
 
     @property
     def is_active(self) -> bool:
         """Prueft ob Verbindung aktiv ist."""
         return self.state == ConnectionState.CONNECTED
+
+
+@dataclass
+class Room:
+    """WebSocket Room fuer dokumentbezogene Kommunikation."""
+
+    room_id: str
+    room_type: str
+    members: Set[str] = field(default_factory=set)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 @dataclass
@@ -108,6 +122,8 @@ class RealtimeWebSocketManager:
         self._connections: Dict[str, UserConnection] = {}
         # company_id -> Set[user_id]
         self._company_users: Dict[str, Set[str]] = {}
+        # room_id -> Room
+        self._rooms: Dict[str, Room] = {}
         self._lock = asyncio.Lock()
         self._ping_task: Optional[asyncio.Task] = None
         self._started = False
@@ -243,20 +259,65 @@ class RealtimeWebSocketManager:
         Args:
             user_id: User ID
         """
+        company_id = None
+        viewing_document_id = None
+
         async with self._lock:
             if user_id not in self._connections:
                 return
 
             connection = self._connections[user_id]
+            company_id = connection.company_id
+            viewing_document_id = connection.viewing_document_id
 
             # Company-User Mapping aktualisieren
-            if connection.company_id and connection.company_id in self._company_users:
-                self._company_users[connection.company_id].discard(user_id)
-                if not self._company_users[connection.company_id]:
-                    del self._company_users[connection.company_id]
+            if company_id and company_id in self._company_users:
+                self._company_users[company_id].discard(user_id)
+                if not self._company_users[company_id]:
+                    del self._company_users[company_id]
+
+            # Remove from all rooms
+            rooms_to_clean = []
+            for room_id, room in self._rooms.items():
+                if user_id in room.members:
+                    room.members.discard(user_id)
+                    # Mark empty rooms for deletion
+                    if not room.members:
+                        rooms_to_clean.append(room_id)
+
+            # Clean up empty rooms
+            for room_id in rooms_to_clean:
+                del self._rooms[room_id]
 
             # Verbindung entfernen
             del self._connections[user_id]
+
+        # Notify company about presence change
+        if company_id:
+            await self.broadcast_to_company(
+                company_id=company_id,
+                message=WSMessage(
+                    type="presence_changed",
+                    payload={
+                        "user_id": user_id,
+                        "status": "offline",
+                        "viewing_document_id": None,
+                    },
+                ),
+            )
+
+        # Notify document viewers if user was viewing a document
+        if viewing_document_id:
+            await self.broadcast_to_room(
+                room_id=f"doc:{viewing_document_id}",
+                message=WSMessage(
+                    type="document_viewer_left",
+                    payload={
+                        "user_id": user_id,
+                        "document_id": viewing_document_id,
+                    },
+                ),
+            )
 
         logger.info("websocket_disconnected", user_id=user_id)
 
@@ -280,6 +341,14 @@ class RealtimeWebSocketManager:
                 await self._handle_unsubscribe(user_id, message.get("event_types", []))
             elif msg_type == "get_history":
                 await self._handle_get_history(user_id, message.get("since"))
+            elif msg_type == "presence_update":
+                await self._handle_presence_update(user_id, message)
+            elif msg_type == "cursor_move":
+                await self._handle_cursor_move(user_id, message)
+            elif msg_type == "join_room":
+                await self._handle_join_room(user_id, message.get("room_id"))
+            elif msg_type == "leave_room":
+                await self._handle_leave_room(user_id, message.get("room_id"))
             else:
                 logger.warning(
                     "unknown_message_type",
@@ -508,6 +577,327 @@ class RealtimeWebSocketManager:
                 sent_count += 1
 
         return sent_count
+
+    async def update_presence(
+        self,
+        user_id: str,
+        document_id: Optional[str] = None,
+        status: str = "online",
+    ) -> None:
+        """
+        Aktualisiert die Presence-Informationen eines Users.
+
+        Args:
+            user_id: User ID
+            document_id: Optional Dokument-ID das der User betrachtet
+            status: Status (online/away/busy)
+        """
+        old_document_id = None
+        company_id = None
+
+        async with self._lock:
+            if user_id not in self._connections:
+                return
+
+            connection = self._connections[user_id]
+            old_document_id = connection.viewing_document_id
+            company_id = connection.company_id
+
+            connection.viewing_document_id = document_id
+            connection.status = status
+
+        # Broadcast presence change to company
+        if company_id:
+            await self.broadcast_to_company(
+                company_id=company_id,
+                message=WSMessage(
+                    type="presence_changed",
+                    payload={
+                        "user_id": user_id,
+                        "status": status,
+                        "viewing_document_id": document_id,
+                    },
+                ),
+            )
+
+        # Notify old document viewers
+        if old_document_id and old_document_id != document_id:
+            await self.broadcast_to_room(
+                room_id=f"doc:{old_document_id}",
+                message=WSMessage(
+                    type="document_viewer_left",
+                    payload={
+                        "user_id": user_id,
+                        "document_id": old_document_id,
+                    },
+                ),
+            )
+
+        # Notify new document viewers
+        if document_id:
+            await self.broadcast_to_room(
+                room_id=f"doc:{document_id}",
+                message=WSMessage(
+                    type="document_viewer_joined",
+                    payload={
+                        "user_id": user_id,
+                        "document_id": document_id,
+                        "status": status,
+                    },
+                ),
+                exclude_sender=user_id,
+            )
+
+    async def get_document_viewers(self, document_id: str) -> List[Dict[str, str]]:
+        """
+        Gibt alle User zurueck die ein Dokument gerade betrachten.
+
+        Args:
+            document_id: Dokument ID
+
+        Returns:
+            Liste von User-Informationen
+        """
+        viewers: List[Dict[str, str]] = []
+
+        async with self._lock:
+            for user_id, connection in self._connections.items():
+                if connection.viewing_document_id == document_id and connection.is_active:
+                    viewers.append({
+                        "user_id": user_id,
+                        "status": connection.status,
+                        "connected_at": connection.connected_at.isoformat(),
+                    })
+
+        return viewers
+
+    async def get_company_presence(self, company_id: str) -> List[Dict[str, str]]:
+        """
+        Gibt Presence-Informationen aller User einer Company zurueck.
+
+        Args:
+            company_id: Company ID
+
+        Returns:
+            Liste von User-Presence-Informationen
+        """
+        presence: List[Dict[str, str]] = []
+
+        async with self._lock:
+            user_ids = self._company_users.get(company_id, set())
+            for user_id in user_ids:
+                if user_id in self._connections:
+                    connection = self._connections[user_id]
+                    presence.append({
+                        "user_id": user_id,
+                        "status": connection.status,
+                        "viewing_document_id": connection.viewing_document_id or "",
+                        "connected_at": connection.connected_at.isoformat(),
+                        "last_ping": connection.last_ping.isoformat(),
+                    })
+
+        return presence
+
+    async def join_room(self, user_id: str, room_id: str) -> None:
+        """
+        User tritt einem Room bei.
+
+        Args:
+            user_id: User ID
+            room_id: Room ID (z.B. "doc:12345", "workflow:abc")
+        """
+        async with self._lock:
+            if user_id not in self._connections:
+                return
+
+            # Create room if it doesn't exist
+            if room_id not in self._rooms:
+                room_type = room_id.split(":")[0] if ":" in room_id else "default"
+                self._rooms[room_id] = Room(
+                    room_id=room_id,
+                    room_type=room_type,
+                    members=set(),
+                )
+
+            # Add user to room
+            self._rooms[room_id].members.add(user_id)
+
+        logger.info("user_joined_room", user_id=user_id, room_id=room_id)
+
+        # Notify other room members
+        await self.broadcast_to_room(
+            room_id=room_id,
+            message=WSMessage(
+                type="room_user_joined",
+                payload={
+                    "user_id": user_id,
+                    "room_id": room_id,
+                },
+            ),
+            exclude_sender=user_id,
+        )
+
+        # Send confirmation to user
+        await self._send_to_user(
+            user_id=user_id,
+            message=WSMessage(
+                type="room_joined",
+                payload={
+                    "room_id": room_id,
+                    "member_count": len(self._rooms[room_id].members),
+                },
+            ),
+        )
+
+    async def leave_room(self, user_id: str, room_id: str) -> None:
+        """
+        User verlaesst einen Room.
+
+        Args:
+            user_id: User ID
+            room_id: Room ID
+        """
+        async with self._lock:
+            if room_id not in self._rooms:
+                return
+
+            room = self._rooms[room_id]
+            room.members.discard(user_id)
+
+            # Remove empty rooms
+            if not room.members:
+                del self._rooms[room_id]
+
+        logger.info("user_left_room", user_id=user_id, room_id=room_id)
+
+        # Notify other room members
+        await self.broadcast_to_room(
+            room_id=room_id,
+            message=WSMessage(
+                type="room_user_left",
+                payload={
+                    "user_id": user_id,
+                    "room_id": room_id,
+                },
+            ),
+        )
+
+        # Send confirmation to user
+        await self._send_to_user(
+            user_id=user_id,
+            message=WSMessage(
+                type="room_left",
+                payload={"room_id": room_id},
+            ),
+        )
+
+    async def broadcast_to_room(
+        self,
+        room_id: str,
+        message: WSMessage,
+        exclude_sender: Optional[str] = None,
+    ) -> int:
+        """
+        Sendet eine Nachricht an alle Mitglieder eines Rooms.
+
+        Args:
+            room_id: Room ID
+            message: Zu sendende Nachricht
+            exclude_sender: Optional User ID der ausgeschlossen werden soll
+
+        Returns:
+            Anzahl der erfolgreichen Sendungen
+        """
+        async with self._lock:
+            if room_id not in self._rooms:
+                return 0
+            member_ids = self._rooms[room_id].members.copy()
+
+        if exclude_sender:
+            member_ids.discard(exclude_sender)
+
+        sent_count = 0
+        for user_id in member_ids:
+            if await self._send_to_user(user_id, message):
+                sent_count += 1
+
+        return sent_count
+
+    async def _handle_presence_update(self, user_id: str, message: Dict[str, Any]) -> None:
+        """Verarbeitet Presence-Update-Nachricht."""
+        document_id = message.get("document_id")
+        status = message.get("status", "online")
+
+        await self.update_presence(
+            user_id=user_id,
+            document_id=document_id,
+            status=status,
+        )
+
+        await self._send_to_user(
+            user_id=user_id,
+            message=WSMessage(
+                type="presence_updated",
+                payload={
+                    "document_id": document_id,
+                    "status": status,
+                },
+            ),
+        )
+
+    async def _handle_cursor_move(self, user_id: str, message: Dict[str, Any]) -> None:
+        """Verarbeitet Cursor-Move-Nachricht."""
+        document_id = message.get("document_id")
+        cursor_position = message.get("cursor_position")
+
+        if not document_id or not cursor_position:
+            return
+
+        async with self._lock:
+            if user_id in self._connections:
+                self._connections[user_id].cursor_position = cursor_position
+
+        # Broadcast to other viewers of same document
+        await self.broadcast_to_room(
+            room_id=f"doc:{document_id}",
+            message=WSMessage(
+                type="cursor_moved",
+                payload={
+                    "user_id": user_id,
+                    "document_id": document_id,
+                    "cursor_position": cursor_position,
+                },
+            ),
+            exclude_sender=user_id,
+        )
+
+    async def _handle_join_room(self, user_id: str, room_id: Optional[str]) -> None:
+        """Verarbeitet Join-Room-Nachricht."""
+        if not room_id:
+            await self._send_to_user(
+                user_id=user_id,
+                message=WSMessage(
+                    type="error",
+                    payload={"message": "Room ID fehlt"},
+                ),
+            )
+            return
+
+        await self.join_room(user_id, room_id)
+
+    async def _handle_leave_room(self, user_id: str, room_id: Optional[str]) -> None:
+        """Verarbeitet Leave-Room-Nachricht."""
+        if not room_id:
+            await self._send_to_user(
+                user_id=user_id,
+                message=WSMessage(
+                    type="error",
+                    payload={"message": "Room ID fehlt"},
+                ),
+            )
+            return
+
+        await self.leave_room(user_id, room_id)
 
     async def _ping_loop(self) -> None:
         """Periodischer Ping an alle Verbindungen."""

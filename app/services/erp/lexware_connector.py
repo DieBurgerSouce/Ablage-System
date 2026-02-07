@@ -21,7 +21,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Set
 from uuid import UUID
 
 import httpx
@@ -1320,7 +1320,7 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
     def register_webhook_handler(
         self,
         event_type: str,
-        handler: Any,
+        handler: Callable[["WebhookEvent"], "Awaitable[None]"],
     ) -> None:
         """Registriert einen Webhook-Handler."""
         if event_type not in self._webhook_handlers:

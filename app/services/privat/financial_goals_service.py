@@ -15,7 +15,7 @@ from datetime import date, datetime, timedelta
 
 from app.core.datetime_utils import utc_now
 from decimal import Decimal
-from typing import Any, Optional, Sequence
+from typing import Optional, Sequence
 from uuid import UUID
 
 from sqlalchemy import and_, func, select
@@ -217,7 +217,7 @@ class FinancialGoalsService:
         self,
         goal_id: UUID,
         space_id: Optional[UUID] = None,
-        **kwargs: Any,
+        **kwargs: object,
     ) -> Optional[FinancialGoal]:
         """Aktualisiert ein Finanzziel.
 

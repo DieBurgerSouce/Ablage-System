@@ -1,0 +1,134 @@
+{% extends "documents/base_document.html" %}
+
+{% block page_title %}Gutschrift {{ data.gutschriftsnummer }}{% endblock %}
+
+{% block title %}Gutschrift {{ data.gutschriftsnummer }}{% endblock %}
+
+{% block intro_text %}
+<p>Sehr geehrte Damen und Herren,</p>
+{% if data.bezug_rechnungsnummer %}
+<p>in Bezug auf Rechnung <strong>{{ data.bezug_rechnungsnummer }}</strong> erhalten Sie folgende Gutschrift:</p>
+{% else %}
+<p>wir erteilen Ihnen folgende Gutschrift:</p>
+{% endif %}
+{% endblock %}
+
+{% block positions_table %}
+<style>
+    /* Override highlight color for credit note */
+    .highlight {
+        background-color: #f0fff0;
+        border-left-color: #4caf50;
+    }
+</style>
+
+<table class="document-table">
+    <thead>
+        <tr>
+            <th style="width: 5%;">Pos.</th>
+            <th style="width: 45%;">Bezeichnung</th>
+            <th class="right" style="width: 10%;">Menge</th>
+            <th class="right" style="width: 20%;">Einzelpreis</th>
+            <th class="right" style="width: 20%;">Gesamtpreis</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for pos in data.positionen %}
+        <tr>
+            <td class="center">{{ loop.index }}</td>
+            <td>{{ pos.bezeichnung }}</td>
+            <td class="right">{{ pos.menge | number_de }}</td>
+            <td class="right">{{ pos.einzelpreis | currency }}</td>
+            <td class="right">{{ pos.gesamtpreis | currency }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="totals-section">
+    <table>
+        <tr>
+            <td>Nettobetrag:</td>
+            <td class="right">{{ data.nettobetrag | currency }}</td>
+        </tr>
+        <tr>
+            <td>zzgl. {{ data.umsatzsteuer_satz }}% USt:</td>
+            <td class="right">{{ data.umsatzsteuer | currency }}</td>
+        </tr>
+        <tr class="total-row">
+            <td>Gutschriftsbetrag:</td>
+            <td class="right">{{ data.bruttobetrag | currency }}</td>
+        </tr>
+    </table>
+</div>
+
+<div style="clear: both;"></div>
+
+<div class="highlight">
+    <p><strong>Der Betrag von {{ data.bruttobetrag | currency }} wird Ihrem Konto gutgeschrieben.</strong></p>
+    {% if data.bezug_rechnungsnummer %}
+    <p>Referenz: Rechnung {{ data.bezug_rechnungsnummer }}</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block payment_section %}
+<div class="payment-section">
+    <h2>Gutschriftsinformationen</h2>
+
+    {% if data.erstattungsmethode == 'ueberweisung' %}
+    <p>Der Gutschriftsbetrag wird auf folgendes Konto überwiesen:</p>
+    {% if data.empfaenger_iban %}
+    <div class="bank-details">
+        <table>
+            <tr>
+                <td>Empfänger:</td>
+                <td>{{ data.recipient_name }}</td>
+            </tr>
+            <tr>
+                <td>IBAN:</td>
+                <td>{{ data.empfaenger_iban }}</td>
+            </tr>
+            {% if data.empfaenger_bic %}
+            <tr>
+                <td>BIC:</td>
+                <td>{{ data.empfaenger_bic }}</td>
+            </tr>
+            {% endif %}
+        </table>
+    </div>
+    {% endif %}
+    {% elif data.erstattungsmethode == 'verrechnung' %}
+    <p>Der Gutschriftsbetrag wird mit offenen Forderungen verrechnet.</p>
+    {% else %}
+    <p>Die Gutschrift wird Ihrem Kundenkonto gutgeschrieben.</p>
+    {% endif %}
+
+    {% if data.verarbeitungszeit %}
+    <p><strong>Bearbeitungszeit:</strong> {{ data.verarbeitungszeit }}</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block closing_text %}
+<p>Wir entschuldigen uns für entstandene Unannehmlichkeiten.</p>
+<p>Bei Fragen stehen wir Ihnen gerne zur Verfügung.</p>
+<p>Mit freundlichen Grüßen</p>
+{% endblock %}
+
+{% block legal_notice %}
+{% if data.steuernummer %}
+Steuernummer: {{ data.steuernummer }}
+{% endif %}
+{% if data.ust_idnr %}
+&bull; USt-IdNr: {{ data.ust_idnr }}
+{% endif %}
+{% if data.bezug_rechnungsnummer %}
+&bull; Bezug: Rechnung {{ data.bezug_rechnungsnummer }}
+{% endif %}
+<br>
+Geschäftsführer: {{ data.geschaeftsfuehrer | default('') }}
+{% if data.handelsregister %}
+&bull; {{ data.handelsregister }}
+{% endif %}
+{% endblock %}

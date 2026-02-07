@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional, Union
 from uuid import UUID
 
 import structlog
@@ -304,7 +304,7 @@ class TemplateEngineService:
     # ========================================================================
 
     @staticmethod
-    def _format_currency(value: Any) -> str:
+    def _format_currency(value: object) -> str:
         """Formatiert Währung in deutschem Format."""
         if value is None:
             return "0,00 €"
@@ -316,7 +316,7 @@ class TemplateEngineService:
             return "0,00 €"
 
     @staticmethod
-    def _format_date_de(value: Any) -> str:
+    def _format_date_de(value: object) -> str:
         """Formatiert Datum in deutschem Format."""
         if value is None:
             return ""
@@ -330,7 +330,7 @@ class TemplateEngineService:
         return str(value)
 
     @staticmethod
-    def _format_number_de(value: Any) -> str:
+    def _format_number_de(value: object) -> str:
         """Formatiert Zahl in deutschem Format."""
         if value is None:
             return "0"
@@ -348,7 +348,7 @@ class TemplateEngineService:
     async def render_template(
         self,
         template_id: str,
-        data: Dict[str, Any],
+        data: Dict[str, object],
         output_format: str,
         db: AsyncSession,
     ) -> RenderedDocument:
@@ -473,7 +473,7 @@ class TemplateEngineService:
     # ========================================================================
 
     def _validate_variables(
-        self, template_info: TemplateInfo, data: Dict[str, Any]
+        self, template_info: TemplateInfo, data: Dict[str, object]
     ) -> None:
         """Validiert Template-Variablen."""
         variable_defs = self._get_variable_definitions(template_info.id)
@@ -485,7 +485,7 @@ class TemplateEngineService:
                 f"Fehlende erforderliche Variablen: {', '.join(missing)}"
             )
 
-    async def _render_html(self, template_id: str, data: Dict[str, Any]) -> str:
+    async def _render_html(self, template_id: str, data: Dict[str, object]) -> str:
         """Rendert HTML mit Jinja2."""
         # Default-Template wenn keine Custom-Template-Datei vorhanden
         html_template = self._get_default_html_template(template_id)
@@ -499,7 +499,7 @@ class TemplateEngineService:
         return pdf_bytes
 
     async def _convert_to_docx(
-        self, template_id: str, data: Dict[str, Any]
+        self, template_id: str, data: Dict[str, object]
     ) -> bytes:
         """Konvertiert zu DOCX mit python-docx."""
         doc = DocxDocument()
@@ -523,7 +523,7 @@ class TemplateEngineService:
         return buffer.read()
 
     def _add_rechnung_content(
-        self, doc: DocxDocument, data: Dict[str, Any]
+        self, doc: DocxDocument, data: Dict[str, object]
     ) -> None:
         """Fügt Rechnungs-Content hinzu."""
         # Empfänger
@@ -573,7 +573,7 @@ class TemplateEngineService:
         ).bold = True
 
     def _add_mahnung_content(
-        self, doc: DocxDocument, data: Dict[str, Any]
+        self, doc: DocxDocument, data: Dict[str, object]
     ) -> None:
         """Fügt Mahnungs-Content hinzu."""
         # Empfänger

@@ -31,11 +31,12 @@ from collections import deque
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Optional, TypedDict
+from typing import Dict, Optional, TypedDict
 from uuid import UUID, uuid4
 
 import structlog
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings as app_settings
@@ -214,7 +215,7 @@ class NotificationPayload(BaseModel):
     company_id: Optional[UUID] = Field(default=None, description="Mandanten-ID")
     reference_type: Optional[str] = Field(default=None, description="Referenz-Typ (document, alert, etc.)")
     reference_id: Optional[str] = Field(default=None, description="Referenz-ID")
-    metadata: dict[str, Any] = Field(default_factory=dict, description="Zusaetzliche Metadaten")
+    metadata: dict[str, object] = Field(default_factory=dict, description="Zusaetzliche Metadaten")
 
     # UI
     icon: Optional[str] = Field(default=None, description="Icon-Name oder URL")
@@ -376,13 +377,13 @@ class UnifiedNotificationHub:
         self.session = session
 
         # Lazy-loaded Service-Instanzen
-        self._email_service: Optional[Any] = None
-        self._slack_service: Optional[Any] = None
-        self._teams_service: Optional[Any] = None
-        self._push_service: Optional[Any] = None
-        self._twilio_service: Optional[Any] = None
-        self._in_app_service: Optional[Any] = None
-        self._websocket_service: Optional[Any] = None
+        self._email_service: Optional[object] = None
+        self._slack_service: Optional[object] = None
+        self._teams_service: Optional[object] = None
+        self._push_service: Optional[object] = None
+        self._twilio_service: Optional[object] = None
+        self._in_app_service: Optional[object] = None
+        self._websocket_service: Optional[object] = None
 
         # Deduplizierungs-Cache (In-Memory, TTL-basiert)
         self._dedup_cache: dict[str, float] = {}
@@ -398,7 +399,7 @@ class UnifiedNotificationHub:
     # =========================================================================
 
     @property
-    def email_service(self) -> Any:
+    def email_service(self) -> object:
         """Lazy-Load Email Service."""
         if self._email_service is None:
             from app.services.notification_service import get_notification_service
@@ -406,7 +407,7 @@ class UnifiedNotificationHub:
         return self._email_service
 
     @property
-    def slack_service(self) -> Any:
+    def slack_service(self) -> object:
         """Lazy-Load Slack Service."""
         if self._slack_service is None:
             from app.services.slack_service import get_slack_service
@@ -414,7 +415,7 @@ class UnifiedNotificationHub:
         return self._slack_service
 
     @property
-    def teams_service(self) -> Any:
+    def teams_service(self) -> object:
         """Lazy-Load Teams Service."""
         if self._teams_service is None:
             from app.services.ms_teams_service import get_teams_service
@@ -422,7 +423,7 @@ class UnifiedNotificationHub:
         return self._teams_service
 
     @property
-    def push_service(self) -> Any:
+    def push_service(self) -> object:
         """Lazy-Load Push Service."""
         if self._push_service is None:
             from app.services.push_notification_service import PushNotificationService
@@ -430,7 +431,7 @@ class UnifiedNotificationHub:
         return self._push_service
 
     @property
-    def twilio_service(self) -> Any:
+    def twilio_service(self) -> object:
         """Lazy-Load Twilio Service."""
         if self._twilio_service is None:
             from app.services.twilio_service import get_twilio_service
@@ -438,7 +439,7 @@ class UnifiedNotificationHub:
         return self._twilio_service
 
     @property
-    def in_app_service(self) -> Any:
+    def in_app_service(self) -> object:
         """Lazy-Load In-App Notification Store."""
         if self._in_app_service is None:
             from app.services.notification_service import get_notification_service
@@ -446,12 +447,71 @@ class UnifiedNotificationHub:
         return self._in_app_service
 
     @property
-    def websocket_service(self) -> Any:
+    def websocket_service(self) -> object:
         """Lazy-Load WebSocket Manager."""
         if self._websocket_service is None:
             from app.services.notification_service import get_notification_ws_manager
             self._websocket_service = get_notification_ws_manager()
         return self._websocket_service
+
+    # =========================================================================
+    # User-Praeferenzen aus DB
+    # =========================================================================
+
+    async def _load_user_preferences(
+        self,
+        user_id: UUID,
+    ) -> UserNotificationPreferences:
+        """
+        Laedt Benachrichtigungs-Praeferenzen aus der Datenbank.
+
+        Konsolidiert NotificationPreference-Eintraege pro Typ in ein
+        UserNotificationPreferences-Objekt. Faellt auf Defaults zurueck
+        wenn keine Session vorhanden oder keine Eintraege existieren.
+        """
+        if self.session is None:
+            return UserNotificationPreferences()
+
+        try:
+            from app.db.models import NotificationPreference
+
+            stmt = select(NotificationPreference).where(
+                NotificationPreference.user_id == user_id
+            )
+            result = await self.session.execute(stmt)
+            rows = result.scalars().all()
+
+            if not rows:
+                return UserNotificationPreferences()
+
+            # Kanal-Flags aus allen Typ-Eintraegen aggregieren
+            # Ein Kanal gilt als aktiviert, wenn mindestens ein Typ ihn aktiviert hat
+            channel_flags: Dict[str, bool] = {
+                "email": False,
+                "slack": False,
+                "in_app": False,
+                "sms": False,
+                "websocket": False,
+            }
+            for row in rows:
+                channels = row.enabled_channels or {}
+                for channel, enabled in channels.items():
+                    if enabled:
+                        channel_flags[channel] = True
+
+            return UserNotificationPreferences(
+                email_enabled=channel_flags.get("email", True),
+                slack_enabled=channel_flags.get("slack", False),
+                in_app_enabled=channel_flags.get("in_app", True),
+                sms_enabled=channel_flags.get("sms", False),
+            )
+        except Exception:
+            logger.warning(
+                "notification_preferences_load_failed",
+                user_id=str(user_id),
+                exc_info=True,
+            )
+            return UserNotificationPreferences()
 
     # =========================================================================
     # Deduplizierung
@@ -1052,8 +1112,7 @@ class UnifiedNotificationHub:
         # Praeferenzen laden oder Override verwenden
         preferences = preferences_override
         if preferences is None:
-            # TODO: Aus Datenbank laden
-            preferences = UserNotificationPreferences()
+            preferences = await self._load_user_preferences(recipient.user_id)
 
         # Ruhezeiten pruefen
         if not skip_quiet_hours and self._is_quiet_hours(preferences):

@@ -12,6 +12,12 @@ Unterstuetzt:
 - Versionsvergleich
 - Vertragsverlaengerungs-Warnungen (Phase 1.1)
 
+Contract Management V2 (Phase 5):
+- Klauselerkennung mit strukturierter Extraktion
+- Markt-Benchmark-Vergleiche
+- Auto-Kuendigung mit deutschen Vorlagen
+- Kostenanalyse und Optimierung
+
 Feinpoliert und durchdacht.
 """
 
@@ -27,7 +33,26 @@ from app.services.contracts.contract_renewal_service import (
     get_contract_renewal_service,
 )
 
+# V2 Enhancements (Phase 5)
+from app.services.contracts.clause_recognition_service import (
+    ClauseRecognitionService,
+    get_clause_recognition_service,
+)
+from app.services.contracts.contract_benchmark_service import (
+    ContractBenchmarkService,
+    get_contract_benchmark_service,
+)
+from app.services.contracts.auto_cancellation_service import (
+    AutoCancellationService,
+    get_auto_cancellation_service,
+)
+from app.services.contracts.contract_cost_analyzer import (
+    ContractCostAnalyzer,
+    get_contract_cost_analyzer,
+)
+
 __all__ = [
+    # Original services
     "ContractExtractionService",
     "ContractClassificationService",
     "ContractObligationTracker",
@@ -37,4 +62,13 @@ __all__ = [
     "ContractRenewalService",
     "ContractAlertCodes",
     "get_contract_renewal_service",
+    # V2 Enhancements
+    "ClauseRecognitionService",
+    "get_clause_recognition_service",
+    "ContractBenchmarkService",
+    "get_contract_benchmark_service",
+    "AutoCancellationService",
+    "get_auto_cancellation_service",
+    "ContractCostAnalyzer",
+    "get_contract_cost_analyzer",
 ]

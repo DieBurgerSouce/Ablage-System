@@ -956,7 +956,7 @@ class FinanceService(DocumentServiceBase):
             "overdue": int(row.overdue) if row and row.overdue else 0,
         }
 
-    def _get_sort_column(self, sort_by: str) -> Any:
+    def _get_sort_column(self, sort_by: str) -> object:
         """Hole Sortier-Spalte."""
         sort_map = {
             "document_date": Document.created_at,

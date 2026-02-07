@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from difflib import SequenceMatcher
 from enum import Enum
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Any, Tuple, Union
 from uuid import UUID
 
 import structlog
@@ -701,7 +701,7 @@ class SemanticValidationService:
                 actual_value=str(invoice_date),
             ))
 
-    def _validate_date(self, date_value: Any) -> Tuple[bool, str]:
+    def _validate_date(self, date_value: Union[str, datetime, None]) -> Tuple[bool, str]:
         """Validiert ein Datum."""
         if isinstance(date_value, datetime):
             # Prüfe auf Zukunftsdatum

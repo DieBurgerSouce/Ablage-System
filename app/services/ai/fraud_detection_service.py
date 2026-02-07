@@ -21,8 +21,12 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 from uuid import UUID
+
+# JSON-compatible value type for fraud detection details/metadata
+JSONValue = Union[str, int, float, bool, None, Dict[str, "JSONValue"], List["JSONValue"]]
+JSONDict = Dict[str, JSONValue]
 
 import structlog
 from sqlalchemy import select, func, and_, or_, text
@@ -83,7 +87,7 @@ class FraudIndicator:
     name: str
     weight: float
     description: str
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: JSONDict = field(default_factory=dict)
 
 
 @dataclass
@@ -94,7 +98,7 @@ class FraudDetectionResult:
     risk_level: FraudRiskLevel
     confidence: float  # 0.0 - 1.0
     indicators: List[FraudIndicator]
-    explanation: Dict[str, Any]
+    explanation: JSONDict
     document_id: Optional[UUID] = None
     entity_id: Optional[UUID] = None
     invoice_id: Optional[UUID] = None
@@ -502,7 +506,7 @@ class EnhancedFraudDetectionService:
         self,
         entity_id: UUID,
         company_id: UUID,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[JSONDict]:
         """
         Get IBAN change history for an entity.
 
@@ -831,7 +835,7 @@ class EnhancedFraudDetectionService:
         old_iban: Optional[str],
         source_document_id: Optional[UUID],
         risk_score: float,
-        risk_indicators: Dict[str, Any],
+        risk_indicators: JSONDict,
     ) -> IBANChangeRequest:
         """Create an IBAN change verification request."""
         request = IBANChangeRequest(
@@ -874,7 +878,7 @@ class EnhancedFraudDetectionService:
         coverage = indicator_count / max_indicators
         return min(0.5 + coverage * 0.5, 0.95)
 
-    def _parse_amount(self, value: Any) -> Optional[Decimal]:
+    def _parse_amount(self, value: Union[str, int, float, Decimal, None]) -> Optional[Decimal]:
         """Parse amount from various formats."""
         if value is None:
             return None
@@ -942,7 +946,7 @@ class EnhancedFraudDetectionService:
         document_id: Optional[UUID] = None,
         entity_id: Optional[UUID] = None,
         severity: AlertSeverity = AlertSeverity.HIGH,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[JSONDict] = None,
     ) -> None:
         """Create an alert for detected fraud."""
         await self.alert_service.create_alert(

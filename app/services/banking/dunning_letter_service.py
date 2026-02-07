@@ -432,6 +432,11 @@ class DunningLetterService:
         try:
             template = self._jinja_env.get_template(template_name)
         except Exception:
+            logger.exception(
+                "dunning_template_load_failed",
+                template_name=template_name,
+                dunning_level=data.dunning_level,
+            )
             template = self._jinja_env.get_template("base_dunning.html")
 
         context = {

@@ -15,7 +15,7 @@ import logging
 from datetime import datetime
 from decimal import Decimal
 from difflib import SequenceMatcher
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Tuple, Union
 from uuid import UUID
 
 from sqlalchemy import select
@@ -76,7 +76,7 @@ class ContractComparisonService:
         company_id: UUID,
         created_by_id: Optional[UUID] = None,
         save_comparison: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, object]:
         """
         Vergleiche zwei Vertraege.
 
@@ -182,7 +182,7 @@ class ContractComparisonService:
         contract_id: UUID,
         company_id: UUID,
         created_by_id: Optional[UUID] = None,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[Dict[str, object]]:
         """
         Vergleiche Vertrag mit seiner Vorgaengerversion.
 
@@ -209,7 +209,7 @@ class ContractComparisonService:
         self,
         contract_a: Contract,
         contract_b: Contract,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[Dict[str, object]]:
         """Berechne Unterschiede zwischen Vertraegen."""
         differences = []
 
@@ -277,9 +277,9 @@ class ContractComparisonService:
 
     def _analyze_clauses(
         self,
-        clauses_a: Dict[str, Any],
-        clauses_b: Dict[str, Any],
-    ) -> Dict[str, List[Dict[str, Any]]]:
+        clauses_a: Dict[str, object],
+        clauses_b: Dict[str, object],
+    ) -> Dict[str, List[Dict[str, object]]]:
         """Analysiere Klausel-Aenderungen."""
         added = []
         removed = []
@@ -324,9 +324,9 @@ class ContractComparisonService:
 
     def _calculate_risk_impact(
         self,
-        differences: List[Dict[str, Any]],
-        clause_analysis: Dict[str, List],
-    ) -> Dict[str, Any]:
+        differences: List[Dict[str, object]],
+        clause_analysis: Dict[str, List[Dict[str, object]]],
+    ) -> Dict[str, Union[int, str, Dict[str, int]]]:
         """Berechne Risiko-Impact der Aenderungen."""
         total_impact = 0
         factor_impacts = {}
@@ -385,9 +385,9 @@ class ContractComparisonService:
 
     def _generate_summary(
         self,
-        differences: List[Dict[str, Any]],
-        clause_analysis: Dict[str, List],
-        risk_impact: Dict[str, Any],
+        differences: List[Dict[str, object]],
+        clause_analysis: Dict[str, List[Dict[str, object]]],
+        risk_impact: Dict[str, Union[int, str, Dict[str, int]]],
     ) -> str:
         """Generiere Zusammenfassung des Vergleichs."""
         parts = []
@@ -436,7 +436,7 @@ class ContractComparisonService:
 
         return " ".join(parts)
 
-    def _normalize_value(self, value: Any) -> str:
+    def _normalize_value(self, value: object) -> str:
         """Normalisiere Wert fuer Vergleich."""
         if value is None:
             return ""
@@ -448,7 +448,7 @@ class ContractComparisonService:
             return value.isoformat()
         return str(value)
 
-    def _determine_change_type(self, old_val: Any, new_val: Any) -> str:
+    def _determine_change_type(self, old_val: object, new_val: object) -> str:
         """Bestimme Art der Aenderung."""
         if old_val is None and new_val is not None:
             return "added"
@@ -470,9 +470,9 @@ class ContractComparisonService:
 
     def _diff_clause_values(
         self,
-        old_val: Any,
-        new_val: Any,
-    ) -> List[Dict[str, Any]]:
+        old_val: object,
+        new_val: object,
+    ) -> List[Dict[str, object]]:
         """Berechne Detailaenderungen in einer Klausel."""
         changes = []
 

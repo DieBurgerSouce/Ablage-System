@@ -92,6 +92,12 @@ from .proactive_dunning_service import (
     PaymentHistory,
     DunningProcessResult,
 )
+# Phase 6: PSD2/FinTS Banking Integration
+from .psd2_integration_service import PSD2IntegrationService
+from .account_connection_service import AccountConnectionService
+from .auto_transaction_import_service import AutoTransactionImportService
+from .payment_initiation_service import PaymentInitiationService
+from .auto_reconciliation_service import AutoReconciliationService
 
 __all__ = [
     # Enums
@@ -183,4 +189,10 @@ __all__ = [
     "DunningDecision",
     "PaymentHistory",
     "DunningProcessResult",
+    # Phase 6: PSD2/FinTS Banking Integration
+    "PSD2IntegrationService",
+    "AccountConnectionService",
+    "AutoTransactionImportService",
+    "PaymentInitiationService",
+    "AutoReconciliationService",
 ]

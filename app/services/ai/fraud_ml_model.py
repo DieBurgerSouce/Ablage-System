@@ -426,7 +426,7 @@ class FraudFeatureExtractor:
     # Helper Methods
     # =========================================================================
 
-    def _parse_amount(self, value: Any) -> Optional[Decimal]:
+    def _parse_amount(self, value: object) -> Optional[Decimal]:
         """Parse amount from various formats."""
         if value is None:
             return None

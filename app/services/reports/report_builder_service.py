@@ -515,7 +515,7 @@ class ReportBuilderService:
         self,
         dynamic_source: str,
         runtime_filters: Optional[Dict[str, Any]] = None,
-    ) -> Optional[Union[date, List[date], Any]]:
+    ) -> Optional[Union[date, List[date], str]]:
         """Loest dynamische Werte auf.
 
         Returns:
@@ -551,7 +551,7 @@ class ReportBuilderService:
 
     def _extract_field_value(
         self,
-        row: Any,
+        row: object,
         field_path: str,
         data_source: str,
     ) -> Union[str, int, float, bool, None]:

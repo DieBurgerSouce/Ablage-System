@@ -15,8 +15,6 @@ import logging
 import re
 import uuid
 from datetime import datetime
-from typing import Any
-
 from jinja2 import Environment, BaseLoader, TemplateSyntaxError, UndefinedError
 from sqlalchemy import and_, or_, select, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -101,11 +99,11 @@ class DocumentTemplateService:
         code: str,
         content: str,
         category: TemplateCategory | str = TemplateCategory.OTHER,
-        variables: list[dict[str, Any]] | None = None,
+        variables: list[dict[str, object]] | None = None,
         description: str | None = None,
         created_by_id: uuid.UUID | None = None,
         user_id: uuid.UUID | None = None,  # Alias for created_by_id
-        **kwargs: Any,
+        **kwargs: object,
     ) -> DocumentTemplate:
         """Erstellt eine neue Dokumentvorlage."""
         # Validiere Template-Syntax
@@ -241,7 +239,7 @@ class DocumentTemplateService:
         template_id: uuid.UUID,
         company_id: uuid.UUID | None = None,
         create_new_version: bool = False,
-        **updates: Any,
+        **updates: object,
     ) -> DocumentTemplate | None:
         """
         Aktualisiert eine Vorlage.
@@ -340,7 +338,7 @@ class DocumentTemplateService:
         self,
         template: DocumentTemplate | None = None,
         template_id: uuid.UUID | None = None,
-        variables: dict[str, Any] | None = None,
+        variables: dict[str, object] | None = None,
         preview: bool = False,
     ) -> str:
         """
@@ -422,7 +420,7 @@ class DocumentTemplateService:
         template_id: uuid.UUID | None = None,
         company_id: uuid.UUID | None = None,
         title: str = "",
-        variables: dict[str, Any] | None = None,
+        variables: dict[str, object] | None = None,
         created_by_id: uuid.UUID | None = None,
         user_id: uuid.UUID | None = None,  # Alias for created_by_id
         linked_entity_id: uuid.UUID | None = None,
@@ -574,7 +572,7 @@ class DocumentTemplateService:
         self,
         snippet_id: uuid.UUID,
         company_id: uuid.UUID | None = None,
-        **updates: Any,
+        **updates: object,
     ) -> TemplateSnippet | None:
         """Aktualisiert einen Snippet."""
         snippet = await self.get_snippet(snippet_id, company_id)
@@ -675,7 +673,7 @@ class DocumentTemplateService:
     async def get_category_summary(
         self,
         company_id: uuid.UUID,
-    ) -> list[dict[str, Any]]:
+    ) -> list[dict[str, object]]:
         """Gibt eine Zusammenfassung der Vorlagen pro Kategorie zurueck."""
         # Get all categories with counts
         result = await self.db.execute(
@@ -732,7 +730,7 @@ class DocumentTemplateService:
     def validate_variables(
         self,
         template: DocumentTemplate,
-        variables: dict[str, Any],
+        variables: dict[str, object],
     ) -> tuple[bool, list[str]]:
         """
         Validiert Variablen gegen das Template-Schema.
@@ -809,7 +807,7 @@ class DocumentTemplateService:
         except TemplateSyntaxError as e:
             raise TemplateValidationError(f"Ungueltige Template-Syntax: {e}")
 
-    def _validate_variables_schema(self, variables: list[dict[str, Any]]) -> None:
+    def _validate_variables_schema(self, variables: list[dict[str, object]]) -> None:
         """Validiert das Variablen-Schema."""
         required_fields = {"name", "type"}
         valid_types = {t.value for t in VariableType}
@@ -831,8 +829,8 @@ class DocumentTemplateService:
 
     def _validate_variables(
         self,
-        schema: list[dict[str, Any]],
-        values: dict[str, Any],
+        schema: list[dict[str, object]],
+        values: dict[str, object],
     ) -> None:
         """Validiert Variablen-Werte gegen das Schema."""
         for var_def in schema:
@@ -866,9 +864,9 @@ class DocumentTemplateService:
 
     def _add_preview_defaults(
         self,
-        schema: list[dict[str, Any]],
-        values: dict[str, Any],
-    ) -> dict[str, Any]:
+        schema: list[dict[str, object]],
+        values: dict[str, object],
+    ) -> dict[str, object]:
         """Fuegt Platzhalter-Werte fuer Preview hinzu."""
         result = dict(values)
 
@@ -903,7 +901,7 @@ class DocumentTemplateService:
     # Hilfsmethoden
     # =========================================================================
 
-    async def _get_company_data(self, company_id: uuid.UUID) -> dict[str, Any]:
+    async def _get_company_data(self, company_id: uuid.UUID) -> dict[str, object]:
         """Laedt Firmendaten fuer Template-Variablen."""
         from app.db.models.company import Company
 

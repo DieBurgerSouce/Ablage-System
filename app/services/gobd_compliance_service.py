@@ -19,7 +19,7 @@ Rechtliche Grundlagen:
 
 import uuid
 from datetime import datetime, date, timedelta, timezone
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union
 from dataclasses import dataclass
 from enum import Enum
 
@@ -50,9 +50,9 @@ class ComplianceStatus(str, Enum):
 class ComplianceMetric:
     """Einzelne Compliance-Metrik."""
     name: str
-    value: Any
+    value: Union[str, int, float, bool]
     status: ComplianceStatus
-    threshold: Optional[Any] = None
+    threshold: Optional[Union[str, int, float]] = None
     description: str = ""
     recommendation: Optional[str] = None
 

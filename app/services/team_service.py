@@ -260,7 +260,7 @@ class TeamService:
         self,
         team_id: UUID,
         actor_id: UUID,
-        **updates: Any,
+        **updates: object,
     ) -> Optional[Team]:
         """
         Aktualisiert ein Team.

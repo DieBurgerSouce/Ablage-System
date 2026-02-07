@@ -396,6 +396,44 @@ class ArchiveService:
 
         return setting
 
+    async def check_retention_before_delete(
+        self,
+        db: AsyncSession,
+        document_id: uuid.UUID,
+    ) -> bool:
+        """Prueft ob Aufbewahrungsfrist einer Loeschung entgegensteht.
+
+        Args:
+            db: Datenbank-Session
+            document_id: ID des zu loeschenden Dokuments
+
+        Returns:
+            True wenn Loeschung erlaubt, False wenn blockiert
+
+        Raises:
+            ValueError: Wenn Aufbewahrungsfrist aktiv ist
+        """
+        from app.services.compliance.retention_enforcement_service import (
+            retention_enforcement_service
+        )
+
+        check_result = await retention_enforcement_service.can_delete_document(
+            db, document_id
+        )
+
+        if not check_result.can_delete:
+            logger.warning(
+                "retention_blocks_deletion",
+                document_id=str(document_id),
+                reason=check_result.reason,
+                retention_expires_at=str(check_result.retention_expires_at),
+            )
+            raise ValueError(
+                f"Loeschung nicht erlaubt: {check_result.reason}"
+            )
+
+        return True
+
     async def get_archive_statistics(
         self,
         db: AsyncSession,

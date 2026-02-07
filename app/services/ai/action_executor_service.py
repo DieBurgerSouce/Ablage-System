@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, date, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import structlog
 from sqlalchemy import select, update, and_
@@ -28,6 +28,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.datetime_utils import utc_now
 from app.db.models import Document, InvoiceTracking, BankTransaction, AuditLog
 from app.core.safe_errors import safe_error_log, safe_error_detail
+
+# JSON-compatible value type for action parameters and metadata
+JSONValue = Union[str, int, float, bool, None, Dict[str, "JSONValue"], List["JSONValue"]]
+JSONDict = Dict[str, JSONValue]
 
 logger = structlog.get_logger(__name__)
 
@@ -78,7 +82,7 @@ class ActionResult:
     rollback_possible: bool = False
     execution_time_ms: int = 0
     error_details: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: JSONDict = field(default_factory=dict)
 
 
 @dataclass
@@ -86,7 +90,7 @@ class RollbackInfo:
     """Information für Rollback."""
 
     action_id: uuid.UUID
-    original_states: Dict[str, Any]
+    original_states: Dict[str, JSONDict]
     rollback_sql: Optional[str] = None
 
 
@@ -124,7 +128,7 @@ class ActionExecutorService:
     async def execute_action(
         self,
         action_type: str,
-        parameters: Dict[str, Any],
+        parameters: JSONDict,
         context: ActionContext,
     ) -> ActionResult:
         """Führt eine Aktion sicher aus.
@@ -223,7 +227,7 @@ class ActionExecutorService:
     async def _execute_payment_run(
         self,
         action_id: uuid.UUID,
-        parameters: Dict[str, Any],
+        parameters: JSONDict,
         context: ActionContext,
     ) -> ActionResult:
         """Führt Zahlungslauf aus."""
@@ -293,7 +297,7 @@ class ActionExecutorService:
     async def _execute_approve_invoices(
         self,
         action_id: uuid.UUID,
-        parameters: Dict[str, Any],
+        parameters: JSONDict,
         context: ActionContext,
     ) -> ActionResult:
         """Genehmigt Rechnungen."""
@@ -349,7 +353,7 @@ class ActionExecutorService:
     async def _execute_categorize(
         self,
         action_id: uuid.UUID,
-        parameters: Dict[str, Any],
+        parameters: JSONDict,
         context: ActionContext,
     ) -> ActionResult:
         """Kategorisiert Dokumente."""
@@ -404,7 +408,7 @@ class ActionExecutorService:
     async def _execute_send_reminder(
         self,
         action_id: uuid.UUID,
-        parameters: Dict[str, Any],
+        parameters: JSONDict,
         context: ActionContext,
     ) -> ActionResult:
         """Sendet Mahnungen."""
@@ -462,7 +466,7 @@ class ActionExecutorService:
     async def _execute_match_transactions(
         self,
         action_id: uuid.UUID,
-        parameters: Dict[str, Any],
+        parameters: JSONDict,
         context: ActionContext,
     ) -> ActionResult:
         """Ordnet Transaktionen automatisch zu."""
@@ -521,7 +525,7 @@ class ActionExecutorService:
     async def _execute_export(
         self,
         action_id: uuid.UUID,
-        parameters: Dict[str, Any],
+        parameters: JSONDict,
         context: ActionContext,
     ) -> ActionResult:
         """Führt Datenexport durch."""
@@ -641,7 +645,7 @@ class ActionExecutorService:
         self,
         action_id: uuid.UUID,
         action_type: str,
-        parameters: Dict[str, Any],
+        parameters: JSONDict,
         context: ActionContext,
     ) -> None:
         """Protokolliert Aktionsstart."""

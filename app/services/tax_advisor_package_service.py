@@ -251,7 +251,7 @@ class TaxAdvisorPackageService:
         document_categories: Optional[List[str]] = None,
         recipient_email: Optional[str] = None,
         tax_advisor_user_id: Optional[uuid.UUID] = None,
-        **kwargs: Any,
+        **kwargs: object,
     ) -> PackageConfiguration:
         """
         Erstellt eine neue Paket-Konfiguration.

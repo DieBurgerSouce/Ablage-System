@@ -24,7 +24,7 @@ import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
 
 import structlog
@@ -188,7 +188,7 @@ class PrivatKIPromptService:
                         trim_blocks=True,
                         lstrip_blocks=True,
                     )
-                    instance._cache: Dict[str, Any] = {}  # In-Memory Cache
+                    instance._cache: Dict[str, Dict[str, object]] = {}  # In-Memory Cache
                     instance._cache_lock = threading.RLock()  # Thread-safe Cache-Zugriff
                     instance._cache_ttl_seconds = 3600 * 24  # 24 Stunden
                     instance._initialized = True
@@ -201,7 +201,7 @@ class PrivatKIPromptService:
         """No-op - Initialisierung erfolgt in __new__."""
         pass
 
-    def _render_template(self, template_name: str, **kwargs: Any) -> str:
+    def _render_template(self, template_name: str, **kwargs: object) -> str:
         """Rendert ein Jinja2-Template.
 
         Args:
@@ -222,7 +222,7 @@ class PrivatKIPromptService:
             )
             raise
 
-    def _get_cache_key(self, prefix: str, entity_id: UUID, **kwargs: Any) -> str:
+    def _get_cache_key(self, prefix: str, entity_id: UUID, **kwargs: object) -> str:
         """Generiert einen Cache-Key.
 
         Args:
@@ -236,7 +236,7 @@ class PrivatKIPromptService:
         data = f"{prefix}:{entity_id}:{json.dumps(kwargs, sort_keys=True, default=str)}"
         return hashlib.sha256(data.encode()).hexdigest()[:32]
 
-    def _get_from_cache(self, cache_key: str) -> Optional[Any]:
+    def _get_from_cache(self, cache_key: str) -> Optional[object]:
         """Holt Wert aus Cache (Thread-safe).
 
         WICHTIG: Gibt eine KOPIE zurueck um Cache-Mutation zu verhindern!
@@ -255,7 +255,7 @@ class PrivatKIPromptService:
         KI_CACHE_MISSES.inc()
         return None
 
-    def _set_cache(self, cache_key: str, data: Any) -> None:
+    def _set_cache(self, cache_key: str, data: object) -> None:
         """Speichert Wert im Cache (Thread-safe)."""
         with self._cache_lock:
             self._cache[cache_key] = {
@@ -263,7 +263,7 @@ class PrivatKIPromptService:
                 "timestamp": datetime.now(timezone.utc).timestamp()
             }
 
-    def _parse_json_response(self, response: str) -> Dict[str, Any]:
+    def _parse_json_response(self, response: str) -> Dict[str, object]:
         """Parst JSON aus LLM-Response.
 
         Args:

@@ -77,7 +77,7 @@ class ExtractedEntity:
     """Aus der Abfrage extrahierte Entity."""
 
     entity_type: EntityType
-    value: Any
+    value: Union[str, int, float, bool, datetime, date]
     original_text: str
     confidence: float = 0.9
 

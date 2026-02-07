@@ -53,7 +53,7 @@ class PatternMatch:
     value: str
     """The raw matched text."""
 
-    normalized_value: Any
+    normalized_value: object
     """The normalized/parsed value (e.g., Decimal for amounts)."""
 
     confidence: float

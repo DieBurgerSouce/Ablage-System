@@ -17,7 +17,7 @@ import structlog
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -40,7 +40,11 @@ from app.services.document_classification_service import (
     DocumentClassificationService,
     get_classification_service,
 )
-from app.services.entity_extraction_service import EntityExtractionService
+from app.services.entity_extraction_service import (
+    EntityExtractionService,
+    EntityExtractionResult,
+    ExtractedIdentifier,
+)
 from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.services.translation_service import (
     TranslationService,
@@ -682,7 +686,7 @@ class StructuredExtractionService:
         self,
         text: str,
         document_id: Optional[str] = None,
-        tables: Optional[List[Any]] = None,
+        tables: Optional[List[object]] = None,
         detected_language: Optional[str] = None,
         page_count: Optional[int] = None,
         db: Optional[AsyncSession] = None,
@@ -827,8 +831,8 @@ class StructuredExtractionService:
     async def _extract_invoice_data(
         self,
         text: str,
-        entities: Any,
-        tables: Optional[List[Any]] = None,
+        entities: EntityExtractionResult,
+        tables: Optional[List[object]] = None,
         page_count: Optional[int] = None,
     ) -> ExtractedInvoiceData:
         """Extrahiert Rechnungsdaten inkl. Positionen aus Tabellen."""
@@ -2031,8 +2035,8 @@ class StructuredExtractionService:
 
     def _attribute_vat_ids(
         self,
-        vat_ids: List[Any],
-        addresses: List[Any],
+        vat_ids: List[ExtractedIdentifier],
+        addresses: List[ExtractedAddress],
     ) -> Tuple[Optional[str], Optional[str]]:
         """
         Intelligente USt-IdNr Zuordnung basierend auf:
@@ -2167,8 +2171,8 @@ class StructuredExtractionService:
     def _find_nearest_address(
         self,
         position: int,
-        addresses: List[Any],
-    ) -> Optional[Any]:
+        addresses: List[ExtractedAddress],
+    ) -> Optional[ExtractedAddress]:
         """
         Finde die naechste Adresse zu einer Textposition.
 
@@ -2251,8 +2255,8 @@ class StructuredExtractionService:
     async def _extract_order_data(
         self,
         text: str,
-        entities: Any,
-        tables: Optional[List[Any]] = None
+        entities: EntityExtractionResult,
+        tables: Optional[List[object]] = None
     ) -> ExtractedOrderData:
         """Extrahiert Bestelldaten inkl. Positionen aus Tabellen."""
         order = ExtractedOrderData()
@@ -2359,7 +2363,7 @@ class StructuredExtractionService:
     def _extract_contract_data(
         self,
         text: str,
-        entities: Any
+        entities: EntityExtractionResult
     ) -> ExtractedContractData:
         """Extrahiert Vertragsdaten."""
         contract = ExtractedContractData()

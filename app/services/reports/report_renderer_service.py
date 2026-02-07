@@ -12,7 +12,7 @@ import io
 import json
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 import structlog
 
@@ -56,7 +56,7 @@ class ReportRendererService:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def get_supported_formats(self) -> List[Dict[str, Any]]:
+    def get_supported_formats(self) -> List[Dict[str, object]]:
         """Gibt unterstuetzte Export-Formate zurueck."""
         formats = [
             {"id": "json", "name": "JSON", "extension": ".json", "mime_type": "application/json", "available": True},
@@ -91,8 +91,8 @@ class ReportRendererService:
         self,
         result: ReportResult,
         format: str,
-        layout_config: Optional[Dict[str, Any]] = None,
-        chart_configs: Optional[List[Dict[str, Any]]] = None,
+        layout_config: Optional[Dict[str, object]] = None,
+        chart_configs: Optional[List[Dict[str, object]]] = None,
     ) -> bytes:
         """Rendert einen Report in das angegebene Format."""
         if format == "json":
@@ -154,8 +154,8 @@ class ReportRendererService:
     async def render_excel(
         self,
         result: ReportResult,
-        layout_config: Optional[Dict[str, Any]] = None,
-        chart_configs: Optional[List[Dict[str, Any]]] = None,
+        layout_config: Optional[Dict[str, object]] = None,
+        chart_configs: Optional[List[Dict[str, object]]] = None,
     ) -> bytes:
         """Rendert Report als Excel-Datei."""
         if not OPENPYXL_AVAILABLE:
@@ -252,7 +252,7 @@ class ReportRendererService:
     async def render_pdf(
         self,
         result: ReportResult,
-        layout_config: Optional[Dict[str, Any]] = None,
+        layout_config: Optional[Dict[str, object]] = None,
     ) -> bytes:
         """Rendert Report als PDF."""
         if not REPORTLAB_AVAILABLE:
@@ -383,7 +383,7 @@ class ReportRendererService:
     # HELPER METHODS
     # =========================================================================
 
-    def _format_csv_value(self, value: Any, data_type: str) -> str:
+    def _format_csv_value(self, value: object, data_type: str) -> str:
         """Formatiert einen Wert fuer CSV-Export."""
         if value is None:
             return ""
@@ -410,7 +410,7 @@ class ReportRendererService:
 
         return str(value)
 
-    def _format_pdf_value(self, value: Any, data_type: str) -> str:
+    def _format_pdf_value(self, value: object, data_type: str) -> str:
         """Formatiert einen Wert fuer PDF-Export."""
         if value is None:
             return "-"
@@ -438,9 +438,9 @@ class ReportRendererService:
 
     async def _add_excel_charts(
         self,
-        ws: Any,
+        ws: object,
         result: ReportResult,
-        chart_configs: List[Dict[str, Any]],
+        chart_configs: List[Dict[str, object]],
         data_start_row: int,
     ) -> None:
         """Fuegt Charts zu einem Excel-Worksheet hinzu."""

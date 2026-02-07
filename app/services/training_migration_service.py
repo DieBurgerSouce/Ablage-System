@@ -16,7 +16,7 @@ import hashlib
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 from uuid import uuid4
 
 import structlog
@@ -534,7 +534,7 @@ class TrainingMigrationService:
         # Fallback: Hash basierend auf Pfad
         return hashlib.sha256(file_path.encode()).hexdigest()
 
-    def _parse_datetime(self, value: Any) -> datetime:
+    def _parse_datetime(self, value: Union[str, datetime, None]) -> datetime:
         """Parse datetime aus verschiedenen Formaten."""
         if value is None:
             return datetime.now(timezone.utc)

@@ -13,7 +13,7 @@ Phase 4 der Strategischen Roadmap (Januar 2026).
 """
 
 from datetime import datetime, date
-from typing import Any, Optional, List, Dict, Union, Callable
+from typing import Optional, List, Dict, Union, Callable
 from uuid import UUID, uuid4
 from enum import Enum
 import re
@@ -235,7 +235,7 @@ class RuleCondition(BaseModel):
     """Eine einzelne Bedingung einer Regel."""
     field: str = Field(..., description="Feld-Pfad (z.B. 'amount', 'supplier.is_new')")
     op: ConditionOperator = Field(..., description="Operator")
-    value: Any = Field(default=None, description="Vergleichswert")
+    value: NestedValue = Field(default=None, description="Vergleichswert")
 
     # Optionale Konfiguration
     case_sensitive: bool = Field(default=False, description="Gross-/Kleinschreibung")
@@ -271,7 +271,7 @@ class CompositeCondition(BaseModel):
 class RuleAction(BaseModel):
     """Eine Aktion die bei Regelerfuellung ausgefuehrt wird."""
     type: ActionType = Field(..., description="Aktions-Typ")
-    params: Dict[str, Any] = Field(default_factory=dict, description="Parameter")
+    params: Dict[str, NestedValue] = Field(default_factory=dict, description="Parameter")
 
     # Beispiele:
     # {"type": "require_approval", "params": {"approver_role": "cfo"}}
@@ -335,7 +335,7 @@ class RuleEvaluationResult(BaseModel):
     rule_id: UUID
     rule_name: str
     matched: bool
-    condition_details: Dict[str, Any] = Field(default_factory=dict)
+    condition_details: Dict[str, object] = Field(default_factory=dict)
     triggered_actions: List[RuleAction] = Field(default_factory=list)
     execution_errors: List[str] = Field(default_factory=list)
     evaluated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -344,7 +344,7 @@ class RuleEvaluationResult(BaseModel):
 class RuleSetEvaluationResult(BaseModel):
     """Ergebnis der Auswertung aller Regeln."""
     document_id: Optional[UUID] = None
-    context_snapshot: Dict[str, Any] = Field(default_factory=dict)
+    context_snapshot: Dict[str, object] = Field(default_factory=dict)
     total_rules_evaluated: int = 0
     rules_matched: int = 0
     rule_results: List[RuleEvaluationResult] = Field(default_factory=list)
@@ -370,7 +370,7 @@ class BusinessRulesEngine:
     """
 
     # Operatoren-Map
-    OPERATORS: Dict[ConditionOperator, Callable[[Any, Any], bool]] = {
+    OPERATORS: Dict[ConditionOperator, Callable[[object, object], bool]] = {
         ConditionOperator.EQUALS: operator.eq,
         ConditionOperator.NOT_EQUALS: operator.ne,
         ConditionOperator.GREATER_THAN: operator.gt,
@@ -381,17 +381,17 @@ class BusinessRulesEngine:
 
     def __init__(self, db: Optional[AsyncSession] = None):
         self.db = db
-        self._custom_functions: Dict[str, Callable] = {}
-        self._action_handlers: Dict[ActionType, Callable] = {}
+        self._custom_functions: Dict[str, Callable[..., object]] = {}
+        self._action_handlers: Dict[ActionType, Callable[..., object]] = {}
 
-    def register_function(self, name: str, func: Callable) -> None:
+    def register_function(self, name: str, func: Callable[..., object]) -> None:
         """Registriert eine benutzerdefinierte Funktion fuer Bedingungen."""
         self._custom_functions[name] = func
 
     def register_action_handler(
         self,
         action_type: ActionType,
-        handler: Callable,
+        handler: Callable[..., object],
     ) -> None:
         """Registriert einen Handler fuer einen Aktionstyp."""
         self._action_handlers[action_type] = handler
@@ -402,7 +402,7 @@ class BusinessRulesEngine:
 
     async def evaluate_rules(
         self,
-        context: Dict[str, Any],
+        context: Dict[str, NestedValue],
         rules: List[BusinessRule],
         dry_run: bool = False,
         document_id: Optional[UUID] = None,
@@ -446,7 +446,7 @@ class BusinessRulesEngine:
 
     async def evaluate_single_rule(
         self,
-        context: Dict[str, Any],
+        context: Dict[str, NestedValue],
         rule: BusinessRule,
         dry_run: bool = True,
     ) -> RuleEvaluationResult:
@@ -455,7 +455,7 @@ class BusinessRulesEngine:
 
     async def _evaluate_rule(
         self,
-        context: Dict[str, Any],
+        context: Dict[str, NestedValue],
         rule: BusinessRule,
         dry_run: bool,
     ) -> RuleEvaluationResult:
@@ -493,9 +493,9 @@ class BusinessRulesEngine:
 
     def _evaluate_condition(
         self,
-        context: Dict[str, Any],
+        context: Dict[str, NestedValue],
         condition: Union[RuleCondition, CompositeCondition],
-    ) -> tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, Dict[str, NestedValue]]:
         """Wertet eine Bedingung rekursiv aus."""
         if isinstance(condition, RuleCondition):
             return self._evaluate_simple_condition(context, condition)
@@ -523,9 +523,9 @@ class BusinessRulesEngine:
 
     def _evaluate_simple_condition(
         self,
-        context: Dict[str, Any],
+        context: Dict[str, NestedValue],
         condition: RuleCondition,
-    ) -> tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, Dict[str, NestedValue]]:
         """Wertet eine einfache Bedingung aus."""
         details = {
             "field": condition.field,
@@ -554,11 +554,11 @@ class BusinessRulesEngine:
 
     def _evaluate_composite_condition(
         self,
-        context: Dict[str, Any],
+        context: Dict[str, NestedValue],
         condition: CompositeCondition,
-    ) -> tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, Dict[str, NestedValue]]:
         """Wertet eine zusammengesetzte Bedingung aus."""
-        details: Dict[str, Any] = {"type": "composite", "sub_conditions": []}
+        details: Dict[str, NestedValue] = {"type": "composite", "sub_conditions": []}
 
         if condition.and_conditions:
             details["logic"] = "AND"
@@ -598,8 +598,8 @@ class BusinessRulesEngine:
     def _apply_operator(
         self,
         op: ConditionOperator,
-        actual: Any,
-        expected: Any,
+        actual: NestedValue,
+        expected: NestedValue,
         case_sensitive: bool = False,
     ) -> bool:
         """Wendet einen Operator auf Werte an."""
@@ -717,7 +717,7 @@ class BusinessRulesEngine:
 
         return False
 
-    def _check_time_period(self, actual: Any, period: str) -> bool:
+    def _check_time_period(self, actual: NestedValue, period: str) -> bool:
         """Prueft ob Datum in einer Zeitperiode liegt."""
         try:
             if isinstance(actual, str):
@@ -756,8 +756,8 @@ class BusinessRulesEngine:
     def _compare_dates(
         self,
         op: ConditionOperator,
-        actual: Any,
-        expected: Any,
+        actual: NestedValue,
+        expected: NestedValue,
     ) -> bool:
         """Vergleicht Datumsangaben."""
         try:
@@ -776,7 +776,7 @@ class BusinessRulesEngine:
 
         return False
 
-    def _check_between(self, actual: Any, expected: Any) -> bool:
+    def _check_between(self, actual: NestedValue, expected: NestedValue) -> bool:
         """Prueft ob Wert zwischen zwei Grenzen liegt."""
         try:
             if isinstance(expected, (list, tuple)) and len(expected) == 2:
@@ -793,7 +793,7 @@ class BusinessRulesEngine:
 
     async def _execute_actions(
         self,
-        context: Dict[str, Any],
+        context: Dict[str, NestedValue],
         actions: List[RuleAction],
     ) -> List[str]:
         """Fuehrt Aktionen aus und sammelt Fehler."""
@@ -819,7 +819,7 @@ class BusinessRulesEngine:
     # Helpers
     # =========================================================================
 
-    def _get_nested_value(self, data: Dict[str, Any], path: str) -> NestedValue:
+    def _get_nested_value(self, data: Dict[str, NestedValue], path: str) -> NestedValue:
         """Holt verschachtelten Wert ueber Punkt-Notation.
 
         Beispiel: 'supplier.is_new' -> data['supplier']['is_new']
@@ -840,7 +840,7 @@ class BusinessRulesEngine:
 
         return current
 
-    def _to_number(self, value: Any) -> Union[int, float, Decimal]:
+    def _to_number(self, value: NestedValue) -> Union[int, float, Decimal]:
         """Konvertiert Wert zu Zahl."""
         if isinstance(value, (int, float, Decimal)):
             return value
@@ -864,7 +864,7 @@ class BusinessRulesEngine:
 
         return True
 
-    def _sanitize_context_for_logging(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    def _sanitize_context_for_logging(self, context: Dict[str, NestedValue]) -> Dict[str, NestedValue]:
         """Entfernt sensible Daten aus Kontext fuer Logging."""
         sanitized = {}
         sensitive_keys = {"password", "token", "secret", "api_key", "iban", "credit_card"}
@@ -887,7 +887,7 @@ class BusinessRulesEngine:
         self,
         document_id: UUID,
         rules: List[BusinessRule],
-        additional_context: Optional[Dict[str, Any]] = None,
+        additional_context: Optional[Dict[str, NestedValue]] = None,
         dry_run: bool = False,
     ) -> RuleSetEvaluationResult:
         """Wertet Regeln fuer ein Dokument aus.
@@ -934,7 +934,7 @@ class BusinessRulesEngine:
             document_id=document_id,
         )
 
-    def _build_document_context(self, document: Document) -> Dict[str, Any]:
+    def _build_document_context(self, document: Document) -> Dict[str, NestedValue]:
         """Baut Kontext-Dict aus Dokument."""
         context = {
             "id": str(document.id),

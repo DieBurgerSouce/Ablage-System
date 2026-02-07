@@ -18,7 +18,7 @@ from datetime import datetime, date, timedelta
 from app.core.datetime_utils import utc_now
 from app.core.safe_errors import safe_error_log
 from enum import Enum
-from typing import Optional, List, Tuple, Dict, Any
+from typing import Optional, List, Tuple, Dict, Union
 from uuid import UUID, uuid4
 import structlog
 
@@ -34,6 +34,10 @@ from app.db.models import (
 )
 
 logger = structlog.get_logger(__name__)
+
+# Type aliases
+JSONValue = Union[str, int, float, bool, None, Dict[str, "JSONValue"], List["JSONValue"]]
+JSONDict = Dict[str, JSONValue]
 
 
 class MahnTaskType(str, Enum):
@@ -88,7 +92,7 @@ class MahnTaskService:
         filters: Optional[MahnTaskFilter] = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> Tuple[List[Dict[str, Any]], int]:
+    ) -> Tuple[List[JSONDict], int]:
         """Liste Mahn-Aufgaben auf.
 
         Args:
@@ -222,7 +226,7 @@ class MahnTaskService:
         due_date: date,
         assigned_user_id: Optional[UUID] = None,
         priority: int = 3,
-    ) -> Dict[str, Any]:
+    ) -> JSONDict:
         """Erstelle neue Mahn-Aufgabe.
 
         Args:
@@ -269,7 +273,7 @@ class MahnTaskService:
         user_id: UUID,
         task_id: UUID,
         assigned_user_id: UUID,
-    ) -> Dict[str, Any]:
+    ) -> JSONDict:
         """Weise Aufgabe einem Benutzer zu.
 
         Args:
@@ -307,7 +311,7 @@ class MahnTaskService:
         task_id: UUID,
         snooze_until: date,
         reason: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> JSONDict:
         """Stelle Aufgabe zurueck (max 3x).
 
         Args:
@@ -359,7 +363,7 @@ class MahnTaskService:
         user_id: UUID,
         task_id: UUID,
         notes: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> JSONDict:
         """Schliesse Aufgabe ab.
 
         Args:
@@ -398,7 +402,7 @@ class MahnTaskService:
         user_id: UUID,
         task_id: UUID,
         reason: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> JSONDict:
         """Breche Aufgabe ab.
 
         Args:
@@ -435,7 +439,7 @@ class MahnTaskService:
         user_id: UUID,
         task_ids: List[UUID],
         notes: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> JSONDict:
         """Schliesse mehrere Aufgaben ab.
 
         Args:
@@ -481,7 +485,7 @@ class MahnTaskService:
         follow_up_required: bool = False,
         follow_up_date: Optional[date] = None,
         follow_up_notes: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> JSONDict:
         """Protokolliere Telefonkontakt.
 
         Args:
@@ -553,7 +557,7 @@ class MahnTaskService:
         dunning_record_id: UUID,
         limit: int = 50,
         offset: int = 0,
-    ) -> Tuple[List[Dict[str, Any]], int]:
+    ) -> Tuple[List[JSONDict], int]:
         """Hole Telefon-Historie fuer Mahnvorgang (paginiert).
 
         Args:
@@ -664,7 +668,7 @@ class MahnTaskService:
         result = await db.execute(query)
         return result.scalar_one_or_none()
 
-    def _task_to_dict(self, task: MahnTask) -> Dict[str, Any]:
+    def _task_to_dict(self, task: MahnTask) -> JSONDict:
         """Konvertiere Task zu Dictionary."""
         return {
             "id": str(task.id),
@@ -684,7 +688,7 @@ class MahnTaskService:
             "updated_at": task.updated_at.isoformat() if task.updated_at else None,
         }
 
-    def _call_log_to_dict(self, call: PhoneCallLog) -> Dict[str, Any]:
+    def _call_log_to_dict(self, call: PhoneCallLog) -> JSONDict:
         """Konvertiere PhoneCallLog zu Dictionary."""
         return {
             "id": str(call.id),

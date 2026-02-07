@@ -244,7 +244,7 @@ class RuleConditionMatcher:
             )
             return False
 
-    def _get_nested_value(self, data: Dict[str, Any], path: str) -> Any:
+    def _get_nested_value(self, data: Dict[str, Any], path: str) -> object:
         """Holt verschachtelten Wert aus Dict.
 
         Args:

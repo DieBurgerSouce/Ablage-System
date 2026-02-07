@@ -12,7 +12,7 @@ Business logic for managing projects including:
 from dataclasses import dataclass
 from datetime import datetime, date, timedelta
 from decimal import Decimal
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Tuple
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -252,7 +252,7 @@ class ProjectService:
         self,
         db: AsyncSession,
         project_id: UUID,
-        **update_data: Any,
+        **update_data: object,
     ) -> Optional[Project]:
         """Projekt aktualisieren."""
         project = await self.get_project(db, project_id)

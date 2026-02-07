@@ -1,9 +1,13 @@
 """Result Formatter - Formatiert Query-Ergebnisse fuer Display."""
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List
+from typing import Dict, List, Union
 
 import structlog
+
+# Type aliases for JSON data
+JSONValue = Union[str, int, float, bool, None, Dict[str, "JSONValue"], List["JSONValue"]]
+JSONDict = Dict[str, JSONValue]
 
 logger = structlog.get_logger(__name__)
 
@@ -13,9 +17,9 @@ class FormattedResult:
     """Formatiertes Query-Ergebnis."""
 
     text_summary: str  # German summary
-    data: List[Dict[str, Any]]
+    data: List[JSONDict]
     visualization_type: str  # bar, line, pie, table, kpi
-    visualization_config: Dict[str, Any] = field(default_factory=dict)
+    visualization_config: JSONDict = field(default_factory=dict)
     total_rows: int = 0
 
 
@@ -131,7 +135,7 @@ class ResultFormatter:
 
         return summary
 
-    def _format_value(self, value: Any) -> str:
+    def _format_value(self, value: JSONValue) -> str:
         """Format value for display.
 
         Args:
@@ -156,7 +160,7 @@ class ResultFormatter:
 
     def _generate_viz_config(
         self, columns: List[str], rows: List[tuple], viz_type: str
-    ) -> Dict[str, Any]:
+    ) -> JSONDict:
         """Generate visualization configuration.
 
         Args:
@@ -167,7 +171,7 @@ class ResultFormatter:
         Returns:
             Config dict for visualization component
         """
-        config: Dict[str, Any] = {"type": viz_type}
+        config: JSONDict = {"type": viz_type}
 
         if viz_type == "kpi":
             config.update(self._kpi_config(columns, rows))
@@ -184,7 +188,7 @@ class ResultFormatter:
 
     def _kpi_config(
         self, columns: List[str], rows: List[tuple]
-    ) -> Dict[str, Any]:
+    ) -> JSONDict:
         """Generate KPI visualization config.
 
         Args:
@@ -215,7 +219,7 @@ class ResultFormatter:
 
     def _bar_config(
         self, columns: List[str], rows: List[tuple]
-    ) -> Dict[str, Any]:
+    ) -> JSONDict:
         """Generate bar chart config.
 
         Args:
@@ -237,7 +241,7 @@ class ResultFormatter:
 
     def _line_config(
         self, columns: List[str], rows: List[tuple]
-    ) -> Dict[str, Any]:
+    ) -> JSONDict:
         """Generate line chart config.
 
         Args:
@@ -273,7 +277,7 @@ class ResultFormatter:
 
     def _pie_config(
         self, columns: List[str], rows: List[tuple]
-    ) -> Dict[str, Any]:
+    ) -> JSONDict:
         """Generate pie chart config.
 
         Args:
@@ -292,7 +296,7 @@ class ResultFormatter:
             "showPercentage": True,
         }
 
-    def _table_config(self, columns: List[str]) -> Dict[str, Any]:
+    def _table_config(self, columns: List[str]) -> JSONDict:
         """Generate table config.
 
         Args:

@@ -14,7 +14,7 @@ Feinpoliert und durchdacht - Production-ready Vector Search.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Dict, Any, TypedDict, Callable, TypeVar
+from typing import TYPE_CHECKING, List, Optional, Dict, TypedDict, Callable, TypeVar
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from uuid import UUID
@@ -67,7 +67,7 @@ def async_retry_with_backoff(
     """
     def decorator(func: Callable) -> Callable:
         @wraps(func)
-        async def wrapper(*args: Any, **kwargs: Any) -> Any:
+        async def wrapper(*args: object, **kwargs: object) -> object:
             last_exception: Optional[Exception] = None
             delay = base_delay
 
@@ -132,7 +132,7 @@ class QdrantPointData(TypedDict, total=False):
     """Typisierte Punkt-Daten fuer Qdrant."""
     id: str
     vector: List[float]
-    payload: Dict[str, Any]
+    payload: Dict[str, object]
 
 
 @dataclass
@@ -140,7 +140,7 @@ class QdrantSearchResult:
     """Suchergebnis aus Qdrant."""
     id: str
     score: float
-    payload: Dict[str, Any]
+    payload: Dict[str, object]
     vector: Optional[List[float]] = None
 
 
@@ -151,7 +151,7 @@ class QdrantCollectionInfo:
     vectors_count: int
     points_count: int
     status: str
-    config: Dict[str, Any]
+    config: Dict[str, object]
 
 
 class QdrantService:
@@ -268,7 +268,7 @@ class QdrantService:
     # HEALTH & INFO
     # =========================================================================
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> Dict[str, object]:
         """Prueft Qdrant-Verbindung und gibt Status zurueck."""
         if not self._enabled:
             return {"status": "disabled", "message": "Qdrant nicht aktiviert"}
@@ -402,9 +402,9 @@ class QdrantService:
     @async_retry_with_backoff(max_retries=QDRANT_MAX_RETRIES)
     async def _upsert_with_retry(
         self,
-        client: Any,
+        client: object,
         collection_name: str,
-        qdrant_points: List[Any],
+        qdrant_points: List[object],
         wait: bool,
     ) -> None:
         """Interne Upsert-Methode mit Retry-Logic."""
@@ -473,9 +473,9 @@ class QdrantService:
     @async_retry_with_backoff(max_retries=QDRANT_MAX_RETRIES)
     async def _delete_with_retry(
         self,
-        client: Any,
+        client: object,
         collection_name: str,
-        points_selector: Any,
+        points_selector: object,
         wait: bool,
     ) -> None:
         """Interne Delete-Methode mit Retry-Logic."""
@@ -537,15 +537,15 @@ class QdrantService:
     @async_retry_with_backoff(max_retries=QDRANT_MAX_RETRIES)
     async def _search_with_retry(
         self,
-        client: Any,
+        client: object,
         collection_name: str,
         query_vector: List[float],
         limit: int,
         score_threshold: Optional[float],
-        search_filter: Optional[Any],
+        search_filter: Optional[object],
         with_vectors: bool,
         with_payload: bool,
-    ) -> List[Any]:
+    ) -> List[object]:
         """Interne Such-Methode mit Retry-Logic."""
         return await client.search(
             collection_name=collection_name,
@@ -563,7 +563,7 @@ class QdrantService:
         query_vector: List[float],
         limit: int = 10,
         score_threshold: Optional[float] = None,
-        filter_conditions: Optional[Dict[str, Any]] = None,
+        filter_conditions: Optional[Dict[str, object]] = None,
         with_vectors: bool = False,
         with_payload: bool = True,
     ) -> List[QdrantSearchResult]:
@@ -665,7 +665,7 @@ class QdrantService:
 
         Spezialisiert fuer RAG-Chunk-Suche mit typischen Filtern.
         """
-        filter_conditions: Dict[str, Any] = {}
+        filter_conditions: Dict[str, object] = {}
 
         if document_type:
             filter_conditions["document_type"] = document_type

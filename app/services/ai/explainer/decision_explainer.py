@@ -19,8 +19,12 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, TypedDict
+from typing import Dict, List, Optional, Tuple, TypedDict, Union
 from uuid import UUID, uuid4
+
+# Type aliases for JSON data
+JSONValue = Union[str, int, float, bool, None, Dict[str, "JSONValue"], List["JSONValue"]]
+JSONDict = Dict[str, JSONValue]
 
 import structlog
 from prometheus_client import Counter, Histogram
@@ -92,7 +96,7 @@ class ExplanationFactorDict(TypedDict):
     direction: str
     impact: str
     description: str
-    evidence: Dict[str, Any]
+    evidence: JSONDict
 
 
 class CounterfactualDict(TypedDict):
@@ -110,14 +114,14 @@ class DecisionExplanationDict(TypedDict):
     decision_id: str
     explanation_type: str
     decision_type: str
-    decision_value: Dict[str, Any]
+    decision_value: JSONDict
     confidence: float
     summary: str
     detailed_explanation: str
     factors: List[ExplanationFactorDict]
     counterfactuals: List[CounterfactualDict]
     similar_cases_count: int
-    audit_trail: List[Dict[str, Any]]
+    audit_trail: List[JSONDict]
     generated_at: str
 
 
@@ -134,7 +138,7 @@ class ExplanationFactor:
     direction: FactorDirection
     impact: ConfidenceImpact
     description: str
-    evidence: Dict[str, Any] = field(default_factory=dict)
+    evidence: JSONDict = field(default_factory=dict)
 
     def to_dict(self) -> ExplanationFactorDict:
         """Konvertiert zu Dictionary."""
@@ -176,7 +180,7 @@ class DecisionExplanation:
     decision_id: Optional[UUID] = None
     explanation_type: ExplanationType = ExplanationType.FACTOR_BASED
     decision_type: str = ""
-    decision_value: Dict[str, Any] = field(default_factory=dict)
+    decision_value: JSONDict = field(default_factory=dict)
     confidence: float = 0.0
 
     # Erklaerungen
@@ -187,7 +191,7 @@ class DecisionExplanation:
 
     # Kontext
     similar_cases_count: int = 0
-    audit_trail: List[Dict[str, Any]] = field(default_factory=list)
+    audit_trail: List[JSONDict] = field(default_factory=list)
 
     # Metadata
     generated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
@@ -478,7 +482,7 @@ class DecisionExplainer:
         }
         return translations.get(feature_name, feature_name)
 
-    def _generate_factor_description(self, feature_name: str, feature_value: Any) -> str:
+    def _generate_factor_description(self, feature_name: str, feature_value: JSONValue) -> str:
         """Generiert eine natuerlichsprachliche Beschreibung fuer einen Faktor."""
         descriptions = {
             "document_type_keywords": f"Schluesselwoerter im Dokument deuten auf diesen Typ hin: {feature_value}",
@@ -615,7 +619,7 @@ class DecisionExplainer:
         result = await db.execute(query)
         return result.scalar_one_or_none() or 0
 
-    def _build_audit_trail(self, decision: AIDecision) -> List[Dict[str, Any]]:
+    def _build_audit_trail(self, decision: AIDecision) -> List[JSONDict]:
         """Erstellt den Audit-Trail fuer die Entscheidung."""
         trail = []
 

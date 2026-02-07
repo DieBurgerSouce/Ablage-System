@@ -18,8 +18,12 @@ from datetime import datetime, date, timedelta
 from app.core.datetime_utils import utc_now
 from decimal import Decimal, InvalidOperation
 from enum import Enum
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, List, Tuple, Union
 from uuid import UUID
+
+# Type aliases for JSON data
+JSONValue = Union[str, int, float, bool, None, Dict[str, "JSONValue"], List["JSONValue"]]
+JSONDict = Dict[str, JSONValue]
 import structlog
 
 from sqlalchemy import select, func, and_
@@ -168,7 +172,7 @@ class AgingReportService:
         self,
         db: AsyncSession,
         user_id: UUID,
-    ) -> Dict[str, Any]:
+    ) -> JSONDict:
         """Hole kombinierte Aging-Zusammenfassung.
 
         Returns:
@@ -196,7 +200,7 @@ class AgingReportService:
         db: AsyncSession,
         user_id: UUID,
         limit: int = 10,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[JSONDict]:
         """Hole Top-Schuldner (hoechste Forderungen).
 
         Args:
@@ -212,7 +216,7 @@ class AgingReportService:
         )
 
         # Nach Counterparty gruppieren
-        by_counterparty: Dict[str, Dict[str, Any]] = {}
+        by_counterparty: Dict[str, JSONDict] = {}
 
         for item in report.line_items:
             name = item.counterparty or "Unbekannt"
@@ -275,7 +279,7 @@ class AgingReportService:
         )
 
         # Nach Counterparty gruppieren
-        by_counterparty: Dict[str, Dict[str, Any]] = {}
+        by_counterparty: Dict[str, JSONDict] = {}
 
         for item in report.line_items:
             name = item.counterparty or "Unbekannt"

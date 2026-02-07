@@ -377,7 +377,7 @@ class ContractServiceV2:
         contract_id: UUID,
         company_id: UUID,
         updated_by_id: Optional[UUID] = None,
-        **updates: Any,
+        **updates: object,
     ) -> Optional[Contract]:
         """
         Aktualisiert einen Vertrag.

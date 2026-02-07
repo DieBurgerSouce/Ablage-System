@@ -6,9 +6,9 @@ Unterstuetzt verschiedene Dokumententypen mit spezifischen Datenmodellen.
 """
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 from uuid import UUID
 
 import structlog
@@ -254,7 +254,7 @@ class BusinessObjectFactory:
         self,
         extracted_fields: Dict[str, Dict[str, Any]],
         field_name: str,
-    ) -> Optional[Any]:
+    ) -> Optional[object]:
         """
         Extrahiert einen Feldwert aus den Extraktionsdaten.
 
@@ -275,7 +275,7 @@ class BusinessObjectFactory:
             # Fallback: Direkter Wert ohne confidence
             return field_data
 
-    def _parse_date(self, date_value: Any) -> Optional[datetime]:
+    def _parse_date(self, date_value: Union[str, datetime, date, None]) -> Optional[datetime]:
         """
         Parst einen Datumswert zu datetime.
 

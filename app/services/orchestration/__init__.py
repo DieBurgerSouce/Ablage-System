@@ -117,6 +117,55 @@ from app.services.orchestration.personalized_thresholds_db_service import (
     get_personalized_thresholds_db_service,
 )
 
+# PHASE 4: Orchestration Extensions
+from app.services.orchestration.smart_approval_router import (
+    SmartApprovalRouter,
+    get_smart_approval_router,
+    RoutingStrategy,
+    AbsenceStatus,
+    ApproverMetrics,
+    DeputySelection,
+    RoutingDecision,
+    EscalationConfig,
+)
+
+from app.services.orchestration.anomaly_investigation_service import (
+    AnomalyInvestigationService,
+    get_anomaly_investigation_service,
+    Investigation,
+    InvestigationReport,
+    InvestigationStatus,
+    AnomalyType,
+    RiskAssessment,
+    TimelineEntry,
+    RelatedDocument,
+    RelatedTransaction,
+)
+
+from app.services.orchestration.entity_health_handler import (
+    EntityHealthHandler,
+    get_entity_health_handler,
+    HealthAction,
+    ActionStatus,
+    HealthActionRecommendation,
+    HealthActionConfig,
+    HealthAssessment,
+)
+
+from app.services.orchestration.seasonal_detector_service import (
+    SeasonalDetectorService,
+    get_seasonal_detector_service,
+    TrendType,
+    SeasonalPhase,
+    AlertPriority,
+    MonthlyStats,
+    SeasonalPattern as SeasonalPatternV2,
+    YearComparison,
+    SeasonalWarning,
+    LiquidityAdjustment,
+    SeasonalAnalysis,
+)
+
 __all__ = [
     # CrossModuleOrchestrator
     "CrossModuleOrchestrator",
@@ -199,4 +248,45 @@ __all__ = [
     # DB-backed PersonalizedThresholdsService (PHASE 0 FIX)
     "PersonalizedThresholdsDBService",
     "get_personalized_thresholds_db_service",
+    # PHASE 4: Orchestration Extensions
+    # SmartApprovalRouter
+    "SmartApprovalRouter",
+    "get_smart_approval_router",
+    "RoutingStrategy",
+    "AbsenceStatus",
+    "ApproverMetrics",
+    "DeputySelection",
+    "RoutingDecision",
+    "EscalationConfig",
+    # AnomalyInvestigationService
+    "AnomalyInvestigationService",
+    "get_anomaly_investigation_service",
+    "Investigation",
+    "InvestigationReport",
+    "InvestigationStatus",
+    "AnomalyType",
+    "RiskAssessment",
+    "TimelineEntry",
+    "RelatedDocument",
+    "RelatedTransaction",
+    # EntityHealthHandler
+    "EntityHealthHandler",
+    "get_entity_health_handler",
+    "HealthAction",
+    "ActionStatus",
+    "HealthActionRecommendation",
+    "HealthActionConfig",
+    "HealthAssessment",
+    # SeasonalDetectorService
+    "SeasonalDetectorService",
+    "get_seasonal_detector_service",
+    "TrendType",
+    "SeasonalPhase",
+    "AlertPriority",
+    "MonthlyStats",
+    "SeasonalPatternV2",
+    "YearComparison",
+    "SeasonalWarning",
+    "LiquidityAdjustment",
+    "SeasonalAnalysis",
 ]

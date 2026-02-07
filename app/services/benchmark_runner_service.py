@@ -14,7 +14,7 @@ Feinpoliert und durchdacht - Enterprise-grade OCR Benchmarking.
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Any, Tuple, Union
 from uuid import UUID
 import asyncio
 import time
@@ -633,7 +633,7 @@ class BenchmarkRunnerService:
             pass
         return None
 
-    def _extract_text_from_result(self, result: Any) -> Optional[str]:
+    def _extract_text_from_result(self, result: Union[Dict[str, object], str, object]) -> Optional[str]:
         """Extrahiert Text aus verschiedenen Result-Formaten.
 
         Handles multiple result formats:

@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, Any, List, Tuple, Union
 from uuid import UUID, uuid4
 
 import structlog
@@ -911,7 +911,7 @@ class IntercompanyReconciliationService:
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
 
-    def to_dict(self, obj: Any) -> Dict[str, Any]:
+    def to_dict(self, obj: Union["ICTransaction", "ICBalance"]) -> Dict[str, Any]:
         """Konvertiere dataclass zu dict fuer JSON-Serialisierung."""
         if isinstance(obj, ICTransaction):
             return {

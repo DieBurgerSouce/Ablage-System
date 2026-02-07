@@ -1061,7 +1061,10 @@ class RiskScoringService:
         entity = result.scalar_one_or_none()
 
         if not entity:
-            logger.warning(f"Entity {entity_id} nicht gefunden fuer Risk-Score-Update")
+            logger.warning(
+                "entity_not_found_for_risk_update",
+                entity_id=str(entity_id),
+            )
             return None
 
         entity.risk_score = risk_score
@@ -1116,9 +1119,17 @@ class RiskScoringService:
                 await self.update_entity_risk_score(db, entity_id)
                 updated_count += 1
             except Exception as e:
-                logger.error(f"Fehler bei Risk-Score-Update fuer Entity {entity_id}: {e}")
+                logger.error(
+                    "risk_score_update_failed",
+                    entity_id=str(entity_id),
+                    error=str(e),
+                )
 
-        logger.info(f"Risk-Scores aktualisiert fuer {updated_count} Entities (Version {self.version})")
+        logger.info(
+            "risk_scores_batch_updated",
+            updated_count=updated_count,
+            version=self.version,
+        )
         return updated_count
 
     async def save_risk_score_history(

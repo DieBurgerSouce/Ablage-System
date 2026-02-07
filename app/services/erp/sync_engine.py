@@ -16,7 +16,7 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 from uuid import UUID, uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -390,7 +390,7 @@ class SyncEngine:
         # Both modified after last sync = conflict
         return local_modified > last_sync and remote_modified > last_sync
 
-    def _parse_datetime(self, value: Any) -> Optional[datetime]:
+    def _parse_datetime(self, value: Union[str, datetime, None]) -> Optional[datetime]:
         """Parst einen Datetime-Wert."""
         if isinstance(value, datetime):
             return value

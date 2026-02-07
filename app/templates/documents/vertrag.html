@@ -1,0 +1,201 @@
+{% extends "documents/base_document.html" %}
+
+{% block page_title %}Vertrag {{ data.vertragsnummer }}{% endblock %}
+
+{% block title %}Vertrag {{ data.vertragsnummer }}{% endblock %}
+
+{% block intro_text %}
+<p><strong>Vertragsgegenstand:</strong> {{ data.vertragsgegenstand }}</p>
+
+<p>Zwischen</p>
+
+<div class="bank-details">
+    <p>
+        <strong>{{ data.company_name }}</strong><br>
+        {{ data.company_address }}<br>
+        {{ data.company_city }}<br>
+        {% if data.company_vertreten_durch %}
+        vertreten durch {{ data.company_vertreten_durch }}<br>
+        {% endif %}
+    </p>
+    <p style="text-align: center; margin: 0.5cm 0;"><strong>- nachfolgend "Auftragnehmer" -</strong></p>
+</div>
+
+<p>und</p>
+
+<div class="bank-details">
+    <p>
+        <strong>{{ data.recipient_name }}</strong><br>
+        {{ data.recipient_address }}<br>
+        {{ data.recipient_city }}<br>
+        {% if data.recipient_vertreten_durch %}
+        vertreten durch {{ data.recipient_vertreten_durch }}<br>
+        {% endif %}
+    </p>
+    <p style="text-align: center; margin: 0.5cm 0;"><strong>- nachfolgend "Auftraggeber" -</strong></p>
+</div>
+
+<p>wird folgender Vertrag geschlossen:</p>
+{% endblock %}
+
+{% block positions_table %}
+{% if data.paragraphen %}
+<div style="margin: 1cm 0;">
+    {% for para in data.paragraphen %}
+    <div style="margin-bottom: 1cm; page-break-inside: avoid;">
+        <h2 style="font-size: 12pt; margin-bottom: 0.3cm;">§ {{ para.nummer }} {{ para.titel }}</h2>
+        <div style="margin-left: 1cm; text-align: justify; line-height: 1.8;">
+            {{ para.inhalt | safe }}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="highlight">
+    <table style="width: 100%; font-size: 10pt;">
+        {% if data.laufzeit_beginn %}
+        <tr>
+            <td style="width: 40%; font-weight: bold;">Vertragsbeginn:</td>
+            <td>{{ data.laufzeit_beginn | date }}</td>
+        </tr>
+        {% endif %}
+        {% if data.laufzeit_ende %}
+        <tr>
+            <td style="font-weight: bold;">Vertragsende:</td>
+            <td>{{ data.laufzeit_ende | date }}</td>
+        </tr>
+        {% endif %}
+        {% if data.kuendigungsfrist %}
+        <tr>
+            <td style="font-weight: bold;">Kündigungsfrist:</td>
+            <td>{{ data.kuendigungsfrist }}</td>
+        </tr>
+        {% endif %}
+        {% if data.verlaengerung %}
+        <tr>
+            <td style="font-weight: bold;">Verlängerung:</td>
+            <td>{{ data.verlaengerung }}</td>
+        </tr>
+        {% endif %}
+    </table>
+</div>
+{% endblock %}
+
+{% block payment_section %}
+<div class="payment-section">
+    <h2>Vergütung</h2>
+
+    {% if data.monatlicher_betrag %}
+    <p><strong>Monatliche Vergütung:</strong> {{ data.monatlicher_betrag | currency }} (zzgl. {{ data.umsatzsteuer_satz | default(19) }}% USt)</p>
+    {% elif data.einmaliger_betrag %}
+    <p><strong>Einmalige Vergütung:</strong> {{ data.einmaliger_betrag | currency }} (zzgl. {{ data.umsatzsteuer_satz | default(19) }}% USt)</p>
+    {% endif %}
+
+    {% if data.zahlungsweise %}
+    <p><strong>Zahlungsweise:</strong> {{ data.zahlungsweise }}</p>
+    {% endif %}
+
+    {% if data.monatlicher_betrag and data.company_iban %}
+    <p>Die monatliche Zahlung erfolgt per Bankeinzug auf folgendes Konto:</p>
+    <div class="bank-details">
+        <table>
+            <tr>
+                <td>Kontoinhaber:</td>
+                <td>{{ data.company_name }}</td>
+            </tr>
+            <tr>
+                <td>IBAN:</td>
+                <td>{{ data.company_iban }}</td>
+            </tr>
+            <tr>
+                <td>BIC:</td>
+                <td>{{ data.company_bic }}</td>
+            </tr>
+            <tr>
+                <td>Bank:</td>
+                <td>{{ data.company_bank_name }}</td>
+            </tr>
+        </table>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block closing_text %}
+{% if data.salvatorische_klausel %}
+<div style="margin-top: 1.5cm; font-size: 9pt; text-align: justify;">
+    <p><strong>Salvatorische Klausel:</strong></p>
+    <p>{{ data.salvatorische_klausel }}</p>
+</div>
+{% endif %}
+
+<div style="margin-top: 2cm;">
+    <p>Dieser Vertrag wird in zweifacher Ausfertigung erstellt. Jede Partei erhält ein Exemplar.</p>
+</div>
+{% endblock %}
+
+{% block legal_notice %}
+<style>
+    /* Override signature section for contract */
+    .signature {
+        margin-top: 3cm;
+        display: table;
+        width: 100%;
+    }
+
+    .signature-block {
+        display: table-cell;
+        width: 48%;
+        vertical-align: bottom;
+    }
+
+    .signature-block:first-child {
+        padding-right: 2%;
+    }
+
+    .signature-block:last-child {
+        padding-left: 2%;
+        border-left: 1px solid #ddd;
+    }
+
+    .signature-line {
+        margin-top: 2cm;
+        border-top: 1px solid #333;
+        padding-top: 0.3cm;
+        font-size: 9pt;
+        color: #666;
+    }
+</style>
+
+<div class="signature">
+    <div class="signature-block">
+        <p>{{ data.company_city }}, den {{ data.document_date | date }}</p>
+        <div class="signature-line">
+            {{ data.company_name }}<br>
+            (Auftragnehmer)
+        </div>
+    </div>
+    <div class="signature-block">
+        <p>Ort, Datum</p>
+        <div class="signature-line">
+            {{ data.recipient_name }}<br>
+            (Auftraggeber)
+        </div>
+    </div>
+</div>
+
+<div style="clear: both; margin-top: 2cm; padding-top: 1cm; border-top: 1px solid #ddd;">
+    {% if data.steuernummer %}
+    Steuernummer: {{ data.steuernummer }}
+    {% endif %}
+    {% if data.ust_idnr %}
+    &bull; USt-IdNr: {{ data.ust_idnr }}
+    {% endif %}
+    <br>
+    Geschäftsführer: {{ data.geschaeftsfuehrer | default('') }}
+    {% if data.handelsregister %}
+    &bull; {{ data.handelsregister }}
+    {% endif %}
+</div>
+{% endblock %}

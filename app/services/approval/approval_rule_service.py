@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
-from typing import Any, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, Union
 from uuid import UUID
 
 from sqlalchemy import select
@@ -43,7 +43,7 @@ class MatchedRule:
 
     rule: ApprovalRule
     match_score: float  # 0.0 - 1.0, hoeher = bessere Uebereinstimmung
-    matched_conditions: list[str]
+    matched_conditions: List[str]
 
 
 class ApprovalRuleService:
@@ -66,9 +66,9 @@ class ApprovalRuleService:
         company_id: UUID,
         name: str,
         rule_type: ApprovalRuleType,
-        entity_types: list[str],
-        conditions: dict[str, Any],
-        approval_chain: list[dict[str, Any]],
+        entity_types: List[str],
+        conditions: Dict[str, object],
+        approval_chain: List[Dict[str, object]],
         created_by_id: Optional[UUID] = None,
         description: Optional[str] = None,
         escalation_after_hours: Optional[int] = None,
@@ -173,7 +173,7 @@ class ApprovalRuleService:
         self,
         rule_id: UUID,
         company_id: UUID,
-        **updates: Any,
+        **updates: object,
     ) -> Optional[ApprovalRule]:
         """Aktualisiert eine Regel.
 
@@ -245,8 +245,8 @@ class ApprovalRuleService:
         self,
         company_id: UUID,
         entity_type: str,
-        entity_data: dict[str, Any],
-    ) -> list[MatchedRule]:
+        entity_data: Dict[str, object],
+    ) -> List[MatchedRule]:
         """Findet alle passenden Regeln fuer eine Entitaet.
 
         Args:
@@ -259,7 +259,7 @@ class ApprovalRuleService:
         """
         rules = await self.get_rules_for_company(company_id, active_only=True)
 
-        matched_rules: list[MatchedRule] = []
+        matched_rules: List[MatchedRule] = []
 
         for rule in rules:
             # Pruefen ob Entity-Typ passt
@@ -285,9 +285,9 @@ class ApprovalRuleService:
 
     def _evaluate_conditions(
         self,
-        conditions: dict[str, Any],
-        entity_data: dict[str, Any],
-    ) -> dict[str, Any]:
+        conditions: Dict[str, object],
+        entity_data: Dict[str, object],
+    ) -> Dict[str, object]:
         """Evaluiert Bedingungen gegen Entitaetsdaten.
 
         Args:
@@ -300,7 +300,7 @@ class ApprovalRuleService:
         if not conditions:
             return {"matches": True, "score": 1.0, "matched": []}
 
-        matched_conditions: list[str] = []
+        matched_conditions: List[str] = []
         total_conditions = len(conditions)
 
         for condition_key, condition_value in conditions.items():
@@ -348,8 +348,8 @@ class ApprovalRuleService:
 
     def _compare_values(
         self,
-        entity_value: Any,
-        condition_value: Any,
+        entity_value: object,
+        condition_value: object,
         operator: str,
     ) -> bool:
         """Vergleicht zwei Werte.
@@ -380,7 +380,7 @@ class ApprovalRuleService:
 
         return False
 
-    async def create_default_rules(self, company_id: UUID, created_by_id: UUID) -> list[ApprovalRule]:
+    async def create_default_rules(self, company_id: UUID, created_by_id: UUID) -> List[ApprovalRule]:
         """Erstellt Standard-Genehmigungsregeln fuer eine Firma.
 
         Args:
@@ -443,7 +443,7 @@ class ApprovalRuleService:
             },
         ]
 
-        created_rules: list[ApprovalRule] = []
+        created_rules: List[ApprovalRule] = []
 
         for rule_data in default_rules:
             rule = await self.create_rule(
@@ -463,7 +463,7 @@ class ApprovalRuleService:
     async def evaluate_rule_conditions(
         self,
         rule: ApprovalRule,
-        entity_data: dict[str, Any],
+        entity_data: Dict[str, object],
     ) -> bool:
         """Evaluiert ob eine Regel auf Entity-Daten zutrifft (fuer API Preview).
 
