@@ -371,6 +371,43 @@ function deleteUpload(db, id) {
 
 // ==================== Push Notifications ====================
 
+/**
+ * Notification Type to URL Mapping for Deep Linking
+ */
+const NOTIFICATION_ROUTES = {
+  'document': '/documents',
+  'document_processed': '/documents',
+  'approval_required': '/approvals',
+  'workflow_completed': '/workflows',
+  'system_alert': '/alerts',
+  'payment_reminder': '/invoices',
+  'error_notification': '/alerts',
+  'deadline': '/deadlines',
+  'skonto': '/banking/skonto',
+  'shipment': '/shipments',
+};
+
+/**
+ * Get deep link URL based on notification type and data
+ */
+function getNotificationUrl(notificationData) {
+  const type = notificationData.type || 'default';
+  const baseUrl = NOTIFICATION_ROUTES[type] || '/';
+
+  // Build URL with optional document/entity ID
+  if (notificationData.documentId) {
+    return `${baseUrl}/${notificationData.documentId}`;
+  }
+  if (notificationData.entityId) {
+    return `${baseUrl}?entity=${notificationData.entityId}`;
+  }
+  if (notificationData.url) {
+    return notificationData.url;
+  }
+
+  return baseUrl;
+}
+
 self.addEventListener('push', (event) => {
   console.log('[ServiceWorker] Push received');
 
@@ -378,7 +415,7 @@ self.addEventListener('push', (event) => {
     title: 'Ablage-System',
     body: 'Neue Benachrichtigung',
     icon: '/icons/icon-192x192.png',
-    badge: '/icons/badge-72x72.png',
+    badge: '/icons/icon-72x72.png',
     tag: 'default',
     data: {},
   };
@@ -391,16 +428,34 @@ self.addEventListener('push', (event) => {
     }
   }
 
+  // Determine URL for deep linking
+  const notificationUrl = getNotificationUrl(data.data);
+
   const options = {
     body: data.body,
     icon: data.icon,
     badge: data.badge,
     tag: data.tag,
-    data: data.data,
+    data: {
+      ...data.data,
+      url: notificationUrl,
+      timestamp: Date.now(),
+    },
     actions: data.actions || [],
     vibrate: [200, 100, 200],
-    requireInteraction: data.priority === 'high',
+    requireInteraction: data.priority === 'high' || data.requireInteraction,
+    silent: data.silent || false,
   };
+
+  // Add image if provided
+  if (data.image) {
+    options.image = data.image;
+  }
+
+  // Add renotify for tag updates
+  if (data.tag && data.tag !== 'default') {
+    options.renotify = true;
+  }
 
   event.waitUntil(
     self.registration.showNotification(data.title, options)
@@ -412,7 +467,31 @@ self.addEventListener('notificationclick', (event) => {
 
   event.notification.close();
 
-  const urlToOpen = event.notification.data?.url || '/';
+  const notificationData = event.notification.data || {};
+  let urlToOpen = notificationData.url || '/';
+
+  // Handle action button clicks
+  if (event.action) {
+    console.log('[ServiceWorker] Action clicked:', event.action);
+
+    // Route based on action
+    switch (event.action) {
+      case 'approve':
+        urlToOpen = `/approvals/${notificationData.documentId}?action=approve`;
+        break;
+      case 'reject':
+        urlToOpen = `/approvals/${notificationData.documentId}?action=reject`;
+        break;
+      case 'view':
+        urlToOpen = notificationData.url || '/';
+        break;
+      case 'dismiss':
+        return; // Just close the notification
+      default:
+        // Use default URL
+        break;
+    }
+  }
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true })
@@ -420,9 +499,16 @@ self.addEventListener('notificationclick', (event) => {
         // Check if there's already a window open
         for (const client of windowClients) {
           if (client.url.includes(self.location.origin) && 'focus' in client) {
-            client.focus();
-            client.navigate(urlToOpen);
-            return;
+            // Focus existing window and navigate
+            return client.focus().then(() => {
+              // Post message to handle navigation in the app
+              client.postMessage({
+                type: 'NOTIFICATION_CLICK',
+                url: urlToOpen,
+                data: notificationData,
+              });
+              return client;
+            });
           }
         }
         // Open new window
@@ -432,6 +518,79 @@ self.addEventListener('notificationclick', (event) => {
       })
   );
 });
+
+// Handle notification close (for analytics)
+self.addEventListener('notificationclose', (event) => {
+  const notificationData = event.notification.data || {};
+  console.log('[ServiceWorker] Notification closed:', event.notification.tag, {
+    dismissed: true,
+    timestamp: Date.now(),
+    notificationId: notificationData.notificationId,
+  });
+});
+
+// ==================== Periodic Background Fetch ====================
+
+self.addEventListener('periodicsync', (event) => {
+  console.log('[ServiceWorker] Periodic sync:', event.tag);
+
+  if (event.tag === 'sync-documents') {
+    event.waitUntil(syncDocumentMetadata());
+  }
+
+  if (event.tag === 'check-notifications') {
+    event.waitUntil(checkPendingNotifications());
+  }
+});
+
+async function syncDocumentMetadata() {
+  console.log('[ServiceWorker] Syncing document metadata...');
+
+  try {
+    // Fetch recent document metadata for offline access
+    const response = await fetch('/api/v1/documents/recent?limit=50', {
+      credentials: 'include',
+    });
+
+    if (response.ok) {
+      const cache = await caches.open(API_CACHE);
+      await cache.put(
+        new Request('/api/v1/documents/recent?limit=50'),
+        response.clone()
+      );
+      console.log('[ServiceWorker] Document metadata synced');
+    }
+  } catch (error) {
+    console.error('[ServiceWorker] Document sync failed:', error);
+  }
+}
+
+async function checkPendingNotifications() {
+  console.log('[ServiceWorker] Checking pending notifications...');
+
+  try {
+    const response = await fetch('/api/v1/notifications/pending', {
+      credentials: 'include',
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+
+      // Show notification for pending items
+      if (data.count > 0) {
+        await self.registration.showNotification('Ausstehende Aufgaben', {
+          body: `Sie haben ${data.count} ausstehende ${data.count === 1 ? 'Aufgabe' : 'Aufgaben'}`,
+          icon: '/icons/icon-192x192.png',
+          badge: '/icons/icon-72x72.png',
+          tag: 'pending-tasks',
+          data: { type: 'pending_tasks', url: '/tasks' },
+        });
+      }
+    }
+  } catch (error) {
+    console.error('[ServiceWorker] Notification check failed:', error);
+  }
+}
 
 // ==================== Message Handler ====================
 
@@ -459,6 +618,48 @@ self.addEventListener('message', (event) => {
         ))
     );
   }
+
+  if (event.data.type === 'CACHE_DOCUMENT') {
+    // Cache a specific document for offline access
+    event.waitUntil(
+      caches.open(DYNAMIC_CACHE)
+        .then((cache) => {
+          const { documentId, url, content } = event.data;
+          if (url && content) {
+            const response = new Response(JSON.stringify(content), {
+              headers: { 'Content-Type': 'application/json' },
+            });
+            return cache.put(url, response);
+          }
+        })
+    );
+  }
+
+  if (event.data.type === 'REGISTER_PERIODIC_SYNC') {
+    // Register periodic background sync
+    event.waitUntil(
+      self.registration.periodicSync?.register(event.data.tag, {
+        minInterval: event.data.minInterval || 24 * 60 * 60 * 1000, // Default 24 hours
+      }).catch((error) => {
+        console.log('[ServiceWorker] Periodic sync not available:', error);
+      })
+    );
+  }
+
+  if (event.data.type === 'GET_CACHED_DOCUMENTS') {
+    // Return list of cached documents
+    event.waitUntil(
+      caches.open(DYNAMIC_CACHE)
+        .then((cache) => cache.keys())
+        .then((keys) => {
+          const documentUrls = keys
+            .filter((request) => request.url.includes('/documents/'))
+            .map((request) => request.url);
+
+          event.ports[0]?.postMessage({ documentUrls });
+        })
+    );
+  }
 });
 
-console.log('[ServiceWorker] Script loaded');
+console.log('[ServiceWorker] Script loaded v1.1.0 (Phase 8 - PWA Mobile Foundation)');

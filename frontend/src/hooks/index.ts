@@ -92,3 +92,16 @@ export {
   type FolderDropData,
   type WidgetDragData,
 } from './useDragAndDrop';
+
+// Notification Navigation (Phase 8)
+export {
+  useNotificationNavigation,
+  type NotificationClickData,
+  type UseNotificationNavigationOptions,
+} from './use-notification-navigation';
+
+// Online/Offline Status
+export {
+  useOnlineStatus,
+  type OnlineStatus,
+} from './use-online-status';

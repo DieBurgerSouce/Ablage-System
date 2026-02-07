@@ -29,6 +29,12 @@ export default defineConfig({
             use: { ...devices['Desktop Safari'] },
             testIgnore: /auth\.setup\.ts|global-setup\.ts/,
         },
+        {
+            name: 'a11y',
+            use: { ...devices['Desktop Chrome'] },
+            testDir: './e2e/a11y',
+            testMatch: /\.a11y\.spec\.ts$/,
+        },
     ],
     // Use Docker container when available, otherwise Vite dev server
     webServer: process.env.CI ? undefined : {

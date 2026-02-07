@@ -5,6 +5,7 @@ import { SessionTimeoutWarning } from '@/components/SessionTimeoutWarning'
 import { MobileSidebarProvider, useMobileSidebar } from '@/context/MobileSidebarContext'
 import { GlobalAIAssistantV2 as GlobalAIAssistant } from '@/features/ai-assistant'
 import { WebSocketStatusIndicator } from './WebSocketStatusIndicator'
+import { OfflineIndicator } from './OfflineIndicator'
 import { Menu } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -41,6 +42,8 @@ function AppLayoutInner({ children, id }: { children: React.ReactNode; id?: stri
                 tabIndex={-1}
                 aria-label="Hauptinhalt"
             >
+                {/* Offline Banner */}
+                <OfflineIndicator />
                 {/* Mobile Header with Hamburger + Breadcrumbs + WebSocket Status */}
                 <div className="flex-none sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-white/5 px-4 md:px-6 py-3">
                     <div className="flex items-center justify-between gap-3">

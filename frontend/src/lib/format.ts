@@ -97,11 +97,12 @@ export function formatDateDE(
     return '-';
   }
 
-  const options: Intl.DateTimeFormatOptions = {
-    short: { day: '2-digit', month: '2-digit', year: 'numeric' },
-    medium: { day: '2-digit', month: 'short', year: 'numeric' },
-    long: { day: 'numeric', month: 'long', year: 'numeric' },
-  }[format];
+  const options: Intl.DateTimeFormatOptions =
+    format === 'short'
+      ? { day: '2-digit', month: '2-digit', year: 'numeric' }
+      : format === 'medium'
+      ? { day: '2-digit', month: 'short', year: 'numeric' }
+      : { day: 'numeric', month: 'long', year: 'numeric' };
 
   return new Intl.DateTimeFormat('de-DE', options).format(dateObj);
 }

@@ -182,7 +182,7 @@ function StatsCards() {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4" role="region" aria-label="Alert-Statistiken">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium">Aktive Alerts</CardTitle>
@@ -322,7 +322,7 @@ function FilterBar({
           })
         }
       >
-        <SelectTrigger className="w-[150px]">
+        <SelectTrigger className="w-[150px]" aria-label="Nach Kategorie filtern">
           <SelectValue placeholder="Kategorie" />
         </SelectTrigger>
         <SelectContent>
@@ -345,7 +345,7 @@ function FilterBar({
           })
         }
       >
-        <SelectTrigger className="w-[140px]">
+        <SelectTrigger className="w-[140px]" aria-label="Nach Schweregrad filtern">
           <SelectValue placeholder="Schweregrad" />
         </SelectTrigger>
         <SelectContent>
@@ -368,7 +368,7 @@ function FilterBar({
           })
         }
       >
-        <SelectTrigger className="w-[150px]">
+        <SelectTrigger className="w-[150px]" aria-label="Nach Status filtern">
           <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent>
@@ -386,7 +386,7 @@ function FilterBar({
       {selectedCount > 0 && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" aria-label="Massenaktionen fuer ausgewaehlte Alerts">
               {selectedCount} ausgewaehlt
               <ChevronDown className="ml-2 h-4 w-4" />
             </Button>
@@ -413,6 +413,7 @@ function FilterBar({
         size="sm"
         onClick={onRefresh}
         disabled={isRefreshing}
+        aria-label="Alerts aktualisieren"
       >
         <RefreshCw
           className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
@@ -492,6 +493,7 @@ function AlertList({
     <div className="space-y-4">
       <div className="flex items-center gap-2 px-2">
         <Checkbox
+          aria-label={allSelected ? "Alle Alerts abwaehlen" : "Alle Alerts auswaehlen"}
           checked={allSelected && alerts.length > 0}
           onCheckedChange={() => {
             if (allSelected) {
@@ -711,6 +713,7 @@ export function AlertCenter() {
                   variant="outline"
                   size="sm"
                   disabled={filters.offset === 0}
+                  aria-label="Vorherige Seite"
                   onClick={() =>
                     handleFiltersChange({
                       ...filters,
@@ -724,6 +727,7 @@ export function AlertCenter() {
                   variant="outline"
                   size="sm"
                   disabled={filters.offset! + filters.limit! >= data.total}
+                  aria-label="Naechste Seite"
                   onClick={() =>
                     handleFiltersChange({
                       ...filters,
