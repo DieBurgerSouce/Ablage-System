@@ -32,6 +32,7 @@ Kategorien der geschuetzten Tabellen:
 """
 
 from alembic import op
+from sqlalchemy import text
 
 # revision identifiers
 revision = "110_comprehensive_rls_policies"
@@ -273,25 +274,25 @@ def upgrade() -> None:
     # =========================================================================
     for table_name in TABLES_WITH_COMPANY_ID:
         # Pruefen ob Tabelle existiert
-        check_table = bind.execute(f"""
+        check_table = bind.execute(text(f"""
             SELECT EXISTS (
                 SELECT FROM information_schema.tables
                 WHERE table_schema = 'public'
                 AND table_name = '{table_name}'
             )
-        """)
+        """))
         if not check_table.scalar():
             continue
 
         # Pruefen ob company_id Spalte existiert
-        check_col = bind.execute(f"""
+        check_col = bind.execute(text(f"""
             SELECT EXISTS (
                 SELECT FROM information_schema.columns
                 WHERE table_schema = 'public'
                 AND table_name = '{table_name}'
                 AND column_name = 'company_id'
             )
-        """)
+        """))
         if not check_col.scalar():
             continue
 
@@ -319,14 +320,26 @@ def upgrade() -> None:
     # =========================================================================
     for table_name, (fk_column, parent_table) in TABLES_VIA_PARENT.items():
         # Pruefen ob Tabelle existiert
-        check_table = bind.execute(f"""
+        check_table = bind.execute(text(f"""
             SELECT EXISTS (
                 SELECT FROM information_schema.tables
                 WHERE table_schema = 'public'
                 AND table_name = '{table_name}'
             )
-        """)
+        """))
         if not check_table.scalar():
+            continue
+
+        # Pruefen ob FK-Spalte existiert
+        check_fk = bind.execute(text(f"""
+            SELECT EXISTS (
+                SELECT FROM information_schema.columns
+                WHERE table_schema = 'public'
+                AND table_name = '{table_name}'
+                AND column_name = '{fk_column}'
+            )
+        """))
+        if not check_fk.scalar():
             continue
 
         # RLS aktivieren
@@ -357,14 +370,22 @@ def upgrade() -> None:
     # =========================================================================
     # 5. Spezielle Policy fuer audit_logs (nur Lesen, kein Check)
     # =========================================================================
-    check_audit = bind.execute("""
+    check_audit = bind.execute(text("""
         SELECT EXISTS (
             SELECT FROM information_schema.tables
             WHERE table_schema = 'public'
             AND table_name = 'audit_logs'
         )
-    """)
-    if check_audit.scalar():
+    """))
+    check_audit_col = bind.execute(text("""
+        SELECT EXISTS (
+            SELECT FROM information_schema.columns
+            WHERE table_schema = 'public'
+            AND table_name = 'audit_logs'
+            AND column_name = 'company_id'
+        )
+    """))
+    if check_audit.scalar() and check_audit_col.scalar():
         # Audit-Logs: RLS mit Lese-Policy aber ohne Write-Check
         # (Audit-Logs werden von System geschrieben, nicht von Usern)
         op.execute("ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY")
@@ -388,38 +409,38 @@ def upgrade() -> None:
     # 6. Index fuer Performance bei RLS-Queries
     # =========================================================================
     for table_name in TABLES_WITH_COMPANY_ID:
-        check_table = bind.execute(f"""
+        check_table = bind.execute(text(f"""
             SELECT EXISTS (
                 SELECT FROM information_schema.tables
                 WHERE table_schema = 'public'
                 AND table_name = '{table_name}'
             )
-        """)
+        """))
         if not check_table.scalar():
             continue
 
-        check_col = bind.execute(f"""
+        check_col = bind.execute(text(f"""
             SELECT EXISTS (
                 SELECT FROM information_schema.columns
                 WHERE table_schema = 'public'
                 AND table_name = '{table_name}'
                 AND column_name = 'company_id'
             )
-        """)
+        """))
         if not check_col.scalar():
             continue
 
         # Index nur erstellen wenn nicht vorhanden
-        check_idx = bind.execute(f"""
+        check_idx = bind.execute(text(f"""
             SELECT EXISTS (
                 SELECT FROM pg_indexes
                 WHERE tablename = '{table_name}'
                 AND indexname = 'ix_{table_name}_company_id_rls'
             )
-        """)
+        """))
         if not check_idx.scalar():
             op.execute(f"""
-                CREATE INDEX CONCURRENTLY IF NOT EXISTS
+                CREATE INDEX IF NOT EXISTS
                 ix_{table_name}_company_id_rls ON {table_name} (company_id)
             """)
 
@@ -435,13 +456,13 @@ def downgrade() -> None:
 
     # Drop policies fuer Tabellen mit company_id
     for table_name in TABLES_WITH_COMPANY_ID:
-        check_table = bind.execute(f"""
+        check_table = bind.execute(text(f"""
             SELECT EXISTS (
                 SELECT FROM information_schema.tables
                 WHERE table_schema = 'public'
                 AND table_name = '{table_name}'
             )
-        """)
+        """))
         if check_table.scalar():
             op.execute(f"DROP POLICY IF EXISTS {table_name}_tenant_isolation ON {table_name}")
             op.execute(f"ALTER TABLE {table_name} DISABLE ROW LEVEL SECURITY")
@@ -449,13 +470,13 @@ def downgrade() -> None:
 
     # Drop policies fuer Tabellen via Parent
     for table_name in TABLES_VIA_PARENT.keys():
-        check_table = bind.execute(f"""
+        check_table = bind.execute(text(f"""
             SELECT EXISTS (
                 SELECT FROM information_schema.tables
                 WHERE table_schema = 'public'
                 AND table_name = '{table_name}'
             )
-        """)
+        """))
         if check_table.scalar():
             op.execute(f"DROP POLICY IF EXISTS {table_name}_tenant_isolation ON {table_name}")
             op.execute(f"ALTER TABLE {table_name} DISABLE ROW LEVEL SECURITY")

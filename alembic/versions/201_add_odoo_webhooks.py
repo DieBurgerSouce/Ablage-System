@@ -30,7 +30,7 @@ def upgrade() -> None:
     op.create_table(
         'odoo_webhook_events',
         sa.Column('id', UUID(as_uuid=True), primary_key=True, server_default=sa.text('gen_random_uuid()')),
-        sa.Column('connection_id', UUID(as_uuid=True), sa.ForeignKey('erp_connections.id', ondelete='CASCADE'), nullable=False, index=True),
+        sa.Column('connection_id', UUID(as_uuid=True), comment='FK to erp_connections (deferred - table may not exist)', nullable=False, index=True),
 
         # Event identification (for idempotency)
         sa.Column('event_id', sa.String(255), nullable=False, index=True, comment='Odoo webhook event ID'),
@@ -66,7 +66,7 @@ def upgrade() -> None:
     op.create_table(
         'odoo_sync_status',
         sa.Column('id', UUID(as_uuid=True), primary_key=True, server_default=sa.text('gen_random_uuid()')),
-        sa.Column('connection_id', UUID(as_uuid=True), sa.ForeignKey('erp_connections.id', ondelete='CASCADE'), nullable=False),
+        sa.Column('connection_id', UUID(as_uuid=True), comment='FK to erp_connections (deferred - table may not exist)', nullable=False),
 
         # Data type identification
         sa.Column('data_type', sa.String(50), nullable=False, comment='projects, timesheet, inventory, products, etc.'),
@@ -101,7 +101,7 @@ def upgrade() -> None:
     op.create_table(
         'odoo_ai_feedback',
         sa.Column('id', UUID(as_uuid=True), primary_key=True, server_default=sa.text('gen_random_uuid()')),
-        sa.Column('connection_id', UUID(as_uuid=True), sa.ForeignKey('erp_connections.id', ondelete='CASCADE'), nullable=False, index=True),
+        sa.Column('connection_id', UUID(as_uuid=True), comment='FK to erp_connections (deferred - table may not exist)', nullable=False, index=True),
         sa.Column('entity_id', UUID(as_uuid=True), sa.ForeignKey('business_entities.id', ondelete='CASCADE'), nullable=False, index=True),
 
         # Feedback type and data

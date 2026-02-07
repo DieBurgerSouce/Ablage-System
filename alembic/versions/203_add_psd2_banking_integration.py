@@ -224,7 +224,7 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
         # Foreign Keys
         sa.ForeignKeyConstraint(["connection_id"], ["bank_connections.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["legacy_bank_account_id"], ["bank_accounts.id"], ondelete="SET NULL"),
+        # FK to bank_accounts deferred (legacy table may not exist)
         # Unique Constraint
         sa.UniqueConstraint("connection_id", "iban", name="uq_connection_iban"),
     )

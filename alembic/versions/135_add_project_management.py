@@ -13,6 +13,7 @@ Extends existing Kostenstelle integration.
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 # revision identifiers, used by Alembic
@@ -58,8 +59,8 @@ def upgrade() -> None:
         sa.Column('budget_spent', sa.Numeric(15, 2), nullable=True, server_default='0'),
         sa.Column('currency', sa.String(3), nullable=False, server_default='EUR'),
 
-        # Kostenstelle Link
-        sa.Column('kostenstelle_id', UUID(as_uuid=True), sa.ForeignKey('kostenstellen.id', ondelete='SET NULL'), nullable=True),
+        # Kostenstelle Link (FK added conditionally below)
+        sa.Column('kostenstelle_id', UUID(as_uuid=True), nullable=True),
 
         # Manager / Team
         sa.Column('manager_id', UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='SET NULL'), nullable=True),
@@ -97,6 +98,19 @@ def upgrade() -> None:
     op.create_index('ix_projects_company_status', 'projects', ['company_id', 'status'])
     op.create_index('ix_projects_company_code', 'projects', ['company_id', 'code'])
     op.create_index('ix_projects_end_date', 'projects', ['end_date'])
+
+    # Conditionally add kostenstellen FK (table may not exist yet)
+    bind = op.get_bind()
+    has_kostenstellen = bind.execute(text(
+        "SELECT 1 FROM information_schema.tables WHERE table_name = 'kostenstellen'"
+    )).fetchone()
+    if has_kostenstellen:
+        op.create_foreign_key(
+            'fk_projects_kostenstelle',
+            'projects', 'kostenstellen',
+            ['kostenstelle_id'], ['id'],
+            ondelete='SET NULL'
+        )
 
     # ============================================================================
     # 2. PROJECT MEMBER TABLE (Team Members)

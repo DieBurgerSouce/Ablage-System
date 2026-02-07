@@ -221,7 +221,7 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now()),
 
         sa.ForeignKeyConstraint(["company_id"], ["companies.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["ai_decision_id"], ["ai_decisions.id"], ondelete="SET NULL"),
+        # FK to ai_decisions deferred (table may not exist)
     )
 
     # Indizes fuer haeufige Abfragen

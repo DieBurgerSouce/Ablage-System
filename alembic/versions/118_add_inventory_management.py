@@ -100,16 +100,18 @@ def upgrade() -> None:
         'goods_receipt', 'goods_issue', 'transfer',
         'adjustment_plus', 'adjustment_minus',
         'return_inbound', 'return_outbound', 'scrapping',
-        name='movement_type'
+        name='movement_type',
+        create_type=False,
     )
-    movement_type_enum.create(op.get_bind())
+    movement_type_enum.create(op.get_bind(), checkfirst=True)
 
     # Movement Status Enum
     movement_status_enum = postgresql.ENUM(
         'pending', 'confirmed', 'cancelled',
-        name='movement_status'
+        name='movement_status',
+        create_type=False,
     )
-    movement_status_enum.create(op.get_bind())
+    movement_status_enum.create(op.get_bind(), checkfirst=True)
 
     # Inventory Movements (Warenbewegungen)
     op.create_table(

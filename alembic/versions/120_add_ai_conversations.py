@@ -35,31 +35,31 @@ def upgrade() -> None:
     # Message Role Enum
     message_role_enum = postgresql.ENUM(
         'user', 'assistant', 'system',
-        name='ai_message_role'
+        name='ai_message_role', create_type=False,
     )
-    message_role_enum.create(op.get_bind())
+    message_role_enum.create(op.get_bind(), checkfirst=True)
 
     # Intent Enum
     intent_enum = postgresql.ENUM(
         'search', 'execute_action', 'explain', 'suggest_booking',
         'analyze', 'predict', 'help', 'chat',
-        name='ai_assistant_intent'
+        name='ai_assistant_intent', create_type=False,
     )
-    intent_enum.create(op.get_bind())
+    intent_enum.create(op.get_bind(), checkfirst=True)
 
     # Action Status Enum
     action_status_enum = postgresql.ENUM(
         'proposed', 'confirmed', 'executed', 'cancelled', 'failed',
-        name='ai_action_status'
+        name='ai_action_status', create_type=False,
     )
-    action_status_enum.create(op.get_bind())
+    action_status_enum.create(op.get_bind(), checkfirst=True)
 
     # Feedback Type Enum
     feedback_type_enum = postgresql.ENUM(
         'helpful', 'not_helpful', 'incorrect', 'confusing', 'other',
-        name='ai_feedback_type'
+        name='ai_feedback_type', create_type=False,
     )
-    feedback_type_enum.create(op.get_bind())
+    feedback_type_enum.create(op.get_bind(), checkfirst=True)
 
     # ==========================================================================
     # AI Conversations - Haupt-Session-Tabelle

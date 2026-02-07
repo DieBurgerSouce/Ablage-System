@@ -240,7 +240,6 @@ def upgrade() -> None:
         sa.Column(
             "execution_id",
             postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("workflow_executions.id", ondelete="SET NULL"),
             nullable=True,
         ),
         sa.Column(

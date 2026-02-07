@@ -76,9 +76,7 @@ def upgrade() -> None:
     )
 
     # Indexes für Queries
-    op.create_index('ix_ai_ethics_company_id',
-                    'ai_ethics_audits',
-                    ['company_id'])
+    # Note: company_id index already created by index=True on column
     op.create_index('ix_ai_ethics_type',
                     'ai_ethics_audits',
                     ['audit_type', 'decision_type'])
@@ -126,9 +124,7 @@ def upgrade() -> None:
     )
 
     # Indexes für Queries
-    op.create_index('ix_bias_reports_company_id',
-                    'bias_reports',
-                    ['company_id'])
+    # Note: company_id index already created by index=True on column
     op.create_index('ix_bias_reports_type',
                     'bias_reports',
                     ['report_type'])

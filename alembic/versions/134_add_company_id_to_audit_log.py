@@ -16,6 +16,7 @@ Fix:
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import UUID
 
 # revision identifiers, used by Alembic
@@ -53,15 +54,21 @@ def upgrade() -> None:
     )
 
     # 4. Bestehende Logs: company_id aus User ableiten
-    # Nur wenn user_id gesetzt ist
-    op.execute("""
-        UPDATE audit_logs al
-        SET company_id = u.company_id
-        FROM users u
-        WHERE al.user_id = u.id
-        AND al.company_id IS NULL
-        AND u.company_id IS NOT NULL
-    """)
+    # Only if users table has company_id column
+    bind = op.get_bind()
+    has_col = bind.execute(text(
+        "SELECT 1 FROM information_schema.columns "
+        "WHERE table_name = 'users' AND column_name = 'company_id'"
+    )).fetchone()
+    if has_col:
+        op.execute("""
+            UPDATE audit_logs al
+            SET company_id = u.company_id
+            FROM users u
+            WHERE al.user_id = u.id
+            AND al.company_id IS NULL
+            AND u.company_id IS NOT NULL
+        """)
 
     # 5. Fuer System-Logs (ohne User) oder Logs von Usern ohne Company:
     # Setze auf eine "System" Company oder lasse NULL (je nach Policy)

@@ -97,7 +97,7 @@ def upgrade() -> None:
         sa.Column('scheme_id', sa.String(20), nullable=False, default='0204'),
         sa.Column('endpoint_url', sa.String(500), nullable=True),
         sa.Column('entity_id', postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey('entities.id'), nullable=True),
+                  sa.ForeignKey('business_entities.id'), nullable=True),
         sa.Column('participant_name', sa.String(500), nullable=True),
         sa.Column('supported_document_types', postgresql.JSONB(astext_type=sa.Text()), default=list),
         sa.Column('capabilities', postgresql.JSONB(astext_type=sa.Text()), default=dict),
@@ -163,7 +163,7 @@ def upgrade() -> None:
         sa.Column('document_id', postgresql.UUID(as_uuid=True),
                   sa.ForeignKey('documents.id'), nullable=True),
         sa.Column('entity_id', postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey('entities.id'), nullable=True),
+                  sa.ForeignKey('business_entities.id'), nullable=True),
 
         # Audit
         sa.Column('company_id', postgresql.UUID(as_uuid=True),

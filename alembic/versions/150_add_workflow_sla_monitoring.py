@@ -35,10 +35,8 @@ def upgrade() -> None:
 
         # Referenzen
         sa.Column('instance_id', postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey('bpmn_process_instances.id', ondelete='CASCADE'),
                   nullable=False, index=True),
         sa.Column('definition_id', postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey('bpmn_process_definitions.id', ondelete='CASCADE'),
                   nullable=False, index=True),
 
         # SLA Konfiguration
@@ -117,7 +115,6 @@ def upgrade() -> None:
 
         # Referenz zur Workflow-Instanz
         sa.Column('instance_id', postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey('bpmn_process_instances.id', ondelete='CASCADE'),
                   nullable=False, index=True),
 
         # Identifikation

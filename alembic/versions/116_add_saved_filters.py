@@ -87,10 +87,8 @@ def upgrade() -> None:
     # ==========================================================================
     # RLS POLICY for Multi-Tenant Isolation
     # ==========================================================================
+    op.execute("ALTER TABLE saved_filters ENABLE ROW LEVEL SECURITY")
     op.execute("""
-        ALTER TABLE saved_filters ENABLE ROW LEVEL SECURITY;
-
-        -- Users can see their own filters and shared filters from their company
         CREATE POLICY saved_filters_select_policy ON saved_filters
             FOR SELECT
             USING (
@@ -98,38 +96,36 @@ def upgrade() -> None:
                     user_id = current_setting('app.user_id', true)::uuid
                     OR (is_shared = true AND company_id = current_setting('app.company_id', true)::uuid)
                 )
-            );
-
-        -- Users can only insert their own filters
+            )
+    """)
+    op.execute("""
         CREATE POLICY saved_filters_insert_policy ON saved_filters
             FOR INSERT
             WITH CHECK (
                 user_id = current_setting('app.user_id', true)::uuid
                 AND company_id = current_setting('app.company_id', true)::uuid
-            );
-
-        -- Users can only update their own filters
+            )
+    """)
+    op.execute("""
         CREATE POLICY saved_filters_update_policy ON saved_filters
             FOR UPDATE
             USING (user_id = current_setting('app.user_id', true)::uuid)
-            WITH CHECK (user_id = current_setting('app.user_id', true)::uuid);
-
-        -- Users can only delete their own filters
+            WITH CHECK (user_id = current_setting('app.user_id', true)::uuid)
+    """)
+    op.execute("""
         CREATE POLICY saved_filters_delete_policy ON saved_filters
             FOR DELETE
-            USING (user_id = current_setting('app.user_id', true)::uuid);
+            USING (user_id = current_setting('app.user_id', true)::uuid)
     """)
 
 
 def downgrade() -> None:
     # Drop RLS policies first
-    op.execute("""
-        DROP POLICY IF EXISTS saved_filters_delete_policy ON saved_filters;
-        DROP POLICY IF EXISTS saved_filters_update_policy ON saved_filters;
-        DROP POLICY IF EXISTS saved_filters_insert_policy ON saved_filters;
-        DROP POLICY IF EXISTS saved_filters_select_policy ON saved_filters;
-        ALTER TABLE saved_filters DISABLE ROW LEVEL SECURITY;
-    """)
+    op.execute("DROP POLICY IF EXISTS saved_filters_delete_policy ON saved_filters")
+    op.execute("DROP POLICY IF EXISTS saved_filters_update_policy ON saved_filters")
+    op.execute("DROP POLICY IF EXISTS saved_filters_insert_policy ON saved_filters")
+    op.execute("DROP POLICY IF EXISTS saved_filters_select_policy ON saved_filters")
+    op.execute("ALTER TABLE saved_filters DISABLE ROW LEVEL SECURITY")
 
     # Drop indexes
     op.drop_index("ix_saved_filters_company_shared", table_name="saved_filters")

@@ -88,7 +88,7 @@ def upgrade() -> None:
         sa.Index('ix_fraud_scan_results_company_type', 'company_id', 'scan_type'),
         sa.Index('ix_fraud_scan_results_company_risk', 'company_id', 'risk_level'),
         sa.Index('ix_fraud_scan_results_company_status', 'company_id', 'status'),
-        sa.Index('ix_fraud_scan_results_created_at', 'created_at'),
+        # Note: created_at already has index=True on column definition
         # Check constraints
         sa.CheckConstraint('risk_score >= 0 AND risk_score <= 1', name='ck_fraud_scan_results_risk_score'),
         sa.CheckConstraint('confidence >= 0 AND confidence <= 1', name='ck_fraud_scan_results_confidence'),

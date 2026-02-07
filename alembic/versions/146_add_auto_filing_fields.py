@@ -13,6 +13,7 @@ Create Date: 2026-01-31
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 
@@ -29,16 +30,27 @@ def upgrade() -> None:
     # =========================================================================
     # Phase 11.1: Add default_folder_id to BusinessEntity
     # =========================================================================
+    bind = op.get_bind()
     op.add_column(
         "business_entities",
         sa.Column(
             "default_folder_id",
             UUID(as_uuid=True),
-            sa.ForeignKey("folders.id", ondelete="SET NULL"),
             nullable=True,
             comment="Default folder for auto-filing documents from this entity",
         ),
     )
+    # Only add FK if folders table exists
+    has_folders = bind.execute(text(
+        "SELECT 1 FROM information_schema.tables WHERE table_name = 'folders'"
+    )).fetchone()
+    if has_folders:
+        op.create_foreign_key(
+            "fk_business_entities_default_folder",
+            "business_entities", "folders",
+            ["default_folder_id"], ["id"],
+            ondelete="SET NULL",
+        )
 
     # Index for efficient folder lookups
     op.create_index(

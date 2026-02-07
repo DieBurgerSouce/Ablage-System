@@ -29,38 +29,38 @@ def upgrade() -> None:
     # DPIA Status Enum
     dpia_status_enum = postgresql.ENUM(
         'draft', 'review', 'approved', 'rejected', 'archived',
-        name='dpia_status'
+        name='dpia_status', create_type=False,
     )
-    dpia_status_enum.create(op.get_bind())
+    dpia_status_enum.create(op.get_bind(), checkfirst=True)
 
     # Legal Basis Enum
     legal_basis_enum = postgresql.ENUM(
         'consent', 'contract', 'legal_obligation', 'vital_interests',
         'public_interest', 'legitimate_interest',
-        name='legal_basis'
+        name='legal_basis', create_type=False,
     )
-    legal_basis_enum.create(op.get_bind())
+    legal_basis_enum.create(op.get_bind(), checkfirst=True)
 
     # Measure Type Enum
     measure_type_enum = postgresql.ENUM(
         'technical', 'organizational', 'contractual', 'legal',
-        name='measure_type'
+        name='measure_type', create_type=False,
     )
-    measure_type_enum.create(op.get_bind())
+    measure_type_enum.create(op.get_bind(), checkfirst=True)
 
     # Implementation Status Enum
     implementation_status_enum = postgresql.ENUM(
         'planned', 'in_progress', 'implemented',
-        name='implementation_status'
+        name='implementation_status', create_type=False,
     )
-    implementation_status_enum.create(op.get_bind())
+    implementation_status_enum.create(op.get_bind(), checkfirst=True)
 
     # Risk Level Enum
     risk_level_enum = postgresql.ENUM(
         'very_high', 'high', 'medium', 'low', 'minimal',
-        name='risk_level'
+        name='risk_level', create_type=False,
     )
-    risk_level_enum.create(op.get_bind())
+    risk_level_enum.create(op.get_bind(), checkfirst=True)
 
     # Main DPIA Table
     op.create_table(
