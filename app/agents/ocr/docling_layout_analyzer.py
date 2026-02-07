@@ -13,7 +13,7 @@ CPU-only Operation (0 VRAM Anforderung).
 
 import asyncio
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 import structlog
 
@@ -125,7 +125,7 @@ class DoclingLayoutAnalyzer:
     async def analyze(
         self,
         document_path: Union[str, Path],
-        options: Optional[Dict[str, Any]] = None,
+        options: Optional[Dict[str, bool]] = None,
     ) -> DocumentLayout:
         """Analysiere Dokument-Layout.
 
@@ -177,13 +177,13 @@ class DoclingLayoutAnalyzer:
             # Minimales Layout bei Fehler zurückgeben
             return DocumentLayout(pages=[], reading_order_valid=False)
 
-    def _convert_document(self, document_path: str) -> Any:
+    def _convert_document(self, document_path: str) -> object:
         """Synchrone Docling-Konvertierung."""
         result = self._converter.convert(document_path)
         return result
 
     def _parse_docling_result(
-        self, docling_result: Any, options: Dict[str, Any]
+        self, docling_result: object, options: Dict[str, bool]
     ) -> DocumentLayout:
         """Parse Docling-Ergebnis in DocumentLayout-Struktur."""
         pages: List[PageLayout] = []
@@ -256,7 +256,7 @@ class DoclingLayoutAnalyzer:
             reading_order_valid=True,
         )
 
-    def _get_page_info(self, document: Any) -> List[Dict[str, Any]]:
+    def _get_page_info(self, document: object) -> List[Dict[str, int]]:
         """Extrahiere Seiten-Informationen aus Docling-Dokument."""
         page_info = []
 
@@ -275,7 +275,7 @@ class DoclingLayoutAnalyzer:
 
         return page_info
 
-    def _get_item_page(self, item: Any) -> Optional[int]:
+    def _get_item_page(self, item: object) -> Optional[int]:
         """Bestimme Seitennummer eines Elements."""
         if hasattr(item, "prov") and item.prov:
             for prov in item.prov:
@@ -285,10 +285,10 @@ class DoclingLayoutAnalyzer:
 
     def _create_layout_element(
         self,
-        item: Any,
+        item: object,
         page_number: int,
         reading_order: int,
-        options: Dict[str, Any],
+        options: Dict[str, bool],
     ) -> Optional[LayoutElement]:
         """Erstelle LayoutElement aus Docling-Item."""
         # Element-Typ bestimmen
@@ -328,7 +328,7 @@ class DoclingLayoutAnalyzer:
 
         return element
 
-    def _get_element_type(self, item: Any) -> LayoutElementType:
+    def _get_element_type(self, item: object) -> LayoutElementType:
         """Mappe Docling-Item-Typ auf LayoutElementType."""
         type_name = type(item).__name__.lower()
 
@@ -356,7 +356,7 @@ class DoclingLayoutAnalyzer:
 
         return mapping.get(type_name, LayoutElementType.TEXT)
 
-    def _get_bbox(self, item: Any) -> Optional[BoundingBox]:
+    def _get_bbox(self, item: object) -> Optional[BoundingBox]:
         """Extrahiere Bounding Box aus Docling-Item."""
         if not hasattr(item, "prov") or not item.prov:
             return None
@@ -373,7 +373,7 @@ class DoclingLayoutAnalyzer:
                 )
         return None
 
-    def _get_text(self, item: Any) -> str:
+    def _get_text(self, item: object) -> str:
         """Extrahiere Text aus Docling-Item."""
         if hasattr(item, "text"):
             return str(item.text)
@@ -381,13 +381,13 @@ class DoclingLayoutAnalyzer:
             return item.export_to_plaintext()
         return ""
 
-    def _get_confidence(self, item: Any) -> float:
+    def _get_confidence(self, item: object) -> float:
         """Extrahiere Confidence aus Docling-Item."""
         if hasattr(item, "confidence"):
             return float(item.confidence)
         return 0.9  # Default Confidence
 
-    def _extract_table_structure(self, item: Any) -> Optional[TableStructure]:
+    def _extract_table_structure(self, item: object) -> Optional[TableStructure]:
         """Extrahiere detaillierte Tabellenstruktur aus Docling TableItem."""
         if not hasattr(item, "data") or not item.data:
             return None
@@ -490,7 +490,7 @@ class DoclingLayoutAnalyzer:
 
         return len(large_gaps) + 1
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> Dict[str, object]:
         """Hole Analyzer-Status."""
         return {
             "name": "docling_layout_analyzer",

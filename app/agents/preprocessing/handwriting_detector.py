@@ -14,7 +14,7 @@ Feinpoliert und durchdacht - Handschrift zuverlässig erkennen.
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import structlog
@@ -126,7 +126,7 @@ class HandwritingAnalysis:
     features: List[HandwritingFeatureScore]
     recommended_backend: str
     confidence_penalty: float  # Confidence-Abzug für OCR
-    analysis_details: Dict[str, Any]
+    analysis_details: Dict[str, object]
 
     @property
     def region_count(self) -> int:
@@ -242,7 +242,7 @@ class HandwritingDetectorAgent(PreprocessingAgent):
 
         logger.info("HandwritingDetectorAgent initialisiert")
 
-    async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def process(self, input_data: Dict[str, object]) -> Dict[str, object]:
         """
         Analysiere Dokument auf handschriftliche Inhalte.
 
@@ -352,7 +352,7 @@ class HandwritingDetectorAgent(PreprocessingAgent):
             "confidence_penalty": analysis.confidence_penalty,
         }
 
-    async def _prepare_image(self, image: Any) -> Optional[np.ndarray]:
+    async def _prepare_image(self, image: Union[str, np.ndarray, object]) -> Optional[np.ndarray]:
         """Konvertiere Eingabe zu numpy array."""
         try:
             if isinstance(image, str):
@@ -1035,8 +1035,8 @@ class HandwritingDetectorAgent(PreprocessingAgent):
 
     def _create_no_handwriting_result(
         self,
-        metadata: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        metadata: Dict[str, object]
+    ) -> Dict[str, object]:
         """Erstelle Ergebnis für Fall ohne erkennbares Bild."""
         analysis = HandwritingAnalysis(
             has_handwriting=False,
@@ -1061,7 +1061,7 @@ class HandwritingDetectorAgent(PreprocessingAgent):
             "confidence_penalty": 0.0,
         }
 
-    def _region_to_dict(self, region: HandwritingRegion) -> Dict[str, Any]:
+    def _region_to_dict(self, region: HandwritingRegion) -> Dict[str, object]:
         """Konvertiere Region zu Dictionary."""
         return {
             "x": region.x,
@@ -1093,8 +1093,8 @@ def get_handwriting_detector() -> HandwritingDetectorAgent:
 
 
 async def detect_handwriting(
-    image: Any,
-    metadata: Optional[Dict[str, Any]] = None,
+    image: Union[str, np.ndarray, object],
+    metadata: Optional[Dict[str, object]] = None,
     detect_signatures: bool = True
 ) -> HandwritingAnalysis:
     """
@@ -1117,14 +1117,14 @@ async def detect_handwriting(
     return result["result"]["analysis"]
 
 
-async def has_handwriting(image: Any) -> bool:
+async def has_handwriting(image: Union[str, np.ndarray, object]) -> bool:
     """Schnelle Prüfung ob Dokument Handschrift enthält."""
     analysis = await detect_handwriting(image)
     return analysis.has_handwriting
 
 
 async def get_handwriting_regions(
-    image: Any,
+    image: Union[str, np.ndarray, object],
     detect_signatures: bool = True
 ) -> List[HandwritingRegion]:
     """Hole handschriftliche Regionen aus Dokument."""
@@ -1132,7 +1132,7 @@ async def get_handwriting_regions(
     return analysis.regions
 
 
-async def get_confidence_penalty(image: Any) -> float:
+async def get_confidence_penalty(image: Union[str, np.ndarray, object]) -> float:
     """
     Hole Confidence-Penalty basierend auf Handschrift-Anteil.
 
@@ -1143,7 +1143,7 @@ async def get_confidence_penalty(image: Any) -> float:
     return analysis.confidence_penalty
 
 
-async def route_to_backend_for_handwriting(image: Any) -> str:
+async def route_to_backend_for_handwriting(image: Union[str, np.ndarray, object]) -> str:
     """Empfehle OCR-Backend basierend auf Handschrift-Erkennung."""
     analysis = await detect_handwriting(image)
     return analysis.recommended_backend

@@ -15,7 +15,7 @@ Feinpoliert und durchdacht - 100% Genauigkeit für deutsche Dokumente.
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import structlog
 
@@ -100,7 +100,7 @@ class DocumentClassificationAgent(PreprocessingAgent):
     }
 
     # Backend recommendations based on document characteristics
-    BACKEND_RECOMMENDATIONS: Dict[str, Dict[str, Any]] = {
+    BACKEND_RECOMMENDATIONS: Dict[str, Dict[str, Union[List[str], float, int]]] = {
         "deepseek": {
             "strengths": ["complex_layout", "fraktur", "handwriting", "tables"],
             "min_quality": 0.4,
@@ -140,7 +140,7 @@ class DocumentClassificationAgent(PreprocessingAgent):
         super().__init__(name="document_classification_agent")
         self._sample_text_cache: Dict[str, str] = {}
 
-    async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def process(self, input_data: Dict[str, object]) -> Dict[str, object]:
         """
         Classify a document based on its content and characteristics.
 
@@ -230,7 +230,7 @@ class DocumentClassificationAgent(PreprocessingAgent):
 
         return result
 
-    async def _analyze_file(self, file_path: Path) -> Dict[str, Any]:
+    async def _analyze_file(self, file_path: Path) -> Dict[str, object]:
         """
         Analyze file properties.
 
@@ -262,7 +262,7 @@ class DocumentClassificationAgent(PreprocessingAgent):
 
         return file_info
 
-    async def _analyze_image(self, file_path: Path) -> Dict[str, Any]:
+    async def _analyze_image(self, file_path: Path) -> Dict[str, object]:
         """Analyze image properties."""
         try:
             from PIL import Image
@@ -302,7 +302,7 @@ class DocumentClassificationAgent(PreprocessingAgent):
                 "page_count": 1,
             }
 
-    async def _analyze_pdf(self, file_path: Path) -> Dict[str, Any]:
+    async def _analyze_pdf(self, file_path: Path) -> Dict[str, object]:
         """Analyze PDF properties."""
         try:
             import pypdfium2 as pdfium
@@ -343,7 +343,7 @@ class DocumentClassificationAgent(PreprocessingAgent):
             }
 
     async def _extract_sample_text(
-        self, file_path: Path, file_info: Dict[str, Any]
+        self, file_path: Path, file_info: Dict[str, object]
     ) -> str:
         """
         Extract sample text for classification.
@@ -475,8 +475,8 @@ class DocumentClassificationAgent(PreprocessingAgent):
         return lang, confidence
 
     def _assess_complexity(
-        self, text: str, file_info: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, text: str, file_info: Dict[str, object]
+    ) -> Dict[str, object]:
         """
         Assess document complexity for OCR backend selection.
 
@@ -553,7 +553,7 @@ class DocumentClassificationAgent(PreprocessingAgent):
         }
 
     def _calculate_quality_score(
-        self, file_info: Dict[str, Any], complexity: Dict[str, Any]
+        self, file_info: Dict[str, object], complexity: Dict[str, object]
     ) -> float:
         """
         Calculate document quality score.
@@ -591,9 +591,9 @@ class DocumentClassificationAgent(PreprocessingAgent):
     def _recommend_backend(
         self,
         document_type: str,
-        complexity: Dict[str, Any],
+        complexity: Dict[str, object],
         quality_score: float,
-        options: Dict[str, Any],
+        options: Dict[str, object],
     ) -> str:
         """
         Recommend optimal OCR backend based on document characteristics.

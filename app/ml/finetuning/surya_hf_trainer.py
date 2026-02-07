@@ -15,7 +15,7 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import torch
 from torch.utils.data import Dataset
@@ -150,7 +150,7 @@ class SuryaGermanConfig(SuryaTrainingConfig):
             logging_steps=25,
         )
 
-    def get_umlaut_loss_config(self) -> Dict[str, Any]:
+    def get_umlaut_loss_config(self) -> Dict[str, object]:
         """Gibt Konfiguration für UmlautWeightedCrossEntropy zurück."""
         return {
             "umlaut_weight": self.umlaut_loss_weight,
@@ -160,7 +160,7 @@ class SuryaGermanConfig(SuryaTrainingConfig):
             "char_weights": self.char_weights,
         }
 
-    def get_focal_loss_config(self) -> Dict[str, Any]:
+    def get_focal_loss_config(self) -> Dict[str, object]:
         """Gibt Konfiguration für FocalUmlautLoss zurück."""
         return {
             "gamma": self.focal_gamma,
@@ -188,7 +188,7 @@ class SuryaOCRDataset(Dataset):
     def __init__(
         self,
         data_path: str,
-        processor: Any,
+        processor: object,
         max_length: int = 1024,
         is_training: bool = True
     ):
@@ -261,7 +261,7 @@ class SuryaOCRTrainer:
         self.model = None
         self.processor = None
         self.trainer = None
-        self._metrics_history: List[Dict[str, Any]] = []
+        self._metrics_history: List[Dict[str, object]] = []
         self._best_test_loss = float("inf")
         logger.info(f"SuryaOCRTrainer initialisiert auf {self.device}")
 
@@ -309,7 +309,7 @@ class SuryaOCRTrainer:
             logger.error(f"Fehlende Abhängigkeit: {e}")
             raise RuntimeError("Bitte installieren: pip install transformers[vision]") from e
 
-    def _create_training_args(self) -> Any:
+    def _create_training_args(self) -> object:
         """Erstellt HuggingFace TrainingArguments."""
         from transformers import TrainingArguments
 
@@ -343,7 +343,7 @@ class SuryaOCRTrainer:
             remove_unused_columns=False,
         )
 
-    def _compute_metrics(self, pred_output: Any) -> Dict[str, float]:
+    def _compute_metrics(self, pred_output: object) -> Dict[str, float]:
         """Berechnet Metriken für Trainer."""
         predictions = pred_output.predictions
         labels = pred_output.label_ids
@@ -421,7 +421,7 @@ class SuryaOCRTrainer:
         train_data_path: str,
         test_data_path: Optional[str] = None,
         resume_from_checkpoint: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, object]:
         """Führt das Training durch."""
         from transformers import Trainer
 
@@ -711,7 +711,7 @@ class SuryaGermanTrainer(SuryaOCRTrainer):
         train_data_path: str,
         test_data_path: Optional[str] = None,
         resume_from_checkpoint: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, object]:
         """
         Führt deutsches Fine-Tuning mit Umlaut-Fokus durch.
 
@@ -877,7 +877,7 @@ class SuryaGermanTrainer(SuryaOCRTrainer):
     async def evaluate_umlaut_performance(
         self,
         test_data_path: str
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, object]:
         """
         Detaillierte Umlaut-Performance-Analyse.
 

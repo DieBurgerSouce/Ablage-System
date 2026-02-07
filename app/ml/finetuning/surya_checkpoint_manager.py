@@ -373,7 +373,7 @@ class SuryaCheckpointManager:
         except Exception:
             return 1, 0, 0
 
-    def _model_to_checkpoint_info(self, model: Any) -> SuryaCheckpointInfo:
+    def _model_to_checkpoint_info(self, model: "SuryaModelVersion") -> SuryaCheckpointInfo:
         """Konvertiert DB-Modell zu CheckpointInfo."""
         return SuryaCheckpointInfo(
             id=str(model.id),

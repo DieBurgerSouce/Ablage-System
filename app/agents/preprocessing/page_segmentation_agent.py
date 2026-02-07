@@ -17,7 +17,7 @@ import tempfile
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import structlog
@@ -59,7 +59,7 @@ class Region:
     bbox: Tuple[int, int, int, int]  # (x, y, width, height)
     confidence: float = 0.0
     content: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, object] = field(default_factory=dict)
 
     @property
     def area(self) -> int:
@@ -72,7 +72,7 @@ class Region:
         x, y, w, h = self.bbox
         return (x + w // 2, y + h // 2)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         """Convert to dictionary."""
         return {
             "region_id": self.region_id,
@@ -98,7 +98,7 @@ class PageInfo:
     layout_type: LayoutType = LayoutType.SINGLE_COLUMN
     image_path: Optional[str] = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         """Convert to dictionary."""
         return {
             "page_num": self.page_num,
@@ -159,7 +159,7 @@ class PageSegmentationAgent(PreprocessingAgent):
             logger.warning("pypdfium2 nicht verfügbar - PDF-Verarbeitung eingeschränkt")
             self._pypdfium2 = None
 
-    async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def process(self, input_data: Dict[str, object]) -> Dict[str, object]:
         """
         Segment document into processable regions.
 
@@ -247,7 +247,7 @@ class PageSegmentationAgent(PreprocessingAgent):
     async def _extract_pages(
         self,
         file_path: Path,
-        options: Dict[str, Any],
+        options: Dict[str, object],
     ) -> List[PageInfo]:
         """
         Extract pages from document file.
@@ -946,7 +946,7 @@ class PageSegmentationAgent(PreprocessingAgent):
         self,
         pages: List[PageInfo],
         regions: List[Region],
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, object]:
         """
         Create summary of document layout analysis.
 

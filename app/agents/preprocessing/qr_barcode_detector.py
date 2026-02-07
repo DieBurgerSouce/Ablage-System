@@ -14,7 +14,7 @@ Feinpoliert und durchdacht - Codes zuverlaessig erkennen.
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import structlog
@@ -76,7 +76,7 @@ class SEPAPaymentData:
         """Pruefen ob minimale SEPA-Daten vorhanden."""
         return bool(self.iban and self.recipient_name)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, Union[str, float, bool, None]]:
         """Konvertiere zu Dictionary."""
         return {
             "bic": self.bic,
@@ -103,7 +103,7 @@ class DetectedCode:
     y: int                              # Position Y
     width: int
     height: int
-    parsed_data: Optional[Dict[str, Any]] = None  # Geparste Daten
+    parsed_data: Optional[Dict[str, Union[str, float, bool, None]]] = None  # Geparste Daten
     sepa_payment: Optional[SEPAPaymentData] = None  # SEPA-Daten falls vorhanden
 
     @property
@@ -116,9 +116,9 @@ class DetectedCode:
         """Flaeche in Pixeln."""
         return self.width * self.height
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         """Konvertiere zu Dictionary."""
-        result = {
+        result: Dict[str, object] = {
             "code_type": self.code_type.value,
             "category": self.category.value,
             "data": self.data,
@@ -142,7 +142,7 @@ class CodeDetectionResult:
     has_product_codes: bool
     total_codes: int
     sepa_payments: List[SEPAPaymentData]
-    analysis_details: Dict[str, Any] = field(default_factory=dict)
+    analysis_details: Dict[str, object] = field(default_factory=dict)
 
     @property
     def primary_sepa_payment(self) -> Optional[SEPAPaymentData]:
@@ -405,7 +405,7 @@ class QRBarcodeDetectorAgent(PreprocessingAgent):
             cv2_available=self._cv2_available,
         )
 
-    async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def process(self, input_data: Dict[str, object]) -> Dict[str, object]:
         """
         Analysiere Dokument auf QR-Codes und Barcodes.
 
@@ -493,7 +493,7 @@ class QRBarcodeDetectorAgent(PreprocessingAgent):
             ),
         }
 
-    async def _prepare_image(self, image: Any) -> Optional[np.ndarray]:
+    async def _prepare_image(self, image: object) -> Optional[np.ndarray]:
         """Konvertiere Eingabe zu numpy array."""
         try:
             if isinstance(image, str):
@@ -566,7 +566,7 @@ class QRBarcodeDetectorAgent(PreprocessingAgent):
 
                 # Kategorisiere und parse
                 category = CodeCategory.OTHER
-                parsed_data: Optional[Dict[str, Any]] = None
+                parsed_data: Optional[Dict[str, Union[str, float, bool, None]]] = None
                 sepa_payment: Optional[SEPAPaymentData] = None
 
                 # QR-Code: SEPA EPC pruefen
@@ -658,7 +658,7 @@ class QRBarcodeDetectorAgent(PreprocessingAgent):
 
         return False
 
-    def _create_empty_result(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
+    def _create_empty_result(self, metadata: Dict[str, object]) -> Dict[str, object]:
         """Erstelle leeres Ergebnis."""
         result = CodeDetectionResult(
             codes=[],
@@ -697,7 +697,7 @@ def get_qr_barcode_detector() -> QRBarcodeDetectorAgent:
 
 
 async def detect_codes(
-    image: Any,
+    image: Union[str, np.ndarray, object],
     detect_sepa: bool = True,
     detect_products: bool = True,
 ) -> CodeDetectionResult:
@@ -721,7 +721,7 @@ async def detect_codes(
     return result["result"]["result"]
 
 
-async def extract_sepa_payment(image: Any) -> Optional[SEPAPaymentData]:
+async def extract_sepa_payment(image: Union[str, np.ndarray, object]) -> Optional[SEPAPaymentData]:
     """
     Extrahiere SEPA-Zahlungsdaten aus Bild.
 
@@ -754,7 +754,7 @@ async def extract_sepa_payment(image: Any) -> Optional[SEPAPaymentData]:
     return None
 
 
-async def has_payment_codes(image: Any) -> bool:
+async def has_payment_codes(image: Union[str, np.ndarray, object]) -> bool:
     """Schnelle Pruefung ob Bild Zahlungs-relevante Codes enthaelt."""
     detector = get_qr_barcode_detector()
     result = await detector.execute({
@@ -765,7 +765,7 @@ async def has_payment_codes(image: Any) -> bool:
     return result["result"]["has_payment_codes"]
 
 
-async def extract_ean_codes(image: Any) -> List[str]:
+async def extract_ean_codes(image: Union[str, np.ndarray, object]) -> List[str]:
     """Extrahiere alle EAN-Codes aus Bild."""
     detector = get_qr_barcode_detector()
     result = await detector.execute({

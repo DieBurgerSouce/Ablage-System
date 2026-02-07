@@ -362,7 +362,7 @@ class DonutOCRAgent(OCRAgent):
 
         return await asyncio.to_thread(_inference)
 
-    def _calculate_confidence(self, outputs: Any) -> float:
+    def _calculate_confidence(self, outputs: object) -> float:
         """Calculate confidence score from model outputs."""
         try:
             import torch

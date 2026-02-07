@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import structlog
 
+from app.core.safe_errors import safe_error_log
 from .model_registry import (
     ModelRegistry,
     ModelVersion,
@@ -54,7 +55,7 @@ class OCRRouterFeatures:
     COMPLEXITY_LEVELS = ["low", "medium", "high"]
 
     # Backend targets for classification
-    BACKENDS = ["deepseek", "got_ocr", "surya", "hybrid"]
+    BACKENDS = ["deepseek", "got_ocr", "surya", "surya_gpu", "donut", "hybrid"]
 
     def __init__(self) -> None:
         """Initialize feature engineering component."""
@@ -73,7 +74,7 @@ class OCRRouterFeatures:
         for level in self.COMPLEXITY_LEVELS:
             self._feature_names.append(f"complexity_{level}")
 
-        # Numeric features (9 features)
+        # Numeric features (14 features)
         self._feature_names.extend([
             "quality_score",
             "has_tables",
@@ -84,6 +85,11 @@ class OCRRouterFeatures:
             "gpu_memory_available",
             "gpu_available",
             "queue_length_normalized",
+            "fraktur_score",
+            "handwriting_score",
+            "layout_complexity",
+            "dpi",
+            "available_vram_gb",
         ])
 
         # SLA features (3 features)
@@ -172,6 +178,22 @@ class OCRRouterFeatures:
         is_critical = sla.get("is_critical", False)
         features.append(1.0 if is_critical else 0.0)
 
+        # New features (mit Defaults wenn nicht vorhanden)
+        fraktur_score = document_metadata.get("fraktur_score", 0.0)
+        features.append(float(fraktur_score))
+
+        handwriting_score = document_metadata.get("handwriting_score", 0.0)
+        features.append(float(handwriting_score))
+
+        layout_complexity = document_metadata.get("layout_complexity", 0.5)
+        features.append(float(layout_complexity))
+
+        dpi = document_metadata.get("dpi", 300)
+        features.append(min(dpi / 600.0, 1.0))  # Normalize to 600 DPI
+
+        available_vram_gb = resources.get("gpu_memory_available_gb", 0.0)
+        features.append(min(available_vram_gb / 16.0, 1.0))  # Normalize to 16GB
+
         return np.array(features, dtype=np.float32)
 
     def backend_to_index(self, backend: str) -> int:
@@ -210,7 +232,7 @@ class OCRRouterModel:
         "subsample": 0.8,
         "colsample_bytree": 0.8,
         "objective": "multi:softprob",
-        "num_class": 4,  # Number of backends
+        "num_class": 6,  # Number of backends (deepseek, got_ocr, surya, surya_gpu, donut, hybrid)
         "eval_metric": "mlogloss",
         "use_label_encoder": False,
         "random_state": 42,
@@ -684,6 +706,39 @@ class OCRRouterModel:
         if self._current_version:
             return f"v{self._current_version.version}"
         return f"xgboost-unversioned-{self._training_samples}"
+
+    def get_model_version(self) -> str:
+        """
+        Public method: Get model version string.
+
+        Returns:
+            Version string (e.g. "v1.2.3" or "xgboost-unversioned-1000")
+        """
+        return self._get_model_version()
+
+    def get_model_metrics(self) -> Dict[str, float]:
+        """
+        Get model training metrics.
+
+        Returns:
+            Dict with training accuracy, validation accuracy, F1 scores
+        """
+        metrics = {
+            "training_samples": self._training_samples,
+            "validation_accuracy": self._validation_accuracy,
+        }
+
+        if self._current_version:
+            metrics["model_version"] = self._current_version.version
+            metrics["created_at"] = self._current_version.created_at
+
+        # Add backend-specific accuracies
+        backend_stats = self.get_backend_stats()
+        for backend, stats in backend_stats.items():
+            metrics[f"{backend}_mean_accuracy"] = stats.get("mean_accuracy", 0.0)
+            metrics[f"{backend}_sample_count"] = stats.get("sample_count", 0)
+
+        return metrics
 
     def get_model_info(self) -> Dict[str, Any]:
         """Get model information and statistics."""

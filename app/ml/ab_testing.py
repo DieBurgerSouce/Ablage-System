@@ -114,7 +114,7 @@ class SafeJSONEncoder(json.JSONEncoder):
     - Beliebige Objekte via __dict__ oder str()
     """
 
-    def default(self, obj: Any) -> Any:
+    def default(self, obj: object) -> object:
         # numpy Typen
         try:
             import numpy as np

@@ -13,7 +13,7 @@ Feinpoliert und durchdacht - Optimale Bildqualität für deutsche Dokumente.
 
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import structlog
@@ -56,7 +56,7 @@ class ImageEnhancementAgent(PreprocessingAgent):
             logger.warning("OpenCV not available - image enhancement limited")
             self._cv2 = None
 
-    async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def process(self, input_data: Dict[str, object]) -> Dict[str, object]:
         """
         Enhance document image for optimal OCR.
 

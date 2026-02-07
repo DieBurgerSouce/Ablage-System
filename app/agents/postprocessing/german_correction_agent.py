@@ -25,7 +25,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Any, Deque, Dict, List, Optional, Set, Tuple
+from typing import Deque, Dict, List, Optional, Set, Tuple
 
 import structlog
 
@@ -307,7 +307,7 @@ class CustomVocabularyManager:
         project_id: str,
         words: List[str],
         corrections: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, object]:
         """
         Füge Wörter zum Projekt-Vocabulary hinzu.
 
@@ -373,7 +373,7 @@ class CustomVocabularyManager:
             return True
         return False
 
-    def list_projects(self) -> List[Dict[str, Any]]:
+    def list_projects(self) -> List[Dict[str, object]]:
         """Liste alle Projekte mit Vocabulary-Statistiken."""
         with self._lock:
             return [
@@ -430,7 +430,7 @@ class HunspellDictionary:
 
     def __init__(self) -> None:
         """Initialisiere Hunspell Dictionary."""
-        self._hunspell: Optional[Any] = None
+        self._hunspell: Optional[object] = None
         self._available = False
 
         if HUNSPELL_AVAILABLE:
@@ -776,7 +776,7 @@ class GermanCorrectionAgent(PostprocessingAgent):
             )
             self._language_tool = None
 
-    async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def process(self, input_data: Dict[str, object]) -> Dict[str, object]:
         """
         Correct German-specific OCR errors in text.
 
@@ -844,7 +844,7 @@ class GermanCorrectionAgent(PostprocessingAgent):
         )
 
         original_text = text
-        correction_details: List[Dict[str, Any]] = []
+        correction_details: List[Dict[str, object]] = []
 
         # Step 2: Validate current state
         initial_validation = self.validator.validate_umlauts(text)
@@ -941,7 +941,7 @@ class GermanCorrectionAgent(PostprocessingAgent):
         return result
 
     def _detect_domain_from_classification(
-        self, classification: Dict[str, Any]
+        self, classification: Dict[str, object]
     ) -> Optional[str]:
         """Detect domain from document classification."""
         doc_type = classification.get("document_type", "").lower()
@@ -1008,7 +1008,7 @@ class GermanCorrectionAgent(PostprocessingAgent):
 
     def _apply_custom_vocabulary_corrections(
         self, text: str, project_id: str
-    ) -> Tuple[str, List[Dict[str, Any]]]:
+    ) -> Tuple[str, List[Dict[str, object]]]:
         """
         Apply project-specific custom vocabulary corrections.
 
@@ -1060,7 +1060,7 @@ class GermanCorrectionAgent(PostprocessingAgent):
 
     def _apply_context_aware_corrections(
         self, text: str
-    ) -> Tuple[str, List[Dict[str, Any]]]:
+    ) -> Tuple[str, List[Dict[str, object]]]:
         """
         Apply context-aware pattern corrections with enhanced logic.
 
@@ -1151,7 +1151,7 @@ class GermanCorrectionAgent(PostprocessingAgent):
 
     def _apply_hunspell_corrections(
         self, text: str
-    ) -> Tuple[str, List[Dict[str, Any]]]:
+    ) -> Tuple[str, List[Dict[str, object]]]:
         """
         Apply Hunspell dictionary corrections.
 
@@ -1208,7 +1208,7 @@ class GermanCorrectionAgent(PostprocessingAgent):
 
     def _apply_word_corrections(
         self, text: str
-    ) -> Tuple[str, List[Dict[str, Any]]]:
+    ) -> Tuple[str, List[Dict[str, object]]]:
         """
         Apply word-based umlaut corrections.
 
@@ -1248,7 +1248,7 @@ class GermanCorrectionAgent(PostprocessingAgent):
 
     def _apply_pattern_corrections(
         self, text: str
-    ) -> Tuple[str, List[Dict[str, Any]]]:
+    ) -> Tuple[str, List[Dict[str, object]]]:
         """
         Apply pattern-based corrections with context awareness.
 
@@ -1320,7 +1320,7 @@ class GermanCorrectionAgent(PostprocessingAgent):
 
     def _apply_eszett_corrections(
         self, text: str
-    ) -> Tuple[str, List[Dict[str, Any]]]:
+    ) -> Tuple[str, List[Dict[str, object]]]:
         """
         Apply Eszett (ß) corrections.
 
@@ -1389,7 +1389,7 @@ class GermanCorrectionAgent(PostprocessingAgent):
 
     def _apply_domain_corrections(
         self, text: str, domain: str
-    ) -> Tuple[str, List[Dict[str, Any]]]:
+    ) -> Tuple[str, List[Dict[str, object]]]:
         """
         Apply domain-specific corrections.
 
@@ -1440,7 +1440,7 @@ class GermanCorrectionAgent(PostprocessingAgent):
 
     def _apply_fuzzy_corrections(
         self, text: str
-    ) -> Tuple[str, List[Dict[str, Any]]]:
+    ) -> Tuple[str, List[Dict[str, object]]]:
         """
         Apply fuzzy matching corrections using Levenshtein distance.
 
@@ -1531,7 +1531,7 @@ class GermanCorrectionAgent(PostprocessingAgent):
 
     def _validate_compound_words(
         self, text: str
-    ) -> Tuple[str, List[Dict[str, Any]]]:
+    ) -> Tuple[str, List[Dict[str, object]]]:
         """
         Validate and correct German compound words.
 
@@ -1652,7 +1652,7 @@ class GermanCorrectionAgent(PostprocessingAgent):
 
     def _apply_language_tool_corrections(
         self, text: str
-    ) -> Tuple[str, List[Dict[str, Any]]]:
+    ) -> Tuple[str, List[Dict[str, object]]]:
         """
         Apply LanguageTool grammar and spelling corrections.
 
@@ -1723,9 +1723,9 @@ class GermanCorrectionAgent(PostprocessingAgent):
         self,
         original_text: str,
         corrected_text: str,
-        correction_details: List[Dict[str, Any]],
-        final_validation: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        correction_details: List[Dict[str, object]],
+        final_validation: Dict[str, object],
+    ) -> Dict[str, object]:
         """
         Calculate comprehensive quality metrics for the correction.
 
@@ -1782,7 +1782,7 @@ class GermanCorrectionAgent(PostprocessingAgent):
             "total_corrections": len(correction_details),
         }
 
-    def get_correction_stats(self) -> Dict[str, Any]:
+    def get_correction_stats(self) -> Dict[str, object]:
         """Get statistics about correction capabilities."""
         # Get custom vocabulary stats
         custom_vocab_projects = self._vocab_manager.list_projects() if hasattr(self, "_vocab_manager") else []
@@ -1827,7 +1827,7 @@ class GermanCorrectionAgent(PostprocessingAgent):
         project_id: str,
         words: List[str],
         corrections: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, object]:
         """
         Add custom vocabulary for a project.
 
@@ -1841,7 +1841,7 @@ class GermanCorrectionAgent(PostprocessingAgent):
         """
         return self._vocab_manager.add_vocabulary(project_id, words, corrections)
 
-    def get_project_vocabulary(self, project_id: str) -> Dict[str, Any]:
+    def get_project_vocabulary(self, project_id: str) -> Dict[str, object]:
         """
         Get vocabulary for a project.
 
@@ -1869,7 +1869,7 @@ class GermanCorrectionAgent(PostprocessingAgent):
         """
         return self._vocab_manager.delete_vocabulary(project_id)
 
-    def list_project_vocabularies(self) -> List[Dict[str, Any]]:
+    def list_project_vocabularies(self) -> List[Dict[str, object]]:
         """
         List all project vocabularies.
 

@@ -133,8 +133,8 @@ class HybridOCRAgent(OCRAgent):
         )
 
         # Teile in parallel und sequential Gruppen
-        parallel_tasks: List[Tuple[str, Any]] = []
-        sequential_queue: List[Tuple[str, Any]] = []
+        parallel_tasks: List[Tuple[str, OCRAgent]] = []
+        sequential_queue: List[Tuple[str, OCRAgent]] = []
         remaining_vram = available_vram_gb
 
         for engine_name, engine in sorted_engines:
@@ -176,7 +176,7 @@ class HybridOCRAgent(OCRAgent):
 
     async def _run_parallel_group(
         self,
-        engines: List[Tuple[str, Any]],
+        engines: List[Tuple[str, OCRAgent]],
         input_data: Dict[str, Any],
         torch_available: bool
     ) -> List[Dict[str, Any]]:
@@ -199,7 +199,7 @@ class HybridOCRAgent(OCRAgent):
             backends=[name for name, _ in engines]
         )
 
-        async def process_engine(name: str, engine: Any) -> Dict[str, Any]:
+        async def process_engine(name: str, engine: OCRAgent) -> Dict[str, Any]:
             """Wrapper fuer einzelnes Backend mit Error Handling."""
             try:
                 self.logger.debug(f"hybrid_parallel_starting_{name}")
@@ -234,7 +234,7 @@ class HybridOCRAgent(OCRAgent):
 
     async def _run_sequential_group(
         self,
-        engines: List[Tuple[str, Any]],
+        engines: List[Tuple[str, OCRAgent]],
         input_data: Dict[str, Any],
         torch_available: bool
     ) -> List[Dict[str, Any]]:

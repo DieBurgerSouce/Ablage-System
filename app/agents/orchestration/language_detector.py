@@ -390,7 +390,7 @@ class LanguageDetector:
             detection_method="lingua_failed",
         )
 
-    def _lingua_to_code(self, lingua_lang: Any) -> LanguageCode:
+    def _lingua_to_code(self, lingua_lang: "lingua.Language") -> LanguageCode:
         """Convert lingua Language to LanguageCode."""
         mapping = {
             "GERMAN": LanguageCode.GERMAN,

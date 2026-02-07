@@ -19,7 +19,7 @@ import subprocess
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import structlog
 
@@ -212,7 +212,7 @@ class ModelRegistry:
 
     def register_model(
         self,
-        model: Any,  # XGBoost model
+        model: "xgboost.XGBClassifier",
         feature_names: List[str],
         training_samples: int,
         validation_accuracy: float,
@@ -278,8 +278,8 @@ class ModelRegistry:
     def load_model(
         self,
         version: Optional[str] = None,
-        model_class: Optional[Any] = None,
-    ) -> tuple[Any, ModelVersion]:
+        model_class: Optional[type] = None,
+    ) -> Tuple["xgboost.XGBClassifier", ModelVersion]:
         """
         Lädt ein Modell aus der Registry.
 

@@ -321,7 +321,7 @@ class OCRAgent(BaseAgent):
         text: str,
         confidence: float,
         processing_time_ms: int = 0,
-        **kwargs: Any
+        **kwargs: object
     ) -> OCRResult:
         """
         Erstelle standardisiertes Erfolgs-Result.

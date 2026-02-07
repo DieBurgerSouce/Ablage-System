@@ -15,7 +15,7 @@ Feinpoliert und durchdacht - Intelligente Backend-Auswahl für optimale Ergebnis
 import copy
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Dict, List, Optional, Union
 from datetime import datetime, timezone
 
 import structlog
@@ -29,7 +29,7 @@ logger = structlog.get_logger(__name__)
 audit_logger = structlog.get_logger("audit.ocr_routing")
 
 # Cache for learned weights
-_learned_weights_cache: Optional[Dict[str, Any]] = None
+_learned_weights_cache: Optional[Dict[str, object]] = None
 _learned_weights_cache_time: Optional[datetime] = None
 _LEARNED_WEIGHTS_CACHE_TTL_SECONDS = 300  # 5 minutes
 
@@ -162,9 +162,9 @@ class OCRBackendRouter(OrchestrationAgent):
 
     def _audit_log_routing_decision(
         self,
-        result: Dict[str, Any],
-        metadata: Dict[str, Any],
-        resource_status: Dict[str, Any],
+        result: Dict[str, object],
+        metadata: Dict[str, object],
+        resource_status: Dict[str, object],
         learned_weights_used: Optional[Dict[str, float]] = None,
         latency_ms: float = 0,
     ) -> None:
@@ -211,7 +211,7 @@ class OCRBackendRouter(OrchestrationAgent):
             # Audit-Logging darf die Haupt-Logik nie unterbrechen
             logger.debug("audit_log_failed", **safe_error_log(e))
 
-    def _get_resource_status(self) -> Dict[str, Any]:
+    def _get_resource_status(self) -> Dict[str, object]:
         """Get current resource availability status (sync, without queue lengths)."""
         gpu_status = self.gpu_manager.check_availability()
 
@@ -222,7 +222,7 @@ class OCRBackendRouter(OrchestrationAgent):
             "queue_lengths": {},
         }
 
-    async def _get_resource_status_async(self) -> Dict[str, Any]:
+    async def _get_resource_status_async(self) -> Dict[str, object]:
         """Get current resource availability with queue lengths from Redis."""
         gpu_status = self.gpu_manager.check_availability()
 
@@ -246,11 +246,11 @@ class OCRBackendRouter(OrchestrationAgent):
 
     async def _check_load_balancing(
         self,
-        resource_status: Dict[str, Any],
-        metadata: Dict[str, Any],
-        sla: Dict[str, Any],
-        preferences: Dict[str, Any],
-    ) -> Optional[Dict[str, Any]]:
+        resource_status: Dict[str, object],
+        metadata: Dict[str, object],
+        sla: Dict[str, object],
+        preferences: Dict[str, object],
+    ) -> Optional[Dict[str, object]]:
         """
         Check if load balancing should override normal backend selection.
 
@@ -366,7 +366,7 @@ class OCRBackendRouter(OrchestrationAgent):
         # No load balancing needed
         return None
 
-    async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def process(self, input_data: Dict[str, object]) -> Dict[str, object]:
         """
         Select optimal OCR backend.
 
@@ -506,11 +506,11 @@ class OCRBackendRouter(OrchestrationAgent):
 
     async def _rule_based_selection(
         self,
-        metadata: Dict[str, Any],
-        sla: Dict[str, Any],
-        preferences: Dict[str, Any],
+        metadata: Dict[str, object],
+        sla: Dict[str, object],
+        preferences: Dict[str, object],
         use_learned_weights: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, object]:
         """
         Rule-based backend selection with learned weight adjustments.
 
@@ -541,7 +541,7 @@ class OCRBackendRouter(OrchestrationAgent):
             # Weight adjusts confidence: >1.0 increases, <1.0 decreases
             return min(base_confidence * weight, 1.0)
 
-        def select_best_backend(candidates: list[str], base_confidences: Dict[str, float], reason: str) -> Dict[str, Any]:
+        def select_best_backend(candidates: list[str], base_confidences: Dict[str, float], reason: str) -> Dict[str, object]:
             """Select best backend from candidates using learned weights."""
             if not candidates:
                 return {"backend": "got_ocr", "reason": reason, "confidence": 0.5, "alternatives": []}
@@ -695,11 +695,11 @@ class OCRBackendRouter(OrchestrationAgent):
 
     async def _ml_based_selection(
         self,
-        metadata: Dict[str, Any],
-        sla: Dict[str, Any],
-        preferences: Dict[str, Any],
-        resource_status: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        metadata: Dict[str, object],
+        sla: Dict[str, object],
+        preferences: Dict[str, object],
+        resource_status: Optional[Dict[str, object]] = None,
+    ) -> Dict[str, object]:
         """
         ML-based backend selection using trained XGBoost model.
 
@@ -812,7 +812,7 @@ class OCRBackendRouter(OrchestrationAgent):
             "learned_weights_applied": learned_weights_applied,
         }
 
-    def get_backend_info(self, backend: str) -> Dict[str, Any]:
+    def get_backend_info(self, backend: str) -> Dict[str, object]:
         """Get backend capabilities and characteristics."""
         return self.BACKEND_CAPABILITIES.get(backend, {})
 
@@ -837,10 +837,10 @@ class OCRBackendRouter(OrchestrationAgent):
     def collect_training_feedback(
         self,
         document_id: str,
-        document_metadata: Dict[str, Any],
+        document_metadata: Dict[str, object],
         selected_backend: str,
-        processing_result: Dict[str, Any],
-        sla_requirements: Optional[Dict[str, Any]] = None,
+        processing_result: Dict[str, object],
+        sla_requirements: Optional[Dict[str, object]] = None,
     ) -> None:
         """
         Collect training feedback from processing result.
@@ -880,7 +880,7 @@ class OCRBackendRouter(OrchestrationAgent):
         except Exception as e:
             logger.warning("training_feedback_collection_failed", **safe_error_log(e))
 
-    async def train_model(self, force: bool = False) -> Dict[str, Any]:
+    async def train_model(self, force: bool = False) -> Dict[str, object]:
         """
         Train or retrain the ML model.
 
@@ -920,7 +920,7 @@ class OCRBackendRouter(OrchestrationAgent):
         self._ml_trainer.generate_synthetic_training_data(num_samples)
         logger.info("bootstrap_data_generated", num_samples=num_samples)
 
-    def get_routing_stats(self) -> Dict[str, Any]:
+    def get_routing_stats(self) -> Dict[str, object]:
         """
         Get routing statistics.
 
@@ -940,8 +940,8 @@ class OCRBackendRouter(OrchestrationAgent):
 
     def get_backend_recommendations(
         self,
-        document_metadata: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        document_metadata: Dict[str, object],
+    ) -> Dict[str, object]:
         """
         Get backend recommendations for a document without making final selection.
 
@@ -1094,9 +1094,9 @@ class OCRBackendRouter(OrchestrationAgent):
 
     async def get_backend_recommendation_with_learning(
         self,
-        document_metadata: Dict[str, Any],
+        document_metadata: Dict[str, object],
         use_learned_weights: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, object]:
         """
         Get backend recommendations with learned weight adjustments.
 
@@ -1146,7 +1146,7 @@ class OCRBackendRouter(OrchestrationAgent):
     def get_available_backends(
         self,
         gpu_required: Optional[bool] = None,
-    ) -> Dict[str, Dict[str, Any]]:
+    ) -> Dict[str, Dict[str, object]]:
         """
         Get available backends with optional filtering.
 
