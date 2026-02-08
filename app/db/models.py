@@ -18465,3 +18465,25 @@ from app.db.models_banking_connection import (
     ReconciliationRule,
     SupportedBank,
 )
+# Phase 7: Enterprise Features (Feb 2026)
+from app.db.models_einvoice import (
+    EInvoiceTransmission, PeppolParticipant, IncomingEInvoice,
+)
+from app.db.models_autonomy import (
+    AutonomySettings, PendingAction, AutonomyDecisionLog, AutonomyMetrics,
+)
+from app.db.models_esg import (
+    ESGCarbonFootprint, ESGSupplierRating, ESGCertification, ESGReport, ESGGoal,
+)
+from app.db.models_fx import (
+    ExchangeRate, FXGainLossEntry,
+)
+from app.db.models_gl_posting import (
+    GLAccount, JournalEntry, JournalEntryLine, TaxPeriod,
+)
+from app.db.models_portal import (
+    PortalUser, PortalSession, PortalComplaint, PortalMessage, PortalDocument, PortalPaymentConfirmation,
+)
+from app.db.models_workflow_stage import (
+    WorkflowStage, DocumentWorkflowItem,
+)

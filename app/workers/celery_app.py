@@ -284,6 +284,13 @@ celery_app = Celery(
         "app.workers.tasks.sla_tasks",  # SLA Monitoring (Phase 4: Workflow Extensions)
         "app.workers.tasks.liquidity_tasks",  # Liquidity Monitoring (Cashflow Alerts, Large Outflows)
         "app.workers.tasks.push_notification_tasks",  # Push Notification Management (Cleanup, Health Check)
+        "app.workers.tasks.fx_rate_tasks",  # FX Rate Sync (ECB daily, historical, revaluation)
+        "app.workers.tasks.gl_posting_tasks",  # GL Posting (auto-post, trial balance, EUeR)
+        "app.workers.tasks.retention_tasks",  # GDPR Retention Enforcement (expiry check, integrity, cleanup, reports)
+        "app.workers.tasks.mtls_tasks",  # mTLS Certificate Management (rotation, verification, cleanup, audit)
+        "app.workers.tasks.ocr_router_training_tasks",  # OCR ML Router Training (collect, A/B test, synthetic data)
+        "app.workers.tasks.autonomous_trust_tasks",  # Autonomous Trust (proposals, metrics, upgrades, cleanup, notifications)
+        "app.workers.tasks.retention_enforcement_tasks",  # Retention Enforcement (daily scan, reviews, compliance report)
     ]
 )
 

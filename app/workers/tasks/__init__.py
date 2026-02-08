@@ -112,6 +112,50 @@ from app.workers.tasks.banking_psd2_tasks import (
     cleanup_old_sync_logs,
     PSD2_BANKING_BEAT_SCHEDULE,
 )
+from app.workers.tasks.fx_rate_tasks import (
+    fetch_ecb_rates_daily,
+    fetch_ecb_rates_historical,
+    month_end_revaluation,
+)
+from app.workers.tasks.gl_posting_tasks import (
+    auto_post_document_task,
+    generate_trial_balance_task,
+    generate_euer_task,
+)
+from app.workers.tasks.retention_tasks import (
+    check_expiring_archives_task,
+    verify_archive_integrity_task,
+    process_expired_archives_task,
+    generate_retention_report_task,
+)
+from app.workers.tasks.mtls_tasks import (
+    rotate_expiring_certificates_task,
+    verify_all_certificates_task,
+    cleanup_revoked_certificates_task,
+    sync_certificate_registry_task,
+    generate_mtls_audit_report_task,
+    initialize_service_certificates_task,
+    revoke_certificate_task,
+    get_ca_status_task,
+)
+from app.workers.tasks.ocr_router_training_tasks import (
+    collect_and_train_task,
+    evaluate_ab_test_task,
+    check_all_ab_tests_task,
+    generate_synthetic_data_task,
+)
+from app.workers.tasks.autonomous_trust_tasks import (
+    process_due_proposals,
+    update_trust_metrics,
+    evaluate_trust_upgrades,
+    cleanup_expired_proposals,
+    notify_pending_proposals,
+)
+from app.workers.tasks.retention_enforcement_tasks import (
+    enforce_retention_daily_scan,
+    process_post_retention_reviews,
+    generate_retention_compliance_report,
+)
 
 __all__ = [
     # OCR tasks
@@ -212,4 +256,41 @@ __all__ = [
     "update_connection_health",
     "cleanup_old_sync_logs",
     "PSD2_BANKING_BEAT_SCHEDULE",
+    # FX Rate tasks
+    "fetch_ecb_rates_daily",
+    "fetch_ecb_rates_historical",
+    "month_end_revaluation",
+    # GL Posting tasks
+    "auto_post_document_task",
+    "generate_trial_balance_task",
+    "generate_euer_task",
+    # Retention tasks
+    "check_expiring_archives_task",
+    "verify_archive_integrity_task",
+    "process_expired_archives_task",
+    "generate_retention_report_task",
+    # mTLS tasks
+    "rotate_expiring_certificates_task",
+    "verify_all_certificates_task",
+    "cleanup_revoked_certificates_task",
+    "sync_certificate_registry_task",
+    "generate_mtls_audit_report_task",
+    "initialize_service_certificates_task",
+    "revoke_certificate_task",
+    "get_ca_status_task",
+    # OCR Router Training tasks
+    "collect_and_train_task",
+    "evaluate_ab_test_task",
+    "check_all_ab_tests_task",
+    "generate_synthetic_data_task",
+    # Autonomous Trust tasks
+    "process_due_proposals",
+    "update_trust_metrics",
+    "evaluate_trust_upgrades",
+    "cleanup_expired_proposals",
+    "notify_pending_proposals",
+    # Retention Enforcement tasks
+    "enforce_retention_daily_scan",
+    "process_post_retention_reviews",
+    "generate_retention_compliance_report",
 ]
