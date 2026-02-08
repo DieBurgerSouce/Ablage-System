@@ -1,16 +1,16 @@
 {
-  "total_tasks": 960,
+  "total_tasks": 976,
   "by_model": {
-    "opus": 420,
-    "sonnet": 540,
+    "opus": 427,
+    "sonnet": 549,
     "haiku": 0
   },
-  "escalations": 840,
-  "cache_hits": 120,
-  "total_tokens": 411360,
-  "total_cost": 7.073100000000029,
-  "avg_execution_time_ms": 5.878125000000003,
-  "quality_failures": 960,
+  "escalations": 854,
+  "cache_hits": 122,
+  "total_tokens": 418216,
+  "total_cost": 7.190985000000029,
+  "avg_execution_time_ms": 6.162909836065578,
+  "quality_failures": 976,
   "daily_stats": {
     "2026-01-17": {
       "tasks": 896,
@@ -19,6 +19,10 @@
     "2026-01-18": {
       "tasks": 64,
       "cost": 0.4715400000000003
+    },
+    "2026-02-06": {
+      "tasks": 16,
+      "cost": 0.11788499999999999
     }
   },
   "hourly_stats": {
@@ -83,6 +87,10 @@
       "cost": 0.35365500000000016
     },
     "2026-01-18-01": {
+      "tasks": 16,
+      "cost": 0.11788499999999999
+    },
+    "2026-02-06-02": {
       "tasks": 16,
       "cost": 0.11788499999999999
     }
