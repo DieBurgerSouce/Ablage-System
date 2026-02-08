@@ -11,13 +11,14 @@ Erfuellt GoBD-Kriterien:
 - Nachvollziehbarkeit: Audit-Trail fuer alle Aktionen
 """
 
+from __future__ import annotations
+
 import uuid
-from datetime import date, datetime, timedelta
-from typing import Optional
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
 
 import structlog
-from celery import shared_task
-from sqlalchemy import select, and_, update
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.safe_errors import safe_error_log
@@ -25,7 +26,6 @@ from app.db.database import async_session_factory
 from app.db.models import (
     DocumentArchive,
     RetentionSetting,
-    User,
     AuditLog,
     Company,
 )
@@ -43,10 +43,11 @@ logger = structlog.get_logger(__name__)
 @celery_app.task(
     name="retention.check_expiring_archives",
     bind=True,
+    acks_late=True,
     max_retries=3,
     default_retry_delay=300,
 )
-def check_expiring_archives_task(self, days_ahead: int = 90) -> dict:
+def check_expiring_archives_task(self, days_ahead: int = 90) -> Dict[str, Any]:
     """Prueft auf bald ablaufende Archive und sendet Erinnerungen.
 
     Wird taeglich via Celery Beat ausgefuehrt.
@@ -83,10 +84,8 @@ def check_expiring_archives_task(self, days_ahead: int = 90) -> dict:
 async def _check_expiring_archives(
     db: AsyncSession,
     days_ahead: int
-) -> dict:
+) -> Dict[str, Any]:
     """Interne Funktion zum Pruefen ablaufender Archive."""
-    expiry_threshold = date.today() + timedelta(days=days_ahead)
-
     # Alle Companies abrufen
     companies_result = await db.execute(
         select(Company).where(Company.is_active == True)
@@ -95,7 +94,7 @@ async def _check_expiring_archives(
 
     total_expiring = 0
     total_reminded = 0
-    by_company: dict[str, int] = {}
+    by_company: Dict[str, int] = {}
 
     for company in companies:
         # Ablaufende Archive finden (noch nicht erinnert)
@@ -145,6 +144,7 @@ async def _check_expiring_archives(
 @celery_app.task(
     name="retention.verify_archive_integrity",
     bind=True,
+    acks_late=True,
     max_retries=3,
     default_retry_delay=600,
 )
@@ -152,7 +152,7 @@ def verify_archive_integrity_task(
     self,
     company_id: Optional[str] = None,
     batch_size: int = 100,
-) -> dict:
+) -> Dict[str, Any]:
     """Batch-Verifikation der Dokumentintegritaet.
 
     Prueft die SHA-256 Hashes aller archivierten Dokumente.
@@ -196,7 +196,7 @@ async def _batch_verify_integrity(
     db: AsyncSession,
     company_id: Optional[uuid.UUID],
     batch_size: int
-) -> dict:
+) -> Dict[str, Any]:
     """Interne Funktion fuer Batch-Integritaetspruefung."""
     # Query bauen
     query = select(DocumentArchive)
@@ -205,7 +205,7 @@ async def _batch_verify_integrity(
         query = query.where(DocumentArchive.company_id == company_id)
 
     # Nur Archive, die laenger als 24h nicht verifiziert wurden
-    stale_threshold = datetime.now() - timedelta(hours=24)
+    stale_threshold = datetime.now(timezone.utc) - timedelta(hours=24)
     query = query.where(
         (DocumentArchive.last_verification_at == None) |
         (DocumentArchive.last_verification_at < stale_threshold)
@@ -216,7 +216,7 @@ async def _batch_verify_integrity(
 
     verified_count = 0
     failed_count = 0
-    failed_documents: list[str] = []
+    failed_documents: List[str] = []
 
     for archive in archives:
         is_valid = await archive_service.verify_document_integrity(
@@ -253,10 +253,11 @@ async def _batch_verify_integrity(
 @celery_app.task(
     name="retention.process_expired_archives",
     bind=True,
+    acks_late=True,
     max_retries=3,
     default_retry_delay=600,
 )
-def process_expired_archives_task(self) -> dict:
+def process_expired_archives_task(self) -> Dict[str, Any]:
     """Verarbeitet abgelaufene Archive (nach Aufbewahrungsfrist).
 
     Wird taeglich via Celery Beat ausgefuehrt.
@@ -286,7 +287,7 @@ def process_expired_archives_task(self) -> dict:
         raise self.retry(exc=e)
 
 
-async def _process_expired_archives(db: AsyncSession) -> dict:
+async def _process_expired_archives(db: AsyncSession) -> Dict[str, Any]:
     """Interne Funktion zum Verarbeiten abgelaufener Archive."""
     today = date.today()
 
@@ -388,9 +389,11 @@ async def _process_expired_archives(db: AsyncSession) -> dict:
 @celery_app.task(
     name="retention.generate_retention_report",
     bind=True,
+    acks_late=True,
     max_retries=3,
+    default_retry_delay=300,
 )
-def generate_retention_report_task(self, company_id: str) -> dict:
+def generate_retention_report_task(self, company_id: str) -> Dict[str, Any]:
     """Generiert einen Aufbewahrungsfristen-Bericht.
 
     Args:
@@ -433,22 +436,19 @@ async def _create_retention_audit_log(
     document_id: uuid.UUID,
     company_id: uuid.UUID,
     action: str,
-    details: dict,
+    details: Dict[str, Any],
 ) -> None:
     """Erstellt einen Audit-Log-Eintrag fuer Retention-Aktionen."""
     audit_log = AuditLog(
         id=uuid.uuid4(),
         user_id=None,  # System-Aktion
+        company_id=company_id,
         action=action,
-        entity_type="document_archive",
-        entity_id=document_id,
-        old_value=None,
-        new_value=details,
+        resource_type="document_archive",
+        resource_id=document_id,
+        audit_metadata=details,
         ip_address="system",
         user_agent="retention_task",
-        # GoBD-spezifische Felder (wenn in audit_logs vorhanden)
-        # gobd_relevant=True,
-        # document_hash=details.get("content_hash"),
     )
     db.add(audit_log)
 

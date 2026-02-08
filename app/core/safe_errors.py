@@ -21,7 +21,7 @@ Usage:
 Created: 2026-01-29
 """
 
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 from uuid import uuid4
 import re
 
@@ -63,7 +63,7 @@ PII_PATTERNS = [
     re.compile(r"token[=:\s]", re.IGNORECASE),
     re.compile(r"bearer\s+\w+", re.IGNORECASE),
     re.compile(r"authorization[=:\s]", re.IGNORECASE),
-    re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"),  # Email
+    re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"),  # Email
     re.compile(r"\b(?:DE)?\d{2}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{2}\b"),  # IBAN
     re.compile(r"\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b"),  # Phone
     re.compile(r"(?:kunden?|customer)[_-]?(?:nummer|number|nr|id)[=:\s]*\d+", re.IGNORECASE),
@@ -146,8 +146,8 @@ def safe_error_detail(
 def safe_error_log(
     e: Exception,
     context: Optional[str] = None,
-    extra: Optional[dict[str, Any]] = None
-) -> dict[str, Any]:
+    extra: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
     """
     Generate safe logging data for an exception without PII leakage.
 
@@ -169,7 +169,7 @@ def safe_error_log(
     error_type = _get_exception_type_name(e)
     error_id = uuid4().hex[:8]  # Short ID for support tickets
 
-    result: dict[str, Any] = {
+    result: Dict[str, Any] = {
         "error_type": error_type,
         "error_id": error_id,
     }
@@ -208,7 +208,7 @@ def create_error_response(
     context: str = "Vorgang",
     status_code: int = 500,
     error_code: Optional[str] = None
-) -> dict[str, Any]:
+) -> Dict[str, Any]:
     """
     Create a standardized error response dict for API endpoints.
 

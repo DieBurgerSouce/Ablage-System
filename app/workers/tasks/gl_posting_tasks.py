@@ -8,14 +8,15 @@ Background tasks:
 - Generate EÜR reports
 """
 
-from typing import Optional
+from typing import Any, Dict, Optional
 from uuid import UUID
 
 import structlog
 from celery import Task
 
+from app.core.safe_errors import safe_error_log
 from app.workers.celery_app import celery_app
-from app.db.session import get_sync_session
+from app.db.session import get_async_session
 from app.services.accounting.gl_posting_service import GLPostingService
 from app.services.accounting.euer_report_service import EUeRReportService
 
@@ -25,6 +26,7 @@ logger = structlog.get_logger(__name__)
 @celery_app.task(
     name="app.workers.tasks.gl_posting_tasks.auto_post_document",
     bind=True,
+    acks_late=True,
     max_retries=3,
     default_retry_delay=60,
 )
@@ -48,7 +50,7 @@ def auto_post_document_task(
     from asyncio import run
 
     async def _run() -> Optional[str]:
-        async with get_sync_session() as db:
+        async with get_async_session() as db:
             service = GLPostingService(db)
             entry = await service.auto_post_from_pipeline(
                 company_id=UUID(company_id),
@@ -70,7 +72,7 @@ def auto_post_document_task(
         logger.error(
             "auto_post_document_task_failed",
             document_id=document_id,
-            error=str(exc),
+            **safe_error_log(exc),
         )
         raise self.retry(exc=exc)
 
@@ -78,13 +80,16 @@ def auto_post_document_task(
 @celery_app.task(
     name="app.workers.tasks.gl_posting_tasks.generate_trial_balance",
     bind=True,
+    acks_late=True,
+    max_retries=3,
+    default_retry_delay=60,
 )
 def generate_trial_balance_task(
     self: Task,
     company_id: str,
     fiscal_year: int,
     period: Optional[int] = None,
-) -> dict:
+) -> Dict[str, Any]:
     """
     Generates trial balance report.
 
@@ -98,8 +103,8 @@ def generate_trial_balance_task(
     """
     from asyncio import run
 
-    async def _run() -> dict:
-        async with get_sync_session() as db:
+    async def _run() -> Dict[str, Any]:
+        async with get_async_session() as db:
             service = GLPostingService(db)
             rows = await service.get_trial_balance(
                 company_id=UUID(company_id),
@@ -135,20 +140,23 @@ def generate_trial_balance_task(
         logger.error(
             "generate_trial_balance_task_failed",
             company_id=company_id,
-            error=str(exc),
+            **safe_error_log(exc),
         )
-        raise
+        raise self.retry(exc=exc)
 
 
 @celery_app.task(
     name="app.workers.tasks.gl_posting_tasks.generate_euer",
     bind=True,
+    acks_late=True,
+    max_retries=3,
+    default_retry_delay=60,
 )
 def generate_euer_task(
     self: Task,
     company_id: str,
     fiscal_year: int,
-) -> dict:
+) -> Dict[str, Any]:
     """
     Generates EÜR report.
 
@@ -161,8 +169,8 @@ def generate_euer_task(
     """
     from asyncio import run
 
-    async def _run() -> dict:
-        async with get_sync_session() as db:
+    async def _run() -> Dict[str, Any]:
+        async with get_async_session() as db:
             service = EUeRReportService(db)
             report = await service.generate_euer(
                 company_id=UUID(company_id),
@@ -189,6 +197,6 @@ def generate_euer_task(
         logger.error(
             "generate_euer_task_failed",
             company_id=company_id,
-            error=str(exc),
+            **safe_error_log(exc),
         )
-        raise
+        raise self.retry(exc=exc)

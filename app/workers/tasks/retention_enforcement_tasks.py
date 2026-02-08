@@ -10,11 +10,11 @@ Automatisierte Tasks fuer:
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime, timedelta
-from typing import Optional, Dict, List
+from datetime import date, datetime, timezone
+from typing import Any, Dict, Optional
 
 import structlog
-from sqlalchemy import select, and_, update
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.safe_errors import safe_error_log
@@ -22,7 +22,6 @@ from app.db.database import async_session_factory
 from app.db.models import DocumentArchive, Document, Company, AuditLog
 from app.services.compliance.retention_enforcement_service import (
     retention_enforcement_service,
-    EnforcementStatus,
 )
 from app.workers.celery_app import celery_app
 
@@ -37,10 +36,11 @@ logger = structlog.get_logger(__name__)
 @celery_app.task(
     name="retention_enforcement.enforce_retention_daily_scan",
     bind=True,
+    acks_late=True,
     max_retries=3,
     default_retry_delay=300,
 )
-def enforce_retention_daily_scan(self) -> Dict:
+def enforce_retention_daily_scan(self) -> Dict[str, Any]:
     """Taeglicher Scan auf Retention-Verletztungen.
 
     Prueft:
@@ -72,9 +72,8 @@ def enforce_retention_daily_scan(self) -> Dict:
         raise self.retry(exc=e)
 
 
-async def _daily_enforcement_scan(db: AsyncSession) -> Dict:
+async def _daily_enforcement_scan(db: AsyncSession) -> Dict[str, Any]:
     """Interne Funktion fuer taeglichen Enforcement-Scan."""
-    today = date.today()
     violations_found = 0
     inconsistencies_fixed = 0
     archives_checked = 0
@@ -155,10 +154,11 @@ async def _daily_enforcement_scan(db: AsyncSession) -> Dict:
 @celery_app.task(
     name="retention_enforcement.process_post_retention_reviews",
     bind=True,
+    acks_late=True,
     max_retries=3,
     default_retry_delay=600,
 )
-def process_post_retention_reviews(self) -> Dict:
+def process_post_retention_reviews(self) -> Dict[str, Any]:
     """Verarbeitet Dokumente deren Aufbewahrungsfrist abgelaufen ist.
 
     Prueft Archive deren post_retention_review_scheduled=True und
@@ -189,9 +189,8 @@ def process_post_retention_reviews(self) -> Dict:
         raise self.retry(exc=e)
 
 
-async def _process_post_retention_reviews(db: AsyncSession) -> Dict:
+async def _process_post_retention_reviews(db: AsyncSession) -> Dict[str, Any]:
     """Interne Funktion fuer Post-Retention Review Verarbeitung."""
-    today = datetime.now()
     reviews_processed = 0
     notifications_sent = 0
 
@@ -279,13 +278,14 @@ async def _process_post_retention_reviews(db: AsyncSession) -> Dict:
 @celery_app.task(
     name="retention_enforcement.generate_retention_compliance_report",
     bind=True,
+    acks_late=True,
     max_retries=3,
     default_retry_delay=600,
 )
 def generate_retention_compliance_report(
     self,
     company_id: Optional[str] = None,
-) -> Dict:
+) -> Dict[str, Any]:
     """Generiert wochentlichen Compliance-Report.
 
     Args:
@@ -322,7 +322,7 @@ def generate_retention_compliance_report(
 async def _generate_compliance_report(
     db: AsyncSession,
     company_id: Optional[uuid.UUID]
-) -> Dict:
+) -> Dict[str, Any]:
     """Interne Funktion fuer Compliance-Report Generierung."""
     reports = {}
 
@@ -360,7 +360,7 @@ async def _generate_compliance_report(
             }
 
     return {
-        "report_generated_at": datetime.now().isoformat(),
+        "report_generated_at": datetime.now(timezone.utc).isoformat(),
         "companies_included": len(reports),
         "reports": reports,
     }
@@ -376,7 +376,7 @@ async def _create_enforcement_audit_log(
     document_id: uuid.UUID,
     company_id: uuid.UUID,
     action: str,
-    details: Dict,
+    details: Dict[str, Any],
 ) -> None:
     """Erstellt Audit-Log fuer Enforcement-Aktionen."""
     audit_log = AuditLog(

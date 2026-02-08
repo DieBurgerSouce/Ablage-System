@@ -8,21 +8,21 @@ Tasks:
 
 from __future__ import annotations
 
-import logging
 from datetime import date
-from decimal import Decimal
-from typing import Optional, Dict, Any
-from uuid import UUID
+from typing import Dict, Any
 
+import structlog
+
+from app.core.safe_errors import safe_error_log
 from app.workers.celery_app import celery_app
-from app.db.session import get_sync_session
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @celery_app.task(
     name="app.workers.tasks.fx_rate_tasks.fetch_ecb_rates_daily",
     bind=True,
+    acks_late=True,
     max_retries=3,
     default_retry_delay=300,  # 5 min retry
 )
@@ -40,17 +40,19 @@ def fetch_ecb_rates_daily(self) -> Dict[str, Any]:
 
     try:
         result = asyncio.run(_fetch())
-        logger.info("ECB Kurse importiert: %d", result["imported_rates"])
+        logger.info("ecb_rates_imported", imported_rates=result["imported_rates"])
         return result
     except Exception as exc:
-        logger.error("ECB Kursabruf fehlgeschlagen: %s", str(exc))
+        logger.error("ecb_rates_fetch_failed", **safe_error_log(exc))
         raise self.retry(exc=exc)
 
 
 @celery_app.task(
     name="app.workers.tasks.fx_rate_tasks.fetch_ecb_rates_historical",
     bind=True,
+    acks_late=True,
     max_retries=2,
+    default_retry_delay=300,
 )
 def fetch_ecb_rates_historical(self) -> Dict[str, Any]:
     """Einmaliger Abruf der letzten 90 Tage ECB Kurse."""
@@ -67,26 +69,23 @@ def fetch_ecb_rates_historical(self) -> Dict[str, Any]:
     try:
         return asyncio.run(_fetch())
     except Exception as exc:
-        logger.error("Historischer Kursabruf fehlgeschlagen: %s", str(exc))
+        logger.error("ecb_rates_historical_fetch_failed", **safe_error_log(exc))
         raise self.retry(exc=exc)
 
 
 @celery_app.task(
     name="app.workers.tasks.fx_rate_tasks.month_end_revaluation",
     bind=True,
+    acks_late=True,
     max_retries=2,
+    default_retry_delay=300,
 )
 def month_end_revaluation(self, company_id: str) -> Dict[str, Any]:
     """
     Monatsabschluss: Unrealisierte Kursdifferenzen berechnen.
     Bewertet alle offenen Fremdwaehrungspositionen zum Stichtagskurs.
     """
-    import asyncio
-    from app.db.session import get_async_session
-    from app.services.accounting.fx_rate_service import FXRateService
-    from app.services.accounting.fx_gain_loss_service import FXGainLossService
-
-    logger.info("Monatsabschluss-Bewertung gestartet fuer Firma %s", company_id)
+    logger.info("month_end_revaluation_started", company_id=company_id)
 
     # Implementation: Query open FX positions, calculate unrealized G/L
     # This would involve:
