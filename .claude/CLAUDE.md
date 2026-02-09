@@ -81,6 +81,7 @@
 | | OCR Self-Learning | `.claude/Docs/Features/OCR-Self-Learning.md` |
 | | MLOps Pipeline | `.claude/Docs/Features/MLOps-Pipeline.md` |
 | | Alert Center | `.claude/Docs/Features/Alert-Center.md` |
+| | **Multi-Tenancy Security** | `.claude/Docs/Features/Multi-Tenancy-Security.md` |
 | Integrations | DATEV Connect | `.claude/Docs/Integrations/DATEV-Connect.md` |
 | | Lexware | `.claude/Docs/Integrations/Lexware.md` |
 | | Slack | `.claude/Docs/Integrations/Slack.md` |
