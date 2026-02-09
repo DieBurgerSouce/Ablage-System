@@ -18487,3 +18487,6 @@ from app.db.models_portal import (
 from app.db.models_workflow_stage import (
     WorkflowStage, DocumentWorkflowItem,
 )
+from app.db.models_notification_template import (
+    NotificationMessageTemplate,
+)
