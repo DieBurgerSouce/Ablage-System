@@ -10,6 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Jaeger distributed tracing mit OpenTelemetry (OTLP gRPC:4317, UI:16686, badger storage)
+- Migrationen 207-210 (Saved Searches, Notification Templates, Dashboard Shares, RLS Policies)
+- Satellite models: NotificationMessageTemplate, SavedSearch, DashboardShare, TenantConfig
+- TenantContextMiddleware fuer Multi-Tenancy Row-Level Security propagation
+- Resilience Patterns (Circuit Breaker, Retry, Bulkhead) mit Prometheus Metrics Integration
+- L1 LRU Cache (sub-ms latency) + L2 Redis Cache im cache.py (2-tier caching architecture)
+- Cache Warming Service mit async preloading patterns
+- Tenant Config Service, OCR Confidence Service, Document Comparison Service
+- Dashboard Period Comparison + Sharing Service
+- Notification Dedup + Escalation Chain + Template Engine Services
+- API Endpoints: ocr_confidence, document_comparison, saved_searches, period_comparison, notification_templates, tenant_admin
+- Makefile Targets: dev-setup (one-command onboarding), db-seed, coverage
 - Enterprise DB models: AutonomousTrustConfig, satellite models (banking, einvoice, esg, fx, gl_posting, portal, workflow_stage)
 - Migrations 148, 202-208 (einvoice transmission, autonomous trust, contract V2, PSD2, portal/ESG, retention, GL posting, FX, kanban)
 - mTLS Service and Certificate Authority for internal PKI
@@ -37,6 +49,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Team workflow quality gates and router hook hardening
 
 ### Changed
+- Docker Compose: Jaeger service mit OTLP collector, badger persistence, health checks
+- Environment Variables: TRACING_ENABLED, OTLP_ENDPOINT, TRACING_CONSOLE_EXPORT
+- app/core/cache.py: Erweitert um LRUCache Klasse (thread-safe, TTL, pattern-based invalidation)
+- app/main.py: TenantContextMiddleware registriert, 7 neue API Router eingebunden
+- app/db/models.py: Import fuer NotificationMessageTemplate hinzugefuegt
 - Celery worker settings: task timeouts, prefetch tuning, retry delay configuration
 - Docker Compose: new service configurations, Redis tuning
 - Helm values: HPA scaling config, production tuning

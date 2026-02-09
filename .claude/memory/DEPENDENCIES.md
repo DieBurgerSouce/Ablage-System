@@ -30,3 +30,12 @@
 | Nginx | Latest | Web Server |
 | CUDA | 12.x | GPU Acceleration |
 | NVIDIA Driver | Latest | GPU Support |
+
+### Monitoring & Observability (2026-02-09)
+| Component | Version | Purpose |
+|-----------|---------|---------|
+| Prometheus | Latest | Metrics Collection |
+| Grafana | Latest | Metrics Visualization |
+| Jaeger | 1.53 | Distributed Tracing (OpenTelemetry) |
+| OpenTelemetry | Latest | OTLP gRPC Export (:4317) |
+| Loki | Latest | Log Aggregation |

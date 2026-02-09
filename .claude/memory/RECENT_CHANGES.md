@@ -1,5 +1,20 @@
 # Recent Changes
 
+## 2026-02-09
+- **feat(infra)**: Jaeger distributed tracing mit OpenTelemetry (OTLP gRPC:4317, UI:16686)
+- **feat(db)**: Migrationen 207-210 (Saved Searches, Notification Templates, Dashboard Shares, RLS Policies)
+- **feat(db)**: 4 satellite models (notification_template, saved_search, dashboard_share, tenant_config)
+- **feat(security)**: TenantContextMiddleware fuer Multi-Tenancy RLS propagation
+- **feat(security)**: Resilience Patterns (Circuit Breaker, Retry, Bulkhead) mit Prometheus Metrics
+- **feat(services)**: L1 LRU Cache (sub-ms latency) + L2 Redis Cache im cache.py
+- **feat(services)**: Cache Warming Service mit async preloading patterns
+- **feat(services)**: Tenant Config Service, OCR Confidence Service, Document Comparison Service
+- **feat(services)**: Dashboard Period Comparison + Sharing Service, Notification Dedup + Escalation + Template Engine
+- **feat(api)**: 7 neue API-Routen (ocr_confidence, document_comparison, saved_searches, period_comparison, notification_templates, tenant_admin)
+- **test(multi)**: 47 neue Unit Tests fuer Multi-Tenancy, Cache, Dashboard, Notification Services
+- **chore(infra)**: Makefile mit dev-setup, db-seed, coverage Targets
+- **chore(config)**: CLAUDE.md + ralph-loop updates
+
 ## 2026-02-08 (Session Documentation)
 - **docs(session)**: ✅ Enterprise-Level Critical Review ABGESCHLOSSEN
 - **docs(session)**: SESSION_2026-02-08_Enterprise-Review.md erstellt (2,500+ words)
@@ -48,18 +63,3 @@
 - **feat(enterprise)**: Vision 2026 Q1-Q4 vollstaendig verifiziert (150+ Services, 400+ Endpoints)
 - **feat(services)**: Q2-Q4 Services (Zero-Touch Pipeline, Predictive Analytics, Daily Insights)
 - **feat(enterprise)**: Vision 2.0 Phase 3 (Event-Sourcing, GraphQL-API, Offline-Sync)
-
-## 2026-01-27
-- **fix(security)**: Phase 2 Security 100% - DNS Timeout, TOTP Atomic SETNX
-- **fix(enterprise)**: Phase 3 Error Handling 100% - 75+ silent swallows konvertiert
-- **docs(api)**: API-Dokumentation fuer 5 kritische APIs erstellt
-
-## 2026-01-25
-- **feat(enterprise)**: Vision 2.0 Complete Implementation (521 Dateien, 150.000+ Zeilen)
-- **feat(ai)**: AI Conversations Persistence (Migration 120, Models, API, Frontend)
-
-## 2026-01-24
-- **fix(tests)**: Ralph Loop Session 3-5 - API-Tests + Korrekturen fuer Features 18-20
-- **feat(api)**: TaxAuthorityExport + Formula Extraction + Bundesbank API Endpoints
-
-> Aeltere Eintraege: `.claude/Docs/Archive/CHANGELOG-2026-01.md`
