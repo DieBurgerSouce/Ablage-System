@@ -24,9 +24,33 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import utc_now
 from app.core.safe_errors import safe_error_log
+from app.db.models import InvoiceTracking, InvoiceStatus, Document, Company
 from app.db.models_fx import ExchangeRate, RateSource
 
 logger = structlog.get_logger(__name__)
+
+
+@dataclass
+class RevaluationEntry:
+    """Einzelposition einer Stichtagsbewertung."""
+    invoice_tracking_id: UUID
+    currency: str
+    original_amount: Decimal
+    outstanding_amount: Decimal
+    booking_rate: Decimal
+    current_rate: Decimal
+    gain_loss_eur: Decimal
+    is_gain: bool
+
+
+@dataclass
+class RevaluationSummary:
+    """Ergebnis einer Monatsabschluss-Bewertung."""
+    entries_processed: int
+    total_gain: Decimal
+    total_loss: Decimal
+    currency_breakdown: Dict[str, Dict[str, str]]
+    entries: List[RevaluationEntry]
 
 # ECB daily reference rates endpoint (XML)
 ECB_DAILY_RATES_URL = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml"
@@ -221,6 +245,240 @@ class FXRateService:
             ).distinct()
         )
         return [row[0] for row in result.all()]
+
+    async def month_end_revaluation(
+        self,
+        company_id: UUID,
+        revaluation_date: date,
+        db: AsyncSession,
+    ) -> RevaluationSummary:
+        """
+        Monatsabschluss-Stichtagsbewertung aller offenen Fremdwaehrungspositionen.
+
+        Bewertet offene Forderungen und Verbindlichkeiten in Nicht-EUR-Waehrungen
+        zum Stichtagskurs und bucht unrealisierte Kursgewinne/-verluste.
+
+        Args:
+            company_id: Firmen-ID
+            revaluation_date: Bewertungsstichtag (z.B. 2026-01-31)
+            db: Datenbank-Session
+
+        Returns:
+            RevaluationSummary mit Ergebnis der Bewertung
+        """
+        from app.services.accounting.fx_gain_loss_service import FXGainLossService
+
+        logger.info(
+            "month_end_revaluation_started",
+            company_id=str(company_id),
+            revaluation_date=str(revaluation_date),
+        )
+
+        # 1. Offene Fremdwaehrungspositionen abfragen
+        open_positions = await self._get_open_fx_positions(company_id, db)
+
+        if not open_positions:
+            logger.info(
+                "month_end_revaluation_no_positions",
+                company_id=str(company_id),
+            )
+            return RevaluationSummary(
+                entries_processed=0,
+                total_gain=Decimal("0.00"),
+                total_loss=Decimal("0.00"),
+                currency_breakdown={},
+                entries=[],
+            )
+
+        fx_gl_service = FXGainLossService(db)
+        entries: List[RevaluationEntry] = []
+        total_gain = Decimal("0.00")
+        total_loss = Decimal("0.00")
+        currency_breakdown: Dict[str, Dict[str, Decimal]] = {}
+
+        # 2. Fuer jede Position: Stichtagskurs holen und Differenz berechnen
+        for inv in open_positions:
+            currency = inv.currency
+            if not currency or currency == "EUR":
+                continue
+
+            outstanding = Decimal(str(inv.outstanding_amount or inv.amount or 0))
+            paid = Decimal(str(inv.paid_amount or 0))
+            if inv.outstanding_amount is None:
+                outstanding = Decimal(str(inv.amount or 0)) - paid
+            if outstanding <= Decimal("0"):
+                continue
+
+            # Buchungskurs: EUR-Betrag zum Zeitpunkt der Rechnungsstellung
+            # Da InvoiceTracking keinen booking_rate hat, berechnen wir ihn
+            # aus dem historischen Kurs am Rechnungsdatum
+            invoice_date_val = inv.invoice_date
+            if invoice_date_val and hasattr(invoice_date_val, 'date'):
+                invoice_date_val = invoice_date_val.date()
+
+            booking_rate = await self.get_rate(currency, invoice_date_val)
+            if booking_rate is None:
+                logger.warning(
+                    "month_end_revaluation_no_booking_rate",
+                    currency=currency,
+                    invoice_date=str(invoice_date_val),
+                    invoice_id=str(inv.id),
+                )
+                continue
+
+            # Stichtagskurs
+            current_rate = await self.get_rate(currency, revaluation_date)
+            if current_rate is None:
+                logger.warning(
+                    "month_end_revaluation_no_current_rate",
+                    currency=currency,
+                    revaluation_date=str(revaluation_date),
+                )
+                continue
+
+            # 3. Unrealisierten Gewinn/Verlust berechnen
+            gl_result = fx_gl_service.calculate_unrealized_gain_loss(
+                original_amount=outstanding,
+                original_currency=currency,
+                booking_rate=booking_rate,
+                current_rate=current_rate,
+            )
+
+            # Nur buchen wenn Differenz nicht Null ist
+            if gl_result.gain_loss_amount == Decimal("0.00"):
+                continue
+
+            # 4. GL-Buchung erstellen (System-User fuer automatische Bewertung)
+            await fx_gl_service.post_fx_gain_loss(
+                company_id=company_id,
+                result=gl_result,
+                realized=False,
+                posted_by=company_id,  # System-User = company_id als Platzhalter
+                reference_document_id=inv.document_id if hasattr(inv, 'document_id') else None,
+            )
+
+            entry = RevaluationEntry(
+                invoice_tracking_id=inv.id,
+                currency=currency,
+                original_amount=Decimal(str(inv.amount or 0)),
+                outstanding_amount=outstanding,
+                booking_rate=booking_rate,
+                current_rate=current_rate,
+                gain_loss_eur=gl_result.gain_loss_amount if gl_result.is_gain else -gl_result.gain_loss_amount,
+                is_gain=gl_result.is_gain,
+            )
+            entries.append(entry)
+
+            if gl_result.is_gain:
+                total_gain += gl_result.gain_loss_amount
+            else:
+                total_loss += gl_result.gain_loss_amount
+
+            # Waehrungs-Aufschluesselung
+            if currency not in currency_breakdown:
+                currency_breakdown[currency] = {
+                    "gain": Decimal("0.00"),
+                    "loss": Decimal("0.00"),
+                    "positions": Decimal("0"),
+                }
+            if gl_result.is_gain:
+                currency_breakdown[currency]["gain"] += gl_result.gain_loss_amount
+            else:
+                currency_breakdown[currency]["loss"] += gl_result.gain_loss_amount
+            currency_breakdown[currency]["positions"] += Decimal("1")
+
+        # Breakdown-Werte zu Strings fuer Serialisierung
+        breakdown_str: Dict[str, Dict[str, str]] = {}
+        for cur, vals in currency_breakdown.items():
+            breakdown_str[cur] = {
+                "gain": str(vals["gain"].quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
+                "loss": str(vals["loss"].quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
+                "positions": str(int(vals["positions"])),
+            }
+
+        summary = RevaluationSummary(
+            entries_processed=len(entries),
+            total_gain=total_gain.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+            total_loss=total_loss.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+            currency_breakdown=breakdown_str,
+            entries=entries,
+        )
+
+        logger.info(
+            "month_end_revaluation_completed",
+            company_id=str(company_id),
+            entries_processed=summary.entries_processed,
+            total_gain=str(summary.total_gain),
+            total_loss=str(summary.total_loss),
+        )
+
+        return summary
+
+    async def _get_open_fx_positions(
+        self,
+        company_id: UUID,
+        db: AsyncSession,
+    ) -> List[InvoiceTracking]:
+        """
+        Holt alle offenen Fremdwaehrungspositionen fuer eine Firma.
+
+        Returns:
+            Liste von InvoiceTracking mit currency != 'EUR' und offenen Betraegen.
+        """
+        result = await db.execute(
+            select(InvoiceTracking).where(
+                and_(
+                    InvoiceTracking.company_id == company_id,
+                    InvoiceTracking.deleted_at.is_(None),
+                    InvoiceTracking.currency != "EUR",
+                    InvoiceTracking.status.notin_([
+                        InvoiceStatus.PAID.value,
+                        InvoiceStatus.CANCELLED.value,
+                    ]),
+                )
+            )
+        )
+        return list(result.scalars().all())
+
+    async def get_fx_exposure(
+        self,
+        company_id: UUID,
+        db: AsyncSession,
+    ) -> List[Dict[str, str]]:
+        """
+        Berechnet aktuelle FX-Exposure pro Waehrung.
+
+        Returns:
+            Liste mit Waehrungs-Exposure: currency, amount, eur_equivalent
+        """
+        positions = await self._get_open_fx_positions(company_id, db)
+
+        exposure_map: Dict[str, Decimal] = {}
+        for inv in positions:
+            currency = inv.currency
+            outstanding = Decimal(str(inv.outstanding_amount or inv.amount or 0))
+            paid = Decimal(str(inv.paid_amount or 0))
+            if inv.outstanding_amount is None:
+                outstanding = Decimal(str(inv.amount or 0)) - paid
+            if outstanding <= Decimal("0"):
+                continue
+            exposure_map[currency] = exposure_map.get(currency, Decimal("0")) + outstanding
+
+        exposures: List[Dict[str, str]] = []
+        for currency, amount in sorted(exposure_map.items()):
+            rate = await self.get_rate(currency)
+            if rate and rate > Decimal("0"):
+                eur_equivalent = (amount / rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            else:
+                eur_equivalent = Decimal("0.00")
+
+            exposures.append({
+                "currency": currency,
+                "amount": str(amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
+                "eur_equivalent": str(eur_equivalent),
+            })
+
+        return exposures
 
 
 def get_fx_rate_service(db: AsyncSession) -> FXRateService:

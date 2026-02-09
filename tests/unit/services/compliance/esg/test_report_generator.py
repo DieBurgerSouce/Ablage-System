@@ -21,9 +21,9 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from app.services.compliance.esg.report_generator_service import (
-    ESGReportGeneratorService,
-    get_report_generator_service,
+from app.services.compliance.esg.report_generator import (
+    ESGReportGenerator as ESGReportGeneratorService,
+    get_esg_report_generator as get_report_generator_service,
 )
 from .conftest import create_mock_result
 

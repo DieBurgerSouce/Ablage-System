@@ -103,6 +103,30 @@ export function MentionInput({
     [onChange, detectMentionTrigger]
   );
 
+  // Insert mention into text
+  const insertMention = useCallback(
+    (user: UserSuggestion) => {
+      const textBeforeCursor = value.slice(0, cursorPosition);
+      const textAfterCursor = value.slice(cursorPosition);
+      const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+
+      const newText =
+        textBeforeCursor.slice(0, lastAtIndex) +
+        `@${user.name} ` +
+        textAfterCursor;
+
+      onChange(newText);
+      onMentionsChange([...mentions, { userId: user.id, userName: user.name }]);
+      setShowSuggestions(false);
+
+      // Focus textarea
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 0);
+    },
+    [value, cursorPosition, mentions, onChange, onMentionsChange]
+  );
+
   // Handle keyboard navigation
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -139,31 +163,7 @@ export function MentionInput({
           break;
       }
     },
-    [showSuggestions, filteredSuggestions, selectedIndex, onSubmit]
-  );
-
-  // Insert mention into text
-  const insertMention = useCallback(
-    (user: UserSuggestion) => {
-      const textBeforeCursor = value.slice(0, cursorPosition);
-      const textAfterCursor = value.slice(cursorPosition);
-      const lastAtIndex = textBeforeCursor.lastIndexOf('@');
-
-      const newText =
-        textBeforeCursor.slice(0, lastAtIndex) +
-        `@${user.name} ` +
-        textAfterCursor;
-
-      onChange(newText);
-      onMentionsChange([...mentions, { userId: user.id, userName: user.name }]);
-      setShowSuggestions(false);
-
-      // Focus textarea
-      setTimeout(() => {
-        textareaRef.current?.focus();
-      }, 0);
-    },
-    [value, cursorPosition, mentions, onChange, onMentionsChange]
+    [showSuggestions, filteredSuggestions, selectedIndex, onSubmit, insertMention]
   );
 
   // Click outside to close

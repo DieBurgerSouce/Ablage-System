@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta, date
 from decimal import Decimal
 from enum import Enum
-from typing import Optional, Dict, List, Tuple, Union
+from typing import Any, Optional, Dict, List, Tuple, Union
 from uuid import UUID, uuid4
 
 # Type aliases for JSON data

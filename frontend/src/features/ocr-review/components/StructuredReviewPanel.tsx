@@ -11,6 +11,7 @@ import { FileText, AlertCircle } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { EditableField } from '../EditableField'
 
 // FlagReasonBanner und ValidationAlerts werden später integriert
 import {
@@ -288,9 +289,6 @@ function OrderSections({ order, corrections, extractedDataReview, disabled }: Or
             onUnconfirm: () => unconfirmField(field),
         }
     }
-
-    // Import EditableField inline
-    const { EditableField } = require('../EditableField')
 
     return (
         <>
@@ -622,9 +620,6 @@ function ContractSections({ contract, corrections, extractedDataReview, disabled
             onUnconfirm: () => unconfirmField(field),
         }
     }
-
-    // Import EditableField inline
-    const { EditableField } = require('../EditableField')
 
     return (
         <>

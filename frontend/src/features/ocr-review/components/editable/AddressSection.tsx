@@ -15,7 +15,6 @@ interface AddressSectionProps {
     address: ExtractedAddress | null | undefined
     prefix: 'sender' | 'recipient'
     vatId?: string
-    taxNumber?: string
     corrections: UseFieldCorrectionsReturn
     extractedDataReview: UseExtractedDataForReviewReturn
     disabled?: boolean
@@ -27,7 +26,6 @@ export function AddressSection({
     address,
     prefix,
     vatId,
-    taxNumber: _taxNumber, // Aktuell nicht verwendet, für späteren Gebrauch
     corrections,
     extractedDataReview,
     disabled = false,

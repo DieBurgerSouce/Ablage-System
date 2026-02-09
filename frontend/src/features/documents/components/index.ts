@@ -12,6 +12,8 @@
 export { DocumentCard } from "./DocumentCard"
 export { DocumentGrid } from "./DocumentGrid"
 export { DocumentTypeIcon, OCRStatusBadge } from "./DocumentBadges"
+export { LanguageBadge, type LanguageBadgeProps } from "./LanguageBadge"
+export { LanguageOverrideDialog, type LanguageOverrideDialogProps } from "./LanguageOverrideDialog"
 
 // Drag & Drop Components
 export {

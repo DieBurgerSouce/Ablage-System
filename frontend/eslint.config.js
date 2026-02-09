@@ -21,7 +21,14 @@ export default defineConfig([
     },
     rules: {
       // Verbiete direkte console.* Aufrufe - nutze stattdessen @/lib/logger
-      'no-console': ['error', { allow: [] }],
+      'no-console': ['error', { allow: ['warn', 'error'] }],
+      // Erlaube _-prefixed Variablen (bewusst ungenutzt)
+      '@typescript-eslint/no-unused-vars': ['error', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        destructuredArrayIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_',
+      }],
     },
   },
   // Ausnahme fuer logger.ts - darf console.* verwenden

@@ -12,7 +12,7 @@ GoBD-compliant, uses posted journal entries only.
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
-from typing import List
+from typing import Dict, List
 from uuid import UUID
 
 import structlog
@@ -125,14 +125,47 @@ class EUeRReportService:
             profit_loss=profit_loss,
         )
 
-    async def export_anlage_euer(self, report: EUeRReport) -> str:
+    async def export_anlage_euer(
+        self,
+        company_id: UUID,
+        fiscal_year: int,
+    ) -> Dict[str, object]:
         """
-        Exports as Anlage EÜR (tax form).
+        Exports as Anlage EUeR (tax form).
 
-        Delegates to EURReport.to_anlage_eur() (reuse existing).
+        Generates GL-based EUeR, converts to EURReport format,
+        and delegates to to_anlage_eur() for official line mapping.
+
+        Args:
+            company_id: Company ID
+            fiscal_year: Fiscal year
+
+        Returns:
+            Dict with Anlage EUeR structured by official Zeilen
         """
-        # TODO: Convert to EURReport and call to_anlage_eur()
-        raise NotImplementedError("Anlage EÜR export - delegates to EURReport")
+        from app.services.accounting.eur_service import (
+            EURService,
+            get_eur_service,
+        )
+
+        # Use the document-based EURService which has full category breakdown
+        eur_service = get_eur_service(self.db)
+        eur_report = await eur_service.generate_eur_report(
+            company_id=company_id,
+            fiscal_year=fiscal_year,
+            include_details=False,
+        )
+
+        anlage_data = eur_report.to_anlage_eur()
+
+        logger.info(
+            "anlage_euer_exported",
+            company_id=str(company_id),
+            fiscal_year=fiscal_year,
+            profit_loss=float(eur_report.profit_loss),
+        )
+
+        return anlage_data
 
 
 def get_euer_report_service(db: AsyncSession) -> EUeRReportService:

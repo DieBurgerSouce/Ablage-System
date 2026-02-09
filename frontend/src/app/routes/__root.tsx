@@ -6,6 +6,8 @@ import { SessionExpiredModal } from '@/components/auth/SessionExpiredModal'
 import { Toaster } from '@/components/ui/toaster'
 import { OfflineIndicator } from '@/components/OfflineIndicator'
 import { WelcomeModal } from '@/components/onboarding/WelcomeModal'
+// Feature 12: Guided Product Tours
+import { TourProvider } from '@/features/product-tour'
 import { GlobalShortcutsProvider } from '@/components/GlobalShortcutsProvider'
 import { GlobalCommandDialog } from '@/components/GlobalCommandDialog'
 // FIX Phase 7.5: ErrorBoundary für alle Routes (Enterprise Error Recovery)
@@ -58,18 +60,20 @@ function RootComponent() {
             errorDescription="Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut oder kehren Sie zur Startseite zurück."
         >
             <UndoProvider options={{ maxStackSize: 30, toastDuration: 6000 }}>
-                <GlobalShortcutsProvider>
-                    <SkipLinks />
-                    <GlobalCommandDialog />
-                    <OfflineIndicator />
-                    <AppLayout id="main-content">
-                        <Outlet />
-                        {import.meta.env.DEV && <TanStackRouterDevtools />}
-                    </AppLayout>
-                    <WelcomeModal />
-                    <SessionExpiredModal />
-                    <Toaster />
-                </GlobalShortcutsProvider>
+                <TourProvider>
+                    <GlobalShortcutsProvider>
+                        <SkipLinks />
+                        <GlobalCommandDialog />
+                        <OfflineIndicator />
+                        <AppLayout id="main-content">
+                            <Outlet />
+                            {import.meta.env.DEV && <TanStackRouterDevtools />}
+                        </AppLayout>
+                        <WelcomeModal />
+                        <SessionExpiredModal />
+                        <Toaster />
+                    </GlobalShortcutsProvider>
+                </TourProvider>
             </UndoProvider>
         </ErrorBoundary>
     )

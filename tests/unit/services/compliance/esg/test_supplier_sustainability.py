@@ -21,7 +21,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from app.services.compliance.esg.supplier_sustainability_service import (
+from app.services.compliance.esg.supplier_sustainability import (
     SupplierSustainabilityService,
     get_supplier_sustainability_service,
 )

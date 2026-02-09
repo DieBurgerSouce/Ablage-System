@@ -23,13 +23,11 @@ import {
   Link2,
   Loader2,
   Search,
-  CheckCircle,
   ArrowRight,
   FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
-  type ChainMatchResult,
   type ChainRelationshipType,
   CHAIN_UI_LABELS,
   DOCUMENT_TYPE_STYLES,

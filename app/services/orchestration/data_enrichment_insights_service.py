@@ -122,6 +122,45 @@ class DataIssue:
         return title_templates.get(self.issue_type, f"Datenproblem: {self.entity_name}")
 
 
+@dataclass
+class DataEnrichmentResult:
+    """Ergebnis einer Datenanreicherungs-Pruefung."""
+    issue_type: DataIssueType
+    title: str
+    message: str
+    detail: str = ""
+    severity: str = "medium"
+    affected_field: Optional[str] = None
+    suggested_value: Optional[str] = None
+    entity_id: Optional[UUID] = None
+    entity_name: Optional[str] = None
+    confidence: float = 0.0
+
+    def to_insight(self) -> ProactiveInsight:
+        """Konvertiert zu ProactiveInsight."""
+        priority_map = {"critical": InsightPriority.CRITICAL, "high": InsightPriority.HIGH,
+                        "medium": InsightPriority.MEDIUM, "low": InsightPriority.LOW}
+        return ProactiveInsight(
+            insight_type=InsightType.WARNING if self.severity in ("critical", "high") else InsightType.SUGGESTION,
+            priority=priority_map.get(self.severity, InsightPriority.MEDIUM),
+            title=self.title,
+            message=self.message,
+            detail=self.detail,
+            confidence=self.confidence,
+        )
+
+
+@dataclass
+class DataQualitySummary:
+    """Zusammenfassung der Datenqualitaet."""
+    total_entities: int = 0
+    entities_with_issues: int = 0
+    total_issues: int = 0
+    issues_by_type: Dict[DataIssueType, int] = field(default_factory=dict)
+    quality_score: float = 100.0
+    grade: str = "A"
+
+
 class DataEnrichmentInsightsService:
     """
     Service fuer proaktive Daten-Anreicherungsvorschlaege.

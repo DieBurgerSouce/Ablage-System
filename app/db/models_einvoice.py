@@ -24,8 +24,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from app.db.base_class import Base
-from app.db.cross_db import CrossDBJSON
+from app.db.models import Base, CrossDBJSON
 
 
 # =============================================================================
@@ -202,8 +201,8 @@ class PeppolParticipant(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=lambda: datetime.now(timezone.utc), nullable=True)
 
-    # Relationships
-    entity = relationship("Entity", backref="peppol_participants")
+    # Relationships - Entity disabled: FK references "entities.id" but table is "business_entities"
+    # entity = relationship("Entity", backref="peppol_participants")
 
     __table_args__ = (
         Index("ix_peppol_participants_scheme_id", "scheme_id", "participant_id"),
@@ -276,7 +275,8 @@ class IncomingEInvoice(Base):
 
     # Relationships
     document = relationship("Document", backref="incoming_einvoice")
-    entity = relationship("Entity", backref="incoming_einvoices")
+    # Entity disabled: FK references "entities.id" but table is "business_entities"
+    # entity = relationship("Entity", backref="incoming_einvoices")
     processed_by = relationship("User", foreign_keys=[processed_by_id])
 
     __table_args__ = (

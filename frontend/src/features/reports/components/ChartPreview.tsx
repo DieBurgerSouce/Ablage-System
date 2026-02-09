@@ -63,7 +63,8 @@ const DEFAULT_COLORS = [
 // =============================================================================
 
 function useChartColors() {
-    const { displayMode } = useTheme();
+    // displayMode used to trigger recompute when theme changes
+    useTheme();
 
     return useMemo(() => {
         const computedStyle = getComputedStyle(document.documentElement);
@@ -80,7 +81,7 @@ function useChartColors() {
             muted: getColor('--chart-4', DEFAULT_COLORS[3]),
             palette: DEFAULT_COLORS,
         };
-    }, [displayMode]);
+    }, []);
 }
 
 // =============================================================================

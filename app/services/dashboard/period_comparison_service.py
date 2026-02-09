@@ -35,6 +35,32 @@ class ComparisonPeriod(str, Enum):
     CUSTOM = "custom"
 
 
+class PeriodType(str, Enum):
+    """Vergleichszeitraum-Typen."""
+    MONTH_OVER_MONTH = "month_over_month"
+    YEAR_OVER_YEAR = "year_over_year"
+    QUARTER_OVER_QUARTER = "quarter_over_quarter"
+
+
+class TrendDirection(str, Enum):
+    """Trendrichtung."""
+    UP = "up"
+    DOWN = "down"
+    STABLE = "stable"
+
+
+@dataclass
+class ComparisonResult:
+    """Ergebnis eines Periodenvergleichs."""
+    current_value: Decimal
+    previous_value: Decimal
+    delta: Decimal
+    delta_percent: Optional[Decimal] = None
+    trend: Optional[TrendDirection] = None
+    current_period_label: str = ""
+    previous_period_label: str = ""
+
+
 @dataclass
 class PeriodMetrics:
     """Metrics for a specific time period."""

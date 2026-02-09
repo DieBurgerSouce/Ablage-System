@@ -375,7 +375,7 @@ class ContractObligation(Base):
     currency = Column(String(3), default="EUR")
 
     # Zusaetzliche Metadaten
-    metadata = Column(CrossDBJSON, default=dict)
+    obligation_metadata = Column("metadata", CrossDBJSON, default=dict)
 
     # Multi-Tenant
     company_id = Column(
@@ -750,7 +750,7 @@ class ContractBenchmark(Base):
 
     # Metadaten
     notes = Column(Text, nullable=True)
-    metadata = Column(CrossDBJSON, nullable=True)
+    benchmark_metadata = Column("metadata", CrossDBJSON, nullable=True)
 
     # Zeitstempel
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -887,7 +887,7 @@ class ContractCancellation(Base):
     approved_at = Column(DateTime(timezone=True), nullable=True)
 
     # Metadaten
-    metadata = Column(CrossDBJSON, nullable=True)
+    cancellation_metadata = Column("metadata", CrossDBJSON, nullable=True)
     notes = Column(Text, nullable=True)
 
     # Zeitstempel

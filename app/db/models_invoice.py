@@ -1,11 +1,29 @@
 """
-Invoice model addition for models.py
+Invoice satellite model.
 
-This should be appended to the end of app/db/models.py
+Separates Invoice-Modell als Satellit (nicht in models.py).
 """
 
+import uuid
 from decimal import Decimal
 from datetime import date
+from enum import Enum
+
+from sqlalchemy import (
+    Column,
+    String,
+    Text,
+    Date,
+    DateTime,
+    Numeric,
+    Index,
+    ForeignKey,
+)
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+
+from app.db.models import Base
 
 # Invoice Status Enum
 class InvoiceStatus(str, Enum):

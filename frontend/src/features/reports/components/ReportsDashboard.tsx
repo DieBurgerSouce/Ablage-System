@@ -63,7 +63,7 @@ export function ReportsDashboard() {
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<ReportTemplate | undefined>();
 
-  const { data: templates, isLoading: templatesLoading } = useTemplates();
+  const { data: templates, isLoading: _templatesLoading } = useTemplates();
   const { data: executions, isLoading: executionsLoading, refetch: refetchExecutions } = useExecutions({ limit: 50 });
   const { data: sharedReports, isLoading: sharedLoading } = useSharedWithMe();
   const cancelMutation = useCancelExecution();

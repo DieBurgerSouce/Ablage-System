@@ -20,21 +20,17 @@ import {
 import { toast } from 'sonner';
 import { contractsService, type ICalExportParams } from '@/lib/api/services/contracts';
 import type {
-  Contract,
   ContractDetail,
   ContractListResponse,
   ContractListParams,
-  ContractCreateRequest,
   ContractUpdateRequest,
   ContractSummary,
   DeadlineListResponse,
   ContractTimeline,
-  ContractMilestone,
   MilestoneCreateRequest,
   MilestoneUpdateRequest,
   ContractRenewalOption,
   RenewalOptionDecision,
-  ContractAmendment,
   AmendmentCreateRequest,
   AmendmentUpdateRequest,
 } from '../types/contract-types';

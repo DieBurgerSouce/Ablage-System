@@ -208,6 +208,134 @@ class EURReport:
             "Zeile_43": float(self.profit_loss),  # Gewinn/Verlust
         }
 
+    def to_anlage_eur_html(self) -> str:
+        """
+        Generiert eine druckbare HTML-Darstellung der Anlage EUeR.
+
+        Returns:
+            HTML-String fuer Browser-Rendering und Druckausgabe
+        """
+        anlage = self.to_anlage_eur()
+
+        zeilen_einnahmen = [
+            ("11", "Betriebseinnahmen als umsatzsteuerpflichtiger Unternehmer (Waren)", anlage.get("Zeile_11", 0)),
+            ("12", "Betriebseinnahmen als umsatzsteuerpflichtiger Unternehmer (Dienstleistungen)", anlage.get("Zeile_12", 0)),
+            ("14", "Vereinnahmte Umsatzsteuer / Zinsertraege", anlage.get("Zeile_14", 0)),
+            ("16", "Sonstige Betriebseinnahmen", anlage.get("Zeile_16", 0)),
+            ("18", "Summe Betriebseinnahmen", anlage.get("Zeile_18", 0)),
+        ]
+
+        zeilen_ausgaben = [
+            ("20", "Waren, Rohstoffe und Hilfsstoffe", anlage.get("Zeile_20", 0)),
+            ("22", "Personalkosten (Loehne und Gehaelter)", anlage.get("Zeile_22", 0)),
+            ("27", "Miete/Pacht fuer Geschaeftsraeume", anlage.get("Zeile_27", 0)),
+            ("30", "Fahrzeugkosten", anlage.get("Zeile_30", 0)),
+            ("35", "Buerokosten", anlage.get("Zeile_35", 0)),
+            ("36", "Absetzung fuer Abnutzung (AfA)", anlage.get("Zeile_36", 0)),
+            ("40", "Sonstige Betriebsausgaben", anlage.get("Zeile_40", 0)),
+            ("42", "Summe Betriebsausgaben", anlage.get("Zeile_42", 0)),
+        ]
+
+        zeilen_ergebnis = [
+            ("43", "Gewinn / Verlust", anlage.get("Zeile_43", 0)),
+        ]
+
+        def _format_eur(value: float) -> str:
+            """Formatiert Betrag im deutschen EUR-Format."""
+            formatted = f"{value:,.2f}"
+            formatted = formatted.replace(",", "X").replace(".", ",").replace("X", ".")
+            return formatted
+
+        def _render_rows(zeilen: list) -> str:
+            rows = []
+            for zeile_nr, beschreibung, betrag in zeilen:
+                is_sum = zeile_nr in ("18", "42", "43")
+                weight = "font-weight:bold;" if is_sum else ""
+                border = "border-top:2px solid #333;" if is_sum else ""
+                rows.append(
+                    f'<tr style="{weight}">'
+                    f'<td style="padding:6px 12px;border-bottom:1px solid #ddd;{border}">{zeile_nr}</td>'
+                    f'<td style="padding:6px 12px;border-bottom:1px solid #ddd;{border}">{beschreibung}</td>'
+                    f'<td style="padding:6px 12px;border-bottom:1px solid #ddd;text-align:right;{border}">'
+                    f'{_format_eur(betrag)} EUR</td>'
+                    f'</tr>'
+                )
+            return "\n".join(rows)
+
+        gewinn_verlust = anlage.get("Zeile_43", 0)
+        ergebnis_label = "Gewinn" if gewinn_verlust >= 0 else "Verlust"
+        ergebnis_color = "#2e7d32" if gewinn_verlust >= 0 else "#c62828"
+
+        html = f"""<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Anlage EUeR {self.fiscal_year}</title>
+<style>
+  @media print {{
+    body {{ margin: 0; }}
+    .no-print {{ display: none; }}
+  }}
+  body {{
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 20px;
+    color: #333;
+  }}
+  h1 {{ text-align: center; margin-bottom: 4px; font-size: 22px; }}
+  .subtitle {{ text-align: center; color: #666; margin-bottom: 24px; font-size: 14px; }}
+  .meta {{ display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 13px; color: #555; }}
+  table {{ width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 14px; }}
+  th {{ background: #f5f5f5; padding: 8px 12px; text-align: left; border-bottom: 2px solid #333; font-weight: 600; }}
+  th:last-child {{ text-align: right; }}
+  .section-header {{ background: #e8eaf6; padding: 8px 12px; font-weight: 600; font-size: 14px; }}
+  .result {{ text-align: center; margin-top: 24px; padding: 16px; background: #f9f9f9; border-radius: 8px; }}
+  .result-value {{ font-size: 28px; font-weight: bold; color: {ergebnis_color}; }}
+  .result-label {{ font-size: 14px; color: #666; margin-top: 4px; }}
+  .print-btn {{ display: block; margin: 24px auto 0; padding: 10px 24px; background: #1976d2; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }}
+  .print-btn:hover {{ background: #1565c0; }}
+</style>
+</head>
+<body>
+<h1>Anlage E&Uuml;R</h1>
+<p class="subtitle">Einnahmen-&Uuml;berschuss-Rechnung gem&auml;&szlig; &sect; 4 Abs. 3 EStG</p>
+
+<div class="meta">
+  <div><strong>Steuerjahr:</strong> {self.fiscal_year}</div>
+  <div><strong>Zeitraum:</strong> {self.period_start.strftime('%d.%m.%Y')} &ndash; {self.period_end.strftime('%d.%m.%Y')}</div>
+  <div><strong>Steuernummer:</strong> ___/___/_____</div>
+</div>
+
+<table>
+<thead>
+<tr>
+  <th style="width:60px;">Zeile</th>
+  <th>Bezeichnung</th>
+  <th style="width:160px;">Betrag</th>
+</tr>
+</thead>
+<tbody>
+<tr class="section-header"><td colspan="3">I. Betriebseinnahmen</td></tr>
+{_render_rows(zeilen_einnahmen)}
+<tr class="section-header"><td colspan="3">II. Betriebsausgaben</td></tr>
+{_render_rows(zeilen_ausgaben)}
+<tr class="section-header"><td colspan="3">III. Ergebnis</td></tr>
+{_render_rows(zeilen_ergebnis)}
+</tbody>
+</table>
+
+<div class="result">
+  <div class="result-value">{_format_eur(gewinn_verlust)} EUR</div>
+  <div class="result-label">{ergebnis_label} im Steuerjahr {self.fiscal_year}</div>
+</div>
+
+<button class="print-btn no-print" onclick="window.print()">Drucken / Als PDF speichern</button>
+</body>
+</html>"""
+
+        return html
+
     def _get_category_amount(self, category: str) -> Decimal:
         """Holt Betrag fuer Kategorie."""
         for c in self.income_categories + self.expense_categories:

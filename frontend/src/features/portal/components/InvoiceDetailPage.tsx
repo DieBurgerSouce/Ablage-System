@@ -15,7 +15,6 @@ import {
   Clock,
   Euro,
   Calendar,
-  FileText,
   Percent,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';

@@ -42,7 +42,7 @@ export function useNotifications() {
     queryFn: fetchNotifications,
     staleTime: 30000, // 30 seconds
     // Visibility-aware Refetch: Pausiert bei inaktivem Tab
-    refetchInterval: (query) => {
+    refetchInterval: (_query) => {
       // Nur refetchen wenn Tab aktiv ist
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
         return false;

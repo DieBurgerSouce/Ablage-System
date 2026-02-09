@@ -8,7 +8,7 @@
  * - Tag-Änderungen
  */
 
-import { Loader2, History, FileText, MessageSquare, Tag, Settings, Download, Eye, Share2, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, History, FileText, MessageSquare, Tag, Settings, Download, Eye, Share2, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -117,7 +117,7 @@ export function ActivityStream({ documentId, className }: ActivityStreamProps) {
             <div className="absolute left-[18px] top-0 bottom-0 w-px bg-border" />
 
             <div className="space-y-6">
-              {activities.map((activity, index) => {
+              {activities.map((activity, _index) => {
                 const Icon = ACTIVITY_ICONS[activity.type] || FileText;
                 const colorClass = ACTIVITY_COLORS[activity.type] || 'bg-muted text-muted-foreground';
                 const timeAgo = formatDistanceToNow(new Date(activity.createdAt), {

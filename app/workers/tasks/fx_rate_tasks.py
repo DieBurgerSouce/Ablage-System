@@ -84,14 +84,99 @@ def month_end_revaluation(self, company_id: str) -> Dict[str, Any]:
     """
     Monatsabschluss: Unrealisierte Kursdifferenzen berechnen.
     Bewertet alle offenen Fremdwaehrungspositionen zum Stichtagskurs.
+
+    Wird am letzten Tag des Monats automatisch via Beat ausgefuehrt
+    oder manuell ueber die API getriggert.
     """
+    import asyncio
+    from uuid import UUID
+    from app.db.session import get_async_session_context
+    from app.services.accounting.fx_rate_service import FXRateService
+
     logger.info("month_end_revaluation_started", company_id=company_id)
 
-    # Implementation: Query open FX positions, calculate unrealized G/L
-    # This would involve:
-    # 1. Query all open foreign currency positions (invoices, receivables, payables)
-    # 2. Get current ECB rate for each currency
-    # 3. Calculate unrealized gain/loss vs. booking rate
-    # 4. Create journal entries for material differences
+    async def _revaluate() -> Dict[str, Any]:
+        async with get_async_session_context() as db:
+            service = FXRateService(db)
+            revaluation_date = date.today()
+            summary = await service.month_end_revaluation(
+                company_id=UUID(company_id),
+                revaluation_date=revaluation_date,
+                db=db,
+            )
+            return {
+                "company_id": company_id,
+                "status": "completed",
+                "revaluation_date": str(revaluation_date),
+                "entries_processed": summary.entries_processed,
+                "total_gain": str(summary.total_gain),
+                "total_loss": str(summary.total_loss),
+                "currency_breakdown": summary.currency_breakdown,
+            }
 
-    return {"company_id": company_id, "status": "completed", "entries_processed": 0}
+    try:
+        result = asyncio.run(_revaluate())
+        logger.info(
+            "month_end_revaluation_completed",
+            company_id=company_id,
+            entries_processed=result["entries_processed"],
+        )
+        return result
+    except Exception as exc:
+        logger.error("month_end_revaluation_failed", **safe_error_log(exc))
+        raise self.retry(exc=exc)
+
+
+@celery_app.task(
+    name="app.workers.tasks.fx_rate_tasks.run_month_end_fx_revaluation_all",
+    bind=True,
+    acks_late=True,
+    max_retries=1,
+    default_retry_delay=600,
+)
+def run_month_end_fx_revaluation_all(self) -> Dict[str, Any]:
+    """
+    Fuehrt Monatsabschluss-Bewertung fuer ALLE aktiven Firmen aus.
+
+    Wird via Celery Beat am letzten Tag des Monats getriggert.
+    Startet fuer jede aktive Firma eine eigene month_end_revaluation Task.
+    """
+    import asyncio
+    from app.db.session import get_async_session_context
+    from sqlalchemy import select, and_
+    from app.db.models import Company
+
+    logger.info("run_month_end_fx_revaluation_all_started")
+
+    async def _get_active_companies():
+        async with get_async_session_context() as db:
+            result = await db.execute(
+                select(Company.id).where(
+                    and_(
+                        Company.is_active == True,  # noqa: E712
+                    )
+                )
+            )
+            return [str(row[0]) for row in result.all()]
+
+    try:
+        company_ids = asyncio.run(_get_active_companies())
+        dispatched = 0
+
+        for cid in company_ids:
+            month_end_revaluation.delay(cid)
+            dispatched += 1
+
+        logger.info(
+            "run_month_end_fx_revaluation_all_dispatched",
+            companies=dispatched,
+        )
+
+        return {
+            "status": "dispatched",
+            "companies_dispatched": dispatched,
+            "date": str(date.today()),
+        }
+    except Exception as exc:
+        logger.error("run_month_end_fx_revaluation_all_failed", **safe_error_log(exc))
+        raise self.retry(exc=exc)

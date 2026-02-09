@@ -18,8 +18,6 @@ import {
   FileEdit,
   Eye,
   Trash2,
-  Mail,
-  Calendar,
   CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -52,7 +50,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import type { Contract, ContractStatus } from '../types/contract-types';
+import type { Contract } from '../types/contract-types';
 
 interface ContractQuickActionsProps {
   contract: Contract;

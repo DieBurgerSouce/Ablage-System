@@ -60,7 +60,6 @@ interface EditableFieldComponentProps {
     isCorrected?: boolean
     onEdit: (value: string) => void
     onConfirm: () => void
-    onUnconfirm?: () => void
     disabled?: boolean
     type?: 'text' | 'number' | 'date' | 'currency'
     placeholder?: string
@@ -81,7 +80,6 @@ export function EditableField({
     isCorrected = false,
     onEdit,
     onConfirm,
-    onUnconfirm: _onUnconfirm,
     disabled = false,
     type = 'text',
     placeholder = '-',

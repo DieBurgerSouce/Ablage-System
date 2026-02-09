@@ -24,7 +24,14 @@ from typing import Dict, List, Optional, Set, TypedDict, Union
 from uuid import UUID, uuid4
 
 import structlog
-from cachetools import TTLCache
+try:
+    from cachetools import TTLCache
+except ImportError:
+    # Fallback: einfacher Dict-basierter Cache ohne TTL
+    class TTLCache(dict):  # type: ignore[no-redef]
+        def __init__(self, maxsize: int = 128, ttl: int = 300):
+            super().__init__()
+            self._maxsize = maxsize
 from prometheus_client import Counter, Gauge
 
 logger = structlog.get_logger(__name__)

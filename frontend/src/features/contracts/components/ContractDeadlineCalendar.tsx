@@ -16,7 +16,6 @@ import {
   endOfWeek,
   eachDayOfInterval,
   isSameMonth,
-  isSameDay,
   isToday,
   addMonths,
   subMonths,
@@ -124,7 +123,7 @@ export function ContractDeadlineCalendar({
   // Day names
   const dayNames = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
-  const renderDeadlineDots = (day: Date) => {
+  const _renderDeadlineDots = (day: Date) => {
     const dateKey = format(day, 'yyyy-MM-dd');
     const dayDeadlines = deadlinesByDate.get(dateKey) || [];
 

@@ -5,7 +5,6 @@
  * Zeigt den aktuellen Tour-Schritt als Tooltip
  */
 
-import * as React from 'react'
 import { useEffect, useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -40,11 +39,12 @@ interface TourTooltipProps {
   className?: string
 }
 
-// Helper to get icon component
-function getIconComponent(iconName?: string): LucideIcon | null {
-  if (!iconName) return null
-  const IconComponent = (LucideIcons as Record<string, LucideIcon>)[iconName]
-  return IconComponent || null
+// Helper component to render a dynamic Lucide icon by name
+function DynamicLucideIcon({ name, className }: { name?: string; className?: string }) {
+  if (!name) return null
+  const Icon = (LucideIcons as Record<string, LucideIcon>)[name]
+  if (!Icon) return null
+  return <Icon className={className} />
 }
 
 export function TourTooltip({
@@ -158,7 +158,6 @@ export function TourTooltip({
 
   if (!isActive || !step) return null
 
-  const IconComponent = getIconComponent(step.icon)
   const progress = Math.round(((stepIndex + 1) / totalSteps) * 100)
   const isFirstStep = stepIndex === 0
   const isLastStep = stepIndex === totalSteps - 1
@@ -187,9 +186,9 @@ export function TourTooltip({
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           <div className="flex items-center gap-3">
-            {IconComponent && (
+            {step.icon && (
               <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 text-primary">
-                <IconComponent className="w-5 h-5" />
+                <DynamicLucideIcon name={step.icon} className="w-5 h-5" />
               </div>
             )}
             <div>

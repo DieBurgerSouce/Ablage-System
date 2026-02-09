@@ -57,6 +57,13 @@ DEDUP_CLEANUP = Counter(
 # =============================================================================
 
 
+class DedupWindow:
+    """Konfiguration fuer Dedup-Zeitfenster."""
+
+    def __init__(self, seconds: int = 300) -> None:
+        self.seconds = seconds
+
+
 class NotificationDeduplicationService:
     """
     Verhindert doppelte Benachrichtigungen.

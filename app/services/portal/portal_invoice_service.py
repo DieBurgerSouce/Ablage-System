@@ -14,7 +14,7 @@ from sqlalchemy import select, and_, or_, func
 from sqlalchemy.orm import selectinload
 import structlog
 
-from app.db.models import Document, DocumentType, InvoiceTracking, Entity
+from app.db.models import Document, DocumentType, InvoiceTracking, BusinessEntity
 from app.db.models_portal import PortalUser
 
 logger = structlog.get_logger(__name__)

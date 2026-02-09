@@ -2450,7 +2450,8 @@ class BusinessEntity(Base):
     # Relationships
     created_by = relationship("User", foreign_keys=[created_by_id])
     documents = relationship("Document", back_populates="business_entity")
-    default_folder = relationship("Folder", foreign_keys=[default_folder_id])
+    # default_folder relationship disabled - Folder model not implemented yet
+    # default_folder = relationship("Folder", foreign_keys=[default_folder_id])
 
     # Indexes
     __table_args__ = (
@@ -5030,6 +5031,7 @@ class EInvoiceDocument(Base):
     # Relationships
     document = relationship("Document", backref="einvoice_data")
     generated_by = relationship("User", foreign_keys=[generated_by_id])
+    transmissions = relationship("EInvoiceTransmission", back_populates="einvoice", cascade="all, delete-orphan")
 
     # Indexes
     __table_args__ = (
@@ -6816,9 +6818,9 @@ class Company(Base):
     rate_limits = relationship("TenantRateLimit", back_populates="company", cascade="all, delete-orphan")
     usage_metrics = relationship("TenantUsageMetrics", back_populates="company", cascade="all, delete-orphan")
     rate_limit_violations = relationship("RateLimitViolation", back_populates="company", cascade="all, delete-orphan")
-    # BPMN Process Engine relationships
-    bpmn_process_definitions = relationship("ProcessDefinition", back_populates="company", cascade="all, delete-orphan")
-    bpmn_process_instances = relationship("ProcessInstance", back_populates="company", cascade="all, delete-orphan")
+    # BPMN Process Engine relationships - disabled, models in bpmn_models/bpmn.py (not in same registry)
+    # bpmn_process_definitions = relationship("ProcessDefinition", back_populates="company", cascade="all, delete-orphan")
+    # bpmn_process_instances = relationship("ProcessInstance", back_populates="company", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("ix_companies_vat_id", "vat_id"),
@@ -14293,6 +14295,45 @@ class ApprovalStep(Base):
     )
 
 
+class ApprovalDelegation(Base):
+    """Genehmigungsdelegation / Stellvertretung.
+
+    Ermoeglicht es Benutzern, ihre Genehmigungsrechte
+    temporaer an Stellvertreter zu delegieren.
+    """
+    __tablename__ = "approval_delegations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Delegierender Benutzer
+    delegator_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    # Stellvertreter
+    delegate_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Zeitraum
+    start_date = Column(DateTime(timezone=True), nullable=True)
+    end_date = Column(DateTime(timezone=True), nullable=True)
+
+    # Status
+    is_active = Column(Boolean, default=True, nullable=False, index=True)
+    reason = Column(Text, nullable=True)
+
+    # Audit
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    delegator = relationship("User", foreign_keys=[delegator_user_id])
+    delegate = relationship("User", foreign_keys=[delegate_user_id])
+    company = relationship("Company", backref="approval_delegations")
+
+    __table_args__ = (
+        Index("ix_approval_delegations_delegator_active", "delegator_user_id", "is_active"),
+        {"comment": "Genehmigungsdelegation / Stellvertretung"}
+    )
+
+
 # =============================================================================
 # Privat-Modul: Personalized Thresholds (Phase 0 Critical Fix)
 # =============================================================================
@@ -18490,3 +18531,10 @@ from app.db.models_workflow_stage import (
 from app.db.models_notification_template import (
     NotificationMessageTemplate,
 )
+# Ensure cross-referencing satellite models are all loaded before configure_mappers()
+from app.db.models_alert import Alert, AlertRule  # noqa: F401 - needed by models_fraud
+from app.db.models_fraud import FraudScanResult, IBANBaseline, IBANChangeRequest  # noqa: F401
+from app.db.models_inventory import Warehouse, InventoryItem, StockLevel, InventoryMovement  # noqa: F401
+from app.db.models_contract import Contract  # noqa: F401
+from app.db.models_invoice import Invoice  # noqa: F401
+from app.db.models_delegation import Delegation  # noqa: F401

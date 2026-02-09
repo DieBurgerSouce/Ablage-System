@@ -32,7 +32,6 @@ import {
   type ChainDocument,
   type DocumentTypeInChain,
   type ChainDiscrepancy,
-  CHAIN_UI_LABELS,
   DOCUMENT_TYPE_STYLES,
   DISCREPANCY_SEVERITY_STYLES,
 } from '../types/chain-types';

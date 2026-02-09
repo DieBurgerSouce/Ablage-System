@@ -29,7 +29,6 @@ import {
 } from '../hooks/useReports';
 import type {
     ReportTemplate,
-    ReportFilter,
     FieldDefinition,
     DataType,
     FilterOperator,

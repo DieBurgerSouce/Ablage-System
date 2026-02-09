@@ -44,7 +44,7 @@ import {
   CHAIN_UI_LABELS,
   DISCREPANCY_SEVERITY_STYLES,
 } from '../types/chain-types';
-import { formatCurrency, formatDate, formatDateTime } from '@/features/banking/utils/format';
+import { formatDateTime } from '@/features/banking/utils/format';
 import { useResolveDiscrepancy } from '../hooks/use-chain-queries';
 import { useToast } from '@/hooks/use-toast';
 

@@ -219,6 +219,34 @@ def _calculate_urgency(deadline_date: datetime) -> UrgencyLevel:
         return UrgencyLevel.FUTURE
 
 
+@dataclass
+class DeadlineCheckResult:
+    """Ergebnis einer Deadline-Pruefung."""
+    deadline_type: DeadlineType
+    deadline_date: datetime
+    title: str
+    message: str
+    detail: str = ""
+    days_remaining: int = 0
+    priority: str = "medium"
+    potential_value: Optional[Decimal] = None
+    action_url: Optional[str] = None
+    entity_id: Optional[UUID] = None
+    entity_name: Optional[str] = None
+
+    def to_insight(self) -> ProactiveInsight:
+        """Konvertiert zu ProactiveInsight."""
+        priority_map = {"critical": InsightPriority.CRITICAL, "high": InsightPriority.HIGH,
+                        "medium": InsightPriority.MEDIUM, "low": InsightPriority.LOW}
+        return ProactiveInsight(
+            insight_type=InsightType.WARNING if self.priority in ("critical", "high") else InsightType.SUGGESTION,
+            priority=priority_map.get(self.priority, InsightPriority.MEDIUM),
+            title=self.title,
+            message=self.message,
+            detail=self.detail,
+        )
+
+
 class DeadlineInsightsService:
     """
     Service fuer proaktive Deadline-Warnungen.

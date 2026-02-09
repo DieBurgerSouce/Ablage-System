@@ -5,8 +5,7 @@
  * Kombiniert Spotlight und Tooltip fuer gefuehrtes Onboarding
  */
 
-import * as React from 'react'
-import { useCallback, useEffect } from 'react'
+import { useEffect } from 'react'
 import { TourSpotlight } from './TourSpotlight'
 import { TourTooltip } from './TourTooltip'
 import { useTour } from '../hooks/use-tour'
@@ -98,8 +97,9 @@ export function ProductTour({
   )
 }
 
-// Export all tour-related components and hooks
+// eslint-disable-next-line react-refresh/only-export-components
 export { useTour } from '../hooks/use-tour'
 export { TourSpotlight } from './TourSpotlight'
 export { TourTooltip } from './TourTooltip'
+// eslint-disable-next-line react-refresh/only-export-components
 export * from '../types'

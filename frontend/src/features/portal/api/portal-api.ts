@@ -39,7 +39,6 @@ import type {
   AllowedFileTypesInfo,
   PortalMessageSendRequest,
   PortalMessageSendResponse,
-  PortalMessage,
   PortalMessageFilter,
   PortalMessageListResponse,
   PortalConversationResponse,

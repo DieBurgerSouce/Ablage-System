@@ -1,8 +1,10 @@
 /**
  * Interaktive Produkttour - Type Definitions
  *
- * Vision 2026+ Feature: Geführtes Onboarding mit Highlight-Tour
+ * Vision 2026+ Feature: Gefuehrtes Onboarding mit Highlight-Tour
  */
+
+export type TourCategory = 'grundlagen' | 'dokumente' | 'fortgeschritten'
 
 export interface TourStep {
   id: string
@@ -12,6 +14,7 @@ export interface TourStep {
   position: 'top' | 'bottom' | 'left' | 'right' | 'center'
   order: number
   icon?: string
+  highlightPadding?: number // px padding around target
   action?: TourAction
   validation?: TourValidation
 }
@@ -41,6 +44,8 @@ export interface Tour {
   id: string
   name: string
   description: string
+  category: TourCategory
+  estimatedMinutes: number
   steps: TourStep[]
   requiredRole?: string
   context?: string // Page/route context
@@ -63,166 +68,226 @@ export interface TourState {
   badges: TourBadge[]
 }
 
-// Default Tours fuer Ablage-System
+// Tour-Daten
 export const TOURS: Tour[] = [
   {
-    id: 'welcome',
-    name: 'Willkommen bei Ablage-System',
+    id: 'willkommen',
+    name: 'Willkommen im Ablage-System',
     description: 'Lernen Sie die Grundfunktionen in wenigen Schritten kennen.',
+    category: 'grundlagen',
+    estimatedMinutes: 2,
     badge: {
-      id: 'first-steps',
-      name: 'Erste Schritte',
+      id: 'entdecker',
+      name: 'Entdecker',
       description: 'Sie haben die Willkommens-Tour abgeschlossen!',
-      icon: 'Award',
+      icon: 'Compass',
     },
     steps: [
       {
-        id: 'welcome-intro',
-        title: 'Willkommen!',
-        description: 'Willkommen bei Ablage-System! Diese kurze Tour zeigt Ihnen die wichtigsten Funktionen. Klicken Sie auf "Weiter" um zu beginnen.',
-        position: 'center',
-        order: 1,
-        icon: 'HandWaving',
-      },
-      {
-        id: 'sidebar-navigation',
-        title: 'Navigation',
-        description: 'Die Seitenleiste enthält alle Hauptbereiche: Dokumente, Rechnungen, Banking und mehr.',
+        id: 'willkommen-seitenleiste',
+        title: 'Seitenleiste navigieren',
+        description: 'Die Seitenleiste enthaelt alle Hauptbereiche: Dokumente, Rechnungen, Banking und mehr. Klicken Sie auf einen Eintrag, um den Bereich zu oeffnen.',
         targetSelector: '[data-tour="sidebar"]',
         position: 'right',
-        order: 2,
+        order: 1,
         icon: 'Layout',
       },
       {
-        id: 'upload-button',
-        title: 'Dokumente hochladen',
-        description: 'Hier können Sie neue Dokumente hochladen. Wir unterstützen PDF, Bilder und mehr.',
-        targetSelector: '[data-tour="upload-button"]',
+        id: 'willkommen-dashboard',
+        title: 'Dashboard verstehen',
+        description: 'Das Dashboard zeigt Ihnen eine Uebersicht ueber alle wichtigen Kennzahlen und aktuelle Aufgaben auf einen Blick.',
+        targetSelector: '[data-tour="dashboard-widgets"]',
         position: 'bottom',
-        order: 3,
-        icon: 'Upload',
+        order: 2,
+        icon: 'LayoutDashboard',
       },
       {
-        id: 'search-bar',
-        title: 'Volltextsuche',
-        description: 'Durchsuchen Sie alle Ihre Dokumente mit unserer leistungsstarken Volltextsuche.',
+        id: 'willkommen-dokumentenliste',
+        title: 'Dokumentenliste',
+        description: 'Hier finden Sie alle Ihre Dokumente. Sortieren, filtern und durchsuchen Sie Ihre Ablage.',
+        targetSelector: '[data-tour="document-list"]',
+        position: 'bottom',
+        order: 3,
+        icon: 'FileText',
+      },
+      {
+        id: 'willkommen-suche',
+        title: 'Suche benutzen',
+        description: 'Mit der Volltextsuche finden Sie jedes Dokument blitzschnell. Nutzen Sie Stichwoerter, Dateinamen oder OCR-erkannten Text.',
         targetSelector: '[data-tour="search-bar"]',
         position: 'bottom',
         order: 4,
         icon: 'Search',
       },
       {
-        id: 'dashboard-overview',
-        title: 'Dashboard',
-        description: 'Das Dashboard zeigt Ihnen eine Übersicht über alle wichtigen Kennzahlen und Aufgaben.',
-        targetSelector: '[data-tour="dashboard-widgets"]',
-        position: 'center',
+        id: 'willkommen-einstellungen',
+        title: 'Einstellungen finden',
+        description: 'Unter Einstellungen passen Sie das System an Ihre Beduerfnisse an: Sprache, Benachrichtigungen, OCR-Backends und mehr.',
+        targetSelector: '[data-tour="settings-link"]',
+        position: 'right',
         order: 5,
-        icon: 'LayoutDashboard',
+        icon: 'Settings',
+      },
+    ],
+  },
+  {
+    id: 'dokument-hochladen',
+    name: 'Dokument hochladen & verarbeiten',
+    description: 'Erfahren Sie, wie Sie Dokumente hochladen und per OCR verarbeiten.',
+    category: 'dokumente',
+    estimatedMinutes: 3,
+    badge: {
+      id: 'archivar',
+      name: 'Archivar',
+      description: 'Sie wissen jetzt, wie man Dokumente hochlaedt und verarbeitet!',
+      icon: 'Archive',
+    },
+    steps: [
+      {
+        id: 'upload-button-finden',
+        title: 'Upload-Button finden',
+        description: 'Der Upload-Button befindet sich oben in der Dokumentenliste. Klicken Sie darauf, um neue Dokumente hinzuzufuegen.',
+        targetSelector: '[data-tour="upload-button"]',
+        position: 'bottom',
+        order: 1,
+        icon: 'Upload',
       },
       {
-        id: 'tour-complete',
-        title: 'Tour abgeschlossen!',
-        description: 'Super! Sie haben die Grundlagen kennengelernt. Sie können jederzeit über das Hilfe-Menü weitere Touren starten.',
-        position: 'center',
-        order: 6,
+        id: 'upload-datei-auswaehlen',
+        title: 'Datei auswaehlen',
+        description: 'Waehlen Sie eine oder mehrere Dateien aus. Unterstuetzt werden PDF, JPG, PNG und TIFF. Sie koennen Dateien auch per Drag & Drop ablegen.',
+        targetSelector: '[data-tour="upload-dropzone"]',
+        position: 'bottom',
+        order: 2,
+        icon: 'File',
+      },
+      {
+        id: 'upload-ocr-backend',
+        title: 'OCR-Backend waehlen',
+        description: 'Waehlen Sie das passende OCR-Backend: DeepSeek fuer beste Qualitaet, GOT-OCR fuer Tabellen oder Surya als schnelle Alternative.',
+        targetSelector: '[data-tour="ocr-backend-select"]',
+        position: 'bottom',
+        order: 3,
+        icon: 'Cpu',
+      },
+      {
+        id: 'upload-verarbeitung',
+        title: 'Verarbeitung starten',
+        description: 'Klicken Sie auf "Verarbeiten", um die OCR-Texterkennung zu starten. Der Fortschritt wird in Echtzeit angezeigt.',
+        targetSelector: '[data-tour="process-button"]',
+        position: 'bottom',
+        order: 4,
+        icon: 'Play',
+      },
+      {
+        id: 'upload-ergebnis',
+        title: 'Ergebnis pruefen',
+        description: 'Nach der Verarbeitung sehen Sie den erkannten Text und koennen ihn pruefen. Metadaten wie Datum und Betrag werden automatisch extrahiert.',
+        targetSelector: '[data-tour="ocr-result"]',
+        position: 'left',
+        order: 5,
         icon: 'CheckCircle',
       },
     ],
   },
   {
-    id: 'ocr-features',
-    name: 'OCR-Funktionen',
-    description: 'Erfahren Sie wie die automatische Texterkennung funktioniert.',
+    id: 'schnellsuche',
+    name: 'Schnellsuche meistern',
+    description: 'Lernen Sie, wie Sie Dokumente blitzschnell finden.',
+    category: 'grundlagen',
+    estimatedMinutes: 1,
     badge: {
-      id: 'ocr-expert',
-      name: 'OCR Experte',
-      description: 'Sie kennen jetzt alle OCR-Funktionen!',
-      icon: 'Scan',
+      id: 'suchprofi',
+      name: 'Suchprofi',
+      description: 'Sie beherrschen die Schnellsuche!',
+      icon: 'Search',
     },
     steps: [
       {
-        id: 'ocr-intro',
-        title: 'Automatische Texterkennung',
-        description: 'Ablage-System nutzt modernste OCR-Technologie um Text aus Ihren Dokumenten zu extrahieren.',
-        position: 'center',
+        id: 'suche-oeffnen',
+        title: 'Suchleiste oeffnen',
+        description: 'Klicken Sie in die Suchleiste oder druecken Sie Strg+K, um die Schnellsuche zu oeffnen.',
+        targetSelector: '[data-tour="search-bar"]',
+        position: 'bottom',
         order: 1,
-        icon: 'Scan',
+        icon: 'Search',
       },
       {
-        id: 'ocr-status',
-        title: 'OCR-Status',
-        description: 'Nach dem Upload sehen Sie hier den Verarbeitungsstatus. Grün bedeutet erfolgreich.',
-        targetSelector: '[data-tour="ocr-status"]',
-        position: 'left',
+        id: 'suche-eingeben',
+        title: 'Suchbegriff eingeben',
+        description: 'Geben Sie einen Suchbegriff ein. Die Suche durchsucht Dateinamen, OCR-Text, Metadaten und Geschaeftspartner gleichzeitig.',
+        targetSelector: '[data-tour="search-input"]',
+        position: 'bottom',
         order: 2,
-        icon: 'CheckCircle',
+        icon: 'Type',
       },
       {
-        id: 'extracted-text',
-        title: 'Extrahierter Text',
-        description: 'Der erkannte Text wird hier angezeigt. Sie können ihn kopieren oder durchsuchen.',
-        targetSelector: '[data-tour="extracted-text"]',
-        position: 'right',
+        id: 'suche-filter',
+        title: 'Filter nutzen',
+        description: 'Verfeinern Sie die Ergebnisse mit Filtern: Datumsbereich, Dokumenttyp, Geschaeftspartner oder OCR-Backend.',
+        targetSelector: '[data-tour="search-filters"]',
+        position: 'bottom',
         order: 3,
+        icon: 'Filter',
+      },
+      {
+        id: 'suche-sortieren',
+        title: 'Ergebnisse sortieren',
+        description: 'Sortieren Sie Ergebnisse nach Relevanz, Datum, Name oder Groesse. Die Standardsortierung zeigt die relevantesten Treffer zuerst.',
+        targetSelector: '[data-tour="search-sort"]',
+        position: 'bottom',
+        order: 4,
+        icon: 'ArrowUpDown',
+      },
+    ],
+  },
+  {
+    id: 'ocr-korrektur',
+    name: 'OCR-Ergebnisse korrigieren',
+    description: 'Erfahren Sie, wie Sie OCR-Ergebnisse pruefen und korrigieren.',
+    category: 'fortgeschritten',
+    estimatedMinutes: 2,
+    badge: {
+      id: 'qualitaetssicherer',
+      name: 'Qualitaetssicherer',
+      description: 'Sie wissen, wie man OCR-Ergebnisse professionell korrigiert!',
+      icon: 'ShieldCheck',
+    },
+    steps: [
+      {
+        id: 'korrektur-dokument-oeffnen',
+        title: 'Dokument oeffnen',
+        description: 'Oeffnen Sie ein verarbeitetes Dokument, um den erkannten Text neben dem Originalbild zu sehen.',
+        targetSelector: '[data-tour="document-viewer"]',
+        position: 'bottom',
+        order: 1,
         icon: 'FileText',
       },
       {
-        id: 'ocr-corrections',
-        title: 'Korrekturen',
-        description: 'Falls der OCR-Text Fehler enthält, können Sie diese hier korrigieren. Das System lernt davon!',
-        targetSelector: '[data-tour="ocr-correction"]',
-        position: 'bottom',
-        order: 4,
-        icon: 'Edit',
-      },
-    ],
-  },
-  {
-    id: 'entity-management',
-    name: 'Geschäftspartner verwalten',
-    description: 'Lernen Sie die Kunden- und Lieferantenverwaltung kennen.',
-    badge: {
-      id: 'partner-pro',
-      name: 'Partner-Profi',
-      description: 'Sie beherrschen die Geschäftspartner-Verwaltung!',
-      icon: 'Users',
-    },
-    steps: [
-      {
-        id: 'entity-intro',
-        title: 'Geschäftspartner',
-        description: 'Verwalten Sie alle Ihre Kunden und Lieferanten an einem Ort.',
-        position: 'center',
-        order: 1,
-        icon: 'Users',
-      },
-      {
-        id: 'entity-list',
-        title: 'Partner-Liste',
-        description: 'Hier sehen Sie alle Ihre Geschäftspartner. Nutzen Sie Filter und Suche um schnell zu finden.',
-        targetSelector: '[data-tour="entity-list"]',
-        position: 'bottom',
+        id: 'korrektur-text-pruefen',
+        title: 'Erkannten Text pruefen',
+        description: 'Vergleichen Sie den erkannten Text mit dem Originaldokument. Fehler werden farblich hervorgehoben, wenn die Konfidenz niedrig ist.',
+        targetSelector: '[data-tour="ocr-text-panel"]',
+        position: 'left',
         order: 2,
-        icon: 'List',
+        icon: 'Eye',
       },
       {
-        id: 'entity-detail',
-        title: 'Partner-Details',
-        description: 'Klicken Sie auf einen Partner um alle Details zu sehen: Dokumente, Rechnungen, Kommunikation.',
-        targetSelector: '[data-tour="entity-detail"]',
+        id: 'korrektur-vornehmen',
+        title: 'Korrekturen vornehmen',
+        description: 'Klicken Sie auf einen Textabschnitt, um ihn zu bearbeiten. Ihre Korrekturen verbessern das System automatisch fuer zukuenftige Erkennungen.',
+        targetSelector: '[data-tour="ocr-correction"]',
         position: 'left',
         order: 3,
-        icon: 'UserCircle',
+        icon: 'Edit',
       },
       {
-        id: 'entity-linking',
-        title: 'Auto-Verknüpfung',
-        description: 'Dokumente werden automatisch dem richtigen Partner zugeordnet. Sie können dies auch manuell anpassen.',
-        targetSelector: '[data-tour="entity-linking"]',
-        position: 'right',
+        id: 'korrektur-tastenkuerzel',
+        title: 'Tastenkuerzel nutzen',
+        description: 'Nutzen Sie Tastenkuerzel fuer schnelleres Arbeiten: A = Akzeptieren, C = Korrigieren, S = Ueberspringen, R = Zuruecksetzen.',
+        position: 'center',
         order: 4,
-        icon: 'Link',
+        icon: 'Keyboard',
       },
     ],
   },
@@ -230,4 +295,22 @@ export const TOURS: Tour[] = [
 
 export const getTourById = (id: string): Tour | undefined => {
   return TOURS.find(tour => tour.id === id)
+}
+
+/** Alle Touren nach Kategorie gruppiert */
+export const getToursByCategory = (): Record<TourCategory, Tour[]> => {
+  return TOURS.reduce<Record<TourCategory, Tour[]>>(
+    (acc, tour) => {
+      acc[tour.category].push(tour)
+      return acc
+    },
+    { grundlagen: [], dokumente: [], fortgeschritten: [] }
+  )
+}
+
+/** Deutsche Kategorie-Labels */
+export const CATEGORY_LABELS: Record<TourCategory, string> = {
+  grundlagen: 'Grundlagen',
+  dokumente: 'Dokumente',
+  fortgeschritten: 'Fortgeschritten',
 }

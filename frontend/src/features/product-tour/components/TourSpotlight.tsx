@@ -5,7 +5,6 @@
  * Zeigt einen Spotlight-Effekt um das aktuelle Tour-Element
  */
 
-import * as React from 'react'
 import { useEffect, useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -39,8 +38,10 @@ export function TourSpotlight({
 
   useEffect(() => {
     if (!isActive || !targetSelector) {
+      /* eslint-disable react-hooks/set-state-in-effect -- Resetting derived state when deps change */
       setRect(null)
       setIsVisible(false)
+      /* eslint-enable react-hooks/set-state-in-effect */
       return
     }
 

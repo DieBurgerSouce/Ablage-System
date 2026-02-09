@@ -9,3 +9,4 @@ export { PortalLoginPage } from './PortalLoginPage';
 export { PortalDashboard } from './PortalDashboard';
 export { InvoiceListPage } from './InvoiceListPage';
 export { InvoiceDetailPage } from './InvoiceDetailPage';
+export { PortalUploadPage } from './PortalUploadPage';

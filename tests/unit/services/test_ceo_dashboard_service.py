@@ -15,7 +15,8 @@ from app.services.ceo_dashboard.digital_twin_service import (
     CompanyOverview,
     Anomaly,
 )
-from app.db.models import InvoiceStatus, ProcessingStatus, AlertStatus, AlertSeverity
+from app.db.models import InvoiceStatus, ProcessingStatus
+from app.db.models_alert import AlertStatus, AlertSeverity
 
 
 # =============================================================================

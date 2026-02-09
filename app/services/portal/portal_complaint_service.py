@@ -180,7 +180,7 @@ class PortalComplaintService:
             "first_response_at": complaint.first_response_at.isoformat() if complaint.first_response_at else None,
             "resolved_at": complaint.resolved_at.isoformat() if complaint.resolved_at else None,
             "closed_at": complaint.closed_at.isoformat() if complaint.closed_at else None,
-            "metadata": complaint.metadata,
+            "metadata": complaint.complaint_metadata,
         }
 
     async def add_information(
@@ -214,7 +214,7 @@ class PortalComplaintService:
             return False
 
         # Fuege Info zum Metadata hinzu
-        metadata = complaint.metadata or {}
+        metadata = complaint.complaint_metadata or {}
         updates = metadata.get("customer_updates", [])
         updates.append({
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -222,7 +222,7 @@ class PortalComplaintService:
             "attachments": attachment_ids or [],
         })
         metadata["customer_updates"] = updates
-        complaint.metadata = metadata
+        complaint.complaint_metadata = metadata
         complaint.updated_at = datetime.now(timezone.utc)
 
         await self.db.commit()

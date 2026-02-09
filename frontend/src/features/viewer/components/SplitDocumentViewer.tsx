@@ -2,7 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { ScrollSync, ScrollSyncPane } from 'react-scroll-sync';
 import SplitPane from 'react-split-pane';
-import { FileText, ScanLine, FileCode, Loader2, AlertTriangle, Edit, MessageSquare } from 'lucide-react';
+import { FileText, ScanLine, FileCode, Loader2, AlertTriangle, Edit, MessageSquare, Diff } from 'lucide-react';
 import { ViewerToolbar } from './ViewerToolbar';
 import { BoundingBoxOverlay, type BoundingBox } from './BoundingBoxOverlay';
 import { ImageViewer } from './ImageViewer';
@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ExtractedDataPanel } from '@/features/extracted-data';
 import { EInvoicePanel } from '@/features/einvoice';
 import { CommentsPanel, ActivityStream } from '@/features/collaboration';
+import { OCRDiffViewer } from '@/features/ocr-review/components/OCRDiffViewer';
 import { apiClient } from '@/lib/api/client';
 import { AnnotationLayer } from './AnnotationLayer';
 import { ViewerErrorBoundary } from '@/components/errors';
@@ -144,6 +145,7 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
     const [scale, setScale] = useState(1.0);
     const [selectedBox, setSelectedBox] = useState<BoundingBox | null>(null);
     const [pageDimensions, setPageDimensions] = useState<{ width: number; height: number } | null>(null);
+    const [activeRightTab, setActiveRightTab] = useState('cockpit');
 
     // Lade Preview mit Auth-Token
     const { blobUrl, isLoading: previewLoading, error: previewError } = useAuthenticatedPreview(documentId);
@@ -169,6 +171,47 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
 
     // Check if this is an Office/Email document that uses a specialized viewer
     const usesSpecialViewer = fileCategory === 'docx' || fileCategory === 'xlsx' || fileCategory === 'email';
+
+    // When OCR-Diff tab is active, render full-width diff viewer
+    if (activeRightTab === 'ocr-diff') {
+        return (
+            <div className="h-full flex flex-col">
+                <div className="px-4 pt-3 pb-2 border-b bg-background sticky top-0 z-10 flex items-center justify-between">
+                    <Tabs value="ocr-diff" onValueChange={setActiveRightTab}>
+                        <TabsList className="grid grid-cols-6 max-w-2xl">
+                            <TabsTrigger value="cockpit" className="gap-2">
+                                <Edit className="h-4 w-4" />
+                                Cockpit
+                            </TabsTrigger>
+                            <TabsTrigger value="extracted" className="gap-2">
+                                <FileText className="h-4 w-4" />
+                                Extrahiert
+                            </TabsTrigger>
+                            <TabsTrigger value="ocr" className="gap-2">
+                                <ScanLine className="h-4 w-4" />
+                                OCR-Text
+                            </TabsTrigger>
+                            <TabsTrigger value="einvoice" className="gap-2">
+                                <FileCode className="h-4 w-4" />
+                                E-Rechnung
+                            </TabsTrigger>
+                            <TabsTrigger value="collaboration" className="gap-2">
+                                <MessageSquare className="h-4 w-4" />
+                                Diskussion
+                            </TabsTrigger>
+                            <TabsTrigger value="ocr-diff" className="gap-2">
+                                <Diff className="h-4 w-4" />
+                                OCR Vergleich
+                            </TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                </div>
+                <div className="flex-1 overflow-hidden">
+                    <OCRDiffViewer documentId={documentId} pageNumber={currentPage} />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="h-full flex flex-col">
@@ -272,9 +315,9 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
 
                         <ScrollSyncPane>
                             <div className="h-full overflow-auto bg-background">
-                                <Tabs defaultValue="cockpit" className="h-full flex flex-col">
+                                <Tabs value={activeRightTab} onValueChange={setActiveRightTab} className="h-full flex flex-col">
                                     <div className="px-4 pt-4 pb-2 border-b bg-background sticky top-0 z-10">
-                                        <TabsList className="grid w-full grid-cols-5 max-w-xl">
+                                        <TabsList className="grid w-full grid-cols-6 max-w-2xl">
                                             <TabsTrigger value="cockpit" className="gap-2">
                                                 <Edit className="h-4 w-4" />
                                                 Cockpit
@@ -294,6 +337,10 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
                                             <TabsTrigger value="collaboration" className="gap-2">
                                                 <MessageSquare className="h-4 w-4" />
                                                 Diskussion
+                                            </TabsTrigger>
+                                            <TabsTrigger value="ocr-diff" className="gap-2">
+                                                <Diff className="h-4 w-4" />
+                                                OCR Vergleich
                                             </TabsTrigger>
                                         </TabsList>
                                     </div>
@@ -317,6 +364,7 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
                                         <CommentsPanel documentId={documentId} />
                                         <ActivityStream documentId={documentId} />
                                     </TabsContent>
+                                    {/* ocr-diff tab triggers full-width mode via early return above */}
                                 </Tabs>
                             </div>
                         </ScrollSyncPane>

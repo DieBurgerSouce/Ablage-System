@@ -19,7 +19,7 @@ from app.services.datev.steuerberater_package_service import (
     SteuerberaterPackage,
     PackageDocument,
     PackageStatus,
-    ValidationResult,
+    PackageValidationResult as ValidationResult,
     get_steuerberater_package_service,
 )
 

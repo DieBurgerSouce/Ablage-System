@@ -11,7 +11,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+// Separator not currently used but may be needed for future layout changes
 import {
   Link2,
   ArrowLeft,
@@ -40,7 +40,6 @@ import { DiscrepancyPanel } from './DiscrepancyPanel';
 import { AutoMatchDialog } from './AutoMatchDialog';
 import {
   type ChainStatus,
-  type DocumentChainInfo,
   CHAIN_UI_LABELS,
   DOCUMENT_TYPE_STYLES,
 } from '../types/chain-types';
@@ -171,7 +170,7 @@ export function ChainDetailPage({
       <ChainVisualization
         chain={chain}
         onDocumentClick={onDocumentClick}
-        onDiscrepancyClick={(disc) => {
+        onDiscrepancyClick={(_disc) => {
           // Scroll to discrepancy panel
           document.getElementById('discrepancy-panel')?.scrollIntoView({
             behavior: 'smooth',

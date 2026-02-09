@@ -207,43 +207,93 @@ class VATReport:
             },
         }
 
-    def to_elster_xml(self) -> str:
+    def to_elster_xml(
+        self,
+        steuernummer: Optional[str] = None,
+    ) -> str:
         """
-        Generiert ELSTER-XML fuer UStVA.
+        Generiert ELSTER-kompatibles XML fuer UStVA.
 
-        Vereinfachte Version - in Produktion: ERiC-Library verwenden.
+        Erzeugt XML gemaess dem ELSTER-Schema v11 mit:
+        - TransferHeader (Verfahren, DatenArt, Vorgang)
+        - DatenTeil mit Nutzdatenblock
+        - Anmeldungssteuern mit allen relevanten Kennziffern
+        - Zeitraum-Codierung (Monat/Quartal/Jahr)
+
+        Args:
+            steuernummer: Steuernummer der Firma (optional).
+                         Wenn None, wird Platzhalter verwendet.
+
+        Returns:
+            ELSTER-konformes XML als String (UTF-8).
+
+        Hinweis: In Produktion ERiC-Library fuer Zertifikat/Signatur verwenden.
         """
-        # In Praxis: Vollstaendiges ELSTER-XML mit Zertifikat
-        xml = f"""<?xml version="1.0" encoding="UTF-8"?>
-<UStVA xmlns="http://www.elster.de/elsterxml/schema/v11">
-    <DatenTeil>
-        <Nutzdatenblock>
-            <Nutzdaten>
-                <Anmeldungssteuern>
-                    <Steuerfall>
-                        <Zeitraum>
-                            <Jahr>{self.period_start.year}</Jahr>
-                            <Zeitraumart>{self._get_elster_period()}</Zeitraumart>
-                        </Zeitraum>
-                        <!-- Kz 81: Umsaetze 19% -->
-                        <Kz81>{int(self.output_vat_19.net_amount)}</Kz81>
-                        <!-- Kz 86: Umsaetze 7% -->
-                        <Kz86>{int(self.output_vat_7.net_amount)}</Kz86>
-                        <!-- Kz 41: Innergemeinschaftliche Lieferungen -->
-                        <Kz41>{int(self.inner_eu_deliveries.net_amount)}</Kz41>
-                        <!-- Kz 43: Ausfuhrlieferungen -->
-                        <Kz43>{int(self.export_deliveries.net_amount)}</Kz43>
-                        <!-- Kz 66: Vorsteuer -->
-                        <Kz66>{int(self.input_vat.vat_amount)}</Kz66>
-                        <!-- Kz 83: USt-Zahllast -->
-                        <Kz83>{int(self.vat_payable)}</Kz83>
-                    </Steuerfall>
-                </Anmeldungssteuern>
-            </Nutzdaten>
-        </Nutzdatenblock>
-    </DatenTeil>
-</UStVA>"""
-        return xml
+        from xml.etree.ElementTree import Element, SubElement, tostring
+        from xml.dom.minidom import parseString
+
+        ns = "http://www.elster.de/elsterxml/schema/v11"
+        version = f"{self.period_start.year}01"
+        zeitraum = self._get_elster_period()
+        stnr = steuernummer or "0000000000000"
+
+        root = Element("Elster", xmlns=ns)
+
+        # -- TransferHeader --
+        header = SubElement(root, "TransferHeader")
+        SubElement(header, "Verfahren").text = "ElsterAnmeldung"
+        SubElement(header, "DatenArt").text = "UStVA"
+        SubElement(header, "Vorgang").text = "send"
+        SubElement(header, "Testmerker").text = "700000004"
+        SubElement(header, "HerstellerID").text = "00000"
+
+        # -- DatenTeil --
+        daten_teil = SubElement(root, "DatenTeil")
+        nutzdatenblock = SubElement(daten_teil, "Nutzdatenblock")
+
+        # NutzdatenHeader
+        nd_header = SubElement(nutzdatenblock, "NutzdatenHeader")
+        SubElement(nd_header, "NutzdatenTicket").text = "1"
+        empfaenger = SubElement(nd_header, "Empfaenger", id="F")
+        empfaenger.text = ""
+
+        # Nutzdaten
+        nutzdaten = SubElement(nutzdatenblock, "Nutzdaten")
+        anmeldung = SubElement(
+            nutzdaten, "Anmeldungssteuern",
+            art="UStVA",
+            version=version,
+        )
+
+        # Steuernummer (Kz09) und Zeitraum (Kz10)
+        SubElement(anmeldung, "Kz09").text = stnr
+        SubElement(anmeldung, "Kz10").text = zeitraum
+
+        # Kennziffern nur wenn Betrag != 0
+        kz_mapping: List[Tuple[str, Decimal]] = [
+            ("Kz81", self.output_vat_19.net_amount),
+            ("Kz86", self.output_vat_7.net_amount),
+            ("Kz36", self.output_vat_19.vat_amount + self.output_vat_7.vat_amount),
+            ("Kz41", self.inner_eu_deliveries.net_amount),
+            ("Kz43", self.export_deliveries.net_amount),
+            ("Kz89", self.inner_eu_acquisition_19.net_amount),
+            ("Kz93", self.inner_eu_acquisition_7.net_amount),
+            ("Kz66", self.input_vat.vat_amount),
+            ("Kz61", self.input_vat_inner_eu.vat_amount),
+            ("Kz67", self.input_vat_reverse_charge.vat_amount),
+            ("Kz83", self.vat_payable),
+        ]
+
+        for kz_name, amount in kz_mapping:
+            if amount != Decimal("0") and amount != Decimal("0.00"):
+                SubElement(anmeldung, kz_name).text = str(
+                    int(amount.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+                )
+
+        # Serialize
+        raw_xml = tostring(root, encoding="unicode")
+        pretty = parseString(raw_xml).toprettyxml(indent="  ", encoding="UTF-8")
+        return pretty.decode("UTF-8")
 
     def _get_elster_period(self) -> str:
         """Gibt ELSTER-Zeitraumcode zurueck."""

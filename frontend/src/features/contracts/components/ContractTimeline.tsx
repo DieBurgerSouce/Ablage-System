@@ -10,7 +10,7 @@
  */
 
 import { useMemo } from 'react';
-import { format, differenceInDays, isAfter, isBefore, isToday } from 'date-fns';
+import { format, differenceInDays, isAfter, isBefore } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,7 +26,7 @@ import {
   Bell,
 } from 'lucide-react';
 import type { Contract, ContractMilestone } from '../types/contract-types';
-import { ContractStatus, MilestoneType, MILESTONE_TYPE_LABELS } from '../types/contract-types';
+import { MilestoneType, MILESTONE_TYPE_LABELS } from '../types/contract-types';
 
 interface ContractTimelineProps {
   contract: Contract;
@@ -78,7 +78,7 @@ export function ContractTimeline({
   showMilestones = true,
   compact = false,
 }: ContractTimelineProps) {
-  const today = new Date();
+  const today = useMemo(() => new Date(), []);
 
   // Berechne Timeline-Events
   const events = useMemo(() => {
@@ -280,7 +280,7 @@ export function ContractTimeline({
 
           <TooltipProvider>
             <div className="space-y-4">
-              {events.map((event, index) => {
+              {events.map((event, _index) => {
                 const isEventToday = event.type === 'today';
 
                 return (

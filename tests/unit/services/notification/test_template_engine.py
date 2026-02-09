@@ -25,7 +25,7 @@ from app.services.notification.template_engine import (
     PRESET_TEMPLATES,
     get_template_engine,
 )
-from app.db.models_notification_template import NotificationTemplate
+from app.db.models_notification_template import NotificationMessageTemplate as NotificationTemplate
 
 
 # Test-Konstanten fuer gueltige UUIDs

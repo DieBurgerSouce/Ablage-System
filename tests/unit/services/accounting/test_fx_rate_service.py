@@ -320,7 +320,7 @@ class TestFXGainLossCalculations:
             is_gain=True,
         )
 
-        with patch("app.services.accounting.fx_gain_loss_service.GLPostingService") as mock_gl:
+        with patch("app.services.accounting.gl_posting_service.GLPostingService") as mock_gl:
             mock_gl_instance = AsyncMock()
             mock_gl_instance.create_journal_entry = AsyncMock(return_value=MagicMock(id=uuid4()))
             mock_gl_instance.post_journal_entry = AsyncMock()
@@ -367,7 +367,7 @@ class TestFXGainLossCalculations:
             is_gain=False,
         )
 
-        with patch("app.services.accounting.fx_gain_loss_service.GLPostingService") as mock_gl:
+        with patch("app.services.accounting.gl_posting_service.GLPostingService") as mock_gl:
             mock_gl_instance = AsyncMock()
             mock_gl_instance.create_journal_entry = AsyncMock(return_value=MagicMock(id=uuid4()))
             mock_gl_instance.post_journal_entry = AsyncMock()

@@ -353,6 +353,243 @@ async def create_procurement_chain(
 
 
 # =============================================================================
+# CHAIN INTELLIGENCE ENDPOINTS (MUST be before /{chain_id} catch-all)
+# =============================================================================
+
+
+class ChainGapResponse(BaseModel):
+    """Antwort fuer eine Kettenluecke."""
+    chain_id: str
+    chain_name: str
+    expected_type: str
+    after_document: str
+    days_overdue: int
+    severity: str
+    suggested_matches: List[str]
+
+
+class OrphanDocumentResponse(BaseModel):
+    """Antwort fuer ein verwaistes Dokument."""
+    document_id: str
+    filename: str
+    document_type: str
+    document_date: Optional[str]
+    reference_numbers: dict
+    potential_chain_ids: List[str]
+    match_confidence: float
+
+
+class ChainIntelligenceReportResponse(BaseModel):
+    """Antwort fuer den Ketten-Intelligenz-Bericht."""
+    total_chains: int
+    complete_chains: int
+    chains_with_gaps: int
+    gaps: List[ChainGapResponse]
+    orphan_count: int
+    suggested_new_chains: List[dict]
+    scan_timestamp: str
+    average_completion: float
+
+
+@router.get(
+    "/intelligence/gaps",
+    response_model=ChainIntelligenceReportResponse,
+    summary="Kettenluecken analysieren",
+    description="Scannt alle Ketten auf fehlende Glieder und generiert Vorschlaege"
+)
+async def get_chain_gaps(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> ChainIntelligenceReportResponse:
+    """
+    Analysiert alle Auftragsketten auf Luecken.
+
+    Erkennt fehlende Dokumente in bestehenden Ketten:
+    - Bestellung vorhanden, aber kein Lieferschein
+    - Lieferschein vorhanden, aber keine Rechnung
+    - Vertrag vorhanden, aber keine Lieferung
+
+    **Severity-Stufen:**
+    - info: Luecke erkannt
+    - warning: Ueber 14 Tage ueberfaellig
+    - critical: Ueber 30 Tage ueberfaellig
+    """
+    from app.services.document_chain_intelligence_service import (
+        get_chain_intelligence_service,
+    )
+
+    company_id = current_user.company_id
+    if not company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Benutzer hat keine Firmenzuordnung"
+        )
+
+    service = get_chain_intelligence_service()
+
+    try:
+        report = await service.scan_for_gaps(
+            company_id=company_id,
+            db=db,
+        )
+    except Exception as e:
+        logger.error(
+            "chain_intelligence_scan_failed",
+            **safe_error_log(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=safe_error_detail(e, "Kettenanalyse")
+        )
+
+    return ChainIntelligenceReportResponse(
+        total_chains=report.total_chains,
+        complete_chains=report.complete_chains,
+        chains_with_gaps=report.chains_with_gaps,
+        gaps=[
+            ChainGapResponse(
+                chain_id=g.chain_id,
+                chain_name=g.chain_name,
+                expected_type=g.expected_type,
+                after_document=g.after_document,
+                days_overdue=g.days_overdue,
+                severity=g.severity,
+                suggested_matches=g.suggested_matches,
+            )
+            for g in report.gaps
+        ],
+        orphan_count=len(report.orphan_documents),
+        suggested_new_chains=report.suggested_new_chains,
+        scan_timestamp=report.scan_timestamp.isoformat(),
+        average_completion=report.average_completion,
+    )
+
+
+@router.get(
+    "/intelligence/orphans",
+    summary="Verwaiste Dokumente erkennen",
+    description="Findet Dokumente ohne Kettenverknuepfung die zu bestehenden Ketten passen koennten"
+)
+async def get_orphan_documents(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Erkennt Dokumente ohne Kettenverknuepfung.
+
+    Sucht nach Dokumenten die aufgrund von Referenznummern,
+    Dokumenttyp und Geschaeftspartner zu bestehenden Ketten passen koennten.
+    """
+    from app.services.document_chain_intelligence_service import (
+        get_chain_intelligence_service,
+    )
+
+    company_id = current_user.company_id
+    if not company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Benutzer hat keine Firmenzuordnung"
+        )
+
+    service = get_chain_intelligence_service()
+
+    try:
+        orphans = await service.detect_orphan_documents(
+            company_id=company_id,
+            db=db,
+        )
+    except Exception as e:
+        logger.error(
+            "orphan_detection_failed",
+            **safe_error_log(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=safe_error_detail(e, "Verwaiste-Dokumente-Erkennung")
+        )
+
+    return {
+        "orphan_count": len(orphans),
+        "orphans": [
+            OrphanDocumentResponse(
+                document_id=o.document_id,
+                filename=o.filename,
+                document_type=o.document_type,
+                document_date=o.document_date,
+                reference_numbers=o.reference_numbers,
+                potential_chain_ids=o.potential_chain_ids,
+                match_confidence=o.match_confidence,
+            ).model_dump()
+            for o in orphans
+        ],
+    }
+
+
+@router.get(
+    "/intelligence/{chain_id}/suggestions",
+    summary="Vervollstaendigungs-Vorschlaege",
+    description="Generiert Vorschlaege zur Vervollstaendigung einer spezifischen Kette"
+)
+async def get_chain_suggestions(
+    chain_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Generiert Vorschlaege fuer eine spezifische Kette.
+
+    Analysiert welche Dokumenttypen in der Kette fehlen und sucht
+    nach passenden unchained Dokumenten die die Luecken fuellen koennten.
+    """
+    from app.services.document_chain_intelligence_service import (
+        get_chain_intelligence_service,
+    )
+
+    company_id = current_user.company_id
+    if not company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Benutzer hat keine Firmenzuordnung"
+        )
+
+    service = get_chain_intelligence_service()
+
+    try:
+        suggestions = await service.suggest_chain_completions(
+            chain_id=chain_id,
+            db=db,
+            company_id=company_id,
+        )
+    except Exception as e:
+        logger.error(
+            "chain_suggestions_failed",
+            chain_id=chain_id,
+            **safe_error_log(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=safe_error_detail(e, "Kettenvorschlaege")
+        )
+
+    return {
+        "chain_id": chain_id,
+        "suggestion_count": len(suggestions),
+        "suggestions": [
+            ChainGapResponse(
+                chain_id=s.chain_id,
+                chain_name=s.chain_name,
+                expected_type=s.expected_type,
+                after_document=s.after_document,
+                days_overdue=s.days_overdue,
+                severity=s.severity,
+                suggested_matches=s.suggested_matches,
+            ).model_dump()
+            for s in suggestions
+        ],
+    }
+
+
+# =============================================================================
 # CHAIN RETRIEVAL ENDPOINTS
 # =============================================================================
 

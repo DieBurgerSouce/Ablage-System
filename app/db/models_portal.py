@@ -247,7 +247,7 @@ class PortalComplaint(Base):
     closed_at = Column(DateTime(timezone=True))
 
     # Zusaetzliche Daten
-    metadata = Column(CrossDBJSON, default=dict)  # Flexible zusaetzliche Daten
+    complaint_metadata = Column("metadata", CrossDBJSON, default=dict)  # Flexible zusaetzliche Daten
 
     # Relationships
     company = relationship("Company")

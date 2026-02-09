@@ -4,7 +4,7 @@
  * Visueller Report-Builder mit Tabs für Datenquelle, Spalten, Filter, Charts.
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   BarChart3,
   Calendar,
@@ -92,7 +92,7 @@ const dataTypeLabels: Record<DataType, string> = {
   boolean: 'Ja/Nein',
 };
 
-const aggregationOptions: { value: AggregationType; label: string }[] = [
+const _aggregationOptions: { value: AggregationType; label: string }[] = [
   { value: 'none', label: 'Keine' },
   { value: 'sum', label: 'Summe' },
   { value: 'avg', label: 'Durchschnitt' },
@@ -103,35 +103,38 @@ const aggregationOptions: { value: AggregationType; label: string }[] = [
 
 export function ReportBuilder({ template, open, onClose }: ReportBuilderProps) {
   const [activeTab, setActiveTab] = useState('basics');
-  const [formData, setFormData] = useState<Partial<ReportTemplateCreate>>({
-    name: '',
-    description: '',
-    report_type: 'document',
-    data_source: 'documents',
-    default_format: 'excel',
-    is_public: false,
-    enable_aggregations: false,
-    row_limit: 1000,
-  });
-
-  const [selectedFields, setSelectedFields] = useState<string[]>([]);
-
-  const { data: dataSources } = useDataSources();
-  const { data: fields } = useFields(formData.data_source);
-  const { data: preview, isLoading: previewLoading } = usePreview(
-    template?.id,
-    10
+  const [formData, setFormData] = useState<Partial<ReportTemplateCreate>>(() =>
+    template
+      ? {
+          name: template.name,
+          description: template.description || '',
+          report_type: template.report_type,
+          data_source: template.data_source,
+          default_format: template.default_format,
+          is_public: template.is_public,
+          enable_aggregations: template.enable_aggregations,
+          row_limit: template.row_limit || 1000,
+        }
+      : {
+          name: '',
+          description: '',
+          report_type: 'document',
+          data_source: 'documents',
+          default_format: 'excel',
+          is_public: false,
+          enable_aggregations: false,
+          row_limit: 1000,
+        }
   );
 
-  const createMutation = useCreateTemplate();
-  const updateMutation = useUpdateTemplate();
-  const addColumnMutation = useAddColumn();
-  const deleteColumnMutation = useDeleteColumn();
+  const [selectedFields, setSelectedFields] = useState<string[]>(
+    () => template?.columns?.map((c) => c.field_path) || []
+  );
 
-  const isEditing = !!template;
-
-  // Initialisiere Formular mit Template-Daten
-  useEffect(() => {
+  // Track template identity for resetting form
+  const [prevTemplateId, setPrevTemplateId] = useState<string | undefined>(template?.id);
+  if (template?.id !== prevTemplateId) {
+    setPrevTemplateId(template?.id);
     if (template) {
       setFormData({
         name: template.name,
@@ -157,7 +160,21 @@ export function ReportBuilder({ template, open, onClose }: ReportBuilderProps) {
       });
       setSelectedFields([]);
     }
-  }, [template]);
+  }
+
+  const { data: dataSources } = useDataSources();
+  const { data: fields } = useFields(formData.data_source);
+  const { data: preview, isLoading: previewLoading } = usePreview(
+    template?.id,
+    10
+  );
+
+  const createMutation = useCreateTemplate();
+  const updateMutation = useUpdateTemplate();
+  const addColumnMutation = useAddColumn();
+  const deleteColumnMutation = useDeleteColumn();
+
+  const isEditing = !!template;
 
   const handleSave = () => {
     if (!formData.name) {

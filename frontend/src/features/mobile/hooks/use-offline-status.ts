@@ -67,10 +67,23 @@ interface UseOfflineStatusReturn {
 
 // ==================== Helpers ====================
 
+interface NetworkConnection {
+  effectiveType?: '4g' | '3g' | '2g' | 'slow-2g';
+  downlink?: number;
+  rtt?: number;
+  saveData?: boolean;
+  addEventListener: (type: string, listener: EventListener) => void;
+  removeEventListener: (type: string, listener: EventListener) => void;
+}
+
+function getNavigatorConnection(): NetworkConnection | undefined {
+  return (navigator as unknown as { connection?: NetworkConnection }).connection ||
+    (navigator as unknown as { mozConnection?: NetworkConnection }).mozConnection ||
+    (navigator as unknown as { webkitConnection?: NetworkConnection }).webkitConnection;
+}
+
 function getNetworkInfo(): NetworkInfo {
-  const connection = (navigator as any).connection ||
-    (navigator as any).mozConnection ||
-    (navigator as any).webkitConnection;
+  const connection = getNavigatorConnection();
 
   const isOnline = navigator.onLine;
   let connectionType: ConnectionType = isOnline ? 'online' : 'offline';
@@ -122,7 +135,7 @@ export function useOfflineStatus(): UseOfflineStatusReturn {
     window.addEventListener('offline', updateNetworkInfo);
 
     // Listen for connection changes
-    const connection = (navigator as any).connection;
+    const connection = getNavigatorConnection();
     if (connection) {
       connection.addEventListener('change', updateNetworkInfo);
     }
@@ -148,12 +161,26 @@ export function useOfflineStatus(): UseOfflineStatusReturn {
   }, []);
 
   useEffect(() => {
-    refreshPendingSync();
+    // Initial load + periodic refresh
+    let cancelled = false;
+    const doRefresh = async () => {
+      if (!cancelled) {
+        try {
+          const count = await getPendingMutationCount();
+          if (!cancelled) setPendingSyncCount(count);
+        } catch (error) {
+          logger.error('[useOfflineStatus] Failed to get pending sync count', { error });
+        }
+      }
+    };
+    doRefresh();
 
-    // Refresh periodically
-    const interval = setInterval(refreshPendingSync, 30000);
-    return () => clearInterval(interval);
-  }, [refreshPendingSync]);
+    const interval = setInterval(doRefresh, 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   // ==================== Storage Info ====================
 
@@ -167,8 +194,20 @@ export function useOfflineStatus(): UseOfflineStatusReturn {
   }, []);
 
   useEffect(() => {
-    refreshStorageInfo();
-  }, [refreshStorageInfo]);
+    let cancelled = false;
+    const doRefresh = async () => {
+      if (!cancelled) {
+        try {
+          const info = await getStorageEstimate();
+          if (!cancelled) setStorageInfo(info);
+        } catch (error) {
+          logger.error('[useOfflineStatus] Failed to get storage estimate', { error });
+        }
+      }
+    };
+    doRefresh();
+    return () => { cancelled = true; };
+  }, []);
 
   // ==================== Service Worker ====================
 
@@ -218,7 +257,7 @@ export function useOfflineStatus(): UseOfflineStatusReturn {
 
       // Try Background Sync API
       if ('sync' in registration) {
-        await (registration as any).sync.register('offline-mutations');
+        await (registration as unknown as { sync: { register: (tag: string) => Promise<void> } }).sync.register('offline-mutations');
         logger.info('[useOfflineStatus] Background sync triggered');
       } else {
         // Fallback: send message to SW

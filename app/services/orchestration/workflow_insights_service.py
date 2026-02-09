@@ -130,6 +130,31 @@ class WorkflowInsight:
         return " | ".join(details) if details else ""
 
 
+@dataclass
+class WorkflowCheckResult:
+    """Ergebnis einer Workflow-Pruefung."""
+    insight_type: WorkflowInsightType
+    title: str
+    message: str
+    detail: str = ""
+    priority: str = "medium"
+    affected_items: List[UUID] = field(default_factory=list)
+    suggested_action: Optional[str] = None
+    potential_time_savings_minutes: Optional[int] = None
+
+    def to_insight(self) -> ProactiveInsight:
+        """Konvertiert zu ProactiveInsight."""
+        priority_map = {"critical": InsightPriority.CRITICAL, "high": InsightPriority.HIGH,
+                        "medium": InsightPriority.MEDIUM, "low": InsightPriority.LOW}
+        return ProactiveInsight(
+            insight_type=InsightType.SUGGESTION,
+            priority=priority_map.get(self.priority, InsightPriority.MEDIUM),
+            title=self.title,
+            message=self.message,
+            detail=self.detail,
+        )
+
+
 class WorkflowInsightsService:
     """
     Service fuer proaktive Workflow-Optimierung.

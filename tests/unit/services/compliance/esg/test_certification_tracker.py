@@ -22,9 +22,9 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from app.services.compliance.esg.certification_tracker_service import (
-    CertificationTrackerService,
-    get_certification_tracker_service,
+from app.services.compliance.esg.certification_tracker import (
+    CertificationTracker as CertificationTrackerService,
+    get_certification_tracker as get_certification_tracker_service,
 )
 from .conftest import create_mock_result
 

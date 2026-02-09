@@ -57,7 +57,7 @@ class WorkflowStage(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
-    items = relationship("DocumentWorkflowItem", back_populates="stage", lazy="selectin")
+    items = relationship("DocumentWorkflowItem", foreign_keys="[DocumentWorkflowItem.current_stage_id]", back_populates="stage", lazy="selectin")
 
     __table_args__ = (
         UniqueConstraint("company_id", "workflow_type", "stage_key", name="uq_workflow_stage"),

@@ -13,6 +13,7 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -25,7 +26,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { RefreshCw, AlertTriangle, FileText, Calendar } from 'lucide-react';
+import { RefreshCw, AlertTriangle, FileText, Calendar, BarChart3 } from 'lucide-react';
 import type { Contract, ContractDetail, ContractListParams, ContractCreateRequest, ContractUpdateRequest } from '../types/contract-types';
 import {
   useContracts,
@@ -44,11 +45,15 @@ import { ContractTable } from '../components/ContractTable';
 import { ContractDetailSheet } from '../components/ContractDetailSheet';
 import { ContractFormDialog } from '../components/ContractFormDialog';
 import { ContractCalendarExport } from '../components/ContractCalendarExport';
+import { ContractLifecycleDashboard } from '../components/ContractLifecycleDashboard';
 
 const DEFAULT_PAGE_SIZE = 20;
 
 export function ContractsPage() {
-  const navigate = useNavigate();
+  const _navigate = useNavigate();
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState('contracts');
 
   // Filter state
   const [filters, setFilters] = useState<ContractListParams>({
@@ -131,7 +136,7 @@ export function ContractsPage() {
       toast.success('Vertrag gelöscht');
       setDeleteContract(null);
       setDetailSheetOpen(false);
-    } catch (error) {
+    } catch (_error) {
       toast.error('Fehler beim Löschen des Vertrags');
     }
   };
@@ -179,7 +184,7 @@ export function ContractsPage() {
           : 'Verlängerung abgelehnt'
       );
       setRenewalConfirm(null);
-    } catch (error) {
+    } catch (_error) {
       toast.error('Fehler bei der Verlängerungsentscheidung');
     }
   };
@@ -268,80 +273,106 @@ export function ContractsPage() {
       {/* Stats Cards */}
       <ContractStatsCards summary={summary} isLoading={isLoadingSummary} />
 
-      {/* Content Grid */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Filters */}
-          <Card>
-            <CardContent className="pt-6">
-              <ContractFilters
-                filters={filters}
-                onFiltersChange={handleFiltersChange}
-                onCreateContract={handleCreateContract}
+      {/* Tabs: Vertraege / Lifecycle */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="contracts" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Vertraege
+          </TabsTrigger>
+          <TabsTrigger value="lifecycle" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Lifecycle
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Vertraege Tab */}
+        <TabsContent value="contracts" className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Main Content */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Filters */}
+              <Card>
+                <CardContent className="pt-6">
+                  <ContractFilters
+                    filters={filters}
+                    onFiltersChange={handleFiltersChange}
+                    onCreateContract={handleCreateContract}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Table */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">
+                    Vertraege ({contractsData?.total || 0})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ContractTable
+                    contracts={contractsData?.items || []}
+                    isLoading={isLoadingContracts}
+                    sortBy={filters.order_by}
+                    sortDir={filters.order_dir}
+                    onSort={handleSort}
+                    onView={handleViewContract}
+                    onEdit={handleEditContract}
+                    onDelete={setDeleteContract}
+                  />
+
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between mt-4">
+                      <p className="text-sm text-muted-foreground">
+                        Seite {currentPage + 1} von {totalPages}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(currentPage - 1)}
+                          disabled={currentPage === 0}
+                        >
+                          Zurueck
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(currentPage + 1)}
+                          disabled={currentPage >= totalPages - 1}
+                        >
+                          Weiter
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Sidebar: Deadlines */}
+            <div>
+              <ContractDeadlineAlerts
+                deadlines={deadlines?.items || []}
+                isLoading={isLoadingDeadlines}
+                onViewContract={handleViewDeadlineContract}
+                onViewAll={handleViewAllDeadlines}
               />
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+        </TabsContent>
 
-          {/* Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">
-                Vertraege ({contractsData?.total || 0})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ContractTable
-                contracts={contractsData?.items || []}
-                isLoading={isLoadingContracts}
-                sortBy={filters.order_by}
-                sortDir={filters.order_dir}
-                onSort={handleSort}
-                onView={handleViewContract}
-                onEdit={handleEditContract}
-                onDelete={setDeleteContract}
-              />
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4">
-                  <p className="text-sm text-muted-foreground">
-                    Seite {currentPage + 1} von {totalPages}
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(currentPage - 1)}
-                      disabled={currentPage === 0}
-                    >
-                      Zurueck
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage >= totalPages - 1}
-                    >
-                      Weiter
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Sidebar: Deadlines */}
-        <div>
-          <ContractDeadlineAlerts
-            deadlines={deadlines?.items || []}
-            isLoading={isLoadingDeadlines}
-            onViewContract={handleViewDeadlineContract}
-            onViewAll={handleViewAllDeadlines}
+        {/* Lifecycle Tab */}
+        <TabsContent value="lifecycle">
+          <ContractLifecycleDashboard
+            onViewContract={(contractId) => {
+              setSelectedContractId(contractId);
+              setDetailSheetOpen(true);
+            }}
           />
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Detail Sheet */}
       <ContractDetailSheet

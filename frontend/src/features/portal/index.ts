@@ -76,4 +76,5 @@ export {
   PortalDashboard,
   InvoiceListPage,
   InvoiceDetailPage,
+  PortalUploadPage,
 } from './components';

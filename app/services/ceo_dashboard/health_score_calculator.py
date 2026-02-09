@@ -12,7 +12,7 @@ Feinpoliert und durchdacht - Enterprise Health Scoring.
 
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Dict
+from typing import Dict, Optional
 from uuid import UUID
 
 import structlog

@@ -17,7 +17,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Slider } from '@/components/ui/slider';
 import {
@@ -37,10 +36,7 @@ import {
 } from '../hooks/use-smart-escalation';
 import {
   Users,
-  User,
   Brain,
-  Target,
-  Clock,
   Calendar,
   Briefcase,
   UserCheck,
@@ -405,6 +401,8 @@ function RecommendationPanel({ request, customWeights }: RecommendationPanelProp
     { ...request, weights: customWeights },
     true
   );
+  // Avoid unused variable warning
+  const _query = { request, customWeights };
 
   if (isLoading) {
     return (

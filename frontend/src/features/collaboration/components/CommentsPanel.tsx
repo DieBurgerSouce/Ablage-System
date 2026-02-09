@@ -99,7 +99,7 @@ export function CommentsPanel({ documentId, className }: CommentsPanelProps) {
       setMentions([]);
       setReplyingTo(null);
       toast.success('Kommentar hinzugefügt');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Fehler', {
         description: 'Kommentar konnte nicht gespeichert werden.',
       });
@@ -117,7 +117,7 @@ export function CommentsPanel({ documentId, className }: CommentsPanelProps) {
       try {
         await deleteMutation.mutateAsync(commentId);
         toast.success('Kommentar gelöscht');
-      } catch (error) {
+      } catch (_error) {
         toast.error('Fehler', {
           description: 'Kommentar konnte nicht gelöscht werden.',
         });

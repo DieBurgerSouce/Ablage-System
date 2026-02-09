@@ -22,7 +22,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -107,7 +106,7 @@ export function ContractCalendarExport({ contractIds, trigger }: ContractCalenda
     }
 
     return deadlinesData.items;
-  }, [deadlinesData?.items, contractIds]);
+  }, [deadlinesData, contractIds]);
 
   // Selektierte Fristen
   const visibleDeadlines = useMemo(() => {

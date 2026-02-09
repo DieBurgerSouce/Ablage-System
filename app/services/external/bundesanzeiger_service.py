@@ -18,7 +18,7 @@ Fuer Production: BUNDESANZEIGER_MOCK=false setzen.
 
 import re
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
@@ -49,14 +49,25 @@ class Publication:
 
 
 @dataclass
+class InsolvencyPublication:
+    """Einzelne Insolvenz-Bekanntmachung."""
+
+    publication_date: datetime
+    publication_type: str
+    court: Optional[str] = None
+    reference: Optional[str] = None
+    details: Optional[str] = None
+
+
+@dataclass
 class InsolvencyResult:
     """Ergebnis einer Insolvenz-Pruefung."""
 
-    company_name: str
-    has_insolvency: bool
-    count: int
-    publications: List[Publication]
-    last_checked: datetime
+    company_name: str = ""
+    has_insolvency: bool = False
+    count: int = 0
+    publications: List[Publication] = field(default_factory=list)
+    last_checked: Optional[datetime] = None
 
 
 # ============================================================================

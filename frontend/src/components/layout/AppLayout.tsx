@@ -5,6 +5,8 @@ import { SessionTimeoutWarning } from '@/components/SessionTimeoutWarning'
 import { MobileSidebarProvider, useMobileSidebar } from '@/context/MobileSidebarContext'
 import { GlobalAIAssistantV2 as GlobalAIAssistant } from '@/features/ai-assistant'
 import { WebSocketStatusIndicator } from './WebSocketStatusIndicator'
+// Feature 12: Guided Product Tours
+import { TourLauncher } from '@/features/product-tour'
 import { OfflineIndicator } from './OfflineIndicator'
 import { Menu } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -59,8 +61,11 @@ function AppLayoutInner({ children, id }: { children: React.ReactNode; id?: stri
                             </button>
                             <Breadcrumbs showHomeIcon maxItems={5} />
                         </div>
-                        {/* WebSocket Status Indicator */}
-                        <WebSocketStatusIndicator className="flex-shrink-0" />
+                        {/* Tour Launcher & WebSocket Status Indicator */}
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                            <TourLauncher variant="icon" />
+                            <WebSocketStatusIndicator />
+                        </div>
                     </div>
                 </div>
                 {/* Page Content */}

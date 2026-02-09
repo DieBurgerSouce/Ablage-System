@@ -1,5 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package, Landmark, AlertTriangle, Wallet, Receipt, GitBranch, UserCircle, Shield, Lock, Bookmark, Search, Pin, Database, FileSignature, FilePlus, Building2, BookOpen, BarChart3, MessageCircle, FolderInput, Truck, Gauge, Award, CreditCard, TrendingUp, ShieldAlert, BrainCircuit, Brain, ScrollText, Link2, Trash2, Bell, Users2, HardDrive, Play, ListOrdered, Banknote, Code2, Warehouse } from 'lucide-react'
+import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package, Landmark, AlertTriangle, Wallet, Receipt, GitBranch, UserCircle, Shield, Lock, Bookmark, Search, Pin, Database, FileSignature, FilePlus, Building2, BookOpen, BarChart3, MessageCircle, FolderInput, Truck, Gauge, Award, CreditCard, TrendingUp, ShieldAlert, BrainCircuit, Brain, ScrollText, Link2, Trash2, Bell, Users2, HardDrive, Play, ListOrdered, Banknote, Code2, Warehouse, HeartPulse, Sparkles, FileOutput, Calculator, Heart } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { usePermissions } from '@/lib/auth/hooks/use-permissions'
@@ -124,6 +124,9 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                     <SidebarLink to="/wissen" icon={BookOpen} label="Wissen" onNavigate={onNavigate} />
                     {permissions.canViewPrivat && (
                         <SidebarLink to="/privat" icon={Lock} label="Privat" onNavigate={onNavigate} />
+                    )}
+                    {permissions.canViewPrivat && (
+                        <SidebarLink to="/privat/life-events" icon={Heart} label="Lebenslagen" onNavigate={onNavigate} />
                     )}
                 </div>
 
@@ -256,6 +259,9 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                                     <SidebarLink to="/admin/mlops" icon={BrainCircuit} label="MLOps" onNavigate={onNavigate} />
                                 )}
                                 {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/daily-briefing" icon={Sparkles} label="Tagesbriefing" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
                                     <SidebarLink to="/admin/smart-queue" icon={ListOrdered} label="Smart Queue" onNavigate={onNavigate} />
                                 )}
                                 {permissions.isAdmin && (
@@ -280,6 +286,12 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                                     <SidebarLink to="/admin/lexware" icon={Database} label="Lexware Import" onNavigate={onNavigate} />
                                 )}
                                 {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/elster-export" icon={FileOutput} label="ELSTER Export" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/euer-export" icon={Calculator} label="Anlage EUeR" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
                                     <SidebarLink to="/admin/firmen" icon={Building2} label="Firmenverwaltung" onNavigate={onNavigate} />
                                 )}
                                 {permissions.isAdmin && (
@@ -296,6 +308,9 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                                 )}
                                 {permissions.isAdmin && (
                                     <SidebarLink to="/admin/disaster-recovery" icon={HardDrive} label="Disaster Recovery" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/system-health" icon={HeartPulse} label="Systemgesundheit" onNavigate={onNavigate} />
                                 )}
                             </div>
                         )}

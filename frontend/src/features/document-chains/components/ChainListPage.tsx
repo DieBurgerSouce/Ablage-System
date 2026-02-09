@@ -5,7 +5,7 @@
  */
 
 import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Link2,
   Search,
@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ChainCard, ChainCardCompact } from './ChainCard';
+import { ChainGapAlerts } from './ChainGapAlerts';
 import { CreateChainDialog } from './CreateChainDialog';
 import {
   type ChainStatus,
@@ -42,7 +43,7 @@ interface ChainListPageProps {
 }
 
 export function ChainListPage({ onChainClick, className }: ChainListPageProps) {
-  const [filter, setFilter] = useState<Partial<ChainFilter>>({
+  const [filter, _setFilter] = useState<Partial<ChainFilter>>({
     page: 1,
     perPage: 20,
   });
@@ -130,6 +131,9 @@ export function ChainListPage({ onChainClick, className }: ChainListPageProps) {
           className="bg-yellow-50 text-yellow-700"
         />
       </div>
+
+      {/* Chain Intelligence Alerts */}
+      <ChainGapAlerts onChainClick={onChainClick} />
 
       {/* Filters */}
       <Card>

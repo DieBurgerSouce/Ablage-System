@@ -221,12 +221,99 @@ class UStVoranmeldungService:
 
     async def export_elster_xml(self, tax_period_id: UUID) -> str:
         """
-        Exportiert als ELSTER-XML.
+        Exportiert eine gespeicherte TaxPeriod als ELSTER-XML.
 
-        Delegiert an VATReport.to_elster_xml() (Reuse existing).
+        Laedt den TaxPeriod-Record, konvertiert die Daten in ein VATReport-Objekt
+        und delegiert die XML-Erzeugung an VATReport.to_elster_xml().
+
+        Args:
+            tax_period_id: ID der gespeicherten Steuerperiode.
+
+        Returns:
+            ELSTER-konformes XML als String (UTF-8).
+
+        Raises:
+            ValueError: Wenn die TaxPeriod nicht gefunden wird.
         """
-        # TODO: Load TaxPeriod, convert to VATReport, call to_elster_xml()
-        raise NotImplementedError("ELSTER XML export - delegiert an VATReport")
+        from app.services.accounting.vat_service import (
+            VATReportPeriod,
+            VATSummary,
+            VAT_KENNZIFFERN,
+        )
+        from app.db.models import Company
+
+        # TaxPeriod laden
+        stmt = select(TaxPeriod).where(TaxPeriod.id == tax_period_id)
+        result = await self.db.execute(stmt)
+        tax_period = result.scalar_one_or_none()
+
+        if tax_period is None:
+            raise ValueError(f"TaxPeriod {tax_period_id} nicht gefunden")
+
+        # Steuernummer der Firma laden
+        company_stmt = select(Company).where(Company.id == tax_period.company_id)
+        company_result = await self.db.execute(company_stmt)
+        company = company_result.scalar_one_or_none()
+        steuernummer = company.tax_number if company else None
+
+        # Period-Type bestimmen
+        if tax_period.period_type == "monthly":
+            period_type = VATReportPeriod.MONTHLY
+            month_names = [
+                "", "Januar", "Februar", "Maerz", "April", "Mai", "Juni",
+                "Juli", "August", "September", "Oktober", "November", "Dezember",
+            ]
+            period_label = f"{month_names[tax_period.period_number]} {tax_period.fiscal_year}"
+        elif tax_period.period_type == "quarterly":
+            period_type = VATReportPeriod.QUARTERLY
+            period_label = f"Q{tax_period.period_number}/{tax_period.fiscal_year}"
+        else:
+            period_type = VATReportPeriod.YEARLY
+            period_label = str(tax_period.fiscal_year)
+
+        # Kennziffer-Daten aus report_data extrahieren
+        kz_data: Dict[str, Decimal] = {}
+        if tax_period.report_data and "kennziffer_data" in tax_period.report_data:
+            for kz, val in tax_period.report_data["kennziffer_data"].items():
+                kz_data[kz] = Decimal(str(val))
+
+        def _kz_summary(kz: str) -> VATSummary:
+            """Erstellt VATSummary fuer eine Kennziffer."""
+            label = VAT_KENNZIFFERN.get(kz, kz)
+            amount = kz_data.get(kz, Decimal("0"))
+            return VATSummary(kennziffer=kz, label=label, vat_amount=amount, net_amount=amount)
+
+        # VATReport zusammenbauen
+        report = VATReport(
+            company_id=tax_period.company_id,
+            period_type=period_type,
+            period_start=tax_period.period_start,
+            period_end=tax_period.period_end,
+            period_label=period_label,
+            generated_at=tax_period.filed_at or utc_now(),
+            status=tax_period.status,
+            output_vat_19=_kz_summary("81"),
+            output_vat_7=_kz_summary("86"),
+            inner_eu_deliveries=_kz_summary("41"),
+            export_deliveries=_kz_summary("43"),
+            input_vat=_kz_summary("66"),
+            input_vat_inner_eu=_kz_summary("61"),
+            input_vat_reverse_charge=_kz_summary("67"),
+            inner_eu_acquisition_19=_kz_summary("89"),
+            inner_eu_acquisition_7=_kz_summary("93"),
+            total_output_vat=tax_period.total_output_vat or Decimal("0"),
+            total_input_vat=tax_period.total_input_vat or Decimal("0"),
+            vat_payable=tax_period.vat_payable or Decimal("0"),
+        )
+
+        logger.info(
+            "elster_xml_exported",
+            tax_period_id=str(tax_period_id),
+            company_id=str(tax_period.company_id),
+            period=period_label,
+        )
+
+        return report.to_elster_xml(steuernummer=steuernummer)
 
     def _calculate_period_dates(
         self,

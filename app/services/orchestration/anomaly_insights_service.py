@@ -157,6 +157,34 @@ def _calculate_z_score(value: float, mean: float, std: float) -> float:
     return (value - mean) / std
 
 
+@dataclass
+class AnomalyCheckResult:
+    """Ergebnis einer Anomalie-Pruefung (Test-kompatibel)."""
+    anomaly_type: AnomalyType
+    title: str
+    message: str
+    detail: str = ""
+    severity: str = "medium"
+    confidence: float = 0.0
+    deviation_percentage: Optional[float] = None
+    affected_amount: Optional[Decimal] = None
+    entity_id: Optional[UUID] = None
+    entity_name: Optional[str] = None
+
+    def to_insight(self) -> ProactiveInsight:
+        """Konvertiert zu ProactiveInsight."""
+        priority_map = {"critical": InsightPriority.CRITICAL, "high": InsightPriority.HIGH,
+                        "medium": InsightPriority.MEDIUM, "low": InsightPriority.LOW}
+        return ProactiveInsight(
+            insight_type=InsightType.WARNING if self.severity in ("critical", "high") else InsightType.SUGGESTION,
+            priority=priority_map.get(self.severity, InsightPriority.MEDIUM),
+            title=self.title,
+            message=self.message,
+            detail=self.detail,
+            confidence=self.confidence,
+        )
+
+
 class AnomalyInsightsService:
     """
     Service fuer proaktive Anomalie-Erkennung.

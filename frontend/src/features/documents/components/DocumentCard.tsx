@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DocumentTypeIcon, OCRStatusBadge } from './DocumentBadges';
+import { LanguageBadge } from './LanguageBadge';
 import type { Document } from '../types';
 import { motionTokens } from '@/lib/motion-tokens';
 import { cn } from '@/lib/utils';
@@ -119,7 +120,16 @@ export function DocumentCard({
                 <h3 className="font-display font-medium text-sm truncate tracking-tight" title={document.name}>{document.name}</h3>
                 <div className="flex items-center justify-between text-xs text-muted-foreground mt-3 font-mono">
                     <span>{formatDate(document.createdAt)}</span>
-                    <OCRStatusBadge status={document.ocrStatus} confidence={document.ocrConfidence} />
+                    <div className="flex items-center gap-1.5">
+                        {document.detectedLanguage && (
+                            <LanguageBadge
+                                languageCode={document.detectedLanguage}
+                                confidence={document.languageConfidence}
+                                compact
+                            />
+                        )}
+                        <OCRStatusBadge status={document.ocrStatus} confidence={document.ocrConfidence} />
+                    </div>
                 </div>
             </div>
         </MotionDiv>

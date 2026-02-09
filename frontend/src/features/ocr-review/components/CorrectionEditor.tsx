@@ -93,11 +93,11 @@ interface ExtractedFields {
 
 function extractFields(text: string): ExtractedFields {
     const fields: ExtractedFields = {}
-    const invoiceMatch = text.match(/(?:Rechnungs?-?(?:nummer|nr\.?)?|Invoice(?:\s+No\.?)?|RE-?(?:Nr\.?)?)[:\s]*([A-Z0-9\-\/]+)/i)
+    const invoiceMatch = text.match(/(?:Rechnungs?-?(?:nummer|nr\.?)?|Invoice(?:\s+No\.?)?|RE-?(?:Nr\.?)?)[:\s]*([A-Z0-9\-/]+)/i)
     if (invoiceMatch) fields.invoice_number = invoiceMatch[1].trim()
-    const dateMatch = text.match(/(?:Datum|Date|vom)[:\s]*(\d{1,2}[\.\/]\d{1,2}[\.\/]\d{2,4}|\d{4}-\d{2}-\d{2})/i)
+    const dateMatch = text.match(/(?:Datum|Date|vom)[:\s]*(\d{1,2}[./]\d{1,2}[./]\d{2,4}|\d{4}-\d{2}-\d{2})/i)
     if (dateMatch) fields.date = dateMatch[1].trim()
-    const amountMatch = text.match(/(?:Gesamt|Total|Betrag|Summe|Endbetrag)[:\s]*€?\s*([\d\.,]+)\s*€?/i)
+    const amountMatch = text.match(/(?:Gesamt|Total|Betrag|Summe|Endbetrag)[:\s]*€?\s*([\d.,]+)\s*€?/i)
     if (amountMatch) fields.amount = amountMatch[1].replace(/\./g, '').replace(',', '.').trim()
     const ibanMatch = text.match(/(?:IBAN)[:\s]*([A-Z]{2}\s*\d{2}\s*(?:\d{4}\s*){4,}\d{0,4})/i)
     if (ibanMatch) fields.iban = ibanMatch[1].replace(/\s+/g, '').trim()
@@ -123,7 +123,7 @@ function detectCorrectionType(original: string, corrected: string): CorrectionTy
     }
 
     // Datum-Änderungen
-    const datePattern = /\d{1,2}[\.\/\-]\d{1,2}[\.\/\-]\d{2,4}/
+    const datePattern = /\d{1,2}[./-]\d{1,2}[./-]\d{2,4}/
     if (datePattern.test(original) || datePattern.test(corrected)) {
         const origDates = original.match(datePattern)
         const corrDates = corrected.match(datePattern)
@@ -131,7 +131,7 @@ function detectCorrectionType(original: string, corrected: string): CorrectionTy
     }
 
     // Betrags-Änderungen
-    const amountPattern = /\d+[,\.]\d{2}/
+    const amountPattern = /\d+[,.]\d{2}/
     if (amountPattern.test(original) || amountPattern.test(corrected)) {
         const origAmounts = original.match(amountPattern)
         const corrAmounts = corrected.match(amountPattern)

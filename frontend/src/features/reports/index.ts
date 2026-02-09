@@ -9,6 +9,7 @@ export * from './types';
 
 // API
 export * from './api';
+export * from './api/report-builder-api';
 
 // Hooks
 export * from './hooks/useReports';

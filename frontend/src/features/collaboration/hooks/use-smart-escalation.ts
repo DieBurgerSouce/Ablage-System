@@ -17,10 +17,6 @@ import {
   smartEscalationService,
   type AssignmentRequest,
   type UserScoresFilter,
-  type AssignmentRecommendation,
-  type TeamWorkload,
-  type CandidateScore,
-  type FactorsResponse,
 } from '@/lib/api/services/smart-escalation';
 
 // ==================== Query Keys ====================

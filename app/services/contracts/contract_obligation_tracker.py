@@ -287,9 +287,9 @@ class ContractObligationTracker:
         obligation.completed_by_id = completed_by_id
 
         if notes:
-            current_metadata = obligation.metadata or {}
+            current_metadata = obligation.obligation_metadata or {}
             current_metadata["completion_notes"] = notes
-            obligation.metadata = current_metadata
+            obligation.obligation_metadata = current_metadata
 
         # Bei wiederkehrenden: Naechste Occurrence berechnen
         if obligation.recurring and obligation.recurrence_pattern:

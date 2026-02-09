@@ -20,6 +20,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import User
@@ -45,6 +46,7 @@ from app.services.accounting.fx_rate_service import (
     FXRateService,
     get_fx_rate_service,
     ConversionResult,
+    RevaluationSummary,
 )
 from app.services.accounting.fx_gain_loss_service import (
     FXGainLossService,
@@ -745,7 +747,14 @@ async def export_vat_elster_xml(
         include_details=False,
     )
 
-    xml_content = report.to_elster_xml()
+    # Steuernummer der Firma laden fuer ELSTER XML
+    from app.db.models import Company
+    company_stmt = select(Company).where(Company.id == company_id)
+    company_result = await db.execute(company_stmt)
+    company = company_result.scalar_one_or_none()
+    steuernummer = company.tax_number if company else None
+
+    xml_content = report.to_elster_xml(steuernummer=steuernummer)
     filename = f"UStVA_{year}_{month:02d}.xml"
 
     return Response(
@@ -935,6 +944,45 @@ async def export_anlage_eur(
         "anlage_eur": anlage_data,
         "generated_at": datetime.now().isoformat(),
     }
+
+
+@router.get(
+    "/eur/anlage-eur-html",
+    summary="Anlage EUER HTML Export",
+    description="Exportiert Anlage EUER als druckbare HTML-Seite",
+)
+async def export_anlage_eur_html(
+    company_id: UUID = Query(..., description="Firmen-ID"),
+    fiscal_year: int = Query(..., description="Geschaeftsjahr"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """
+    Generiert eine druckbare HTML-Darstellung der Anlage EUER.
+
+    Kann im Browser geoeffnet und als PDF gedruckt werden.
+    """
+    validate_company_access(company_id, current_user)
+    logger.info(
+        "eur_anlage_html_export_requested",
+        company_id=str(company_id),
+        user_id=str(current_user.id),
+        fiscal_year=fiscal_year,
+    )
+
+    service = get_eur_service(db)
+    report = await service.generate_eur_report(
+        company_id=company_id,
+        fiscal_year=fiscal_year,
+        include_details=False,
+    )
+
+    html_content = report.to_anlage_eur_html()
+
+    return Response(
+        content=html_content,
+        media_type="text/html; charset=utf-8",
+    )
 
 
 # =============================================================================
@@ -2286,3 +2334,224 @@ async def calculate_fx_gain_loss(
         gain_loss_account=result.gain_loss_account,
         is_gain=result.is_gain,
     )
+
+
+# =============================================================================
+# FX REVALUATION (Monatsabschluss-Stichtagsbewertung)
+# =============================================================================
+
+
+class FXRevaluationRequest(BaseModel):
+    """Anfrage fuer manuelle Stichtagsbewertung."""
+    company_id: UUID = Field(..., description="Firmen-ID")
+    revaluation_date: date = Field(..., description="Bewertungsstichtag")
+
+
+class CurrencyBreakdownSchema(BaseModel):
+    """Waehrungs-Aufschluesselung."""
+    gain: str = Field(..., description="Kursgewinne in EUR")
+    loss: str = Field(..., description="Kursverluste in EUR")
+    positions: str = Field(..., description="Anzahl Positionen")
+
+
+class FXRevaluationResponse(BaseModel):
+    """Ergebnis der Stichtagsbewertung."""
+    entries_processed: int = Field(..., description="Anzahl bewerteter Positionen")
+    total_gain: str = Field(..., description="Gesamte Kursgewinne in EUR")
+    total_loss: str = Field(..., description="Gesamte Kursverluste in EUR")
+    currency_breakdown: Dict[str, CurrencyBreakdownSchema] = Field(
+        default_factory=dict, description="Aufschluesselung nach Waehrung"
+    )
+
+
+class FXRevaluationHistoryEntry(BaseModel):
+    """Eintrag in der Bewertungshistorie."""
+    id: str
+    company_id: str
+    original_currency: str
+    original_amount: Decimal
+    booking_rate: Decimal
+    settlement_rate: Decimal
+    gain_loss_amount: Decimal
+    gain_loss_account: str
+    realized: bool
+    created_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class FXExposureEntry(BaseModel):
+    """Einzelne FX-Exposure-Position."""
+    currency: str = Field(..., description="Waehrung")
+    amount: str = Field(..., description="Ausstehender Betrag in Fremdwaehrung")
+    eur_equivalent: str = Field(..., description="EUR-Gegenwert zum aktuellen Kurs")
+
+
+class FXExposureResponse(BaseModel):
+    """FX-Exposure-Uebersicht."""
+    exposures: List[FXExposureEntry] = Field(
+        default_factory=list, description="Offene Waehrungs-Exposures"
+    )
+
+
+@router.post(
+    "/fx/revaluation",
+    response_model=FXRevaluationResponse,
+    summary="Stichtagsbewertung ausloesen",
+    description="Fuehrt eine manuelle Monatsabschluss-Stichtagsbewertung aller offenen Fremdwaehrungspositionen durch",
+)
+async def trigger_fx_revaluation(
+    request: FXRevaluationRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> FXRevaluationResponse:
+    """
+    Manuelle Monatsabschluss-Bewertung aller offenen FX-Positionen.
+
+    Bewertet offene Forderungen und Verbindlichkeiten in Fremdwaehrungen
+    zum Stichtagskurs und bucht unrealisierte Kursgewinne/-verluste.
+
+    **Achtung:** Diese Aktion erstellt Buchungen im Hauptbuch!
+    """
+    validate_company_access(request.company_id, current_user)
+
+    logger.info(
+        "fx_revaluation_triggered",
+        user_id=str(current_user.id),
+        company_id=str(request.company_id),
+        revaluation_date=str(request.revaluation_date),
+    )
+
+    try:
+        fx_service = get_fx_rate_service(db)
+        summary = await fx_service.month_end_revaluation(
+            company_id=request.company_id,
+            revaluation_date=request.revaluation_date,
+            db=db,
+        )
+
+        breakdown: Dict[str, CurrencyBreakdownSchema] = {}
+        for cur, vals in summary.currency_breakdown.items():
+            breakdown[cur] = CurrencyBreakdownSchema(
+                gain=vals["gain"],
+                loss=vals["loss"],
+                positions=vals["positions"],
+            )
+
+        return FXRevaluationResponse(
+            entries_processed=summary.entries_processed,
+            total_gain=str(summary.total_gain),
+            total_loss=str(summary.total_loss),
+            currency_breakdown=breakdown,
+        )
+    except Exception as exc:
+        logger.error("fx_revaluation_failed", **safe_error_log(exc))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Stichtagsbewertung fehlgeschlagen: {safe_error_detail(exc)}",
+        )
+
+
+@router.get(
+    "/fx/revaluation/history",
+    response_model=List[FXRevaluationHistoryEntry],
+    summary="Bewertungshistorie abrufen",
+    description="Zeigt vergangene FX-Bewertungslaeufe und ihre Ergebnisse",
+)
+async def get_fx_revaluation_history(
+    company_id: UUID = Query(..., description="Firmen-ID"),
+    from_date: Optional[date] = Query(None, description="Startdatum"),
+    to_date: Optional[date] = Query(None, description="Enddatum"),
+    limit: int = Query(50, ge=1, le=500, description="Max. Eintraege"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> List[FXRevaluationHistoryEntry]:
+    """
+    Gibt die Historie der FX-Bewertungen zurueck.
+
+    Zeigt alle unrealisierten Kursgewinne/-verluste fuer die angegebene Firma
+    im angegebenen Zeitraum.
+    """
+    validate_company_access(company_id, current_user)
+
+    fx_gl_service = get_fx_gain_loss_service(db)
+    entries = await fx_gl_service.get_fx_entries(
+        company_id=company_id,
+        realized=False,
+    )
+
+    # Filter nach Datum
+    filtered = entries
+    if from_date:
+        filtered = [
+            e for e in filtered
+            if e.created_at and e.created_at.date() >= from_date
+        ]
+    if to_date:
+        filtered = [
+            e for e in filtered
+            if e.created_at and e.created_at.date() <= to_date
+        ]
+
+    # Limit anwenden
+    filtered = filtered[:limit]
+
+    return [
+        FXRevaluationHistoryEntry(
+            id=str(e.id),
+            company_id=str(e.company_id),
+            original_currency=e.original_currency,
+            original_amount=e.original_amount,
+            booking_rate=e.booking_rate,
+            settlement_rate=e.settlement_rate,
+            gain_loss_amount=e.gain_loss_amount,
+            gain_loss_account=e.gain_loss_account,
+            realized=e.realized,
+            created_at=e.created_at,
+        )
+        for e in filtered
+    ]
+
+
+@router.get(
+    "/fx/exposure",
+    response_model=FXExposureResponse,
+    summary="Aktuelle FX-Exposure anzeigen",
+    description="Zeigt offene Waehrungs-Exposure aller Nicht-EUR-Positionen",
+)
+async def get_fx_exposure(
+    company_id: UUID = Query(..., description="Firmen-ID"),
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> FXExposureResponse:
+    """
+    Aktuelle Fremdwaehrungs-Exposure.
+
+    Zeigt alle offenen Positionen in Nicht-EUR-Waehrungen
+    mit dem aktuellen EUR-Gegenwert.
+    """
+    validate_company_access(company_id, current_user)
+
+    try:
+        fx_service = get_fx_rate_service(db)
+        exposures = await fx_service.get_fx_exposure(
+            company_id=company_id,
+            db=db,
+        )
+
+        return FXExposureResponse(
+            exposures=[
+                FXExposureEntry(
+                    currency=e["currency"],
+                    amount=e["amount"],
+                    eur_equivalent=e["eur_equivalent"],
+                )
+                for e in exposures
+            ]
+        )
+    except Exception as exc:
+        logger.error("fx_exposure_failed", **safe_error_log(exc))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"FX-Exposure-Abfrage fehlgeschlagen: {safe_error_detail(exc)}",
+        )

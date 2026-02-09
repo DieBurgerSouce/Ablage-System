@@ -8,7 +8,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { apiClient } from '@/lib/api/client'
 import { logger } from '@/lib/logger'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -194,6 +194,7 @@ export function ReviewWorkspace({
         }
         // Reset corrections bei Sample-Wechsel
         corrections.reset()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sampleDetail?.ground_truth_text, nextSample?.ocr_text_preview, sampleId])
 
     // Preview-Bild mit Auth laden

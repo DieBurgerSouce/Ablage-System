@@ -28,9 +28,6 @@ import type {
   PortalDocumentFilter,
   PortalMessageSendRequest,
   PortalMessageFilter,
-  ComplaintStatus,
-  ComplaintType,
-  PaymentConfirmationStatus,
 } from '../types';
 
 // ============================================================================

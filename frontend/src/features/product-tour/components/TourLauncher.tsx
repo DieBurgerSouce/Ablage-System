@@ -1,8 +1,8 @@
 /**
  * Tour Launcher Component
  *
- * Vision 2026+ Feature: Interaktive Produkttour
- * Button/Widget zum Starten von Touren + Badge-Anzeige
+ * Button/Widget zum Starten von Touren.
+ * Gruppiert Touren nach Kategorie, zeigt Abzeichen und geschaetzte Dauer.
  */
 
 import * as React from 'react'
@@ -13,50 +13,50 @@ import {
   Play,
   Check,
   ChevronRight,
+  Clock,
   Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { useTour } from '../hooks/use-tour'
-import { Tour, TOURS, TourBadge } from '../types'
+import { useTourContext } from './TourProvider'
+import {
+  TOURS,
+  getToursByCategory,
+  CATEGORY_LABELS,
+  type TourCategory,
+} from '../types'
 
 interface TourLauncherProps {
   className?: string
   variant?: 'button' | 'icon' | 'fab'
 }
 
-export function TourLauncher({ className, variant = 'button' }: TourLauncherProps) {
+export function TourLauncher({ className, variant = 'icon' }: TourLauncherProps) {
   const [isOpen, setIsOpen] = useState(false)
   const {
     startTour,
     badges,
     isTourCompleted,
-    getAvailableTours,
     resetTour,
-  } = useTour()
+  } = useTourContext()
 
-  const availableTours = getAvailableTours()
   const completedCount = TOURS.filter(t => isTourCompleted(t.id)).length
   const progressPercent = Math.round((completedCount / TOURS.length) * 100)
+  const toursByCategory = getToursByCategory()
 
   const handleStartTour = (tourId: string) => {
     setIsOpen(false)
-    // Small delay to close popover smoothly
-    setTimeout(() => startTour(tourId), 150)
+    setTimeout(() => startTour(tourId), 200)
   }
 
   const handleRestartTour = (tourId: string) => {
@@ -64,11 +64,17 @@ export function TourLauncher({ className, variant = 'button' }: TourLauncherProp
     handleStartTour(tourId)
   }
 
-  const TriggerButton = () => {
+  const triggerButton = (() => {
     switch (variant) {
       case 'icon':
         return (
-          <Button variant="ghost" size="icon" className={className}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={className}
+            onClick={() => setIsOpen(true)}
+            aria-label="Touren und Hilfe oeffnen"
+          >
             <HelpCircle className="h-5 w-5" />
           </Button>
         )
@@ -81,13 +87,19 @@ export function TourLauncher({ className, variant = 'button' }: TourLauncherProp
               'h-14 w-14 p-0',
               className
             )}
+            onClick={() => setIsOpen(true)}
+            aria-label="Touren und Hilfe oeffnen"
           >
             <Sparkles className="h-6 w-6" />
           </Button>
         )
       default:
         return (
-          <Button variant="outline" className={className}>
+          <Button
+            variant="outline"
+            className={className}
+            onClick={() => setIsOpen(true)}
+          >
             <HelpCircle className="h-4 w-4 mr-2" />
             Hilfe & Touren
             {badges.length > 0 && (
@@ -98,152 +110,141 @@ export function TourLauncher({ className, variant = 'button' }: TourLauncherProp
           </Button>
         )
     }
-  }
+  })()
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <TriggerButton />
-      </PopoverTrigger>
-      <PopoverContent className="w-96 p-0" align="end">
-        {/* Header */}
-        <div className="p-4 border-b bg-muted/30">
-          <h3 className="font-semibold">Hilfe & Produkttouren</h3>
-          <p className="text-sm text-muted-foreground">
-            Lernen Sie Ablage-System interaktiv kennen
-          </p>
-        </div>
+    <>
+      {triggerButton}
 
-        {/* Progress */}
-        <div className="p-4 border-b">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Fortschritt</span>
-            <span className="text-sm text-muted-foreground">
-              {completedCount} von {TOURS.length} abgeschlossen
-            </span>
-          </div>
-          <Progress value={progressPercent} className="h-2" />
-        </div>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent className="max-w-lg p-0">
+          <DialogHeader className="p-6 pb-0">
+            <DialogTitle>Hilfe & Produkttouren</DialogTitle>
+            <DialogDescription>
+              Lernen Sie Ablage-System interaktiv kennen
+            </DialogDescription>
+          </DialogHeader>
 
-        {/* Tours List */}
-        <ScrollArea className="h-[280px]">
-          <div className="p-2">
-            <h4 className="text-xs font-medium text-muted-foreground px-2 py-1">
-              Verfügbare Touren
-            </h4>
-            {TOURS.map((tour) => {
-              const isCompleted = isTourCompleted(tour.id)
-
-              return (
-                <div
-                  key={tour.id}
-                  className={cn(
-                    'flex items-center justify-between p-3 rounded-lg',
-                    'hover:bg-muted/50 transition-colors',
-                    isCompleted && 'opacity-60'
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={cn(
-                        'flex items-center justify-center w-8 h-8 rounded-full',
-                        isCompleted
-                          ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
-                          : 'bg-primary/10 text-primary'
-                      )}
-                    >
-                      {isCompleted ? (
-                        <Check className="h-4 w-4" />
-                      ) : (
-                        <Play className="h-4 w-4" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">{tour.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {tour.steps.length} Schritte
-                        {isCompleted && ' • Abgeschlossen'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {isCompleted ? (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRestartTour(tour.id)}
-                            >
-                              Wiederholen
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Tour neu starten</TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleStartTour(tour.id)}
-                      >
-                        Starten
-                        <ChevronRight className="h-4 w-4 ml-1" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Badges Section */}
-          {badges.length > 0 && (
-            <div className="p-2 border-t">
-              <h4 className="text-xs font-medium text-muted-foreground px-2 py-1 flex items-center gap-1">
-                <Award className="h-3 w-3" />
-                Verdiente Abzeichen
-              </h4>
-              <div className="flex flex-wrap gap-2 p-2">
-                {badges.map((badge) => (
-                  <TooltipProvider key={badge.id}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Badge
-                          variant="secondary"
-                          className="cursor-help py-1.5 px-3"
-                        >
-                          <Award className="h-3 w-3 mr-1 text-yellow-500" />
-                          {badge.name}
-                        </Badge>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="font-medium">{badge.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {badge.description}
-                        </p>
-                        {badge.unlockedAt && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Freigeschaltet: {new Date(badge.unlockedAt).toLocaleDateString('de-DE')}
-                          </p>
-                        )}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                ))}
-              </div>
+          {/* Fortschritt */}
+          <div className="px-6 pb-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium">Fortschritt</span>
+              <span className="text-sm text-muted-foreground">
+                {completedCount} von {TOURS.length} abgeschlossen
+              </span>
             </div>
-          )}
-        </ScrollArea>
+            <Progress value={progressPercent} className="h-2" />
+          </div>
 
-        {/* Footer */}
-        <div className="p-3 border-t bg-muted/30">
-          <p className="text-xs text-muted-foreground text-center">
-            Tastenkürzel: ← → zum Navigieren, ESC zum Beenden
-          </p>
-        </div>
-      </PopoverContent>
-    </Popover>
+          {/* Touren nach Kategorie */}
+          <ScrollArea className="max-h-[360px] px-6">
+            {(Object.entries(toursByCategory) as [TourCategory, typeof TOURS][]).map(
+              ([category, tours]) => {
+                if (tours.length === 0) return null
+                return (
+                  <div key={category} className="mb-4">
+                    <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                      {CATEGORY_LABELS[category]}
+                    </h4>
+                    <div className="space-y-1">
+                      {tours.map((tour) => {
+                        const isCompleted = isTourCompleted(tour.id)
+                        return (
+                          <div
+                            key={tour.id}
+                            className={cn(
+                              'flex items-center justify-between p-3 rounded-lg',
+                              'hover:bg-muted/50 transition-colors',
+                              isCompleted && 'opacity-60'
+                            )}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div
+                                className={cn(
+                                  'flex items-center justify-center w-8 h-8 rounded-full flex-shrink-0',
+                                  isCompleted
+                                    ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                                    : 'bg-primary/10 text-primary'
+                                )}
+                              >
+                                {isCompleted ? (
+                                  <Check className="h-4 w-4" />
+                                ) : (
+                                  <Play className="h-4 w-4" />
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-medium text-sm truncate">{tour.name}</p>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <span>{tour.steps.length} Schritte</span>
+                                  <span className="flex items-center gap-0.5">
+                                    <Clock className="h-3 w-3" />
+                                    ~{tour.estimatedMinutes} Min.
+                                  </span>
+                                  {isCompleted && <span>Abgeschlossen</span>}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex-shrink-0 ml-2">
+                              {isCompleted ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleRestartTour(tour.id)}
+                                >
+                                  Wiederholen
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleStartTour(tour.id)}
+                                >
+                                  Starten
+                                  <ChevronRight className="h-4 w-4 ml-1" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              }
+            )}
+
+            {/* Abzeichen */}
+            {badges.length > 0 && (
+              <div className="mb-4 pt-2 border-t">
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1">
+                  <Award className="h-3 w-3" />
+                  Verdiente Abzeichen
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {badges.map((badge) => (
+                    <Badge
+                      key={badge.id}
+                      variant="secondary"
+                      className="py-1.5 px-3"
+                    >
+                      <Award className="h-3 w-3 mr-1 text-yellow-500" />
+                      {badge.name}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </ScrollArea>
+
+          {/* Footer */}
+          <div className="p-4 border-t bg-muted/30">
+            <p className="text-xs text-muted-foreground text-center">
+              Tastenkuerzel: Pfeil rechts/links zum Navigieren, ESC zum Beenden
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

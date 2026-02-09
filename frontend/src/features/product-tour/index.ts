@@ -1,17 +1,19 @@
 /**
  * Product Tour Feature Exports
  *
- * Vision 2026+ Feature: Interaktive Produkttour
+ * Interaktive Produkttour fuer gefuehrtes Onboarding
  */
 
-// Main components
+// Components
 export { ProductTour } from './components/ProductTour'
 export { TourLauncher } from './components/TourLauncher'
 export { TourSpotlight } from './components/TourSpotlight'
 export { TourTooltip } from './components/TourTooltip'
+export { TourProgressDots } from './components/TourProgress'
+export { TourProvider, useTourContext } from './components/TourProvider'
 
 // Hooks
 export { useTour } from './hooks/use-tour'
 
-// Types
+// Types & Data
 export * from './types'

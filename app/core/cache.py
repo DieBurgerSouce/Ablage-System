@@ -765,6 +765,63 @@ def cache_multi_tier(
     return decorator
 
 
+async def cache_get(key: str) -> Optional[Dict[str, Any]]:
+    """Hole einen Wert aus dem L2-Redis-Cache.
+
+    Args:
+        key: Cache-Schluessel
+
+    Returns:
+        Gespeicherter Wert als Dict oder None
+    """
+    # Check L1 first
+    l1_value = _l1_cache.get(key)
+    if l1_value is not None:
+        return l1_value
+
+    # Check L2 (Redis)
+    try:
+        from app.core.redis_state import RedisStateManager
+        redis_manager = RedisStateManager.get_instance()
+        await redis_manager._ensure_connection()
+
+        raw = await redis_manager._redis.get(key)
+        if raw is None:
+            return None
+
+        value = json.loads(raw)
+        # Populate L1
+        _l1_cache.set(key, value, ttl=30)
+        return value
+    except Exception as e:
+        logger.debug("cache_get_failed", key=key[:50], error_type=type(e).__name__)
+        return None
+
+
+async def cache_set(key: str, value: Dict[str, Any], ttl: int = 300) -> None:
+    """Speichere einen Wert im L1- und L2-Cache.
+
+    Args:
+        key: Cache-Schluessel
+        value: Zu speichernder Wert (JSON-serialisierbar)
+        ttl: Time-to-live in Sekunden
+    """
+    # Set L1
+    _l1_cache.set(key, value, ttl=min(ttl, 60))
+
+    # Set L2 (Redis)
+    try:
+        from app.core.redis_state import RedisStateManager
+        redis_manager = RedisStateManager.get_instance()
+        await redis_manager._ensure_connection()
+
+        serialized = json.dumps(value, default=str)
+        await redis_manager._redis.set(key, serialized, ex=ttl)
+        logger.debug("cache_set", key=key[:50], ttl=ttl)
+    except Exception as e:
+        logger.debug("cache_set_failed", key=key[:50], error_type=type(e).__name__)
+
+
 async def invalidate_cache(pattern: str) -> int:
     """
     Invalidiere Cache-Eintraege nach Pattern in L1 und L2.

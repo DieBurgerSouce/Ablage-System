@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   FileText,
   Upload,
+  FolderOpen,
   MessageSquare,
   AlertTriangle,
   LogOut,
@@ -36,7 +37,8 @@ interface PortalLayoutProps {
 const portalNavItems = [
   { href: '/portal', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { href: '/portal/invoices', label: 'Rechnungen', icon: FileText },
-  { href: '/portal/documents', label: 'Dokumente', icon: Upload },
+  { href: '/portal/upload', label: 'Dokument hochladen', icon: Upload },
+  { href: '/portal/documents', label: 'Dokumente', icon: FolderOpen },
   { href: '/portal/messages', label: 'Nachrichten', icon: MessageSquare },
   { href: '/portal/complaints', label: 'Reklamationen', icon: AlertTriangle },
 ];

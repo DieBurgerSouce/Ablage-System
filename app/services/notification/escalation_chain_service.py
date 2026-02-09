@@ -38,6 +38,13 @@ logger = structlog.get_logger(__name__)
 # =============================================================================
 
 
+class EscalationPreset(str, Enum):
+    """Vordefinierte Eskalationspresets."""
+    STANDARD = "standard"
+    URGENT = "urgent"
+    RELAXED = "relaxed"
+
+
 class EscalationChannel(str, Enum):
     """Verfuegbare Eskalationskanaele."""
     IN_APP = "in_app"

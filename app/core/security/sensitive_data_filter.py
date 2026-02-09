@@ -203,6 +203,10 @@ def mask_pii(
     return _mask_recursive(data, fields_to_mask, mask_patterns)
 
 
+# Alias fuer Abwaertskompatibilitaet
+mask_pii_in_dict = mask_pii
+
+
 def _mask_recursive(
     data: PIIData,
     fields_to_mask: Set[str],

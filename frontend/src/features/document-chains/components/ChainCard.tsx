@@ -23,6 +23,7 @@ import {
   CHAIN_UI_LABELS,
   DOCUMENT_TYPE_STYLES,
 } from '../types/chain-types';
+import { ChainCompletenessBar } from './ChainCompletenessBar';
 import { formatCurrency, formatDate } from '@/features/banking/utils/format';
 
 interface ChainCardProps {
@@ -129,6 +130,14 @@ export function ChainCard({ chain, onClick, className }: ChainCardProps) {
             {formatCurrency(chain.totalValue)}
           </div>
         </div>
+
+        {/* Completeness Bar */}
+        {chain.status !== 'complete' && (
+          <ChainCompletenessBar
+            percentage={chain.documents.length >= 4 ? 100 : chain.documents.length * 25}
+            size="sm"
+          />
+        )}
 
         {/* Business Entity (wenn vorhanden) */}
         {chain.documents[0]?.businessEntityName && (

@@ -124,11 +124,6 @@ const DEFAULT_FORM_DATA: ChartFormData = {
 // Helper Functions
 // =============================================================================
 
-function getChartIcon(chartType: ChartType): React.ElementType {
-    const chartConfig = CHART_TYPES.find(c => c.value === chartType);
-    return chartConfig?.icon || BarChart3;
-}
-
 function getChartLabel(chartType: ChartType): string {
     const chartConfig = CHART_TYPES.find(c => c.value === chartType);
     return chartConfig?.label || chartType;
@@ -156,16 +151,27 @@ interface ChartCardProps {
     previewLoading: boolean;
 }
 
-function ChartCard({ chart, onDelete, isDeleting, preview, previewLoading }: ChartCardProps) {
-    const Icon = getChartIcon(chart.chart_type);
+const CHART_TYPE_ICONS: Record<ChartType, React.ElementType> = {
+    bar: BarChart3,
+    line: LineChart,
+    pie: PieChart,
+    area: AreaChart,
+    stacked_bar: Layers,
+};
 
+function ChartCardIcon({ chartType }: { chartType: ChartType }) {
+    const Icon = CHART_TYPE_ICONS[chartType] ?? BarChart3;
+    return <Icon className="h-4 w-4 text-primary" />;
+}
+
+function ChartCard({ chart, onDelete, isDeleting, preview, previewLoading }: ChartCardProps) {
     return (
         <Card className="relative">
             <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2">
                         <div className="p-2 rounded-lg bg-primary/10">
-                            <Icon className="h-4 w-4 text-primary" />
+                            <ChartCardIcon chartType={chart.chart_type} />
                         </div>
                         <div>
                             <CardTitle className="text-sm">

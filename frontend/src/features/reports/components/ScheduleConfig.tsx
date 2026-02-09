@@ -4,7 +4,7 @@
  * Konfiguration fuer automatische Report-Ausfuehrung mit Cron-Presets und E-Mail-Versand.
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Calendar,
   Clock,
@@ -37,7 +37,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { format, formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import {
   useSchedulePresets,
@@ -78,15 +78,19 @@ export function ScheduleConfig({ template }: ScheduleConfigProps) {
   const enableMutation = useEnableSchedule();
   const disableMutation = useDisableSchedule();
 
-  // Initialisiere mit existierender Konfiguration
-  useEffect(() => {
+  // Sync state from template.schedule_config (without useEffect)
+  const [prevConfigJson, setPrevConfigJson] = useState<string | null>(null);
+  const configJson = template.schedule_config ? JSON.stringify(template.schedule_config) : null;
+  const presetsJson = presets ? JSON.stringify(presets.map((p) => ({ id: p.id, cron: p.cron }))) : null;
+  const syncKey = `${configJson}|${presetsJson}`;
+  if (syncKey !== prevConfigJson) {
+    setPrevConfigJson(syncKey);
     if (template.schedule_config) {
       const config = template.schedule_config;
       setTimezone(config.timezone || 'Europe/Berlin');
       setFormat(config.format || template.default_format || 'excel');
       setRecipients(config.recipients || []);
 
-      // Pruefe ob der Cron-Ausdruck einem Preset entspricht
       const matchingPreset = presets?.find((p) => p.cron === config.cron_expression);
       if (matchingPreset) {
         setSelectedPreset(matchingPreset.id);
@@ -96,7 +100,7 @@ export function ScheduleConfig({ template }: ScheduleConfigProps) {
         setUseCustomCron(true);
       }
     }
-  }, [template.schedule_config, presets, template.default_format]);
+  }
 
   const handleToggleSchedule = (enabled: boolean) => {
     setScheduleEnabled(enabled);

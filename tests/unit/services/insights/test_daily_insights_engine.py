@@ -17,9 +17,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.insights.daily_insights_engine import (
     DailyInsightsEngine,
     DailyInsight,
-    InsightType,
+    DailyInsightType as InsightType,
     InsightSeverity,
-    InsightFactor,
+    InsightFactorDict as InsightFactor,
     InsightGeneratorConfig,
     get_daily_insights_engine,
 )

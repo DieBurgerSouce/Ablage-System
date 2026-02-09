@@ -9,7 +9,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { chainService, ChainApiError } from '../api/chain-api';
 import type {
   DocumentChainInfo,
-  ChainMatchResult,
   ChainDiscrepancy,
   ChainRelationship,
   ChainCreate,
@@ -296,4 +295,60 @@ export function useInvalidateChainQueries() {
         queryKey: chainQueryKeys.byDocument(documentId),
       }),
   };
+}
+
+// ==================== Chain Intelligence Hooks ====================
+
+import {
+  chainIntelligenceService,
+  type ChainIntelligenceReport,
+  type OrphanDocument,
+  type ChainSuggestionsResponse,
+} from '../api/chain-intelligence-api';
+
+export const chainIntelligenceQueryKeys = {
+  all: ['chain-intelligence'] as const,
+  gaps: () => [...chainIntelligenceQueryKeys.all, 'gaps'] as const,
+  orphans: () => [...chainIntelligenceQueryKeys.all, 'orphans'] as const,
+  suggestions: (chainId: string) =>
+    [...chainIntelligenceQueryKeys.all, 'suggestions', chainId] as const,
+};
+
+/**
+ * Hook fuer Ketten-Intelligenz-Bericht (Luecken + Statistiken)
+ */
+export function useChainGaps(options?: { enabled?: boolean }) {
+  return useQuery<ChainIntelligenceReport>({
+    queryKey: chainIntelligenceQueryKeys.gaps(),
+    queryFn: () => chainIntelligenceService.getChainGaps(),
+    staleTime: 5 * 60 * 1000, // 5 Minuten
+    enabled: options?.enabled ?? true,
+  });
+}
+
+/**
+ * Hook fuer verwaiste Dokumente
+ */
+export function useOrphanDocuments(options?: { enabled?: boolean }) {
+  return useQuery<OrphanDocument[]>({
+    queryKey: chainIntelligenceQueryKeys.orphans(),
+    queryFn: () => chainIntelligenceService.getOrphanDocuments(),
+    staleTime: 5 * 60 * 1000, // 5 Minuten
+    enabled: options?.enabled ?? true,
+  });
+}
+
+/**
+ * Hook fuer Vervollstaendigungs-Vorschlaege einer Kette
+ */
+export function useChainSuggestions(
+  chainId: string,
+  options?: { enabled?: boolean }
+) {
+  return useQuery<ChainSuggestionsResponse>({
+    queryKey: chainIntelligenceQueryKeys.suggestions(chainId),
+    queryFn: () => chainIntelligenceService.getChainSuggestions(chainId),
+    staleTime: 60 * 1000, // 1 Minute
+    enabled: (options?.enabled ?? true) && !!chainId,
+  });
 }

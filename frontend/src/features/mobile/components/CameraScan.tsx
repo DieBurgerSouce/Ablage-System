@@ -16,7 +16,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Camera, RefreshCw, Check, X, Upload, RotateCcw, Zap, SwitchCamera, Image as ImageIcon } from 'lucide-react';
+import { Camera, RefreshCw, Check, X, Upload, RotateCcw, SwitchCamera, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -95,7 +95,7 @@ export function CameraScan({
   const [cameraFacing, setCameraFacing] = useState<CameraFacing>('environment');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [offlineQueueCount, setOfflineQueueCount] = useState(0);
-  const [flashEnabled, setFlashEnabled] = useState(false);
+  const [_flashEnabled, _setFlashEnabled] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
@@ -293,7 +293,7 @@ export function CameraScan({
           });
           setOfflineQueueCount((prev) => prev + 1);
           resetState();
-        } catch (queueError) {
+        } catch (_queueError) {
           toast.error('Speichern fehlgeschlagen');
         }
       } else {

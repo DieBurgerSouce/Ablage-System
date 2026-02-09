@@ -179,9 +179,10 @@ export function useFieldNavigation({
             }
         }
 
-        containerRef.current.addEventListener('focusin', handleFocusIn)
+        const container = containerRef.current
+        container.addEventListener('focusin', handleFocusIn)
         return () => {
-            containerRef.current?.removeEventListener('focusin', handleFocusIn)
+            container?.removeEventListener('focusin', handleFocusIn)
         }
     }, [enabled, containerRef, onFieldFocus])
 

@@ -14,12 +14,17 @@ export { chainService, ChainApiError } from './api/chain-api';
 export {
   // Query Keys
   chainQueryKeys,
+  chainIntelligenceQueryKeys,
   // Individual Hooks
   useChains,
   useChain,
   useDocumentChain,
   useAutoMatch,
   useDiscrepancies,
+  // Intelligence Hooks
+  useChainGaps,
+  useOrphanDocuments,
+  useChainSuggestions,
   // Mutations
   useCreateChain,
   useLinkDocuments,
@@ -34,6 +39,16 @@ export {
   useInvalidateChainQueries,
 } from './hooks/use-chain-queries';
 
+// Intelligence API
+export {
+  chainIntelligenceService,
+  type ChainGap,
+  type GapSeverity,
+  type OrphanDocument,
+  type ChainIntelligenceReport,
+  type ChainSuggestionsResponse,
+} from './api/chain-intelligence-api';
+
 // Components
 export { ChainCard, ChainCardCompact } from './components/ChainCard';
 export { ChainVisualization } from './components/ChainVisualization';
@@ -42,3 +57,5 @@ export { AutoMatchDialog } from './components/AutoMatchDialog';
 export { CreateChainDialog } from './components/CreateChainDialog';
 export { ChainListPage } from './components/ChainListPage';
 export { ChainDetailPage } from './components/ChainDetailPage';
+export { ChainGapAlerts } from './components/ChainGapAlerts';
+export { ChainCompletenessBar } from './components/ChainCompletenessBar';

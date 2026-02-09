@@ -21,7 +21,6 @@ import {
   getPendingMutationCount,
   getPendingMutations,
   removeMutation,
-  type OfflineMutation,
 } from '@/lib/storage/indexed-db';
 
 // ==================== Types ====================
@@ -89,6 +88,7 @@ export function useCameraScan(): UseCameraScanReturn {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ==================== Queue Count ====================

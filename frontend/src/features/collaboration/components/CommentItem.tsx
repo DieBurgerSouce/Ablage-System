@@ -56,7 +56,7 @@ function formatContent(content: string, mentions: Comment['mentions']): React.Re
   // Sort mentions by startIndex descending to replace from end
   const sortedMentions = [...mentions].sort((a, b) => b.startIndex - a.startIndex);
 
-  const formattedContent = content;
+  const _formattedContent = content;
   const parts: (string | React.ReactNode)[] = [];
   let lastIndex = content.length;
 

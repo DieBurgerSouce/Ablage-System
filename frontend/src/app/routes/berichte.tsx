@@ -1,12 +1,15 @@
 /**
  * Berichte Route - Report Builder Dashboard
  *
- * Automatische Report-Generierung und Zeitplan-Verwaltung.
+ * Haupt-Route mit Outlet fuer verschachtelte Routen (z.B. Builder).
  */
 
-import { createFileRoute } from '@tanstack/react-router';
-import { ReportsDashboard } from '@/features/reports';
+import { createFileRoute, Outlet } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/berichte')({
-  component: ReportsDashboard,
+  component: BerichteLayout,
 });
+
+function BerichteLayout() {
+  return <Outlet />;
+}
