@@ -4,6 +4,8 @@ Beinhaltet:
 - NotificationRuleEngine: Event-basierte Regel-Auswertung
 - SkontoNotificationService: Multi-Channel Skonto-Deadline-Alerts
 - UnifiedNotificationHub: Zentraler Orchestrator fuer alle Kanaele
+- NotificationEscalationService: Zeitbasierte Eskalationsketten
+- NotificationDeduplicationService: Duplikat-Praevention
 """
 
 from app.services.notification.rule_engine import (
@@ -33,6 +35,24 @@ from app.services.notification.unified_hub import (
     UserNotificationPreferences,
     EscalationLevel,
 )
+from app.services.notification.escalation_chain_service import (
+    NotificationEscalationService,
+    get_escalation_service,
+    EscalationChain,
+    EscalationLevel as EscalationLevelDataclass,
+    EscalationState,
+    EscalationStatus,
+    EscalationChannel,
+    PRESET_CHAINS,
+)
+from app.services.notification.dedup_service import (
+    NotificationDeduplicationService,
+    get_dedup_service,
+)
+from app.services.notification.template_engine import (
+    NotificationTemplateEngine,
+    get_template_engine,
+)
 
 __all__ = [
     # Rule Engine
@@ -59,4 +79,19 @@ __all__ = [
     "NotificationDeliveryResult",
     "UserNotificationPreferences",
     "EscalationLevel",
+    # Escalation Chain Service
+    "NotificationEscalationService",
+    "get_escalation_service",
+    "EscalationChain",
+    "EscalationLevelDataclass",
+    "EscalationState",
+    "EscalationStatus",
+    "EscalationChannel",
+    "PRESET_CHAINS",
+    # Deduplication Service
+    "NotificationDeduplicationService",
+    "get_dedup_service",
+    # Template Engine
+    "NotificationTemplateEngine",
+    "get_template_engine",
 ]

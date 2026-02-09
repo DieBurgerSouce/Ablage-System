@@ -3,6 +3,8 @@
 Redis Cache Decorator fuer API Endpoints.
 
 Ermoeglicht einfaches Caching von API-Responses:
+- L1: In-process LRU Cache (sub-ms latency)
+- L2: Redis Cache (distributed)
 - TTL-basiertes Caching
 - User-spezifisches Caching
 - Cache Invalidation
@@ -15,16 +17,187 @@ import json
 import hashlib
 import os
 import structlog
-from typing import Callable, Optional, TypeVar, Union, List, Dict
+import threading
+import time
+import fnmatch
+from typing import Callable, Optional, TypeVar, Union, List, Dict, Any
 from functools import wraps
 from datetime import datetime
+from collections import OrderedDict
 
 from pydantic import BaseModel, Field, field_validator, ValidationError
+
+from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
 # Type variable fuer generische Decorator
 T = TypeVar("T")
+
+
+# =============================================================================
+# L1 In-Process LRU Cache (sub-ms latency)
+# =============================================================================
+
+class LRUCache:
+    """Thread-safe L1 in-process LRU cache with TTL.
+
+    Features:
+    - Least Recently Used eviction policy
+    - TTL-based expiration
+    - Thread-safe operations with RLock
+    - Hit/miss tracking for metrics
+    - Pattern-based invalidation (fnmatch)
+
+    Performance:
+    - GET: O(1) average, ~0.01-0.1ms
+    - SET: O(1) average, ~0.01-0.1ms
+    - INVALIDATE_PATTERN: O(n) where n is number of keys
+
+    Typical use:
+    - Cache frequently accessed, small objects (user settings, config)
+    - Reduce Redis latency for hot data
+    - First-level cache in multi-tier architecture
+    """
+
+    def __init__(self, maxsize: int = 1024, default_ttl: int = 60):
+        """Initialize LRU cache.
+
+        Args:
+            maxsize: Maximum number of entries (LRU eviction when full)
+            default_ttl: Default TTL in seconds
+        """
+        self._cache: OrderedDict = OrderedDict()
+        self._ttls: Dict[str, float] = {}
+        self._lock = threading.RLock()
+        self._maxsize = maxsize
+        self._default_ttl = default_ttl
+        self._hits = 0
+        self._misses = 0
+
+    def get(self, key: str) -> Optional[Any]:
+        """Get value from cache if not expired.
+
+        Args:
+            key: Cache key
+
+        Returns:
+            Cached value or None if not found/expired
+        """
+        with self._lock:
+            # Check if key exists
+            if key not in self._cache:
+                self._misses += 1
+                return None
+
+            # Check TTL
+            expiry = self._ttls.get(key)
+            if expiry and time.time() > expiry:
+                # Expired - remove
+                del self._cache[key]
+                del self._ttls[key]
+                self._misses += 1
+                return None
+
+            # Move to end (mark as recently used)
+            self._cache.move_to_end(key)
+            self._hits += 1
+            return self._cache[key]
+
+    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+        """Set value in cache with TTL.
+
+        Args:
+            key: Cache key
+            value: Value to cache
+            ttl: TTL in seconds (uses default_ttl if None)
+        """
+        with self._lock:
+            # Remove oldest if at capacity
+            if key not in self._cache and len(self._cache) >= self._maxsize:
+                # Evict LRU (first item in OrderedDict)
+                oldest_key = next(iter(self._cache))
+                del self._cache[oldest_key]
+                self._ttls.pop(oldest_key, None)
+
+            # Set value and TTL
+            self._cache[key] = value
+            self._cache.move_to_end(key)
+
+            ttl_seconds = ttl if ttl is not None else self._default_ttl
+            self._ttls[key] = time.time() + ttl_seconds
+
+    def invalidate(self, key: str) -> None:
+        """Remove specific key from cache.
+
+        Args:
+            key: Cache key to remove
+        """
+        with self._lock:
+            self._cache.pop(key, None)
+            self._ttls.pop(key, None)
+
+    def invalidate_pattern(self, pattern: str) -> int:
+        """Remove all keys matching pattern (fnmatch-style).
+
+        Args:
+            pattern: Pattern to match (e.g., "cache:user:*")
+
+        Returns:
+            Number of keys removed
+        """
+        with self._lock:
+            keys_to_remove = [
+                key for key in self._cache.keys()
+                if fnmatch.fnmatch(key, pattern)
+            ]
+
+            for key in keys_to_remove:
+                del self._cache[key]
+                self._ttls.pop(key, None)
+
+            return len(keys_to_remove)
+
+    def clear(self) -> None:
+        """Clear all cached entries."""
+        with self._lock:
+            self._cache.clear()
+            self._ttls.clear()
+            self._hits = 0
+            self._misses = 0
+
+    def stats(self) -> Dict[str, Any]:
+        """Get cache statistics.
+
+        Returns:
+            Dict with hits, misses, hit_rate, size, maxsize
+        """
+        with self._lock:
+            total_requests = self._hits + self._misses
+            hit_rate = (self._hits / total_requests * 100) if total_requests > 0 else 0.0
+
+            return {
+                "hits": self._hits,
+                "misses": self._misses,
+                "total_requests": total_requests,
+                "hit_rate": round(hit_rate, 2),
+                "size": len(self._cache),
+                "maxsize": self._maxsize,
+                "eviction_policy": "LRU",
+            }
+
+
+# Global L1 cache instance
+_l1_cache = LRUCache(maxsize=2048, default_ttl=30)
+
+
+def get_l1_cache() -> LRUCache:
+    """Get global L1 cache instance.
+
+    Returns:
+        Global LRUCache instance
+    """
+    return _l1_cache
 
 
 # =============================================================================
@@ -437,16 +610,185 @@ def redis_cache(
     return decorator
 
 
+def cache_multi_tier(
+    l1_ttl: int = 30,
+    l2_ttl: int = 300,
+    key_prefix: str = "",
+    user_specific: bool = False,
+    user_id_kwarg: str = "current_user"
+):
+    """Multi-tier cache decorator: L1 (in-process) -> L2 (Redis) -> source.
+
+    Cache hierarchy:
+    1. L1 (in-process LRU): ~0.01-0.1ms latency, limited capacity
+    2. L2 (Redis): ~1-5ms latency, distributed, larger capacity
+    3. Source: Database/API call
+
+    On cache hit:
+    - L1 hit: Return immediately (~0.01ms)
+    - L2 hit: Populate L1, return (~1-5ms)
+
+    On cache miss:
+    - Call source function
+    - Populate both L1 and L2
+
+    Args:
+        l1_ttl: L1 cache TTL in seconds (default: 30s)
+        l2_ttl: L2 (Redis) cache TTL in seconds (default: 300s)
+        key_prefix: Cache key prefix
+        user_specific: Enable user-specific caching
+        user_id_kwarg: Kwarg name for user object
+
+    Usage:
+        @cache_multi_tier(l1_ttl=30, l2_ttl=300, key_prefix="settings")
+        async def get_user_settings(db: AsyncSession, current_user: User):
+            ...
+
+        @cache_multi_tier(l1_ttl=60, l2_ttl=600, key_prefix="config", user_specific=True)
+        async def get_system_config(db: AsyncSession, current_user: User):
+            ...
+    """
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @wraps(func)
+        async def wrapper(*args, **kwargs) -> T:
+            # Extrahiere User ID wenn user_specific
+            user_id = None
+            if user_specific:
+                user_obj = kwargs.get(user_id_kwarg)
+                if user_obj and hasattr(user_obj, "id"):
+                    user_id = str(user_obj.id)
+
+            # Generiere Cache Key
+            cache_key = _generate_cache_key(
+                prefix=f"{key_prefix}:{func.__name__}" if key_prefix else func.__name__,
+                args=args,
+                kwargs=kwargs,
+                user_id=user_id
+            )
+
+            # L1 Check (in-process, fast)
+            l1_result = _l1_cache.get(cache_key)
+            if l1_result is not None:
+                logger.debug(
+                    "cache_l1_hit",
+                    key=cache_key[:50],
+                    function=func.__name__
+                )
+                return l1_result
+
+            # L2 Check (Redis)
+            try:
+                from app.core.redis_state import RedisStateManager
+                redis_manager = RedisStateManager.get_instance()
+                await redis_manager._ensure_connection()
+
+                l2_start = time.time()
+                cached_value = await redis_manager._redis.get(cache_key)
+                l2_latency = time.time() - l2_start
+
+                if cached_value is not None:
+                    logger.debug(
+                        "cache_l2_hit",
+                        key=cache_key[:50],
+                        function=func.__name__,
+                        l2_latency_ms=round(l2_latency * 1000, 2)
+                    )
+
+                    # Deserialize and populate L1
+                    result = _deserialize_value(cached_value)
+                    _l1_cache.set(cache_key, result, l1_ttl)
+
+                    # Record metrics
+                    try:
+                        from app.core.business_metrics import record_api_cache_operation
+                        record_api_cache_operation("l2_hit", func.__name__)
+                    except Exception:
+                        pass
+
+                    return result
+
+            except Exception as e:
+                # Redis nicht verfuegbar - continue to source
+                logger.debug(
+                    "cache_l2_miss_error",
+                    **safe_error_log(e),
+                    function=func.__name__
+                )
+
+            # Cache Miss - call source
+            logger.debug(
+                "cache_miss_all_tiers",
+                key=cache_key[:50],
+                function=func.__name__
+            )
+
+            result = await func(*args, **kwargs)
+
+            # Populate L1 (fast, in-process)
+            _l1_cache.set(cache_key, result, l1_ttl)
+
+            # Populate L2 (Redis, distributed)
+            try:
+                from app.core.redis_state import RedisStateManager
+                redis_manager = RedisStateManager.get_instance()
+                await redis_manager._ensure_connection()
+
+                serialized = _serialize_value(result)
+                await redis_manager._redis.setex(cache_key, l2_ttl, serialized)
+
+                logger.debug(
+                    "cache_set_both_tiers",
+                    key=cache_key[:50],
+                    l1_ttl=l1_ttl,
+                    l2_ttl=l2_ttl,
+                    function=func.__name__
+                )
+
+                # Record metrics
+                try:
+                    from app.core.business_metrics import record_api_cache_operation
+                    record_api_cache_operation("miss", func.__name__)
+                except Exception:
+                    pass
+
+            except Exception as e:
+                # L2 write failed - not critical (L1 still populated)
+                logger.warning(
+                    "cache_l2_write_failed",
+                    **safe_error_log(e),
+                    function=func.__name__
+                )
+
+            return result
+
+        return wrapper
+    return decorator
+
+
 async def invalidate_cache(pattern: str) -> int:
     """
-    Invalidiere Cache-Eintraege nach Pattern.
+    Invalidiere Cache-Eintraege nach Pattern in L1 und L2.
+
+    Invalidiert beide Cache-Tiers:
+    - L1 (in-process): Pattern-based removal
+    - L2 (Redis): Scan and delete
 
     Args:
         pattern: Redis Key Pattern (z.B. "cache:stats:*")
 
     Returns:
-        Anzahl geloeschter Keys
+        Anzahl geloeschter Keys (L2)
     """
+    # Invalidate L1 (in-process)
+    l1_deleted = _l1_cache.invalidate_pattern(pattern)
+    if l1_deleted > 0:
+        logger.debug(
+            "cache_l1_invalidated",
+            pattern=pattern,
+            deleted_count=l1_deleted
+        )
+
+    # Invalidate L2 (Redis)
     try:
         from app.core.redis_state import RedisStateManager
         redis_manager = RedisStateManager.get_instance()
@@ -461,7 +803,8 @@ async def invalidate_cache(pattern: str) -> int:
             logger.info(
                 "cache_invalidated",
                 pattern=pattern,
-                deleted_count=len(keys_to_delete)
+                l1_deleted=l1_deleted,
+                l2_deleted=len(keys_to_delete)
             )
             return len(keys_to_delete)
 
@@ -668,7 +1011,9 @@ async def invalidate_on_document_change(
 
 async def get_cache_stats() -> dict:
     """
-    Hole Cache-Statistiken.
+    Hole Cache-Statistiken (L2 only, legacy).
+
+    DEPRECATED: Use get_cache_metrics() for multi-tier stats.
 
     Returns:
         Dict mit Cache-Metriken
@@ -702,3 +1047,53 @@ async def get_cache_stats() -> dict:
     except Exception as e:
         logger.warning("cache_stats_failed", **safe_error_log(e))
         return {"error": safe_error_detail(e, "Vorgang")}
+
+
+async def get_cache_metrics() -> Dict[str, Dict[str, Any]]:
+    """Get comprehensive cache metrics for all tiers.
+
+    Returns multi-tier cache statistics:
+    - L1: In-process LRU cache stats (hits, misses, size)
+    - L2: Redis cache stats (key counts, memory usage)
+
+    Returns:
+        Dict with "l1" and "l2" keys containing respective stats
+    """
+    metrics = {
+        "l1": _l1_cache.stats(),
+        "l2": {}
+    }
+
+    # L2 (Redis) stats
+    try:
+        from app.core.redis_state import RedisStateManager
+        from app.core.safe_errors import safe_error_detail
+
+        redis_manager = RedisStateManager.get_instance()
+        await redis_manager._ensure_connection()
+
+        # Zaehle Keys nach Prefix
+        prefix_counts = {}
+        prefixes = ["cache:stats", "cache:facets", "cache:search", "cache:doc", "cache:user"]
+
+        for prefix in prefixes:
+            count = 0
+            async for _ in redis_manager._redis.scan_iter(match=f"{prefix}:*"):
+                count += 1
+            prefix_counts[prefix] = count
+
+        # Redis Info
+        info = await redis_manager._redis.info("memory")
+
+        metrics["l2"] = {
+            "prefix_counts": prefix_counts,
+            "total_keys": sum(prefix_counts.values()),
+            "used_memory_human": info.get("used_memory_human", "unknown"),
+            "used_memory_peak_human": info.get("used_memory_peak_human", "unknown"),
+        }
+
+    except Exception as e:
+        logger.warning("cache_l2_stats_failed", **safe_error_log(e))
+        metrics["l2"] = {"error": safe_error_detail(e, "Redis Stats")}
+
+    return metrics

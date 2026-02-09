@@ -35,6 +35,7 @@ from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Document, BusinessEntity
+from app.db.models_versioning import DocumentVersion
 
 logger = structlog.get_logger(__name__)
 
@@ -433,6 +434,257 @@ class DocumentComparisonService:
         )
 
         return similar_docs[:limit]
+
+    # ========================================================================
+    # Version Comparison Methods
+    # ========================================================================
+
+    async def compare_document_versions(
+        self,
+        document_id: UUID,
+        version_a_id: UUID,
+        version_b_id: UUID,
+        user_id: UUID
+    ) -> ComparisonResult:
+        """Vergleicht zwei spezifische Versionen eines Dokuments.
+
+        Args:
+            document_id: UUID des Dokuments
+            version_a_id: UUID der ersten Version
+            version_b_id: UUID der zweiten Version
+            user_id: UUID des anfordernden Benutzers
+
+        Returns:
+            ComparisonResult mit strukturiertem Diff
+
+        Raises:
+            ValueError: Wenn Dokument nicht gefunden oder keine Berechtigung
+            ValueError: Wenn Versionen nicht gefunden
+        """
+        logger.info(
+            "Vergleiche Dokumentversionen",
+            document_id=str(document_id),
+            version_a_id=str(version_a_id),
+            version_b_id=str(version_b_id),
+            user_id=str(user_id)
+        )
+
+        # Dokument laden und Berechtigung pruefen
+        document = await self._get_document(document_id)
+        if not document:
+            raise ValueError("Dokument nicht gefunden")
+
+        if document.user_id != user_id:
+            raise ValueError("Keine Berechtigung fuer dieses Dokument")
+
+        # Beide Versionen laden
+        stmt = select(DocumentVersion).where(
+            DocumentVersion.id.in_([version_a_id, version_b_id])
+        )
+        result = await self.db.execute(stmt)
+        versions = result.scalars().all()
+
+        if len(versions) != 2:
+            raise ValueError("Eine oder beide Versionen nicht gefunden")
+
+        # Versionen zuordnen
+        version_a = next((v for v in versions if v.id == version_a_id), None)
+        version_b = next((v for v in versions if v.id == version_b_id), None)
+
+        if not version_a or not version_b:
+            raise ValueError("Versionen konnten nicht zugeordnet werden")
+
+        # Texte extrahieren
+        text_a = await self._get_version_text(document, version_a)
+        text_b = await self._get_version_text(document, version_b)
+
+        # Text-Diff berechnen
+        text_diffs, text_similarity = self._compare_text(text_a, text_b, True)
+
+        # Statistiken
+        additions = sum(1 for d in text_diffs if d.diff_type == DifferenceType.ADDED)
+        removals = sum(1 for d in text_diffs if d.diff_type == DifferenceType.REMOVED)
+        modifications = sum(1 for d in text_diffs if d.diff_type == DifferenceType.CHANGED)
+
+        logger.info(
+            "Versionsvergleich abgeschlossen",
+            document_id=str(document_id),
+            version_a=version_a.version_number,
+            version_b=version_b.version_number,
+            text_similarity=round(text_similarity, 3),
+            total_changes=additions + removals + modifications
+        )
+
+        return ComparisonResult(
+            document_1_id=version_a_id,
+            document_2_id=version_b_id,
+            comparison_type=ComparisonType.TEXT,
+            overall_similarity=text_similarity,
+            text_similarity=text_similarity,
+            structure_similarity=0.0,
+            text_differences=text_diffs,
+            field_changes=[],
+            total_changes=additions + removals + modifications,
+            critical_changes=0,
+            additions=additions,
+            removals=removals,
+            modifications=modifications,
+            comparison_time_ms=0,
+            warnings=[]
+        )
+
+    async def compare_with_original_version(
+        self,
+        document_id: UUID,
+        user_id: UUID
+    ) -> ComparisonResult:
+        """Vergleicht die aktuelle Version mit der Originalversion.
+
+        Args:
+            document_id: UUID des Dokuments
+            user_id: UUID des anfordernden Benutzers
+
+        Returns:
+            ComparisonResult (aktuell vs. Version 1)
+
+        Raises:
+            ValueError: Wenn Dokument nicht gefunden oder keine Versionen
+        """
+        logger.info(
+            "Vergleiche mit Originalversion",
+            document_id=str(document_id),
+            user_id=str(user_id)
+        )
+
+        # Dokument laden
+        document = await self._get_document(document_id)
+        if not document:
+            raise ValueError("Dokument nicht gefunden")
+
+        if document.user_id != user_id:
+            raise ValueError("Keine Berechtigung fuer dieses Dokument")
+
+        # Original-Version (version_number = 1) laden
+        original_stmt = (
+            select(DocumentVersion)
+            .where(
+                DocumentVersion.document_id == document_id,
+                DocumentVersion.version_number == 1
+            )
+        )
+        original_result = await self.db.execute(original_stmt)
+        original_version = original_result.scalar_one_or_none()
+
+        if not original_version:
+            raise ValueError("Keine Versionen vorhanden")
+
+        # Aktuelle Version laden (is_current = True)
+        current_stmt = (
+            select(DocumentVersion)
+            .where(
+                DocumentVersion.document_id == document_id,
+                DocumentVersion.is_current == True
+            )
+        )
+        current_result = await self.db.execute(current_stmt)
+        current_version = current_result.scalar_one_or_none()
+
+        if not current_version:
+            # Fallback: Verwende die Version mit der hoechsten version_number
+            latest_stmt = (
+                select(DocumentVersion)
+                .where(DocumentVersion.document_id == document_id)
+                .order_by(DocumentVersion.version_number.desc())
+                .limit(1)
+            )
+            latest_result = await self.db.execute(latest_stmt)
+            current_version = latest_result.scalar_one_or_none()
+
+        if not current_version:
+            raise ValueError("Keine aktuelle Version gefunden")
+
+        # Vergleiche die beiden Versionen
+        return await self.compare_document_versions(
+            document_id, original_version.id, current_version.id, user_id
+        )
+
+    async def list_document_versions(
+        self,
+        document_id: UUID,
+        user_id: UUID
+    ) -> List[Dict[str, object]]:
+        """Listet alle Versionen eines Dokuments fuer Vergleich auf.
+
+        Args:
+            document_id: UUID des Dokuments
+            user_id: UUID des anfordernden Benutzers
+
+        Returns:
+            Liste von Version-Infos (id, number, change_type, created_at, created_by)
+
+        Raises:
+            ValueError: Wenn Dokument nicht gefunden oder keine Berechtigung
+        """
+        logger.info(
+            "Liste Versionen fuer Vergleich",
+            document_id=str(document_id),
+            user_id=str(user_id)
+        )
+
+        # Dokument laden und Berechtigung pruefen
+        document = await self._get_document(document_id)
+        if not document:
+            raise ValueError("Dokument nicht gefunden")
+
+        if document.user_id != user_id:
+            raise ValueError("Keine Berechtigung fuer dieses Dokument")
+
+        # Versionen laden
+        versions_stmt = (
+            select(DocumentVersion)
+            .where(DocumentVersion.document_id == document_id)
+            .order_by(DocumentVersion.version_number.asc())
+        )
+        versions_result = await self.db.execute(versions_stmt)
+        versions = versions_result.scalars().all()
+
+        return [
+            {
+                "id": str(v.id),
+                "version_number": v.version_number,
+                "change_type": v.change_type,
+                "change_summary": v.change_summary,
+                "created_at": v.created_at.isoformat(),
+                "created_by_id": str(v.created_by_id) if v.created_by_id else None,
+                "is_current": v.is_current,
+                "file_size": v.file_size,
+                "file_hash": v.file_hash[:16] + "..." if v.file_hash else None  # Shortened for display
+            }
+            for v in versions
+        ]
+
+    async def _get_version_text(
+        self,
+        document: Document,
+        version: DocumentVersion
+    ) -> str:
+        """Extrahiert den Text einer Version.
+
+        HINWEIS: DocumentVersion hat kein extracted_text Feld.
+        Diese Implementierung ist ein Platzhalter. In einer vollstaendigen
+        Implementierung muessten wir:
+        1. Die tatsaechliche Datei von version.file_path lesen
+        2. OCR erneut ausfuehren (teuer)
+        3. Einen separaten Text-Snapshot speichern
+
+        Fuer jetzt: Wenn is_current, nutze document.extracted_text,
+        sonst verwende change_summary als Platzhalter.
+        """
+        if version.is_current and document.extracted_text:
+            return document.extracted_text
+
+        # Platzhalter fuer nicht-aktuelle Versionen
+        return f"[Version {version.version_number}: {version.change_summary or 'Keine Textdaten verfuegbar'}]"
 
     # ========================================================================
     # Internal Methods
