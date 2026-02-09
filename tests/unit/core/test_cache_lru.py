@@ -6,7 +6,7 @@ Testet LRU-Cache mit TTL, Eviction, Pattern-Invalidation.
 import pytest
 import asyncio
 import time
-from typing import Optional, Dict, List
+from typing import Any, Optional, Dict, List
 from unittest.mock import AsyncMock, MagicMock, patch
 from threading import Thread
 
@@ -656,3 +656,92 @@ class TestCacheStats:
 
         # hit_rate sollte 0.0 sein bei 0 requests
         assert stats.hit_rate == 0.0
+
+
+class TestGetCacheMetrics:
+    """Tests fuer get_cache_metrics() Funktion."""
+
+    def setup_method(self) -> None:
+        from app.core.cache import _l1_cache
+        _l1_cache.clear()
+
+    def teardown_method(self) -> None:
+        from app.core.cache import _l1_cache
+        _l1_cache.clear()
+
+    @pytest.mark.asyncio
+    async def test_returns_l1_stats(self) -> None:
+        """get_cache_metrics() should return L1 stats from CacheStats."""
+        from app.core.cache import get_cache_metrics, _l1_cache
+
+        # Populate L1 cache with some activity
+        _l1_cache.set("test_metrics_key", "val")
+        _l1_cache.get("test_metrics_key")  # hit
+        _l1_cache.get("test_metrics_miss")  # miss
+
+        with patch("app.core.redis_state.RedisStateManager") as mock_cls:
+            mock_redis = AsyncMock()
+            mock_cls.get_instance.return_value = mock_redis
+            mock_redis._ensure_connection = AsyncMock()
+            mock_redis._redis = AsyncMock()
+
+            async def empty_scan_iter(*args: Any, **kwargs: Any):
+                return
+                yield  # pragma: no cover - makes this an async generator
+
+            mock_redis._redis.scan_iter = MagicMock(side_effect=lambda *a, **kw: empty_scan_iter())
+            mock_redis._redis.info = AsyncMock(return_value={
+                "used_memory_human": "1M",
+                "used_memory_peak_human": "2M",
+            })
+
+            metrics = await get_cache_metrics()
+
+        assert "l1" in metrics
+        assert metrics["l1"]["hits"] == 1
+        assert metrics["l1"]["misses"] == 1
+        assert metrics["l1"]["hit_rate"] == 0.5
+        assert metrics["l1"]["size"] == 1
+        assert metrics["l1"]["maxsize"] == 2048
+        assert metrics["l1"]["evictions"] == 0
+
+    @pytest.mark.asyncio
+    async def test_returns_l2_stats_on_success(self) -> None:
+        """get_cache_metrics() should include L2 Redis stats when available."""
+        from app.core.cache import get_cache_metrics
+
+        with patch("app.core.redis_state.RedisStateManager") as mock_cls:
+            mock_redis = AsyncMock()
+            mock_cls.get_instance.return_value = mock_redis
+            mock_redis._ensure_connection = AsyncMock()
+            mock_redis._redis = AsyncMock()
+
+            async def empty_scan_iter(*args: Any, **kwargs: Any):
+                return
+                yield  # pragma: no cover
+
+            mock_redis._redis.scan_iter = MagicMock(side_effect=lambda *a, **kw: empty_scan_iter())
+            mock_redis._redis.info = AsyncMock(return_value={
+                "used_memory_human": "1M",
+                "used_memory_peak_human": "2M",
+            })
+
+            metrics = await get_cache_metrics()
+
+        assert "l2" in metrics
+        assert "total_keys" in metrics["l2"]
+        assert "used_memory_human" in metrics["l2"]
+
+    @pytest.mark.asyncio
+    async def test_returns_l2_error_on_redis_failure(self) -> None:
+        """get_cache_metrics() should handle Redis failure gracefully."""
+        from app.core.cache import get_cache_metrics
+
+        with patch("app.core.redis_state.RedisStateManager") as mock_cls:
+            mock_cls.get_instance.side_effect = Exception("Redis unavailable")
+
+            metrics = await get_cache_metrics()
+
+        assert "l1" in metrics
+        assert "l2" in metrics
+        assert "error" in metrics["l2"]

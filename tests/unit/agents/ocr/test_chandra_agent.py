@@ -177,7 +177,10 @@ class TestChandraProcessing:
                         # Missing image_path
                         result = await agent.process({"language": "de"})
 
-                        assert result.get("success") is False or "error" in result
+                        assert isinstance(result, dict)
+                        assert result["success"] is False
+                        assert result.get("error")  # non-empty error message
+                        assert "error_code" in result
 
     @pytest.mark.asyncio
     async def test_process_handles_file_not_found(self, mock_torch_cuda):
@@ -197,7 +200,9 @@ class TestChandraProcessing:
                             "language": "de"
                         })
 
-                        assert result.get("success") is False or "error" in result
+                        assert isinstance(result, dict)
+                        assert result["success"] is False
+                        assert result.get("error")  # non-empty error message
 
 
 # ========================= Status Tests =========================

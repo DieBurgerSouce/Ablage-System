@@ -119,17 +119,22 @@ class TestLRUCache:
         assert cache.get("cache:doc:789") == "value3"
 
     def test_clear(self):
-        """Test cache clear."""
-        cache = LRUCache(maxsize=10, default_ttl=60)
+        """Test cache clear including evictions reset."""
+        cache = LRUCache(maxsize=2, default_ttl=60)
 
-        cache.set("key1", "value1")
-        cache.set("key2", "value2")
+        cache.set("k1", "v1")
+        cache.set("k2", "v2")
+        cache.set("k3", "v3")  # evicts k1
+
+        assert cache.stats().evictions > 0
 
         cache.clear()
 
-        assert cache.get("key1") is None
-        assert cache.get("key2") is None
+        assert cache.get("k1") is None
+        assert cache.get("k2") is None
+        assert cache.get("k3") is None
         assert cache.stats().size == 0
+        assert cache.stats().evictions == 0
 
     def test_stats(self):
         """Test statistics tracking."""
@@ -198,9 +203,9 @@ class TestLRUCache:
         cache.set("list", [1, 2, 3, {"nested": "value"}])
         assert cache.get("list") == [1, 2, 3, {"nested": "value"}]
 
-        # None
+        # None - verify key exists (get returns None for both miss and None-value)
         cache.set("none", None)
-        assert cache.get("none") is None
+        assert cache.stats().size == 3  # dict + list + none
 
     def test_overwrite(self):
         """Test overwriting existing keys."""
