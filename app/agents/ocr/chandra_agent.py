@@ -511,24 +511,29 @@ class ChandraOCRAgent(OCRAgent):
             }
 
         except torch.cuda.OutOfMemoryError as e:
-            logger.error("chandra_gpu_oom", **safe_error_log(e))
+            error_info = safe_error_log(e)
+            logger.error("chandra_gpu_oom", **error_info)
             torch.cuda.empty_cache()
             return {
                 "text": "",
                 "confidence": 0.0,
                 "text_regions": 0,
                 "german_chars_found": [],
-                "error": f"GPU Out of Memory: {e}",
+                "error": "GPU Out of Memory",
                 "oom": True
             }
 
         except Exception as e:
-            logger.error("chandra_image_processing_failed", **safe_error_log(e), exc_info=True)
+            error_info = safe_error_log(e)
+            logger.error("chandra_image_processing_failed", **error_info, exc_info=True)
+            safe_msg = error_info.get("error_message", error_info["error_type"])
             return {
                 "text": "",
                 "confidence": 0.0,
                 "text_regions": 0,
-                "german_chars_found": [], **safe_error_log(e)}
+                "german_chars_found": [],
+                "error": safe_msg
+            }
 
     async def _process_with_oom_fallback(
         self,
@@ -715,15 +720,17 @@ class ChandraOCRAgent(OCRAgent):
 
         except Exception as e:
             processing_time_ms = int((time.time() - start_time) * 1000)
+            error_info = safe_error_log(e)
             logger.error(
                 "chandra_ocr_failed",
-                **safe_error_log(e),
+                **error_info,
                 processing_time_ms=processing_time_ms,
                 exc_info=True
             )
 
+            safe_msg = error_info.get("error_message", error_info["error_type"])
             result = self.create_error_result(
-                error=str(e),
+                error=safe_msg,
                 error_code="CHANDRA_OCR_ERROR",
                 processing_time_ms=processing_time_ms
             )

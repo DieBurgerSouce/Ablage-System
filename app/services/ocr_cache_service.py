@@ -18,6 +18,7 @@ import asyncio
 import hashlib
 import sys
 import threading
+from dataclasses import asdict
 from typing import Optional, Dict, List, Union
 
 # JSON-serializable types
@@ -683,7 +684,6 @@ class OCRCacheService:
             Dict with L1 stats, L2 stats, per-backend stats, and overall metrics
         """
         # L1 Cache Stats (Memory)
-        from dataclasses import asdict
         l1_stats = asdict(self._l1_cache.stats())
 
         # Per-Backend Stats (local tracking)
