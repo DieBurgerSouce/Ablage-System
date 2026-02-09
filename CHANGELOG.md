@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Frontend: portal (invoices, documents, complaints), ESG dashboard, kanban board, executive dashboard, mobile features
 - Accessibility E2E tests, offline indicator, service worker enhancements
 - Session-documenter agent and /docu slash command
+- Unit Tests fuer get_cache_metrics() Funktion (L1/L2 cache metrics retrieval)
 
 ### Fixed
 - Alembic env.py: asyncpg multi-statement SQL splitting workaround, lazy model loading (saves 2-3GB RAM)
@@ -47,6 +48,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Alembic migration down_revision chain references (13 migrations)
 - Type safety: removed Any types across all agents, services, core modules
 - Team workflow quality gates and router hook hardening
+- Chandra OCR Agent: PII-sicheres Error-Handling mit safe_error_log() und error_info Dictionary
+- Banking API: router in __all__ exportiert fuer korrekte Import-Visibility
+- OCR Cache Service: dataclasses.asdict Import nach oben verschoben (PEP8 compliance)
+- Chandra Agent Tests: Striktere Assertions fuer Error-Result Validation
+- L1 Cache Tests: Evictions-Reset bei clear() + None-Value Size Verification
 
 ### Changed
 - Docker Compose: Jaeger service mit OTLP collector, badger persistence, health checks

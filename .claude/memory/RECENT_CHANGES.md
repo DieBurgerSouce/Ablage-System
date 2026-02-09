@@ -1,33 +1,25 @@
 # Recent Changes
 
 ## 2026-02-09
+- **fix(ocr)**: Sicheres Error-Handling ohne PII-Leaks in Chandra Agent
+- **fix(api)**: Banking router in __all__ exportiert
+- **test(cache)**: LRU und L1 Cache Testabdeckung erweitert (get_cache_metrics, clear evictions reset)
 - **feat(infra)**: Jaeger distributed tracing mit OpenTelemetry (OTLP gRPC:4317, UI:16686)
 - **feat(db)**: Migrationen 207-210 (Saved Searches, Notification Templates, Dashboard Shares, RLS Policies)
 - **feat(db)**: 4 satellite models (notification_template, saved_search, dashboard_share, tenant_config)
 - **feat(security)**: TenantContextMiddleware fuer Multi-Tenancy RLS propagation
 - **feat(security)**: Resilience Patterns (Circuit Breaker, Retry, Bulkhead) mit Prometheus Metrics
-- **feat(services)**: L1 LRU Cache (sub-ms latency) + L2 Redis Cache im cache.py
-- **feat(services)**: Cache Warming Service mit async preloading patterns
-- **feat(services)**: Tenant Config Service, OCR Confidence Service, Document Comparison Service
-- **feat(services)**: Dashboard Period Comparison + Sharing Service, Notification Dedup + Escalation + Template Engine
-- **feat(api)**: 7 neue API-Routen (ocr_confidence, document_comparison, saved_searches, period_comparison, notification_templates, tenant_admin)
-- **test(multi)**: 47 neue Unit Tests fuer Multi-Tenancy, Cache, Dashboard, Notification Services
-- **chore(infra)**: Makefile mit dev-setup, db-seed, coverage Targets
-- **chore(config)**: CLAUDE.md + ralph-loop updates
 
 ## 2026-02-08 (Session Documentation)
-- **docs(session)**: ✅ Enterprise-Level Critical Review ABGESCHLOSSEN
+- **docs(session)**: Enterprise-Level Critical Review ABGESCHLOSSEN
 - **docs(session)**: SESSION_2026-02-08_Enterprise-Review.md erstellt (2,500+ words)
-- **docs(session)**: EXECUTIVE_SUMMARY_2026-02-08.md für Management erstellt
-- **docs(memory)**: TECHNICAL_DEBT.md erstellt mit vollständigem Tracking
-- **review(verdict)**: 🎉 PRODUCTION-READY - Alle Enterprise-Standards erfüllt
+- **docs(session)**: EXECUTIVE_SUMMARY_2026-02-08.md fuer Management erstellt
+- **docs(memory)**: TECHNICAL_DEBT.md erstellt mit vollstaendigem Tracking
+- **review(verdict)**: PRODUCTION-READY - Alle Enterprise-Standards erfuellt
 - **review(findings)**: 414 Tasks reviewed, 150+ Services validated, 208 Migrations analyzed
-- **review(security)**: ✅ PII-Filtering, GDPR-Compliance, SQL Injection Prevention
-- **review(architecture)**: ✅ Clean Architecture, Type Safety, German Compliance
-- **review(debt)**: 🟢 LOW - No Critical Issues, 2-3 Sprints to Zero Debt
-- **fix(db)**: Alembic env.py asyncpg multi-statement workaround (SQL-Splitting, lazy model loading)
-- **fix(db)**: 17 Migrationen asyncpg-kompatibel gemacht (text() wrapping, checkfirst=True, bedingte FKs, Spalten-Checks)
-- **chore(config)**: .gitignore um .claude/cache/ erweitert
+- **review(security)**: PII-Filtering, GDPR-Compliance, SQL Injection Prevention
+- **review(architecture)**: Clean Architecture, Type Safety, German Compliance
+- **review(debt)**: LOW - No Critical Issues, 2-3 Sprints to Zero Debt
 
 ## 2026-02-07
 - **feat(db)**: Enterprise-Modelle und Migrationen 148, 202-208 (Trust, Banking, ESG, Portal, FX, Kanban)
@@ -38,28 +30,3 @@
 - **feat(workers)**: Celery Tasks fuer Banking, Trust, FX, GL Posting, mTLS, OCR Training
 - **feat(frontend)**: Portal, ESG, Kanban, Executive Dashboard, Mobile Features, A11y Tests
 - **test(enterprise)**: Tests fuer Accounting, ESG, Portal, Kanban, Trust, Integration Tests
-
-## 2026-01-31
-- **feat(enterprise)**: Phase 9 abgeschlossen - BPMN Task Reminder, GoBD MinIO Loading, Contract Milestone Overdue
-- **fix(workers)**: NotificationService-Integration in bpmn_tasks.py
-- **fix(workers)**: StorageService-Integration in gobd_compliance_tasks.py
-
-## 2026-01-30
-- **fix(security)**: CWE-532 PII Leak Prevention - 388 Dateien, 538 safe_error_detail() Calls
-- **feat(security)**: safe_errors.py Utility erstellt (safe_error_detail, safe_error_log)
-- **fix(enterprise)**: Ralph Loop Deep Audit - P0 Bugs (Event Loop Leak, PII Logging)
-- **fix(types)**: Any Type Violations durch TypedDicts ersetzt (pii_masking, pii_detection)
-
-## 2026-01-29
-- **feat(enterprise)**: Vision 2.0 Phase 5 COMPLETE (100%) - Differential Privacy + Predictive Maintenance
-- **feat(enterprise)**: Collaboration Suite entdeckt und dokumentiert (Teams, Delegations, Tasks, Comments)
-- **fix(security)**: Phase 5 Security Deep-Audit - 8 CWE-Fixes (Multi-Tenant Cache, JSONB Injection)
-- **feat(services)**: VIES SOAP Integration + Handelsregister Portal Integration
-- **test(compliance)**: GoBD Unit Tests + Vision 2026+ Test Coverage Complete
-
-## 2026-01-28
-- **feat(enterprise)**: Vision 2026+ Features #9-#11 (AI-Mentor, Benchmarks, Onboarding)
-- **fix(security)**: CRITICAL Fixes - Cross-Company Auth Bypass, XML Injection, Memory Leak
-- **feat(enterprise)**: Vision 2026 Q1-Q4 vollstaendig verifiziert (150+ Services, 400+ Endpoints)
-- **feat(services)**: Q2-Q4 Services (Zero-Touch Pipeline, Predictive Analytics, Daily Insights)
-- **feat(enterprise)**: Vision 2.0 Phase 3 (Event-Sourcing, GraphQL-API, Offline-Sync)
