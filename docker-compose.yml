@@ -568,6 +568,9 @@ services:
       VECTOR_MIGRATION_BATCH_SIZE: ${VECTOR_MIGRATION_BATCH_SIZE:-100}
       # Ollama LLM Service (host.docker.internal für Host-Zugriff)
       OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      # OpenTelemetry Tracing
+      OTLP_ENDPOINT: ${OTLP_ENDPOINT:-jaeger:4317}
+      TRACING_ENABLED: ${TRACING_ENABLED:-true}
     volumes:
       - ./app:/app/app:ro
       - ./alembic:/app/alembic:ro
@@ -698,6 +701,9 @@ services:
       VECTOR_MIGRATION_BATCH_SIZE: ${VECTOR_MIGRATION_BATCH_SIZE:-100}
       # Ollama LLM Service (host.docker.internal für Host-Zugriff)
       OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      # OpenTelemetry Tracing
+      OTLP_ENDPOINT: ${OTLP_ENDPOINT:-jaeger:4317}
+      TRACING_ENABLED: ${TRACING_ENABLED:-true}
     volumes:
       - ./app:/app/app:ro
       - ./alembic:/app/alembic:ro
@@ -822,6 +828,9 @@ services:
       VECTOR_MIGRATION_BATCH_SIZE: ${VECTOR_MIGRATION_BATCH_SIZE:-100}
       # Ollama LLM Service (host.docker.internal für Host-Zugriff)
       OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      # OpenTelemetry Tracing
+      OTLP_ENDPOINT: ${OTLP_ENDPOINT:-jaeger:4317}
+      TRACING_ENABLED: ${TRACING_ENABLED:-true}
     volumes:
       - ./app:/app/app:ro
       - ./alembic:/app/alembic:ro
@@ -1193,6 +1202,50 @@ services:
     networks:
       - monitoring-network
 
+  # Jaeger Distributed Tracing (OpenTelemetry Collector + UI)
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    container_name: ablage-jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+      SPAN_STORAGE_TYPE: badger
+      BADGER_EPHEMERAL: "false"
+      BADGER_DIRECTORY_VALUE: /badger/data
+      BADGER_DIRECTORY_KEY: /badger/key
+    volumes:
+      - jaeger_data:/badger
+    ports:
+      - "127.0.0.1:16686:16686"  # Jaeger UI
+      - "127.0.0.1:4317:4317"    # OTLP gRPC
+      - "127.0.0.1:4318:4318"    # OTLP HTTP
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:14269/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+        labels: "service=jaeger"
+    networks:
+      - monitoring-network
+      - backend-network
+
   # PostgreSQL Exporter for Prometheus (Monitoring + Data Networks)
   postgres_exporter:
     image: prometheuscommunity/postgres-exporter:v0.15.0
@@ -1468,6 +1521,7 @@ volumes:
   grafana_data:
   loki_data:
   alertmanager_data:
+  jaeger_data:  # Jaeger Distributed Tracing Storage
   vault_data:
   vault_logs:
   model_cache:  # OCR model cache (Surya, HuggingFace, DeepSeek)
