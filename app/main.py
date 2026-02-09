@@ -41,6 +41,7 @@ from app.core.rate_limiting import (
 )
 from app.middleware import RateLimitMiddleware, DevelopmentRateLimitBypass, SecurityHeadersMiddleware, RequestSizeLimitMiddleware, CSRFMiddleware, get_csrf_token_response, IPBlockingMiddleware, CompanyContextMiddleware
 from app.middleware.profiling import ProfilingMiddleware
+from app.middleware.tenant_context import TenantContextMiddleware
 from app.core.config import settings
 from app.core.monitoring import get_system_monitor, PerformanceTimer
 from app.core.german_messages import HTTPErrors, StatusMessages
@@ -705,6 +706,10 @@ app.add_middleware(
 # Setzt die aktuelle Firma aus X-Company-ID Header oder User-Session
 app.add_middleware(CompanyContextMiddleware)
 
+# Add Tenant Context middleware (Multi-Tenancy RLS)
+# Propagiert tenant_id fuer Row-Level Security Policies
+app.add_middleware(TenantContextMiddleware)
+
 # Add profiling middleware
 # Erfasst Request-Timings für Performance-Analyse
 app.add_middleware(
@@ -736,6 +741,7 @@ app.state.limiter = limiter
 
 # Include API routers
 from app.api.v1 import auth, tasks, metrics, ml, versions, documents, health, ocr, agents
+from app.api.v1.ocr_confidence import router as ocr_confidence_router
 from app.api.v1.admin import router as admin_router
 from app.api.v1.backup import router as backup_router
 from app.api.v1.vault import router as vault_router
@@ -763,6 +769,9 @@ from app.api.v1.rag import router as rag_router
 from app.api.v1.einvoice import router as einvoice_router
 from app.api.v1.banking import router as banking_router
 from app.api.v1.reconciliation import router as reconciliation_router
+from app.api.v1.document_comparison import router as document_comparison_router
+from app.api.v1.saved_searches import router as saved_searches_router
+from app.api.v1.period_comparison import router as period_comparison_router
 from app.api.v1.banking_fints import fints_router, sepa_router, dashboard_router as banking_dashboard_router
 from app.api.v1.datev import router as datev_router
 from app.api.v1.finance import router as finance_router
@@ -779,6 +788,7 @@ from app.api.v1.personal import router as personal_router
 from app.api.v1.validation import router as validation_router
 from app.api.v1.comments import router as comments_router
 from app.api.v1.notifications import router as notifications_router
+from app.api.v1.notification_templates import router as notification_templates_router
 from app.api.v1.document_tasks import router as document_tasks_router
 from app.api.v1.activity import router as activity_router
 from app.api.v1.archive import router as archive_router
@@ -907,6 +917,7 @@ from app.api.v1.assistant import router as assistant_router  # Conversational As
 from app.api.v1.portal import router as portal_router  # Phase 5.2: Kundenportal Self-Service
 from app.api.v1.esg import router as esg_router  # Phase 7.4: ESG-Reporting
 from app.api.v1.reporting import router as reporting_router  # Executive Dashboard Reporting
+from app.api.v1.tenant_admin import router as tenant_admin_router  # Multi-Tenancy Admin API
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -918,6 +929,7 @@ app.include_router(admin_router, prefix="/api/v1")
 app.include_router(backup_router, prefix="/api/v1")
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(ocr.router, prefix="/api/v1")
+app.include_router(ocr_confidence_router, prefix="/api/v1")
 app.include_router(vault_router, prefix="/api/v1")
 app.include_router(gdpr_router, prefix="/api/v1")
 app.include_router(gdpr_admin_router, prefix="/api/v1")
@@ -945,6 +957,9 @@ app.include_router(rag_router, prefix="/api/v1")
 app.include_router(einvoice_router, prefix="/api/v1")
 app.include_router(banking_router, prefix="/api/v1")
 app.include_router(reconciliation_router, prefix="/api/v1")  # Payment Reconciliation API
+app.include_router(document_comparison_router, prefix="/api/v1")  # Document Version Comparison API
+app.include_router(saved_searches_router, prefix="/api/v1")  # Saved Searches API
+app.include_router(period_comparison_router, prefix="/api/v1")  # Period Comparison API (YoY/MoM/QoQ)
 app.include_router(fints_router, prefix="/api/v1")
 app.include_router(sepa_router, prefix="/api/v1")
 app.include_router(banking_dashboard_router, prefix="/api/v1")
@@ -964,6 +979,7 @@ app.include_router(personal_router, prefix="/api/v1")
 app.include_router(validation_router, prefix="/api/v1")
 app.include_router(comments_router, prefix="/api/v1")
 app.include_router(notifications_router, prefix="/api/v1")
+app.include_router(notification_templates_router, prefix="/api/v1")
 app.include_router(document_tasks_router, prefix="/api/v1")
 app.include_router(activity_router, prefix="/api/v1")
 app.include_router(archive_router, prefix="/api/v1")
@@ -1099,6 +1115,9 @@ app.include_router(reporting_router, prefix="/api/v1")
 
 # Phase 2: Kanban Document Workflow
 app.include_router(kanban_router, prefix="/api/v1")
+
+# Enterprise Completion: Multi-Tenancy Admin
+app.include_router(tenant_admin_router, prefix="/api/v1")
 
 
 # ==================== Health & Status Endpoints ====================
