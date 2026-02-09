@@ -723,7 +723,7 @@ class ChandraOCRAgent(OCRAgent):
             )
 
             result = self.create_error_result(
-                **safe_error_log(e),
+                error=str(e),
                 error_code="CHANDRA_OCR_ERROR",
                 processing_time_ms=processing_time_ms
             )

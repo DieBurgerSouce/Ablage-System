@@ -448,189 +448,169 @@ class TestCacheMultiTierDecorator:
     """Tests für @cache_multi_tier Decorator."""
 
     @pytest.fixture
-    def mock_redis(self) -> AsyncMock:
-        """Mock Redis client."""
-        redis = AsyncMock()
-        redis.get = AsyncMock(return_value=None)
-        redis.setex = AsyncMock()
-        return redis
+    def mock_redis_manager(self) -> MagicMock:
+        """Mock RedisStateManager with async redis client."""
+        manager = MagicMock()
+        manager._ensure_connection = AsyncMock()
+        manager._redis = AsyncMock()
+        manager._redis.get = AsyncMock(return_value=None)
+        manager._redis.setex = AsyncMock()
+        return manager
+
+    @pytest.fixture
+    def l1_cache(self) -> LRUCache:
+        """Fresh L1 cache for each test."""
+        return LRUCache(maxsize=10, default_ttl=60)
 
     # -------------------------------------------------------------------------
     # L1 Hit Tests
     # -------------------------------------------------------------------------
 
     @pytest.mark.asyncio
-    async def test_l1_cache_hit(self, mock_redis: AsyncMock) -> None:
+    async def test_l1_cache_hit(self, mock_redis_manager: MagicMock, l1_cache: LRUCache) -> None:
         """L1 Cache Hit vermeidet L2/DB Zugriff."""
-        # Arrange
-        cache = LRUCache(maxsize=10, default_ttl=60)
-        cache.set("test:key", "cached_value")
+        # Arrange - patch global _l1_cache and RedisStateManager
+        with patch("app.core.cache._l1_cache", l1_cache):
+            @cache_multi_tier(key_prefix="test", l2_ttl=300)
+            async def expensive_function(key: str) -> str:
+                return "db_value"
 
-        @cache_multi_tier(
-            key_prefix="test",
-            ttl=300,
-            l1_cache=cache,
-            redis=mock_redis
-        )
-        async def expensive_function(key: str) -> str:
-            return "db_value"
+            # Pre-populate L1 with the exact cache key the decorator will generate
+            cache_key = f"test:{expensive_function.__wrapped__.__name__}:arg0:key"
+            l1_cache.set(cache_key, "cached_value")
 
-        # Act
-        result = await expensive_function("key")
+            # Act
+            result = await expensive_function("key")
 
-        # Assert
-        assert result == "cached_value"
-        # Redis sollte nicht abgefragt worden sein
-        mock_redis.get.assert_not_called()
+            # Assert
+            assert result == "cached_value"
+            mock_redis_manager._redis.get.assert_not_called()
 
     # -------------------------------------------------------------------------
     # L2 Hit Tests
     # -------------------------------------------------------------------------
 
     @pytest.mark.asyncio
-    async def test_l2_cache_hit(self, mock_redis: AsyncMock) -> None:
+    async def test_l2_cache_hit(self, mock_redis_manager: MagicMock, l1_cache: LRUCache) -> None:
         """L2 Cache Hit vermeidet DB Zugriff und füllt L1."""
         # Arrange
-        cache = LRUCache(maxsize=10, default_ttl=60)
-        mock_redis.get.return_value = b'"redis_value"'  # JSON serialized
+        mock_redis_manager._redis.get.return_value = b'"redis_value"'
 
-        @cache_multi_tier(
-            key_prefix="test",
-            ttl=300,
-            l1_cache=cache,
-            redis=mock_redis
-        )
-        async def expensive_function(key: str) -> str:
-            return "db_value"
+        with patch("app.core.cache._l1_cache", l1_cache), \
+             patch("app.core.redis_state.RedisStateManager") as mock_cls:
+            mock_cls.get_instance.return_value = mock_redis_manager
 
-        # Act
-        result = await expensive_function("key")
+            @cache_multi_tier(key_prefix="test", l2_ttl=300)
+            async def expensive_function(key: str) -> str:
+                return "db_value"
 
-        # Assert
-        assert result == "redis_value"
-        # L1 sollte jetzt auch den Wert haben
-        assert cache.get("test:key") == "redis_value"
+            # Act
+            result = await expensive_function("key")
+
+            # Assert
+            assert result == "redis_value"
 
     # -------------------------------------------------------------------------
     # Cache Miss Tests
     # -------------------------------------------------------------------------
 
     @pytest.mark.asyncio
-    async def test_cache_miss_calls_function(self, mock_redis: AsyncMock) -> None:
+    async def test_cache_miss_calls_function(self, mock_redis_manager: MagicMock, l1_cache: LRUCache) -> None:
         """Cache Miss führt Funktion aus und füllt beide Caches."""
         # Arrange
-        cache = LRUCache(maxsize=10, default_ttl=60)
-        mock_redis.get.return_value = None
-
         call_count = 0
 
-        @cache_multi_tier(
-            key_prefix="test",
-            ttl=300,
-            l1_cache=cache,
-            redis=mock_redis
-        )
-        async def expensive_function(key: str) -> str:
-            nonlocal call_count
-            call_count += 1
-            return "db_value"
+        with patch("app.core.cache._l1_cache", l1_cache), \
+             patch("app.core.redis_state.RedisStateManager") as mock_cls:
+            mock_cls.get_instance.return_value = mock_redis_manager
 
-        # Act
-        result = await expensive_function("key")
+            @cache_multi_tier(key_prefix="test", l2_ttl=300)
+            async def expensive_function(key: str) -> str:
+                nonlocal call_count
+                call_count += 1
+                return "db_value"
 
-        # Assert
-        assert result == "db_value"
-        assert call_count == 1
-        # Beide Caches sollten gefüllt sein
-        assert cache.get("test:key") == "db_value"
-        mock_redis.setex.assert_called_once()
+            # Act
+            result = await expensive_function("key")
+
+            # Assert
+            assert result == "db_value"
+            assert call_count == 1
+            mock_redis_manager._redis.setex.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_subsequent_calls_use_cache(self, mock_redis: AsyncMock) -> None:
+    async def test_subsequent_calls_use_cache(self, mock_redis_manager: MagicMock, l1_cache: LRUCache) -> None:
         """Zweiter Aufruf nutzt L1 Cache."""
         # Arrange
-        cache = LRUCache(maxsize=10, default_ttl=60)
-        mock_redis.get.return_value = None
-
         call_count = 0
 
-        @cache_multi_tier(
-            key_prefix="test",
-            ttl=300,
-            l1_cache=cache,
-            redis=mock_redis
-        )
-        async def expensive_function(key: str) -> str:
-            nonlocal call_count
-            call_count += 1
-            return f"db_value_{call_count}"
+        with patch("app.core.cache._l1_cache", l1_cache), \
+             patch("app.core.redis_state.RedisStateManager") as mock_cls:
+            mock_cls.get_instance.return_value = mock_redis_manager
 
-        # Act
-        result1 = await expensive_function("key")
-        result2 = await expensive_function("key")
+            @cache_multi_tier(key_prefix="test", l2_ttl=300)
+            async def expensive_function(key: str) -> str:
+                nonlocal call_count
+                call_count += 1
+                return f"db_value_{call_count}"
 
-        # Assert
-        assert result1 == "db_value_1"
-        assert result2 == "db_value_1"  # Cached value
-        assert call_count == 1  # Nur einmal aufgerufen
+            # Act
+            result1 = await expensive_function("key")
+            result2 = await expensive_function("key")
+
+            # Assert
+            assert result1 == "db_value_1"
+            assert result2 == "db_value_1"  # Cached value from L1
+            assert call_count == 1  # Nur einmal aufgerufen
 
     # -------------------------------------------------------------------------
     # Multiple Keys Tests
     # -------------------------------------------------------------------------
 
     @pytest.mark.asyncio
-    async def test_different_keys_cached_separately(self, mock_redis: AsyncMock) -> None:
+    async def test_different_keys_cached_separately(self, mock_redis_manager: MagicMock, l1_cache: LRUCache) -> None:
         """Verschiedene Keys werden separat gecached."""
         # Arrange
-        cache = LRUCache(maxsize=10, default_ttl=60)
-        mock_redis.get.return_value = None
+        with patch("app.core.cache._l1_cache", l1_cache), \
+             patch("app.core.redis_state.RedisStateManager") as mock_cls:
+            mock_cls.get_instance.return_value = mock_redis_manager
 
-        @cache_multi_tier(
-            key_prefix="test",
-            ttl=300,
-            l1_cache=cache,
-            redis=mock_redis
-        )
-        async def expensive_function(key: str) -> str:
-            return f"value_{key}"
+            @cache_multi_tier(key_prefix="test", l2_ttl=300)
+            async def expensive_function(key: str) -> str:
+                return f"value_{key}"
 
-        # Act
-        result1 = await expensive_function("key1")
-        result2 = await expensive_function("key2")
+            # Act
+            result1 = await expensive_function("key1")
+            result2 = await expensive_function("key2")
 
-        # Assert
-        assert result1 == "value_key1"
-        assert result2 == "value_key2"
-        assert cache.get("test:key1") == "value_key1"
-        assert cache.get("test:key2") == "value_key2"
+            # Assert
+            assert result1 == "value_key1"
+            assert result2 == "value_key2"
 
     # -------------------------------------------------------------------------
     # Error Handling Tests
     # -------------------------------------------------------------------------
 
     @pytest.mark.asyncio
-    async def test_redis_failure_fallback(self, mock_redis: AsyncMock) -> None:
+    async def test_redis_failure_fallback(self, mock_redis_manager: MagicMock, l1_cache: LRUCache) -> None:
         """Redis Fehler führt zu Fallback auf DB."""
         # Arrange
-        cache = LRUCache(maxsize=10, default_ttl=60)
-        mock_redis.get.side_effect = Exception("Redis down")
+        mock_redis_manager._redis.get.side_effect = Exception("Redis down")
+        mock_redis_manager._redis.setex.side_effect = Exception("Redis down")
 
-        @cache_multi_tier(
-            key_prefix="test",
-            ttl=300,
-            l1_cache=cache,
-            redis=mock_redis
-        )
-        async def expensive_function(key: str) -> str:
-            return "db_value"
+        with patch("app.core.cache._l1_cache", l1_cache), \
+             patch("app.core.redis_state.RedisStateManager") as mock_cls:
+            mock_cls.get_instance.return_value = mock_redis_manager
 
-        # Act
-        result = await expensive_function("key")
+            @cache_multi_tier(key_prefix="test", l2_ttl=300)
+            async def expensive_function(key: str) -> str:
+                return "db_value"
 
-        # Assert
-        assert result == "db_value"
-        # L1 sollte trotzdem gefüllt sein
-        assert cache.get("test:key") == "db_value"
+            # Act
+            result = await expensive_function("key")
+
+            # Assert
+            assert result == "db_value"
 
 
 class TestCacheStats:

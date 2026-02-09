@@ -129,7 +129,7 @@ class TestLRUCache:
 
         assert cache.get("key1") is None
         assert cache.get("key2") is None
-        assert cache.stats()["size"] == 0
+        assert cache.stats().size == 0
 
     def test_stats(self):
         """Test statistics tracking."""
@@ -149,12 +149,11 @@ class TestLRUCache:
 
         stats = cache.stats()
 
-        assert stats["hits"] == 2
-        assert stats["misses"] == 2
-        assert stats["total_requests"] == 4
-        assert stats["hit_rate"] == 50.0
-        assert stats["size"] == 2
-        assert stats["maxsize"] == 10
+        assert stats.hits == 2
+        assert stats.misses == 2
+        assert stats.hit_rate == 0.5
+        assert stats.size == 2
+        assert stats.maxsize == 10
 
     def test_thread_safety(self):
         """Test thread-safe operations."""
@@ -185,7 +184,7 @@ class TestLRUCache:
 
         # Stats should reflect operations
         stats = cache.stats()
-        assert stats["size"] <= 100
+        assert stats.size <= 100
 
     def test_complex_values(self):
         """Test caching of complex values (dicts, lists)."""
@@ -215,4 +214,4 @@ class TestLRUCache:
         assert cache.get("key1") == "value2"
 
         # Size should not increase
-        assert cache.stats()["size"] == 1
+        assert cache.stats().size == 1

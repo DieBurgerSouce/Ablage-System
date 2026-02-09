@@ -683,7 +683,8 @@ class OCRCacheService:
             Dict with L1 stats, L2 stats, per-backend stats, and overall metrics
         """
         # L1 Cache Stats (Memory)
-        l1_stats = self._l1_cache.stats()
+        from dataclasses import asdict
+        l1_stats = asdict(self._l1_cache.stats())
 
         # Per-Backend Stats (local tracking)
         with self._stats_lock:

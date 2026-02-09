@@ -14,7 +14,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models_tenant_config import TenantConfig
-from app.db.models_user import User
+from app.db.models import User
 
 
 @pytest.fixture

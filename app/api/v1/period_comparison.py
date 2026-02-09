@@ -15,7 +15,7 @@ from typing import List, Dict, Any, Optional
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -186,7 +186,7 @@ async def compare_periods(
     description="Ruft eine Zeitreihe für eine bestimmte Metrik ab (z.B. für Charts)"
 )
 async def get_trend_series(
-    metric: str = Query(
+    metric: str = Path(
         ...,
         description="Metrik-Name (document_count, invoice_total, etc.)"
     ),

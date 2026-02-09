@@ -31,7 +31,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from uuid import UUID
 
-import aiosmtplib
+try:
+    import aiosmtplib
+except ImportError:
+    aiosmtplib = None  # type: ignore[assignment]
 import structlog
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
@@ -264,6 +267,10 @@ class EmailService:
         Returns:
             EmailResult mit Status
         """
+        if aiosmtplib is None:
+            logger.warning("aiosmtplib_not_installed", message="Email-Versand nicht verfuegbar")
+            return EmailResult(success=False, error="aiosmtplib nicht installiert")
+
         # Wenn nicht konfiguriert, nur loggen
         if not self._is_configured:
             logger.info(

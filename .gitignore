@@ -82,6 +82,7 @@ ocr_result*.json
 # Temporary test directories
 temp_paddle_test/
 temp_results/
+.hypothesis/
 ocr_comparison_results/
 stichproben.csv
 

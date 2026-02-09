@@ -19,6 +19,7 @@ SECURITY:
 Feinpoliert und durchdacht.
 """
 
+import datetime as dt
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
@@ -49,7 +50,7 @@ router = APIRouter(prefix="/cashflow-prediction", tags=["Cashflow Prediction"])
 class CashflowForecastItem(BaseModel):
     """Einzelner Tag der Cashflow-Prognose."""
 
-    date: date = Field(..., description="Datum der Prognose")
+    date: dt.date = Field(..., description="Datum der Prognose")
     predicted_balance: float = Field(..., description="Vorhergesagter Kontostand in EUR")
     lower_bound: float = Field(..., description="Untere Grenze des Konfidenzintervalls")
     upper_bound: float = Field(..., description="Obere Grenze des Konfidenzintervalls")
@@ -83,7 +84,7 @@ class CashflowForecastResponse(BaseModel):
     confidence_level: float = Field(..., description="Verwendetes Konfidenzintervall")
     current_balance: float = Field(..., description="Aktueller Kontostand in EUR")
     min_balance: float = Field(..., description="Minimaler vorhergesagter Kontostand")
-    min_balance_date: date = Field(..., description="Datum des minimalen Kontostands")
+    min_balance_date: dt.date = Field(..., description="Datum des minimalen Kontostands")
     avg_balance: float = Field(..., description="Durchschnittlicher vorhergesagter Kontostand")
     total_expected_inflows: float = Field(..., description="Summe erwarteter Eingaenge")
     total_expected_outflows: float = Field(..., description="Summe erwarteter Ausgaenge")
@@ -97,7 +98,7 @@ class CashflowWarningItem(BaseModel):
 
     type: str = Field(..., description="Warnungstyp")
     severity: str = Field(..., description="Schweregrad: info, warning, critical")
-    date: date = Field(..., description="Datum des erwarteten Problems")
+    date: dt.date = Field(..., description="Datum des erwarteten Problems")
     predicted_balance: float = Field(..., description="Vorhergesagter Kontostand an diesem Tag")
     message: str = Field(..., description="Warnungsmeldung (Deutsch)")
     suggested_actions: List[str] = Field(..., description="Handlungsempfehlungen (Deutsch)")

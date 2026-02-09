@@ -20,6 +20,7 @@ import structlog
 import threading
 import time
 import fnmatch
+from dataclasses import dataclass
 from typing import Callable, Optional, TypeVar, Union, List, Dict, Any
 from functools import wraps
 from datetime import datetime
@@ -33,6 +34,29 @@ logger = structlog.get_logger(__name__)
 
 # Type variable fuer generische Decorator
 T = TypeVar("T")
+
+
+# =============================================================================
+# Cache Statistics
+# =============================================================================
+
+@dataclass
+class CacheStats:
+    """Cache-Statistiken Dataclass."""
+
+    hits: int = 0
+    misses: int = 0
+    size: int = 0
+    maxsize: int = 0
+    evictions: int = 0
+
+    @property
+    def hit_rate(self) -> float:
+        """Berechne Hit-Rate als Anteil (0.0 - 1.0)."""
+        total = self.hits + self.misses
+        if total == 0:
+            return 0.0
+        return self.hits / total
 
 
 # =============================================================================
@@ -74,6 +98,7 @@ class LRUCache:
         self._default_ttl = default_ttl
         self._hits = 0
         self._misses = 0
+        self._evictions = 0
 
     def get(self, key: str) -> Optional[Any]:
         """Get value from cache if not expired.
@@ -119,6 +144,7 @@ class LRUCache:
                 oldest_key = next(iter(self._cache))
                 del self._cache[oldest_key]
                 self._ttls.pop(oldest_key, None)
+                self._evictions += 1
 
             # Set value and TTL
             self._cache[key] = value
@@ -165,26 +191,22 @@ class LRUCache:
             self._ttls.clear()
             self._hits = 0
             self._misses = 0
+            self._evictions = 0
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> CacheStats:
         """Get cache statistics.
 
         Returns:
-            Dict with hits, misses, hit_rate, size, maxsize
+            CacheStats dataclass with hits, misses, size, maxsize, evictions
         """
         with self._lock:
-            total_requests = self._hits + self._misses
-            hit_rate = (self._hits / total_requests * 100) if total_requests > 0 else 0.0
-
-            return {
-                "hits": self._hits,
-                "misses": self._misses,
-                "total_requests": total_requests,
-                "hit_rate": round(hit_rate, 2),
-                "size": len(self._cache),
-                "maxsize": self._maxsize,
-                "eviction_policy": "LRU",
-            }
+            return CacheStats(
+                hits=self._hits,
+                misses=self._misses,
+                size=len(self._cache),
+                maxsize=self._maxsize,
+                evictions=self._evictions,
+            )
 
 
 # Global L1 cache instance
@@ -1116,8 +1138,16 @@ async def get_cache_metrics() -> Dict[str, Dict[str, Any]]:
     Returns:
         Dict with "l1" and "l2" keys containing respective stats
     """
+    l1_stats = _l1_cache.stats()
     metrics = {
-        "l1": _l1_cache.stats(),
+        "l1": {
+            "hits": l1_stats.hits,
+            "misses": l1_stats.misses,
+            "hit_rate": l1_stats.hit_rate,
+            "size": l1_stats.size,
+            "maxsize": l1_stats.maxsize,
+            "evictions": l1_stats.evictions,
+        },
         "l2": {}
     }
 

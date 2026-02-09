@@ -22,7 +22,7 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.safe_errors import safe_error_log
-from app.db.database import async_session_factory
+from app.db.session import async_session_factory
 from app.db.models import (
     DocumentArchive,
     RetentionSetting,

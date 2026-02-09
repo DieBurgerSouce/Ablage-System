@@ -18,7 +18,7 @@ import structlog
 from celery import shared_task
 
 from app.core.safe_errors import safe_error_log
-from app.db.database import async_session_factory
+from app.db.session import async_session_factory
 from app.db.models import Company
 from app.workers.celery_app import celery_app
 from sqlalchemy import select

@@ -6818,9 +6818,9 @@ class Company(Base):
     rate_limits = relationship("TenantRateLimit", back_populates="company", cascade="all, delete-orphan")
     usage_metrics = relationship("TenantUsageMetrics", back_populates="company", cascade="all, delete-orphan")
     rate_limit_violations = relationship("RateLimitViolation", back_populates="company", cascade="all, delete-orphan")
-    # BPMN Process Engine relationships - disabled, models in bpmn_models/bpmn.py (not in same registry)
-    # bpmn_process_definitions = relationship("ProcessDefinition", back_populates="company", cascade="all, delete-orphan")
-    # bpmn_process_instances = relationship("ProcessInstance", back_populates="company", cascade="all, delete-orphan")
+    # BPMN Process Engine relationships (models in bpmn_models/bpmn.py, same Base)
+    bpmn_process_definitions = relationship("ProcessDefinition", back_populates="company", cascade="all, delete-orphan")
+    bpmn_process_instances = relationship("ProcessInstance", back_populates="company", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("ix_companies_vat_id", "vat_id"),
