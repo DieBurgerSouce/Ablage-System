@@ -218,11 +218,21 @@ async def test_reverse_journal_entry_gobd(gl_service, company_id, user_id, mock_
     mock_entry.document_id = None
     mock_entry.source = "manual"
 
-    mock_result = MagicMock()
-    mock_result.scalar_one_or_none = MagicMock(return_value=mock_entry)
-    mock_db.execute = AsyncMock(return_value=mock_result)
+    mock_result_original = MagicMock()
+    mock_result_original.scalar_one_or_none = MagicMock(return_value=mock_entry)
 
-    # Mock create_journal_entry (returns reversal)
+    # Mock reversal entry returned by post_journal_entry's DB lookup
+    mock_reversal = MagicMock(spec=JournalEntry)
+    mock_reversal.id = uuid4()
+    mock_reversal.status = JournalEntryStatus.DRAFT.value
+    mock_reversal.entry_number = "JE-2024-00002"
+
+    mock_result_reversal = MagicMock()
+    mock_result_reversal.scalar_one_or_none = MagicMock(return_value=mock_reversal)
+
+    # First execute: fetch original; Second execute: fetch reversal in post_journal_entry
+    mock_db.execute = AsyncMock(side_effect=[mock_result_original, mock_result_reversal])
+
     gl_service._generate_entry_number = AsyncMock(return_value="JE-2024-00002")
 
     reversal = await gl_service.reverse_journal_entry(entry_id, user_id, "Test reversal")
@@ -272,9 +282,20 @@ async def test_reverse_creates_opposite_amounts(gl_service, company_id, user_id,
     mock_entry.document_id = None
     mock_entry.source = "manual"
 
-    mock_result = MagicMock()
-    mock_result.scalar_one_or_none = MagicMock(return_value=mock_entry)
-    mock_db.execute = AsyncMock(return_value=mock_result)
+    mock_result_original = MagicMock()
+    mock_result_original.scalar_one_or_none = MagicMock(return_value=mock_entry)
+
+    # Mock reversal entry returned by post_journal_entry's DB lookup
+    mock_reversal = MagicMock(spec=JournalEntry)
+    mock_reversal.id = uuid4()
+    mock_reversal.status = JournalEntryStatus.DRAFT.value
+    mock_reversal.entry_number = "JE-2024-00002"
+
+    mock_result_reversal = MagicMock()
+    mock_result_reversal.scalar_one_or_none = MagicMock(return_value=mock_reversal)
+
+    # First execute: fetch original; Second execute: fetch reversal in post_journal_entry
+    mock_db.execute = AsyncMock(side_effect=[mock_result_original, mock_result_reversal])
 
     gl_service._generate_entry_number = AsyncMock(return_value="JE-2024-00002")
 
