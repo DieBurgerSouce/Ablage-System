@@ -8,13 +8,14 @@ from typing import Dict, List
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user, get_db
 from app.db.models import User
 from app.core.safe_errors import safe_error_log
+from app.core.rate_limiting import limiter, get_user_identifier
 
 logger = structlog.get_logger(__name__)
 
@@ -76,7 +77,9 @@ class CompanyQualityOverviewResponse(BaseModel):
     summary="Dokumenten-Qualitaet",
     description="Berechnet den Qualitaets-Score und Ampel-Status fuer ein Dokument.",
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_document_quality_score(
+    request: Request,  # Required for rate limiter
     document_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -121,7 +124,9 @@ async def get_document_quality_score(
     summary="Qualitaets-Uebersicht",
     description="Unternehmensweite Ampel-Verteilung.",
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_company_quality_overview(
+    request: Request,  # Required for rate limiter
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> CompanyQualityOverviewResponse:

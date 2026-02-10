@@ -31,6 +31,7 @@ from app.db.models import (
     ChatSessionAccess,
     ChatSessionAccessLevel as DBChatSessionAccessLevel,
 )
+from app.db.models_chat_actions import ChatToolAction
 from app.api.dependencies import get_current_user, get_db
 from app.api.schemas.rag import (
     RAGChatRequest,
@@ -59,6 +60,8 @@ from app.services.rag.prompt_templates import (
     build_rag_context,
     build_chat_prompt,
 )
+from app.services.rag.tool_registry import get_tool_registry
+from app.services.rag.action_dispatcher import get_action_dispatcher
 from app.core.config import settings
 from app.core.safe_errors import safe_error_log, safe_error_detail
 
@@ -497,19 +500,85 @@ KONTEXT:
                 full_response += chunk
                 yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
 
-            # 8. Assistant Message speichern
+            # 8. Check for tool calls in response
+            tool_registry = get_tool_registry()
+            tool_call = tool_registry.parse_tool_call(full_response)
+
+            if tool_call:
+                logger.info(
+                    "tool_call_detected_in_chat",
+                    tool_name=tool_call.tool_name,
+                    session_id=str(session.id)
+                )
+
+                # Get tool definition
+                tool_def = tool_registry.get_tool(tool_call.tool_name)
+
+                if tool_def:
+                    # Dispatch tool call
+                    dispatcher = get_action_dispatcher()
+
+                    # Extract context_id if document_id in params
+                    context_id = None
+                    if "document_id" in tool_call.parameters:
+                        try:
+                            context_id = UUID(tool_call.parameters["document_id"])
+                        except (ValueError, TypeError):
+                            pass
+
+                    action_result = await dispatcher.dispatch(
+                        tool_call=tool_call,
+                        user=current_user,
+                        db=db,
+                        context_id=context_id
+                    )
+
+                    # Store action in DB
+                    chat_action = ChatToolAction(
+                        session_id=session.id,
+                        message_id=None,  # Will be set after assistant_message is created
+                        tool_name=tool_call.tool_name,
+                        parameters=tool_call.parameters,
+                        status="pending_confirmation" if tool_def.requires_confirmation else "executed",
+                        result=action_result.details if action_result.status.value == "completed" else None,
+                        error_message=action_result.message if action_result.status.value == "failed" else None,
+                        requires_confirmation=tool_def.requires_confirmation,
+                        executed_at=datetime.now(timezone.utc) if not tool_def.requires_confirmation else None
+                    )
+                    db.add(chat_action)
+                    await db.flush()  # Get ID
+
+                    # Send action SSE event
+                    action_event = {
+                        "type": "action",
+                        "action": {
+                            "id": str(chat_action.id),
+                            "tool_name": tool_call.tool_name,
+                            "status": chat_action.status,
+                            "requires_confirmation": tool_def.requires_confirmation,
+                            "result": action_result.message
+                        }
+                    }
+                    yield f"data: {json.dumps(action_event)}\n\n"
+
+            # 9. Assistant Message speichern
             assistant_message = RAGChatMessage(
                 session_id=session.id,
                 role=RAGChatRole.ASSISTANT,
                 content=full_response,
             )
             db.add(assistant_message)
+            await db.flush()  # Get message ID
 
-            # 9. Session aktualisieren
+            # Link action to message if exists
+            if tool_call:
+                chat_action.message_id = assistant_message.id
+
+            # 10. Session aktualisieren
             session.message_count = (session.message_count or 0) + 2
             session.last_message_at = datetime.now(timezone.utc)
 
-            # 10. Titel generieren wenn neue Session
+            # 11. Titel generieren wenn neue Session
             if session_is_new and not session.title:
                 try:
                     generated_title = await _generate_chat_title(
@@ -527,7 +596,7 @@ KONTEXT:
 
             await db.commit()
 
-            # 11. Done Event
+            # 12. Done Event
             yield f"data: {json.dumps({'type': 'done', 'session_id': str(session.id), 'message_id': str(assistant_message.id)})}\n\n"
 
             logger.info(
@@ -1027,6 +1096,166 @@ async def _get_chat_history(
         {"role": m.role.value, "content": m.content}
         for m in reversed(messages)
     ]
+
+
+# =============================================================================
+# TOOL ACTION CONFIRMATION ENDPOINTS
+# =============================================================================
+
+# SECURITY FIX 28-12: Rate-Limit fuer Action-Bestaetigung
+@limiter.limit("60/minute", key_func=get_user_identifier)
+@router.post(
+    "/actions/{action_id}/confirm",
+    summary="Tool-Aktion bestaetigen",
+    description="Bestaetigt eine ausstehende Tool-Aktion aus dem Chat."
+)
+async def confirm_chat_action(
+    request: Request,  # SECURITY FIX: Required for rate limiter
+    action_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> dict:
+    """
+    Bestaetigt eine ausstehende Tool-Aktion.
+
+    Fuer Aktionen die requires_confirmation=True haben.
+    """
+    try:
+        # Action laden
+        result = await db.execute(
+            select(ChatToolAction)
+            .join(RAGChatSession, ChatToolAction.session_id == RAGChatSession.id)
+            .where(
+                ChatToolAction.id == action_id,
+                ChatToolAction.status == "pending_confirmation",
+                RAGChatSession.user_id == current_user.id
+            )
+        )
+        action = result.scalar_one_or_none()
+
+        if not action:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Aktion nicht gefunden oder bereits verarbeitet"
+            )
+
+        # Action Dispatcher verwenden
+        dispatcher = get_action_dispatcher()
+        action_result = await dispatcher.confirm_action(
+            action_id=action_id,
+            user=current_user,
+            db=db
+        )
+
+        # Action-Status aktualisieren
+        if action_result.status.value == "completed":
+            action.status = "executed"
+            action.result = action_result.details
+            action.executed_at = datetime.now(timezone.utc)
+            action.confirmed_by_id = current_user.id
+        elif action_result.status.value == "failed":
+            action.status = "failed"
+            action.error_message = action_result.message
+
+        await db.commit()
+
+        logger.info(
+            "chat_action_confirmed",
+            action_id=str(action_id),
+            user_id=str(current_user.id),
+            status=action.status
+        )
+
+        return {
+            "success": True,
+            "action_id": str(action_id),
+            "status": action.status,
+            "result": action.result,
+            "message": action_result.message
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("chat_action_confirm_failed", **safe_error_log(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Bestaetigung fehlgeschlagen. Bitte versuchen Sie es erneut."
+        )
+
+
+# SECURITY FIX 28-12: Rate-Limit fuer Action-Ablehnung
+@limiter.limit("60/minute", key_func=get_user_identifier)
+@router.post(
+    "/actions/{action_id}/reject",
+    summary="Tool-Aktion ablehnen",
+    description="Lehnt eine ausstehende Tool-Aktion aus dem Chat ab."
+)
+async def reject_chat_action(
+    request: Request,  # SECURITY FIX: Required for rate limiter
+    action_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> dict:
+    """
+    Lehnt eine ausstehende Tool-Aktion ab.
+
+    Fuer Aktionen die requires_confirmation=True haben.
+    """
+    try:
+        # Action laden
+        result = await db.execute(
+            select(ChatToolAction)
+            .join(RAGChatSession, ChatToolAction.session_id == RAGChatSession.id)
+            .where(
+                ChatToolAction.id == action_id,
+                ChatToolAction.status == "pending_confirmation",
+                RAGChatSession.user_id == current_user.id
+            )
+        )
+        action = result.scalar_one_or_none()
+
+        if not action:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Aktion nicht gefunden oder bereits verarbeitet"
+            )
+
+        # Action Dispatcher verwenden
+        dispatcher = get_action_dispatcher()
+        action_result = await dispatcher.reject_action(
+            action_id=action_id,
+            user=current_user,
+            db=db
+        )
+
+        # Action-Status aktualisieren
+        action.status = "rejected"
+        action.confirmed_by_id = current_user.id
+
+        await db.commit()
+
+        logger.info(
+            "chat_action_rejected",
+            action_id=str(action_id),
+            user_id=str(current_user.id)
+        )
+
+        return {
+            "success": True,
+            "action_id": str(action_id),
+            "status": "rejected",
+            "message": "Aktion wurde abgelehnt"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("chat_action_reject_failed", **safe_error_log(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ablehnung fehlgeschlagen. Bitte versuchen Sie es erneut."
+        )
 
 
 # =============================================================================

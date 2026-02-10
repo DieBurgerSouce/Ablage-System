@@ -18,10 +18,10 @@ Use Cases:
 
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select, func, and_, or_, text
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel, Field
@@ -30,6 +30,7 @@ import structlog
 from app.api.dependencies import get_current_superuser, get_db
 from app.db.models import User, Company, Document, DocumentArchive, ProcessingStatus
 from app.core.safe_errors import safe_error_log
+from app.core.rate_limiting import limiter, get_user_identifier
 
 logger = structlog.get_logger(__name__)
 
@@ -52,7 +53,7 @@ class CompanyOverviewStats(BaseModel):
     archived_documents: int = Field(0, description="Archivierte Dokumente")
 
     # Letzter Upload
-    last_upload_date: datetime | None = Field(None, description="Letzter Upload")
+    last_upload_date: Optional[datetime] = Field(None, description="Letzter Upload")
 
 
 class CompanyFinancialSummary(BaseModel):
@@ -96,7 +97,9 @@ class CrossTenantFinancialResponse(BaseModel):
     summary="Cross-Tenant Uebersicht",
     description="Aggregierte Statistiken fuer alle Firmen (nur Admins)"
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_cross_tenant_overview(
+    request: Request,  # Required for rate limiter
     admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db)
 ) -> CrossTenantOverviewResponse:
@@ -220,7 +223,9 @@ async def get_cross_tenant_overview(
     summary="Cross-Tenant Finanz-Uebersicht",
     description="Finanz-relevante Statistiken fuer alle Firmen (nur Admins)"
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_cross_tenant_financial_summary(
+    request: Request,  # Required for rate limiter
     admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db)
 ) -> CrossTenantFinancialResponse:

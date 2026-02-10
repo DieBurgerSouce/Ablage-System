@@ -18,12 +18,13 @@ from typing import Dict, List, Optional
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db, get_current_active_user
 from app.core.safe_errors import safe_error_detail, safe_error_log
+from app.core.rate_limiting import limiter, get_user_identifier
 from app.db.models import User
 from app.services.compliance.document_completeness_service import (
     document_completeness_service,
@@ -147,7 +148,9 @@ def _decimal_to_float(val: Optional[Decimal]) -> Optional[float]:
     summary="Belegcheck-Report",
     description="Generiert einen vollstaendigen Belegvollstaendigkeits-Report",
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_completeness_report(
+    request: Request,  # Required for rate limiter
     year: int = Query(..., ge=2000, le=2100, description="Berichtsjahr"),
     quarter: Optional[int] = Query(None, ge=1, le=4, description="Quartal"),
     month: Optional[int] = Query(None, ge=1, le=12, description="Monat"),
@@ -249,7 +252,9 @@ async def get_completeness_report(
     summary="Vollstaendigkeits-Score",
     description="Berechnet einen schnellen Vollstaendigkeits-Score (0-100)",
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_score(
+    request: Request,  # Required for rate limiter
     period_start: date = Query(..., description="Beginn des Pruefzeitraums"),
     period_end: date = Query(..., description="Ende des Pruefzeitraums"),
     current_user: User = Depends(get_current_active_user),
@@ -291,7 +296,9 @@ async def get_score(
     summary="Buchungen ohne Beleg",
     description="Findet Bankbuchungen ohne zugeordneten Beleg",
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_unmatched_bookings(
+    request: Request,  # Required for rate limiter
     period_start: date = Query(..., description="Beginn des Pruefzeitraums"),
     period_end: date = Query(..., description="Ende des Pruefzeitraums"),
     current_user: User = Depends(get_current_active_user),
@@ -338,7 +345,9 @@ async def get_unmatched_bookings(
     summary="Rechnungsnummern-Luecken",
     description="Prueft Luecken in Rechnungsnummern-Sequenzen pro Lieferant",
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_invoice_gaps(
+    request: Request,  # Required for rate limiter
     vendor_id: Optional[UUID] = Query(None, description="Lieferanten-ID (optional)"),
     year: Optional[int] = Query(None, ge=2000, le=2100, description="Jahr (optional)"),
     current_user: User = Depends(get_current_active_user),
@@ -379,7 +388,9 @@ async def get_invoice_gaps(
     summary="Fehlende monatliche Rechnungen",
     description="Findet fehlende monatliche Rechnungen (z.B. Miete, Strom)",
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_missing_monthly(
+    request: Request,  # Required for rate limiter
     year: int = Query(..., ge=2000, le=2100, description="Pruef-Jahr"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -418,7 +429,9 @@ async def get_missing_monthly(
     summary="Plausibilitaetsprobleme",
     description="Prueft Plausibilitaet von Betraegen",
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_plausibility_issues(
+    request: Request,  # Required for rate limiter
     period_start: date = Query(..., description="Beginn des Pruefzeitraums"),
     period_end: date = Query(..., description="Ende des Pruefzeitraums"),
     current_user: User = Depends(get_current_active_user),
@@ -466,7 +479,9 @@ async def get_plausibility_issues(
     summary="Datumskonsistenz-Probleme",
     description="Prueft Datumskonsistenz von Belegen",
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_date_issues(
+    request: Request,  # Required for rate limiter
     period_start: date = Query(..., description="Beginn des Pruefzeitraums"),
     period_end: date = Query(..., description="Ende des Pruefzeitraums"),
     current_user: User = Depends(get_current_active_user),

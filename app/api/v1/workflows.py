@@ -13,7 +13,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
 
 import structlog
@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db, require_admin
 from app.core.jsonb_validators import validate_jsonb_payload
+from app.core.rate_limiting import limiter, get_user_identifier
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User, UserCompany, Company
 from app.services.workflow import (
@@ -92,13 +93,13 @@ class WorkflowCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
     trigger_type: str = Field(..., pattern="^(document_event|schedule|condition|manual|webhook)$")
-    trigger_config: Dict[str, Any] = Field(default_factory=dict)
-    nodes: Optional[List[Dict[str, Any]]] = None
-    edges: Optional[List[Dict[str, Any]]] = None
-    variables: Optional[Dict[str, Any]] = None
+    trigger_config: Dict[str, object] = Field(default_factory=dict)
+    nodes: Optional[List[Dict[str, object]]] = None
+    edges: Optional[List[Dict[str, object]]] = None
+    variables: Optional[Dict[str, object]] = None
     max_concurrent_executions: int = Field(default=10, ge=1, le=100)
     timeout_seconds: int = Field(default=3600, ge=60, le=86400)
-    retry_config: Optional[Dict[str, Any]] = None
+    retry_config: Optional[Dict[str, object]] = None
 
     @model_validator(mode="after")
     def validate_jsonb_payloads(self) -> "WorkflowCreate":
@@ -122,14 +123,14 @@ class WorkflowUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     trigger_type: Optional[str] = Field(None, pattern="^(document_event|schedule|condition|manual|webhook)$")
-    trigger_config: Optional[Dict[str, Any]] = None
-    nodes: Optional[List[Dict[str, Any]]] = None
-    edges: Optional[List[Dict[str, Any]]] = None
-    variables: Optional[Dict[str, Any]] = None
+    trigger_config: Optional[Dict[str, object]] = None
+    nodes: Optional[List[Dict[str, object]]] = None
+    edges: Optional[List[Dict[str, object]]] = None
+    variables: Optional[Dict[str, object]] = None
     is_active: Optional[bool] = None
     max_concurrent_executions: Optional[int] = Field(None, ge=1, le=100)
     timeout_seconds: Optional[int] = Field(None, ge=60, le=86400)
-    retry_config: Optional[Dict[str, Any]] = None
+    retry_config: Optional[Dict[str, object]] = None
 
     @model_validator(mode="after")
     def validate_jsonb_payloads(self) -> "WorkflowUpdate":
@@ -156,15 +157,15 @@ class WorkflowResponse(BaseModel):
     name: str
     description: Optional[str] = None
     trigger_type: str
-    trigger_config: Dict[str, Any]
-    nodes: List[Dict[str, Any]]
-    edges: List[Dict[str, Any]]
-    variables: Dict[str, Any]
+    trigger_config: Dict[str, object]
+    nodes: List[Dict[str, object]]
+    edges: List[Dict[str, object]]
+    variables: Dict[str, object]
     is_active: bool
     is_template: bool
     max_concurrent_executions: int
     timeout_seconds: int
-    retry_config: Dict[str, Any]
+    retry_config: Dict[str, object]
     execution_count: int
     last_executed_at: Optional[datetime] = None
     created_at: datetime
@@ -188,7 +189,7 @@ class StepCreate(BaseModel):
     step_order: int = Field(..., ge=0)
     step_type: str = Field(..., pattern="^(condition|action|branch|delay|parallel|loop)$")
     step_name: Optional[str] = None
-    config: Dict[str, Any] = Field(default_factory=dict)
+    config: Dict[str, object] = Field(default_factory=dict)
     retry_on_failure: bool = True
     max_retries: int = Field(default=3, ge=0, le=10)
     position_x: float = 0.0
@@ -201,7 +202,7 @@ class StepUpdate(BaseModel):
     step_order: Optional[int] = Field(None, ge=0)
     step_type: Optional[str] = Field(None, pattern="^(condition|action|branch|delay|parallel|loop)$")
     step_name: Optional[str] = None
-    config: Optional[Dict[str, Any]] = None
+    config: Optional[Dict[str, object]] = None
     retry_on_failure: Optional[bool] = None
     max_retries: Optional[int] = Field(None, ge=0, le=10)
     position_x: Optional[float] = None
@@ -216,7 +217,7 @@ class StepResponse(BaseModel):
     step_order: int
     step_type: str
     step_name: Optional[str] = None
-    config: Dict[str, Any]
+    config: Dict[str, object]
     retry_on_failure: bool
     max_retries: int
     position_x: float
@@ -238,7 +239,7 @@ class ExecutionStart(BaseModel):
     """Schema fuer Execution-Start."""
 
     document_id: Optional[UUID] = None
-    variables: Optional[Dict[str, Any]] = None
+    variables: Optional[Dict[str, object]] = None
 
 
 class ExecutionResponse(BaseModel):
@@ -249,13 +250,13 @@ class ExecutionResponse(BaseModel):
     user_id: UUID
     document_id: Optional[UUID] = None
     status: str
-    trigger_data: Dict[str, Any]
-    variables: Dict[str, Any]
+    trigger_data: Dict[str, object]
+    variables: Dict[str, object]
     current_step_id: Optional[UUID] = None
     progress_percent: int
     started_at: datetime
     completed_at: Optional[datetime] = None
-    result: Optional[Dict[str, Any]] = None
+    result: Optional[Dict[str, object]] = None
     error_message: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -279,8 +280,8 @@ class StepExecutionResponse(BaseModel):
     status: str
     started_at: datetime
     completed_at: Optional[datetime] = None
-    input_data: Optional[Dict[str, Any]] = None
-    output_data: Optional[Dict[str, Any]] = None
+    input_data: Optional[Dict[str, object]] = None
+    output_data: Optional[Dict[str, object]] = None
     error_message: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -296,7 +297,7 @@ class TemplateInstantiate(BaseModel):
 class WebhookPayload(BaseModel):
     """Schema fuer Webhook-Payload."""
 
-    data: Dict[str, Any] = Field(default_factory=dict)
+    data: Dict[str, object] = Field(default_factory=dict)
 
 
 class ValidationResult(BaseModel):
@@ -315,7 +316,7 @@ class WorkflowStats(BaseModel):
     is_active: bool
     execution_count: int
     last_executed_at: Optional[datetime] = None
-    statistics: Dict[str, Any]
+    statistics: Dict[str, object]
 
 
 class OverviewStats(BaseModel):
@@ -804,7 +805,7 @@ async def reorder_steps(
 )
 async def batch_update_steps(
     workflow_id: UUID,
-    steps_data: List[Dict[str, Any]],
+    steps_data: List[Dict[str, object]],
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[StepResponse]:
@@ -1254,7 +1255,7 @@ async def create_template(
 
 @router.post(
     "/trigger/{webhook_path:path}",
-    response_model=Dict[str, Any],
+    response_model=Dict[str, object],
     summary="Webhook Trigger",
 )
 async def webhook_trigger(
@@ -1262,7 +1263,7 @@ async def webhook_trigger(
     payload: WebhookPayload,
     request: Request,
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> Dict[str, object]:
     """Empfaengt Webhook-Trigger von externen Systemen."""
     step_executor = WorkflowStepExecutor(db)
     execution_service = WorkflowExecutionService(db, step_executor)
@@ -1291,14 +1292,14 @@ async def webhook_trigger(
 
 @router.get(
     "/{workflow_id}/webhook-config",
-    response_model=Dict[str, Any],
+    response_model=Dict[str, object],
     summary="Webhook-Konfiguration abrufen",
 )
 async def get_webhook_config(
     workflow_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> Dict[str, object]:
     """Ruft die Webhook-Konfiguration eines Workflows ab."""
     # SECURITY FIX: company_id fuer Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
@@ -1467,14 +1468,14 @@ async def get_overview_stats(
 
 @router.get(
     "/stats/execution-history",
-    response_model=List[Dict[str, Any]],
+    response_model=List[Dict[str, object]],
     summary="Ausfuehrungs-Historie",
 )
 async def get_execution_history(
     days: int = Query(30, ge=1, le=365, description="Anzahl Tage"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[Dict[str, Any]]:
+) -> List[Dict[str, object]]:
     """Ruft Ausfuehrungs-Historie ab."""
     from sqlalchemy import func, and_, Integer
     from datetime import datetime, timedelta, timezone
@@ -1559,3 +1560,364 @@ async def get_available_fields(
     """Gibt verfuegbare Bedingungs-Felder zurueck."""
     evaluator = ConditionEvaluator()
     return evaluator.get_available_fields()
+
+
+# =============================================================================
+# Workflow Execution Visualization (Phase B)
+# =============================================================================
+
+
+class NodeState(BaseModel):
+    """Status eines einzelnen Workflow-Knotens."""
+
+    node_id: str
+    node_type: str  # action, condition, branch, delay, parallel, loop
+    node_name: str
+    status: str  # pending, active, completed, failed, skipped, warning
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    duration_ms: Optional[int] = None
+    error_message: Optional[str] = None
+    sla_deadline: Optional[datetime] = None
+    sla_status: Optional[str] = None  # ok, warning, breached
+
+
+class ExecutionStateResponse(BaseModel):
+    """Aktueller Ausfuehrungsstatus eines Workflows."""
+
+    instance_id: UUID
+    workflow_id: UUID
+    workflow_name: str
+    status: str  # pending, running, completed, failed, cancelled
+    progress_percent: int
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    nodes: List[NodeState]  # Alle Knoten mit ihrem Ausfuehrungsstatus
+    active_step_ids: List[str]  # Aktuell ausgefuehrte Schritte
+
+
+class TimelineEntry(BaseModel):
+    """Einzelner Eintrag in der Ausfuehrungs-Zeitleiste."""
+
+    step_id: str
+    step_name: str
+    step_type: str
+    status: str
+    started_at: datetime
+    completed_at: Optional[datetime] = None
+    duration_ms: Optional[int] = None
+    input_summary: Optional[str] = None  # Kurze Beschreibung des Inputs
+    output_summary: Optional[str] = None  # Kurze Beschreibung des Outputs
+    error_message: Optional[str] = None
+
+
+class ExecutionMetrics(BaseModel):
+    """Performance-Metriken einer Workflow-Ausfuehrung."""
+
+    instance_id: UUID
+    total_duration_ms: Optional[int] = None
+    steps_completed: int
+    steps_failed: int
+    steps_pending: int
+    avg_step_duration_ms: Optional[float] = None
+    slowest_step: Optional[str] = None
+    slowest_step_duration_ms: Optional[int] = None
+    bottleneck_step: Optional[str] = None  # Step mit laengster Wartezeit
+
+
+@router.get(
+    "/executions/{instance_id}/state",
+    response_model=ExecutionStateResponse,
+    summary="Aktuellen Ausfuehrungsstatus abrufen",
+)
+@limiter.limit("30/minute", key_func=get_user_identifier)
+async def get_execution_state(
+    request: Request,
+    instance_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ExecutionStateResponse:
+    """
+    Ruft den aktuellen Ausfuehrungsstatus ab.
+
+    Gibt detaillierte Informationen ueber alle Knoten/Schritte zurueck,
+    inklusive Status, Timing und Fehler.
+    """
+    from sqlalchemy import select, and_
+    from sqlalchemy.orm import selectinload
+    from app.db.models import WorkflowExecution, WorkflowStepExecution, Workflow, WorkflowStep
+
+    # SECURITY: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
+
+    # Lade Execution mit allen Beziehungen
+    query = (
+        select(WorkflowExecution)
+        .where(WorkflowExecution.id == instance_id)
+        .options(
+            selectinload(WorkflowExecution.workflow).selectinload(Workflow.steps),
+            selectinload(WorkflowExecution.step_executions),
+        )
+    )
+    result = await db.execute(query)
+    execution = result.scalar_one_or_none()
+
+    if not execution:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ausfuehrung nicht gefunden",
+        )
+
+    # SECURITY: Verify ownership
+    if execution.triggered_by_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Keine Berechtigung fuer diese Ausfuehrung",
+        )
+
+    # SECURITY: Verify company_id if set
+    if company_id and execution.workflow.company_id != company_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Keine Berechtigung fuer diese Ausfuehrung",
+        )
+
+    # Build node states from step executions
+    nodes: List[NodeState] = []
+    active_step_ids: List[str] = []
+
+    # Create map of step_id -> step_execution
+    step_exec_map = {str(se.workflow_step_id): se for se in execution.step_executions}
+
+    for step in execution.workflow.steps:
+        step_exec = step_exec_map.get(str(step.id))
+
+        # Determine node status
+        if step_exec:
+            node_status = step_exec.status
+            started_at = step_exec.started_at
+            completed_at = step_exec.completed_at
+            duration_ms = step_exec.duration_ms
+            error_message = step_exec.error_message
+        else:
+            node_status = "pending"
+            started_at = None
+            completed_at = None
+            duration_ms = None
+            error_message = None
+
+        # Track active steps
+        if node_status == "running":
+            active_step_ids.append(str(step.id))
+
+        # SLA handling (placeholder - extend as needed)
+        sla_deadline = None
+        sla_status = None
+
+        nodes.append(
+            NodeState(
+                node_id=str(step.id),
+                node_type=step.step_type,
+                node_name=step.name,
+                status=node_status,
+                started_at=started_at,
+                completed_at=completed_at,
+                duration_ms=duration_ms,
+                error_message=error_message,
+                sla_deadline=sla_deadline,
+                sla_status=sla_status,
+            )
+        )
+
+    return ExecutionStateResponse(
+        instance_id=execution.id,
+        workflow_id=execution.workflow_id,
+        workflow_name=execution.workflow.name,
+        status=execution.status,
+        progress_percent=execution.progress_percent,
+        started_at=execution.started_at,
+        completed_at=execution.completed_at,
+        nodes=nodes,
+        active_step_ids=active_step_ids,
+    )
+
+
+@router.get(
+    "/executions/{instance_id}/timeline",
+    response_model=List[TimelineEntry],
+    summary="Ausfuehrungs-Zeitleiste abrufen",
+)
+@limiter.limit("30/minute", key_func=get_user_identifier)
+async def get_execution_timeline(
+    request: Request,
+    instance_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> List[TimelineEntry]:
+    """
+    Ruft die geordnete Ausfuehrungs-Zeitleiste ab.
+
+    Gibt alle Schritte in chronologischer Reihenfolge zurueck.
+    """
+    from sqlalchemy import select, and_
+    from sqlalchemy.orm import selectinload
+    from app.db.models import WorkflowExecution, WorkflowStepExecution, WorkflowStep
+
+    # SECURITY: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
+
+    # Lade Execution mit Step-Executions
+    query = (
+        select(WorkflowExecution)
+        .where(WorkflowExecution.id == instance_id)
+        .options(
+            selectinload(WorkflowExecution.step_executions).selectinload(
+                WorkflowStepExecution.workflow_step
+            )
+        )
+    )
+    result = await db.execute(query)
+    execution = result.scalar_one_or_none()
+
+    if not execution:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ausfuehrung nicht gefunden",
+        )
+
+    # SECURITY: Verify ownership
+    if execution.triggered_by_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Keine Berechtigung fuer diese Ausfuehrung",
+        )
+
+    # Build timeline entries
+    timeline: List[TimelineEntry] = []
+
+    for step_exec in sorted(execution.step_executions, key=lambda x: x.execution_order):
+        if not step_exec.started_at:
+            continue  # Skip steps that haven't started yet
+
+        # Generate summaries from input/output data (simplified)
+        input_summary = None
+        output_summary = None
+
+        if step_exec.input_data:
+            input_summary = f"{len(step_exec.input_data)} Felder"
+
+        if step_exec.output_data:
+            output_summary = f"{len(step_exec.output_data)} Felder"
+
+        timeline.append(
+            TimelineEntry(
+                step_id=str(step_exec.workflow_step_id),
+                step_name=step_exec.workflow_step.name,
+                step_type=step_exec.workflow_step.step_type,
+                status=step_exec.status,
+                started_at=step_exec.started_at,
+                completed_at=step_exec.completed_at,
+                duration_ms=step_exec.duration_ms,
+                input_summary=input_summary,
+                output_summary=output_summary,
+                error_message=step_exec.error_message,
+            )
+        )
+
+    return timeline
+
+
+@router.get(
+    "/executions/{instance_id}/metrics",
+    response_model=ExecutionMetrics,
+    summary="Performance-Metriken abrufen",
+)
+@limiter.limit("30/minute", key_func=get_user_identifier)
+async def get_execution_metrics(
+    request: Request,
+    instance_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ExecutionMetrics:
+    """
+    Ruft Performance-Metriken der Ausfuehrung ab.
+
+    Gibt Timing-Informationen, Engpaesse und Statistiken zurueck.
+    """
+    from sqlalchemy import select, func
+    from sqlalchemy.orm import selectinload
+    from app.db.models import WorkflowExecution, WorkflowStepExecution
+
+    # SECURITY: company_id fuer Multi-Tenant Isolation
+    company_id = await get_user_company_id(db, current_user)
+
+    # Lade Execution mit Step-Executions
+    query = (
+        select(WorkflowExecution)
+        .where(WorkflowExecution.id == instance_id)
+        .options(selectinload(WorkflowExecution.step_executions).selectinload(WorkflowStepExecution.workflow_step))
+    )
+    result = await db.execute(query)
+    execution = result.scalar_one_or_none()
+
+    if not execution:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ausfuehrung nicht gefunden",
+        )
+
+    # SECURITY: Verify ownership
+    if execution.triggered_by_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Keine Berechtigung fuer diese Ausfuehrung",
+        )
+
+    # Calculate metrics
+    steps_completed = sum(1 for se in execution.step_executions if se.status == "completed")
+    steps_failed = sum(1 for se in execution.step_executions if se.status == "failed")
+    steps_pending = sum(
+        1 for se in execution.step_executions if se.status in ("pending", "running")
+    )
+
+    # Calculate average step duration (only completed steps)
+    completed_steps = [se for se in execution.step_executions if se.status == "completed" and se.duration_ms]
+    avg_step_duration_ms = None
+    if completed_steps:
+        avg_step_duration_ms = sum(se.duration_ms for se in completed_steps) / len(completed_steps)
+
+    # Find slowest step
+    slowest_step = None
+    slowest_step_duration_ms = None
+    if completed_steps:
+        slowest = max(completed_steps, key=lambda x: x.duration_ms or 0)
+        slowest_step = slowest.workflow_step.name
+        slowest_step_duration_ms = slowest.duration_ms
+
+    # Find bottleneck (step with longest wait time before starting)
+    bottleneck_step = None
+    max_wait_time = 0
+
+    sorted_steps = sorted(execution.step_executions, key=lambda x: x.execution_order)
+    for i, step_exec in enumerate(sorted_steps):
+        if i == 0 or not step_exec.started_at:
+            continue
+
+        prev_step = sorted_steps[i - 1]
+        if prev_step.completed_at and step_exec.started_at:
+            wait_time = (step_exec.started_at - prev_step.completed_at).total_seconds()
+            if wait_time > max_wait_time:
+                max_wait_time = wait_time
+                bottleneck_step = step_exec.workflow_step.name
+
+    return ExecutionMetrics(
+        instance_id=execution.id,
+        total_duration_ms=execution.duration_ms,
+        steps_completed=steps_completed,
+        steps_failed=steps_failed,
+        steps_pending=steps_pending,
+        avg_step_duration_ms=avg_step_duration_ms,
+        slowest_step=slowest_step,
+        slowest_step_duration_ms=slowest_step_duration_ms,
+        bottleneck_step=bottleneck_step,
+    )

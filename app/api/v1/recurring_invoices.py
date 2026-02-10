@@ -15,12 +15,13 @@ Phase 2.2 der Feature-Roadmap (Februar 2026).
 
 from datetime import date, datetime
 from decimal import Decimal
+import re
 from typing import List, Optional
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Path
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Path, Request
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.safe_errors import safe_error_detail, safe_error_log
@@ -33,6 +34,7 @@ from app.db.models_recurring_invoice import (
     OccurrenceMatchMethod,
 )
 from app.api.dependencies import get_db, get_current_active_user
+from app.core.rate_limiting import limiter, get_user_identifier
 from app.services.finance.recurring_invoice_service import (
     get_recurring_invoice_service,
     RecurringInvoiceCreateRequest,
@@ -61,7 +63,7 @@ class RecurringInvoiceCreateSchema(BaseModel):
         description="Intervall-Typ",
     )
     interval_months: int = Field(default=1, ge=1, le=60, description="Intervall in Monaten")
-    expected_amount: float = Field(..., gt=0, description="Erwarteter Betrag")
+    expected_amount: Decimal = Field(..., gt=0, description="Erwarteter Betrag")
     currency: str = Field(default="EUR", max_length=3, description="Waehrung")
     tolerance_percent: float = Field(default=5.0, ge=0, le=100, description="Toleranz in Prozent")
     vendor_entity_id: Optional[UUID] = Field(None, description="Lieferanten-Entity-ID")
@@ -75,11 +77,22 @@ class RecurringInvoiceCreateSchema(BaseModel):
     document_type: Optional[str] = Field(None, max_length=100, description="Dokumenttyp")
     reference_pattern: Optional[str] = Field(None, max_length=255, description="Rechnungsnummer-Muster (Regex)")
 
+    @field_validator("reference_pattern")
+    @classmethod
+    def validate_reference_pattern(cls, v: Optional[str]) -> Optional[str]:
+        """Pruefe ob reference_pattern ein gueltiger Regex ist."""
+        if v is not None:
+            try:
+                re.compile(v)
+            except re.error as e:
+                raise ValueError(f"Ungueltiger regulaerer Ausdruck: {e}")
+        return v
+
 
 class RecurringInvoiceUpdateSchema(BaseModel):
     """Schema fuer Abo-Aktualisierung."""
     status: Optional[RecurringInvoiceStatus] = None
-    expected_amount: Optional[float] = Field(None, gt=0)
+    expected_amount: Optional[Decimal] = Field(None, gt=0)
     interval_type: Optional[RecurringIntervalType] = None
     interval_months: Optional[int] = Field(None, ge=1, le=60)
     tolerance_percent: Optional[float] = Field(None, ge=0, le=100)
@@ -90,6 +103,24 @@ class RecurringInvoiceUpdateSchema(BaseModel):
     category: Optional[str] = Field(None, max_length=100)
     description: Optional[str] = Field(None, max_length=2000)
     reference_pattern: Optional[str] = Field(None, max_length=255)
+
+    @field_validator("reference_pattern")
+    @classmethod
+    def validate_reference_pattern(cls, v: Optional[str]) -> Optional[str]:
+        """Pruefe ob reference_pattern ein gueltiger Regex ist."""
+        if v is not None:
+            try:
+                re.compile(v)
+            except re.error as e:
+                raise ValueError(f"Ungueltiger regulaerer Ausdruck: {e}")
+        return v
+
+
+class PriceHistoryEntry(BaseModel):
+    """Einzelner Eintrag in der Preishistorie."""
+    date: Optional[str] = None
+    amount: Optional[Decimal] = None
+    change_percent: Optional[float] = None
 
 
 class RecurringInvoiceResponse(BaseModel):
@@ -112,7 +143,7 @@ class RecurringInvoiceResponse(BaseModel):
     detection_confidence: float
     detection_method: DetectionMethod
     match_count: int
-    price_history: List[dict]
+    price_history: List[PriceHistoryEntry]
     last_price_change_date: Optional[date]
     price_change_percent: Optional[float]
     status: RecurringInvoiceStatus
@@ -125,8 +156,7 @@ class RecurringInvoiceResponse(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RecurringInvoiceListResponse(BaseModel):
@@ -157,8 +187,7 @@ class OccurrenceResponse(BaseModel):
     notes: Optional[str]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RecurringInvoiceDetailResponse(RecurringInvoiceResponse):
@@ -257,7 +286,7 @@ def _build_recurring_response(r: "RecurringInvoice") -> RecurringInvoiceResponse
         detection_confidence=r.detection_confidence or 0.0,
         detection_method=r.detection_method,
         match_count=r.match_count or 0,
-        price_history=list(r.price_history or []),
+        price_history=[PriceHistoryEntry(**(entry if isinstance(entry, dict) else {})) for entry in (r.price_history or [])],
         last_price_change_date=r.last_price_change_date,
         price_change_percent=r.price_change_percent,
         status=r.status,
@@ -306,7 +335,9 @@ def _build_occurrence_response(o: "RecurringInvoiceOccurrence") -> OccurrenceRes
     summary="Wiederkehrende Muster erkennen",
     description="Analysiert Rechnungshistorie und erkennt Abo-Muster",
 )
+@limiter.limit("10/minute", key_func=get_user_identifier)
 async def detect_recurring_invoices(
+    request: Request,  # Required for rate limiter
     min_occurrences: int = Query(3, ge=2, le=20, description="Minimale Anzahl Vorkommen"),
     lookback_months: int = Query(12, ge=3, le=36, description="Analysezeitraum in Monaten"),
     current_user: User = Depends(get_current_active_user),
@@ -357,7 +388,9 @@ async def detect_recurring_invoices(
     summary="Wiederkehrende Rechnungen auflisten",
     description="Listet alle wiederkehrenden Rechnungen der Firma",
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def list_recurring_invoices(
+    request: Request,  # Required for rate limiter
     status_filter: Optional[RecurringInvoiceStatus] = Query(
         None, alias="status", description="Status-Filter"
     ),
@@ -391,7 +424,9 @@ async def list_recurring_invoices(
     summary="Wiederkehrende Rechnung abrufen",
     description="Ruft eine wiederkehrende Rechnung mit Vorkommen ab",
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_recurring_invoice(
+    request: Request,  # Required for rate limiter
     recurring_id: UUID = Path(..., description="Wiederkehrende-Rechnung-ID"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -423,7 +458,9 @@ async def get_recurring_invoice(
     summary="Wiederkehrende Rechnung erstellen",
     description="Erstellt manuell eine neue wiederkehrende Rechnung",
 )
+@limiter.limit("20/minute", key_func=get_user_identifier)
 async def create_recurring_invoice(
+    request: Request,  # Required for rate limiter
     data: RecurringInvoiceCreateSchema,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -439,7 +476,7 @@ async def create_recurring_invoice(
                 vendor_name=data.vendor_name,
                 interval_type=data.interval_type,
                 interval_months=data.interval_months,
-                expected_amount=Decimal(str(data.expected_amount)),
+                expected_amount=data.expected_amount,
                 currency=data.currency,
                 tolerance_percent=data.tolerance_percent,
                 vendor_entity_id=data.vendor_entity_id,
@@ -470,7 +507,9 @@ async def create_recurring_invoice(
     summary="Wiederkehrende Rechnung aktualisieren",
     description="Aktualisiert eine wiederkehrende Rechnung",
 )
+@limiter.limit("20/minute", key_func=get_user_identifier)
 async def update_recurring_invoice(
+    request: Request,  # Required for rate limiter
     data: RecurringInvoiceUpdateSchema,
     recurring_id: UUID = Path(..., description="Wiederkehrende-Rechnung-ID"),
     current_user: User = Depends(get_current_active_user),
@@ -485,7 +524,7 @@ async def update_recurring_invoice(
             recurring_id,
             RecurringInvoiceUpdateRequest(
                 status=data.status,
-                expected_amount=Decimal(str(data.expected_amount)) if data.expected_amount is not None else None,
+                expected_amount=data.expected_amount,
                 interval_type=data.interval_type,
                 interval_months=data.interval_months,
                 tolerance_percent=data.tolerance_percent,
@@ -519,7 +558,9 @@ async def update_recurring_invoice(
     summary="Fehlende Rechnungen",
     description="Listet ueberfaellige / fehlende erwartete Rechnungen",
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_missing_invoices(
+    request: Request,  # Required for rate limiter
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[MissingInvoiceResponse]:
@@ -551,7 +592,9 @@ async def get_missing_invoices(
     summary="Preisaenderungen",
     description="Listet nicht-alertierte Preisaenderungen bei Abos",
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_price_changes(
+    request: Request,  # Required for rate limiter
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[PriceChangeResponse]:
@@ -584,7 +627,9 @@ async def get_price_changes(
     summary="Soll/Ist-Vergleich",
     description="Erstellt Soll/Ist-Bericht fuer wiederkehrende Rechnungen",
 )
+@limiter.limit("20/minute", key_func=get_user_identifier)
 async def get_soll_ist_report(
+    request: Request,  # Required for rate limiter
     year: int = Query(..., ge=2000, le=2100, description="Jahr"),
     month: int = Query(..., ge=1, le=12, description="Monat"),
     current_user: User = Depends(get_current_active_user),
@@ -644,7 +689,9 @@ async def get_soll_ist_report(
     summary="Dokument manuell zuordnen",
     description="Ordnet ein Dokument manuell einem Abo zu",
 )
+@limiter.limit("20/minute", key_func=get_user_identifier)
 async def manual_match_document(
+    request: Request,  # Required for rate limiter
     data: ManualMatchSchema,
     recurring_id: UUID = Path(..., description="Wiederkehrende-Rechnung-ID"),
     current_user: User = Depends(get_current_active_user),

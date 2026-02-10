@@ -16,14 +16,15 @@ from uuid import UUID
 from datetime import date, timedelta
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import User, RetentionSetting, DocumentArchive
 from app.api.dependencies import get_db, get_current_superuser
 from app.core.safe_errors import safe_error_detail, safe_error_log
+from app.core.rate_limiting import limiter, get_user_identifier
 
 logger = structlog.get_logger(__name__)
 
@@ -84,8 +85,7 @@ class RetentionSettingResponse(BaseModel):
     requires_approval_for_delete: bool
     legal_basis: Optional[str]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UpcomingDeletionItem(BaseModel):
@@ -119,7 +119,9 @@ class UpcomingDeletionsResponse(BaseModel):
     summary="Retention-Einstellungen abrufen",
     description="Listet alle konfigurierten Aufbewahrungsfristen-Kategorien auf"
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_retention_config(
+    request: Request,  # Required for rate limiter
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_superuser),
 ) -> List[RetentionSettingResponse]:
@@ -174,7 +176,9 @@ async def get_retention_config(
     summary="Retention-Einstellung aktualisieren",
     description="Erstellt oder aktualisiert die Retention-Konfiguration fuer eine Kategorie"
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def update_retention_config(
+    request: Request,  # Required for rate limiter
     config: RetentionSettingUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_superuser),
@@ -271,7 +275,9 @@ async def update_retention_config(
     summary="Anstehende Loeschungen auflisten",
     description="Zeigt Dokumente an, deren Aufbewahrungsfrist bald ablaeuft"
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_upcoming_deletions(
+    request: Request,  # Required for rate limiter
     days_ahead: int = Query(
         default=30,
         ge=1,

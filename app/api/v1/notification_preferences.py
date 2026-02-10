@@ -9,8 +9,8 @@ from typing import Dict, List
 from uuid import UUID
 from datetime import time
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
@@ -18,6 +18,7 @@ import structlog
 from app.api.dependencies import get_current_active_user, get_db
 from app.db.models import User, NotificationPreference, UserNotification
 from app.core.safe_errors import safe_error_log
+from app.core.rate_limiting import limiter, get_user_identifier
 
 logger = structlog.get_logger(__name__)
 
@@ -59,8 +60,7 @@ class NotificationPreferenceResponse(BaseModel):
     created_at: str
     updated_at: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class NotificationPreferencesUpdateRequest(BaseModel):
@@ -105,7 +105,9 @@ class TestNotificationRequest(BaseModel):
     summary="Benachrichtigungspraeferenzen abrufen",
     description="Ruft alle Benachrichtigungspraeferenzen des aktuellen Benutzers ab"
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_notification_preferences(
+    request: Request,  # Required for rate limiter
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ) -> List[NotificationPreferenceResponse]:
@@ -149,8 +151,10 @@ async def get_notification_preferences(
     summary="Benachrichtigungspraeferenzen aktualisieren",
     description="Aktualisiert die Benachrichtigungspraeferenzen des aktuellen Benutzers"
 )
+@limiter.limit("20/minute", key_func=get_user_identifier)
 async def update_notification_preferences(
-    request: NotificationPreferencesUpdateRequest,
+    request: Request,  # Required for rate limiter
+    body: NotificationPreferencesUpdateRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ) -> PreferencesUpdateResponse:
@@ -159,7 +163,7 @@ async def update_notification_preferences(
         updated_count = 0
         created_count = 0
 
-        for pref_update in request.preferences:
+        for pref_update in body.preferences:
             # Pruefen ob Praeferenz bereits existiert
             query = select(NotificationPreference).where(
                 NotificationPreference.user_id == current_user.id,
@@ -226,7 +230,9 @@ async def update_notification_preferences(
     summary="Verfuegbare Kanaele auflisten",
     description="Listet alle verfuegbaren Benachrichtigungskanaele mit ihrem Status"
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_available_channels(
+    request: Request,  # Required for rate limiter
     current_user: User = Depends(get_current_active_user),
 ) -> List[NotificationChannelStatus]:
     """Listet alle verfuegbaren Benachrichtigungskanaele mit ihrem Status."""
@@ -273,17 +279,19 @@ async def get_available_channels(
     summary="Test-Benachrichtigung senden",
     description="Sendet eine Test-Benachrichtigung an den aktuellen Benutzer"
 )
+@limiter.limit("20/minute", key_func=get_user_identifier)
 async def send_test_notification(
-    request: TestNotificationRequest,
+    request: Request,  # Required for rate limiter
+    body: TestNotificationRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ) -> TestNotificationResponse:
     """Sendet eine Test-Benachrichtigung an den aktuellen Benutzer."""
     try:
-        if request.channel != "in_app":
+        if body.channel != "in_app":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Kanal '{request.channel}' wird derzeit nicht unterstuetzt. Nur 'in_app' verfuegbar."
+                detail=f"Kanal '{body.channel}' wird derzeit nicht unterstuetzt. Nur 'in_app' verfuegbar."
             )
 
         # Erstelle Test-Benachrichtigung
@@ -291,7 +299,7 @@ async def send_test_notification(
             user_id=current_user.id,
             notification_type="system.test",
             title="Test-Benachrichtigung",
-            message=f"Dies ist eine Test-Benachrichtigung fuer den Kanal '{request.channel}'.",
+            message=f"Dies ist eine Test-Benachrichtigung fuer den Kanal '{body.channel}'.",
             action_url=None,
             is_read=False,
         )
@@ -303,13 +311,13 @@ async def send_test_notification(
         logger.info(
             "test_notification_sent",
             user_id=str(current_user.id),
-            channel=request.channel,
+            channel=body.channel,
             notification_id=str(test_notification.id)
         )
 
         return TestNotificationResponse(
             status="success",
-            channel=request.channel,
+            channel=body.channel,
             notification_id=str(test_notification.id),
             message="Test-Benachrichtigung erfolgreich gesendet",
         )
@@ -321,7 +329,7 @@ async def send_test_notification(
         logger.error(
             "send_test_notification_error",
             user_id=str(current_user.id),
-            channel=request.channel,
+            channel=body.channel,
             **safe_error_log(e)
         )
         raise HTTPException(

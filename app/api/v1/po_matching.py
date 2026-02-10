@@ -13,12 +13,12 @@ Phase 2.2 der Feature-Roadmap (Februar 2026).
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import List, Optional
+from typing import List, Literal, Optional
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, Path
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Query, Path, Request
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.safe_errors import safe_error_detail, safe_error_log
@@ -29,6 +29,7 @@ from app.db.models_po_matching import (
     DiscrepancySeverity,
 )
 from app.api.dependencies import get_db, get_current_active_user
+from app.core.rate_limiting import limiter, get_user_identifier
 from app.services.finance.po_matching_service import (
     get_po_matching_service,
     MatchCreateRequest,
@@ -56,9 +57,9 @@ class MatchCreateSchema(BaseModel):
     vendor_name: Optional[str] = Field(None, max_length=255, description="Lieferantenname")
     order_number: Optional[str] = Field(None, max_length=100, description="Bestellnummer")
     order_date: Optional[datetime] = Field(None, description="Bestelldatum")
-    po_amount: Optional[float] = Field(None, ge=0, description="Bestellbetrag")
-    dn_amount: Optional[float] = Field(None, ge=0, description="Lieferscheinbetrag")
-    invoice_amount: Optional[float] = Field(None, ge=0, description="Rechnungsbetrag")
+    po_amount: Optional[Decimal] = Field(None, ge=0, description="Bestellbetrag")
+    dn_amount: Optional[Decimal] = Field(None, ge=0, description="Lieferscheinbetrag")
+    invoice_amount: Optional[Decimal] = Field(None, ge=0, description="Rechnungsbetrag")
     amount_tolerance_percent: float = Field(default=2.0, ge=0, le=100, description="Betrags-Toleranz in %")
     quantity_tolerance_percent: float = Field(default=1.0, ge=0, le=100, description="Mengen-Toleranz in %")
 
@@ -66,11 +67,11 @@ class MatchCreateSchema(BaseModel):
 class AddDocumentSchema(BaseModel):
     """Schema zum Hinzufuegen eines Dokuments."""
     document_id: UUID = Field(..., description="Dokument-ID")
-    document_type: str = Field(
+    document_type: Literal["purchase_order", "delivery_note", "invoice"] = Field(
         ...,
         description="Dokumenttyp: purchase_order, delivery_note, invoice"
     )
-    amount: Optional[float] = Field(None, ge=0, description="Betrag des Dokuments")
+    amount: Optional[Decimal] = Field(None, ge=0, description="Betrag des Dokuments")
 
 
 class ApproveMatchSchema(BaseModel):
@@ -96,8 +97,7 @@ class DiscrepancyResponse(BaseModel):
     resolution_notes: Optional[str]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MatchResponse(BaseModel):
@@ -129,8 +129,7 @@ class MatchResponse(BaseModel):
     updated_at: datetime
     matched_at: Optional[datetime]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MatchDetailResponse(MatchResponse):
@@ -172,8 +171,7 @@ class UnmatchedDocumentResponse(BaseModel):
     chain_id: Optional[str]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AutoMatchResponse(BaseModel):
@@ -264,7 +262,9 @@ def _match_to_detail_response(match: "PurchaseOrderMatch") -> MatchDetailRespons
     summary="Matches auflisten",
     description="Listet alle PO-Matches mit Filtern und Paginierung"
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def list_matches(
+    request: Request,  # Required for rate limiter
     status: Optional[MatchStatus] = Query(None, description="Status-Filter"),
     vendor_entity_id: Optional[UUID] = Query(None, description="Lieferanten-Filter"),
     date_from: Optional[date] = Query(None, description="Ab Datum"),
@@ -302,7 +302,9 @@ async def list_matches(
     summary="Ungematchte Dokumente",
     description="Findet Dokumente ohne PO-Match"
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_unmatched_documents(
+    request: Request,  # Required for rate limiter
     document_type: Optional[str] = Query(
         None,
         description="Dokumenttyp: purchase_order, delivery_note, invoice"
@@ -337,7 +339,9 @@ async def get_unmatched_documents(
     summary="Matching-Statistiken",
     description="Berechnet Matching-Statistiken fuer einen Zeitraum"
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_matching_statistics(
+    request: Request,  # Required for rate limiter
     period_start: date = Query(..., description="Zeitraum-Start"),
     period_end: date = Query(..., description="Zeitraum-Ende"),
     current_user: User = Depends(get_current_active_user),
@@ -382,7 +386,9 @@ async def get_matching_statistics(
     summary="Match-Detail abrufen",
     description="Ruft einen Match mit allen Abweichungen ab"
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_match_detail(
+    request: Request,  # Required for rate limiter
     match_id: UUID = Path(..., description="Match-ID"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -408,7 +414,9 @@ async def get_match_detail(
     summary="Match erstellen",
     description="Erstellt einen neuen 3-Way Match"
 )
+@limiter.limit("20/minute", key_func=get_user_identifier)
 async def create_match(
+    request: Request,  # Required for rate limiter
     data: MatchCreateSchema,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -429,9 +437,9 @@ async def create_match(
                 vendor_name=data.vendor_name,
                 order_number=data.order_number,
                 order_date=data.order_date,
-                po_amount=Decimal(str(data.po_amount)) if data.po_amount is not None else None,
-                dn_amount=Decimal(str(data.dn_amount)) if data.dn_amount is not None else None,
-                invoice_amount=Decimal(str(data.invoice_amount)) if data.invoice_amount is not None else None,
+                po_amount=data.po_amount,
+                dn_amount=data.dn_amount,
+                invoice_amount=data.invoice_amount,
                 amount_tolerance_percent=data.amount_tolerance_percent,
                 quantity_tolerance_percent=data.quantity_tolerance_percent,
             )
@@ -452,7 +460,9 @@ async def create_match(
     summary="Auto-Matching ausfuehren",
     description="Fuehrt automatisches Matching nach Bestellnummer und Lieferant aus"
 )
+@limiter.limit("10/minute", key_func=get_user_identifier)
 async def auto_detect_matches(
+    request: Request,  # Required for rate limiter
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> AutoMatchResponse:
@@ -481,7 +491,9 @@ async def auto_detect_matches(
     summary="Dokument hinzufuegen",
     description="Fuegt ein Dokument zu einem bestehenden Match hinzu"
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def add_document_to_match(
+    request: Request,  # Required for rate limiter
     data: AddDocumentSchema,
     match_id: UUID = Path(..., description="Match-ID"),
     current_user: User = Depends(get_current_active_user),
@@ -497,7 +509,7 @@ async def add_document_to_match(
             AddDocumentRequest(
                 document_id=data.document_id,
                 document_type=data.document_type,
-                amount=Decimal(str(data.amount)) if data.amount is not None else None,
+                amount=data.amount,
             ),
         )
 
@@ -516,7 +528,9 @@ async def add_document_to_match(
     summary="Match bewerten",
     description="Bewertet einen Match und erkennt Abweichungen"
 )
+@limiter.limit("20/minute", key_func=get_user_identifier)
 async def evaluate_match(
+    request: Request,  # Required for rate limiter
     match_id: UUID = Path(..., description="Match-ID"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -541,7 +555,9 @@ async def evaluate_match(
     summary="Match freigeben",
     description="Gibt einen Match frei (auch bei Abweichungen)"
 )
+@limiter.limit("20/minute", key_func=get_user_identifier)
 async def approve_match(
+    request: Request,  # Required for rate limiter
     data: ApproveMatchSchema,
     match_id: UUID = Path(..., description="Match-ID"),
     current_user: User = Depends(get_current_active_user),
