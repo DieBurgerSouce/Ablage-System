@@ -34,6 +34,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import NotificationRule, User, UserNotification
 from app.services.events.event_bus import Event, EventBus, get_event_bus
 from app.core.safe_errors import safe_error_log
+from app.services.notifications.smart_notification_engine import (
+    SmartNotificationEngine,
+    NotificationEvent,
+    EventCategory,
+    NotificationPriority,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -67,6 +73,12 @@ RULES_SKIPPED_QUIET_HOURS = Counter(
 RULES_SKIPPED_RATE_LIMIT = Counter(
     "notification_rules_skipped_rate_limit_total",
     "Regeln wegen Rate Limit uebersprungen"
+)
+
+ACTIONS_FILTERED_SMART = Counter(
+    "notification_actions_filtered_smart_total",
+    "Aktionen durch Smart Engine gefiltert",
+    ["reason"]
 )
 
 
@@ -663,6 +675,37 @@ class NotificationRuleEngine:
         results = {t.value: 0 for t in ActionType}
 
         for action in actions:
+            # Smart Engine Filter: Pruefen ob Benachrichtigung gesendet werden soll
+            try:
+                smart_engine = SmartNotificationEngine()
+                smart_event = NotificationEvent(
+                    event_id=str(action.rule_id),
+                    event_type=action.event_type,
+                    category=EventCategory.DOCUMENT,  # Default, kann spaeter verfeinert werden
+                    title=action.title or "Benachrichtigung",
+                    message=action.message or "",
+                    priority=NotificationPriority.MEDIUM,  # Map from action priority
+                    user_id=action.user_id,
+                    company_id=action.user_id,  # Placeholder - wird spaeter verfeinert
+                )
+                decision = await smart_engine.should_notify(smart_event)
+                if not decision.should_notify:
+                    logger.info(
+                        "action_filtered_by_smart_engine",
+                        rule_id=str(action.rule_id),
+                        reason=decision.reason,
+                        explanation=decision.explanation,
+                    )
+                    ACTIONS_FILTERED_SMART.labels(reason=decision.reason).inc()
+                    continue
+            except Exception as e:
+                # Smart Engine Fehler sollen Zustellung nicht verhindern
+                logger.warning(
+                    "smart_engine_filter_error",
+                    rule_id=str(action.rule_id),
+                    **safe_error_log(e)
+                )
+
             try:
                 if action.action_type == ActionType.IN_APP:
                     try:

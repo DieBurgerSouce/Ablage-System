@@ -114,6 +114,10 @@ from app.services.compliance.tax_authority_export_service import (
     MAX_FIELD_LENGTH,
     GDPDU_NAMESPACE,
 )
+from app.services.compliance.document_completeness_service import (
+    DocumentCompletenessService,
+    document_completeness_service,
+)
 from app.services.compliance.gobd_service import (
     GoBDComplianceService,
     gobd_compliance_service,
@@ -213,6 +217,9 @@ __all__ = [
     "ENCODING",
     "MAX_FIELD_LENGTH",
     "GDPDU_NAMESPACE",
+    # Document Completeness
+    "DocumentCompletenessService",
+    "document_completeness_service",
     # GoBD Compliance Checks (Vision 2026)
     "GoBDComplianceService",
     "gobd_compliance_service",

@@ -3266,3 +3266,97 @@ async def validate_formula(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Formel-Validierung fehlgeschlagen.",
         )
+
+
+# =============================================================================
+# Preprocessing Configuration Endpoints
+# =============================================================================
+
+
+class PreprocessingStatusResponse(BaseModel):
+    """Status der Bildvorverarbeitung."""
+    aktiviert: bool = Field(..., description="Vorverarbeitung aktiviert?")
+    modus: str = Field(..., description="Aktueller Modus (none/light/standard/aggressive)")
+    opencv_verfuegbar: bool = Field(..., description="OpenCV installiert?")
+
+
+class PreprocessingConfigRequest(BaseModel):
+    """Konfiguration fuer Bildvorverarbeitung."""
+    modus: str = Field(
+        ...,
+        description="Vorverarbeitungs-Modus: none, light, standard, aggressive",
+        pattern="^(none|light|standard|aggressive)$",
+    )
+
+
+@router.get(
+    "/preprocessing/status",
+    response_model=PreprocessingStatusResponse,
+    summary="Vorverarbeitungs-Status",
+    description="Zeigt aktuellen Status der Bild-Vorverarbeitung.",
+)
+async def get_preprocessing_status(
+    current_user: User = Depends(get_current_active_user),
+) -> PreprocessingStatusResponse:
+    """Status der Scan-Vorverarbeitung abrufen."""
+    from app.services.image_preprocessor import (
+        get_image_preprocessor,
+        OPENCV_AVAILABLE,
+    )
+    from app.services.ocr_pipeline import get_ocr_pipeline
+
+    pipeline = get_ocr_pipeline()
+    preprocessor = get_image_preprocessor()
+
+    return PreprocessingStatusResponse(
+        aktiviert=pipeline.enable_preprocessing,
+        modus=preprocessor.config.mode.value,
+        opencv_verfuegbar=OPENCV_AVAILABLE,
+    )
+
+
+@router.put(
+    "/preprocessing/config",
+    response_model=PreprocessingStatusResponse,
+    summary="Vorverarbeitungs-Konfiguration",
+    description="Aendert den Vorverarbeitungs-Modus.",
+)
+async def update_preprocessing_config(
+    request: PreprocessingConfigRequest,
+    current_user: User = Depends(get_current_active_user),
+) -> PreprocessingStatusResponse:
+    """Vorverarbeitungs-Modus aendern."""
+    from app.services.image_preprocessor import (
+        PreprocessingMode,
+        PreprocessingConfig,
+        get_image_preprocessor,
+        OPENCV_AVAILABLE,
+    )
+    from app.services.ocr_pipeline import get_ocr_pipeline
+
+    pipeline = get_ocr_pipeline()
+
+    # Update mode
+    new_mode = PreprocessingMode(request.modus)
+    new_config = PreprocessingConfig(mode=new_mode)
+
+    # Reset singleton to pick up new config
+    import app.services.image_preprocessor as preprocessor_module
+    preprocessor_module._preprocessor = None
+    preprocessor = get_image_preprocessor(new_config)
+
+    # Update pipeline reference
+    pipeline._image_preprocessor = preprocessor
+    pipeline.enable_preprocessing = new_mode != PreprocessingMode.NONE
+
+    logger.info(
+        "preprocessing_config_updated",
+        user_id=str(current_user.id),
+        modus=new_mode.value,
+    )
+
+    return PreprocessingStatusResponse(
+        aktiviert=pipeline.enable_preprocessing,
+        modus=preprocessor.config.mode.value,
+        opencv_verfuegbar=OPENCV_AVAILABLE,
+    )

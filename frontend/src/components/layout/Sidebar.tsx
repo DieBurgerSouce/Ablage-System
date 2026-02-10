@@ -259,6 +259,9 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                                     <SidebarLink to="/admin/mlops" icon={BrainCircuit} label="MLOps" onNavigate={onNavigate} />
                                 )}
                                 {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/ai-admin" icon={Brain} label="KI-Autonomie" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
                                     <SidebarLink to="/admin/daily-briefing" icon={Sparkles} label="Tagesbriefing" onNavigate={onNavigate} />
                                 )}
                                 {permissions.isAdmin && (

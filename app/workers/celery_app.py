@@ -291,6 +291,7 @@ celery_app = Celery(
         "app.workers.tasks.ocr_router_training_tasks",  # OCR ML Router Training (collect, A/B test, synthetic data)
         "app.workers.tasks.autonomous_trust_tasks",  # Autonomous Trust (proposals, metrics, upgrades, cleanup, notifications)
         "app.workers.tasks.retention_enforcement_tasks",  # Retention Enforcement (daily scan, reviews, compliance report)
+        "app.workers.tasks.escalation_tasks",  # Phase 3: Notification Escalation Advancement
     ]
 )
 
@@ -1943,6 +1944,22 @@ celery_app.conf.update(
             "task": "app.workers.tasks.autonomous_trust_tasks.notify_pending_proposals",
             "schedule": crontab(minute=0),  # Jede volle Stunde
             "options": {"queue": "notifications"},
+        },
+        # =================================================================
+        # Contract Deadline Checker (Vertragsfristen-Pruefung)
+        # Taeglich: Alle aktiven Vertraege auf anstehende Fristen pruefen
+        # =================================================================
+        "check-contract-deadlines": {
+            "task": "app.workers.contract_deadline_checker.check_contract_deadlines",
+            "schedule": crontab(hour=6, minute=0),  # Taeglich um 06:00 Uhr
+            "options": {"queue": "metadata"},
+        },
+        # =================================================================
+        # Phase 3: Escalation Advancement (alle 15 Minuten)
+        # =================================================================
+        "escalation-advance-pending": {
+            "task": "escalation.advance_pending_escalations",
+            "schedule": crontab(minute="*/15"),  # Alle 15 Minuten
         },
     },
 

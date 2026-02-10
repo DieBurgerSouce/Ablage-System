@@ -13,7 +13,7 @@ Feinpoliert und durchdacht - Enterprise-grade OCR Pipeline.
 
 import asyncio
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 from pathlib import Path
 import structlog
@@ -85,6 +85,10 @@ class OCRPipelineResult:
     error: Optional[str] = None
     needs_review: bool = False  # True wenn Confidence zwischen low und medium
     confidence_fallback_triggered: bool = False  # True wenn Fallback wegen niedriger Confidence
+    # Image Preprocessing
+    preprocessing_applied: bool = False
+    preprocessing_steps: List[str] = field(default_factory=list)
+    preprocessing_time_ms: int = 0
     # Entity Extraction (Document Intelligence)
     entity_extraction_applied: bool = False
     extracted_entities: Optional[Dict[str, Any]] = None
@@ -113,6 +117,9 @@ class OCRPipelineResult:
             "error": self.error,
             "needs_review": self.needs_review,
             "confidence_fallback_triggered": self.confidence_fallback_triggered,
+            "preprocessing_applied": self.preprocessing_applied,
+            "preprocessing_steps": self.preprocessing_steps,
+            "preprocessing_time_ms": self.preprocessing_time_ms,
             "entity_extraction_applied": self.entity_extraction_applied,
             "extracted_entities": self.extracted_entities,
             "structured_extraction_applied": self.structured_extraction_applied,
@@ -142,6 +149,7 @@ class OCRPipeline:
         enable_historical_normalization: bool = True,
         enable_entity_extraction: bool = True,
         enable_structured_extraction: bool = True,
+        enable_preprocessing: bool = True,
         min_confidence_threshold: float = 0.65,
         confidence_thresholds: Optional[ConfidenceThresholds] = None,
         enable_confidence_fallback: bool = True
@@ -156,6 +164,7 @@ class OCRPipeline:
             enable_historical_normalization: Historical German Normalizer aktivieren
             enable_entity_extraction: Entity Extraction (Business Partner) aktivieren
             enable_structured_extraction: Strukturierte Extraktion (Invoice, Order, Contract) aktivieren
+            enable_preprocessing: Image Preprocessing aktivieren
             min_confidence_threshold: Minimale Confidence für Akzeptanz (legacy)
             confidence_thresholds: Konfigurierbare Schwellenwerte für Confidence
             enable_confidence_fallback: Fallback bei niedriger Confidence aktivieren
@@ -169,6 +178,7 @@ class OCRPipeline:
         )
         self.enable_entity_extraction = enable_entity_extraction
         self.enable_structured_extraction = enable_structured_extraction
+        self.enable_preprocessing = enable_preprocessing
         self.min_confidence_threshold = min_confidence_threshold
         self.confidence_thresholds = confidence_thresholds or ConfidenceThresholds()
         self.enable_confidence_fallback = enable_confidence_fallback
@@ -185,6 +195,9 @@ class OCRPipeline:
 
         # Historical German Normalizer (lazy load)
         self._historical_normalizer: Optional[HistoricalGermanNormalizer] = None
+
+        # Image Preprocessor (lazy load)
+        self._image_preprocessor = None
 
         # Entity Extraction Service (lazy load)
         self._entity_extraction_service = None
@@ -203,6 +216,7 @@ class OCRPipeline:
             historical_normalization=self.enable_historical_normalization,
             entity_extraction=enable_entity_extraction,
             structured_extraction=enable_structured_extraction,
+            preprocessing=enable_preprocessing,
             min_confidence=min_confidence_threshold,
             confidence_thresholds={
                 "low": self.confidence_thresholds.low,
@@ -334,6 +348,24 @@ class OCRPipeline:
                 self.enable_structured_extraction = False
         return self._structured_extraction_service
 
+    def _get_image_preprocessor(self):
+        """Lazy-load Image Preprocessor."""
+        if self._image_preprocessor is None and self.enable_preprocessing:
+            try:
+                from app.services.image_preprocessor import (
+                    ImagePreprocessor,
+                    get_image_preprocessor,
+                )
+                self._image_preprocessor = get_image_preprocessor()
+                logger.info("image_preprocessor_loaded")
+            except ImportError as e:
+                logger.warning(
+                    "image_preprocessor_unavailable",
+                    **safe_error_log(e)
+                )
+                self.enable_preprocessing = False
+        return self._image_preprocessor
+
     async def process(
         self,
         document_id: str,
@@ -389,11 +421,56 @@ class OCRPipeline:
                 # Versuche Cleanup
                 self.memory_guard.cleanup_cache()
 
+        # Step 1.5: Image Preprocessing
+        preprocessing_applied = False
+        preprocessing_steps: List[str] = []
+        preprocessing_time_ms = 0
+        preprocessed_image_path = image_path  # Default: use original
+
+        if self.enable_preprocessing:
+            preprocessor = self._get_image_preprocessor()
+            if preprocessor:
+                try:
+                    from PIL import Image as PILImage
+                    import tempfile
+
+                    pil_image = PILImage.open(image_path)
+                    preprocess_result = preprocessor.process(pil_image)
+
+                    if preprocess_result.applied_steps and preprocess_result.applied_steps != ["none"]:
+                        # Save preprocessed image to temp file
+                        suffix = Path(image_path).suffix or ".png"
+                        with tempfile.NamedTemporaryFile(
+                            delete=False, suffix=suffix, prefix="ocr_preprocessed_"
+                        ) as tmp:
+                            preprocess_result.image.save(tmp.name)
+                            preprocessed_image_path = tmp.name
+
+                        preprocessing_applied = True
+                        preprocessing_steps = preprocess_result.applied_steps
+                        preprocessing_time_ms = int(preprocess_result.processing_time_ms)
+
+                        logger.info(
+                            "ocr_pipeline_preprocessing_applied",
+                            document_id=document_id,
+                            steps=preprocessing_steps,
+                            time_ms=preprocessing_time_ms,
+                            quality_estimate=preprocess_result.quality_improvement_estimate,
+                        )
+
+                except Exception as e:
+                    logger.warning(
+                        "ocr_pipeline_preprocessing_error",
+                        document_id=document_id,
+                        **safe_error_log(e)
+                    )
+                    # Continue with original image on error
+
         # Step 2: OCR via Fallback Chain
         try:
             fallback_result = await self.fallback_chain.execute(
                 document_id=document_id,
-                image_path=image_path,
+                image_path=preprocessed_image_path,
                 language=language,
                 options=options,
                 preferred_backend=preferred_backend,
@@ -504,6 +581,13 @@ class OCRPipeline:
                 error=fallback_result.error
             )
 
+        # Cleanup preprocessed temp file
+        if preprocessed_image_path != image_path:
+            try:
+                Path(preprocessed_image_path).unlink(missing_ok=True)
+            except OSError:
+                pass
+
         # Step 2.5: Confidence Thresholding
         needs_review = False
         confidence_fallback_triggered = False
@@ -538,7 +622,7 @@ class OCRPipeline:
                     try:
                         retry_result = await self.fallback_chain.execute(
                             document_id=document_id,
-                            image_path=image_path,
+                            image_path=preprocessed_image_path,
                             language=language,
                             options=options,
                             preferred_backend=retry_backend,
@@ -853,6 +937,9 @@ class OCRPipeline:
             historical_normalization_details=historical_normalization_details,
             needs_review=needs_review,
             confidence_fallback_triggered=confidence_fallback_triggered,
+            preprocessing_applied=preprocessing_applied,
+            preprocessing_steps=preprocessing_steps,
+            preprocessing_time_ms=preprocessing_time_ms,
             entity_extraction_applied=entity_extraction_applied,
             extracted_entities=extracted_entities,
             structured_extraction_applied=structured_extraction_applied,
@@ -872,6 +959,8 @@ class OCRPipeline:
             entities_found=len(extracted_entities.get("identifiers", [])) if extracted_entities else 0,
             structured_extraction=structured_extraction_applied,
             document_type=classified_document_type,
+            preprocessing=preprocessing_applied,
+            preprocessing_steps_count=len(preprocessing_steps),
             time_ms=total_time,
             needs_review=needs_review,
             confidence_fallback_triggered=confidence_fallback_triggered
@@ -944,6 +1033,7 @@ class OCRPipeline:
                 "historical_normalization_enabled": self.enable_historical_normalization,
                 "entity_extraction_enabled": self.enable_entity_extraction,
                 "structured_extraction_enabled": self.enable_structured_extraction,
+                "preprocessing_enabled": self.enable_preprocessing,
                 "min_confidence_threshold": self.min_confidence_threshold,
                 "confidence_thresholds": {
                     "low": self.confidence_thresholds.low,
@@ -975,6 +1065,15 @@ class OCRPipeline:
         # German Agent Status
         if self._german_agent:
             status["german_correction"] = self._german_agent.get_correction_stats()
+
+        # Preprocessing Status
+        if self._image_preprocessor:
+            status["preprocessing"] = {
+                "loaded": True,
+                "mode": self._image_preprocessor.config.mode.value,
+            }
+        else:
+            status["preprocessing"] = {"loaded": False}
 
         # Entity Extraction Status
         if self._entity_extraction_service:

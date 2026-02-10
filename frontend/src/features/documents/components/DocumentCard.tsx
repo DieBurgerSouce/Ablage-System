@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DocumentTypeIcon, OCRStatusBadge } from './DocumentBadges';
 import { LanguageBadge } from './LanguageBadge';
+import { QualityAmpel } from '@/components/ui/QualityAmpel';
 import type { Document } from '../types';
 import { motionTokens } from '@/lib/motion-tokens';
 import { cn } from '@/lib/utils';
@@ -128,6 +129,7 @@ export function DocumentCard({
                                 compact
                             />
                         )}
+                        <QualityAmpel score={document.ocrConfidence ?? 0} size="sm" showLabel={false} />
                         <OCRStatusBadge status={document.ocrStatus} confidence={document.ocrConfidence} />
                     </div>
                 </div>

@@ -775,6 +775,7 @@ from app.api.v1.period_comparison import router as period_comparison_router
 from app.api.v1.banking_fints import fints_router, sepa_router, dashboard_router as banking_dashboard_router
 from app.api.v1.datev import router as datev_router
 from app.api.v1.finance import router as finance_router
+from app.api.v1.recurring_invoices import router as recurring_invoices_router  # Phase 2.2: Abo-Verwaltung
 from app.api.v1.exports import router as exports_router
 from app.api.v1.scheduled_exports import router as scheduled_exports_router
 from app.api.v1.companies import router as companies_router
@@ -810,9 +811,11 @@ from app.api.v1.predictions import router as predictions_router  # Phase 3: Pred
 from app.api.v1.approvals import router as approvals_router
 from app.api.v1.oneclick import router as oneclick_router
 from app.api.v1.document_chains import router as document_chains_router
+from app.api.v1.po_matching import router as po_matching_router
 from app.api.v1.hygiene import router as hygiene_router
 from app.api.v1.tax_advisor_packages import router as tax_advisor_packages_router
 from app.api.v1.accounting import router as accounting_router
+from app.api.v1.budgets import router as budgets_router
 from app.api.v1.kanban import router as kanban_router
 from app.api.v1.calendar import router as calendar_router
 from app.api.v1.magic_buttons import router as magic_buttons_router
@@ -845,6 +848,8 @@ from app.api.v1.risk_intelligence import router as risk_intelligence_router
 from app.api.v1.ocr_learning import router as ocr_learning_router
 from app.api.v1.bpmn import router as bpmn_router
 from app.api.v1.compliance import router as compliance_router
+from app.api.v1.document_completeness import router as document_completeness_router
+from app.api.v1.document_quality import router as document_quality_router  # Datenqualitaets-Ampel
 from app.api.v1.dpia import router as dpia_router
 from app.api.v1.help import router as help_router
 from app.api.v1.mfa import router as mfa_router
@@ -918,6 +923,9 @@ from app.api.v1.portal import router as portal_router  # Phase 5.2: Kundenportal
 from app.api.v1.esg import router as esg_router  # Phase 7.4: ESG-Reporting
 from app.api.v1.reporting import router as reporting_router  # Executive Dashboard Reporting
 from app.api.v1.tenant_admin import router as tenant_admin_router  # Multi-Tenancy Admin API
+from app.api.v1.retention_admin import router as retention_admin_router  # Phase 3: GoBD Retention Admin
+from app.api.v1.cross_tenant_reports import router as cross_tenant_reports_router  # Phase 3: Cross-Tenant Reports
+from app.api.v1.notification_preferences import router as notification_preferences_router  # Phase 3: Notification Preferences
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -966,6 +974,7 @@ app.include_router(banking_dashboard_router, prefix="/api/v1")
 app.include_router(psd2_banking_router, prefix="/api/v1")  # Phase 6: PSD2/FinTS Banking Integration
 app.include_router(datev_router, prefix="/api/v1")
 app.include_router(finance_router, prefix="/api/v1")
+app.include_router(recurring_invoices_router, prefix="/api/v1")  # Phase 2.2: Abo-Verwaltung
 app.include_router(exports_router, prefix="/api/v1")
 app.include_router(scheduled_exports_router, prefix="/api/v1")
 app.include_router(companies_router, prefix="/api/v1")
@@ -1001,9 +1010,11 @@ app.include_router(predictions_router, prefix="/api/v1")  # Phase 3: Predictive 
 app.include_router(approvals_router, prefix="/api/v1")
 app.include_router(oneclick_router, prefix="/api/v1")
 app.include_router(document_chains_router, prefix="/api/v1")
+app.include_router(po_matching_router, prefix="/api/v1")  # 3-Way PO-Matching
 app.include_router(hygiene_router, prefix="/api/v1")
 app.include_router(tax_advisor_packages_router, prefix="/api/v1")
 app.include_router(accounting_router, prefix="/api/v1")
+app.include_router(budgets_router, prefix="/api/v1")  # Phase 2.1: Budgetierung & Controlling
 app.include_router(calendar_router, prefix="/api/v1")
 app.include_router(magic_buttons_router, prefix="/api/v1")
 app.include_router(contracts_router, prefix="/api/v1")
@@ -1028,6 +1039,8 @@ app.include_router(risk_intelligence_router, prefix="/api/v1")
 app.include_router(ocr_learning_router, prefix="/api/v1")
 app.include_router(bpmn_router, prefix="/api/v1")
 app.include_router(compliance_router, prefix="/api/v1")
+app.include_router(document_completeness_router, prefix="/api/v1")  # Belegpruefung
+app.include_router(document_quality_router, prefix="/api/v1")  # Datenqualitaets-Ampel
 app.include_router(dpia_router, prefix="/api/v1")
 app.include_router(help_router, prefix="/api/v1")
 app.include_router(mfa_router, prefix="/api/v1")
@@ -1118,6 +1131,11 @@ app.include_router(kanban_router, prefix="/api/v1")
 
 # Enterprise Completion: Multi-Tenancy Admin
 app.include_router(tenant_admin_router, prefix="/api/v1")
+
+# Phase 3: Enterprise-Compliance (P1-Critical)
+app.include_router(retention_admin_router, prefix="/api/v1")  # GoBD Retention Admin Config
+app.include_router(cross_tenant_reports_router, prefix="/api/v1")  # Multi-Firma Cross-Tenant Reports
+app.include_router(notification_preferences_router, prefix="/api/v1")  # Notification Preferences
 
 
 # ==================== Health & Status Endpoints ====================

@@ -8,7 +8,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { apiClient } from '@/lib/api/client'
 import { logger } from '@/lib/logger'
-import { CardContent, CardHeader } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -30,6 +30,8 @@ import {
     ZoomIn,
     ZoomOut,
     RotateCcw,
+    Columns,
+    Rows,
 } from 'lucide-react'
 
 import { useNextSample, useSampleDetail, useLLMReview, useVerifySample, useSubmitCorrection } from '../hooks/use-review-queries'
@@ -40,6 +42,8 @@ import { useFieldNavigation } from '../hooks/use-field-navigation'
 import { CorrectionEditor } from './CorrectionEditor'
 import { KeyboardShortcutsHelp, ShortcutHint } from './KeyboardShortcutsHelp'
 import { StructuredReviewPanel } from './StructuredReviewPanel'
+import { SplitViewLayout } from './SplitViewLayout'
+import { QualityAmpel } from '@/components/ui/QualityAmpel'
 import type { CorrectionType } from '../types'
 import type { ExtractedInvoiceData } from '@/features/extracted-data/types/extracted-data.types'
 
@@ -123,6 +127,12 @@ export function ReviewWorkspace({
     const [previewError, setPreviewError] = useState(false)
     const [activeTab, setActiveTab] = useState<'structured' | 'ocr-text'>('structured')
     const [zoomLevel, setZoomLevel] = useState(100) // Zoom in Prozent
+    const [layoutMode, setLayoutMode] = useState<'tabs' | 'split'>(() => {
+        if (typeof window !== 'undefined') {
+            return (localStorage.getItem('ocr-review-layout') as 'tabs' | 'split') || 'tabs'
+        }
+        return 'tabs'
+    })
 
     // Ref für StructuredReviewPanel Container (für Field Navigation)
     const structuredPanelRef = useRef<HTMLDivElement>(null)
@@ -350,6 +360,15 @@ export function ReviewWorkspace({
         setActiveTab(tab as 'structured' | 'ocr-text')
     }, [])
 
+    // Layout-Modus wechseln
+    const handleLayoutToggle = useCallback(() => {
+        setLayoutMode(prev => {
+            const next = prev === 'tabs' ? 'split' : 'tabs'
+            localStorage.setItem('ocr-review-layout', next)
+            return next
+        })
+    }, [])
+
     // Keyboard Shortcuts Handler
     const handleKeyboardAction = useCallback((action: ReviewAction) => {
         switch (action.type) {
@@ -533,158 +552,200 @@ export function ReviewWorkspace({
                                 {nextSample.reason || nextSample.priority}
                             </Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                            Konfidenz: {(Number(nextSample.confidence ?? 0) * 100).toFixed(0)}%
-                            {nextSample.is_spot_check && ' | Stichprobe'}
-                            {corrections.hasCorrections && ` | ${corrections.correctionCount} Korrekturen`}
-                        </p>
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+                            <QualityAmpel score={Number(nextSample.confidence ?? 0)} size="sm" showLabel={false} />
+                            <span>
+                                Konfidenz: {(Number(nextSample.confidence ?? 0) * 100).toFixed(0)}%
+                                {nextSample.is_spot_check && ' | Stichprobe'}
+                                {corrections.hasCorrections && ` | ${corrections.correctionCount} Korrekturen`}
+                            </span>
+                        </div>
                     </div>
                 </div>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowShortcutsHelp(true)}
-                >
-                    <Keyboard className="h-4 w-4 mr-1" />
-                    Shortcuts
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleLayoutToggle}
+                        title={layoutMode === 'tabs' ? 'Split-Ansicht' : 'Tab-Ansicht'}
+                    >
+                        {layoutMode === 'tabs' ? (
+                            <Columns className="h-4 w-4 mr-1" />
+                        ) : (
+                            <Rows className="h-4 w-4 mr-1" />
+                        )}
+                        {layoutMode === 'tabs' ? 'Split' : 'Tabs'}
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowShortcutsHelp(true)}
+                    >
+                        <Keyboard className="h-4 w-4 mr-1" />
+                        Shortcuts
+                    </Button>
+                </div>
             </div>
 
-            {/* Main Content - Volle Breite, optimiertes Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-[calc(100vh-240px)]">
-                {/* Linke Spalte: Dokument-Vorschau (8/12 = 66% Breite) */}
-                <div className="lg:col-span-8 flex flex-col">
-                    <Card className="flex-1 flex flex-col border-0 shadow-none bg-transparent">
-                        <CardHeader className="pb-1 pt-0 px-0 flex-shrink-0">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    {/* Zoom Controls */}
-                                    <div className="flex items-center gap-1 bg-muted/50 rounded-md p-0.5">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-7 w-7"
-                                            onClick={handleZoomOut}
-                                            disabled={zoomLevel <= 50}
-                                            title="Verkleinern"
-                                        >
-                                            <ZoomOut className="h-3.5 w-3.5" />
-                                        </Button>
-                                        <span className="text-xs font-mono w-12 text-center">{zoomLevel}%</span>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-7 w-7"
-                                            onClick={handleZoomIn}
-                                            disabled={zoomLevel >= 300}
-                                            title="Vergrößern"
-                                        >
-                                            <ZoomIn className="h-3.5 w-3.5" />
-                                        </Button>
-                                        {zoomLevel !== 100 && (
+            {/* Main Content */}
+            {layoutMode === 'split' ? (
+                <SplitViewLayout
+                    previewImageUrl={previewImageUrl}
+                    previewLoading={previewLoading}
+                    previewError={previewError}
+                    detailLoading={detailLoading}
+                    zoomLevel={zoomLevel}
+                    onZoomIn={handleZoomIn}
+                    onZoomOut={handleZoomOut}
+                    onZoomReset={handleZoomReset}
+                    queueItem={nextSample}
+                    extractedDataReview={extractedDataReview}
+                    corrections={corrections}
+                    isSubmitting={isSubmitting}
+                    structuredPanelRef={structuredPanelRef}
+                    originalText={sampleDetail?.ground_truth_text || nextSample.ocr_text_preview || ''}
+                    currentText={currentText}
+                    llmSuggestion={llmReview?.corrected_text}
+                    onTextChange={handleTextChange}
+                    activeTab={activeTab}
+                    onTabChange={handleTabChange}
+                />
+            ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-[calc(100vh-240px)]">
+                    {/* Linke Spalte: Dokument-Vorschau (8/12 = 66% Breite) */}
+                    <div className="lg:col-span-8 flex flex-col">
+                        <Card className="flex-1 flex flex-col border-0 shadow-none bg-transparent">
+                            <CardHeader className="pb-1 pt-0 px-0 flex-shrink-0">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        {/* Zoom Controls */}
+                                        <div className="flex items-center gap-1 bg-muted/50 rounded-md p-0.5">
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
                                                 className="h-7 w-7"
-                                                onClick={handleZoomReset}
-                                                title="Zurücksetzen"
+                                                onClick={handleZoomOut}
+                                                disabled={zoomLevel <= 50}
+                                                title="Verkleinern"
                                             >
-                                                <RotateCcw className="h-3.5 w-3.5" />
+                                                <ZoomOut className="h-3.5 w-3.5" />
                                             </Button>
-                                        )}
-                                    </div>
-                                </div>
-                                {/* LLM-Status kompakt */}
-                                {llmReview && (
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs text-muted-foreground">
-                                            LLM: {Number(llmReview.quality_score ?? 0).toFixed(0)}/10
-                                        </span>
-                                        {llmReview.corrected_text && llmReview.corrected_text !== currentText && (
+                                            <span className="text-xs font-mono w-12 text-center">{zoomLevel}%</span>
                                             <Button
-                                                size="sm"
                                                 variant="ghost"
-                                                onClick={handleApplyLLMSuggestion}
-                                                className="h-7 px-2 text-xs"
+                                                size="icon"
+                                                className="h-7 w-7"
+                                                onClick={handleZoomIn}
+                                                disabled={zoomLevel >= 300}
+                                                title="Vergrößern"
                                             >
-                                                <Sparkles className="h-3 w-3 mr-1" />
-                                                Vorschlag
+                                                <ZoomIn className="h-3.5 w-3.5" />
                                             </Button>
-                                        )}
+                                            {zoomLevel !== 100 && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-7 w-7"
+                                                    onClick={handleZoomReset}
+                                                    title="Zurücksetzen"
+                                                >
+                                                    <RotateCcw className="h-3.5 w-3.5" />
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {/* LLM-Status kompakt */}
+                                    {llmReview && (
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-muted-foreground">
+                                                LLM: {Number(llmReview.quality_score ?? 0).toFixed(0)}/10
+                                            </span>
+                                            {llmReview.corrected_text && llmReview.corrected_text !== currentText && (
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={handleApplyLLMSuggestion}
+                                                    className="h-7 px-2 text-xs"
+                                                >
+                                                    <Sparkles className="h-3 w-3 mr-1" />
+                                                    Vorschlag
+                                                </Button>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </CardHeader>
+                            <CardContent className="flex-1 overflow-hidden p-0">
+                                {(detailLoading || previewLoading) ? (
+                                    <Skeleton className="h-full w-full min-h-[500px]" />
+                                ) : previewImageUrl && !previewError ? (
+                                    <div
+                                        className="h-full w-full bg-zinc-100 dark:bg-zinc-900 rounded border overflow-auto"
+                                        style={{ cursor: zoomLevel > 100 ? 'grab' : 'default' }}
+                                    >
+                                        <img
+                                            src={previewImageUrl}
+                                            alt="Dokument-Vorschau"
+                                            className="transition-transform duration-150"
+                                            style={{
+                                                transform: `scale(${zoomLevel / 100})`,
+                                                transformOrigin: 'top left',
+                                                minHeight: '100%',
+                                                width: zoomLevel > 100 ? 'auto' : '100%',
+                                            }}
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="h-full min-h-[500px] flex items-center justify-center bg-muted/30 rounded border">
+                                        <div className="text-center text-muted-foreground">
+                                            <FileText className="h-12 w-12 mx-auto mb-2 opacity-40" />
+                                            <p className="text-sm">{previewError ? 'Vorschau nicht verfügbar' : 'Kein Dokument'}</p>
+                                        </div>
                                     </div>
                                 )}
-                            </div>
-                        </CardHeader>
-                        <CardContent className="flex-1 overflow-hidden p-0">
-                            {(detailLoading || previewLoading) ? (
-                                <Skeleton className="h-full w-full min-h-[500px]" />
-                            ) : previewImageUrl && !previewError ? (
-                                <div
-                                    className="h-full w-full bg-zinc-100 dark:bg-zinc-900 rounded border overflow-auto"
-                                    style={{ cursor: zoomLevel > 100 ? 'grab' : 'default' }}
-                                >
-                                    <img
-                                        src={previewImageUrl}
-                                        alt="Dokument-Vorschau"
-                                        className="transition-transform duration-150"
-                                        style={{
-                                            transform: `scale(${zoomLevel / 100})`,
-                                            transformOrigin: 'top left',
-                                            minHeight: '100%',
-                                            width: zoomLevel > 100 ? 'auto' : '100%',
-                                        }}
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Rechte Spalte: Daten-Panel (4/12 = 33% Breite) */}
+                    <div className="lg:col-span-4 flex flex-col">
+                        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col">
+                            <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
+                                <TabsTrigger value="structured" className="flex items-center gap-1.5 text-sm">
+                                    <LayoutGrid className="h-3.5 w-3.5" />
+                                    Daten
+                                </TabsTrigger>
+                                <TabsTrigger value="ocr-text" className="flex items-center gap-1.5 text-sm">
+                                    <AlignLeft className="h-3.5 w-3.5" />
+                                    OCR-Text
+                                </TabsTrigger>
+                            </TabsList>
+
+                            <TabsContent value="structured" className="flex-1 mt-3 overflow-hidden">
+                                <div ref={structuredPanelRef} className="h-full">
+                                    <StructuredReviewPanel
+                                        queueItem={nextSample}
+                                        extractedDataReview={extractedDataReview}
+                                        corrections={corrections}
+                                        disabled={isSubmitting}
+                                        className="h-full"
                                     />
                                 </div>
-                            ) : (
-                                <div className="h-full min-h-[500px] flex items-center justify-center bg-muted/30 rounded border">
-                                    <div className="text-center text-muted-foreground">
-                                        <FileText className="h-12 w-12 mx-auto mb-2 opacity-40" />
-                                        <p className="text-sm">{previewError ? 'Vorschau nicht verfügbar' : 'Kein Dokument'}</p>
-                                    </div>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
+                            </TabsContent>
 
-                {/* Rechte Spalte: Daten-Panel (4/12 = 33% Breite) */}
-                <div className="lg:col-span-4 flex flex-col">
-                    <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col">
-                        <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
-                            <TabsTrigger value="structured" className="flex items-center gap-1.5 text-sm">
-                                <LayoutGrid className="h-3.5 w-3.5" />
-                                Daten
-                            </TabsTrigger>
-                            <TabsTrigger value="ocr-text" className="flex items-center gap-1.5 text-sm">
-                                <AlignLeft className="h-3.5 w-3.5" />
-                                OCR-Text
-                            </TabsTrigger>
-                        </TabsList>
-
-                        <TabsContent value="structured" className="flex-1 mt-3 overflow-hidden">
-                            <div ref={structuredPanelRef} className="h-full">
-                                <StructuredReviewPanel
-                                    queueItem={nextSample}
-                                    extractedDataReview={extractedDataReview}
-                                    corrections={corrections}
+                            <TabsContent value="ocr-text" className="flex-1 mt-3">
+                                <CorrectionEditor
+                                    originalText={sampleDetail?.ground_truth_text || nextSample.ocr_text_preview || ''}
+                                    initialText={currentText}
+                                    llmSuggestion={llmReview?.corrected_text}
+                                    onTextChange={handleTextChange}
                                     disabled={isSubmitting}
-                                    className="h-full"
                                 />
-                            </div>
-                        </TabsContent>
-
-                        <TabsContent value="ocr-text" className="flex-1 mt-3">
-                            <CorrectionEditor
-                                originalText={sampleDetail?.ground_truth_text || nextSample.ocr_text_preview || ''}
-                                initialText={currentText}
-                                llmSuggestion={llmReview?.corrected_text}
-                                onTextChange={handleTextChange}
-                                disabled={isSubmitting}
-                            />
-                        </TabsContent>
-                    </Tabs>
+                            </TabsContent>
+                        </Tabs>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Action Buttons */}
             <Card className="sticky bottom-4">
