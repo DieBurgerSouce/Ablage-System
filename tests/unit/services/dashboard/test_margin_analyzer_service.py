@@ -7,7 +7,7 @@ Enterprise Feature: Februar 2026
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Dict, List
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
@@ -27,9 +27,9 @@ TEST_USER_UUID: UUID = UUID("12345678-1234-5678-1234-567812345678")
 TEST_COMPANY_UUID: UUID = UUID("87654321-4321-8765-4321-876543218765")
 
 
-def _make_db_rows(data: List[tuple]) -> AsyncMock:
+def _make_db_rows(data: List[tuple]) -> MagicMock:
     """Erstelle Mock DB Result mit Rows."""
-    result_mock = AsyncMock()
+    result_mock = MagicMock()
     result_mock.all.return_value = data
     return result_mock
 

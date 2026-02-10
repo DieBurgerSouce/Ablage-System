@@ -104,7 +104,9 @@ class TestGetCacheMetrics:
 
             result = await get_metrics(request=mock_request, current_user=mock_user)
 
-            assert result == mock_metrics
+            # Result is a CacheMetricsResponse Pydantic model, not a dict
+            assert result.l1 == mock_metrics["l1"]
+            assert result.l2 == mock_metrics["l2"]
             mock_get.assert_called_once()
 
     @pytest.mark.asyncio
@@ -122,7 +124,7 @@ class TestGetCacheMetrics:
                 await get_metrics(request=mock_request, current_user=mock_user)
 
             assert exc_info.value.status_code == 500
-            assert "Cache-Metriken konnten nicht abgerufen werden" in exc_info.value.detail
+            assert "Fehler beim Abrufen der Cache-Metriken" in exc_info.value.detail
 
 
 # ============================================================
@@ -145,11 +147,14 @@ class TestInvalidateCache:
         body = CacheInvalidateRequest(pattern="doc:*")
 
         with patch("app.api.v1.cache_admin.invalidate_cache", new_callable=AsyncMock) as mock_inv:
-            mock_inv.return_value = None
+            # invalidate_cache returns an int (deleted count)
+            mock_inv.return_value = 15
 
             result = await invalidate(request=mock_request, body=body, current_user=mock_user)
 
-            assert result == {"message": "Cache erfolgreich invalidiert"}
+            # Returns CacheInvalidateResponse Pydantic model
+            assert result.deleted_keys == 15
+            assert result.scope == "pattern:doc:*"
             mock_inv.assert_called_once_with("doc:*")
 
     @pytest.mark.asyncio
@@ -163,11 +168,15 @@ class TestInvalidateCache:
         body = CacheInvalidateRequest(scope="all")
 
         with patch("app.api.v1.cache_admin.invalidate_all_caches", new_callable=AsyncMock) as mock_inv:
-            mock_inv.return_value = None
+            # invalidate_all_caches returns a dict with "total" key
+            mock_inv.return_value = {"total": 50, "l1": 20, "l2": 30}
 
             result = await invalidate(request=mock_request, body=body, current_user=mock_user)
 
-            assert result == {"message": "Cache erfolgreich invalidiert"}
+            # Returns CacheInvalidateResponse Pydantic model
+            assert result.deleted_keys == 50
+            assert result.scope == "all"
+            assert result.details == {"total": 50, "l1": 20, "l2": 30}
             mock_inv.assert_called_once()
 
     @pytest.mark.asyncio
@@ -181,11 +190,14 @@ class TestInvalidateCache:
         body = CacheInvalidateRequest(scope="search")
 
         with patch("app.api.v1.cache_admin.invalidate_search_cache", new_callable=AsyncMock) as mock_inv:
-            mock_inv.return_value = None
+            # invalidate_search_cache returns an int (deleted count)
+            mock_inv.return_value = 25
 
             result = await invalidate(request=mock_request, body=body, current_user=mock_user)
 
-            assert result == {"message": "Cache erfolgreich invalidiert"}
+            # Returns CacheInvalidateResponse Pydantic model
+            assert result.deleted_keys == 25
+            assert result.scope == "search"
             mock_inv.assert_called_once()
 
     @pytest.mark.asyncio
@@ -196,15 +208,20 @@ class TestInvalidateCache:
         Verifiziert:
         - invalidate_document_cache(id, cascade=True) wird aufgerufen
         """
-        body = CacheInvalidateRequest(document_id=123)
+        # document_id is Optional[str], not int
+        body = CacheInvalidateRequest(document_id="123")
 
         with patch("app.api.v1.cache_admin.invalidate_document_cache", new_callable=AsyncMock) as mock_inv:
-            mock_inv.return_value = None
+            # invalidate_document_cache returns a dict with "total" key
+            mock_inv.return_value = {"total": 10, "document": 5, "related": 5}
 
             result = await invalidate(request=mock_request, body=body, current_user=mock_user)
 
-            assert result == {"message": "Cache erfolgreich invalidiert"}
-            mock_inv.assert_called_once_with(123, cascade=True)
+            # Returns CacheInvalidateResponse Pydantic model
+            assert result.deleted_keys == 10
+            assert result.scope == "document:123"
+            assert result.details == {"total": 10, "document": 5, "related": 5}
+            mock_inv.assert_called_once_with("123", cascade=True)
 
     @pytest.mark.asyncio
     async def test_invalidate_by_user_id(self, mock_request: Request, mock_user: User):
@@ -214,15 +231,20 @@ class TestInvalidateCache:
         Verifiziert:
         - invalidate_user_cache(id, cascade=True) wird aufgerufen
         """
-        body = CacheInvalidateRequest(user_id=456)
+        # user_id is Optional[str], not int
+        body = CacheInvalidateRequest(user_id="456")
 
         with patch("app.api.v1.cache_admin.invalidate_user_cache", new_callable=AsyncMock) as mock_inv:
-            mock_inv.return_value = None
+            # invalidate_user_cache returns a dict with "total" key
+            mock_inv.return_value = {"total": 8, "user": 3, "related": 5}
 
             result = await invalidate(request=mock_request, body=body, current_user=mock_user)
 
-            assert result == {"message": "Cache erfolgreich invalidiert"}
-            mock_inv.assert_called_once_with(456, cascade=True)
+            # Returns CacheInvalidateResponse Pydantic model
+            assert result.deleted_keys == 8
+            assert result.scope == "user:456"
+            assert result.details == {"total": 8, "user": 3, "related": 5}
+            mock_inv.assert_called_once_with("456", cascade=True)
 
     @pytest.mark.asyncio
     async def test_invalidate_no_params_error(self, mock_request: Request, mock_user: User):
@@ -238,7 +260,7 @@ class TestInvalidateCache:
             await invalidate(request=mock_request, body=body, current_user=mock_user)
 
         assert exc_info.value.status_code == 400
-        assert "Mindestens ein Invalidierungsparameter" in exc_info.value.detail
+        assert "Bitte pattern, scope, document_id oder user_id angeben" in exc_info.value.detail
 
 
 # ============================================================
@@ -261,14 +283,17 @@ class TestWarmCache:
         - Success Response
         """
         mock_service = AsyncMock()
-        mock_service.warm_caches = AsyncMock(return_value=None)
+        # warm_caches returns a dict with warmed entry counts
+        mock_service.warm_caches = AsyncMock(return_value={"documents": 50, "users": 30, "folders": 20})
 
-        with patch("app.api.v1.cache_admin.CacheWarmingService") as mock_cls:
+        # CacheWarmingService is imported inside the function, so patch at source
+        with patch("app.services.cache.cache_warming_service.CacheWarmingService") as mock_cls:
             mock_cls.return_value = mock_service
 
             result = await warm_cache(request=mock_request, db=mock_db, current_user=mock_user)
 
-            assert result == {"message": "Cache-Warming gestartet"}
+            # Returns CacheWarmResponse Pydantic model
+            assert result.warmed_entries == {"documents": 50, "users": 30, "folders": 20}
             mock_cls.assert_called_once_with(mock_db)
             mock_service.warm_caches.assert_called_once()
 
@@ -285,11 +310,12 @@ class TestWarmCache:
         mock_service = AsyncMock()
         mock_service.warm_caches = AsyncMock(side_effect=Exception("Warming failed"))
 
-        with patch("app.api.v1.cache_admin.CacheWarmingService") as mock_cls:
+        # CacheWarmingService is imported inside the function, so patch at source
+        with patch("app.services.cache.cache_warming_service.CacheWarmingService") as mock_cls:
             mock_cls.return_value = mock_service
 
             with pytest.raises(HTTPException) as exc_info:
                 await warm_cache(request=mock_request, db=mock_db, current_user=mock_user)
 
             assert exc_info.value.status_code == 500
-            assert "Cache-Warming fehlgeschlagen" in exc_info.value.detail
+            assert "Fehler beim Cache-Warming" in exc_info.value.detail
