@@ -1,5 +1,16 @@
 # Recent Changes
 
+## 2026-02-10
+- **feat(db)**: Migration 212 Chat Tool Actions - ChatToolAction Tabelle für RAG Tool-Execution Tracking
+- **feat(api)**: Dashboard Widgets KPIs (DSO Tracker, Margin Analyzer, Revenue Trend)
+- **feat(api)**: Workflow Execution Viewer mit Timeline und Multi-Tenant Security
+- **feat(api)**: RAG Chat Tool Actions (search, export, summarize) mit Tracking
+- **feat(api)**: Cache Admin API (L1/L2 metrics, invalidation), Feature Flags Service
+- **feat(services)**: Dashboard KPI Services (DSO, Margin, Revenue mit Prognosen)
+- **feat(services)**: RAG Action Dispatcher und Tool Registry (pluggable tools)
+- **feat(frontend)**: Cross-Tenant Reports, Document Quality, PO Matching, Recurring Invoices
+- **feat(frontend)**: Workflow Execution Visualization mit Real-time Updates
+
 ## 2026-02-09
 - **fix(ocr)**: Sicheres Error-Handling ohne PII-Leaks in Chandra Agent
 - **fix(api)**: Banking router in __all__ exportiert

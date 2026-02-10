@@ -4,10 +4,10 @@
 
 | Service | Status | Notes |
 |---------|--------|-------|
-| Backend | ✅ OK | Running on :8000, 410+ Endpoints, Type-Safe |
+| Backend | ✅ OK | Running on :8000, 420+ Endpoints, Type-Safe |
 | Frontend | ✅ OK | Nginx :80, Accessibility E2E Tests OK |
 | Celery | ✅ OK | 414 Tasks, 12+ Beat Schedules, GPU for OCR |
-| PostgreSQL | ✅ OK | :5433, 210 Migrations asyncpg-hardened |
+| PostgreSQL | ✅ OK | :5433, 212 Migrations asyncpg-hardened |
 | Redis | ✅ OK | :6380, Rate Limiting, Blacklist, L1/L2 Cache |
 | GPU | ✅ OK | RTX 4080 (16GB), shared by backend + worker |
 | Jaeger | ✅ NEW | :16686 UI, :4317 OTLP gRPC, Distributed Tracing |
@@ -19,14 +19,15 @@
 - **Code Quality**: ✅ No Any Types, Full Type Hints, Structured Logging
 - **Ethos Fulfillment**: ✅ "Feinpoliert und durchdacht" vollständig erfüllt
 
-### Multi-Tenancy Features (2026-02-09)
-- **Row-Level Security**: ✅ RLS Policies (Migration 210)
+### Enterprise Features (2026-02-10)
+- **Row-Level Security**: ✅ RLS Policies (Migration 210, 211)
 - **Tenant Middleware**: ✅ TenantContextMiddleware für tenant_id propagation
-- **Dashboard Sharing**: ✅ Cross-Tenant Dashboard Shares mit Permissions
-- **Saved Searches**: ✅ User-spezifische Search Templates
-- **Notification Templates**: ✅ Customizable Notification Messages
-- **Cache L1/L2**: ✅ In-Process LRU + Redis mit Tenant Isolation
-- **Resilience Patterns**: ✅ Circuit Breaker, Retry, Bulkhead mit Prometheus Metrics
+- **Dashboard KPIs**: ✅ DSO Tracker, Margin Analyzer, Revenue Trend (Migration 212)
+- **Workflow Execution**: ✅ Real-time Execution Viewer mit Timeline
+- **RAG Tool Actions**: ✅ Chat Tool Integration (search, export, summarize)
+- **Cache L1/L2**: ✅ In-Process LRU + Redis mit Admin API
+- **Feature Flags**: ✅ Gradual Rollout Support für neue Features
+- **Cross-Tenant Reports**: ✅ Company-übergreifende Reporting Views
 
 ## Vision 2026+ Status
 

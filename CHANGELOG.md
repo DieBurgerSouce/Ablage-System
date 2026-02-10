@@ -10,6 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Migration 212: ChatToolAction Tabelle für RAG Tool-Execution Tracking
+- Dashboard KPI Widgets: DSO Tracker, Margin Analyzer, Revenue Trend mit Prognosen
+- Workflow Execution Viewer: Real-time Timeline mit Step-Details und Multi-Tenant Security
+- RAG Chat Tool Actions: Integration von search, export, summarize Tools mit Action Cards
+- Cache Admin API: L1/L2 Cache Metrics, Pattern-based Invalidation, Warming
+- Feature Flags Service: Gradual Rollout Support mit User/Tenant-spezifischen Flags
+- Cross-Tenant Reports: Company-übergreifende Reporting Views
+- Document Quality Management UI: Quality Score Tracking und Verbesserung
+- PO Matching Interface: Purchase Order Matching und Reconciliation
+- Recurring Invoices Management: Wiederkehrende Rechnungen mit Scheduling
+- Search Facets: Faceted Search mit dynamischen Kategorien, Tags, Types
+- Notification Toast Provider: Real-time Benachrichtigungen via WebSocket
 - Jaeger distributed tracing mit OpenTelemetry (OTLP gRPC:4317, UI:16686, badger storage)
 - Migrationen 207-210 (Saved Searches, Notification Templates, Dashboard Shares, RLS Policies)
 - Satellite models: NotificationMessageTemplate, SavedSearch, DashboardShare, TenantConfig
