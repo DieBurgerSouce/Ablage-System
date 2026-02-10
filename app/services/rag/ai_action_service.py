@@ -11,14 +11,14 @@ ENTERPRISE: Alle Aktionen fuehren echte DB-Operationen durch.
 
 import asyncio
 from datetime import datetime, timezone, timedelta
-from typing import Any, Optional, List, Dict
+from typing import Optional, List, Dict
 from uuid import UUID, uuid4
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 
-from app.db.models import User, Document, BusinessEntity, DocumentTag, ProcessingStatus
+from app.db.models import User, Document, BusinessEntity, Tag, ProcessingStatus, document_tags
 from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.api.schemas.rag import (
     AIActionType,
@@ -306,7 +306,7 @@ class AIActionService:
         user: User,
         action_id: UUID,
         confirmed: bool,
-        modified_parameters: Optional[Dict[str, Any]] = None,
+        modified_parameters: Optional[Dict[str, object]] = None,
     ) -> AIActionResult:
         """Bestaetigt oder lehnt eine vorgeschlagene Aktion ab.
 
@@ -422,7 +422,7 @@ class AIActionService:
         """
         start_time = datetime.now(timezone.utc)
         affected_items: List[UUID] = []
-        details: Dict[str, Any] = {}
+        details: Dict[str, object] = {}
 
         # Dispatch to specific action handlers
         if request.action_type == AIActionType.SEARCH_DOCUMENTS:
@@ -483,18 +483,27 @@ class AIActionService:
                 for tag_name in tags:
                     # Pruefe ob Tag bereits existiert
                     existing_tag = await db.execute(
-                        select(DocumentTag).where(
-                            DocumentTag.document_id == doc_uuid,
-                            DocumentTag.tag == tag_name,
+                        select(Tag).where(Tag.name == tag_name)
+                    )
+                    tag_obj = existing_tag.scalar_one_or_none()
+                    if not tag_obj:
+                        tag_obj = Tag(name=tag_name)
+                        db.add(tag_obj)
+                        await db.flush()
+                    # Verknuepfe Tag mit Dokument (via association table)
+                    existing_link = await db.execute(
+                        select(document_tags).where(
+                            document_tags.c.document_id == doc_uuid,
+                            document_tags.c.tag_id == tag_obj.id,
                         )
                     )
-                    if not existing_tag.scalar_one_or_none():
-                        new_tag = DocumentTag(
-                            document_id=doc_uuid,
-                            tag=tag_name,
-                            created_at=datetime.now(timezone.utc),
+                    if not existing_link.first():
+                        await db.execute(
+                            document_tags.insert().values(
+                                document_id=doc_uuid,
+                                tag_id=tag_obj.id,
+                            )
                         )
-                        db.add(new_tag)
                 await db.commit()
                 affected_items.append(doc_uuid)
                 message = f"Tags hinzugefuegt: {', '.join(tags)}"

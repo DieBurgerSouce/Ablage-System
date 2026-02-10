@@ -21,7 +21,7 @@ import threading
 import time
 import fnmatch
 from dataclasses import dataclass
-from typing import Callable, Optional, TypeVar, Union, List, Dict, Any
+from typing import Callable, Optional, TypeVar, Union, List, Dict
 from functools import wraps
 from datetime import datetime
 from collections import OrderedDict
@@ -100,7 +100,7 @@ class LRUCache:
         self._misses = 0
         self._evictions = 0
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Optional[object]:
         """Get value from cache if not expired.
 
         Args:
@@ -129,7 +129,7 @@ class LRUCache:
             self._hits += 1
             return self._cache[key]
 
-    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+    def set(self, key: str, value: object, ttl: Optional[int] = None) -> None:
         """Set value in cache with TTL.
 
         Args:
@@ -632,6 +632,48 @@ def redis_cache(
     return decorator
 
 
+def _should_early_recompute(ttl_remaining: float, total_ttl: float, beta: float = 1.0) -> bool:
+    """XFetch probabilistic early recomputation to prevent cache stampedes.
+
+    When TTL is close to expiry, probabilistically return True so that
+    one random request recomputes the value before expiry, preventing
+    thundering herd when the key expires.
+
+    Algorithm: current_time - (beta * log(random())) > expiry_time
+    Simplified: probability increases as TTL approaches 0
+
+    Args:
+        ttl_remaining: Seconds until cache entry expires
+        total_ttl: Original total TTL of the entry
+        beta: Tuning parameter (higher = earlier recomputation, default 1.0)
+
+    Returns:
+        True if this request should trigger early recomputation
+    """
+    import math
+    import random
+
+    if ttl_remaining <= 0:
+        return True
+    if total_ttl <= 0:
+        return False
+
+    # Only consider early recomputation in the last 20% of TTL
+    threshold_ratio = 0.2
+    if ttl_remaining > total_ttl * threshold_ratio:
+        return False
+
+    # XFetch: probability increases exponentially as TTL approaches 0
+    try:
+        rand_val = random.random()
+        if rand_val == 0:
+            return True
+        delta = total_ttl * threshold_ratio  # time window for early recompute
+        return -delta * beta * math.log(rand_val) >= ttl_remaining
+    except (ValueError, OverflowError):
+        return False
+
+
 def cache_multi_tier(
     l1_ttl: int = 30,
     l2_ttl: int = 300,
@@ -709,25 +751,49 @@ def cache_multi_tier(
                 l2_latency = time.time() - l2_start
 
                 if cached_value is not None:
-                    logger.debug(
-                        "cache_l2_hit",
-                        key=cache_key[:50],
-                        function=func.__name__,
-                        l2_latency_ms=round(l2_latency * 1000, 2)
-                    )
+                    # Local helper to avoid 3x duplication of L2 hit logic
+                    def _return_l2_hit() -> T:
+                        logger.debug(
+                            "cache_l2_hit",
+                            key=cache_key[:50],
+                            function=func.__name__,
+                            l2_latency_ms=round(l2_latency * 1000, 2)
+                        )
+                        result = _deserialize_value(cached_value)
+                        _l1_cache.set(cache_key, result, l1_ttl)
+                        try:
+                            from app.core.business_metrics import record_api_cache_operation
+                            record_api_cache_operation("l2_hit", func.__name__)
+                        except Exception:
+                            pass
+                        return result
 
-                    # Deserialize and populate L1
-                    result = _deserialize_value(cached_value)
-                    _l1_cache.set(cache_key, result, l1_ttl)
-
-                    # Record metrics
+                    # Stampede prevention: check if early recomputation needed
                     try:
-                        from app.core.business_metrics import record_api_cache_operation
-                        record_api_cache_operation("l2_hit", func.__name__)
-                    except Exception:
-                        pass
-
-                    return result
+                        ttl_remaining_val = await redis_manager._redis.ttl(cache_key)
+                        if ttl_remaining_val is not None and ttl_remaining_val > 0:
+                            if _should_early_recompute(float(ttl_remaining_val), float(l2_ttl)):
+                                logger.info(
+                                    "cache_stampede_early_recompute",
+                                    key=cache_key[:50],
+                                    function=func.__name__,
+                                    ttl_remaining=ttl_remaining_val,
+                                    total_ttl=l2_ttl,
+                                )
+                                # Early recompute: skip returning cached value, continue to source below
+                            else:
+                                return _return_l2_hit()
+                        else:
+                            # TTL expired or key has no expiry - return cached value
+                            return _return_l2_hit()
+                    except Exception as ttl_err:
+                        # If TTL check fails, return cached value normally
+                        logger.debug(
+                            "cache_stampede_ttl_check_failed",
+                            **safe_error_log(ttl_err),
+                            function=func.__name__,
+                        )
+                        return _return_l2_hit()
 
             except Exception as e:
                 # Redis nicht verfuegbar - continue to source
@@ -787,7 +853,7 @@ def cache_multi_tier(
     return decorator
 
 
-async def cache_get(key: str) -> Optional[Dict[str, Any]]:
+async def cache_get(key: str) -> Optional[Dict[str, object]]:
     """Hole einen Wert aus dem L2-Redis-Cache.
 
     Args:
@@ -820,7 +886,7 @@ async def cache_get(key: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-async def cache_set(key: str, value: Dict[str, Any], ttl: int = 300) -> None:
+async def cache_set(key: str, value: Dict[str, object], ttl: int = 300) -> None:
     """Speichere einen Wert im L1- und L2-Cache.
 
     Args:
@@ -1128,7 +1194,7 @@ async def get_cache_stats() -> dict:
         return {"error": safe_error_detail(e, "Vorgang")}
 
 
-async def get_cache_metrics() -> Dict[str, Dict[str, Any]]:
+async def get_cache_metrics() -> Dict[str, Dict[str, object]]:
     """Get comprehensive cache metrics for all tiers.
 
     Returns multi-tier cache statistics:

@@ -19,7 +19,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Callable, Dict, List, Optional, Set
 from uuid import UUID
 
 import structlog
@@ -97,20 +97,30 @@ class RealtimeEventType(str, Enum):
     DOCUMENT_VIEWER_LEFT = "document.viewer_left"
     CURSOR_MOVED = "cursor.moved"
 
+    # Workflow Execution Events (Phase B)
+    WORKFLOW_STEP_STARTED = "workflow.step_started"
+    WORKFLOW_STEP_COMPLETED = "workflow.step_completed"
+    WORKFLOW_STEP_FAILED = "workflow.step_failed"
+    WORKFLOW_INSTANCE_COMPLETED = "workflow.instance_completed"
+    WORKFLOW_SLA_WARNING = "workflow.sla_warning"
+
+    # Notification Events (Phase C)
+    NOTIFICATION_RECEIVED = "notification.received"
+
 
 @dataclass
 class RealtimeEvent:
     """Ein Echtzeit-Event fuer WebSocket-Broadcast."""
 
     event_type: RealtimeEventType
-    payload: Dict[str, Any]
+    payload: Dict[str, object]
     event_id: str
     timestamp: datetime
     target_users: Optional[Set[str]] = None  # None = broadcast to all
     target_company_id: Optional[str] = None
     priority: str = "normal"  # low, normal, high, critical
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         """Konvertiert zu Dictionary fuer JSON-Serialisierung."""
         return {
             "event_type": self.event_type.value,
@@ -127,7 +137,7 @@ class RateLimitState:
 
     count: int = 0
     window_start: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    aggregated_events: List[Dict[str, Any]] = field(default_factory=list)
+    aggregated_events: List[Dict[str, object]] = field(default_factory=list)
 
 
 class EventBroadcaster:
@@ -222,6 +232,9 @@ class EventBroadcaster:
 
         # Comment/Collaboration Events
         self._event_bus.subscribe_pattern("comment.*", self._handle_comment_event)
+
+        # Workflow Execution Events
+        self._event_bus.subscribe_pattern("workflow.*", self._handle_workflow_event)
 
     async def _handle_document_event(self, event: Event) -> None:
         """Verarbeitet Document Events."""
@@ -361,7 +374,7 @@ class EventBroadcaster:
     async def _broadcast_event(
         self,
         event_type: RealtimeEventType,
-        payload: Dict[str, Any],
+        payload: Dict[str, object],
         event_id: str,
         user_id: Optional[str] = None,
         company_id: Optional[str] = None,
@@ -422,7 +435,7 @@ class EventBroadcaster:
     async def _send_aggregated_events(
         self,
         event_type: RealtimeEventType,
-        events: List[Dict[str, Any]],
+        events: List[Dict[str, object]],
         company_id: Optional[str] = None,
     ) -> None:
         """Sendet aggregierte Events als Batch."""
@@ -761,7 +774,7 @@ class EventBroadcaster:
         self,
         widget_type: str,
         update_type: str = "partial",
-        data: Optional[Dict[str, Any]] = None,
+        data: Optional[Dict[str, object]] = None,
         changed_fields: Optional[List[str]] = None,
         company_id: Optional[str] = None,
         user_id: Optional[str] = None,
@@ -809,7 +822,7 @@ class EventBroadcaster:
         self,
         widget_type: str,
         source: str,
-        data: Optional[Dict[str, Any]] = None,
+        data: Optional[Dict[str, object]] = None,
         company_id: Optional[str] = None,
     ) -> None:
         """
@@ -868,6 +881,199 @@ class EventBroadcaster:
             user_id=user_id,
             company_id=company_id,
             priority="high",
+        )
+
+    # Workflow Execution Event Convenience Methods (Phase B)
+
+    async def _handle_workflow_event(self, event: Event) -> None:
+        """Verarbeitet Workflow Execution Events."""
+        # Map internal events to realtime events
+        event_type_name = event.event_type.value if hasattr(event.event_type, 'value') else str(event.event_type)
+
+        realtime_type_mapping = {
+            "workflow.step_started": RealtimeEventType.WORKFLOW_STEP_STARTED,
+            "workflow.step_completed": RealtimeEventType.WORKFLOW_STEP_COMPLETED,
+            "workflow.step_failed": RealtimeEventType.WORKFLOW_STEP_FAILED,
+            "workflow.instance_completed": RealtimeEventType.WORKFLOW_INSTANCE_COMPLETED,
+            "workflow.sla_warning": RealtimeEventType.WORKFLOW_SLA_WARNING,
+        }
+
+        realtime_type = realtime_type_mapping.get(event_type_name)
+        if not realtime_type:
+            # Try to match by pattern
+            for pattern, rt_type in realtime_type_mapping.items():
+                if pattern in event_type_name:
+                    realtime_type = rt_type
+                    break
+
+        if realtime_type:
+            priority = "high" if realtime_type == RealtimeEventType.WORKFLOW_STEP_FAILED else "normal"
+            if realtime_type == RealtimeEventType.WORKFLOW_SLA_WARNING:
+                priority = "high"
+
+            await self._broadcast_event(
+                event_type=realtime_type,
+                payload=event.payload,
+                event_id=str(event.event_id),
+                user_id=str(event.user_id) if event.user_id else None,
+                company_id=event.payload.get("company_id"),
+                priority=priority,
+            )
+
+    async def emit_workflow_step_started(
+        self,
+        instance_id: str,
+        step_id: str,
+        step_name: str,
+        step_type: str,
+        user_id: Optional[str] = None,
+        company_id: Optional[str] = None,
+    ) -> None:
+        """Emittiert Workflow Step Started Event."""
+        await self._broadcast_event(
+            event_type=RealtimeEventType.WORKFLOW_STEP_STARTED,
+            payload={
+                "instance_id": instance_id,
+                "step_id": step_id,
+                "step_name": step_name,
+                "step_type": step_type,
+            },
+            event_id=f"workflow-step-started-{instance_id}-{step_id}",
+            user_id=user_id,
+            company_id=company_id,
+            priority="normal",
+        )
+
+    async def emit_workflow_step_completed(
+        self,
+        instance_id: str,
+        step_id: str,
+        step_name: str,
+        duration_ms: int,
+        next_steps: List[str],
+        user_id: Optional[str] = None,
+        company_id: Optional[str] = None,
+    ) -> None:
+        """Emittiert Workflow Step Completed Event."""
+        await self._broadcast_event(
+            event_type=RealtimeEventType.WORKFLOW_STEP_COMPLETED,
+            payload={
+                "instance_id": instance_id,
+                "step_id": step_id,
+                "step_name": step_name,
+                "duration_ms": duration_ms,
+                "next_steps": next_steps,
+            },
+            event_id=f"workflow-step-completed-{instance_id}-{step_id}",
+            user_id=user_id,
+            company_id=company_id,
+            priority="normal",
+        )
+
+    async def emit_workflow_step_failed(
+        self,
+        instance_id: str,
+        step_id: str,
+        step_name: str,
+        error_message: str,
+        user_id: Optional[str] = None,
+        company_id: Optional[str] = None,
+    ) -> None:
+        """Emittiert Workflow Step Failed Event."""
+        await self._broadcast_event(
+            event_type=RealtimeEventType.WORKFLOW_STEP_FAILED,
+            payload={
+                "instance_id": instance_id,
+                "step_id": step_id,
+                "step_name": step_name,
+                "error_message": error_message,
+            },
+            event_id=f"workflow-step-failed-{instance_id}-{step_id}",
+            user_id=user_id,
+            company_id=company_id,
+            priority="high",
+        )
+
+    async def emit_workflow_instance_completed(
+        self,
+        instance_id: str,
+        workflow_id: str,
+        workflow_name: str,
+        status: str,
+        total_duration_ms: int,
+        steps_completed: int,
+        steps_failed: int,
+        user_id: Optional[str] = None,
+        company_id: Optional[str] = None,
+    ) -> None:
+        """Emittiert Workflow Instance Completed Event."""
+        await self._broadcast_event(
+            event_type=RealtimeEventType.WORKFLOW_INSTANCE_COMPLETED,
+            payload={
+                "instance_id": instance_id,
+                "workflow_id": workflow_id,
+                "workflow_name": workflow_name,
+                "status": status,
+                "total_duration_ms": total_duration_ms,
+                "steps_completed": steps_completed,
+                "steps_failed": steps_failed,
+            },
+            event_id=f"workflow-instance-completed-{instance_id}",
+            user_id=user_id,
+            company_id=company_id,
+            priority="high" if status == "failed" else "normal",
+        )
+
+    async def emit_workflow_sla_warning(
+        self,
+        instance_id: str,
+        step_id: str,
+        step_name: str,
+        sla_deadline: str,
+        elapsed_seconds: int,
+        user_id: Optional[str] = None,
+        company_id: Optional[str] = None,
+    ) -> None:
+        """Emittiert Workflow SLA Warning Event."""
+        await self._broadcast_event(
+            event_type=RealtimeEventType.WORKFLOW_SLA_WARNING,
+            payload={
+                "instance_id": instance_id,
+                "step_id": step_id,
+                "step_name": step_name,
+                "sla_deadline": sla_deadline,
+                "elapsed_seconds": elapsed_seconds,
+            },
+            event_id=f"workflow-sla-warning-{instance_id}-{step_id}",
+            user_id=user_id,
+            company_id=company_id,
+            priority="high",
+        )
+
+    async def emit_notification(
+        self,
+        user_id: str,
+        title: str,
+        message: str,
+        priority: str = "normal",
+        notification_type: str = "info",
+        notification_id: Optional[str] = None,
+        company_id: Optional[str] = None,
+    ) -> None:
+        """Emittiert Notification Received Event fuer Echtzeit-Benachrichtigungen."""
+        await self._broadcast_event(
+            event_type=RealtimeEventType.NOTIFICATION_RECEIVED,
+            payload={
+                "title": title,
+                "message": message,
+                "priority": priority,
+                "notification_type": notification_type,
+                "notification_id": notification_id or f"notif-{datetime.now(timezone.utc).timestamp()}",
+            },
+            event_id=f"notification-{datetime.now(timezone.utc).timestamp()}",
+            user_id=user_id,
+            company_id=company_id,
+            priority=priority,
         )
 
 

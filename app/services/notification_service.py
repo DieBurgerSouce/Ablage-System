@@ -19,11 +19,11 @@ import uuid as uuid_module
 from datetime import datetime, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Any, Dict, List, Optional
-from uuid import UUID
+from typing import Dict, List, Optional
 
 import httpx
 import structlog
+from starlette.websockets import WebSocket
 
 from app.core.config import settings
 from app.core.safe_errors import safe_error_log
@@ -498,7 +498,7 @@ Ablage-System
     def render(
         cls,
         notification_type: str,
-        context: Dict[str, Any],
+        context: Dict[str, object],
     ) -> Dict[str, str]:
         """Render notification template with context."""
         template = cls.TEMPLATES.get(notification_type, {})
@@ -656,7 +656,7 @@ class WebhookNotifier:
     async def send(
         self,
         webhook_url: Optional[str],
-        payload: Dict[str, Any],
+        payload: Dict[str, object],
         headers: Optional[Dict[str, str]] = None,
     ) -> bool:
         """
@@ -761,7 +761,7 @@ class InAppNotificationStore:
     async def store(
         self,
         user_id: str,
-        notification: Dict[str, Any],
+        notification: Dict[str, object],
     ) -> str:
         """
         Store notification for user.
@@ -819,7 +819,7 @@ class InAppNotificationStore:
         user_id: str,
         unread_only: bool = False,
         limit: int = 50,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[Dict[str, object]]:
         """
         Get notifications for user.
 
@@ -926,7 +926,7 @@ class NotificationService:
     async def notify(
         self,
         notification_type: str,
-        context: Dict[str, Any],
+        context: Dict[str, object],
         user_id: Optional[str] = None,
         email: Optional[str] = None,
         webhook_url: Optional[str] = None,
@@ -957,9 +957,7 @@ class NotificationService:
                 channels.append(NotificationChannel.WEBHOOK)
             if user_id:
                 channels.append(NotificationChannel.IN_APP)
-                # WebSocket nur wenn User verbunden ist
-                if self.websocket.is_user_connected(user_id):
-                    channels.append(NotificationChannel.WEBSOCKET)
+                channels.append(NotificationChannel.WEBSOCKET)
 
         # Render template
         rendered = NotificationTemplate.render(notification_type, context)
@@ -1030,7 +1028,7 @@ class NotificationService:
         self,
         webhook_url: Optional[str],
         notification_type: str,
-        context: Dict[str, Any],
+        context: Dict[str, object],
         priority: str,
         results: Dict[str, bool],
     ) -> None:
@@ -1074,26 +1072,25 @@ class NotificationService:
         priority: str,
         results: Dict[str, bool],
     ) -> None:
-        """Send WebSocket notification to user."""
+        """Send WebSocket notification via EventBroadcaster."""
         try:
-            message = {
-                "type": "notification",
-                "notification_type": notification_type,
-                "title": rendered["subject"],
-                "message": rendered["body"],
-                "priority": priority,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            }
-            sent_count = await self.websocket.send_to_user(user_id, message)
-            results[NotificationChannel.WEBSOCKET] = sent_count > 0
+            # Emit via EventBroadcaster for realtime system
+            from app.services.realtime.event_broadcaster import get_event_broadcaster
+            broadcaster = get_event_broadcaster()
+            await broadcaster.emit_notification(
+                user_id=user_id,
+                title=rendered["subject"],
+                message=rendered["body"],
+                priority=priority,
+                notification_type=notification_type,
+            )
+            results[NotificationChannel.WEBSOCKET] = True
 
-            if sent_count > 0:
-                logger.debug(
-                    "websocket_notification_sent",
-                    user_id=user_id,
-                    notification_type=notification_type,
-                    sent_count=sent_count,
-                )
+            logger.debug(
+                "websocket_notification_sent",
+                user_id=user_id,
+                notification_type=notification_type,
+            )
         except Exception as e:
             logger.warning(
                 "websocket_notification_failed",
@@ -1107,7 +1104,7 @@ class NotificationService:
         document_id: str,
         filename: str,
         backend: str,
-        processing_result: Dict[str, Any],
+        processing_result: Dict[str, object],
         user_id: Optional[str] = None,
         email: Optional[str] = None,
     ) -> Dict[str, bool]:
@@ -1273,13 +1270,12 @@ class NotificationWebSocketManager:
     def __init__(self) -> None:
         """Initialize notification WebSocket manager."""
         # user_id -> List[WebSocket]  (User kann mehrere Tabs/Geraete haben)
-        from fastapi import WebSocket
-        self._connections: Dict[str, List[Any]] = {}
+        self._connections: Dict[str, List[WebSocket]] = {}
         self._lock = asyncio.Lock()
 
     async def connect(
         self,
-        websocket: Any,
+        websocket: WebSocket,
         user_id: str,
     ) -> bool:
         """
@@ -1316,7 +1312,7 @@ class NotificationWebSocketManager:
 
     async def disconnect(
         self,
-        websocket: Any,
+        websocket: WebSocket,
         user_id: str,
     ) -> None:
         """
@@ -1349,7 +1345,7 @@ class NotificationWebSocketManager:
     async def send_to_user(
         self,
         user_id: str,
-        message: Dict[str, Any],
+        message: Dict[str, object],
     ) -> int:
         """
         Sendet eine Nachricht an alle Verbindungen eines Users.
@@ -1400,7 +1396,7 @@ class NotificationWebSocketManager:
 
     async def broadcast_to_all(
         self,
-        message: Dict[str, Any],
+        message: Dict[str, object],
     ) -> int:
         """
         Sendet eine Nachricht an alle verbundenen User.

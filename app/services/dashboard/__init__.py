@@ -7,6 +7,9 @@ Enterprise Dashboard-Widgets fuer Business Intelligence:
 - Customer Lifetime Value (Kundenwert-Analyse)
 - Period Comparison (YoY/MoM/QoQ Analytics)
 - Dashboard Sharing (Persistente Freigaben mit Audit-Trail)
+- Revenue Trend (Umsatz-Trend-Analyse)
+- DSO Tracker (Days Sales Outstanding)
+- Margin Analyzer (Margen-Analyse)
 """
 
 from .cash_flow_forecast_service import (
@@ -31,6 +34,18 @@ from .sharing_service import (
     DashboardSharingService,
     get_sharing_service,
 )
+from .revenue_trend_service import (
+    RevenueTrendService,
+    get_revenue_trend_service,
+)
+from .dso_tracker_service import (
+    DSOTrackerService,
+    get_dso_tracker_service,
+)
+from .margin_analyzer_service import (
+    MarginAnalyzerService,
+    get_margin_analyzer_service,
+)
 
 __all__ = [
     "CashFlowForecastService",
@@ -45,4 +60,10 @@ __all__ = [
     "PeriodComparison",
     "DashboardSharingService",
     "get_sharing_service",
+    "RevenueTrendService",
+    "get_revenue_trend_service",
+    "DSOTrackerService",
+    "get_dso_tracker_service",
+    "MarginAnalyzerService",
+    "get_margin_analyzer_service",
 ]

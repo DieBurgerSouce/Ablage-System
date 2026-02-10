@@ -14,7 +14,7 @@ Score -> Ampel:
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Tuple
 from uuid import UUID
 
 import structlog
@@ -53,7 +53,7 @@ class DocumentQualityScore:
     dimensions: List[QualityDimension]
     recommendations: List[str]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {
             "document_id": self.document_id,
             "score": round(self.score, 4),
@@ -85,7 +85,7 @@ class CompanyQualityOverview:
     gelb_percent: float
     rot_percent: float
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return {
             "total_documents": self.total_documents,
             "average_score": round(self.average_score, 4),
@@ -115,7 +115,7 @@ REQUIRED_FIELDS: Dict[str, List[str]] = {
 }
 
 
-def _score_to_ampel(score: float) -> tuple:
+def _score_to_ampel(score: float) -> Tuple[AmpelColor, str]:
     """Konvertiere Score zu Ampel-Farbe und Label."""
     if score >= 0.80:
         return AmpelColor.GRUEN, "Vollstaendig und vertrauenswuerdig"
@@ -325,8 +325,8 @@ class DocumentQualityScoreService:
     def _calculate_field_completeness(
         self,
         doc_type: str,
-        extracted_data: Any,
-    ) -> tuple:
+        extracted_data: Optional[Dict[str, object]],
+    ) -> Tuple[float, Dict[str, float]]:
         """Calculate field completeness score."""
         required = REQUIRED_FIELDS.get(doc_type, REQUIRED_FIELDS["default"])
         if not required:
@@ -353,7 +353,7 @@ class DocumentQualityScoreService:
         score = filled / len(required) if required else 1.0
         return score, sub_scores
 
-    def _calculate_processing_status(self, document: Any) -> tuple:
+    def _calculate_processing_status(self, document: object) -> Tuple[float, Dict[str, float]]:
         """Calculate processing status score."""
         sub_scores: Dict[str, float] = {}
 

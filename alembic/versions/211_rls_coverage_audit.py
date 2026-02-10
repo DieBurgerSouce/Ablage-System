@@ -16,7 +16,7 @@ Geschuetzte Tabellen:
 --------------------
 - invoices: Rechnungen (Ein-/Ausgang)
 - bank_transactions: Banktransaktionen
-- bank_accounts: Bankkonten (alias: banking_accounts)
+- bank_accounts: Bankkonten
 - document_chains: Dokumentenketten
 - notification_rules: Benachrichtigungsregeln
 - approval_workflows: Freigabe-Workflows
@@ -45,8 +45,7 @@ depends_on = None
 TABLES_TO_AUDIT = [
     "invoices",
     "bank_transactions",
-    "bank_accounts",  # Primaerer Name
-    "banking_accounts",  # Alias-Name (moeglicherweise verwendet)
+    "bank_accounts",
     "document_chains",
     "notification_rules",
     "approval_workflows",
@@ -114,18 +113,18 @@ def upgrade() -> None:
         # =====================================================================
         # RLS aktivieren (idempotent - wirft keinen Fehler wenn bereits aktiv)
         # =====================================================================
-        op.execute(f"ALTER TABLE {table_name} ENABLE ROW LEVEL SECURITY")
+        op.execute(f'ALTER TABLE "{table_name}" ENABLE ROW LEVEL SECURITY')
 
         # =====================================================================
         # Policy loeschen falls vorhanden (macht Migration idempotent)
         # =====================================================================
-        op.execute(f"DROP POLICY IF EXISTS {table_name}_company_isolation ON {table_name}")
+        op.execute(f'DROP POLICY IF EXISTS "{table_name}_company_isolation" ON "{table_name}"')
 
         # =====================================================================
         # Neue Isolation-Policy erstellen
         # =====================================================================
         op.execute(f"""
-            CREATE POLICY {table_name}_company_isolation ON {table_name}
+            CREATE POLICY "{table_name}_company_isolation" ON "{table_name}"
                 FOR ALL
                 USING (
                     company_id IS NULL
@@ -153,7 +152,7 @@ def upgrade() -> None:
         if not check_idx.scalar():
             op.execute(f"""
                 CREATE INDEX IF NOT EXISTS
-                ix_{table_name}_company_id_rls ON {table_name} (company_id)
+                "ix_{table_name}_company_id_rls" ON "{table_name}" (company_id)
             """)
 
 
@@ -182,7 +181,7 @@ def downgrade() -> None:
             continue
 
         # Policy loeschen
-        op.execute(f"DROP POLICY IF EXISTS {table_name}_company_isolation ON {table_name}")
+        op.execute(f'DROP POLICY IF EXISTS "{table_name}_company_isolation" ON "{table_name}"')
 
         # RLS deaktivieren (nur wenn keine anderen Policies existieren)
         check_policies = bind.execute(
@@ -194,9 +193,9 @@ def downgrade() -> None:
         )
         if check_policies.scalar() == 0:
             # Keine Policies mehr - RLS deaktivieren
-            op.execute(f"ALTER TABLE {table_name} DISABLE ROW LEVEL SECURITY")
+            op.execute(f'ALTER TABLE "{table_name}" DISABLE ROW LEVEL SECURITY')
 
         # Index loeschen
-        op.execute(f"DROP INDEX IF EXISTS ix_{table_name}_company_id_rls")
+        op.execute(f'DROP INDEX IF EXISTS "ix_{table_name}_company_id_rls"')
 
     # Behalte get_current_company_id() - wird von anderen Migrationen genutzt

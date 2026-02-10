@@ -9,7 +9,7 @@ Enthaelt alle System-Prompts und Template-Funktionen fuer:
 - Dokumenten-Klassifikation
 """
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict
 from string import Template
 
 
@@ -196,13 +196,47 @@ Output:
 
 Antworte als JSON-Array mit den erweiterten Queries."""
 
+SYSTEM_PROMPT_AGENT = """Du bist ein intelligenter Dokumenten-Assistent mit der Faehigkeit Aktionen auszufuehren.
+
+DEINE AUFGABEN:
+- Beantworte Fragen zu Dokumenten praezise und hilfreich
+- Fuehre Aktionen aus wenn der Benutzer darum bittet
+- Verwende NUR die bereitgestellten Dokument-Auszuege als Quelle
+- Antworte IMMER auf Deutsch
+
+VERFUEGBARE TOOLS:
+{tools_text}
+
+WIE DU TOOLS VERWENDEST:
+1. Wenn der Benutzer eine Aktion wuenscht (z.B. "Zeige mir alle Rechnungen von Mueller"),
+   ueberlege welches Tool passt
+2. Erklaere ZUERST was du tun wirst (z.B. "Ich suche nach allen Rechnungen von Mueller...")
+3. Rufe dann das Tool auf mit diesem Format:
+   <tool_call>{{"tool": "tool_name", "params": {{"param1": "value1"}}}}</tool_call>
+4. Warte auf das Ergebnis und praesentiere es dem Benutzer
+
+SICHERHEITSREGELN:
+- Bei destruktiven Aktionen (verschieben, loeschen): IMMER Bestaetigung einholen
+- Keine Massen-Operationen ohne explizite Bestaetigung
+- Bei Unsicherheit: lieber nachfragen als raten
+
+STIL:
+- Professionell aber freundlich
+- Klar und praegnant
+- Erklaere was du tust BEVOR du es tust
+
+WICHTIG:
+- Erfinde KEINE Informationen
+- Wenn du keine Antwort findest, sage das ehrlich
+- Zitiere relevante Stellen aus den Dokumenten"""
+
 
 # =============================================================================
 # TEMPLATE FUNKTIONEN
 # =============================================================================
 
 def build_rag_context(
-    chunks: List[Dict[str, Any]],
+    chunks: List[Dict[str, object]],
     max_chunks: int = 5
 ) -> str:
     """Baut den RAG-Kontext aus Chunks.
@@ -361,7 +395,7 @@ def build_query_enhancement_prompt(
 
 def build_extraction_prompt(
     document_text: str,
-    extraction_schema: Dict[str, Any]
+    extraction_schema: Dict[str, object]
 ) -> List[Dict[str, str]]:
     """Baut einen Prompt fuer strukturierte Datenextraktion.
 
@@ -403,7 +437,7 @@ Alle Texte auf Deutsch belassen."""
 def build_report_prompt(
     report_type: str,
     context: str,
-    parameters: Optional[Dict[str, Any]] = None
+    parameters: Optional[Dict[str, object]] = None
 ) -> List[Dict[str, str]]:
     """Baut einen Prompt fuer Report-Generierung.
 
@@ -444,6 +478,51 @@ def build_report_prompt(
     return messages
 
 
+def build_agent_chat_prompt(
+    question: str,
+    context: str,
+    history: Optional[List[Dict[str, str]]] = None,
+    tools_text: str = "",
+    realtime: bool = False
+) -> List[Dict[str, str]]:
+    """Baut einen Agent Chat-Prompt mit Tool-Calling Support.
+
+    Args:
+        question: Benutzer-Frage
+        context: RAG-Kontext (von build_rag_context)
+        history: Optionale Chat-Historie
+        tools_text: Formatierter Tool-Text (von ToolRegistry)
+        realtime: Schnelle Telefon-Antwort
+
+    Returns:
+        Liste von Nachrichten fuer LLM
+    """
+    # System-Prompt mit Tools
+    system_prompt = SYSTEM_PROMPT_AGENT.format(tools_text=tools_text)
+
+    messages = [{"role": "system", "content": system_prompt}]
+
+    # Chat-Historie hinzufuegen
+    if history:
+        for msg in history[-10:]:  # Max 10 vorherige Nachrichten
+            messages.append({
+                "role": msg.get("role", "user"),
+                "content": msg.get("content", "")
+            })
+
+    # Aktuelle Frage mit Kontext
+    user_message = f"""Kontext aus relevanten Dokumenten:
+{context}
+
+---
+
+Frage: {question}"""
+
+    messages.append({"role": "user", "content": user_message})
+
+    return messages
+
+
 # =============================================================================
 # EXPORT
 # =============================================================================
@@ -457,6 +536,7 @@ __all__ = [
     "SYSTEM_PROMPT_REPORT_VERTRAEGE",
     "SYSTEM_PROMPT_CLASSIFICATION",
     "SYSTEM_PROMPT_QUERY_ENHANCEMENT",
+    "SYSTEM_PROMPT_AGENT",
     # Template Functions
     "build_rag_context",
     "build_chat_prompt",
@@ -465,4 +545,5 @@ __all__ = [
     "build_query_enhancement_prompt",
     "build_extraction_prompt",
     "build_report_prompt",
+    "build_agent_chat_prompt",
 ]

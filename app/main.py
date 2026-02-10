@@ -923,9 +923,11 @@ from app.api.v1.portal import router as portal_router  # Phase 5.2: Kundenportal
 from app.api.v1.esg import router as esg_router  # Phase 7.4: ESG-Reporting
 from app.api.v1.reporting import router as reporting_router  # Executive Dashboard Reporting
 from app.api.v1.tenant_admin import router as tenant_admin_router  # Multi-Tenancy Admin API
+from app.api.v1.cache_admin import router as cache_admin_router  # Cache Stampede Prevention Admin API
 from app.api.v1.retention_admin import router as retention_admin_router  # Phase 3: GoBD Retention Admin
 from app.api.v1.cross_tenant_reports import router as cross_tenant_reports_router  # Phase 3: Cross-Tenant Reports
 from app.api.v1.notification_preferences import router as notification_preferences_router  # Phase 3: Notification Preferences
+from app.api.v1.feature_flags import admin_router as feature_flags_admin_router, user_router as feature_flags_router  # Feature Flag Service
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -1132,10 +1134,15 @@ app.include_router(kanban_router, prefix="/api/v1")
 # Enterprise Completion: Multi-Tenancy Admin
 app.include_router(tenant_admin_router, prefix="/api/v1")
 
+# Cache Administration (Stampede Prevention, Metrics, Warming)
+app.include_router(cache_admin_router, prefix="/api/v1")
+
 # Phase 3: Enterprise-Compliance (P1-Critical)
 app.include_router(retention_admin_router, prefix="/api/v1")  # GoBD Retention Admin Config
 app.include_router(cross_tenant_reports_router, prefix="/api/v1")  # Multi-Firma Cross-Tenant Reports
 app.include_router(notification_preferences_router, prefix="/api/v1")  # Notification Preferences
+app.include_router(feature_flags_admin_router, prefix="/api/v1")  # Feature Flag Admin CRUD
+app.include_router(feature_flags_router, prefix="/api/v1")  # Feature Flag Evaluation
 
 
 # ==================== Health & Status Endpoints ====================
