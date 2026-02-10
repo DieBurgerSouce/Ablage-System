@@ -18,15 +18,22 @@ import {
 } from '@/components/ui/tooltip';
 import type { ChatMessage as ChatMessageType } from '../types/chat-types';
 import { formatTimestamp, formatSimilarity } from '../types/chat-types';
+import { ChatActionCard } from './ChatActionCard';
 
 interface ChatMessageProps {
     message: ChatMessageType;
     onSourceClick?: (documentId: string) => void;
+    onConfirmAction?: (actionId: string) => void;
+    onRejectAction?: (actionId: string) => void;
+    confirmingActionId?: string | null;
 }
 
 export const ChatMessage = memo(function ChatMessage({
     message,
     onSourceClick,
+    onConfirmAction,
+    onRejectAction,
+    confirmingActionId,
 }: ChatMessageProps) {
     const isUser = message.role === 'user';
     const isAssistant = message.role === 'assistant';
@@ -128,6 +135,21 @@ export const ChatMessage = memo(function ChatMessage({
                                 </Tooltip>
                             ))}
                         </TooltipProvider>
+                    </div>
+                )}
+
+                {/* Actions */}
+                {isAssistant && message.actions && message.actions.length > 0 && (
+                    <div className="flex flex-col gap-2 mt-2 w-full max-w-md">
+                        {message.actions.map((action) => (
+                            <ChatActionCard
+                                key={action.action_id}
+                                action={action}
+                                onConfirm={onConfirmAction || (() => {})}
+                                onReject={onRejectAction || (() => {})}
+                                isConfirming={confirmingActionId === action.action_id}
+                            />
+                        ))}
                     </div>
                 )}
 

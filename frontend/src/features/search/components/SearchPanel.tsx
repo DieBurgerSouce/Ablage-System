@@ -161,6 +161,7 @@ export function SearchPanel({ value, onChange, onReset }: SearchPanelProps) {
             className="space-y-4 w-full max-w-4xl mx-auto"
             role="search"
             aria-label="Dokumentensuche"
+            data-tour="search-input"
         >
             {/* Search Bar */}
             <div className="relative group">
@@ -195,6 +196,7 @@ export function SearchPanel({ value, onChange, onReset }: SearchPanelProps) {
                         )}
                         <div className="h-8 w-px bg-border mx-2" />
                         <ToggleGroup
+                            data-tour="search-sort"
                             type="single"
                             value={value.mode}
                             onValueChange={(v) => v && onChange({ mode: v })}
@@ -235,6 +237,7 @@ export function SearchPanel({ value, onChange, onReset }: SearchPanelProps) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={motionTokens.spring.gentle}
                 className="flex gap-3 flex-wrap"
+                data-tour="search-filters"
             >
                 <FilterDropdown
                     icon={FileType}

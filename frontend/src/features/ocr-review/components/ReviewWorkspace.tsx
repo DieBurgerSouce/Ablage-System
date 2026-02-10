@@ -338,7 +338,7 @@ export function ReviewWorkspace({
         try {
             await verifyMutation.mutateAsync({
                 sampleId,
-                data: { approved: false, correction_notes: 'Rejected by reviewer' },
+                data: { approved: false, correction_notes: 'Vom Pruefer abgelehnt' },
             })
             onComplete(false)
             corrections.reset()
@@ -613,7 +613,7 @@ export function ReviewWorkspace({
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-[calc(100vh-240px)]">
                     {/* Linke Spalte: Dokument-Vorschau (8/12 = 66% Breite) */}
-                    <div className="lg:col-span-8 flex flex-col">
+                    <div data-tour="document-viewer" className="lg:col-span-8 flex flex-col">
                         <Card className="flex-1 flex flex-col border-0 shadow-none bg-transparent">
                             <CardHeader className="pb-1 pt-0 px-0 flex-shrink-0">
                                 <div className="flex items-center justify-between">
@@ -708,7 +708,7 @@ export function ReviewWorkspace({
                     </div>
 
                     {/* Rechte Spalte: Daten-Panel (4/12 = 33% Breite) */}
-                    <div className="lg:col-span-4 flex flex-col">
+                    <div data-tour="ocr-text-panel" className="lg:col-span-4 flex flex-col">
                         <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col">
                             <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
                                 <TabsTrigger value="structured" className="flex items-center gap-1.5 text-sm">
@@ -733,7 +733,7 @@ export function ReviewWorkspace({
                                 </div>
                             </TabsContent>
 
-                            <TabsContent value="ocr-text" className="flex-1 mt-3">
+                            <TabsContent value="ocr-text" className="flex-1 mt-3" data-tour="ocr-correction">
                                 <CorrectionEditor
                                     originalText={sampleDetail?.ground_truth_text || nextSample.ocr_text_preview || ''}
                                     initialText={currentText}

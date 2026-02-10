@@ -27,6 +27,7 @@ function AppLayoutInner({ children, id }: { children: React.ReactNode; id?: stri
 
             {/* Sidebar Container - responsive */}
             <div
+                data-tour="sidebar"
                 className={cn(
                     // Base: Fixed positioning on mobile, relative on desktop
                     "fixed inset-y-0 left-0 z-50 md:relative md:z-0",
@@ -42,12 +43,13 @@ function AppLayoutInner({ children, id }: { children: React.ReactNode; id?: stri
             <main
                 className="flex-1 flex flex-col overflow-hidden relative w-full"
                 tabIndex={-1}
+                role="main"
                 aria-label="Hauptinhalt"
             >
                 {/* Offline Banner */}
                 <OfflineIndicator />
                 {/* Mobile Header with Hamburger + Breadcrumbs + WebSocket Status */}
-                <div className="flex-none sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-white/5 px-4 md:px-6 py-3">
+                <div data-tour="search-bar" className="flex-none sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-white/5 px-4 md:px-6 py-3">
                     <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                             {/* Hamburger Menu - only visible on mobile */}

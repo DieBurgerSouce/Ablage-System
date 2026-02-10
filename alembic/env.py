@@ -45,6 +45,16 @@ if _needs_metadata:
             OCRCorrectionFeedback,
             OCRBackendPerformance,
         )
+        # Import PO-Matching models
+        from app.db.models_po_matching import (
+            PurchaseOrderMatch,
+            MatchDiscrepancy,
+        )
+        # Import Recurring Invoice models
+        from app.db.models_recurring_invoice import (
+            RecurringInvoice,
+            RecurringInvoiceOccurrence,
+        )
         target_metadata = Base.metadata
     except ImportError as e:
         import logging

@@ -427,3 +427,78 @@ export interface ExecutionListParams {
   offset?: number;
   limit?: number;
 }
+
+// =============================================================================
+// Execution Visualization Types (Phase B)
+// =============================================================================
+
+export type NodeExecutionStatus =
+    | 'pending'
+    | 'active'
+    | 'completed'
+    | 'failed'
+    | 'skipped'
+    | 'warning';
+
+export interface NodeState {
+    node_id: string;
+    node_type: string;
+    node_name: string;
+    status: NodeExecutionStatus;
+    started_at?: string | null;
+    completed_at?: string | null;
+    duration_ms?: number | null;
+    error_message?: string | null;
+    sla_deadline?: string | null;
+    sla_status?: string | null;
+}
+
+export interface ExecutionState {
+    instance_id: string;
+    workflow_id: string;
+    workflow_name: string;
+    status: ExecutionStatus;
+    progress_percent: number;
+    started_at?: string | null;
+    completed_at?: string | null;
+    nodes: NodeState[];
+    active_step_ids: string[];
+}
+
+export interface TimelineEntry {
+    step_id: string;
+    step_name: string;
+    step_type: string;
+    status: string;
+    started_at: string;
+    completed_at?: string | null;
+    duration_ms?: number | null;
+    input_summary?: string | null;
+    output_summary?: string | null;
+    error_message?: string | null;
+}
+
+export interface ExecutionMetrics {
+    instance_id: string;
+    total_duration_ms?: number | null;
+    steps_completed: number;
+    steps_failed: number;
+    steps_pending: number;
+    avg_step_duration_ms?: number | null;
+    slowest_step?: string | null;
+    slowest_step_duration_ms?: number | null;
+    bottleneck_step?: string | null;
+}
+
+// Add missing types referenced by workflows-api
+export interface WorkflowValidationResponse {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface WorkflowValidationStatusResponse {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+}

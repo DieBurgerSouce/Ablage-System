@@ -13,3 +13,7 @@ export { ExpandedQueryDisplay } from './ExpandedQueryDisplay';
 // Unified Search
 export { SearchModeToggle } from './SearchModeToggle';
 export { ChunkResultCard } from './ChunkResultCard';
+
+// Facetten-Filter
+export { FacetSidebar } from './FacetSidebar';
+export { FacetSection } from './FacetSection';

@@ -14,6 +14,8 @@ import { GlobalCommandDialog } from '@/components/GlobalCommandDialog'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 // Phase 4.4: Global Undo Provider for reversible actions
 import { UndoProvider } from '@/hooks/useUndoableAction'
+// Phase C: Echtzeit-Benachrichtigungen via WebSocket
+import { NotificationToastProvider } from '@/features/notifications/components/NotificationToastProvider'
 // WCAG 2.1 AA: Skip Links for keyboard navigation
 import { SkipLinks } from '@/components/SkipLinks'
 
@@ -72,6 +74,7 @@ function RootComponent() {
                         <WelcomeModal />
                         <SessionExpiredModal />
                         <Toaster />
+                        <NotificationToastProvider />
                     </GlobalShortcutsProvider>
                 </TourProvider>
             </UndoProvider>

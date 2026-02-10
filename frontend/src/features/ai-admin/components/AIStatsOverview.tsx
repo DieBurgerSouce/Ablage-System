@@ -31,6 +31,21 @@ import type { DecisionType } from '../types';
 // Decision Type Labels
 // =============================================================================
 
+const VALID_DECISION_TYPES: readonly DecisionType[] = [
+  'document_classification',
+  'entity_linking',
+  'invoice_matching',
+  'payment_matching',
+  'ocr_correction',
+  'anomaly_detection',
+  'duplicate_detection',
+  'auto_categorization',
+] as const;
+
+function isDecisionType(value: string): value is DecisionType {
+  return (VALID_DECISION_TYPES as readonly string[]).includes(value);
+}
+
 const DECISION_TYPE_LABELS: Record<DecisionType, string> = {
   document_classification: 'Dokumenten-Klassifizierung',
   entity_linking: 'Entitäts-Verknüpfung',
@@ -272,10 +287,10 @@ export function AIStatsOverview() {
 
       {/* Detail Stats per Decision Type */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {stats?.map((stat) => (
+        {stats?.filter((stat) => isDecisionType(stat.decision_type)).map((stat) => (
           <StatsCard
             key={stat.decision_type}
-            decisionType={stat.decision_type as DecisionType}
+            decisionType={stat.decision_type}
             stats={stat}
           />
         ))}

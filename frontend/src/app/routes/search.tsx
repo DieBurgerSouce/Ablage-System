@@ -10,9 +10,11 @@
  */
 
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useState } from 'react'
 import { SearchPanel } from '@/features/search/components/SearchPanel'
 import { SavedSearches } from '@/features/search/components/SavedSearches'
 import { SearchResultCard } from '@/features/search/components/SearchResultCard'
+import { FacetSidebar } from '@/features/search/components/FacetSidebar'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useSearch, type SearchType } from '@/features/search/hooks/useSearch'
 import { Loader2, Clock, FileSearch } from 'lucide-react'
@@ -54,6 +56,12 @@ function SearchPage() {
             search: defaultSearchParams,
         })
     }
+
+    // Facet filter state (Phase C)
+    const [selectedTypes, setSelectedTypes] = useState<string[]>([])
+    const [selectedStatuses, setSelectedStatuses] = useState<string[]>([])
+    const [selectedTags, setSelectedTags] = useState<string[]>([])
+    const [selectedBackends, setSelectedBackends] = useState<string[]>([])
 
     // Check if we have an active search
     const hasSearch = !!search.q?.trim() && search.q.trim().length >= 2
@@ -138,46 +146,69 @@ function SearchPage() {
                 </div>
             )}
 
-            {/* Results / Empty States */}
-            {!hasSearch && !isLoading && (
-                <EmptyState
-                    variant="search"
-                    title="Dokumente durchsuchen"
-                    description="Geben Sie einen Suchbegriff ein (mindestens 2 Zeichen) oder nutzen Sie die Filter, um Dokumente zu finden."
-                    size="lg"
-                />
-            )}
+            {/* Results with Facet Sidebar (Phase C) */}
+            <div className="flex gap-6">
+                {/* Facet Sidebar - links */}
+                {hasSearch && (
+                    <aside className="hidden lg:block w-64 flex-shrink-0">
+                        <div className="sticky top-4 border rounded-lg bg-card">
+                            <FacetSidebar
+                                selectedTypes={selectedTypes}
+                                onTypesChange={setSelectedTypes}
+                                selectedStatuses={selectedStatuses}
+                                onStatusesChange={setSelectedStatuses}
+                                selectedTags={selectedTags}
+                                onTagsChange={setSelectedTags}
+                                selectedBackends={selectedBackends}
+                                onBackendsChange={setSelectedBackends}
+                            />
+                        </div>
+                    </aside>
+                )}
 
-            {(isLoading || isFetching) && (
-                <div className="flex items-center justify-center gap-3 p-8 text-muted-foreground">
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>Suche läuft...</span>
-                </div>
-            )}
-
-            {results.length > 0 && !isLoading && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {results.map((result) => (
-                        <SearchResultCard
-                            key={result.documentId}
-                            result={result}
+                {/* Results / Empty States */}
+                <div className="flex-1 min-w-0">
+                    {!hasSearch && !isLoading && (
+                        <EmptyState
+                            variant="search"
+                            title="Dokumente durchsuchen"
+                            description="Geben Sie einen Suchbegriff ein (mindestens 2 Zeichen) oder nutzen Sie die Filter, um Dokumente zu finden."
+                            size="lg"
                         />
-                    ))}
-                </div>
-            )}
+                    )}
 
-            {hasSearch && !isLoading && !isFetching && results.length === 0 && (
-                <EmptyState
-                    variant="search"
-                    title="Keine Ergebnisse gefunden"
-                    description="Keine Dokumente gefunden für Ihre Suche. Versuchen Sie andere Suchbegriffe oder passen Sie die Filter an."
-                    action={{
-                        label: 'Filter zurücksetzen',
-                        onClick: resetFilters,
-                        variant: 'outline',
-                    }}
-                />
-            )}
+                    {(isLoading || isFetching) && (
+                        <div className="flex items-center justify-center gap-3 p-8 text-muted-foreground">
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <span>Suche läuft...</span>
+                        </div>
+                    )}
+
+                    {results.length > 0 && !isLoading && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                            {results.map((result) => (
+                                <SearchResultCard
+                                    key={result.documentId}
+                                    result={result}
+                                />
+                            ))}
+                        </div>
+                    )}
+
+                    {hasSearch && !isLoading && !isFetching && results.length === 0 && (
+                        <EmptyState
+                            variant="search"
+                            title="Keine Ergebnisse gefunden"
+                            description="Keine Dokumente gefunden für Ihre Suche. Versuchen Sie andere Suchbegriffe oder passen Sie die Filter an."
+                            action={{
+                                label: 'Filter zurücksetzen',
+                                onClick: resetFilters,
+                                variant: 'outline',
+                            }}
+                        />
+                    )}
+                </div>
+            </div>
         </div>
     )
 }

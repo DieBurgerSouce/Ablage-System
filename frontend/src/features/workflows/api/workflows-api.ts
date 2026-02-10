@@ -459,3 +459,37 @@ export async function getAvailableFields(): Promise<Record<string, string>> {
   );
   return response.data;
 }
+
+// =============================================================================
+// Execution Visualization (Phase B)
+// =============================================================================
+
+/**
+ * Ruft den aktuellen Ausfuehrungs-Status ab.
+ */
+export async function getExecutionState(instanceId: string): Promise<import('../types/workflow-types').ExecutionState> {
+  const response = await apiClient.get<import('../types/workflow-types').ExecutionState>(
+    `${BASE_URL}/executions/${instanceId}/state`
+  );
+  return response.data;
+}
+
+/**
+ * Ruft die Ausfuehrungs-Timeline ab.
+ */
+export async function getExecutionTimeline(instanceId: string): Promise<import('../types/workflow-types').TimelineEntry[]> {
+  const response = await apiClient.get<import('../types/workflow-types').TimelineEntry[]>(
+    `${BASE_URL}/executions/${instanceId}/timeline`
+  );
+  return response.data;
+}
+
+/**
+ * Ruft die Ausfuehrungs-Metriken ab.
+ */
+export async function getExecutionMetrics(instanceId: string): Promise<import('../types/workflow-types').ExecutionMetrics> {
+  const response = await apiClient.get<import('../types/workflow-types').ExecutionMetrics>(
+    `${BASE_URL}/executions/${instanceId}/metrics`
+  );
+  return response.data;
+}

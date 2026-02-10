@@ -115,6 +115,8 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                     <SidebarLink to="/finanzen" icon={Landmark} label="Finanzen" onNavigate={onNavigate} />
                     <SidebarLink to="/finanzen/zahlungsverhalten" icon={CreditCard} label="Zahlungsverhalten" onNavigate={onNavigate} />
                     <SidebarLink to="/banking/payment-automation" icon={Banknote} label="Auto-Zahlungen" onNavigate={onNavigate} />
+                    <SidebarLink to="/po-matching" icon={ClipboardCheck} label="PO-Matching" onNavigate={onNavigate} />
+                    <SidebarLink to="/recurring-invoices" icon={ListOrdered} label="Abo-Rechnungen" onNavigate={onNavigate} />
                     <SidebarLink to="/kasse" icon={Wallet} label="Kassenbuch" onNavigate={onNavigate} />
                     <SidebarLink to="/spesen" icon={Receipt} label="Spesen" onNavigate={onNavigate} />
                     <SidebarLink to="/streckengeschaeft" icon={GitBranch} label="Streckengeschäft" onNavigate={onNavigate} />
@@ -314,6 +316,12 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                                 )}
                                 {permissions.isAdmin && (
                                     <SidebarLink to="/admin/system-health" icon={HeartPulse} label="Systemgesundheit" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/cross-tenant" icon={Building2} label="Mandanten-Berichte" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/document-quality" icon={Gauge} label="Datenqualitaet" onNavigate={onNavigate} />
                                 )}
                             </div>
                         )}

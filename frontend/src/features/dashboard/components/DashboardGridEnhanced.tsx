@@ -17,6 +17,8 @@ import { ResizableWidget } from './ResizableWidget'
 import { WidgetCatalogDrawer } from './WidgetCatalogDrawer'
 import { WidgetConfigModal } from './WidgetConfigModal'
 import { WidgetSyncStatus } from './WidgetSyncStatus'
+import { DashboardDateRangePicker } from './DashboardDateRangePicker'
+import { DateRangeProvider } from '../hooks/useDateRange'
 import { useWidgetConfig, type WidgetSettings } from '../hooks/useWidgetConfig'
 import { Button } from '@/components/ui/button'
 import {
@@ -200,6 +202,7 @@ export function DashboardGridEnhanced() {
     }, [widgets])
 
     return (
+        <DateRangeProvider>
         <div className="space-y-4" role="region" aria-label="Dashboard">
             {/* Toolbar */}
             <div
@@ -306,6 +309,9 @@ export function DashboardGridEnhanced() {
                         </TooltipProvider>
                     )}
 
+                    {/* Date Range Picker (Phase C) */}
+                    <DashboardDateRangePicker />
+
                     {/* Sync Status */}
                     <WidgetSyncStatus
                         isLoading={isSyncLoading}
@@ -340,6 +346,7 @@ export function DashboardGridEnhanced() {
             {/* Grid Container */}
             <div
                 ref={gridRef}
+                data-tour="dashboard-widgets"
                 className={cn(
                     'grid gap-4',
                     compactMode ? 'gap-2' : 'gap-4',
@@ -412,6 +419,7 @@ export function DashboardGridEnhanced() {
                 isSaving={false}
             />
         </div>
+        </DateRangeProvider>
     )
 }
 

@@ -181,6 +181,30 @@ export async function getChatStatus(): Promise<ChatServiceStatus> {
     return fetchWithAuth<ChatServiceStatus>(`${API_BASE}/status`);
 }
 
+// ==================== Action API ====================
+
+/**
+ * Bestätigt eine ausstehende Chat-Aktion.
+ */
+export async function confirmAction(
+    actionId: string
+): Promise<{ success: boolean; result?: Record<string, unknown> }> {
+    return fetchWithAuth(`${API_BASE}/actions/${actionId}/confirm`, {
+        method: 'POST',
+    });
+}
+
+/**
+ * Lehnt eine ausstehende Chat-Aktion ab.
+ */
+export async function rejectAction(
+    actionId: string
+): Promise<{ success: boolean }> {
+    return fetchWithAuth(`${API_BASE}/actions/${actionId}/reject`, {
+        method: 'POST',
+    });
+}
+
 // ==================== React Query Keys ====================
 
 export const chatKeys = {
@@ -189,4 +213,6 @@ export const chatKeys = {
     session: (id: string) => [...chatKeys.sessions(), id] as const,
     history: (id: string) => [...chatKeys.session(id), 'history'] as const,
     status: () => [...chatKeys.all, 'status'] as const,
+    actions: () => [...chatKeys.all, 'actions'] as const,
+    action: (id: string) => [...chatKeys.actions(), id] as const,
 };

@@ -195,6 +195,120 @@ export async function getCustomerLTV(
 }
 
 // =============================================================================
+// Types - Revenue Trend
+// =============================================================================
+
+export interface RevenueTrendDataPoint {
+  period: string;
+  revenue: number;
+  expense: number;
+  net: number;
+  documentCount: number;
+  category: string;
+}
+
+export interface RevenueTrendData {
+  generatedAt: string;
+  dateFrom: string;
+  dateTo: string;
+  totalRevenue: number;
+  totalExpenses: number;
+  netIncome: number;
+  dataPoints: RevenueTrendDataPoint[];
+  comparison?: {
+    revenueChangePct: number;
+    expenseChangePct: number;
+    previousFrom: string;
+    previousTo: string;
+  } | null;
+}
+
+// =============================================================================
+// Types - DSO Tracker
+// =============================================================================
+
+export interface DSOTrackerData {
+  generatedAt: string;
+  currentDSO: number;
+  previousDSO: number;
+  industryBenchmark: number;
+  trend: { period: string; dso: number }[];
+  rating: 'gut' | 'mittel' | 'schlecht';
+}
+
+// =============================================================================
+// Types - Margin Analyzer
+// =============================================================================
+
+export interface MarginDataPoint {
+  category: string;
+  revenue: number;
+  cost: number;
+  margin: number;
+  marginPct: number;
+}
+
+export interface MarginAnalyzerData {
+  generatedAt: string;
+  overallMargin: number;
+  overallMarginPct: number;
+  dataPoints: MarginDataPoint[];
+}
+
+// =============================================================================
+// API Functions - Business KPIs (Phase C)
+// =============================================================================
+
+/**
+ * Hole Umsatzentwicklungs-Daten
+ */
+export async function getRevenueTrend(
+  dateFrom?: string,
+  dateTo?: string,
+  comparePeriod?: string,
+): Promise<RevenueTrendData> {
+  const params = new URLSearchParams();
+  if (dateFrom) params.append('date_from', dateFrom);
+  if (dateTo) params.append('date_to', dateTo);
+  if (comparePeriod) params.append('compare_period', comparePeriod);
+  const url = `${BASE_URL}/revenue-trend${params.toString() ? `?${params}` : ''}`;
+  const response = await apiClient.get<RevenueTrendData>(url);
+  return response.data;
+}
+
+/**
+ * Hole DSO-Tracker-Daten
+ */
+export async function getDSOTracker(
+  dateFrom?: string,
+  dateTo?: string,
+): Promise<DSOTrackerData> {
+  const params = new URLSearchParams();
+  if (dateFrom) params.append('date_from', dateFrom);
+  if (dateTo) params.append('date_to', dateTo);
+  const response = await apiClient.get<DSOTrackerData>(
+    `${BASE_URL}/dso-tracker${params.toString() ? `?${params}` : ''}`,
+  );
+  return response.data;
+}
+
+/**
+ * Hole Margenanalyse-Daten
+ */
+export async function getMarginAnalyzer(
+  dateFrom?: string,
+  dateTo?: string,
+): Promise<MarginAnalyzerData> {
+  const params = new URLSearchParams();
+  if (dateFrom) params.append('date_from', dateFrom);
+  if (dateTo) params.append('date_to', dateTo);
+  const response = await apiClient.get<MarginAnalyzerData>(
+    `${BASE_URL}/margin-analyzer${params.toString() ? `?${params}` : ''}`,
+  );
+  return response.data;
+}
+
+// =============================================================================
 // React Query Keys
 // =============================================================================
 
@@ -207,6 +321,12 @@ export const dashboardWidgetKeys = {
     [...dashboardWidgetKeys.all, 'supplier-performance', periodDays] as const,
   customerLTV: (periodDays: number) =>
     [...dashboardWidgetKeys.all, 'customer-ltv', periodDays] as const,
+  revenueTrend: (from?: string, to?: string) =>
+    [...dashboardWidgetKeys.all, 'revenue-trend', from, to] as const,
+  dsoTracker: (from?: string, to?: string) =>
+    [...dashboardWidgetKeys.all, 'dso-tracker', from, to] as const,
+  marginAnalyzer: (from?: string, to?: string) =>
+    [...dashboardWidgetKeys.all, 'margin-analyzer', from, to] as const,
 };
 
 // =============================================================================

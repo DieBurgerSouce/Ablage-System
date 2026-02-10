@@ -22,6 +22,9 @@ import { CashPositionWidget } from './components/widgets/CashPositionWidget'
 import { CashFlowForecastWidget } from './components/widgets/CashFlowForecastWidget'
 import { SupplierPerformanceWidget } from './components/widgets/SupplierPerformanceWidget'
 import { CustomerLifetimeValueWidget } from './components/widgets/CustomerLifetimeValueWidget'
+import { RevenueTrendWidget } from './components/widgets/RevenueTrendWidget'
+import { DSOTrackerWidget } from './components/widgets/DSOTrackerWidget'
+import { MarginAnalyzerWidget } from './components/widgets/MarginAnalyzerWidget'
 import type { LucideIcon } from 'lucide-react'
 import {
     Calendar,
@@ -48,6 +51,9 @@ import {
     LineChart,
     Truck,
     Users,
+    BarChart3,
+    Clock3,
+    PieChart,
 } from 'lucide-react'
 
 export interface WidgetRegistryEntry {
@@ -293,6 +299,37 @@ const WIDGET_DEFINITIONS: WidgetRegistryEntry[] = [
         label: 'Kundenwert (LTV)',
         description: 'Customer Lifetime Value mit Trend-Analyse und Churn-Risiko-Indikator.',
         icon: Users,
+        category: 'finance',
+        defaultSize: { w: 6, h: 5 },
+        minSize: { w: 4, h: 4 },
+    },
+    // Phase C: Business KPIs
+    {
+        type: 'revenue-trend',
+        component: RevenueTrendWidget,
+        label: 'Umsatzentwicklung',
+        description: 'Umsatz nach Kategorie und Monat mit Vergleichszeitraum.',
+        icon: BarChart3,
+        category: 'finance',
+        defaultSize: { w: 6, h: 5 },
+        minSize: { w: 4, h: 4 },
+    },
+    {
+        type: 'dso-tracker',
+        component: DSOTrackerWidget,
+        label: 'Forderungslaufzeit (DSO)',
+        description: 'Days Sales Outstanding mit Trend und Branchen-Benchmark.',
+        icon: Clock3,
+        category: 'finance',
+        defaultSize: { w: 4, h: 4 },
+        minSize: { w: 3, h: 3 },
+    },
+    {
+        type: 'margin-analyzer',
+        component: MarginAnalyzerWidget,
+        label: 'Margenanalyse',
+        description: 'Umsatz vs. Kosten mit Marge pro Kategorie.',
+        icon: PieChart,
         category: 'finance',
         defaultSize: { w: 6, h: 5 },
         minSize: { w: 4, h: 4 },

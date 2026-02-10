@@ -15,6 +15,26 @@ export interface ChatMessageSource {
     document_type?: string;
 }
 
+// ==================== Action Types ====================
+
+export type ChatActionStatus =
+    | 'pending_confirmation'
+    | 'confirmed'
+    | 'executed'
+    | 'rejected'
+    | 'failed';
+
+export interface ChatToolAction {
+    action_id: string;
+    tool_name: string;
+    parameters: Record<string, unknown>;
+    status: ChatActionStatus;
+    requires_confirmation: boolean;
+    result?: Record<string, unknown>;
+    error_message?: string;
+    description?: string;
+}
+
 export interface ChatMessage {
     id: string;
     role: MessageRole;
@@ -22,6 +42,7 @@ export interface ChatMessage {
     timestamp: string;
     sources?: ChatMessageSource[];
     isStreaming?: boolean;
+    actions?: ChatToolAction[];
 }
 
 // ==================== Session Types ====================

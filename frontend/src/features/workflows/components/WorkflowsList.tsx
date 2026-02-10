@@ -24,6 +24,7 @@ import {
   Webhook,
   Calendar,
   Hand,
+  Eye,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -94,6 +95,7 @@ interface WorkflowCardProps {
   onDuplicate: (id: string) => void;
   onToggle: (id: string) => void;
   onExecute: (id: string) => void;
+  onViewExecution?: (id: string) => void;
 }
 
 function WorkflowCard({
@@ -103,6 +105,7 @@ function WorkflowCard({
   onDuplicate,
   onToggle,
   onExecute,
+  onViewExecution,
 }: WorkflowCardProps) {
   const TriggerIcon = triggerIcons[workflow.trigger_type] || FileText;
   const triggerLabel = triggerLabels[workflow.trigger_type] || 'Unbekannt';
@@ -134,6 +137,12 @@ function WorkflowCard({
                 <Play className="mr-2 h-4 w-4" />
                 Ausführen
               </DropdownMenuItem>
+              {onViewExecution && (
+                <DropdownMenuItem onClick={() => onViewExecution(workflow.id)}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  Ausfuehrung anzeigen
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => onToggle(workflow.id)}>
                 {workflow.is_active ? (
@@ -268,6 +277,10 @@ export default function WorkflowsList() {
     await executeWorkflow.mutateAsync({ workflowId: id });
   };
 
+  const handleViewExecution = (id: string) => {
+    navigate({ to: '/workflows/$workflowId/execution', params: { workflowId: id } });
+  };
+
   const handleCreateNew = () => {
     navigate({ to: '/workflows/new' });
   };
@@ -368,6 +381,7 @@ export default function WorkflowsList() {
               onDuplicate={handleDuplicate}
               onToggle={handleToggle}
               onExecute={handleExecute}
+              onViewExecution={handleViewExecution}
             />
           ))}
         </div>

@@ -13,6 +13,11 @@ export { default as WorkflowExecutionHistory } from './WorkflowExecutionHistory'
 export { default as WorkflowTemplates } from './WorkflowTemplates';
 export { default as WorkflowStats } from './WorkflowStats';
 
+// Execution Visualization (Phase B)
+export { default as WorkflowExecutionViewer } from './WorkflowExecutionViewer';
+export { default as ExecutionTimeline } from './ExecutionTimeline';
+export { default as WorkflowExecutionPage } from './WorkflowExecutionPage';
+
 // Workflow Builder Sub-Components
 export { NodePalette, nodeTemplates, type NodeTemplate } from './NodePalette';
 export { NodeConfigPanel } from './NodeConfigPanel';

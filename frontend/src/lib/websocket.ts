@@ -69,7 +69,9 @@ export type RealtimeEventType =
   // Widget Events (Real-time Updates)
   | 'widget.update'
   | 'widget.data_changed'
-  | 'widget.refresh_required';
+  | 'widget.refresh_required'
+  // Notification Events (Phase C)
+  | 'notification.received';
 
 export interface RealtimeEvent {
   event_type: RealtimeEventType;
@@ -506,6 +508,8 @@ export function useRealtimeDashboard(): void {
       'transaction.imported': [['transactions'], ['banking'], ['cashflow']],
       'cashflow.updated': [['cashflow'], ['finance']],
       'budget.alert': [['budgets'], ['finance']],
+      // Notification Events
+      'notification.received': [['notifications']],
       // Comment Events
       'comment.created': [['comments'], ['documents']],
       'comment.updated': [['comments']],
