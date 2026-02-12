@@ -1,7 +1,7 @@
 /**
  * Report-Builder TypeScript Types
  *
- * Typen fuer Report-Templates, Spalten, Filter, Charts, Ausfuehrungen und Sharing.
+ * Typen für Report-Templates, Spalten, Filter, Charts, Ausführungen und Sharing.
  */
 
 // =============================================================================

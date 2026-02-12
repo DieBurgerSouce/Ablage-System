@@ -54,7 +54,7 @@ const ANLAGE_ZEILEN: Array<{
 }> = [
     { key: 'Zeile_11', zeile: '11', label: 'Betriebseinnahmen (Waren)', section: 'einnahmen', isSummary: false },
     { key: 'Zeile_12', zeile: '12', label: 'Betriebseinnahmen (Dienstleistungen)', section: 'einnahmen', isSummary: false },
-    { key: 'Zeile_14', zeile: '14', label: 'Zinsertraege', section: 'einnahmen', isSummary: false },
+    { key: 'Zeile_14', zeile: '14', label: 'Zinserträge', section: 'einnahmen', isSummary: false },
     { key: 'Zeile_16', zeile: '16', label: 'Sonstige Einnahmen', section: 'einnahmen', isSummary: false },
     { key: 'Zeile_18', zeile: '18', label: 'Summe Betriebseinnahmen', section: 'einnahmen', isSummary: true },
     { key: 'Zeile_20', zeile: '20', label: 'Wareneinkauf', section: 'ausgaben', isSummary: false },
@@ -87,7 +87,7 @@ export function EuerExportPanel({ companyId }: EuerExportPanelProps) {
     const anlageData = anlageQuery.data as AnlageEUeRResponse | undefined;
     const reportData = reportQuery.data as EURReportResponse | undefined;
 
-    // PDF/Druck oeffnen
+    // PDF/Druck öffnen
     const handlePrintPdf = () => {
         const url = getAnlageEuerHtmlUrl(companyId, year);
         window.open(url, '_blank');
@@ -223,7 +223,7 @@ export function EuerExportPanel({ companyId }: EuerExportPanelProps) {
                             <div>
                                 <CardTitle>Anlage E&Uuml;R - Zeilen&uuml;bersicht</CardTitle>
                                 <CardDescription>
-                                    Steuerformular-Zeilen nach BMF-Vorgabe fuer {year}
+                                    Steuerformular-Zeilen nach BMF-Vorgabe für {year}
                                 </CardDescription>
                             </div>
                             <div className="flex gap-2">
@@ -314,7 +314,7 @@ export function EuerExportPanel({ companyId }: EuerExportPanelProps) {
                 </Card>
             )}
 
-            {/* Kategorien-Aufschluesselung */}
+            {/* Kategorien-Aufschlüsselung */}
             {reportData && !isLoading && (
                 <div className="grid gap-4 md:grid-cols-2">
                     {/* Einnahmen nach Kategorie */}

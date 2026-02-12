@@ -63,7 +63,7 @@ export function NoteFormDialog({
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
 
-  // Initialisiere Form bei Oeffnen
+  // Initialisiere Form bei Öffnen
   useEffect(() => {
     if (open) {
       if (note) {
@@ -125,8 +125,8 @@ export function NoteFormDialog({
             <DialogTitle>{isEdit ? 'Notiz bearbeiten' : 'Neue Notiz erstellen'}</DialogTitle>
             <DialogDescription>
               {isEdit
-                ? 'Bearbeiten Sie die Notiz und speichern Sie die Aenderungen.'
-                : 'Erstellen Sie eine neue Notiz fuer Ihr Wissensmanagement.'}
+                ? 'Bearbeiten Sie die Notiz und speichern Sie die Änderungen.'
+                : 'Erstellen Sie eine neue Notiz für Ihr Wissensmanagement.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -189,7 +189,7 @@ export function NoteFormDialog({
                 onChange={(e) => setContent(e.target.value)}
                 placeholder={
                   contentFormat === 'markdown'
-                    ? '# Ueberschrift\n\nSchreiben Sie hier Ihren Inhalt in Markdown...'
+                    ? '# Überschrift\n\nSchreiben Sie hier Ihren Inhalt in Markdown...'
                     : 'Schreiben Sie hier Ihren Inhalt...'
                 }
                 rows={10}
@@ -218,7 +218,7 @@ export function NoteFormDialog({
                 <Input
                   value={newTag}
                   onChange={(e) => setNewTag(e.target.value)}
-                  placeholder="Neuen Tag hinzufuegen"
+                  placeholder="Neuen Tag hinzufügen"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();

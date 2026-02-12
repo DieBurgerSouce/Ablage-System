@@ -51,7 +51,7 @@ export const TEMPLATE_CATEGORY_LABELS: Record<TemplateCategory, string> = {
   [TemplateCategory.LETTER]: 'Brief',
   [TemplateCategory.REMINDER]: 'Erinnerung',
   [TemplateCategory.DUNNING]: 'Mahnung',
-  [TemplateCategory.CONFIRMATION]: 'Bestaetigung',
+  [TemplateCategory.CONFIRMATION]: 'Bestätigung',
   [TemplateCategory.REPORT]: 'Bericht',
   [TemplateCategory.CERTIFICATE]: 'Zertifikat',
   [TemplateCategory.OTHER]: 'Sonstiges',
@@ -67,12 +67,12 @@ export const OUTPUT_FORMAT_LABELS: Record<TemplateOutputFormat, string> = {
 export const VARIABLE_TYPE_LABELS: Record<VariableType, string> = {
   [VariableType.TEXT]: 'Text',
   [VariableType.NUMBER]: 'Zahl',
-  [VariableType.CURRENCY]: 'Waehrung',
+  [VariableType.CURRENCY]: 'Währung',
   [VariableType.DATE]: 'Datum',
   [VariableType.DATETIME]: 'Datum & Zeit',
   [VariableType.BOOLEAN]: 'Ja/Nein',
   [VariableType.SELECT]: 'Auswahl',
-  [VariableType.ENTITY]: 'Geschaeftspartner',
+  [VariableType.ENTITY]: 'Geschäftspartner',
   [VariableType.DOCUMENT]: 'Dokument',
 };
 

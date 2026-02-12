@@ -5,7 +5,9 @@ Endpoints fuer Side-by-Side Dokumentvergleiche zwischen Versionen.
 """
 from __future__ import annotations
 
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -73,7 +75,7 @@ class ComparisonResultResponse(BaseModel):
     total_additions: int
     total_deletions: int
     total_changes: int
-    text_differences: List[Dict[str, Any]]
+    text_differences: List[JSONDict]
 
 
 # ============================================================================
@@ -134,7 +136,7 @@ async def compare_versions(
     request: CompareVersionsRequest,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Vergleicht zwei spezifische Versionen eines Dokuments."""
     try:
         service = await get_document_comparison_service(db)
@@ -200,7 +202,7 @@ async def compare_with_original(
     document_id: UUID,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Vergleicht die aktuelle Version mit der Originalversion."""
     try:
         service = await get_document_comparison_service(db)

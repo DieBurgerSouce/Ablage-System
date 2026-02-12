@@ -1,7 +1,7 @@
 /**
  * Cross-Tenant Reports Admin Route
  *
- * Route fuer mandantenuebergreifende Berichte.
+ * Route für mandantenübergreifende Berichte.
  * Erfordert Superuser-Berechtigung.
  */
 

@@ -1,7 +1,7 @@
 /**
  * AuditExportPanel - Export-Steuerung
  *
- * Ermoeglicht den Export der Audit-Chain als JSON
+ * Ermöglicht den Export der Audit-Chain als JSON
  * mit konfigurierbarem Zeitraum.
  */
 
@@ -90,8 +90,8 @@ export function AuditExportPanel() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Exportieren Sie die Audit-Chain inklusive aller Eintraege und
-            Merkle Tree als JSON-Datei fuer externe Pruefungen.
+            Exportieren Sie die Audit-Chain inklusive aller Einträge und
+            Merkle Tree als JSON-Datei für externe Prüfungen.
           </p>
 
           {/* Date Range */}

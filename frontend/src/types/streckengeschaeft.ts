@@ -439,14 +439,14 @@ export interface ZmSummary {
   submittedAt?: string;
 }
 
-/** ZM Record - einzelner Eintrag fuer ZM Meldung */
+/** ZM Record - einzelner Eintrag für ZM Meldung */
 export interface ZmRecord {
   id: string;
   vatId: string;
   countryCode: string;
   amount: number;
   isTriangular: boolean;
-  triangularMarker?: '1' | null;  // Kz.1 fuer Dreiecksgeschaeft
+  triangularMarker?: '1' | null;  // Kz.1 für Dreiecksgeschaeft
   classificationId: string;
 }
 

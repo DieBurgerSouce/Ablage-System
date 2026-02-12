@@ -1,8 +1,8 @@
 /**
  * Audit Chain API Client
  *
- * API-Funktionen fuer den kryptografischen Audit-Trail
- * mit Merkle Tree Verifikation und Integritaets-Reports.
+ * API-Funktionen für den kryptografischen Audit-Trail
+ * mit Merkle Tree Verifikation und Integritäts-Reports.
  */
 
 import { useQuery, useMutation } from "@tanstack/react-query";

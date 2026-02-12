@@ -1,7 +1,7 @@
 /**
  * Recurring Invoice (Abo-Rechnungen) Types
  *
- * TypeScript Typen fuer das Abo-Rechnungen Feature.
+ * TypeScript Typen für das Abo-Rechnungen Feature.
  * Konsistent mit Backend-Schema: RecurringInvoice Model und API Responses.
  */
 
@@ -137,7 +137,7 @@ export interface MissingInvoiceResponse {
 }
 
 /**
- * Preisaenderung
+ * Preisänderung
  */
 export interface PriceChangeResponse {
   recurring_invoice_id: string;
@@ -185,7 +185,7 @@ export interface SollIstReportResponse {
 // ==================== Create/Update Types ====================
 
 /**
- * Payload fuer manuelle Abo-Erstellung
+ * Payload für manuelle Abo-Erstellung
  */
 export interface RecurringInvoiceCreate {
   vendor_name: string;
@@ -202,7 +202,7 @@ export interface RecurringInvoiceCreate {
 }
 
 /**
- * Payload fuer Abo-Update
+ * Payload für Abo-Update
  */
 export interface RecurringInvoiceUpdate {
   vendor_name?: string;
@@ -222,7 +222,7 @@ export interface RecurringInvoiceUpdate {
 // ==================== Filter Types ====================
 
 /**
- * Filter fuer Abo-Liste
+ * Filter für Abo-Liste
  */
 export interface RecurringInvoiceFilter {
   status?: RecurringInvoiceStatus;
@@ -231,7 +231,7 @@ export interface RecurringInvoiceFilter {
 }
 
 /**
- * Parameter fuer Muster-Erkennung
+ * Parameter für Muster-Erkennung
  */
 export interface DetectPatternsParams {
   min_occurrences?: number;
@@ -242,15 +242,15 @@ export interface DetectPatternsParams {
 
 export const INTERVAL_LABELS: Record<RecurringIntervalType, string> = {
   monthly: 'Monatlich',
-  quarterly: 'Vierteljaehrlich',
-  half_yearly: 'Halbjaehrlich',
-  yearly: 'Jaehrlich',
+  quarterly: 'Vierteljährlich',
+  half_yearly: 'Halbjährlich',
+  yearly: 'Jährlich',
 };
 
 export const STATUS_LABELS: Record<RecurringInvoiceStatus, string> = {
   active: 'Aktiv',
   paused: 'Pausiert',
-  cancelled: 'Gekuendigt',
+  cancelled: 'Gekündigt',
   expired: 'Abgelaufen',
 };
 
@@ -268,8 +268,8 @@ export const OCCURRENCE_STATUS_LABELS: Record<OccurrenceStatus, string> = {
   expected: 'Erwartet',
   matched: 'Zugeordnet',
   missing: 'Fehlend',
-  late: 'Verspaetet',
-  overpaid: 'Ueberbezahlt',
+  late: 'Verspätet',
+  overpaid: 'Überbezahlt',
   underpaid: 'Unterbezahlt',
 };
 

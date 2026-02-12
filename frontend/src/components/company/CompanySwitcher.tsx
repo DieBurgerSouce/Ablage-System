@@ -100,7 +100,7 @@ export function CompanySwitcher({
     );
   }
 
-  // Nur eine Firma - kein Switcher noetig
+  // Nur eine Firma - kein Switcher nötig
   if (companies.length === 1 && currentCompany) {
     if (compact) {
       return (

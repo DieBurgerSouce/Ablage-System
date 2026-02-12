@@ -18,7 +18,9 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 import structlog

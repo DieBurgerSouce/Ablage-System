@@ -172,7 +172,7 @@ export function OfflineDocumentList({
           <div>
             <CardTitle className="text-lg flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Offline verfuegbar
+              Offline verfügbar
             </CardTitle>
             <CardDescription>
               {documents.length} {documents.length === 1 ? 'Dokument' : 'Dokumente'} gecached
@@ -239,9 +239,9 @@ export function OfflineDocumentList({
         ) : documents.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
-            <p>Keine Dokumente offline verfuegbar</p>
+            <p>Keine Dokumente offline verfügbar</p>
             <p className="text-sm mt-1">
-              Oeffnen Sie Dokumente online, um sie zu cachen
+              Öffnen Sie Dokumente online, um sie zu cachen
             </p>
           </div>
         ) : (
@@ -280,7 +280,7 @@ export function OfflineDocumentList({
                     </span>
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      Gueltig: {getTimeUntilExpiry(doc.expiresAt)}
+                      Gültig: {getTimeUntilExpiry(doc.expiresAt)}
                     </span>
                   </div>
                 </div>

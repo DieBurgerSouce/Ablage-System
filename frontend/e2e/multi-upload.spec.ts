@@ -442,7 +442,7 @@ test.describe('Multi-File Upload Workflow', () => {
     await page.waitForTimeout(1000);
 
     // Verify dropzone still allows adding more files
-    const addMoreText = page.getByText(/Weitere Dateien hinzufuegen|Dateien hierher ziehen/i);
+    const addMoreText = page.getByText(/Weitere Dateien hinzufügen|Dateien hierher ziehen/i);
     const dropzoneActive = await addMoreText.isVisible().catch(() => false);
 
     console.log(`Dropzone still active for more files: ${dropzoneActive}`);

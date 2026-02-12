@@ -1,7 +1,7 @@
 /**
  * Toast Hook Re-export
  *
- * Re-exportiert useToast von components/ui fuer Rueckwaertskompatibilitaet.
+ * Re-exportiert useToast von components/ui für Rückwärtskompatibilität.
  * Neue Komponenten sollten direkt `import { toast } from 'sonner'` verwenden.
  */
 

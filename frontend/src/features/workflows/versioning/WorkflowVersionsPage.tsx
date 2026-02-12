@@ -1,7 +1,7 @@
 /**
  * WorkflowVersionsPage - Workflow-Versionierung Dashboard
  *
- * Hauptseite fuer Workflow-Versionsverwaltung:
+ * Hauptseite für Workflow-Versionsverwaltung:
  * - Versions-Liste mit Status
  * - Diff-Ansicht
  * - A/B Testing
@@ -179,7 +179,7 @@ export function WorkflowVersionsPage() {
             <CardContent>
               <p className="text-2xl font-bold">{versions?.length ?? 0}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                {draftVersions.length} Entwuerfe
+                {draftVersions.length} Entwürfe
               </p>
             </CardContent>
           </Card>
@@ -207,13 +207,13 @@ export function WorkflowVersionsPage() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Ausfuehrungen (Gesamt)
+                Ausführungen (Gesamt)
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">{totalExecutions.toLocaleString('de-DE')}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                ueber alle Versionen
+                über alle Versionen
               </p>
             </CardContent>
           </Card>
@@ -245,7 +245,7 @@ export function WorkflowVersionsPage() {
             <FlaskConical className="h-4 w-4" />
             <AlertTitle>A/B Test aktiv</AlertTitle>
             <AlertDescription>
-              Aktuell laeuft ein A/B Test zwischen v{activeABTest.versionA.version} und v
+              Aktuell läuft ein A/B Test zwischen v{activeABTest.versionA.version} und v
               {activeABTest.versionB.version}. Traffic-Verteilung:{' '}
               {activeABTest.trafficSplit[0]}% / {activeABTest.trafficSplit[1]}%
             </AlertDescription>
@@ -276,7 +276,7 @@ export function WorkflowVersionsPage() {
                 <CardTitle>Alle Versionen</CardTitle>
                 <CardDescription>
                   Verwalten Sie alle Versionen dieses Workflows. Klicken Sie auf eine
-                  Version fuer Details.
+                  Version für Details.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -299,7 +299,7 @@ export function WorkflowVersionsPage() {
               <CardHeader>
                 <CardTitle>Versions-Vergleich</CardTitle>
                 <CardDescription>
-                  Vergleichen Sie zwei Versionen, um Aenderungen zu sehen.
+                  Vergleichen Sie zwei Versionen, um Änderungen zu sehen.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -313,7 +313,7 @@ export function WorkflowVersionsPage() {
                 ) : (
                   <div className="text-center py-12 text-muted-foreground">
                     <GitBranch className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Waehlen Sie zwei Versionen zum Vergleichen aus.</p>
+                    <p>Wählen Sie zwei Versionen zum Vergleichen aus.</p>
                     <p className="text-sm mt-2">
                       Nutzen Sie das Kontextmenue in der Versionsliste oder den Vergleichsmodus.
                     </p>

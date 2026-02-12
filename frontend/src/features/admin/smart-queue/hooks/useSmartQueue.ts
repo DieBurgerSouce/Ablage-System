@@ -1,7 +1,7 @@
 /**
  * Smart Queue Hooks
  *
- * Hooks fuer intelligente OCR-Warteschlange mit Priorisierung.
+ * Hooks für intelligente OCR-Warteschlange mit Priorisierung.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -131,7 +131,7 @@ export function usePriorityRules() {
 }
 
 /**
- * Hook zum Aendern der Prioritaet eines Items
+ * Hook zum Ändern der Priorität eines Items
  */
 export function useChangePriority() {
   const queryClient = useQueryClient();
@@ -210,7 +210,7 @@ export function useSavePriorityRule() {
 }
 
 /**
- * Hook zum Loeschen einer Priorisierungs-Regel
+ * Hook zum Löschen einer Priorisierungs-Regel
  */
 export function useDeletePriorityRule() {
   const queryClient = useQueryClient();
@@ -226,7 +226,7 @@ export function useDeletePriorityRule() {
 }
 
 /**
- * Hook fuer Neuberechnung aller Prioritaeten
+ * Hook für Neuberechnung aller Prioritäten
  */
 export function useRecalculatePriorities() {
   const queryClient = useQueryClient();

@@ -1,7 +1,7 @@
 /**
  * AI Admin Page
  *
- * Hauptseite fuer KI-Autonomie Verwaltung mit Tabs.
+ * Hauptseite für KI-Autonomie Verwaltung mit Tabs.
  */
 
 import { Brain } from 'lucide-react';

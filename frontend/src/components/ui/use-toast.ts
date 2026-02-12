@@ -1,5 +1,5 @@
 /**
- * Toast Hook - Sonner Wrapper fuer Rueckwaertskompatibilitaet
+ * Toast Hook - Sonner Wrapper für Rückwärtskompatibilität
  *
  * Diese Datei wrapped die Sonner Toast Library um das alte API beizubehalten.
  * Neue Komponenten sollten direkt `import { toast } from 'sonner'` verwenden.
@@ -12,7 +12,7 @@
 import { toast as sonnerToast, type ExternalToast } from 'sonner'
 import { logger } from '@/lib/logger';
 
-// ==================== Types (fuer Rueckwaertskompatibilitaet) ====================
+// ==================== Types (für Rückwärtskompatibilität) ====================
 
 type ToastVariant = 'default' | 'destructive' | 'success'
 
@@ -35,7 +35,7 @@ type ToasterToast = Toast & {
 /**
  * Wrapped toast function die das alte API auf Sonner mapped.
  *
- * @deprecated Nutze direkt `import { toast } from 'sonner'` fuer neue Komponenten
+ * @deprecated Nutze direkt `import { toast } from 'sonner'` für neue Komponenten
  */
 function toast(props: Toast) {
   const { title, description, variant, action, duration } = props
@@ -51,7 +51,7 @@ function toast(props: Toast) {
     // Sonner expects { label: string, onClick: () => void }
     // We can't perfectly convert React elements, so we log a warning
     logger.warn(
-      '[useToast] Aktions-Elemente werden nicht vollstaendig unterstuetzt. ' +
+      '[useToast] Aktions-Elemente werden nicht vollständig unterstützt. ' +
         'Verwenden Sie sonner direkt mit action: { label, onClick }'
     )
   }
@@ -98,12 +98,12 @@ toast.dismiss = (toastId?: string | number) => {
   }
 }
 
-// ==================== Hook (fuer Rueckwaertskompatibilitaet) ====================
+// ==================== Hook (für Rückwärtskompatibilität) ====================
 
 /**
- * Toast Hook fuer Rueckwaertskompatibilitaet.
+ * Toast Hook für Rückwärtskompatibilität.
  *
- * @deprecated Nutze direkt `import { toast } from 'sonner'` fuer neue Komponenten
+ * @deprecated Nutze direkt `import { toast } from 'sonner'` für neue Komponenten
  *
  * @example
  * // Alter Stil (deprecated)

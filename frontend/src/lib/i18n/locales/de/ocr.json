@@ -11,7 +11,7 @@
     "description": {
       "auto": "Automatische Auswahl basierend auf Dokumenttyp",
       "deepseek": "Beste Umlaut-Erkennung, Frakturschrift",
-      "gotocr": "Schnell, gut fuer Tabellen und Formeln",
+      "gotocr": "Schnell, gut für Tabellen und Formeln",
       "surya": "CPU-basiert, Layout-Analyse",
       "suryaGpu": "Schnelle GPU-Variante"
     }
@@ -42,18 +42,18 @@
     "processingTime": "Verarbeitungszeit",
     "backend": "Verwendetes Backend",
     "pages": "Verarbeitete Seiten",
-    "words": "Erkannte Woerter",
+    "words": "Erkannte Wörter",
     "characters": "Erkannte Zeichen",
     "download": "Text herunterladen",
     "copy": "Text kopieren"
   },
   "quality": {
-    "title": "Qualitaet",
-    "high": "Hohe Erkennungsqualitaet",
-    "medium": "Mittlere Erkennungsqualitaet",
-    "low": "Niedrige Erkennungsqualitaet",
-    "veryLow": "Sehr niedrige Qualitaet",
-    "reviewRecommended": "Manuelle Pruefung empfohlen",
+    "title": "Qualität",
+    "high": "Hohe Erkennungsqualität",
+    "medium": "Mittlere Erkennungsqualität",
+    "low": "Niedrige Erkennungsqualität",
+    "veryLow": "Sehr niedrige Qualität",
+    "reviewRecommended": "Manuelle Prüfung empfohlen",
     "confidence": {
       "excellent": "Ausgezeichnet (>95%)",
       "good": "Gut (85-95%)",
@@ -69,21 +69,21 @@
     "fraktur": "Frakturschrift erkannt",
     "frakturDetected": "Historische Frakturschrift erkannt",
     "validation": "Deutsche Textvalidierung",
-    "score": "Deutsche Qualitaet: {{score}}%"
+    "score": "Deutsche Qualität: {{score}}%"
   },
   "extraction": {
     "title": "Datenextraktion",
     "fields": "Extrahierte Felder",
     "invoiceNumber": "Rechnungsnummer",
     "invoiceDate": "Rechnungsdatum",
-    "dueDate": "Faelligkeitsdatum",
+    "dueDate": "Fälligkeitsdatum",
     "totalAmount": "Gesamtbetrag",
     "taxAmount": "Steuerbetrag",
     "netAmount": "Nettobetrag",
     "vatId": "USt-IdNr.",
     "iban": "IBAN",
     "bic": "BIC",
-    "currency": "Waehrung",
+    "currency": "Währung",
     "vendor": "Lieferant",
     "customer": "Kunde",
     "items": "Positionen",
@@ -91,26 +91,26 @@
   },
   "errors": {
     "gpuOom": "GPU-Speicher voll. Fallback auf CPU wird verwendet.",
-    "backendUnavailable": "OCR-Backend nicht verfuegbar",
+    "backendUnavailable": "OCR-Backend nicht verfügbar",
     "processingFailed": "OCR-Verarbeitung fehlgeschlagen",
-    "timeout": "Zeituberschreitung bei der Verarbeitung",
+    "timeout": "Zeitüberschreitung bei der Verarbeitung",
     "invalidDocument": "Dokument kann nicht verarbeitet werden",
     "noTextExtracted": "Kein Text konnte extrahiert werden",
-    "corruptedFile": "Datei ist beschaedigt oder nicht lesbar",
-    "unsupportedFormat": "Dateiformat wird nicht unterstuetzt"
+    "corruptedFile": "Datei ist beschädigt oder nicht lesbar",
+    "unsupportedFormat": "Dateiformat wird nicht unterstützt"
   },
   "settings": {
     "title": "OCR-Einstellungen",
     "defaultBackend": "Standard-Backend",
     "language": "Erkennungssprache",
-    "enhanceQuality": "Bildqualitaet verbessern",
+    "enhanceQuality": "Bildqualität verbessern",
     "detectTables": "Tabellen erkennen",
     "detectLayout": "Layout analysieren",
     "gpu": {
       "title": "GPU-Einstellungen",
       "enabled": "GPU-Beschleunigung",
       "memoryLimit": "Speicherlimit",
-      "batchSize": "Batch-Groesse"
+      "batchSize": "Batch-Größe"
     }
   },
   "learning": {
@@ -137,7 +137,7 @@
     "title": "Stapelverarbeitung",
     "documents": "{{count}} Dokumente",
     "progress": "{{completed}} von {{total}} verarbeitet",
-    "estimatedTime": "Geschaetzte Restzeit: {{time}}",
+    "estimatedTime": "Geschätzte Restzeit: {{time}}",
     "cancel": "Stapel abbrechen",
     "retry": "Fehlgeschlagene wiederholen"
   }

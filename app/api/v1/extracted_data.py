@@ -13,7 +13,9 @@ Feinpoliert und durchdacht - Deutsche Dokumente mit hoechster Genauigkeit.
 import re
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 from sqlalchemy.sql.elements import ColumnElement
@@ -596,7 +598,7 @@ async def get_aggregations(
     total_net = Decimal("0")
     total_vat = Decimal("0")
     by_type: Dict[str, int] = {}
-    by_month: Dict[str, Dict[str, Any]] = {}
+    by_month: Dict[str, JSONDict] = {}
 
     for doc in documents:
         extracted = doc.extracted_data or {}
@@ -712,7 +714,7 @@ async def _get_documents_for_export(
     date_to: Optional[date],
     min_amount: Optional[Decimal],
     max_amount: Optional[Decimal],
-) -> List[Dict[str, Any]]:
+) -> List[JSONDict]:
     """Holt Dokumente fuer Export mit Filtern."""
     query = select(models.Document).where(
         and_(

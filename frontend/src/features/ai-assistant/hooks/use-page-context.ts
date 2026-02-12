@@ -165,7 +165,7 @@ export function getContextSuggestions(context: PageContext): string[] {
       return [
         'Was sind meine offenen Aufgaben?',
         'Zeige mir die wichtigsten KPIs',
-        'Welche Rechnungen sind ueberfaellig?',
+        'Welche Rechnungen sind überfällig?',
         'Analysiere meine Finanzen diesen Monat',
       ];
 
@@ -173,15 +173,15 @@ export function getContextSuggestions(context: PageContext): string[] {
       return [
         'Finde alle Rechnungen von letztem Monat',
         'Zeige mir unbezahlte Rechnungen',
-        'Suche nach Vertraegen',
+        'Suche nach Verträgen',
         'Welche Dokumente brauchen Aufmerksamkeit?',
       ];
 
     case 'document-detail':
       return [
         'Fasse dieses Dokument zusammen',
-        'Welche Entitaeten sind hier erwaehnt?',
-        'Gibt es aehnliche Dokumente?',
+        'Welche Entitäten sind hier erwähnt?',
+        'Gibt es ähnliche Dokumente?',
         'Was sind die wichtigsten Informationen?',
       ];
 
@@ -203,9 +203,9 @@ export function getContextSuggestions(context: PageContext): string[] {
 
     case 'invoices':
       return [
-        'Welche Rechnungen sind ueberfaellig?',
-        'Zeige mir Skonto-Moeglichkeiten',
-        'Analysiere Zahlungseingaenge',
+        'Welche Rechnungen sind überfällig?',
+        'Zeige mir Skonto-Möglichkeiten',
+        'Analysiere Zahlungseingänge',
         'Welche Rechnungen brauchen Mahnung?',
       ];
 
@@ -213,7 +213,7 @@ export function getContextSuggestions(context: PageContext): string[] {
       return [
         'Zeige offene Transaktionen',
         'Finde nicht zugeordnete Buchungen',
-        'Analysiere Kontoumsaetze',
+        'Analysiere Kontoumsätze',
         'Welche Zahlungen fehlen noch?',
       ];
 
@@ -221,8 +221,8 @@ export function getContextSuggestions(context: PageContext): string[] {
       return [
         'Zeige mir Items mit niedrigem Confidence',
         'Was muss ich heute validieren?',
-        'Batch-genehmige aehnliche Items',
-        'Erklaere die OCR-Fehler',
+        'Batch-genehmige ähnliche Items',
+        'Erkläre die OCR-Fehler',
       ];
 
     case 'reports':
@@ -230,7 +230,7 @@ export function getContextSuggestions(context: PageContext): string[] {
         'Erstelle einen Monatsbericht',
         'Vergleiche mit Vorjahr',
         'Zeige Umsatzentwicklung',
-        'Exportiere fuer den Steuerberater',
+        'Exportiere für den Steuerberater',
       ];
 
     case 'admin':
@@ -238,14 +238,14 @@ export function getContextSuggestions(context: PageContext): string[] {
         'Zeige Systemstatus',
         'Gibt es Performance-Probleme?',
         'Wie viele Dokumente wurden verarbeitet?',
-        'Pruefe die Auslastung',
+        'Prüfe die Auslastung',
       ];
 
     case 'settings':
       return [
         'Welche Einstellungen gibt es?',
         'Wie konfiguriere ich OCR?',
-        'Erklaere die Optionen',
+        'Erkläre die Optionen',
         'Hilfe zu dieser Seite',
       ];
 

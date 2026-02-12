@@ -45,7 +45,7 @@ interface ActivityItemProps {
   isLast?: boolean;
 }
 
-// Icon-Mapping fuer Activity-Typen
+// Icon-Mapping für Activity-Typen
 const ACTIVITY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   'file-plus': FileText,
   upload: Upload,
@@ -74,7 +74,7 @@ const ACTIVITY_ICONS: Record<string, React.ComponentType<{ className?: string }>
   activity: Activity,
 };
 
-// Farb-Klassen fuer den Timeline-Punkt
+// Farb-Klassen für den Timeline-Punkt
 const COLOR_CLASSES: Record<ActivityColor | 'default', string> = {
   green: 'bg-green-500',
   red: 'bg-red-500',

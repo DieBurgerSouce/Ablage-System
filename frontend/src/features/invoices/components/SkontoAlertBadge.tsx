@@ -2,8 +2,8 @@
  * SkontoAlertBadge - Skonto-Status Badge Komponente
  *
  * Zeigt den Skonto-Status einer Rechnung als farbkodiertes Badge an.
- * - Gruen: Skonto verfuegbar und Zeit vorhanden
- * - Gelb: Skonto laeuft bald ab (< 3 Tage)
+ * - Grün: Skonto verfügbar und Zeit vorhanden
+ * - Gelb: Skonto läuft bald ab (< 3 Tage)
  * - Rot: Skonto abgelaufen
  * - Grau: Kein Skonto konfiguriert oder bereits genutzt
  */
@@ -184,7 +184,7 @@ export function SkontoAlertBadge({
 }
 
 /**
- * Kompakte Version fuer Tabellen - zeigt nur Icon wenn Skonto verfuegbar
+ * Kompakte Version für Tabellen - zeigt nur Icon wenn Skonto verfügbar
  */
 export function SkontoAlertBadgeCompact({
   percentage,
@@ -247,7 +247,7 @@ export function SkontoAlertBadgeCompact({
 }
 
 /**
- * Alert Banner fuer bevorstehende Skonto-Fristen
+ * Alert Banner für bevorstehende Skonto-Fristen
  */
 export function SkontoExpiringAlert({
   invoiceNumber,

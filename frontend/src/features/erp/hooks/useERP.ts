@@ -1,7 +1,7 @@
 /**
  * ERP Integration React Query Hooks
  *
- * Custom Hooks fuer ERP-Daten mit TanStack Query.
+ * Custom Hooks für ERP-Daten mit TanStack Query.
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';

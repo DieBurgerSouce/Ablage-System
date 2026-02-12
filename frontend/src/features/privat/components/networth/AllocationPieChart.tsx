@@ -1,7 +1,7 @@
 /**
- * AllocationPieChart - Vermoegensallokation als Tortendiagramm
+ * AllocationPieChart - Vermögensallokation als Tortendiagramm
  *
- * Zeigt die Verteilung des Vermoegens nach Kategorien:
+ * Zeigt die Verteilung des Vermögens nach Kategorien:
  * - Immobilien
  * - Fahrzeuge
  * - Anlagen
@@ -276,13 +276,13 @@ export function AllocationPieChart({
     return (
       <Card className={cn('', className)}>
         <CardHeader>
-          <CardTitle>Vermoegensallokation</CardTitle>
+          <CardTitle>Vermögensallokation</CardTitle>
           <CardDescription>Verteilung nach Kategorien</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-64 flex items-center justify-center text-muted-foreground">
             <p className="text-center">
-              Keine Vermoegenswerte vorhanden
+              Keine Vermögenswerte vorhanden
             </p>
           </div>
         </CardContent>
@@ -304,7 +304,7 @@ export function AllocationPieChart({
   return (
     <Card className={cn('', className)}>
       <CardHeader>
-        <CardTitle>Vermoegensallokation</CardTitle>
+        <CardTitle>Vermögensallokation</CardTitle>
         <CardDescription>
           Verteilung nach Kategorien - Gesamt: {formatCurrencyDE(totalAssets)}
         </CardDescription>

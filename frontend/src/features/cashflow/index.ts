@@ -1,7 +1,7 @@
 /**
  * Predictive Cash-Flow Feature Module
  *
- * KI-gestuetzte Liquiditaetsprognose und Zahlungsoptimierung.
+ * KI-gestützte Liquiditätsprognose und Zahlungsoptimierung.
  */
 
 // Main Dashboard

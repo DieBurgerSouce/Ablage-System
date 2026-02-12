@@ -12,8 +12,10 @@ Endpoints:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
+
+from app.core.types import JSONDict
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -50,7 +52,7 @@ class VerificationFindingResponse(BaseModel):
     severity: str
     code: str
     message: str
-    details: Dict[str, Any] = Field(default_factory=dict)
+    details: JSONDict = Field(default_factory=dict)
     timestamp: str
 
 

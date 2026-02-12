@@ -3,9 +3,9 @@
  *
  * Features:
  * - Kategorieauswahl mit Icons
- * - Unterstuetzung fuer Kunden- und Lieferanten-Kategorien
+ * - Unterstützung für Kunden- und Lieferanten-Kategorien
  * - WCAG 2.1 AA konform
- * - Loading-States waehrend der Operation
+ * - Loading-States während der Operation
  */
 
 import { useState } from 'react';

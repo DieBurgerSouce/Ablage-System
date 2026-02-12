@@ -137,10 +137,10 @@ export function VersionList({
           <div className="flex items-center gap-2">
             <GitBranch className="h-4 w-4" />
             <span className="text-sm">
-              Vergleichsmodus: Waehlen Sie eine zweite Version zum Vergleich
+              Vergleichsmodus: Wählen Sie eine zweite Version zum Vergleich
               {compareVersionA && (
                 <span className="font-medium ml-1">
-                  (v{compareVersionA.version} ausgewaehlt)
+                  (v{compareVersionA.version} ausgewählt)
                 </span>
               )}
             </span>
@@ -159,7 +159,7 @@ export function VersionList({
             <TableHead className="w-[100px]">Status</TableHead>
             <TableHead className="w-[100px]">Typ</TableHead>
             <TableHead className="w-[120px] text-right">Erfolgsrate</TableHead>
-            <TableHead className="w-[120px] text-right">Ausfuehrungen</TableHead>
+            <TableHead className="w-[120px] text-right">Ausführungen</TableHead>
             <TableHead className="w-[150px]">Erstellt</TableHead>
             <TableHead className="w-[50px]" />
           </TableRow>
@@ -253,7 +253,7 @@ export function VersionList({
                         }}
                       >
                         <Play className="h-4 w-4 mr-2" />
-                        Veroeffentlichen
+                        Veröffentlichen
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuItem

@@ -23,8 +23,8 @@ function getStatusBadge(status: string) {
     switch (status) {
         case 'gesund':
             return <Badge className="bg-green-600 text-white">Gesund</Badge>;
-        case 'beeintraechtigt':
-            return <Badge className="bg-yellow-500 text-white">Beeintraechtigt</Badge>;
+        case 'beeinträchtigt':
+            return <Badge className="bg-yellow-500 text-white">Beeinträchtigt</Badge>;
         case 'kritisch':
             return <Badge variant="destructive">Kritisch</Badge>;
         default:
@@ -89,7 +89,7 @@ export function SystemHealthOverview() {
                                 <p className="font-medium">Fehler beim Laden</p>
                                 <p className="text-sm text-muted-foreground mt-1">
                                     Die Systemdaten konnten nicht geladen werden.
-                                    Bitte versuchen Sie es spaeter erneut.
+                                    Bitte versuchen Sie es später erneut.
                                 </p>
                             </div>
                         </div>
@@ -121,7 +121,7 @@ export function SystemHealthOverview() {
                         Systemgesundheit
                     </h1>
                     <p className="text-muted-foreground mt-2">
-                        {healthData?.zusammenfassung ?? 'Uebersicht aller Systemkomponenten'}
+                        {healthData?.zusammenfassung ?? 'Übersicht aller Systemkomponenten'}
                     </p>
                 </div>
                 <div className="flex items-center gap-4">
@@ -157,7 +157,7 @@ export function SystemHealthOverview() {
                     value={dbLatency > 0 ? dbLatency.toFixed(0) : '-'}
                     unit="ms"
                     percentage={dbLatency > 0 ? Math.min(100, (dbLatency / 100) * 100) : 0}
-                    subtitle={komponenten.datenbank?.nachricht ?? 'Nicht verfuegbar'}
+                    subtitle={komponenten.datenbank?.nachricht ?? 'Nicht verfügbar'}
                 />
                 <MetricCard
                     icon={<MemoryStick className="h-4 w-4" />}
@@ -165,7 +165,7 @@ export function SystemHealthOverview() {
                     value={redisLatency > 0 ? redisLatency.toFixed(0) : '-'}
                     unit="ms"
                     percentage={redisLatency > 0 ? Math.min(100, (redisLatency / 50) * 100) : 0}
-                    subtitle={komponenten.cache?.nachricht ?? 'Nicht verfuegbar'}
+                    subtitle={komponenten.cache?.nachricht ?? 'Nicht verfügbar'}
                 />
                 <MetricCard
                     icon={<HardDrive className="h-4 w-4" />}
@@ -176,7 +176,7 @@ export function SystemHealthOverview() {
                     subtitle={
                         diskDetails
                             ? `${diskDetails.belegt_gb?.toFixed(1)} / ${diskDetails.gesamt_gb?.toFixed(1)} GB belegt`
-                            : 'Nicht verfuegbar'
+                            : 'Nicht verfügbar'
                     }
                 />
                 <MetricCard
@@ -193,7 +193,7 @@ export function SystemHealthOverview() {
                             : 'GB'
                     }
                     percentage={gpuPercentage}
-                    subtitle={komponenten.gpu?.nachricht ?? 'Nicht verfuegbar'}
+                    subtitle={komponenten.gpu?.nachricht ?? 'Nicht verfügbar'}
                 />
             </div>
 

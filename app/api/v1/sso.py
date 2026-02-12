@@ -18,8 +18,10 @@ SECURITY:
 import secrets
 import structlog
 from datetime import timedelta
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
+
+from app.core.types import JSONDict
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import RedirectResponse
@@ -138,7 +140,7 @@ class CallbackTokenResponse(BaseModel):
     access_token: str
     token_type: str = "Bearer"
     expires_in: Optional[int] = None
-    user: Dict[str, Any]
+    user: JSONDict
 
 
 class PresetTemplateResponse(BaseModel):
@@ -1039,7 +1041,7 @@ def _get_company_id(user: User) -> UUID:
     return company_id
 
 
-def _build_config_data(data: SSOProviderCreate) -> Dict[str, Any]:
+def _build_config_data(data: SSOProviderCreate) -> JSONDict:
     """Baut die Provider-Konfiguration basierend auf dem Preset."""
     config = {
         "auto_create_users": data.auto_create_users,

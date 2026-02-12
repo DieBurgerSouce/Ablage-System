@@ -120,7 +120,7 @@ function InvoiceAnalysisView({ data }: { data: BIInvoiceAnalysis }) {
         <Card className="p-3 bg-red-500/5 border-red-500/20">
           <div className="flex items-center gap-1 text-xs text-red-600">
             <AlertTriangle className="h-3 w-3" />
-            Ueberfaellig
+            Überfällig
           </div>
           <div className="text-lg font-bold text-red-700">{formatCurrency(data.overdue_amount)}</div>
           <div className="text-xs text-muted-foreground">{data.overdue_count} Rechnungen</div>
@@ -136,7 +136,7 @@ function InvoiceAnalysisView({ data }: { data: BIInvoiceAnalysis }) {
         <Progress value={openPercent} className="h-2" />
 
         <div className="flex justify-between text-xs mt-3">
-          <span className="text-red-600">Ueberfaellig</span>
+          <span className="text-red-600">Überfällig</span>
           <span className="text-red-600">{overduePercent.toFixed(1)}%</span>
         </div>
         <Progress

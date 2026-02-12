@@ -112,7 +112,7 @@ export function ScanResultPanel({
             </div>
 
             <div className="text-center space-y-2">
-              <p className="font-medium text-lg">OCR-Erkennung laeuft...</p>
+              <p className="font-medium text-lg">OCR-Erkennung läuft...</p>
               <p className="text-sm text-muted-foreground">
                 Das Dokument wird analysiert. Dies kann einige Sekunden dauern.
               </p>

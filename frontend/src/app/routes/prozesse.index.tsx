@@ -1,7 +1,7 @@
 /**
  * BPMN Process Engine - Definitions List
  *
- * Uebersicht aller Prozess-Definitionen.
+ * Übersicht aller Prozess-Definitionen.
  */
 
 import { createFileRoute, Link } from '@tanstack/react-router';

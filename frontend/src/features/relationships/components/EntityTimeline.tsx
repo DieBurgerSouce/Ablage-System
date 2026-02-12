@@ -1,8 +1,8 @@
 /**
  * EntityTimeline Component
  *
- * Zeigt eine chronologische Timeline der Aktivitaeten eines Geschaeftspartners.
- * Verwendet React Query fuer Datenabruf.
+ * Zeigt eine chronologische Timeline der Aktivitäten eines Geschäftspartners.
+ * Verwendet React Query für Datenabruf.
  */
 
 import { useState } from 'react';
@@ -77,10 +77,10 @@ function TimelineEmpty() {
         <div className="flex flex-col items-center justify-center py-12 text-center">
             <Clock className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground">
-                Keine Aktivitaeten gefunden
+                Keine Aktivitäten gefunden
             </p>
             <p className="text-sm text-muted-foreground/70 mt-1">
-                Hier erscheinen zukuenftige Aktivitaeten dieses Geschaeftspartners.
+                Hier erscheinen zukünftige Aktivitäten dieses Geschäftspartners.
             </p>
         </div>
     );
@@ -154,12 +154,12 @@ export function EntityTimeline({
                         <div>
                             <CardTitle className="text-lg flex items-center gap-2">
                                 <Clock className="h-5 w-5" />
-                                Aktivitaeten
+                                Aktivitäten
                             </CardTitle>
                             <CardDescription>
                                 {entityName
-                                    ? `Timeline fuer ${entityName}`
-                                    : 'Chronologische Uebersicht der Aktivitaeten'}
+                                    ? `Timeline für ${entityName}`
+                                    : 'Chronologische Übersicht der Aktivitäten'}
                             </CardDescription>
                         </div>
 

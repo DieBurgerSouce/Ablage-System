@@ -112,7 +112,7 @@ function useDefaultShortcuts(): {
     },
     {
       id: 'nav-command',
-      description: 'Befehlspalette oeffnen',
+      description: 'Befehlspalette öffnen',
       keys: 'ctrl+k',
       category: 'navigation',
       scope: 'global',
@@ -154,7 +154,7 @@ function useDefaultShortcuts(): {
     // Document Action Shortcuts (list-view scope)
     {
       id: 'action-delete',
-      description: 'Ausgewaehlte Dokumente loeschen',
+      description: 'Ausgewaehlte Dokumente löschen',
       keys: 'ctrl+d',
       category: 'actions',
       scope: 'list-view',
@@ -261,7 +261,7 @@ function useDefaultShortcuts(): {
     {
       id: 'cmd-go-home',
       label: 'Zur Startseite',
-      description: 'Dashboard oeffnen',
+      description: 'Dashboard öffnen',
       category: 'navigation',
       icon: Home,
       keys: 'alt+h',
@@ -272,7 +272,7 @@ function useDefaultShortcuts(): {
     {
       id: 'cmd-go-kunden',
       label: 'Zu Kunden',
-      description: 'Kundenuebersicht oeffnen',
+      description: 'Kundenübersicht öffnen',
       category: 'navigation',
       icon: Users,
       sequence: ['g', 'k'],
@@ -283,7 +283,7 @@ function useDefaultShortcuts(): {
     {
       id: 'cmd-go-lieferanten',
       label: 'Zu Lieferanten',
-      description: 'Lieferantenuebersicht oeffnen',
+      description: 'Lieferantenübersicht öffnen',
       category: 'navigation',
       icon: Truck,
       sequence: ['g', 'l'],
@@ -294,7 +294,7 @@ function useDefaultShortcuts(): {
     {
       id: 'cmd-go-finanzen',
       label: 'Zu Finanzen',
-      description: 'Finanzen oeffnen',
+      description: 'Finanzen öffnen',
       category: 'navigation',
       icon: Wallet,
       sequence: ['g', 'f'],
@@ -317,7 +317,7 @@ function useDefaultShortcuts(): {
     {
       id: 'cmd-go-banking',
       label: 'Zum Banking',
-      description: 'Banking-Uebersicht oeffnen',
+      description: 'Banking-Übersicht öffnen',
       category: 'navigation',
       icon: Building2,
       sequence: ['g', 'b'],
@@ -328,18 +328,18 @@ function useDefaultShortcuts(): {
     {
       id: 'cmd-go-privat',
       label: 'Zu Privat',
-      description: 'Privatbereich oeffnen',
+      description: 'Privatbereich öffnen',
       category: 'navigation',
       icon: FolderOpen,
       sequence: ['g', 'p'],
-      keywords: ['privat', 'private', 'persoenlich'],
+      keywords: ['privat', 'private', 'persönlich'],
       priority: 75,
       onSelect: () => navigate({ to: '/privat' }),
     },
     {
       id: 'cmd-go-admin',
       label: 'Einstellungen',
-      description: 'Einstellungen oeffnen',
+      description: 'Einstellungen öffnen',
       category: 'navigation',
       icon: Settings,
       sequence: ['g', 'a'],
@@ -383,8 +383,8 @@ function useDefaultShortcuts(): {
     // Help Commands
     {
       id: 'cmd-show-shortcuts',
-      label: 'Tastenkuerzel anzeigen',
-      description: 'Alle Tastenkuerzel anzeigen',
+      label: 'Tastenkürzel anzeigen',
+      description: 'Alle Tastenkürzel anzeigen',
       category: 'help',
       icon: Keyboard,
       keys: '?',
@@ -397,7 +397,7 @@ function useDefaultShortcuts(): {
     {
       id: 'cmd-show-help',
       label: 'Hilfe',
-      description: 'Hilfezentrum oeffnen',
+      description: 'Hilfezentrum öffnen',
       category: 'help',
       icon: HelpCircle,
       keywords: ['hilfe', 'help', 'support', 'dokumentation'],
@@ -434,7 +434,7 @@ function ShortcutsProviderInner({
     const helpShortcuts: KeyboardShortcut[] = [
       {
         id: 'help-show',
-        description: 'Tastenkuerzel anzeigen',
+        description: 'Tastenkürzel anzeigen',
         keys: '?',
         category: 'help',
         scope: 'global',
@@ -442,7 +442,7 @@ function ShortcutsProviderInner({
       },
       {
         id: 'modal-close',
-        description: 'Dialog schliessen',
+        description: 'Dialog schließen',
         keys: 'escape',
         category: 'help',
         scope: 'global',

@@ -42,7 +42,7 @@ export function CashFlowChart({ cashflow }: CashFlowChartProps) {
     return cashflow.by_company.map((item) => ({
       name: item.company_name,
       inflows: item.inflows,
-      outflows: -item.outflows, // Negativ fuer visuelle Darstellung
+      outflows: -item.outflows, // Negativ für visuelle Darstellung
       net: item.net_flow,
     }));
   }, [cashflow.by_company]);

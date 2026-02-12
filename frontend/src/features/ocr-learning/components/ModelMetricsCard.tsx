@@ -1,7 +1,7 @@
 /**
  * Model Metrics Card Component
  *
- * Zeigt Metriken fuer verschiedene Modell-Versionen.
+ * Zeigt Metriken für verschiedene Modell-Versionen.
  */
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,7 +47,7 @@ export function ModelMetricsCard({ stats }: ModelMetricsCardProps) {
       <CardContent>
         {sortedModels.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            Noch keine Modell-Metriken verfuegbar.
+            Noch keine Modell-Metriken verfügbar.
           </div>
         ) : (
           <div className="space-y-6">

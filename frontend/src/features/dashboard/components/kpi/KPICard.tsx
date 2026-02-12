@@ -13,6 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
+import { AnimatedNumber } from "@/components/animations"
 import {
     Tooltip,
     TooltipContent,
@@ -268,7 +269,16 @@ export function KPICard({
                 {/* Main Value */}
                 <div className="flex items-baseline justify-between">
                     <div className="text-2xl font-bold">
-                        {formatValue(value, decimals, prefix, suffix)}
+                        {typeof value === 'number' ? (
+                            <AnimatedNumber
+                                value={value}
+                                prefix={prefix}
+                                suffix={suffix}
+                                decimals={decimals}
+                            />
+                        ) : (
+                            formatValue(value, decimals, prefix, suffix)
+                        )}
                     </div>
                     <TrendIndicator
                         trend={trend}

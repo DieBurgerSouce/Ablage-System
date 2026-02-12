@@ -1,7 +1,7 @@
 /**
  * Report-Builder API Client
  *
- * Zusaetzliche API-Funktionen und TanStack Query Hooks fuer den
+ * Zusätzliche API-Funktionen und TanStack Query Hooks für den
  * visuellen Report-Builder und Scheduled Exports.
  */
 
@@ -205,10 +205,10 @@ export function useRunScheduledExportNow() {
     mutationFn: (exportId: string) => runScheduledExportNow(exportId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: scheduledExportKeys.all });
-      toast.success('Export wird ausgefuehrt...');
+      toast.success('Export wird ausgeführt...');
     },
     onError: (error: Error) => {
-      toast.error(`Fehler bei der Ausfuehrung: ${error.message}`);
+      toast.error(`Fehler bei der Ausführung: ${error.message}`);
     },
   });
 }
@@ -220,10 +220,10 @@ export function useDeleteScheduledExport() {
     mutationFn: (exportId: string) => deleteScheduledExport(exportId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: scheduledExportKeys.all });
-      toast.success('Geplanter Export geloescht');
+      toast.success('Geplanter Export gelöscht');
     },
     onError: (error: Error) => {
-      toast.error(`Fehler beim Loeschen: ${error.message}`);
+      toast.error(`Fehler beim Löschen: ${error.message}`);
     },
   });
 }

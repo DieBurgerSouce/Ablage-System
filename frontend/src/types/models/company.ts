@@ -1,8 +1,8 @@
 /**
  * Company Model Types
  *
- * Typen fuer Multi-Mandanten Firmenverwaltung.
- * Unterstuetzt 20+ Mandanten mit vollstaendiger Tenant-Isolation.
+ * Typen für Multi-Mandanten Firmenverwaltung.
+ * Unterstützt 20+ Mandanten mit vollständiger Tenant-Isolation.
  */
 
 // ==================== Enums ====================
@@ -20,7 +20,7 @@ export type AccountChart = 'SKR03' | 'SKR04';
 // ==================== Company ====================
 
 /**
- * Firma (vollstaendiges Model)
+ * Firma (vollständiges Model)
  */
 export interface Company {
   id: string;
@@ -54,7 +54,7 @@ export interface Company {
   bic: string | null;
   bank_name: string | null;
 
-  // Alternative Namen fuer OCR-Erkennung
+  // Alternative Namen für OCR-Erkennung
   alternative_names: string[];
 
   // Einstellungen
@@ -145,7 +145,7 @@ export interface UserCompany {
 }
 
 /**
- * Benutzer zu Firma hinzufuegen
+ * Benutzer zu Firma hinzufügen
  */
 export interface UserCompanyCreate {
   user_id: string;
@@ -178,7 +178,7 @@ export const COMPANY_ROLE_LABELS: Record<CompanyRole, string> = {
 
 export const LEGAL_FORM_OPTIONS = [
   { value: 'GmbH', label: 'GmbH' },
-  { value: 'UG', label: 'UG (haftungsbeschraenkt)' },
+  { value: 'UG', label: 'UG (haftungsbeschränkt)' },
   { value: 'AG', label: 'AG' },
   { value: 'KG', label: 'KG' },
   { value: 'OHG', label: 'OHG' },
@@ -195,7 +195,7 @@ export const KONTENRAHMEN_OPTIONS = [
 // ==================== Company Metrics ====================
 
 /**
- * Metriken fuer Company Dashboard
+ * Metriken für Company Dashboard
  */
 export interface CompanyMetrics {
   /** Anzahl aktiver Dokumente */
@@ -204,9 +204,9 @@ export interface CompanyMetrics {
   open_invoice_count: number;
   /** Gesamtbetrag offener Rechnungen */
   open_invoice_amount: number;
-  /** Anzahl ueberfaelliger Rechnungen */
+  /** Anzahl überfälliger Rechnungen */
   overdue_invoice_count: number;
-  /** Gesamtbetrag ueberfaelliger Rechnungen */
+  /** Gesamtbetrag überfälliger Rechnungen */
   overdue_invoice_amount: number;
   /** Anzahl Dokumente in Verarbeitung */
   processing_count: number;
@@ -218,12 +218,12 @@ export interface CompanyMetrics {
   active_user_count: number;
   /** Speicherverbrauch in Bytes */
   storage_used_bytes: number;
-  /** Letzte Aktivitaet */
+  /** Letzte Aktivität */
   last_activity_at: string | null;
 }
 
 /**
- * Zeitraum fuer Metriken
+ * Zeitraum für Metriken
  */
 export type MetricsPeriod = '7d' | '30d' | '90d' | '1y' | 'all';
 
@@ -274,7 +274,7 @@ export interface DashboardAlert {
 }
 
 /**
- * Alert-Zusammenfassung fuer Dashboard
+ * Alert-Zusammenfassung für Dashboard
  */
 export interface AlertSummary {
   total: number;
@@ -288,7 +288,7 @@ export interface AlertSummary {
 // ==================== Dashboard Summary ====================
 
 /**
- * Zusammenfassung fuer Company Dashboard
+ * Zusammenfassung für Company Dashboard
  */
 export interface DashboardSummary {
   /** Firma */

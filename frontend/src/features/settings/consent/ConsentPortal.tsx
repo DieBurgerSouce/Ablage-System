@@ -2,7 +2,7 @@
  * ConsentPortal Component
  *
  * DSGVO Art. 6, 7 - Self-Service Einwilligungsverwaltung
- * Ermoeglicht Benutzern die Verwaltung ihrer Datenschutz-Einwilligungen.
+ * Ermöglicht Benutzern die Verwaltung ihrer Datenschutz-Einwilligungen.
  */
 
 import { useState } from 'react';
@@ -76,7 +76,7 @@ export function ConsentPortal() {
             Datenschutz-Einwilligungen
           </h1>
           <p className="text-muted-foreground mt-1">
-            Verwalten Sie Ihre Einwilligungen gemaess DSGVO Art. 6 und 7
+            Verwalten Sie Ihre Einwilligungen gemäß DSGVO Art. 6 und 7
           </p>
         </div>
         <Button
@@ -119,7 +119,7 @@ export function ConsentPortal() {
         <Info className="h-4 w-4" />
         <AlertTitle>Ihre Rechte nach DSGVO</AlertTitle>
         <AlertDescription>
-          Sie koennen Ihre Einwilligungen jederzeit aendern oder widerrufen. Der Widerruf
+          Sie können Ihre Einwilligungen jederzeit ändern oder widerrufen. Der Widerruf
           ist so einfach wie die Erteilung. Die Verarbeitung vor dem Widerruf bleibt
           rechtmaessig.
         </AlertDescription>
@@ -134,7 +134,7 @@ export function ConsentPortal() {
           </TabsTrigger>
           <TabsTrigger value="history" className="flex items-center gap-2">
             <History className="h-4 w-4" />
-            Aenderungshistorie
+            Änderungshistorie
           </TabsTrigger>
         </TabsList>
 
@@ -186,10 +186,10 @@ export function ConsentPortal() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <History className="h-5 w-5" />
-                Aenderungshistorie
+                Änderungshistorie
               </CardTitle>
               <CardDescription>
-                Vollstaendige Uebersicht aller Aenderungen an Ihren Einwilligungen
+                Vollständige Übersicht aller Änderungen an Ihren Einwilligungen
               </CardDescription>
             </CardHeader>
             <CardContent>

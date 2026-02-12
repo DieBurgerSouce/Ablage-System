@@ -1,5 +1,5 @@
 /**
- * TemplateFilters - Filter-Komponente fuer Vorlagen
+ * TemplateFilters - Filter-Komponente für Vorlagen
  *
  * Features:
  * - Kategorie-Filter
@@ -150,7 +150,7 @@ export function TemplateFilters({ filters, onFiltersChange }: TemplateFiltersPro
       {hasActiveFilters && (
         <Button variant="ghost" size="sm" onClick={handleClearFilters}>
           <X className="h-4 w-4 mr-1" />
-          Filter loeschen
+          Filter löschen
         </Button>
       )}
     </div>

@@ -1,7 +1,7 @@
 /**
  * Relationships API Service
  *
- * API-Funktionen fuer Cross-Company und Entity-Relationship Ansichten.
+ * API-Funktionen für Cross-Company und Entity-Relationship Ansichten.
  */
 
 import { apiClient } from '@/lib/api/client';
@@ -95,7 +95,7 @@ export interface EntityTimelineParams {
 // ==================== API Functions ====================
 
 /**
- * Ruft Cross-Company Entity-Uebersicht ab.
+ * Ruft Cross-Company Entity-Übersicht ab.
  */
 export async function fetchCrossCompanyEntities(
     params: CrossCompanyParams = {}
@@ -116,7 +116,7 @@ export async function fetchCrossCompanyEntities(
 }
 
 /**
- * Ruft die Timeline eines Geschaeftspartners ab.
+ * Ruft die Timeline eines Geschäftspartners ab.
  */
 export async function fetchEntityTimeline(
     params: EntityTimelineParams
@@ -249,7 +249,7 @@ export interface GraphParams {
 // ==================== Graph API Functions ====================
 
 /**
- * Ruft Graph-Daten fuer die Entity-Visualisierung ab.
+ * Ruft Graph-Daten für die Entity-Visualisierung ab.
  */
 export async function fetchEntityGraphData(
     params: GraphParams = {}
@@ -293,7 +293,7 @@ export interface RiskScoreResponse {
 // ==================== Risk Scoring API Functions ====================
 
 /**
- * Ruft den Risiko-Score eines Geschaeftspartners ab.
+ * Ruft den Risiko-Score eines Geschäftspartners ab.
  */
 export async function fetchEntityRiskScore(entityId: string): Promise<RiskScoreResponse> {
     const response = await apiClient.get<RiskScoreResponse>(`/entities/${entityId}/risk`);
@@ -320,7 +320,7 @@ export async function fetchEntityRiskScore(entityId: string): Promise<RiskScoreR
 }
 
 /**
- * Berechnet den Risiko-Score fuer einen Geschaeftspartner neu.
+ * Berechnet den Risiko-Score für einen Geschäftspartner neu.
  */
 export async function calculateEntityRiskScore(entityId: string): Promise<RiskScoreResponse> {
     const response = await apiClient.post<RiskScoreResponse>(`/entities/${entityId}/risk/calculate`);

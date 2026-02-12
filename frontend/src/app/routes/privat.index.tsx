@@ -1,7 +1,7 @@
 /**
  * Privat Index Route
  *
- * Dashboard fuer persoenliche Dokumentenverwaltung.
+ * Dashboard für persönliche Dokumentenverwaltung.
  */
 
 import { createFileRoute } from '@tanstack/react-router';

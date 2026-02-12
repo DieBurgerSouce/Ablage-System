@@ -42,6 +42,12 @@ TOOL_TO_ACTION_MAP: Dict[str, AIActionType] = {
     "tag_document": AIActionType.TAG_DOCUMENT,
     "categorize_document": AIActionType.CATEGORIZE_DOCUMENT,
     "create_reminder": AIActionType.CREATE_REMINDER,
+    "get_daily_agenda": AIActionType.GET_DAILY_AGENDA,
+    "compare_expenses": AIActionType.COMPARE_EXPENSES,
+    "get_skonto_opportunities": AIActionType.GET_SKONTO,
+    "get_overdue_invoices": AIActionType.SEARCH_DOCUMENTS,
+    "book_invoice": AIActionType.BOOK_INVOICE,
+    "approve_document": AIActionType.APPROVE_VALIDATION,
 }
 
 

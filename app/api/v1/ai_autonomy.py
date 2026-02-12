@@ -13,8 +13,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 
+from app.core.types import JSONDict
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -128,14 +129,14 @@ class DecisionResponse(BaseModel):
     id: str
     decision_type: str
     document_id: Optional[str]
-    decision_value: Dict[str, Any]
+    decision_value: JSONDict
     confidence: float
     calibrated_confidence: Optional[float]
     confidence_level: str
     auto_applied: bool
     requires_review: bool
     is_final: bool
-    explanation: Optional[Dict[str, Any]]
+    explanation: Optional[JSONDict]
     reviewed_by_id: Optional[str]
     reviewed_at: Optional[datetime]
     review_action: Optional[str]
@@ -145,7 +146,7 @@ class DecisionResponse(BaseModel):
 class ReviewRequest(BaseModel):
     """Review-Anfrage."""
     action: str = Field(..., pattern="^(approved|rejected|modified)$")
-    modified_value: Optional[Dict[str, Any]] = None
+    modified_value: Optional[JSONDict] = None
     comment: Optional[str] = None
 
 
@@ -163,7 +164,7 @@ class MatchCandidate(BaseModel):
     match_type: str
     confidence: float
     feature_scores: Dict[str, float]
-    matched_values: Dict[str, Any]
+    matched_values: JSONDict
 
 
 class AnomalyItem(BaseModel):
@@ -173,7 +174,7 @@ class AnomalyItem(BaseModel):
     confidence: float
     description: str
     recommendation: Optional[str]
-    details: Dict[str, Any]
+    details: JSONDict
 
 
 class AnomalyCheckResponse(BaseModel):
@@ -332,7 +333,7 @@ async def review_decision(
     request: ReviewRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Reviewed eine KI-Entscheidung.
 
@@ -403,7 +404,7 @@ async def update_threshold(
     request: ThresholdUpdateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_permission("admin:full")),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Aktualisiert Konfidenz-Schwellenwerte.
 
@@ -474,7 +475,7 @@ async def categorize_document(
     auto_apply: bool = Query(True),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Kategorisiert ein Dokument mit KI."""
     from sqlalchemy import select
     from app.db.models import Document
@@ -694,7 +695,7 @@ async def get_learning_progress(
     days: int = Query(30, ge=1, le=365),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Gibt Self-Learning Fortschritt zurueck."""
     pipeline = get_ai_learning_pipeline()
 
@@ -744,7 +745,7 @@ async def apply_threshold_suggestion(
     decision_type: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_permission("admin:full")),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Wendet einen Threshold-Vorschlag an."""
     pipeline = get_ai_learning_pipeline()
 
@@ -825,7 +826,7 @@ class NLQResultResponse(BaseModel):
     success: bool
     intent: str
     extracted_entities: List[NLQEntityResponse]
-    results: Optional[List[Dict[str, Any]]] = None
+    results: Optional[List[JSONDict]] = None
     result_count: int = 0
     aggregation_value: Optional[float] = None
     natural_response: str
@@ -890,7 +891,7 @@ async def process_nlq_query(
 @router.get("/nlq/examples")
 async def get_nlq_examples(
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Gibt Beispiel-Abfragen fuer NLQ zurueck.
 
@@ -963,15 +964,15 @@ class RoutingDecisionResponse(BaseModel):
     explanation: str
     requires_approval: bool
     suggested_deadline: Optional[datetime] = None
-    metadata: Dict[str, Any] = {}
+    metadata: JSONDict = {}
 
 
 class RoutingStatisticsResponse(BaseModel):
     """Response fuer Routing-Statistiken."""
 
     period_days: int
-    folder_distribution: List[Dict[str, Any]]
-    type_distribution: List[Dict[str, Any]]
+    folder_distribution: List[JSONDict]
+    type_distribution: List[JSONDict]
     custom_rules_count: int
     routing_enabled: bool
     min_confidence: float

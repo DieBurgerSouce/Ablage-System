@@ -97,7 +97,7 @@ function DocumentsPage() {
     if (allowedTypes?.max_file_size && file.size > allowedTypes.max_file_size) {
       toast({
         title: 'Datei zu gross',
-        description: `Maximale Groesse: ${allowedTypes.max_file_size_mb} MB`,
+        description: `Maximale Größe: ${allowedTypes.max_file_size_mb} MB`,
         variant: 'destructive',
       });
       return;
@@ -167,7 +167,7 @@ function DocumentsPage() {
                 <strong>Erlaubte Dateitypen:</strong> PDF, JPG, PNG
               </div>
               <div>
-                <strong>Maximale Groesse:</strong> {allowedTypes.max_file_size_mb || 10} MB
+                <strong>Maximale Größe:</strong> {allowedTypes.max_file_size_mb || 10} MB
               </div>
             </div>
           </CardContent>
@@ -198,7 +198,7 @@ function DocumentsPage() {
                     <TableRow>
                       <TableHead>Dateiname</TableHead>
                       <TableHead>Typ</TableHead>
-                      <TableHead>Groesse</TableHead>
+                      <TableHead>Größe</TableHead>
                       <TableHead>Hochgeladen</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Aktionen</TableHead>

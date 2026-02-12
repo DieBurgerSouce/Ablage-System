@@ -2,7 +2,7 @@
  * EmailViewer - Email (.eml) Viewer
  *
  * Parst und zeigt E-Mails im RFC 822 Format (.eml Dateien) an.
- * Zeigt Header, Body (Text/HTML) und Anhaenge.
+ * Zeigt Header, Body (Text/HTML) und Anhänge.
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -269,13 +269,13 @@ function formatEmailDate(dateString: string): string {
 // ==================== DOMPurify Config ====================
 
 /**
- * SECURITY: Strikte DOMPurify-Konfiguration fuer E-Mail-HTML
+ * SECURITY: Strikte DOMPurify-Konfiguration für E-Mail-HTML
  *
  * WICHTIG: Keine 'style' Attribute erlaubt (CSS-Injection-Risiko)
  * WICHTIG: Keine 'style' Tags erlaubt (CSS-Angriffsvektoren)
  * WICHTIG: data: URIs in src blockiert
  *
- * E-Mails sind nicht vertrauenswuerdige Eingaben - minimale Erlaubnisse!
+ * E-Mails sind nicht vertrauenswürdige Eingaben - minimale Erlaubnisse!
  */
 const PURIFY_CONFIG: DOMPurify.Config = {
     ALLOWED_TAGS: [
@@ -290,9 +290,9 @@ const PURIFY_CONFIG: DOMPurify.Config = {
     // SECURITY: 'style' absichtlich NICHT erlaubt - CSS-Injection-Risiko!
     ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class'],
     ALLOW_DATA_ATTR: false,
-    // Explizit gefaehrliche Tags verbieten
+    // Explizit gefährliche Tags verbieten
     FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'style', 'link', 'meta'],
-    // Gefaehrliche Attribute explizit verbieten
+    // Gefährliche Attribute explizit verbieten
     FORBID_ATTR: ['style', 'onerror', 'onload', 'onclick', 'onmouseover'],
     RETURN_DOM: true,
     RETURN_DOM_FRAGMENT: true,
@@ -301,8 +301,8 @@ const PURIFY_CONFIG: DOMPurify.Config = {
 // ==================== DOMPurify Hooks (Module-Level, Once Only) ====================
 
 /**
- * WICHTIG: DOMPurify Hooks muessen EINMAL registriert werden, nicht bei jedem Mount!
- * Ohne Guard wuerden sich Hooks bei jedem Component Mount akkumulieren.
+ * WICHTIG: DOMPurify Hooks müssen EINMAL registriert werden, nicht bei jedem Mount!
+ * Ohne Guard würden sich Hooks bei jedem Component Mount akkumulieren.
  */
 let domPurifyHooksRegistered = false;
 
@@ -310,7 +310,7 @@ function registerDOMPurifySecurityHooks(): void {
     if (domPurifyHooksRegistered) return;
     domPurifyHooksRegistered = true;
 
-    // Zusaetzliche Hooks fuer erweiterte Sicherheit
+    // Zusätzliche Hooks für erweiterte Sicherheit
     DOMPurify.addHook('uponSanitizeAttribute', (node, data) => {
         // Blockiere data: URIs in src (potenzielle Script-Injection)
         if (data.attrName === 'src' && data.attrValue.startsWith('data:')) {
@@ -486,7 +486,7 @@ export function EmailViewer({ fileData, className }: EmailViewerProps) {
                 {email.attachments.length > 0 && (
                     <div className="flex items-start gap-3 text-sm">
                         <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                        <span className="text-muted-foreground">Anhaenge:</span>
+                        <span className="text-muted-foreground">Anhänge:</span>
                         <div className="flex flex-wrap gap-2">
                             {email.attachments.map((att, idx) => (
                                 <Badge key={idx} variant="secondary" className="gap-1">
@@ -596,7 +596,7 @@ export default EmailViewer;
 
 /**
  * KRITISCH: Bei Hot Module Replacement (HMR) in Vite/Webpack muss der
- * domPurifyHooksRegistered Flag zurueckgesetzt werden, sonst akkumulieren
+ * domPurifyHooksRegistered Flag zurückgesetzt werden, sonst akkumulieren
  * sich Hooks bei jedem Hot Reload.
  */
 if (import.meta.hot) {
@@ -610,14 +610,14 @@ if (import.meta.hot) {
 // ==================== Test Utilities (Test Environment Only) ====================
 
 /**
- * ENTERPRISE FIX: Reset-Funktion fuer Test-Isolation
+ * ENTERPRISE FIX: Reset-Funktion für Test-Isolation
  *
  * Problem: Der Module-Level Boolean verhindert Hook-Neuregistrierung zwischen Tests.
  * In einer Test-Suite, wo Tests isoliert sein sollten, kann dies zu unerwarteten
- * Seiteneffekten fuehren wenn Tests in unterschiedlicher Reihenfolge laufen.
+ * Seiteneffekten führen wenn Tests in unterschiedlicher Reihenfolge laufen.
  *
- * Diese Funktion ermoeglicht es Tests, den DOMPurify-State zurueckzusetzen.
- * Sie ist NUR in Test-Umgebung verfuegbar und sollte NICHT in Produktion verwendet werden.
+ * Diese Funktion ermöglicht es Tests, den DOMPurify-State zurückzusetzen.
+ * Sie ist NUR in Test-Umgebung verfügbar und sollte NICHT in Produktion verwendet werden.
  */
 export function __resetDOMPurifyHooks(): void {
     if (process.env.NODE_ENV === 'test' || import.meta.env?.MODE === 'test') {

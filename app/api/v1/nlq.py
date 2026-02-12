@@ -4,7 +4,9 @@ Natural Language Query (NLQ) API Router.
 Ermöglicht natürlichsprachige Datenbankabfragen mit KI-gestützter SQL-Generierung.
 """
 
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from typing import AsyncGenerator, List, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -41,9 +43,9 @@ class NLQQueryResponse(BaseModel):
     natural_query: str
     generated_sql: str
     text_summary: str
-    data: List[Dict[str, Any]]
+    data: List[JSONDict]
     visualization_type: str
-    visualization_config: Dict[str, Any]
+    visualization_config: JSONDict
     execution_time_ms: int
     result_count: int
     was_cached: bool

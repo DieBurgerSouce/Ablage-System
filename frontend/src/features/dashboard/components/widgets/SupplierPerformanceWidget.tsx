@@ -1,10 +1,10 @@
 /**
  * Supplier Performance Widget
  *
- * Dashboard-Widget fuer Lieferanten-Performance-Metriken.
+ * Dashboard-Widget für Lieferanten-Performance-Metriken.
  *
  * Features:
- * - Puenktlichkeit (On-Time %)
+ * - Pünktlichkeit (On-Time %)
  * - Genauigkeit (Korrekte Rechnungen %)
  * - Preistrend (Preisentwicklung)
  * - Top 5 Lieferanten-Ranking
@@ -81,7 +81,7 @@ function getProgressColor(score: number): string {
 }
 
 /**
- * Formatiere Waehrung kompakt
+ * Formatiere Währung kompakt
  */
 function formatVolume(value: number): string {
   if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
@@ -306,7 +306,7 @@ export function SupplierPerformanceWidget() {
           <div className="grid grid-cols-3 gap-4 mb-4">
             <MetricCard
               icon={<Clock className="w-4 h-4" />}
-              label="Puenktlichkeit"
+              label="Pünktlichkeit"
               value={data.overallPunctuality}
               unit="%"
               color={getScoreColor(data.overallPunctuality)}
@@ -340,7 +340,7 @@ export function SupplierPerformanceWidget() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Lieferant</TableHead>
-                    <TableHead>Puenktlichkeit</TableHead>
+                    <TableHead>Pünktlichkeit</TableHead>
                     <TableHead>Genauigkeit</TableHead>
                     <TableHead>Preistrend</TableHead>
                     <TableHead className="text-right">Bestellungen</TableHead>

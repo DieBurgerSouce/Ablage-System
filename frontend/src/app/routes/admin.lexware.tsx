@@ -1,10 +1,10 @@
 /**
  * Lexware Integration Layout Route
  *
- * Layout fuer alle Lexware-bezogenen Admin-Seiten.
+ * Layout für alle Lexware-bezogenen Admin-Seiten.
  * Tabs: Kunden-Import | Lieferanten-Import | Statistiken
  *
- * SECURITY: Nur fuer Admins (is_superuser) zugaenglich.
+ * SECURITY: Nur für Admins (is_superuser) zugänglich.
  * Backend-Endpoints erfordern ebenfalls is_superuser.
  */
 
@@ -15,7 +15,7 @@ import { authService } from '@/lib/api/services/auth'
 
 export const Route = createFileRoute('/admin/lexware')({
   beforeLoad: async () => {
-    // Security: Nur Admins duerfen auf Lexware-Import zugreifen
+    // Security: Nur Admins dürfen auf Lexware-Import zugreifen
     const user = authService.getCurrentUser()
     if (!user || !user.is_superuser) {
       throw redirect({
@@ -46,7 +46,7 @@ const navItems = [
     href: '/admin/lexware/statistics',
     label: 'Statistiken',
     icon: BarChart3,
-    description: 'Verknuepfungs-Statistiken',
+    description: 'Verknüpfungs-Statistiken',
     exact: false,
   },
 ]

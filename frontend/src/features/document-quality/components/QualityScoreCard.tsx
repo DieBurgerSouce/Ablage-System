@@ -1,7 +1,7 @@
 /**
  * QualityScoreCard Component
  *
- * Zeigt die Qualitaetsbewertung eines einzelnen Dokuments:
+ * Zeigt die Qualitätsbewertung eines einzelnen Dokuments:
  * - Grosses Ampel-Badge mit Score
  * - 3 Dimensionen als Fortschrittsbalken
  * - Empfehlungsliste
@@ -40,9 +40,9 @@ function formatWeight(weight: number): string {
 // =============================================================================
 
 interface QualityScoreCardProps {
-  /** Qualitaetsbewertung des Dokuments */
+  /** Qualitätsbewertung des Dokuments */
   quality: DocumentQualityResponse;
-  /** Zusaetzliche CSS-Klassen */
+  /** Zusätzliche CSS-Klassen */
   className?: string;
 }
 
@@ -56,7 +56,7 @@ export function QualityScoreCard({ quality, className }: QualityScoreCardProps) 
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Datenqualitaet</CardTitle>
+            <CardTitle>Datenqualität</CardTitle>
             <CardDescription>{quality.ampel_label}</CardDescription>
           </div>
           <AmpelBadge
@@ -71,7 +71,7 @@ export function QualityScoreCard({ quality, className }: QualityScoreCardProps) 
         {/* Dimensionen */}
         <div className="space-y-4">
           <h4 className="text-sm font-medium text-muted-foreground">
-            Qualitaetsdimensionen
+            Qualitätsdimensionen
           </h4>
           {quality.dimensions.map((dimension) => (
             <div key={dimension.name} className="space-y-1.5">

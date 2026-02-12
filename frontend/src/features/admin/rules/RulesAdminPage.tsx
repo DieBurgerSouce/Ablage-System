@@ -1,7 +1,7 @@
 /**
  * RulesAdminPage
  *
- * Hauptseite fuer die Verwaltung von Business Rules.
+ * Hauptseite für die Verwaltung von Business Rules.
  */
 
 import { useState } from 'react'
@@ -183,7 +183,7 @@ export function RulesAdminPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Ausfuehrungen
+              Ausführungen
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -220,7 +220,7 @@ export function RulesAdminPage() {
           </TabsTrigger>
           <TabsTrigger value="logs" className="gap-2">
             <History className="h-4 w-4" />
-            Ausfuehrungslog
+            Ausführungslog
           </TabsTrigger>
         </TabsList>
 
@@ -230,7 +230,7 @@ export function RulesAdminPage() {
             <CardHeader>
               <div className="flex flex-col md:flex-row md:items-center gap-4">
                 <div className="flex-1">
-                  <CardTitle>Regeluebersicht</CardTitle>
+                  <CardTitle>Regelübersicht</CardTitle>
                   <CardDescription>
                     Verwalten Sie Ihre automatischen Verarbeitungsregeln.
                   </CardDescription>
@@ -283,9 +283,9 @@ export function RulesAdminPage() {
         <TabsContent value="logs">
           <Card>
             <CardHeader>
-              <CardTitle>Ausfuehrungslog</CardTitle>
+              <CardTitle>Ausführungslog</CardTitle>
               <CardDescription>
-                Protokoll der letzten Regel-Ausfuehrungen.
+                Protokoll der letzten Regel-Ausführungen.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -339,7 +339,7 @@ export function RulesAdminPage() {
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <History className="h-12 w-12 mx-auto mb-4 opacity-30" />
-                  <p>Noch keine Ausfuehrungen protokolliert.</p>
+                  <p>Noch keine Ausführungen protokolliert.</p>
                 </div>
               )}
             </CardContent>

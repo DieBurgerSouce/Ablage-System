@@ -1,5 +1,5 @@
 /**
- * CategoryDocumentList - Hauptkomponente fuer Kategorie-Dokumente
+ * CategoryDocumentList - Hauptkomponente für Kategorie-Dokumente
  *
  * Orchestriert die Unterkomponenten:
  * - ProactiveInsightsBanner (KI-Insights, ganz oben)
@@ -9,7 +9,7 @@
  * - CategoryAggregations (Summen-Karten, NUR wenn documents > 0)
  * - DocumentFilterBar (Filter, NUR wenn documents > 0)
  * - DocumentsTable ODER DocumentsEmptyState (grosser Upload-CTA)
- * - BulkActionsToolbar (EINZIGE Quelle fuer Bulk-Aktionen)
+ * - BulkActionsToolbar (EINZIGE Quelle für Bulk-Aktionen)
  * - DocumentUploadDialog (Modaler Upload)
  */
 
@@ -207,7 +207,7 @@ export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) 
 
   // Filter handlers for banners
   const handleFilterOverdue = useCallback(() => {
-    handleFilterChange({ paymentStatus: ['ueberfaellig'] });
+    handleFilterChange({ paymentStatus: ['überfällig'] });
   }, [handleFilterChange]);
 
   const handleFilterDueSoon = useCallback(() => {
@@ -227,7 +227,7 @@ export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) 
         <Card>
           <CardContent className="py-8">
             <p className="text-center text-muted-foreground">
-              Ungueltige Parameter. Bitte waehlen Sie eine Kategorie aus.
+              Ungültige Parameter. Bitte wählen Sie eine Kategorie aus.
             </p>
           </CardContent>
         </Card>
@@ -356,7 +356,7 @@ export function CategoryDocumentList({ entityType }: CategoryDocumentListProps) 
         </>
       )}
 
-      {/* Bulk Actions Toolbar - EINZIGE Quelle fuer Bulk-Aktionen */}
+      {/* Bulk Actions Toolbar - EINZIGE Quelle für Bulk-Aktionen */}
       <BulkActionsToolbar
         selectedIds={selectedIds}
         category={category}

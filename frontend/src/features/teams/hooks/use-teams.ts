@@ -1,7 +1,7 @@
 /**
  * Teams React Query Hooks
  *
- * TanStack Query Hooks fuer Team-Verwaltung, Mitglieder, Einladungen und Aktivitaeten.
+ * TanStack Query Hooks für Team-Verwaltung, Mitglieder, Einladungen und Aktivitäten.
  */
 
 import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
@@ -113,7 +113,7 @@ export function useUpdateTeam(teamId: string) {
 }
 
 /**
- * Team loeschen
+ * Team löschen
  */
 export function useDeleteTeam() {
   const queryClient = useQueryClient();
@@ -122,10 +122,10 @@ export function useDeleteTeam() {
     mutationFn: (teamId: string) => teamsApi.deleteTeam(teamId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: teamKeys.lists() });
-      toast.success('Team wurde geloescht');
+      toast.success('Team wurde gelöscht');
     },
     onError: (error: Error) => {
-      toast.error(`Fehler beim Loeschen: ${error.message}`);
+      toast.error(`Fehler beim Löschen: ${error.message}`);
     },
   });
 }
@@ -163,7 +163,7 @@ export function useTeamMembers(teamId: string) {
 }
 
 /**
- * Mitglied hinzufuegen
+ * Mitglied hinzufügen
  */
 export function useAddMember(teamId: string) {
   const queryClient = useQueryClient();
@@ -174,7 +174,7 @@ export function useAddMember(teamId: string) {
       queryClient.invalidateQueries({ queryKey: teamKeys.members(teamId) });
       queryClient.invalidateQueries({ queryKey: teamKeys.detail(teamId) });
       queryClient.invalidateQueries({ queryKey: teamKeys.activity(teamId) });
-      toast.success('Mitglied wurde hinzugefuegt');
+      toast.success('Mitglied wurde hinzugefügt');
     },
     onError: (error: Error) => {
       toast.error(`Fehler: ${error.message}`);
@@ -308,7 +308,7 @@ export function useDeclineInvitation() {
 // ==================== Activity Queries ====================
 
 /**
- * Team-Aktivitaeten laden
+ * Team-Aktivitäten laden
  */
 export function useTeamActivity(teamId: string, params?: ActivityListParams) {
   return useQuery({
@@ -319,7 +319,7 @@ export function useTeamActivity(teamId: string, params?: ActivityListParams) {
 }
 
 /**
- * Team-Aktivitaeten mit Infinite Scroll
+ * Team-Aktivitäten mit Infinite Scroll
  */
 export function useTeamActivityInfinite(teamId: string, params?: Omit<ActivityListParams, 'page'>) {
   return useInfiniteQuery({

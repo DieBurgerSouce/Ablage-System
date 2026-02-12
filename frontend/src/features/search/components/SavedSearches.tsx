@@ -1,7 +1,7 @@
 /**
  * SavedSearches - Gespeicherte Suchen Komponente
  *
- * Zeigt gespeicherte Suchen als Chips an und ermoeglicht deren Auswahl.
+ * Zeigt gespeicherte Suchen als Chips an und ermöglicht deren Auswahl.
  */
 
 import { useState } from 'react';
@@ -28,9 +28,9 @@ import type { SavedSearch } from '../types/saved-search';
 // ==================== Types ====================
 
 interface SavedSearchesProps {
-    /** Aktuelle Suchparameter (fuer Highlighting) */
+    /** Aktuelle Suchparameter (für Highlighting) */
     currentParams: SearchParams;
-    /** Callback wenn eine Suche ausgewaehlt wird */
+    /** Callback wenn eine Suche ausgewählt wird */
     onSelectSearch: (params: SearchParams) => void;
 }
 

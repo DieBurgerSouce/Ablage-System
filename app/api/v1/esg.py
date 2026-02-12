@@ -5,7 +5,7 @@ Environmental, Social, Governance Nachhaltigkeitsberichterstattung.
 """
 
 from datetime import date
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query

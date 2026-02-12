@@ -1,10 +1,10 @@
 /**
  * Bulk Operations API
  *
- * API-Funktionen fuer Massenaktionen auf Dokumenten.
+ * API-Funktionen für Massenaktionen auf Dokumenten.
  *
- * Unterstuetzte Aktionen:
- * - tag: Tags hinzufuegen/entfernen/ersetzen
+ * Unterstützte Aktionen:
+ * - tag: Tags hinzufügen/entfernen/ersetzen
  * - move: In Ordner verschieben
  * - delete: Soft-Delete (GDPR-konform)
  * - export: Exportieren (ZIP, PDF, CSV)
@@ -24,21 +24,21 @@ export type TagOperation = 'add' | 'remove' | 'set';
 export type ExportFormat = 'zip' | 'pdf' | 'csv';
 
 export interface BulkOperationParams {
-  /** Fuer tag-Aktion */
+  /** Für tag-Aktion */
   tags?: string[];
   operation?: TagOperation;
 
-  /** Fuer move-Aktion */
+  /** Für move-Aktion */
   folder_id?: string;
 
-  /** Fuer delete-Aktion */
+  /** Für delete-Aktion */
   reason?: string;
 
-  /** Fuer export-Aktion */
+  /** Für export-Aktion */
   format?: ExportFormat;
   include_metadata?: boolean;
 
-  /** Fuer categorize-Aktion */
+  /** Für categorize-Aktion */
   category?: string;
 }
 
@@ -104,7 +104,7 @@ function transformResponse(response: BulkOperationResponse): BulkOperationResult
 // =============================================================================
 
 /**
- * Fuehrt eine Bulk-Operation auf mehreren Dokumenten aus.
+ * Führt eine Bulk-Operation auf mehreren Dokumenten aus.
  *
  * @param request - Die Bulk-Operation-Anfrage
  * @returns Das Ergebnis der Operation
@@ -120,7 +120,7 @@ export async function executeBulkOperation(
 }
 
 /**
- * Tags zu mehreren Dokumenten hinzufuegen.
+ * Tags zu mehreren Dokumenten hinzufügen.
  */
 export async function bulkAddTags(
   documentIds: string[],
@@ -176,7 +176,7 @@ export async function bulkMoveToFolder(
 }
 
 /**
- * Mehrere Dokumente loeschen (Soft-Delete).
+ * Mehrere Dokumente löschen (Soft-Delete).
  */
 export async function bulkDeleteDocuments(
   documentIds: string[],
@@ -205,7 +205,7 @@ export async function bulkExportDocuments(
 }
 
 /**
- * Kategorie fuer mehrere Dokumente setzen.
+ * Kategorie für mehrere Dokumente setzen.
  */
 export async function bulkCategorizeDocuments(
   documentIds: string[],

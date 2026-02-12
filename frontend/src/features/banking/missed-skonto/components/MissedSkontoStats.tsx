@@ -1,6 +1,6 @@
 /**
  * Missed Skonto Stats
- * Statistik-Karten fuer verpasste Skonto-Uebersicht
+ * Statistik-Karten für verpasste Skonto-Übersicht
  */
 
 import { TrendingDown, TrendingUp, Percent, AlertTriangle, CheckCircle, Clock } from 'lucide-react';

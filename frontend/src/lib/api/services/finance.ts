@@ -665,7 +665,7 @@ export const financeService = {
   // ==================== CRUD Operationen ====================
 
   /**
-   * Laedt ein neues Finanz-Dokument hoch
+   * Lädt ein neues Finanz-Dokument hoch
    */
   uploadDocument: async (
     year: string,
@@ -745,7 +745,7 @@ export const financeService = {
   },
 
   /**
-   * Loescht ein Finanz-Dokument (Soft-Delete)
+   * Löscht ein Finanz-Dokument (Soft-Delete)
    */
   deleteDocument: async (documentId: string): Promise<FinanceDocumentDeleteResult> => {
     try {
@@ -767,7 +767,7 @@ export const financeService = {
   // ==================== Bulk Operationen ====================
 
   /**
-   * Loescht mehrere Dokumente auf einmal
+   * Löscht mehrere Dokumente auf einmal
    */
   bulkDeleteDocuments: async (documentIds: string[]): Promise<FinanceBulkDeleteResult> => {
     try {
@@ -791,7 +791,7 @@ export const financeService = {
         message: response.data.message,
       };
     } catch (error) {
-      handleApiError(error, 'Bulk-Loeschung');
+      handleApiError(error, 'Bulk-Löschung');
     }
   },
 

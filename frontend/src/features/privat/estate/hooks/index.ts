@@ -1,7 +1,7 @@
 /**
  * Estate Planning Hooks - Index
  *
- * Zentrale Exports fuer alle Estate Planning Hooks
+ * Zentrale Exports für alle Estate Planning Hooks
  */
 
 export {

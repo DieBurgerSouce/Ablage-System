@@ -1,5 +1,5 @@
 /**
- * KnowledgePage - Hauptseite fuer das Wissensmanagement
+ * KnowledgePage - Hauptseite für das Wissensmanagement
  *
  * Features:
  * - Wiki-artige Notizen
@@ -192,11 +192,11 @@ export function KnowledgePage() {
     if (!deleteNote) return;
     try {
       await deleteNoteMutation.mutateAsync(deleteNote.id);
-      toast.success('Notiz geloescht');
+      toast.success('Notiz gelöscht');
       setDeleteNote(null);
       setNoteDetailOpen(false);
     } catch (error) {
-      toast.error('Fehler beim Loeschen der Notiz');
+      toast.error('Fehler beim Löschen der Notiz');
     }
   };
 
@@ -235,10 +235,10 @@ export function KnowledgePage() {
     if (!deleteChecklist) return;
     try {
       await deleteChecklistMutation.mutateAsync(deleteChecklist.id);
-      toast.success('Checkliste geloescht');
+      toast.success('Checkliste gelöscht');
       setDeleteChecklist(null);
     } catch (error) {
-      toast.error('Fehler beim Loeschen der Checkliste');
+      toast.error('Fehler beim Löschen der Checkliste');
     }
   };
 
@@ -415,7 +415,7 @@ export function KnowledgePage() {
                   onValueChange={(v) => setNoteTypeFilter(v as NoteType | 'all')}
                 >
                   <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Typ waehlen" />
+                    <SelectValue placeholder="Typ wählen" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Alle Typen</SelectItem>
@@ -495,7 +495,7 @@ export function KnowledgePage() {
                       onClick={() => handleNotePageChange(noteCurrentPage - 1)}
                       disabled={noteCurrentPage === 0}
                     >
-                      Zurueck
+                      Zurück
                     </Button>
                     <Button
                       variant="outline"
@@ -590,7 +590,7 @@ export function KnowledgePage() {
                       onClick={() => handleChecklistPageChange(checklistCurrentPage - 1)}
                       disabled={checklistCurrentPage === 0}
                     >
-                      Zurueck
+                      Zurück
                     </Button>
                     <Button
                       variant="outline"
@@ -662,10 +662,10 @@ export function KnowledgePage() {
       <AlertDialog open={!!deleteNote} onOpenChange={(open) => !open && setDeleteNote(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Notiz loeschen</AlertDialogTitle>
+            <AlertDialogTitle>Notiz löschen</AlertDialogTitle>
             <AlertDialogDescription>
-              Moechten Sie die Notiz "{deleteNote?.title}" wirklich loeschen? Diese Aktion kann
-              nicht rueckgaengig gemacht werden.
+              Möchten Sie die Notiz "{deleteNote?.title}" wirklich löschen? Diese Aktion kann
+              nicht rückgängig gemacht werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -674,7 +674,7 @@ export function KnowledgePage() {
               onClick={handleDeleteNoteConfirm}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Loeschen
+              Löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -687,10 +687,10 @@ export function KnowledgePage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Checkliste loeschen</AlertDialogTitle>
+            <AlertDialogTitle>Checkliste löschen</AlertDialogTitle>
             <AlertDialogDescription>
-              Moechten Sie die Checkliste "{deleteChecklist?.title}" wirklich loeschen? Alle
-              Eintraege werden ebenfalls geloescht.
+              Möchten Sie die Checkliste "{deleteChecklist?.title}" wirklich löschen? Alle
+              Einträge werden ebenfalls gelöscht.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -699,7 +699,7 @@ export function KnowledgePage() {
               onClick={handleDeleteChecklistConfirm}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Loeschen
+              Löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

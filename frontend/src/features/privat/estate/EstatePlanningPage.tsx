@@ -1,12 +1,12 @@
 /**
  * Estate Planning Page - Nachlassplanung
  *
- * Hauptseite fuer die Nachlassplanung mit:
- * - Vermoegensuebersicht
+ * Hauptseite für die Nachlassplanung mit:
+ * - Vermögensübersicht
  * - Erbschaftsteuer-Rechner
- * - Beguenstigte-Verwaltung
+ * - Begünstigte-Verwaltung
  * - Vollmachten-Management
- * - Niessbrauch-Berechnung
+ * - Nießbrauch-Berechnung
  */
 
 import * as React from 'react';
@@ -84,14 +84,14 @@ function SummaryCards({
         <CardContent>
           <div className="text-2xl font-bold">{formatCurrency(netEstate)}</div>
           <p className="text-xs text-muted-foreground">
-            Vermoegen: {formatCurrency(totalAssets)} | Schulden: {formatCurrency(totalLiabilities)}
+            Vermögen: {formatCurrency(totalAssets)} | Schulden: {formatCurrency(totalLiabilities)}
           </p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Geschaetzte Erbschaftsteuer</CardTitle>
+          <CardTitle className="text-sm font-medium">Geschätzte Erbschaftsteuer</CardTitle>
           <Scale className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
@@ -106,13 +106,13 @@ function SummaryCards({
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Beguenstigte</CardTitle>
+          <CardTitle className="text-sm font-medium">Begünstigte</CardTitle>
           <Users className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{beneficiaryCount}</div>
           <p className="text-xs text-muted-foreground">
-            Erben und Vermaechtnisnehmer
+            Erben und Vermächtnisnehmer
           </p>
         </CardContent>
       </Card>
@@ -244,15 +244,15 @@ function AssetOverview({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Wallet className="h-5 w-5" />
-          Vermoegensuebersicht
+          Vermögensübersicht
         </CardTitle>
         <CardDescription>
-          Aufschuesselung nach Vermoegensklassen
+          Aufschlüsselung nach Vermögensklassen
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {/* Vermoegen */}
+          {/* Vermögen */}
           <div className="space-y-2">
             <h4 className="font-semibold text-sm text-green-700 dark:text-green-400">
               Aktiva ({formatCurrency(totalAssets)})
@@ -423,7 +423,7 @@ export function EstatePlanningPage() {
           Nachlassplanung
         </h1>
         <p className="text-muted-foreground mt-1">
-          Erbschaftsteuer-Planung, Beguenstigte und Vollmachten verwalten
+          Erbschaftsteuer-Planung, Begünstigte und Vollmachten verwalten
         </p>
       </div>
 
@@ -453,11 +453,11 @@ export function EstatePlanningPage() {
         <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 lg:w-auto">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <Wallet className="h-4 w-4" />
-            Uebersicht
+            Übersicht
           </TabsTrigger>
           <TabsTrigger value="beneficiaries" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
-            Beguenstigte
+            Begünstigte
           </TabsTrigger>
           <TabsTrigger value="tax" className="flex items-center gap-2">
             <Calculator className="h-4 w-4" />

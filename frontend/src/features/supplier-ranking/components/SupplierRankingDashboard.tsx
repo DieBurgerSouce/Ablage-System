@@ -1,7 +1,7 @@
 /**
  * Supplier Ranking Dashboard Component
  *
- * Hauptseite fuer das Lieferanten-Ranking System.
+ * Hauptseite für das Lieferanten-Ranking System.
  */
 
 import { useState } from 'react';
@@ -172,7 +172,7 @@ export function SupplierRankingDashboard({ className }: SupplierRankingDashboard
           <TabsList>
             <TabsTrigger value="overview" className="gap-2">
               <BarChart3 className="h-4 w-4" />
-              Uebersicht
+              Übersicht
             </TabsTrigger>
             <TabsTrigger value="comparison" className="gap-2">
               <ArrowUpDown className="h-4 w-4" />
@@ -187,7 +187,7 @@ export function SupplierRankingDashboard({ className }: SupplierRankingDashboard
           {activeTab === 'comparison' && (
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">
-                {selectedSuppliers.length} ausgewaehlt
+                {selectedSuppliers.length} ausgewählt
               </span>
               <Button
                 size="sm"

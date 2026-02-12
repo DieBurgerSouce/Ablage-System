@@ -1,7 +1,7 @@
 /**
  * External Sources Card Component
  *
- * Zeigt Status der externen Datenquellen-Pruefung.
+ * Zeigt Status der externen Datenquellen-Prüfung.
  */
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -52,7 +52,7 @@ export function ExternalSourcesCard({ externalCheck, className }: ExternalSource
         return (
           <Badge variant="default" className="gap-1">
             <CheckCircle className="w-3 h-3" />
-            Geprueft
+            Geprüft
           </Badge>
         );
       case 'not_configured':
@@ -99,7 +99,7 @@ export function ExternalSourcesCard({ externalCheck, className }: ExternalSource
             <div>
               <CardTitle className="text-lg">Externe Quellen</CardTitle>
               <CardDescription>
-                Zuletzt geprueft:{' '}
+                Zuletzt geprüft:{' '}
                 {format(new Date(externalCheck.last_checked), 'dd. MMM yyyy, HH:mm', { locale: de })}
               </CardDescription>
             </div>
@@ -150,7 +150,7 @@ export function ExternalSourcesCard({ externalCheck, className }: ExternalSource
 
         {/* Sources List */}
         <div className="space-y-3">
-          <p className="text-sm font-medium text-muted-foreground">Geprueft Quellen</p>
+          <p className="text-sm font-medium text-muted-foreground">Geprüfte Quellen</p>
           <ScrollArea className="h-48">
             <div className="space-y-2">
               {externalCheck.sources_checked.map((source, index) => (
@@ -182,7 +182,7 @@ export function ExternalSourcesCard({ externalCheck, className }: ExternalSource
         <div className="mt-4 p-3 bg-muted rounded-lg">
           <p className="text-sm text-muted-foreground">
             <ExternalLink className="w-4 h-4 inline mr-1" />
-            Externe Quellen werden automatisch geprueft, wenn konfiguriert.
+            Externe Quellen werden automatisch geprüft, wenn konfiguriert.
             Creditreform und SCHUFA erfordern eine separate API-Konfiguration.
           </p>
         </div>

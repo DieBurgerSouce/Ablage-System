@@ -1,7 +1,7 @@
 /**
  * PensionGapCalculator Component
  *
- * Interaktiver Rentenluecken-Rechner mit Eingabeformular
+ * Interaktiver Rentenlücken-Rechner mit Eingabeformular
  * und detaillierter Ergebnis-Visualisierung.
  */
 
@@ -114,10 +114,10 @@ export function PensionGapCalculator({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calculator className="h-5 w-5" />
-            Rentenluecken-Rechner
+            Rentenlücken-Rechner
           </CardTitle>
           <CardDescription>
-            Berechnen Sie Ihre voraussichtliche Rentenluecke und den erforderlichen Sparbetrag.
+            Berechnen Sie Ihre voraussichtliche Rentenlücke und den erforderlichen Sparbetrag.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -183,7 +183,7 @@ export function PensionGapCalculator({
                       </TooltipTrigger>
                       <TooltipContent className="max-w-xs">
                         <p>
-                          Wie viel Prozent Ihres aktuellen Nettoeinkommens moechten Sie
+                          Wie viel Prozent Ihres aktuellen Nettoeinkommens möchten Sie
                           im Ruhestand haben? 80% ist ein gaengiger Richtwert.
                         </p>
                       </TooltipContent>
@@ -235,10 +235,10 @@ export function PensionGapCalculator({
             className="w-full"
           >
             {calculateMutation.isPending ? (
-              'Berechnung laeuft...'
+              'Berechnung läuft...'
             ) : (
               <>
-                Rentenluecke berechnen
+                Rentenlücke berechnen
                 <ChevronRight className="ml-2 h-4 w-4" />
               </>
             )}
@@ -270,7 +270,7 @@ export function PensionGapCalculator({
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Berechnungsfehler</AlertTitle>
           <AlertDescription>
-            Die Rentenluecke konnte nicht berechnet werden. Bitte versuchen Sie es erneut.
+            Die Rentenlücke konnte nicht berechnet werden. Bitte versuchen Sie es erneut.
           </AlertDescription>
         </Alert>
       )}
@@ -313,7 +313,7 @@ function PensionGapResultCard({ result }: PensionGapResultCardProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Target className="h-5 w-5" />
-            Ihre Rentenluecke
+            Ihre Rentenlücke
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -341,7 +341,7 @@ function PensionGapResultCard({ result }: PensionGapResultCardProps) {
               <p className="text-xs text-muted-foreground">/Monat</p>
             </div>
             <div className="rounded-lg border p-4 text-center bg-red-50 dark:bg-red-950">
-              <p className="text-sm text-muted-foreground">Rentenluecke</p>
+              <p className="text-sm text-muted-foreground">Rentenlücke</p>
               <p className="text-2xl font-bold text-red-600">
                 {formatCurrency(result.pensionGap)}
               </p>
@@ -349,9 +349,9 @@ function PensionGapResultCard({ result }: PensionGapResultCardProps) {
             </div>
           </div>
 
-          {/* Rentenquellen-Aufschluesselung */}
+          {/* Rentenquellen-Aufschlüsselung */}
           <div className="space-y-3">
-            <h4 className="font-medium">Rentenquellen-Aufschluesselung</h4>
+            <h4 className="font-medium">Rentenquellen-Aufschlüsselung</h4>
             <div className="space-y-2">
               <PensionSourceRow
                 label="Gesetzliche Rente (DRV)"
@@ -366,7 +366,7 @@ function PensionGapResultCard({ result }: PensionGapResultCardProps) {
                 icon={<PiggyBank className="h-4 w-4" />}
               />
               <PensionSourceRow
-                label="Ruerup/Basisrente"
+                label="Rürup/Basisrente"
                 value={result.expectedRuerup}
                 total={result.targetMonthlyIncome}
                 icon={<PiggyBank className="h-4 w-4" />}
@@ -420,7 +420,7 @@ function PensionGapResultCard({ result }: PensionGapResultCardProps) {
         </CardContent>
       </Card>
 
-      {/* Kapitalluecke & Sparrate */}
+      {/* Kapitallücke & Sparrate */}
       {result.pensionGap > 0 && (
         <Card className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
           <CardHeader>
@@ -432,10 +432,10 @@ function PensionGapResultCard({ result }: PensionGapResultCardProps) {
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <p className="text-sm text-muted-foreground">Benoetiges Kapital</p>
+                <p className="text-sm text-muted-foreground">Benötigtes Kapital</p>
                 <p className="text-2xl font-bold">{formatCurrency(result.capitalNeededForGap)}</p>
                 <p className="text-xs text-muted-foreground">
-                  um Luecke mit 4%-Regel zu schliessen
+                  um Lücke mit 4%-Regel zu schließen
                 </p>
               </div>
               <div>

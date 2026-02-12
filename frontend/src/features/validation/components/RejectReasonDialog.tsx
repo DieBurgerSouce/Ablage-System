@@ -35,8 +35,8 @@ interface RejectReasonDialogProps {
   onOpenChange: (open: boolean) => void;
   onConfirm: (reason: string, category?: RejectionCategory) => void;
   isLoading?: boolean;
-  itemCount?: number; // Fuer Batch-Anzeige
-  documentName?: string; // Fuer Einzel-Anzeige
+  itemCount?: number; // Für Batch-Anzeige
+  documentName?: string; // Für Einzel-Anzeige
 }
 
 export function RejectReasonDialog({

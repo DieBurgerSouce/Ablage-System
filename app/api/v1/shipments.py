@@ -12,8 +12,10 @@ Multi-Tenant: Alle Endpoints filtern nach company_id!
 
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
+
+from app.core.types import JSONDict
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -152,7 +154,7 @@ class TrackingResponse(BaseModel):
     destination: Optional[str]
     weight_kg: Optional[float]
     service_type: Optional[str]
-    events: List[Dict[str, Any]]
+    events: List[JSONDict]
     tracking_url: Optional[str]
     last_updated: datetime
 

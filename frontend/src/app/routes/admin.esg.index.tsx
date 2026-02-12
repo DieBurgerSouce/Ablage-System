@@ -1,7 +1,7 @@
 /**
  * ESG Dashboard - Index Route
  *
- * Zeigt das ESG-Dashboard mit Uebersichtskennzahlen.
+ * Zeigt das ESG-Dashboard mit Übersichtskennzahlen.
  */
 
 import { createFileRoute } from '@tanstack/react-router';

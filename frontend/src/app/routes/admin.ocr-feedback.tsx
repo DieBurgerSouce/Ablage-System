@@ -1,7 +1,7 @@
 /**
  * OCR Feedback Admin Route
  *
- * Route fuer das OCR Feedback Leaderboard Dashboard.
+ * Route für das OCR Feedback Leaderboard Dashboard.
  */
 
 import { createFileRoute } from '@tanstack/react-router';

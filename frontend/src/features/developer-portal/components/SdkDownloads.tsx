@@ -1,7 +1,7 @@
 /**
  * SDK Downloads
  *
- * Zeigt verfuegbare SDKs und Installationsanleitungen.
+ * Zeigt verfügbare SDKs und Installationsanleitungen.
  */
 
 import { useState } from 'react';
@@ -161,7 +161,7 @@ export function SdkDownloads() {
       <Card>
         <CardContent className="py-12 text-center">
           <Download className="h-12 w-12 mx-auto mb-4 opacity-20" />
-          <p className="text-muted-foreground">Keine SDKs verfuegbar</p>
+          <p className="text-muted-foreground">Keine SDKs verfügbar</p>
         </CardContent>
       </Card>
     );
@@ -172,7 +172,7 @@ export function SdkDownloads() {
       <div>
         <h3 className="text-lg font-semibold">SDKs & Bibliotheken</h3>
         <p className="text-sm text-muted-foreground">
-          Offizielle SDKs fuer die Integration in Ihre Anwendungen
+          Offizielle SDKs für die Integration in Ihre Anwendungen
         </p>
       </div>
 
@@ -187,7 +187,7 @@ export function SdkDownloads() {
         <CardHeader>
           <CardTitle>Schnellstart</CardTitle>
           <CardDescription>
-            Waehlen Sie Ihre bevorzugte Programmiersprache
+            Wählen Sie Ihre bevorzugte Programmiersprache
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -257,7 +257,7 @@ curl -X POST https://api.ablage-system.de/api/v1/ocr/process \\
   -H "Content-Type: application/json" \\
   -d '{"document_id": "doc-id", "backend": "auto"}'
 
-# Status pruefen
+# Status prüfen
 curl https://api.ablage-system.de/api/v1/ocr/status/job-id \\
   -H "Authorization: Bearer your-api-key"`}
               </pre>

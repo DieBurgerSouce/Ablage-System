@@ -1,7 +1,7 @@
 /**
  * TriggerNode Component
  *
- * ReactFlow Knoten fuer Workflow-Trigger.
+ * ReactFlow Knoten für Workflow-Trigger.
  * Zeigt Trigger-Typ und Konfiguration an.
  */
 

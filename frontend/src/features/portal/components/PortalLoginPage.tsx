@@ -25,9 +25,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { usePortalLogin } from '../hooks/use-portal-queries';
 
 const loginSchema = z.object({
-  email: z.string().email('Bitte geben Sie eine gueltige E-Mail-Adresse ein'),
+  email: z.string().email('Bitte geben Sie eine gültige E-Mail-Adresse ein'),
   password: z.string().min(8, 'Passwort muss mindestens 8 Zeichen haben'),
-  company_id: z.string().uuid('Ungueltige Firmen-ID'),
+  company_id: z.string().uuid('Ungültige Firmen-ID'),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -60,7 +60,7 @@ export function PortalLoginPage() {
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError('Anmeldung fehlgeschlagen. Bitte pruefen Sie Ihre Eingaben.');
+        setError('Anmeldung fehlgeschlagen. Bitte prüfen Sie Ihre Eingaben.');
       }
     }
   };

@@ -2,7 +2,7 @@
  * Alert Center - Zentrales Alert-Dashboard
  *
  * Features:
- * - Ueberblick ueber alle Alerts mit Statistiken
+ * - Überblick über alle Alerts mit Statistiken
  * - Filterung nach Kategorie, Schweregrad, Status
  * - Acknowledge/Dismiss/Resolve/Escalate Aktionen
  * - Bulk-Aktionen
@@ -102,7 +102,7 @@ const CATEGORY_CONFIG: Record<
     color: "text-red-600",
   },
   quality: {
-    label: "Qualitaet",
+    label: "Qualität",
     icon: FileWarning,
     color: "text-amber-500",
   },
@@ -151,7 +151,7 @@ const STATUS_CONFIG: Record<
   new: { label: "Neu", color: "text-blue-500", icon: Bell },
   acknowledged: { label: "Gesehen", color: "text-yellow-500", icon: CheckCircle },
   in_progress: { label: "In Bearbeitung", color: "text-purple-500", icon: Clock },
-  resolved: { label: "Geloest", color: "text-green-500", icon: CheckCircle },
+  resolved: { label: "Gelöst", color: "text-green-500", icon: CheckCircle },
   dismissed: { label: "Verworfen", color: "text-gray-500", icon: XCircle },
   escalated: { label: "Eskaliert", color: "text-red-500", icon: AlertCircle },
 };
@@ -226,7 +226,7 @@ function StatsCards() {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium">Geloest</CardTitle>
+          <CardTitle className="text-sm font-medium">Gelöst</CardTitle>
           <CheckCircle className="h-4 w-4 text-green-500" />
         </CardHeader>
         <CardContent>
@@ -386,15 +386,15 @@ function FilterBar({
       {selectedCount > 0 && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" aria-label="Massenaktionen fuer ausgewaehlte Alerts">
-              {selectedCount} ausgewaehlt
+            <Button variant="outline" size="sm" aria-label="Massenaktionen für ausgewählte Alerts">
+              {selectedCount} ausgewählt
               <ChevronDown className="ml-2 h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem onClick={() => onBulkAction("acknowledge")}>
               <CheckCircle className="mr-2 h-4 w-4" />
-              Alle bestaetigen
+              Alle bestätigen
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onBulkAction("dismiss")}>
               <XCircle className="mr-2 h-4 w-4" />
@@ -402,7 +402,7 @@ function FilterBar({
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onBulkAction("resolve")}>
               <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
-              Alle loesen
+              Alle lösen
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -493,7 +493,7 @@ function AlertList({
     <div className="space-y-4">
       <div className="flex items-center gap-2 px-2">
         <Checkbox
-          aria-label={allSelected ? "Alle Alerts abwaehlen" : "Alle Alerts auswaehlen"}
+          aria-label={allSelected ? "Alle Alerts abwählen" : "Alle Alerts auswählen"}
           checked={allSelected && alerts.length > 0}
           onCheckedChange={() => {
             if (allSelected) {
@@ -504,7 +504,7 @@ function AlertList({
           }}
         />
         <span className="text-sm text-muted-foreground">
-          {allSelected ? "Alle abwaehlen" : "Alle auswaehlen"}
+          {allSelected ? "Alle abwählen" : "Alle auswählen"}
         </span>
       </div>
 
@@ -638,7 +638,7 @@ export function AlertCenter() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Alert Center</h1>
           <p className="text-muted-foreground">
-            Zentrales Dashboard fuer alle Systemwarnungen und Benachrichtigungen
+            Zentrales Dashboard für alle Systemwarnungen und Benachrichtigungen
           </p>
         </div>
       </div>
@@ -671,7 +671,7 @@ export function AlertCenter() {
           </TabsTrigger>
           <TabsTrigger value="resolved" className="flex items-center gap-1">
             <CheckCircle className="h-4 w-4 text-green-500" />
-            Geloest
+            Gelöst
           </TabsTrigger>
         </TabsList>
 
@@ -721,13 +721,13 @@ export function AlertCenter() {
                     })
                   }
                 >
-                  Zurueck
+                  Zurück
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   disabled={filters.offset! + filters.limit! >= data.total}
-                  aria-label="Naechste Seite"
+                  aria-label="Nächste Seite"
                   onClick={() =>
                     handleFiltersChange({
                       ...filters,

@@ -1,6 +1,6 @@
 /**
  * Correction Workbench Hooks
- * TanStack Query Hooks fuer OCR-Korrektur-Workbench
+ * TanStack Query Hooks für OCR-Korrektur-Workbench
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -67,7 +67,7 @@ export function useCorrectionStats() {
 }
 
 /**
- * Verfuegbare Backends abrufen
+ * Verfügbare Backends abrufen
  */
 export function useAvailableBackends() {
   return useQuery({
@@ -139,7 +139,7 @@ export function useExportTrainingData() {
 }
 
 /**
- * Export loeschen
+ * Export löschen
  */
 export function useDeleteExport() {
   const queryClient = useQueryClient();

@@ -17,7 +17,7 @@ function ElsterExportPage() {
         return (
             <div className="p-6">
                 <p className="text-muted-foreground">
-                    Bitte waehlen Sie zuerst eine Firma in der Firmenverwaltung aus.
+                    Bitte wählen Sie zuerst eine Firma in der Firmenverwaltung aus.
                 </p>
             </div>
         );

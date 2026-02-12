@@ -72,7 +72,7 @@ export interface UseRecentSearchesReturn {
   /** Entfernt eine bestimmte Suche */
   removeRecentSearch: (id: string) => void;
 
-  /** Loescht alle letzten Suchen */
+  /** Löscht alle letzten Suchen */
   clearRecentSearches: () => void;
 }
 

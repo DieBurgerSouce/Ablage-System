@@ -315,19 +315,19 @@ export function AIDecisionList() {
               Warum diese Entscheidung?
             </DialogTitle>
             <DialogDescription>
-              Erklaerung der KI-Entscheidung fuer "{explanationDecision?.document_name}"
+              Erklärung der KI-Entscheidung für "{explanationDecision?.document_name}"
             </DialogDescription>
           </DialogHeader>
 
           {explanationLoading ? (
             <div className="flex items-center justify-center py-8">
               <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              <span className="ml-2 text-muted-foreground">Erklaerung wird geladen...</span>
+              <span className="ml-2 text-muted-foreground">Erklärung wird geladen...</span>
             </div>
           ) : explanationError ? (
             <div className="text-center py-8 text-red-600">
               <AlertCircle className="w-8 h-8 mx-auto mb-2" />
-              <p>Erklaerung konnte nicht geladen werden</p>
+              <p>Erklärung konnte nicht geladen werden</p>
             </div>
           ) : explanation ? (
             <ExplainabilityPanel
@@ -337,13 +337,13 @@ export function AIDecisionList() {
             />
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              Keine Erklaerung verfuegbar
+              Keine Erklärung verfügbar
             </div>
           )}
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setExplanationDecision(null)}>
-              Schliessen
+              Schließen
             </Button>
             {explanationDecision && (
               <Button

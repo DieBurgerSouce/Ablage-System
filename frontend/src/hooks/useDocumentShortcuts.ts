@@ -227,7 +227,7 @@ export function useDocumentShortcuts(options: UseDocumentShortcutsOptions): UseD
       },
       {
         id: 'doc-nav-down',
-        description: 'Naechstes Dokument',
+        description: 'Nächstes Dokument',
         keys: 'arrowdown',
         category: 'documents',
         scope: 'list-view',
@@ -278,7 +278,7 @@ export function useDocumentShortcuts(options: UseDocumentShortcutsOptions): UseD
       },
       {
         id: 'doc-open',
-        description: 'Dokument oeffnen',
+        description: 'Dokument öffnen',
         keys: 'enter',
         category: 'documents',
         scope: 'list-view',

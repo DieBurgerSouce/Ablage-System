@@ -1,7 +1,7 @@
 /**
  * ESG Zertifizierungen - Certifications Page
  *
- * Verwaltet ESG-Zertifizierungen und deren Gueltigkeit.
+ * Verwaltet ESG-Zertifizierungen und deren Gültigkeit.
  */
 
 import { createFileRoute } from '@tanstack/react-router';

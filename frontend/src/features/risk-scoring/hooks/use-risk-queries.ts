@@ -1,7 +1,7 @@
 /**
  * Risk Scoring Query Hooks
  *
- * TanStack Query Hooks fuer das Risk Scoring System.
+ * TanStack Query Hooks für das Risk Scoring System.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';

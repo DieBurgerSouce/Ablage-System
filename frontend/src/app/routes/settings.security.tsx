@@ -1,10 +1,10 @@
 /**
  * Security Settings Page
  *
- * Sicherheitseinstellungen fuer den Benutzer:
+ * Sicherheitseinstellungen für den Benutzer:
  * - Zwei-Faktor-Authentifizierung (2FA/MFA)
- * - Passwort aendern (zukuenftig)
- * - Aktive Sitzungen (zukuenftig)
+ * - Passwort ändern (zukünftig)
+ * - Aktive Sitzungen (zukünftig)
  */
 
 import { useState } from 'react';
@@ -48,7 +48,7 @@ function SecuritySettingsPage() {
             className="mb-2"
           >
             <ChevronLeft className="mr-2 h-4 w-4" />
-            Zurueck zu Sicherheitseinstellungen
+            Zurück zu Sicherheitseinstellungen
           </Button>
           <MFASetup
             onComplete={() => setShowMFASetup(false)}
@@ -68,12 +68,12 @@ function SecuritySettingsPage() {
                 <CardTitle className="text-lg">Passwort</CardTitle>
               </div>
               <CardDescription>
-                Aendern Sie Ihr Passwort regelmaessig fuer mehr Sicherheit
+                Ändern Sie Ihr Passwort regelmäßig für mehr Sicherheit
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button variant="outline" disabled>
-                Passwort aendern (in Entwicklung)
+                Passwort ändern (in Entwicklung)
               </Button>
             </CardContent>
           </Card>
@@ -86,7 +86,7 @@ function SecuritySettingsPage() {
                 <CardTitle className="text-lg">Aktive Sitzungen</CardTitle>
               </div>
               <CardDescription>
-                Ueberpruefen und verwalten Sie Ihre aktiven Anmeldesitzungen
+                Überprüfen und verwalten Sie Ihre aktiven Anmeldesitzungen
               </CardDescription>
             </CardHeader>
             <CardContent>

@@ -1,5 +1,5 @@
 /**
- * API Client fuer OCR-Confidence-Daten
+ * API Client für OCR-Confidence-Daten
  *
  * Kommuniziert mit /api/v1/ocr-confidence Endpoints.
  */
@@ -117,7 +117,7 @@ export function getConfidenceStrokeColor(confidence: number): string {
 const BASE_URL = '/ocr-confidence'
 
 /**
- * Hole detaillierte OCR-Confidence-Daten fuer ein Dokument.
+ * Hole detaillierte OCR-Confidence-Daten für ein Dokument.
  * Beinhaltet Wort-Level Daten mit Positionen.
  */
 export async function getDocumentConfidence(
@@ -146,7 +146,7 @@ export async function getConfidenceSummary(
     return response.data
 }
 
-// Export als Objekt fuer einfachen Import
+// Export als Objekt für einfachen Import
 export const confidenceApi = {
     getDocumentConfidence,
     getConfidenceSummary,

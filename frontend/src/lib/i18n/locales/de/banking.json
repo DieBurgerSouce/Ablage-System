@@ -4,9 +4,9 @@
   "accounts": {
     "title": "Konten",
     "subtitle": "Bankkontenverwaltung",
-    "add": "Konto hinzufuegen",
+    "add": "Konto hinzufügen",
     "edit": "Konto bearbeiten",
-    "delete": "Konto loeschen",
+    "delete": "Konto löschen",
     "noAccounts": "Keine Konten vorhanden",
     "iban": "IBAN",
     "bic": "BIC",
@@ -14,7 +14,7 @@
     "accountHolder": "Kontoinhaber",
     "accountNumber": "Kontonummer",
     "balance": "Kontostand",
-    "currency": "Waehrung",
+    "currency": "Währung",
     "lastSync": "Letzte Synchronisation",
     "status": {
       "active": "Aktiv",
@@ -34,7 +34,7 @@
       "amount": "Betrag",
       "description": "Verwendungszweck",
       "counterparty": "Gegenkonto",
-      "counterpartyName": "Empfaenger/Auftraggeber",
+      "counterpartyName": "Empfänger/Auftraggeber",
       "counterpartyIban": "IBAN Gegenkonto",
       "reference": "Referenz",
       "transactionType": "Transaktionsart",
@@ -44,10 +44,10 @@
     "type": {
       "credit": "Gutschrift",
       "debit": "Lastschrift",
-      "transfer": "Ueberweisung",
+      "transfer": "Überweisung",
       "standing": "Dauerauftrag",
       "directDebit": "Lastschrifteinzug",
-      "fee": "Gebuehr",
+      "fee": "Gebühr",
       "interest": "Zinsen",
       "other": "Sonstiges"
     },
@@ -61,7 +61,7 @@
       },
       "success": "{{count}} Transaktionen importiert",
       "error": "Fehler beim Import",
-      "duplicates": "{{count}} Duplikate uebersprungen"
+      "duplicates": "{{count}} Duplikate übersprungen"
     }
   },
   "reconciliation": {
@@ -75,19 +75,19 @@
     "autoMatch": "Automatisch abgleichen",
     "manualMatch": "Manuell zuordnen",
     "unmatch": "Zuordnung aufheben",
-    "suggestions": "Vorschlaege",
-    "confidence": "Uebereinstimmung: {{percent}}%",
+    "suggestions": "Vorschläge",
+    "confidence": "Übereinstimmung: {{percent}}%",
     "matchCriteria": {
       "amount": "Betrag",
       "date": "Datum",
       "reference": "Referenz",
-      "counterparty": "Geschaeftspartner"
+      "counterparty": "Geschäftspartner"
     },
     "status": {
       "matched": "Abgestimmt",
       "unmatched": "Offen",
       "partialMatch": "Teilweise",
-      "manualReview": "Manuelle Pruefung"
+      "manualReview": "Manuelle Prüfung"
     }
   },
   "payments": {
@@ -95,20 +95,20 @@
     "subtitle": "Zahlungsverwaltung",
     "create": "Zahlung erstellen",
     "edit": "Zahlung bearbeiten",
-    "delete": "Zahlung loeschen",
+    "delete": "Zahlung löschen",
     "approve": "Zahlung genehmigen",
     "reject": "Zahlung ablehnen",
-    "execute": "Zahlung ausfuehren",
+    "execute": "Zahlung ausführen",
     "cancel": "Zahlung stornieren",
     "noPayments": "Keine Zahlungen vorhanden",
     "fields": {
       "amount": "Betrag",
-      "currency": "Waehrung",
-      "recipient": "Empfaenger",
-      "recipientIban": "Empfaenger-IBAN",
-      "recipientBic": "Empfaenger-BIC",
+      "currency": "Währung",
+      "recipient": "Empfänger",
+      "recipientIban": "Empfänger-IBAN",
+      "recipientBic": "Empfänger-BIC",
       "reference": "Verwendungszweck",
-      "executionDate": "Ausfuehrungsdatum",
+      "executionDate": "Ausführungsdatum",
       "urgency": "Dringlichkeit"
     },
     "status": {
@@ -116,15 +116,15 @@
       "pending": "Ausstehend",
       "approved": "Genehmigt",
       "rejected": "Abgelehnt",
-      "executing": "Wird ausgefuehrt",
-      "executed": "Ausgefuehrt",
+      "executing": "Wird ausgeführt",
+      "executed": "Ausgeführt",
       "failed": "Fehlgeschlagen",
       "cancelled": "Storniert"
     },
     "type": {
-      "single": "Einzelueberweisung",
-      "batch": "Sammelueberweisung",
-      "scheduled": "Terminueberweisung",
+      "single": "Einzelüberweisung",
+      "batch": "Sammelüberweisung",
+      "scheduled": "Terminüberweisung",
       "standing": "Dauerauftrag"
     }
   },
@@ -133,24 +133,24 @@
     "subtitle": "Offene Rechnungen und Zahlungsstatus",
     "open": "Offene Rechnungen",
     "paid": "Bezahlte Rechnungen",
-    "overdue": "Ueberfaellige Rechnungen",
+    "overdue": "Überfällige Rechnungen",
     "total": "Gesamtbetrag",
     "outstanding": "Ausstehend",
     "fields": {
       "invoiceNumber": "Rechnungsnummer",
       "invoiceDate": "Rechnungsdatum",
-      "dueDate": "Faelligkeitsdatum",
+      "dueDate": "Fälligkeitsdatum",
       "amount": "Betrag",
       "paidAmount": "Bezahlt",
       "outstandingAmount": "Ausstehend",
       "status": "Status",
-      "entity": "Geschaeftspartner"
+      "entity": "Geschäftspartner"
     },
     "status": {
       "open": "Offen",
       "partiallyPaid": "Teilweise bezahlt",
       "paid": "Bezahlt",
-      "overdue": "Ueberfaellig",
+      "overdue": "Überfällig",
       "dunning1": "1. Mahnung",
       "dunning2": "2. Mahnung",
       "dunning3": "3. Mahnung",
@@ -160,13 +160,13 @@
     "actions": {
       "markPaid": "Als bezahlt markieren",
       "sendReminder": "Erinnerung senden",
-      "increaseDunning": "Mahnstufe erhoehen",
+      "increaseDunning": "Mahnstufe erhöhen",
       "addPayment": "Zahlung erfassen"
     }
   },
   "skonto": {
     "title": "Skonto-Tracking",
-    "available": "Skonto verfuegbar",
+    "available": "Skonto verfügbar",
     "deadline": "Skonto-Frist",
     "percentage": "Skonto: {{percent}}%",
     "amount": "Skonto-Betrag: {{amount}}",
@@ -178,7 +178,7 @@
   },
   "cashflow": {
     "title": "Cashflow",
-    "subtitle": "Liquiditaetsuebersicht",
+    "subtitle": "Liquiditätsübersicht",
     "inflow": "Einnahmen",
     "outflow": "Ausgaben",
     "balance": "Saldo",

@@ -1,7 +1,7 @@
 /**
  * GdprConsentBanner Component
  *
- * DSGVO-Hinweis fuer Kanaele die personenbezogene Daten verarbeiten (SMS, WhatsApp).
+ * DSGVO-Hinweis für Kanäle die personenbezogene Daten verarbeiten (SMS, WhatsApp).
  */
 
 import { useState } from 'react';
@@ -53,10 +53,10 @@ export function GdprConsentBanner({
         <AlertTitle className="text-yellow-800">DSGVO-Einwilligung erforderlich</AlertTitle>
         <AlertDescription className="text-yellow-700">
           <p className="mb-3">
-            Fuer {channelLabel}-Benachrichtigungen ist Ihre ausdrueckliche
+            Für {channelLabel}-Benachrichtigungen ist Ihre ausdrückliche
             Einwilligung nach DSGVO Art. 6 Abs. 1 lit. a erforderlich, da
             hierbei personenbezogene Daten (Telefonnummer) an Drittanbieter
-            uebermittelt werden.
+            übermittelt werden.
           </p>
           <div className="flex gap-2">
             <Button
@@ -88,7 +88,7 @@ export function GdprConsentBanner({
               DSGVO-Einwilligung: {channelLabel}
             </DialogTitle>
             <DialogDescription>
-              Bitte lesen Sie die folgenden Informationen sorgfaeltig durch.
+              Bitte lesen Sie die folgenden Informationen sorgfältig durch.
             </DialogDescription>
           </DialogHeader>
 
@@ -98,7 +98,7 @@ export function GdprConsentBanner({
               <p className="text-muted-foreground">
                 Zur Zustellung von {channelLabel}-Benachrichtigungen wird Ihre
                 Telefonnummer an unseren Dienstleister Twilio Inc. (USA)
-                uebermittelt. Twilio ist EU-US Data Privacy Framework
+                übermittelt. Twilio ist EU-US Data Privacy Framework
                 zertifiziert.
               </p>
             </div>
@@ -115,9 +115,9 @@ export function GdprConsentBanner({
             <div>
               <h4 className="font-semibold mb-2">Ihre Rechte</h4>
               <ul className="list-disc pl-4 text-muted-foreground space-y-1">
-                <li>Widerruf jederzeit moeglich (DSGVO Art. 7 Abs. 3)</li>
-                <li>Auskunft ueber gespeicherte Daten</li>
-                <li>Loeschung aller verarbeiteten Daten</li>
+                <li>Widerruf jederzeit möglich (DSGVO Art. 7 Abs. 3)</li>
+                <li>Auskunft über gespeicherte Daten</li>
+                <li>Löschung aller verarbeiteten Daten</li>
               </ul>
             </div>
 
@@ -130,7 +130,7 @@ export function GdprConsentBanner({
                 />
                 <Label htmlFor="gdpr-consent" className="text-sm font-normal leading-relaxed">
                   Ich willige ein, dass meine Telefonnummer zur Zustellung von
-                  Benachrichtigungen an Twilio Inc. uebermittelt wird. Mir ist
+                  Benachrichtigungen an Twilio Inc. übermittelt wird. Mir ist
                   bekannt, dass ich diese Einwilligung jederzeit widerrufen kann.
                 </Label>
               </div>
@@ -140,7 +140,7 @@ export function GdprConsentBanner({
               <Alert>
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  Bitte bestaetigen Sie die Einwilligung, um fortzufahren.
+                  Bitte bestätigen Sie die Einwilligung, um fortzufahren.
                 </AlertDescription>
               </Alert>
             )}
@@ -152,7 +152,7 @@ export function GdprConsentBanner({
             </Button>
             <Button onClick={handleAccept} disabled={!consented || isLoading}>
               <Check className="h-4 w-4 mr-1" />
-              Einwilligung bestaetigen
+              Einwilligung bestätigen
             </Button>
           </DialogFooter>
         </DialogContent>

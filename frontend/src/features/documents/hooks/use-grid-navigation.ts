@@ -1,14 +1,14 @@
 /**
- * useGridNavigation - Keyboard Navigation Hook fuer DocumentGrid
+ * useGridNavigation - Keyboard Navigation Hook für DocumentGrid
  *
  * Features:
  * - Pfeiltasten-Navigation in Grid/Liste
  * - Space zum Togglen der Auswahl
- * - Enter zum Oeffnen des Dokuments
- * - Shift+Pfeil fuer Range-Selektion
- * - Ctrl/Cmd+A fuer Alle auswaehlen
+ * - Enter zum Öffnen des Dokuments
+ * - Shift+Pfeil für Range-Selektion
+ * - Ctrl/Cmd+A für Alle auswählen
  * - Escape zum Aufheben der Auswahl
- * - Home/End fuer erstes/letztes Element
+ * - Home/End für erstes/letztes Element
  *
  * WCAG 2.1 AA konform mit Fokus-Management
  */
@@ -21,22 +21,22 @@ interface UseGridNavigationOptions {
   /** Anzahl der Items im Grid */
   itemCount: number;
 
-  /** Anzahl der Spalten im Grid (1 fuer List-View) */
+  /** Anzahl der Spalten im Grid (1 für List-View) */
   columnCount: number;
 
   /** IDs aller Dokumente */
   documentIds: string[];
 
-  /** Aktuell ausgewaehlte IDs */
+  /** Aktuell ausgewählte IDs */
   selectedIds: string[];
 
-  /** Callback wenn ein Item ausgewaehlt/abgewaehlt wird */
+  /** Callback wenn ein Item ausgewählt/abgewählt wird */
   onSelect: (id: string, selected: boolean) => void;
 
-  /** Callback wenn ein Dokument geoeffnet werden soll */
+  /** Callback wenn ein Dokument geöffnet werden soll */
   onOpen: (id: string) => void;
 
-  /** Callback um alle auszuwaehlen */
+  /** Callback um alle auszuwählen */
   onSelectAll?: () => void;
 
   /** Callback um Auswahl aufzuheben */
@@ -56,7 +56,7 @@ interface UseGridNavigationReturn {
   /** Setzt den fokussierten Index */
   setFocusedIndex: (index: number) => void;
 
-  /** Event-Handler fuer Tastatur-Events */
+  /** Event-Handler für Tastatur-Events */
   handleKeyDown: (event: React.KeyboardEvent) => void;
 
   /** Props zum Anwenden auf Items */
@@ -87,7 +87,7 @@ export function useGridNavigation({
 }: UseGridNavigationOptions): UseGridNavigationReturn {
   const [focusedIndex, setFocusedIndex] = useState(-1);
 
-  // Referenz fuer Range-Selektion Startpunkt
+  // Referenz für Range-Selektion Startpunkt
   const rangeStartRef = useRef<number>(-1);
 
   // Hilfsfunktion: Berechnet den neuen Index basierend auf Richtung
@@ -193,7 +193,7 @@ export function useGridNavigation({
             const id = documentIds[focusedIndex];
             const isSelected = selectedIds.includes(id);
             onSelect(id, !isSelected);
-            // Setze Range-Start fuer Shift-Klick
+            // Setze Range-Start für Shift-Klick
             rangeStartRef.current = focusedIndex;
           }
           break;
@@ -263,7 +263,7 @@ export function useGridNavigation({
     ]
   );
 
-  // Props fuer Items
+  // Props für Items
   const getItemProps = useCallback(
     (index: number) => {
       const id = documentIds[index];
@@ -296,12 +296,12 @@ export function useGridNavigation({
     }
   }, [focusedIndex, containerRef]);
 
-  // Auto-scroll wenn sich der fokussierte Index aendert
+  // Auto-scroll wenn sich der fokussierte Index ändert
   useEffect(() => {
     scrollFocusedIntoView();
   }, [focusedIndex, scrollFocusedIntoView]);
 
-  // Setze Fokus zurueck wenn Items sich aendern
+  // Setze Fokus zurück wenn Items sich ändern
   useEffect(() => {
     if (focusedIndex >= itemCount) {
       setFocusedIndex(Math.max(0, itemCount - 1));

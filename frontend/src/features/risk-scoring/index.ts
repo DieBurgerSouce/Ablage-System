@@ -1,7 +1,7 @@
 /**
  * Risk Scoring Feature Module
  *
- * Public exports fuer das Risk Scoring System.
+ * Public exports für das Risk Scoring System.
  */
 
 // Types

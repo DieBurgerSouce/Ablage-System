@@ -1,6 +1,6 @@
 /**
  * Interest Rates Card Component
- * Zeigt aktuelle Verzugszinssaetze nach BGB §288 an
+ * Zeigt aktuelle Verzugszinssätze nach BGB §288 an
  */
 
 import { Percent, Scale, Building2, User, Info } from 'lucide-react';
@@ -46,7 +46,7 @@ export function InterestRatesCard() {
         <CardHeader>
           <CardTitle className="text-destructive">Fehler</CardTitle>
           <CardDescription>
-            Zinssaetze konnten nicht geladen werden
+            Zinssätze konnten nicht geladen werden
           </CardDescription>
         </CardHeader>
       </Card>
@@ -58,7 +58,7 @@ export function InterestRatesCard() {
       <CardHeader>
         <div className="flex items-center gap-2">
           <Scale className="h-5 w-5 text-muted-foreground" />
-          <CardTitle>Aktuelle Verzugszinssaetze</CardTitle>
+          <CardTitle>Aktuelle Verzugszinssätze</CardTitle>
         </div>
         <CardDescription>{rates.legalBasis}</CardDescription>
       </CardHeader>
@@ -75,7 +75,7 @@ export function InterestRatesCard() {
             </span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Bundesbank-Referenzzins (halbjaehrlich aktualisiert)
+            Bundesbank-Referenzzins (halbjährlich aktualisiert)
           </p>
         </div>
 
@@ -84,7 +84,7 @@ export function InterestRatesCard() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              <span className="text-sm font-medium">Geschaeftskunden (B2B)</span>
+              <span className="text-sm font-medium">Geschäftskunden (B2B)</span>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger>

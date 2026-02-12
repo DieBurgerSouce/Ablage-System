@@ -1,8 +1,8 @@
 /**
  * TrendChart Component
  *
- * Zeigt einen Trend-Chart fuer Dokument-Aktivitaet ueber Zeit.
- * Verwendet Recharts fuer die Visualisierung.
+ * Zeigt einen Trend-Chart für Dokument-Aktivität über Zeit.
+ * Verwendet Recharts für die Visualisierung.
  */
 
 import { useMemo } from 'react';
@@ -76,7 +76,7 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
 export function TrendChart({
     data,
     title = 'Dokument-Trend',
-    description = 'Verknuepfte Dokumente pro Tag',
+    description = 'Verknüpfte Dokumente pro Tag',
     height = 300,
 }: TrendChartProps) {
     // Prepare chart data with formatted labels
@@ -111,7 +111,7 @@ export function TrendChart({
                 </CardHeader>
                 <CardContent>
                     <div className="flex items-center justify-center h-[200px] text-muted-foreground">
-                        Keine Trend-Daten verfuegbar
+                        Keine Trend-Daten verfügbar
                     </div>
                 </CardContent>
             </Card>

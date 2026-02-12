@@ -1,7 +1,7 @@
 /**
  * Dashboard Widgets API Service
  *
- * API-Funktionen fuer Dashboard-Widget-Daten:
+ * API-Funktionen für Dashboard-Widget-Daten:
  * - Cash-Flow Forecast (30/60/90 Tage Prognose)
  * - Supplier Performance (Lieferanten-Metriken)
  * - Customer Lifetime Value (Kundenwert-Analyse)
@@ -334,12 +334,12 @@ export const dashboardWidgetKeys = {
 // =============================================================================
 
 export const DASHBOARD_LABELS = {
-  cashFlowForecast: 'Liquiditaetsprognose',
+  cashFlowForecast: 'Liquiditätsprognose',
   income: 'Einnahmen',
   expenses: 'Ausgaben',
   balance: 'Saldo',
   supplierPerformance: 'Lieferanten-Performance',
-  punctuality: 'Puenktlichkeit',
+  punctuality: 'Pünktlichkeit',
   accuracy: 'Genauigkeit',
   priceTrend: 'Preistrend',
   customerValue: 'Kundenwert',
@@ -351,7 +351,7 @@ export const DASHBOARD_LABELS = {
   // Trend labels
   growing: 'Wachsend',
   stable: 'Stabil',
-  declining: 'Ruecklaeufig',
+  declining: 'Rückläufig',
   // Churn risk labels
   low: 'Niedrig',
   medium: 'Mittel',
@@ -366,7 +366,7 @@ export function formatTrendLabel(trend: 'growing' | 'stable' | 'declining' | 'up
   const labels: Record<string, string> = {
     growing: 'Wachsend',
     stable: 'Stabil',
-    declining: 'Ruecklaeufig',
+    declining: 'Rückläufig',
     up: 'Steigend',
     down: 'Fallend',
   };

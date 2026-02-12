@@ -147,7 +147,7 @@ export function RecommendationsList({
         {/* Summary by Priority */}
         {recommendations.length > 0 && (
           <div className="mt-4 pt-4 border-t">
-            <p className="text-sm text-muted-foreground mb-2">Nach Prioritaet</p>
+            <p className="text-sm text-muted-foreground mb-2">Nach Priorität</p>
             <div className="flex gap-2 flex-wrap">
               {(['high', 'medium', 'low'] as const).map((priority) => {
                 const count = recommendations.filter((r) => r.priority === priority).length;

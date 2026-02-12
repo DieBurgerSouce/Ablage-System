@@ -1,7 +1,7 @@
 /**
  * Lexware Statistiken Page
  *
- * Route fuer /admin/lexware/statistics - Verknuepfungs-Statistiken
+ * Route für /admin/lexware/statistics - Verknüpfungs-Statistiken
  */
 
 import { createFileRoute } from '@tanstack/react-router'

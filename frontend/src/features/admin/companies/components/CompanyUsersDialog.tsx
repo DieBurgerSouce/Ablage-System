@@ -67,12 +67,12 @@ export function CompanyUsersDialog({
       });
       toast({
         title: 'Rolle aktualisiert',
-        description: `Die Rolle wurde erfolgreich geaendert.`,
+        description: `Die Rolle wurde erfolgreich geändert.`,
       });
     } catch (error) {
       toast({
         title: 'Fehler',
-        description: 'Die Rolle konnte nicht geaendert werden.',
+        description: 'Die Rolle konnte nicht geändert werden.',
         variant: 'destructive',
       });
     }
@@ -93,12 +93,12 @@ export function CompanyUsersDialog({
       });
       toast({
         title: 'Berechtigung aktualisiert',
-        description: `Die Berechtigung wurde erfolgreich geaendert.`,
+        description: `Die Berechtigung wurde erfolgreich geändert.`,
       });
     } catch (error) {
       toast({
         title: 'Fehler',
-        description: 'Die Berechtigung konnte nicht geaendert werden.',
+        description: 'Die Berechtigung konnte nicht geändert werden.',
         variant: 'destructive',
       });
     }
@@ -133,7 +133,7 @@ export function CompanyUsersDialog({
         <DialogHeader>
           <DialogTitle>Benutzer verwalten: {company.name}</DialogTitle>
           <DialogDescription>
-            Verwalten Sie die Benutzer und deren Berechtigungen fuer diese Firma.
+            Verwalten Sie die Benutzer und deren Berechtigungen für diese Firma.
           </DialogDescription>
         </DialogHeader>
 

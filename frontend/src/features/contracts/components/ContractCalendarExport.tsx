@@ -3,7 +3,7 @@
  *
  * Features:
  * - Export aller Fristen als iCal-Datei
- * - Filteroptionen (Zeitraum, bestimmte Vertraege)
+ * - Filteroptionen (Zeitraum, bestimmte Verträge)
  * - Vorschau der zu exportierenden Events
  * - Download-Button
  */
@@ -77,9 +77,9 @@ const urgencyConfig = {
 };
 
 const deadlineTypeLabels: Record<string, string> = {
-  notice: 'Kuendigungsfrist',
+  notice: 'Kündigungsfrist',
   end: 'Vertragsende',
-  renewal: 'Verlaengerungsoption',
+  renewal: 'Verlängerungsoption',
 };
 
 export function ContractCalendarExport({ contractIds, trigger }: ContractCalendarExportProps) {
@@ -142,7 +142,7 @@ export function ContractCalendarExport({ contractIds, trigger }: ContractCalenda
     setSelectAll(false);
   };
 
-  // Alle auswaehlen/abwaehlen
+  // Alle auswählen/abwählen
   const handleSelectAll = (checked: boolean) => {
     setSelectAll(checked);
     if (checked) {
@@ -150,7 +150,7 @@ export function ContractCalendarExport({ contractIds, trigger }: ContractCalenda
     }
   };
 
-  // Export durchfuehren
+  // Export durchführen
   const handleExport = async () => {
     await icalExport.mutateAsync({
       days_ahead: parseInt(daysAhead, 10),
@@ -176,7 +176,7 @@ export function ContractCalendarExport({ contractIds, trigger }: ContractCalenda
             Kalender-Export (iCal)
           </DialogTitle>
           <DialogDescription>
-            Exportieren Sie Vertragsfristen als iCal-Datei fuer Ihren Kalender
+            Exportieren Sie Vertragsfristen als iCal-Datei für Ihren Kalender
             (Outlook, Google Calendar, Apple Kalender).
           </DialogDescription>
         </DialogHeader>
@@ -187,7 +187,7 @@ export function ContractCalendarExport({ contractIds, trigger }: ContractCalenda
             <Label>Zeitraum</Label>
             <Select value={daysAhead} onValueChange={setDaysAhead}>
               <SelectTrigger>
-                <SelectValue placeholder="Zeitraum waehlen" />
+                <SelectValue placeholder="Zeitraum wählen" />
               </SelectTrigger>
               <SelectContent>
                 {DAYS_AHEAD_OPTIONS.map((option) => (
@@ -233,7 +233,7 @@ export function ContractCalendarExport({ contractIds, trigger }: ContractCalenda
           {/* Fristen-Auswahl */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label>Fristen auswaehlen</Label>
+              <Label>Fristen auswählen</Label>
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="select-all"
@@ -241,7 +241,7 @@ export function ContractCalendarExport({ contractIds, trigger }: ContractCalenda
                   onCheckedChange={(checked) => handleSelectAll(!!checked)}
                 />
                 <label htmlFor="select-all" className="text-sm cursor-pointer">
-                  Alle auswaehlen
+                  Alle auswählen
                 </label>
               </div>
             </div>

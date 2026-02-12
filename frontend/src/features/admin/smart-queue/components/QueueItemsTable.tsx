@@ -1,7 +1,7 @@
 /**
  * Queue Items Table
  *
- * Tabelle mit Warteschlangen-Items und Prioritaets-Anzeige.
+ * Tabelle mit Warteschlangen-Items und Prioritäts-Anzeige.
  */
 
 import { useState } from 'react';
@@ -66,7 +66,7 @@ const STATUS_CONFIG: Record<QueueStatus, { label: string; color: string }> = {
 const PRIORITY_REASON_LABELS: Record<PriorityReason, { label: string; icon: typeof Banknote }> = {
   skonto_deadline: { label: 'Skonto-Frist', icon: Banknote },
   dunning_notice: { label: 'Mahnung', icon: AlertTriangle },
-  manual_high: { label: 'Manuell erhoeht', icon: ChevronUp },
+  manual_high: { label: 'Manuell erhöht', icon: ChevronUp },
   urgent_flag: { label: 'Dringend', icon: AlertTriangle },
   vip_customer: { label: 'VIP-Kunde', icon: FileText },
   high_amount: { label: 'Hoher Betrag', icon: Banknote },
@@ -115,9 +115,9 @@ function QueueItemRow({ item }: { item: QueueItem }) {
         priority: newPriority,
         reason: 'manual',
       });
-      toast.success('Prioritaet geaendert');
+      toast.success('Priorität geändert');
     } catch {
-      toast.error('Fehler beim Aendern der Prioritaet');
+      toast.error('Fehler beim Ändern der Priorität');
     }
   };
 
@@ -230,18 +230,18 @@ function QueueItemRow({ item }: { item: QueueItem }) {
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => handlePriorityChange(10)}>
               <ChevronUp className="h-4 w-4 mr-2 text-red-500" />
-              Hoechste Prioritaet (10)
+              Höchste Priorität (10)
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handlePriorityChange(7)}>
               <ChevronUp className="h-4 w-4 mr-2 text-orange-500" />
-              Hohe Prioritaet (7)
+              Hohe Priorität (7)
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handlePriorityChange(5)}>
               Normal (5)
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handlePriorityChange(2)}>
               <ChevronDown className="h-4 w-4 mr-2 text-gray-500" />
-              Niedrige Prioritaet (2)
+              Niedrige Priorität (2)
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             {(item.status === 'waiting' || item.status === 'paused') && (
@@ -297,7 +297,7 @@ export function QueueItemsTable() {
             Warteschlange
           </CardTitle>
           <CardDescription>
-            Dokumente sortiert nach Prioritaet
+            Dokumente sortiert nach Priorität
           </CardDescription>
         </div>
         <Select
@@ -329,7 +329,7 @@ export function QueueItemsTable() {
             <TableHeader>
               <TableRow>
                 <TableHead>Dokument</TableHead>
-                <TableHead>Prioritaet</TableHead>
+                <TableHead>Priorität</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Wartezeit</TableHead>
                 <TableHead>Details</TableHead>

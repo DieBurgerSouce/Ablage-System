@@ -1,7 +1,7 @@
 /**
  * AI Stats Overview
  *
- * Statistik-Dashboard fuer KI-Performance.
+ * Statistik-Dashboard für KI-Performance.
  */
 
 import { useState } from 'react';

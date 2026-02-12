@@ -1,5 +1,5 @@
 /**
- * TanStack Query Hooks fuer OCR-Confidence-Daten
+ * TanStack Query Hooks für OCR-Confidence-Daten
  */
 
 import { useQuery } from '@tanstack/react-query'
@@ -16,7 +16,7 @@ export const confidenceQueryKeys = {
 }
 
 /**
- * Hook fuer detaillierte Confidence-Daten eines Dokuments.
+ * Hook für detaillierte Confidence-Daten eines Dokuments.
  * Beinhaltet Wort-Level Daten mit Positionen.
  */
 export function useDocumentConfidence(
@@ -28,13 +28,13 @@ export function useDocumentConfidence(
         queryKey: confidenceQueryKeys.document(documentId ?? '', pageNumber),
         queryFn: () => confidenceApi.getDocumentConfidence(documentId!, pageNumber),
         enabled: !!documentId && enabled,
-        staleTime: 120000, // 2 Minuten (Confidence aendert sich selten)
+        staleTime: 120000, // 2 Minuten (Confidence ändert sich selten)
         retry: 1,
     })
 }
 
 /**
- * Hook fuer schnelle Confidence-Zusammenfassung.
+ * Hook für schnelle Confidence-Zusammenfassung.
  */
 export function useConfidenceSummary(
     documentId: string | undefined,

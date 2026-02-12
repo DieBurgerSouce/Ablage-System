@@ -1,7 +1,7 @@
 /**
  * GoBD Feature Types
  *
- * TypeScript Definitionen fuer GoBD-konforme Archivierung.
+ * TypeScript Definitionen für GoBD-konforme Archivierung.
  */
 
 // ==================================================

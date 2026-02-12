@@ -10,7 +10,9 @@ Stellt Endpoints bereit fuer:
 Vision 2.0 - Feature #11 (Januar 2026)
 """
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
+
+from app.core.types import JSONDict, JSONValue
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -194,14 +196,14 @@ class ChecklistStatus(BaseModel):
 class UpdateStepRequest(BaseModel):
     """Request zum Aktualisieren eines Schritts."""
 
-    step_data: Optional[Dict[str, Any]] = Field(
+    step_data: Optional[JSONDict] = Field(
         None,
         description="Optionale Schritt-Daten (z.B. gewaehlte Branche)",
         max_length=50,  # SECURITY: Max 50 Keys im Dict
     )
 
     @validator("step_data")
-    def validate_step_data(cls, v: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    def validate_step_data(cls, v: Optional[JSONDict]) -> Optional[JSONDict]:
         """SECURITY: Validiere JSONB-Payload gegen DoS und Injection."""
         if v is None:
             return v
@@ -213,7 +215,7 @@ class UpdateStepRequest(BaseModel):
             raise ValueError("step_data darf maximal 10KB gross sein")
 
         # Max Tiefe: 3 Ebenen
-        def check_depth(obj: Any, depth: int = 0) -> int:
+        def check_depth(obj: JSONValue, depth: int = 0) -> int:
             if depth > 3:
                 raise ValueError("step_data darf maximal 3 Ebenen tief sein")
             if isinstance(obj, dict):
@@ -229,7 +231,7 @@ class UpdateStepRequest(BaseModel):
         check_depth(v)
 
         # Erlaubte Datentypen: str, int, bool, None, list, dict
-        def check_types(obj: Any) -> None:
+        def check_types(obj: JSONValue) -> None:
             if obj is None:
                 return
             if isinstance(obj, (str, int, bool, float)):
@@ -262,13 +264,13 @@ class SuccessResponse(BaseModel):
 # ==================== Helper Functions ====================
 
 
-def _get_onboarding_status_from_preferences(preferences: Dict[str, Any]) -> Dict[str, Any]:
+def _get_onboarding_status_from_preferences(preferences: JSONDict) -> JSONDict:
     """Extrahiert Onboarding-Status aus User/Company Preferences."""
     return preferences.get("onboarding", {})
 
 
 def _build_onboarding_status(
-    onboarding_data: Dict[str, Any],
+    onboarding_data: JSONDict,
 ) -> OnboardingStatus:
     """Baut OnboardingStatus aus gespeicherten Daten."""
     completed_steps = onboarding_data.get("completed_steps", [])
@@ -320,7 +322,7 @@ def _build_onboarding_status(
 
 
 def _build_checklist_status(
-    checklist_data: Dict[str, Any],
+    checklist_data: JSONDict,
 ) -> ChecklistStatus:
     """Baut ChecklistStatus aus gespeicherten Daten."""
     completed_items = checklist_data.get("completed_items", {})
@@ -564,20 +566,20 @@ async def complete_checklist_item(
 
 @router.get(
     "/steps",
-    response_model=List[Dict[str, Any]],
+    response_model=List[JSONDict],
     summary="Alle Onboarding-Schritte",
     description="Holt die Definition aller Onboarding-Schritte.",
 )
 async def get_all_steps(
     current_user: User = Depends(get_current_active_user),
-) -> List[Dict[str, Any]]:
+) -> List[JSONDict]:
     """Holt alle Onboarding-Schritte."""
     return ONBOARDING_STEPS
 
 
 @router.get(
     "/step/{step_id}",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Einzelnen Schritt abrufen",
     description="Holt Details zu einem spezifischen Onboarding-Schritt.",
 )
@@ -585,7 +587,7 @@ async def get_step(
     step_id: str = Path(..., description="Schritt-ID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Holt Details zu einem Schritt."""
     # Schritt finden
     step = None
@@ -614,14 +616,14 @@ async def get_step(
 
 @router.get(
     "/progress",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Fortschritts-Zusammenfassung",
     description="Kompakte Fortschrittsanzeige fuer Dashboard-Widgets.",
 )
 async def get_progress_summary(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Holt kompakte Fortschritts-Zusammenfassung."""
     preferences = current_user.preferences or {}
     onboarding_data = _get_onboarding_status_from_preferences(preferences)

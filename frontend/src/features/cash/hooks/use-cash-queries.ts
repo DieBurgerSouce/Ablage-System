@@ -22,7 +22,7 @@ import type {
 
 const STALE_TIMES = {
   registers: 5 * 60 * 1000,    // 5 Minuten
-  entries: 30 * 1000,          // 30 Sekunden - Eintraege können schnell kommen
+  entries: 30 * 1000,          // 30 Sekunden - Einträge können schnell kommen
   categories: 10 * 60 * 1000,  // 10 Minuten - Kategorien ändern sich selten
   counts: 5 * 60 * 1000,       // 5 Minuten
   summary: 2 * 60 * 1000,      // 2 Minuten

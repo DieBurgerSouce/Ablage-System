@@ -1,7 +1,7 @@
 /**
  * Notification Preferences API
  *
- * API-Calls fuer das erweiterte Benachrichtigungssystem.
+ * API-Calls für das erweiterte Benachrichtigungssystem.
  */
 
 import { api } from '@/lib/api';
@@ -208,7 +208,7 @@ export async function sendTestNotification(
       return {
         success: true,
         channel: request.channel,
-        message: `Test-Benachrichtigung ueber ${channelLabel} wurde gesendet.`,
+        message: `Test-Benachrichtigung über ${channelLabel} wurde gesendet.`,
         deliveredAt: new Date().toISOString(),
       };
     }

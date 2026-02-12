@@ -1,7 +1,7 @@
 /**
  * LifeEventsPage - Hauptseite des Lebenslagen-Assistenten
  *
- * Zeigt Uebersicht der Event-Typen, aktive Ereignisse und Detail-Ansicht.
+ * Zeigt Übersicht der Event-Typen, aktive Ereignisse und Detail-Ansicht.
  */
 
 import { useState } from 'react';
@@ -102,13 +102,13 @@ export function LifeEventsPage() {
           <h1 className="text-2xl font-bold">Lebenslagen-Assistent</h1>
         </div>
         <p className="text-muted-foreground mt-1">
-          Ihr persoenlicher Begleiter fuer wichtige Lebensereignisse
+          Ihr persönlicher Begleiter für wichtige Lebensereignisse
         </p>
       </div>
 
       {/* Event Type Grid */}
       <div>
-        <h2 className="text-lg font-semibold mb-4">Lebensereignis waehlen</h2>
+        <h2 className="text-lg font-semibold mb-4">Lebensereignis wählen</h2>
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -218,7 +218,7 @@ export function LifeEventsPage() {
             <DialogDescription>
               {createType && EVENT_TYPE_CONFIG[createType]
                 ? `${EVENT_TYPE_CONFIG[createType].label}: ${EVENT_TYPE_CONFIG[createType].description}`
-                : 'Waehlen Sie ein Lebensereignis aus.'}
+                : 'Wählen Sie ein Lebensereignis aus.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -227,7 +227,7 @@ export function LifeEventsPage() {
               <Label htmlFor="notes">Notizen (optional)</Label>
               <Textarea
                 id="notes"
-                placeholder="Zusaetzliche Informationen zu Ihrem Ereignis..."
+                placeholder="Zusätzliche Informationen zu Ihrem Ereignis..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}

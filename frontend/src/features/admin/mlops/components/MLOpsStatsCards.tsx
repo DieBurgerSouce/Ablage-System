@@ -1,7 +1,7 @@
 /**
  * MLOps Statistics Cards
  *
- * Zeigt Uebersicht ueber Model Registry und Retraining Status.
+ * Zeigt Übersicht über Model Registry und Retraining Status.
  */
 
 import { Brain, RefreshCw, CheckCircle, AlertTriangle, TrendingUp } from 'lucide-react';

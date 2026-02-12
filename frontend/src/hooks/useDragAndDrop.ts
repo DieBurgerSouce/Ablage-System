@@ -1,7 +1,7 @@
 /**
- * useDragAndDrop Hook - Drag & Drop Funktionalitaet mit @dnd-kit
+ * useDragAndDrop Hook - Drag & Drop Funktionalität mit @dnd-kit
  *
- * Phase 2.2: Drag & Drop ueberall
+ * Phase 2.2: Drag & Drop überall
  *
  * Features:
  * - Dokumente in Ordner ziehen
@@ -9,7 +9,7 @@
  * - Dashboard-Widgets umsortieren
  * - Visuelles Feedback (Drag Preview, Drop Indicator)
  *
- * Verwendet @dnd-kit/core fuer maximale Flexibilitaet
+ * Verwendet @dnd-kit/core für maximale Flexibilität
  */
 
 import { useState, useCallback, useMemo } from "react"
@@ -25,7 +25,7 @@ export interface DragItem<TData = unknown> {
   id: UniqueIdentifier
   type: DragItemType
   data: TData
-  /** Bei Multi-Select: Alle ausgewaehlten IDs */
+  /** Bei Multi-Select: Alle ausgewählten IDs */
   selectedIds?: UniqueIdentifier[]
 }
 
@@ -54,7 +54,7 @@ export interface UseDragAndDropOptions<TData = unknown> {
   onCancel?: (item: DragItem<TData>) => void
   /** Validierung ob Drop erlaubt ist */
   canDrop?: (item: DragItem<TData>, target: DropTarget) => boolean
-  /** Multi-Select Unterstuetzung */
+  /** Multi-Select Unterstützung */
   enableMultiSelect?: boolean
   /** Animation Dauer in ms */
   animationDuration?: number
@@ -63,7 +63,7 @@ export interface UseDragAndDropOptions<TData = unknown> {
 export interface UseDragAndDropReturn<TData = unknown> {
   /** Aktueller Drag-State */
   dragState: DragState
-  /** Handler fuer DndContext */
+  /** Handler für DndContext */
   handlers: {
     onDragStart: (event: DragStartEvent) => void
     onDragOver: (event: DragOverEvent) => void
@@ -175,7 +175,7 @@ export function useDragAndDrop<TData = unknown>(
         }
       }
 
-      // State zuruecksetzen
+      // State zurücksetzen
       setActiveItem(null)
       setOverTarget(null)
     },
@@ -227,7 +227,7 @@ export function useDragAndDrop<TData = unknown>(
 }
 
 // =============================================================================
-// useSortableDrag - Fuer sortierbare Listen (Dashboard Widgets)
+// useSortableDrag - Für sortierbare Listen (Dashboard Widgets)
 // =============================================================================
 
 export interface SortableItem {
@@ -236,7 +236,7 @@ export interface SortableItem {
 }
 
 export interface UseSortableDragOptions {
-  /** Callback bei Reihenfolge-Aenderung */
+  /** Callback bei Reihenfolge-Änderung */
   onReorder?: (items: SortableItem[]) => void
   /** Speichern in localStorage */
   persistKey?: string
@@ -348,7 +348,7 @@ export function useSortableDrag(
 }
 
 // =============================================================================
-// useDroppable - Hook fuer Drop-Ziele
+// useDroppable - Hook für Drop-Ziele
 // =============================================================================
 
 export interface UseDroppableOptions {
@@ -359,13 +359,13 @@ export interface UseDroppableOptions {
 }
 
 export interface UseDroppableReturn {
-  /** Props fuer das Droppable-Element */
+  /** Props für das Droppable-Element */
   droppableProps: {
     "data-droppable": boolean
     "data-droppable-id": string
     "data-droppable-type": string
   }
-  /** DropTarget-Daten fuer @dnd-kit */
+  /** DropTarget-Daten für @dnd-kit */
   dropTargetData: DropTarget
 }
 
@@ -397,7 +397,7 @@ export function useDroppable(options: UseDroppableOptions): UseDroppableReturn {
 }
 
 // =============================================================================
-// useDraggable - Hook fuer Drag-Quellen
+// useDraggable - Hook für Drag-Quellen
 // =============================================================================
 
 export interface UseDraggableOptions<TData = unknown> {
@@ -410,13 +410,13 @@ export interface UseDraggableOptions<TData = unknown> {
 }
 
 export interface UseDraggableReturn<TData = unknown> {
-  /** Props fuer das Draggable-Element */
+  /** Props für das Draggable-Element */
   draggableProps: {
     "data-draggable": boolean
     "data-draggable-id": string
     "data-draggable-type": string
   }
-  /** DragItem-Daten fuer @dnd-kit */
+  /** DragItem-Daten für @dnd-kit */
   dragItemData: DragItem<TData>
 }
 
@@ -451,7 +451,7 @@ export function useDraggable<TData = unknown>(
 }
 
 // =============================================================================
-// Helper Types fuer Document/Folder DnD
+// Helper Types für Document/Folder DnD
 // =============================================================================
 
 export interface DocumentDragData {

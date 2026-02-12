@@ -1,7 +1,7 @@
 /**
  * Predictive Actions Hooks
  *
- * TanStack Query Hooks fuer proaktive Handlungsvorschlaege
+ * TanStack Query Hooks für proaktive Handlungsvorschläge
  *
  * Features:
  * - Aktionen abrufen (kritisch, skonto, mahnung)
@@ -53,15 +53,15 @@ export const predictiveActionsQueryKeys = {
 
 const STALE_TIMES = {
   actions: 1000 * 60 * 2, // 2 Minuten
-  critical: 1000 * 30, // 30 Sekunden (haeufiger aktualisieren)
+  critical: 1000 * 30, // 30 Sekunden (häufiger aktualisieren)
   statistics: 1000 * 60 * 5, // 5 Minuten
-  types: 1000 * 60 * 30, // 30 Minuten (selten aendernd)
+  types: 1000 * 60 * 30, // 30 Minuten (selten ändernd)
 };
 
 // ==================== Query Hooks ====================
 
 /**
- * Holt alle Aktionsvorschlaege
+ * Holt alle Aktionsvorschläge
  */
 export function usePredictiveActions(filter?: PredictiveActionsFilter) {
   return useQuery({
@@ -72,7 +72,7 @@ export function usePredictiveActions(filter?: PredictiveActionsFilter) {
 }
 
 /**
- * Holt kritische Aktionen (fuer Dashboard)
+ * Holt kritische Aktionen (für Dashboard)
  */
 export function useCriticalActions(limit = 10) {
   return useQuery({
@@ -84,7 +84,7 @@ export function useCriticalActions(limit = 10) {
 }
 
 /**
- * Holt Skonto-spezifische Vorschlaege
+ * Holt Skonto-spezifische Vorschläge
  */
 export function useSkontoActions(limit = 20) {
   return useQuery({
@@ -95,7 +95,7 @@ export function useSkontoActions(limit = 20) {
 }
 
 /**
- * Holt Mahnungs-spezifische Vorschlaege
+ * Holt Mahnungs-spezifische Vorschläge
  */
 export function useDunningActions(limit = 20) {
   return useQuery({
@@ -106,7 +106,7 @@ export function useDunningActions(limit = 20) {
 }
 
 /**
- * Holt Statistiken zu Aktionsvorschlaegen
+ * Holt Statistiken zu Aktionsvorschlägen
  */
 export function useActionStatistics(days = 30) {
   return useQuery({
@@ -117,7 +117,7 @@ export function useActionStatistics(days = 30) {
 }
 
 /**
- * Holt verfuegbare Aktionstypen
+ * Holt verfügbare Aktionstypen
  */
 export function useActionTypes() {
   return useQuery({
@@ -239,7 +239,7 @@ export function useInvalidatePredictiveActionsQueries() {
 }
 
 /**
- * Prefetch kritische Aktionen fuer schnellere Darstellung
+ * Prefetch kritische Aktionen für schnellere Darstellung
  */
 export function usePrefetchCriticalActions() {
   const queryClient = useQueryClient();

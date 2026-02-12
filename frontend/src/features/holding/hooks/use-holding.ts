@@ -31,7 +31,7 @@ export const holdingKeys = {
 // ==================== Hooks ====================
 
 /**
- * Hole konsolidierte Holding-Uebersicht
+ * Hole konsolidierte Holding-Übersicht
  */
 export function useHoldingOverview(companyIds?: string[]) {
   return useQuery({
@@ -80,7 +80,7 @@ export function useIntercompanyMetrics(companyIds?: string[]) {
 }
 
 /**
- * Hole Cashflow-Uebersicht
+ * Hole Cashflow-Übersicht
  */
 export function useCashFlowOverview(
   period: CashFlowPeriod = 'monthly',

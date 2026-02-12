@@ -15,7 +15,7 @@ interface DocumentCardProps {
     onClick: () => void;
     onDoubleClick: () => void;
     onSelect: (checked: boolean) => void;
-    /** Tab-Index fuer Tastatur-Navigation */
+    /** Tab-Index für Tastatur-Navigation */
     tabIndex?: number;
     /** Callback wenn Element fokussiert wird */
     onFocus?: () => void;

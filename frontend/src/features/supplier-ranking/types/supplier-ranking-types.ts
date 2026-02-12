@@ -1,7 +1,7 @@
 /**
  * Supplier Ranking Types
  *
- * TypeScript Definitionen fuer das Lieferanten-Ranking System.
+ * TypeScript Definitionen für das Lieferanten-Ranking System.
  */
 
 // Ranking Kategorien
@@ -30,9 +30,9 @@ export const CATEGORY_WEIGHTS: Record<RankingCategory, number> = {
 
 // Kategorie-Labels (German)
 export const CATEGORY_LABELS: Record<RankingCategory, string> = {
-  punctuality: 'Puenktlichkeit',
+  punctuality: 'Pünktlichkeit',
   price: 'Preis-Leistung',
-  reliability: 'Zuverlaessigkeit',
+  reliability: 'Zuverlässigkeit',
   communication: 'Kommunikation',
   payment_terms: 'Zahlungsbedingungen',
 };
@@ -41,8 +41,8 @@ export const CATEGORY_LABELS: Record<RankingCategory, string> = {
 export const CATEGORY_DESCRIPTIONS: Record<RankingCategory, string> = {
   punctuality: 'Liefertreue und termingerechte Rechnungsstellung',
   price: 'Preiskonsistenz und Skonto-Nutzung',
-  reliability: 'Reklamationsquote und Qualitaet',
-  communication: 'Dokumentenqualitaet und Erreichbarkeit',
+  reliability: 'Reklamationsquote und Qualität',
+  communication: 'Dokumentenqualität und Erreichbarkeit',
   payment_terms: 'Zahlungsziele und Skonto-Angebote',
 };
 
@@ -306,5 +306,5 @@ export const UI_LABELS = {
   // Messages
   noSuppliers: 'Keine Lieferanten gefunden',
   errorLoad: 'Fehler beim Laden der Ranking-Daten',
-  noData: 'Keine Ranking-Daten verfuegbar',
+  noData: 'Keine Ranking-Daten verfügbar',
 };

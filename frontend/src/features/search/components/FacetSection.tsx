@@ -1,8 +1,8 @@
 /**
  * FacetSection - Einzelne aufklappbare Facetten-Sektion
  *
- * Zeigt Checkbox-Eintraege mit Anzahl-Badges an.
- * Unterstuetzt "Mehr anzeigen" fuer lange Listen.
+ * Zeigt Checkbox-Einträge mit Anzahl-Badges an.
+ * Unterstützt "Mehr anzeigen" für lange Listen.
  * Alle Texte in Deutsch.
  */
 import { useState } from 'react';
@@ -21,7 +21,7 @@ interface FacetSectionProps {
   maxVisible?: number;
 }
 
-/** Deutsche Bezeichnungen fuer Facetten-Werte */
+/** Deutsche Bezeichnungen für Facetten-Werte */
 const FACET_LABELS: Record<string, string> = {
   // Dokumenttypen
   'eingangsrechnung': 'Eingangsrechnung',

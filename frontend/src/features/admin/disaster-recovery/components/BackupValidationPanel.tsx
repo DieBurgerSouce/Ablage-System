@@ -239,7 +239,7 @@ export function BackupValidationPanel({
                     <TableCell className="font-mono text-sm">{backup.name}</TableCell>
                     <TableCell>{getTypeBadge(backup.typ)}</TableCell>
                     <TableCell className="font-mono text-sm">
-                      {formatSize(backup.groesse)}
+                      {formatSize(backup.größe)}
                     </TableCell>
                     <TableCell className="font-mono text-sm">
                       {formatDate(backup.erstellt)}

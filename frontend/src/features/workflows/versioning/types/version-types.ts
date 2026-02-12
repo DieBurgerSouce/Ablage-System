@@ -1,7 +1,7 @@
 /**
  * Workflow Versioning Types
  *
- * TypeScript-Definitionen fuer Workflow-Versionierung.
+ * TypeScript-Definitionen für Workflow-Versionierung.
  */
 
 // =============================================================================

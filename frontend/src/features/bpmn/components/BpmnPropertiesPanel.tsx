@@ -198,7 +198,7 @@ export function BpmnPropertiesPanel({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="dueDate">Faelligkeitsdatum</Label>
+                  <Label htmlFor="dueDate">Fälligkeitsdatum</Label>
                   <Input
                     id="dueDate"
                     type="date"
@@ -208,7 +208,7 @@ export function BpmnPropertiesPanel({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="priority">Prioritaet</Label>
+                  <Label htmlFor="priority">Priorität</Label>
                   <Select value={priority} onValueChange={setPriority}>
                     <SelectTrigger>
                       <SelectValue />
@@ -276,7 +276,7 @@ export function BpmnPropertiesPanel({
               className="w-full"
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              Element loeschen
+              Element löschen
             </Button>
           </div>
         </div>
@@ -300,7 +300,7 @@ export function BpmnPropertiesPanel({
                 className="font-mono text-xs"
               />
               <p className="text-xs text-gray-500">
-                Ausdruck fuer bedingte Verzweigung (JUEL/Python)
+                Ausdruck für bedingte Verzweigung (JUEL/Python)
               </p>
             </div>
           </div>
@@ -310,7 +310,7 @@ export function BpmnPropertiesPanel({
       {!selectedNode && !selectedEdge && (
         <div className="flex flex-col items-center justify-center py-8 text-gray-500">
           <AlertCircle className="mb-2 h-8 w-8" />
-          <p className="text-sm">Kein Element ausgewaehlt</p>
+          <p className="text-sm">Kein Element ausgewählt</p>
           <p className="text-xs">
             Klicken Sie auf ein Element im Diagramm
           </p>
@@ -330,7 +330,7 @@ function getElementTypeLabel(type: string): string {
     manualTask: 'Manuelle Aufgabe',
     sendTask: 'Sende-Aufgabe',
     receiveTask: 'Empfangs-Aufgabe',
-    businessRuleTask: 'Geschaeftsregel',
+    businessRuleTask: 'Geschäftsregel',
     exclusiveGateway: 'Exklusives Gateway',
     parallelGateway: 'Paralleles Gateway',
     inclusiveGateway: 'Inklusives Gateway',

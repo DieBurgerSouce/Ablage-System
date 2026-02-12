@@ -64,7 +64,7 @@ function DATEVLayout() {
                 })}
             </nav>
 
-            {/* Content - mit Error Boundary geschuetzt */}
+            {/* Content - mit Error Boundary geschützt */}
             <DATEVErrorBoundary>
                 <Outlet />
             </DATEVErrorBoundary>

@@ -1,7 +1,7 @@
 /**
  * Import System API Client
  *
- * API-Funktionen fuer E-Mail-Import, Ordner-Import und Import-Regeln.
+ * API-Funktionen für E-Mail-Import, Ordner-Import und Import-Regeln.
  */
 
 import { apiClient as api } from '@/lib/api/client';
@@ -96,7 +96,7 @@ export async function testEmailConnection(
 }
 
 /**
- * Starte manuellen Sync fuer eine E-Mail-Import-Konfiguration.
+ * Starte manuellen Sync für eine E-Mail-Import-Konfiguration.
  */
 export async function syncEmailConfig(configId: string): Promise<EmailSyncResult> {
   const response = await api.post<EmailSyncResult>(
@@ -159,7 +159,7 @@ export async function deleteFolderConfig(configId: string): Promise<void> {
 }
 
 /**
- * Starte den Watcher fuer eine Ordner-Import-Konfiguration.
+ * Starte den Watcher für eine Ordner-Import-Konfiguration.
  */
 export async function startFolderWatcher(
   configId: string
@@ -171,7 +171,7 @@ export async function startFolderWatcher(
 }
 
 /**
- * Stoppe den Watcher fuer eine Ordner-Import-Konfiguration.
+ * Stoppe den Watcher für eine Ordner-Import-Konfiguration.
  */
 export async function stopFolderWatcher(
   configId: string
@@ -183,7 +183,7 @@ export async function stopFolderWatcher(
 }
 
 /**
- * Starte manuelles Polling fuer eine Ordner-Import-Konfiguration.
+ * Starte manuelles Polling für eine Ordner-Import-Konfiguration.
  */
 export async function pollFolderConfig(configId: string): Promise<FolderPollResult> {
   const response = await api.post<FolderPollResult>(
@@ -240,7 +240,7 @@ export async function deleteImportRule(ruleId: string): Promise<void> {
 }
 
 /**
- * Aendere die Prioritaeten mehrerer Import-Regeln.
+ * Ändere die Prioritäten mehrerer Import-Regeln.
  */
 export async function reorderImportRules(
   rules: ImportRuleReorderItem[]

@@ -1,7 +1,7 @@
 /**
  * Developer Portal Hooks
  *
- * API-Hooks fuer Developer Portal Features:
+ * API-Hooks für Developer Portal Features:
  * - API Playground
  * - Webhook Testing
  * - SDK Downloads
@@ -404,7 +404,7 @@ export function useSdks() {
           version: '1.0.0',
           download_url: 'https://pypi.org/project/ablage-sdk/',
           documentation_url: '/docs/sdk/python',
-          description: 'Offizielles Python SDK fuer die Ablage-System API',
+          description: 'Offizielles Python SDK für die Ablage-System API',
           install_command: 'pip install ablage-sdk',
           example_code: `from ablage import AblageClient
 
@@ -424,7 +424,7 @@ print(f"Extrahierter Text: {result.text}")`,
           version: '1.0.0',
           download_url: 'https://www.npmjs.com/package/@ablage/sdk',
           documentation_url: '/docs/sdk/javascript',
-          description: 'Offizielles JavaScript/TypeScript SDK fuer die Ablage-System API',
+          description: 'Offizielles JavaScript/TypeScript SDK für die Ablage-System API',
           install_command: 'npm install @ablage/sdk',
           example_code: `import { AblageClient } from '@ablage/sdk';
 
@@ -486,7 +486,7 @@ export function useIntegrationGuides() {
         {
           id: 'webhooks',
           title: 'Webhook-Integration',
-          description: 'Echtzeit-Benachrichtigungen ueber Ereignisse',
+          description: 'Echtzeit-Benachrichtigungen über Ereignisse',
           category: 'Integration',
           difficulty: 'intermediate',
           estimated_time: '25 min',
@@ -506,7 +506,7 @@ export function useIntegrationGuides() {
         {
           id: 'datev-export',
           title: 'DATEV-Export Integration',
-          description: 'Buchungsdaten fuer DATEV exportieren',
+          description: 'Buchungsdaten für DATEV exportieren',
           category: 'Integration',
           difficulty: 'intermediate',
           estimated_time: '20 min',
@@ -525,8 +525,8 @@ export function useIntegrationGuides() {
         },
         {
           id: 'entity-linking',
-          title: 'Entity-Verknuepfung',
-          description: 'Dokumente automatisch mit Geschaeftspartnern verknuepfen',
+          title: 'Entity-Verknüpfung',
+          description: 'Dokumente automatisch mit Geschäftspartnern verknüpfen',
           category: 'AI',
           difficulty: 'advanced',
           estimated_time: '35 min',
@@ -578,7 +578,7 @@ export function useApiStats() {
 export const WEBHOOK_EVENT_TYPES = [
   { value: 'document.created', label: 'Dokument erstellt' },
   { value: 'document.updated', label: 'Dokument aktualisiert' },
-  { value: 'document.deleted', label: 'Dokument geloescht' },
+  { value: 'document.deleted', label: 'Dokument gelöscht' },
   { value: 'document.processed', label: 'Dokument verarbeitet' },
   { value: 'ocr.completed', label: 'OCR abgeschlossen' },
   { value: 'ocr.failed', label: 'OCR fehlgeschlagen' },
@@ -587,7 +587,7 @@ export const WEBHOOK_EVENT_TYPES = [
   { value: 'approval.rejected', label: 'Genehmigung abgelehnt' },
   { value: 'workflow.started', label: 'Workflow gestartet' },
   { value: 'workflow.completed', label: 'Workflow abgeschlossen' },
-  { value: 'entity.linked', label: 'Entity verknuepft' },
-  { value: 'payment.due', label: 'Zahlung faellig' },
-  { value: 'skonto.expiring', label: 'Skonto laeuft ab' },
+  { value: 'entity.linked', label: 'Entity verknüpft' },
+  { value: 'payment.due', label: 'Zahlung fällig' },
+  { value: 'skonto.expiring', label: 'Skonto läuft ab' },
 ] as const;

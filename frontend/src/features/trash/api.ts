@@ -67,7 +67,7 @@ export function useRestoreDocument() {
 }
 
 /**
- * Dokument permanent loeschen
+ * Dokument permanent löschen
  */
 export function usePermanentDelete() {
     const queryClient = useQueryClient()

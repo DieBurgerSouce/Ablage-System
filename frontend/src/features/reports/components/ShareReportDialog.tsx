@@ -62,9 +62,9 @@ const PERMISSIONS = [
     },
     {
         key: 'can_execute',
-        label: 'Ausfuehren',
+        label: 'Ausführen',
         icon: Play,
-        description: 'Report ausfuehren und neue Ergebnisse generieren',
+        description: 'Report ausführen und neue Ergebnisse generieren',
         default: true,
     },
     {
@@ -76,9 +76,9 @@ const PERMISSIONS = [
     },
     {
         key: 'can_delete',
-        label: 'Loeschen',
+        label: 'Löschen',
         icon: Trash2,
-        description: 'Report-Template loeschen',
+        description: 'Report-Template löschen',
         default: false,
     },
 ] as const;
@@ -147,7 +147,7 @@ export function ShareReportDialog({
         // Validate UUID format
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         if (!uuidRegex.test(userId.trim())) {
-            setError('Bitte geben Sie eine gueltige Benutzer-ID (UUID) ein.');
+            setError('Bitte geben Sie eine gültige Benutzer-ID (UUID) ein.');
             return;
         }
 
@@ -205,7 +205,7 @@ export function ShareReportDialog({
                                 className="font-mono text-sm"
                             />
                             <p className="text-xs text-muted-foreground">
-                                Die UUID des Benutzers, mit dem Sie teilen moechten.
+                                Die UUID des Benutzers, mit dem Sie teilen möchten.
                             </p>
                         </div>
 

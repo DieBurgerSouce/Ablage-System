@@ -224,9 +224,9 @@ export const SHORTCUT_CATEGORY_LABELS: Record<ShortcutCategory, string> = {
  * German labels for common shortcuts
  */
 export const SHORTCUT_LABELS = {
-  delete: 'Loeschen',
+  delete: 'Löschen',
   move: 'Verschieben',
-  undo: 'Rueckgaengig',
+  undo: 'Rückgängig',
   redo: 'Wiederholen',
   search: 'Suche',
   help: 'Hilfe',
@@ -235,17 +235,17 @@ export const SHORTCUT_LABELS = {
   cancel: 'Abbrechen',
   navigation: 'Navigation',
   actions: 'Aktionen',
-  close: 'Schliessen',
-  select_all: 'Alle auswaehlen',
+  close: 'Schließen',
+  select_all: 'Alle auswählen',
   deselect: 'Auswahl aufheben',
   copy: 'Kopieren',
-  paste: 'Einfuegen',
+  paste: 'Einfügen',
   cut: 'Ausschneiden',
   new: 'Neu erstellen',
   edit: 'Bearbeiten',
-  open_command_palette: 'Befehlspalette oeffnen',
+  open_command_palette: 'Befehlspalette öffnen',
   focus_search: 'Suche fokussieren',
-  show_shortcuts: 'Tastenkuerzel anzeigen',
+  show_shortcuts: 'Tastenkürzel anzeigen',
 } as const;
 
 // ==================== Default Constants ====================

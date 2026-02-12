@@ -123,7 +123,7 @@ function ProcessDefinitionDetailPage() {
             onClick={() => navigate({ to: '/prozesse' })}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Zurueck
+            Zurück
           </Button>
         </div>
 
@@ -193,7 +193,7 @@ function ProcessDefinitionDetailPage() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-red-600">
                   <Trash2 className="mr-2 h-4 w-4" />
-                  Loeschen
+                  Löschen
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

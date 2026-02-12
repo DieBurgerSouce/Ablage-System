@@ -2,7 +2,7 @@
  * Product Tour Main Component
  *
  * Vision 2026+ Feature: Interaktive Produkttour
- * Kombiniert Spotlight und Tooltip fuer gefuehrtes Onboarding
+ * Kombiniert Spotlight und Tooltip für geführtes Onboarding
  */
 
 import { useEffect } from 'react'

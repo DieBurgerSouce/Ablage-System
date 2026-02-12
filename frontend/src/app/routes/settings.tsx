@@ -1,7 +1,7 @@
 /**
  * Settings Layout Route
  *
- * Parent route fuer alle Einstellungsseiten.
+ * Parent route für alle Einstellungsseiten.
  * Bietet einheitliches Layout mit Sidebar-Navigation.
  */
 
@@ -32,7 +32,7 @@ const settingsNavItems = [
     icon: Users,
     description: 'Vertretungsregelungen',
   },
-  // Zukuenftige Einstellungsseiten:
+  // Zukünftige Einstellungsseiten:
   // {
   //   title: 'Profil',
   //   href: '/settings/profile',
@@ -52,10 +52,10 @@ const settingsNavItems = [
   //   description: 'Theme, Sprache, Schrift',
   // },
   // {
-  //   title: 'API-Schluessel',
+  //   title: 'API-Schlüssel',
   //   href: '/settings/api-keys',
   //   icon: KeyRound,
-  //   description: 'Zugangsschluessel verwalten',
+  //   description: 'Zugangsschlüssel verwalten',
   // },
 ];
 
@@ -103,7 +103,7 @@ function SettingsLayout() {
               <Settings className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
               <h1 className="text-2xl font-bold mb-2">Einstellungen</h1>
               <p className="text-muted-foreground mb-6">
-                Waehlen Sie eine Kategorie aus der linken Navigation
+                Wählen Sie eine Kategorie aus der linken Navigation
               </p>
               <Link
                 to="/settings/security"

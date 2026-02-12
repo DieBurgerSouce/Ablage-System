@@ -1,7 +1,7 @@
 /**
  * AI Autonomy API Client
  *
- * TypeScript Client fuer die AI Autonomy Endpoints.
+ * TypeScript Client für die AI Autonomy Endpoints.
  */
 
 import { api, handleApiError } from '@/lib/api';

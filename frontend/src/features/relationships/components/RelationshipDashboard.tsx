@@ -1,7 +1,7 @@
 /**
  * RelationshipDashboard Component
  *
- * Zeigt eine Uebersicht der Geschaeftspartner mit:
+ * Zeigt eine Übersicht der Geschäftspartner mit:
  * - Zusammenfassungsstatistiken
  * - Top-Kunden und Top-Lieferanten
  * - Dokumenten-Trend-Chart
@@ -164,7 +164,7 @@ function TypeDistributionChart({ data }: TypeDistributionChartProps) {
                 </CardHeader>
                 <CardContent>
                     <div className="flex items-center justify-center h-[200px] text-muted-foreground">
-                        Keine Daten verfuegbar
+                        Keine Daten verfügbar
                     </div>
                 </CardContent>
             </Card>
@@ -179,7 +179,7 @@ function TypeDistributionChart({ data }: TypeDistributionChartProps) {
                     Verteilung nach Typ
                 </CardTitle>
                 <CardDescription>
-                    Geschaeftspartner nach Kategorie
+                    Geschäftspartner nach Kategorie
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -249,10 +249,10 @@ export function RelationshipDashboard({
                         <div>
                             <CardTitle className="text-xl flex items-center gap-2">
                                 <LayoutDashboard className="h-5 w-5" />
-                                Geschaeftspartner-Dashboard
+                                Geschäftspartner-Dashboard
                             </CardTitle>
                             <CardDescription>
-                                Uebersicht der Kunden- und Lieferanten-Aktivitaet
+                                Übersicht der Kunden- und Lieferanten-Aktivität
                             </CardDescription>
                         </div>
                         <div className="flex items-center gap-3">
@@ -318,13 +318,13 @@ export function RelationshipDashboard({
                             trend="Gesamt"
                         />
                         <SummaryCard
-                            title="Verknuepfte Dokumente"
+                            title="Verknüpfte Dokumente"
                             value={data.summary.linkedDocuments}
                             icon={<FileText className="h-4 w-4" />}
                             trend={PERIOD_LABELS[period as DashboardPeriod]}
                         />
                         <SummaryCard
-                            title="Neue Geschaeftspartner"
+                            title="Neue Geschäftspartner"
                             value={data.summary.newEntities}
                             icon={<UserPlus className="h-4 w-4" />}
                             trend={PERIOD_LABELS[period as DashboardPeriod]}
@@ -336,7 +336,7 @@ export function RelationshipDashboard({
                         <TrendChart
                             data={data.documentTrend}
                             title="Dokument-Trend"
-                            description={`Verknuepfte Dokumente - ${PERIOD_LABELS[period as DashboardPeriod]}`}
+                            description={`Verknüpfte Dokumente - ${PERIOD_LABELS[period as DashboardPeriod]}`}
                             height={250}
                         />
                         <TypeDistributionChart data={data.typeDistribution} />

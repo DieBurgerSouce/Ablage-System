@@ -1,7 +1,7 @@
 /**
  * AI Admin Types
  *
- * TypeScript-Typen fuer AI Autonomy API.
+ * TypeScript-Typen für AI Autonomy API.
  */
 
 export type DecisionType =

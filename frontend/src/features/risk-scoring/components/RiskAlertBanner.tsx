@@ -1,7 +1,7 @@
 /**
  * Risk Alert Banner Component
  *
- * Warnung-Banner fuer Hoch-Risiko Entities.
+ * Warnung-Banner für Hoch-Risiko Entities.
  * Wird auf Entity-Detail-Seiten angezeigt.
  */
 

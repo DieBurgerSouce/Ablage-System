@@ -1,7 +1,7 @@
 /**
  * DLP React Query Hooks
  *
- * TanStack Query Hooks fuer DLP-Policies und Scanning.
+ * TanStack Query Hooks für DLP-Policies und Scanning.
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -47,7 +47,7 @@ export function useDLPPolicy(policyId: string) {
 }
 
 /**
- * Verfuegbare Typen sensibler Daten
+ * Verfügbare Typen sensibler Daten
  */
 export function useSensitiveDataTypes() {
   return useQuery({
@@ -97,7 +97,7 @@ export function useUpdatePolicy(policyId: string) {
 }
 
 /**
- * Policy loeschen
+ * Policy löschen
  */
 export function useDeletePolicy() {
   const queryClient = useQueryClient();
@@ -106,16 +106,16 @@ export function useDeletePolicy() {
     mutationFn: (policyId: string) => dlpApi.deletePolicy(policyId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: dlpKeys.policies() });
-      toast.success('Policy wurde geloescht');
+      toast.success('Policy wurde gelöscht');
     },
     onError: (error: Error) => {
-      toast.error(`Fehler beim Loeschen: ${error.message}`);
+      toast.error(`Fehler beim Löschen: ${error.message}`);
     },
   });
 }
 
 /**
- * Zugriffspruefung durchfuehren
+ * Zugriffsprüfung durchführen
  */
 export function useCheckAccess() {
   return useMutation({

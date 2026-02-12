@@ -2,7 +2,7 @@
  * TemplateFormDialog - Dialog zum Erstellen/Bearbeiten von Vorlagen
  *
  * Features:
- * - Formular fuer alle Vorlagen-Felder
+ * - Formular für alle Vorlagen-Felder
  * - Variablen-Editor
  * - Template-Code Editor mit Syntax-Highlighting (Jinja2)
  * - Vorschau-Funktion
@@ -185,7 +185,7 @@ export function TemplateFormDialog({
             </DialogTitle>
             <DialogDescription>
               {isEditing
-                ? 'Bearbeiten Sie die Vorlage. Sie koennen optional eine neue Version erstellen.'
+                ? 'Bearbeiten Sie die Vorlage. Sie können optional eine neue Version erstellen.'
                 : 'Erstellen Sie eine neue Dokumentvorlage mit Jinja2-Syntax.'}
             </DialogDescription>
           </DialogHeader>
@@ -212,7 +212,7 @@ export function TemplateFormDialog({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="code">Code * {isEditing && '(nicht aenderbar)'}</Label>
+                  <Label htmlFor="code">Code * {isEditing && '(nicht änderbar)'}</Label>
                   <Input
                     id="code"
                     value={code}
@@ -275,7 +275,7 @@ export function TemplateFormDialog({
                 <div className="space-y-0.5">
                   <Label>Als Standard setzen</Label>
                   <p className="text-sm text-muted-foreground">
-                    Diese Vorlage als Standard fuer die Kategorie verwenden
+                    Diese Vorlage als Standard für die Kategorie verwenden
                   </p>
                 </div>
                 <Switch checked={isDefault} onCheckedChange={setIsDefault} />
@@ -286,7 +286,7 @@ export function TemplateFormDialog({
                   <div className="space-y-0.5">
                     <Label>Neue Version erstellen</Label>
                     <p className="text-sm text-muted-foreground">
-                      Erstellt eine neue Version anstatt die aktuelle zu ueberschreiben
+                      Erstellt eine neue Version anstatt die aktuelle zu überschreiben
                     </p>
                   </div>
                   <Switch checked={createNewVersion} onCheckedChange={setCreateNewVersion} />
@@ -308,7 +308,7 @@ export function TemplateFormDialog({
                   required
                 />
                 <p className="text-xs text-muted-foreground">
-                  Verwenden Sie {'{{ variable }}'} fuer Platzhalter, {'{% if %}...{% endif %}'} fuer
+                  Verwenden Sie {'{{ variable }}'} für Platzhalter, {'{% if %}...{% endif %}'} für
                   Bedingungen
                 </p>
               </div>
@@ -355,7 +355,7 @@ export function TemplateFormDialog({
                 <Label>Template-Variablen</Label>
                 <Button type="button" variant="outline" size="sm" onClick={addVariable}>
                   <Plus className="h-4 w-4 mr-1" />
-                  Variable hinzufuegen
+                  Variable hinzufügen
                 </Button>
               </div>
 
@@ -442,7 +442,7 @@ export function TemplateFormDialog({
             <TabsContent value="layout" className="space-y-4 mt-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="pageSize">Seitengroesse</Label>
+                  <Label htmlFor="pageSize">Seitengröße</Label>
                   <Select value={pageSize} onValueChange={setPageSize}>
                     <SelectTrigger>
                       <SelectValue />
@@ -470,7 +470,7 @@ export function TemplateFormDialog({
               </div>
 
               <div className="space-y-2">
-                <Label>Seitenraender (mm)</Label>
+                <Label>Seitenränder (mm)</Label>
                 <div className="grid grid-cols-4 gap-4">
                   <div className="space-y-1">
                     <Label className="text-xs">Oben</Label>

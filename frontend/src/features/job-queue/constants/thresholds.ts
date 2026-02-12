@@ -90,7 +90,7 @@ export function getQueueStatus(length: number): QueueStatus {
 }
 
 /**
- * Ermittelt die Farbe für eine Queue basierend auf der Laenge
+ * Ermittelt die Farbe für eine Queue basierend auf der Länge
  */
 export function getQueueBarColor(length: number): string {
   if (length >= QUEUE_UTILIZATION_THRESHOLDS.CRITICAL) return '#ef4444'; // red

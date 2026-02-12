@@ -1,7 +1,7 @@
 /**
  * CompareSelector Component
  *
- * Ermoeglicht die Auswahl von zwei Dokumenten fuer den Vergleich.
+ * Ermöglicht die Auswahl von zwei Dokumenten für den Vergleich.
  */
 
 import { useState } from 'react';

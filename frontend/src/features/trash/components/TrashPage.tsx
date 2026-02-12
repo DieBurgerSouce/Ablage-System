@@ -1,7 +1,7 @@
 /**
  * Papierkorb-Seite
  *
- * Zeigt geloeschte Dokumente mit Wiederherstellungsoption.
+ * Zeigt gelöschte Dokumente mit Wiederherstellungsoption.
  * GDPR-konform mit 30-Tage-Frist.
  */
 
@@ -155,15 +155,15 @@ function TrashItem({
                                 ) : (
                                     <Trash2 className="h-4 w-4 mr-1" />
                                 )}
-                                Loeschen
+                                Löschen
                             </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                             <AlertDialogHeader>
-                                <AlertDialogTitle>Dokument permanent loeschen?</AlertDialogTitle>
+                                <AlertDialogTitle>Dokument permanent löschen?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                    Diese Aktion kann nicht rueckgaengig gemacht werden. Das Dokument
-                                    &quot;{item.filename}&quot; wird unwiderruflich geloescht.
+                                    Diese Aktion kann nicht rückgängig gemacht werden. Das Dokument
+                                    &quot;{item.filename}&quot; wird unwiderruflich gelöscht.
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -172,7 +172,7 @@ function TrashItem({
                                     onClick={() => onDelete(item.id)}
                                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 >
-                                    Permanent loeschen
+                                    Permanent löschen
                                 </AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>
@@ -216,13 +216,13 @@ export function TrashPage() {
         try {
             await deleteMutation.mutateAsync(id)
             toast({
-                title: 'Dokument geloescht',
-                description: 'Das Dokument wurde permanent geloescht.',
+                title: 'Dokument gelöscht',
+                description: 'Das Dokument wurde permanent gelöscht.',
             })
         } catch (err) {
             toast({
                 title: 'Fehler',
-                description: 'Das Dokument konnte nicht geloescht werden.',
+                description: 'Das Dokument konnte nicht gelöscht werden.',
                 variant: 'destructive',
             })
         } finally {
@@ -270,7 +270,7 @@ export function TrashPage() {
                         Papierkorb
                     </h1>
                     <p className="text-muted-foreground mt-1">
-                        Geloeschte Dokumente werden nach 30 Tagen permanent entfernt.
+                        Gelöschte Dokumente werden nach 30 Tagen permanent entfernt.
                     </p>
                 </div>
                 <div className="flex gap-2">
@@ -280,15 +280,15 @@ export function TrashPage() {
                                 variant="outline"
                                 disabled={emptyTrashMutation.isPending || !trashData?.total}
                             >
-                                Abgelaufene loeschen
+                                Abgelaufene löschen
                             </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                             <AlertDialogHeader>
-                                <AlertDialogTitle>Abgelaufene Dokumente loeschen?</AlertDialogTitle>
+                                <AlertDialogTitle>Abgelaufene Dokumente löschen?</AlertDialogTitle>
                                 <AlertDialogDescription>
                                     Alle Dokumente, deren 30-Tage-Frist abgelaufen ist, werden
-                                    permanent geloescht. Diese Aktion kann nicht rueckgaengig
+                                    permanent gelöscht. Diese Aktion kann nicht rückgängig
                                     gemacht werden.
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
@@ -298,7 +298,7 @@ export function TrashPage() {
                                     onClick={() => handleEmptyTrash(true)}
                                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 >
-                                    Abgelaufene loeschen
+                                    Abgelaufene löschen
                                 </AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>
@@ -324,8 +324,8 @@ export function TrashPage() {
                                 </AlertDialogTitle>
                                 <AlertDialogDescription>
                                     <strong>Alle</strong> Dokumente im Papierkorb werden permanent
-                                    geloescht, auch solche, die noch wiederhergestellt werden
-                                    koennten. Diese Aktion kann nicht rueckgaengig gemacht werden!
+                                    gelöscht, auch solche, die noch wiederhergestellt werden
+                                    könnten. Diese Aktion kann nicht rückgängig gemacht werden!
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -334,7 +334,7 @@ export function TrashPage() {
                                     onClick={() => handleEmptyTrash(false)}
                                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 >
-                                    Alles permanent loeschen
+                                    Alles permanent löschen
                                 </AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>
@@ -346,7 +346,7 @@ export function TrashPage() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Geloeschte Dokumente</CardTitle>
+                    <CardTitle>Gelöschte Dokumente</CardTitle>
                     <CardDescription>
                         {trashData?.total ?? 0} Dokument{trashData?.total !== 1 ? 'e' : ''} im
                         Papierkorb
@@ -370,7 +370,7 @@ export function TrashPage() {
                                 <TableRow>
                                     <TableHead>Dateiname</TableHead>
                                     <TableHead>Typ</TableHead>
-                                    <TableHead>Geloescht</TableHead>
+                                    <TableHead>Gelöscht</TableHead>
                                     <TableHead>Verbleibend</TableHead>
                                     <TableHead>Aktionen</TableHead>
                                 </TableRow>

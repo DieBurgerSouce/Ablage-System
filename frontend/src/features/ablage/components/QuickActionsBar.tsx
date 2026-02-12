@@ -1,12 +1,12 @@
 /**
  * QuickActionsBar - Primaere Aktionen (Upload + Export)
  *
- * Position: Unter Header, ueber Insights
+ * Position: Unter Header, über Insights
  *
  * Zeigt NUR:
- * - Upload Button (oeffnet DocumentUploadDialog)
+ * - Upload Button (öffnet DocumentUploadDialog)
  * - Export Dropdown (CSV, PDF, ZIP)
- * - Mahnung erstellen (nur bei Rechnungen fuer Kunden)
+ * - Mahnung erstellen (nur bei Rechnungen für Kunden)
  *
  * KEINE Bulk-Actions hier! Diese sind NUR in BulkActionsToolbar.
  */

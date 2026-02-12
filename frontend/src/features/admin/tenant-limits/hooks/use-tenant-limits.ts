@@ -1,7 +1,7 @@
 /**
  * Tenant Rate Limits - React Query Hooks
  *
- * API Hooks fuer die Verwaltung von Tenant-spezifischen Rate Limits.
+ * API Hooks für die Verwaltung von Tenant-spezifischen Rate Limits.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -149,7 +149,7 @@ async function resetCompanyLimits(companyId: UUID): Promise<{ message: string }>
 // ==================== Query Hooks ====================
 
 /**
- * Hook fuer eigene Company-Limits (normaler User)
+ * Hook für eigene Company-Limits (normaler User)
  */
 export function useOwnLimits() {
   return useQuery({
@@ -160,7 +160,7 @@ export function useOwnLimits() {
 }
 
 /**
- * Hook fuer Company-Limits (Admin)
+ * Hook für Company-Limits (Admin)
  */
 export function useCompanyLimits(companyId: UUID | undefined) {
   return useQuery({
@@ -172,7 +172,7 @@ export function useCompanyLimits(companyId: UUID | undefined) {
 }
 
 /**
- * Hook fuer Usage-Metriken
+ * Hook für Usage-Metriken
  */
 export function useUsageMetrics(
   companyId: UUID | undefined,
@@ -188,7 +188,7 @@ export function useUsageMetrics(
 }
 
 /**
- * Hook fuer Rate-Limit-Violations
+ * Hook für Rate-Limit-Violations
  */
 export function useViolations(
   companyId: UUID | undefined,
@@ -219,7 +219,7 @@ export function useUpdateLimit(companyId: UUID) {
 }
 
 /**
- * Hook zum Zuruecksetzen auf Tier-Defaults
+ * Hook zum Zurücksetzen auf Tier-Defaults
  */
 export function useResetLimits(companyId: UUID) {
   const queryClient = useQueryClient();

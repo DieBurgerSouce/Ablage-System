@@ -337,7 +337,7 @@ export function RejectDialog({ open, onOpenChange, report, onSuccess }: RejectDi
               name="rejection_reason"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Begruendung *</FormLabel>
+                  <FormLabel>Begründung *</FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="Warum wird die Abrechnung abgelehnt?"

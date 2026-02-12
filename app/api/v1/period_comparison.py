@@ -11,7 +11,9 @@ Status: Production-Ready
 
 from datetime import date
 from decimal import Decimal
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 import structlog
@@ -92,7 +94,7 @@ class PeriodSummaryResponse(BaseModel):
     previous_period: str = Field(..., description="Vorherige Periodenbezeichnung")
     trend: str = Field(..., description="Gesamttrend")
     deltas: Dict[str, float] = Field(..., description="Prozentuale Veränderungen")
-    highlights: Dict[str, Any] = Field(..., description="Wichtigste Metriken")
+    highlights: JSONDict = Field(..., description="Wichtigste Metriken")
 
     model_config = ConfigDict(from_attributes=True)
 

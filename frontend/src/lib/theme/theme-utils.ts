@@ -1,8 +1,8 @@
 /**
  * Theme Utilities - OKLCH Color Generation
  *
- * Utilities fuer die dynamische Generierung von OKLCH-basierten Farbpaletten.
- * OKLCH bietet perceptuell einheitliche Farben fuer bessere Accessibility.
+ * Utilities für die dynamische Generierung von OKLCH-basierten Farbpaletten.
+ * OKLCH bietet perceptuell einheitliche Farben für bessere Accessibility.
  */
 
 import type { ThemeConfig } from './types';
@@ -35,9 +35,9 @@ const saturationMultipliers = {
 // ==================== Density Spacing ====================
 
 /**
- * CSS-Variablen fuer unterschiedliche UI-Dichte
- * cozy: Standard-Abstaende fuer komfortables Arbeiten
- * compact: Reduzierte Abstaende fuer Power-User
+ * CSS-Variablen für unterschiedliche UI-Dichte
+ * cozy: Standard-Abstände für komfortables Arbeiten
+ * compact: Reduzierte Abstände für Power-User
  */
 const densityVariables = {
   cozy: {
@@ -131,14 +131,14 @@ export function generateAccentColors(
 // ==================== CSS Variable Generation ====================
 
 /**
- * Generiert CSS Custom Properties fuer die Theme-Konfiguration
+ * Generiert CSS Custom Properties für die Theme-Konfiguration
  */
 export function generateCSSVariables(config: ThemeConfig): Record<string, string> {
   const isDark = config.displayMode === 'dark';
   const isHighContrast =
     config.displayMode === 'whitescreen' || config.displayMode === 'blackscreen';
 
-  // Density-Variablen sind immer verfuegbar
+  // Density-Variablen sind immer verfügbar
   const density = config.density || 'cozy';
   const densityVars = densityVariables[density];
 
@@ -167,7 +167,7 @@ export function generateCSSVariables(config: ThemeConfig): Record<string, string
 }
 
 /**
- * Gibt die Density-Variablen fuer eine bestimmte Dichte zurueck
+ * Gibt die Density-Variablen für eine bestimmte Dichte zurück
  */
 export function getDensityVariables(density: 'cozy' | 'compact'): Record<string, string> {
   return densityVariables[density];
@@ -198,7 +198,7 @@ export function removeCSSVariables(keys: string[]): void {
 // ==================== Color Preview ====================
 
 /**
- * Generiert Preview-Farben fuer die Theme-Vorschau
+ * Generiert Preview-Farben für die Theme-Vorschau
  */
 export function generatePreviewColors(hue: number): {
   light: string;
@@ -215,7 +215,7 @@ export function generatePreviewColors(hue: number): {
 // ==================== Hue Labels ====================
 
 /**
- * Beschreibende Namen fuer Hue-Werte
+ * Beschreibende Namen für Hue-Werte
  */
 export function getHueLabel(hue: number): string {
   const hueRanges: [number, number, string][] = [
@@ -223,7 +223,7 @@ export function getHueLabel(hue: number): string {
     [15, 45, 'Orange'],
     [45, 75, 'Gelb'],
     [75, 105, 'Lime'],
-    [105, 135, 'Gruen'],
+    [105, 135, 'Grün'],
     [135, 165, 'Tuerkis'],
     [165, 195, 'Cyan'],
     [195, 225, 'Himmelblau'],

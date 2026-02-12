@@ -1,7 +1,7 @@
 /**
  * Intercompany Reconciliation API Client
  *
- * API-Funktionen fuer IC-Abstimmung und Konsolidierung.
+ * API-Funktionen für IC-Abstimmung und Konsolidierung.
  */
 
 import { apiClient } from '@/lib/api/client';
@@ -213,7 +213,7 @@ export async function getICBalances(companyIds?: string[]): Promise<ICBalancesRe
 }
 
 /**
- * Fuehre IC-Abstimmung durch
+ * Führe IC-Abstimmung durch
  */
 export async function performReconciliation(params: {
     companyIds?: string[];
@@ -259,7 +259,7 @@ export async function getEliminations(params: {
 }
 
 /**
- * Generiere vollstaendigen Abstimmungsbericht
+ * Generiere vollständigen Abstimmungsbericht
  */
 export async function getReconciliationReport(params: {
     companyIds?: string[];

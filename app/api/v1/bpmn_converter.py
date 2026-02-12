@@ -18,7 +18,9 @@ from __future__ import annotations
 
 import io
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
@@ -54,11 +56,11 @@ class BPMNImportRequest(BaseModel):
 
 class BPMNExportRequest(BaseModel):
     """Request fuer BPMN Export aus internem Format."""
-    nodes: List[Dict[str, Any]] = Field(..., description="ReactFlow Nodes")
-    edges: List[Dict[str, Any]] = Field(..., description="ReactFlow Edges")
+    nodes: List[JSONDict] = Field(..., description="ReactFlow Nodes")
+    edges: List[JSONDict] = Field(..., description="ReactFlow Edges")
     name: str = Field(..., min_length=1, max_length=255, description="Workflow-Name")
     trigger_type: str = Field("manual", description="Trigger-Typ")
-    trigger_config: Optional[Dict[str, Any]] = Field(None, description="Trigger-Konfiguration")
+    trigger_config: Optional[JSONDict] = Field(None, description="Trigger-Konfiguration")
 
 
 class BPMNValidateRequest(BaseModel):
@@ -532,7 +534,7 @@ async def preview_bpmn(
 )
 async def list_supported_elements(
     current_user: User = Depends(get_current_active_user)
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Listet alle unterstuetzten BPMN 2.0 Elemente auf.
 
     Nuetzlich fuer:

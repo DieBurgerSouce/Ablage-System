@@ -1,9 +1,9 @@
 /**
  * Match Suggestions Panel
  *
- * Zeigt Match-Vorschlaege fuer eine Transaktion mit:
+ * Zeigt Match-Vorschläge für eine Transaktion mit:
  * - Konfidenz-basierte Sortierung
- * - Detaillierte Match-Gruende
+ * - Detaillierte Match-Gründe
  * - Seite-an-Seite Vergleich
  * - Quick-Actions (Akzeptieren/Ablehnen)
  */
@@ -61,7 +61,7 @@ interface MatchSuggestionsProps {
 const MATCH_TYPE_LABELS: Record<string, { label: string; description: string }> = {
     iban_amount: {
         label: 'IBAN + Betrag',
-        description: 'IBAN und Rechnungsbetrag stimmen exakt ueberein',
+        description: 'IBAN und Rechnungsbetrag stimmen exakt überein',
     },
     invoice_number: {
         label: 'Rechnungsnummer',
@@ -73,11 +73,11 @@ const MATCH_TYPE_LABELS: Record<string, { label: string; description: string }> 
     },
     amount_date: {
         label: 'Betrag + Datum',
-        description: 'Betrag und Datum nahe am Faelligkeitsdatum',
+        description: 'Betrag und Datum nahe am Fälligkeitsdatum',
     },
     fuzzy_name: {
-        label: 'Name aehnlich',
-        description: 'Namensaehnlichkeit erkannt',
+        label: 'Name ähnlich',
+        description: 'Namensähnlichkeit erkannt',
     },
 };
 
@@ -112,7 +112,7 @@ function getConfidenceLevel(confidence: number) {
     }
     if (confidence >= 0.50) {
         return {
-            label: 'Moeglich',
+            label: 'Möglich',
             color: 'text-orange-600',
             bgColor: 'bg-orange-50',
             borderColor: 'border-orange-200',
@@ -291,7 +291,7 @@ function SuggestionItem({
                 )}
                 {suggestion.due_date && (
                     <div>
-                        <span className="block text-[10px] uppercase">Faellig</span>
+                        <span className="block text-[10px] uppercase">Fällig</span>
                         {formatDate(suggestion.due_date)}
                     </div>
                 )}
@@ -380,19 +380,19 @@ export function MatchSuggestions({
                     <div className="flex items-center justify-between">
                         <div>
                             <CardTitle className="flex items-center gap-2">
-                                Match-Vorschlaege
+                                Match-Vorschläge
                                 {suggestions && suggestions.length > 0 && (
                                     <Badge variant="outline">{suggestions.length}</Badge>
                                 )}
                                 {hasHighConfidence && (
                                     <Badge className="bg-green-500 text-white gap-1">
                                         <Sparkles className="h-3 w-3" />
-                                        Hohe Uebereinstimmung
+                                        Hohe Übereinstimmung
                                     </Badge>
                                 )}
                             </CardTitle>
                             <CardDescription>
-                                Moegliche Dokumente fuer diese Transaktion
+                                Mögliche Dokumente für diese Transaktion
                             </CardDescription>
                         </div>
                         {onClose && (
@@ -442,16 +442,16 @@ export function MatchSuggestions({
                     ) : error ? (
                         <div className="py-8 text-center text-muted-foreground">
                             <XCircle className="mx-auto h-12 w-12 text-red-500/50" />
-                            <p className="mt-4">Fehler beim Laden der Vorschlaege</p>
+                            <p className="mt-4">Fehler beim Laden der Vorschläge</p>
                         </div>
                     ) : !suggestions || suggestions.length === 0 ? (
                         <div className="py-8 text-center text-muted-foreground">
                             <Info className="mx-auto h-12 w-12 text-muted-foreground/50" />
                             <h3 className="mt-4 text-lg font-medium">
-                                Keine automatischen Vorschlaege
+                                Keine automatischen Vorschläge
                             </h3>
                             <p className="text-sm">
-                                Nutzen Sie die manuelle Suche zum Verknuepfen.
+                                Nutzen Sie die manuelle Suche zum Verknüpfen.
                             </p>
                         </div>
                     ) : (
@@ -488,7 +488,7 @@ export function MatchSuggestions({
                                     >
                                         <a href={`/documents/${selectedSuggestion}`} target="_blank" rel="noopener noreferrer">
                                             <ExternalLink className="h-4 w-4 mr-1" />
-                                            Dokument oeffnen
+                                            Dokument öffnen
                                         </a>
                                     </Button>
                                     <Button
@@ -500,7 +500,7 @@ export function MatchSuggestions({
                                         ) : (
                                             <Check className="h-4 w-4 mr-1" />
                                         )}
-                                        Verknuepfen
+                                        Verknüpfen
                                     </Button>
                                 </div>
                             </div>
@@ -515,13 +515,13 @@ export function MatchSuggestions({
                     <AlertDialogHeader>
                         <AlertDialogTitle>Match ablehnen</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Bitte geben Sie einen Grund fuer die Ablehnung an.
-                            Dies hilft bei der Verbesserung zukuenftiger Vorschlaege.
+                            Bitte geben Sie einen Grund für die Ablehnung an.
+                            Dies hilft bei der Verbesserung zukünftiger Vorschläge.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <div className="space-y-4 py-4">
                         <Textarea
-                            placeholder="Grund fuer Ablehnung eingeben..."
+                            placeholder="Grund für Ablehnung eingeben..."
                             value={rejectReason}
                             onChange={(e) => setRejectReason(e.target.value)}
                             className="min-h-[100px]"
@@ -533,7 +533,7 @@ export function MatchSuggestions({
                                 onCheckedChange={(checked) => setNeverSuggestAgain(checked === true)}
                             />
                             <label htmlFor="never-suggest" className="text-sm">
-                                Dieses Dokument nie wieder fuer diese Transaktion vorschlagen
+                                Dieses Dokument nie wieder für diese Transaktion vorschlagen
                             </label>
                         </div>
                     </div>

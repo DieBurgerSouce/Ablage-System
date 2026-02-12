@@ -1,7 +1,7 @@
 /**
  * Teams API Client
  *
- * API-Client fuer Team-Verwaltung, Mitglieder, Einladungen und Aktivitaeten.
+ * API-Client für Team-Verwaltung, Mitglieder, Einladungen und Aktivitäten.
  */
 
 import { apiClient } from '@/lib/api/client';
@@ -233,7 +233,7 @@ export async function updateTeam(teamId: string, data: TeamUpdateRequest): Promi
 }
 
 /**
- * Team loeschen
+ * Team löschen
  */
 export async function deleteTeam(teamId: string): Promise<void> {
   await apiClient.delete(`/teams/${teamId}`);
@@ -258,7 +258,7 @@ export async function listMembers(teamId: string): Promise<TeamMember[]> {
 }
 
 /**
- * Mitglied hinzufuegen
+ * Mitglied hinzufügen
  */
 export async function addMember(teamId: string, data: MemberAddRequest): Promise<TeamMember> {
   const response = await apiClient.post<TeamMember>(`/teams/${teamId}/members`, data);
@@ -330,7 +330,7 @@ export async function declineInvitation(token: string): Promise<void> {
 // ==================== Activity ====================
 
 /**
- * Team-Aktivitaeten auflisten
+ * Team-Aktivitäten auflisten
  */
 export async function listActivity(
   teamId: string,

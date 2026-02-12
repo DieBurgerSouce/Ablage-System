@@ -1,7 +1,7 @@
 /**
  * Alert Center Admin Route
  *
- * Route fuer das zentrale Alert-Dashboard.
+ * Route für das zentrale Alert-Dashboard.
  */
 
 import { createFileRoute } from '@tanstack/react-router';

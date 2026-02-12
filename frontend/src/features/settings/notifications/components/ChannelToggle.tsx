@@ -1,7 +1,7 @@
 /**
  * ChannelToggle Component
  *
- * Toggle fuer einzelne Benachrichtigungskanaele mit Status-Anzeige.
+ * Toggle für einzelne Benachrichtigungskanaele mit Status-Anzeige.
  */
 
 import { useState } from 'react';
@@ -133,7 +133,7 @@ export function ChannelToggle({
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs">
                     <p>
-                      Fuer diesen Kanal ist eine explizite DSGVO-Einwilligung
+                      Für diesen Kanal ist eine explizite DSGVO-Einwilligung
                       erforderlich. Sie werden nach Aktivierung aufgefordert,
                       der Verarbeitung zuzustimmen.
                     </p>

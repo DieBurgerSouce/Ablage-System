@@ -5,7 +5,9 @@ Endpoints für automatische Compliance-Checks und Audit-Vorbereitung.
 """
 
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 import structlog
@@ -44,7 +46,7 @@ class ComplianceItemResponse(BaseModel):
     status: str
     description: str
     recommendation: Optional[str] = None
-    details: Optional[Dict[str, Any]] = None
+    details: Optional[JSONDict] = None
 
     class Config:
         from_attributes = True

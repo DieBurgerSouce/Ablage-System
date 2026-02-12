@@ -1,7 +1,7 @@
 /**
  * TeamDetailDialog Component
  *
- * Dialog zur Anzeige der Team-Details mit Tabs fuer Mitglieder, Aktivitaeten, etc.
+ * Dialog zur Anzeige der Team-Details mit Tabs für Mitglieder, Aktivitäten, etc.
  */
 
 import { useState } from 'react';
@@ -63,7 +63,7 @@ const statusConfig: Record<TeamStatus, { label: string; variant: 'default' | 'se
 };
 
 const visibilityConfig: Record<TeamVisibility, { label: string; icon: React.ElementType }> = {
-  public: { label: 'Oeffentlich', icon: Eye },
+  public: { label: 'Öffentlich', icon: Eye },
   private: { label: 'Privat', icon: EyeOff },
   company: { label: 'Firma', icon: Building2 },
 };
@@ -130,7 +130,7 @@ export function TeamDetailDialog({ teamId, open, onOpenChange, onEdit }: TeamDet
               </TabsTrigger>
               <TabsTrigger value="activity" className="flex items-center gap-2">
                 <Activity className="h-4 w-4" />
-                <span className="hidden sm:inline">Aktivitaet</span>
+                <span className="hidden sm:inline">Aktivität</span>
               </TabsTrigger>
               <TabsTrigger value="invitations" className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
@@ -147,7 +147,7 @@ export function TeamDetailDialog({ teamId, open, onOpenChange, onEdit }: TeamDet
                   {isTeamAdmin && (
                     <Button size="sm" onClick={() => setAddMemberOpen(true)}>
                       <UserPlus className="h-4 w-4 mr-2" />
-                      Hinzufuegen
+                      Hinzufügen
                     </Button>
                   )}
                 </div>
@@ -168,7 +168,7 @@ export function TeamDetailDialog({ teamId, open, onOpenChange, onEdit }: TeamDet
               </TabsContent>
 
               <TabsContent value="activity" className="m-0 pr-4">
-                <h3 className="font-medium mb-4">Aktivitaets-Feed</h3>
+                <h3 className="font-medium mb-4">Aktivitäts-Feed</h3>
                 <TeamActivityFeed teamId={teamId} />
               </TabsContent>
 
@@ -188,7 +188,7 @@ export function TeamDetailDialog({ teamId, open, onOpenChange, onEdit }: TeamDet
               </Button>
             )}
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Schliessen
+              Schließen
             </Button>
           </div>
         </DialogContent>

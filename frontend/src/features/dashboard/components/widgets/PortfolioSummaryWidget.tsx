@@ -1,13 +1,13 @@
 /**
- * Portfolio Summary Widget fuer Dashboard
+ * Portfolio Summary Widget für Dashboard
  *
- * Zeigt Nettovermoegen und Vermoegensaufteilung:
- * - Gesamtvermoegen nach Asset-Klassen
+ * Zeigt Nettovermögen und Vermögensaufteilung:
+ * - Gesamtvermögen nach Asset-Klassen
  * - Performance-Indikatoren
  * - Trend-Visualisierung
  *
  * Enterprise-Grade Features:
- * - ErrorBoundary fuer graceful degradation
+ * - ErrorBoundary für graceful degradation
  * - Konsistente Fehlerbehandlung
  * - Real-time Updates via WebSocket
  */
@@ -202,7 +202,7 @@ function PortfolioSummaryWidgetContent() {
         return (
             <div className="text-center py-6 text-muted-foreground">
                 <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
-                <p className="text-sm">Portfolio-Daten nicht verfuegbar</p>
+                <p className="text-sm">Portfolio-Daten nicht verfügbar</p>
             </div>
         );
     }
@@ -222,7 +222,7 @@ function PortfolioSummaryWidgetContent() {
                 <div className="flex items-center justify-between">
                     <div>
                         <p className="text-xs font-medium text-muted-foreground">
-                            Gesamtvermoegen
+                            Gesamtvermögen
                         </p>
                         <p className="text-2xl font-bold">
                             {formatCurrency(summary.total_value, summary.currency)}
@@ -248,7 +248,7 @@ function PortfolioSummaryWidgetContent() {
             {/* Allocation Bar */}
             <div className="space-y-2">
                 <p className="text-xs font-medium text-muted-foreground">
-                    Vermoegensaufteilung
+                    Vermögensaufteilung
                 </p>
                 <AllocationBar allocations={summary.allocations} />
             </div>
@@ -287,7 +287,7 @@ export function PortfolioSummaryWidget() {
                 <CardHeader className="pb-3">
                     <CardTitle className="flex items-center gap-2 text-base">
                         <PiggyBank className="h-5 w-5 text-primary" />
-                        Portfolio Uebersicht
+                        Portfolio Übersicht
                     </CardTitle>
                 </CardHeader>
                 <CardContent>

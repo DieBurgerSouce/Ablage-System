@@ -1,6 +1,6 @@
 /**
  * Correction Workbench Types
- * Typen fuer OCR-Korrektur-Workbench
+ * Typen für OCR-Korrektur-Workbench
  */
 
 export interface LowConfidenceDocument {
@@ -103,7 +103,7 @@ export const CORRECTION_TYPE_LABELS: Record<CorrectionType, string> = {
 export const CORRECTION_TYPE_DESCRIPTIONS: Record<CorrectionType, string> = {
   umlaut: 'ae, oe, ue, ss Fehler',
   date: 'Falsch erkanntes Datum',
-  amount: 'Zahlen/Waehrung falsch',
+  amount: 'Zahlen/Währung falsch',
   name: 'Namen falsch erkannt',
   iban: 'IBAN/Bankdaten falsch',
   general: 'Sonstige Fehler',

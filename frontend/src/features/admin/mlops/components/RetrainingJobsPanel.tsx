@@ -65,7 +65,7 @@ const STATUS_CONFIG: Record<
   { label: string; icon: typeof CheckCircle; color: string }
 > = {
   pending: { label: 'Ausstehend', icon: Clock, color: 'text-yellow-500' },
-  running: { label: 'Laeuft', icon: Loader2, color: 'text-blue-500' },
+  running: { label: 'Läuft', icon: Loader2, color: 'text-blue-500' },
   completed: { label: 'Abgeschlossen', icon: CheckCircle, color: 'text-green-500' },
   failed: { label: 'Fehlgeschlagen', icon: XCircle, color: 'text-red-500' },
   cancelled: { label: 'Abgebrochen', icon: XCircle, color: 'text-gray-500' },
@@ -199,8 +199,8 @@ export function RetrainingJobsPanel() {
               <DialogHeader>
                 <DialogTitle>Manuelles Retraining starten</DialogTitle>
                 <DialogDescription>
-                  Waehlen Sie den Modelltyp aus, der neu trainiert werden soll.
-                  Das Training wird im Hintergrund ausgefuehrt.
+                  Wählen Sie den Modelltyp aus, der neu trainiert werden soll.
+                  Das Training wird im Hintergrund ausgeführt.
                 </DialogDescription>
               </DialogHeader>
               <div className="py-4">
@@ -209,7 +209,7 @@ export function RetrainingJobsPanel() {
                   onValueChange={(v) => setSelectedModelType(v as ModelType)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Modelltyp waehlen" />
+                    <SelectValue placeholder="Modelltyp wählen" />
                   </SelectTrigger>
                   <SelectContent>
                     {Object.entries(MODEL_TYPE_LABELS).map(([type, label]) => (
@@ -275,7 +275,7 @@ export function RetrainingJobsPanel() {
         ) : (
           <div className="text-center py-8 text-muted-foreground">
             <RefreshCw className="h-12 w-12 mx-auto mb-4 opacity-20" />
-            <p>Noch keine Retraining Jobs ausgefuehrt</p>
+            <p>Noch keine Retraining Jobs ausgeführt</p>
           </div>
         )}
       </CardContent>

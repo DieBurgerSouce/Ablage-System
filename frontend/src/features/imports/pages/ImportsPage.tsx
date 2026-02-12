@@ -1,5 +1,5 @@
 /**
- * ImportsPage - Haupt-Uebersicht fuer alle Import-Konfigurationen
+ * ImportsPage - Haupt-Übersicht für alle Import-Konfigurationen
  *
  * Zeigt Email- und Ordner-Konfigurationen sowie Import-Statistiken.
  */
@@ -306,7 +306,7 @@ export function ImportsPage() {
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
-            Uebersicht
+            Übersicht
           </TabsTrigger>
           <TabsTrigger value="email" className="flex items-center gap-2">
             <Mail className="h-4 w-4" />

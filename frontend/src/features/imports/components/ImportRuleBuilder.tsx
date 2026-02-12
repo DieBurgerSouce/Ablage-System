@@ -1,7 +1,7 @@
 /**
  * ImportRuleBuilder Component
  *
- * Visueller Rule Builder fuer Import-Regeln mit Bedingungen und Aktionen.
+ * Visueller Rule Builder für Import-Regeln mit Bedingungen und Aktionen.
  */
 
 import { useState } from 'react';
@@ -126,7 +126,7 @@ function ConditionRow({ index, control, remove, fields, operators }: ConditionRo
               }}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Feld waehlen" />
+                <SelectValue placeholder="Feld wählen" />
               </SelectTrigger>
               <SelectContent>
                 {fields.map((f) => (
@@ -158,12 +158,12 @@ function ConditionRow({ index, control, remove, fields, operators }: ConditionRo
                   <SelectItem key={op} value={op}>
                     {op === 'equals' && 'Gleich'}
                     {op === 'not_equals' && 'Ungleich'}
-                    {op === 'contains' && 'Enthaelt'}
-                    {op === 'not_contains' && 'Enthaelt nicht'}
+                    {op === 'contains' && 'Enthält'}
+                    {op === 'not_contains' && 'Enthält nicht'}
                     {op === 'starts_with' && 'Beginnt mit'}
                     {op === 'ends_with' && 'Endet mit'}
                     {op === 'matches_regex' && 'Regex'}
-                    {op === 'greater_than' && 'Groesser als'}
+                    {op === 'greater_than' && 'Größer als'}
                     {op === 'less_than' && 'Kleiner als'}
                     {!['equals', 'not_equals', 'contains', 'not_contains', 'starts_with', 'ends_with', 'matches_regex', 'greater_than', 'less_than'].includes(op) && op}
                   </SelectItem>
@@ -216,7 +216,7 @@ function ActionRow({ index, control, remove, actionTypes }: ActionRowProps) {
           render={({ field }) => (
             <Select value={field.value} onValueChange={field.onChange}>
               <SelectTrigger>
-                <SelectValue placeholder="Aktion waehlen" />
+                <SelectValue placeholder="Aktion wählen" />
               </SelectTrigger>
               <SelectContent>
                 {actionTypes.map((type) => (
@@ -230,7 +230,7 @@ function ActionRow({ index, control, remove, actionTypes }: ActionRowProps) {
                     {type === 'add_tag' && (
                       <span className="flex items-center gap-2">
                         <Tag className="h-4 w-4" />
-                        Tag hinzufuegen
+                        Tag hinzufügen
                       </span>
                     )}
                     {type === 'set_category' && (
@@ -242,7 +242,7 @@ function ActionRow({ index, control, remove, actionTypes }: ActionRowProps) {
                     {type === 'set_priority' && (
                       <span className="flex items-center gap-2">
                         <AlertTriangle className="h-4 w-4" />
-                        Prioritaet setzen
+                        Priorität setzen
                       </span>
                     )}
                     {type === 'notify' && (
@@ -426,7 +426,7 @@ export function ImportRuleBuilder({ rule, onSave, onCancel }: ImportRuleBuilderP
               {rule ? 'Regel bearbeiten' : 'Neue Import-Regel'}
             </CardTitle>
             <CardDescription>
-              Definieren Sie Bedingungen und Aktionen fuer den automatischen Import.
+              Definieren Sie Bedingungen und Aktionen für den automatischen Import.
             </CardDescription>
           </CardHeader>
 
@@ -497,7 +497,7 @@ export function ImportRuleBuilder({ rule, onSave, onCancel }: ImportRuleBuilderP
                 <div>
                   <h3 className="text-lg font-medium">Bedingungen</h3>
                   <p className="text-sm text-muted-foreground">
-                    Alle Bedingungen muessen erfuellt sein (UND-Verknuepfung)
+                    Alle Bedingungen müssen erfüllt sein (UND-Verknüpfung)
                   </p>
                 </div>
                 <Button
@@ -541,7 +541,7 @@ export function ImportRuleBuilder({ rule, onSave, onCancel }: ImportRuleBuilderP
                 <div>
                   <h3 className="text-lg font-medium">Aktionen</h3>
                   <p className="text-sm text-muted-foreground">
-                    Aktionen werden in der angegebenen Reihenfolge ausgefuehrt
+                    Aktionen werden in der angegebenen Reihenfolge ausgeführt
                   </p>
                 </div>
                 <Button
@@ -595,7 +595,7 @@ export function ImportRuleBuilder({ rule, onSave, onCancel }: ImportRuleBuilderP
                     name="priority"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Prioritaet (0-100)</FormLabel>
+                        <FormLabel>Priorität (0-100)</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
@@ -606,7 +606,7 @@ export function ImportRuleBuilder({ rule, onSave, onCancel }: ImportRuleBuilderP
                           />
                         </FormControl>
                         <FormDescription>
-                          Hoehere Werte werden zuerst ausgefuehrt
+                          Höhere Werte werden zuerst ausgeführt
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

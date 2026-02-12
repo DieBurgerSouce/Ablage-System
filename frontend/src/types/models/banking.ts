@@ -753,7 +753,7 @@ export interface DunningRecord {
     dunning_level: DunningLevelNumber;
     status: string;
 
-    // Gebuehren
+    // Gebühren
     reminder_fee: number;
     late_interest_rate: number | null;
     accrued_interest: number;
@@ -813,7 +813,7 @@ export interface MahnTask {
 }
 
 /**
- * Mahnaufgabe mit vollstaendigen Dunning-Details
+ * Mahnaufgabe mit vollständigen Dunning-Details
  */
 export interface MahnTaskWithDunning extends MahnTask {
     dunning_record?: DunningRecord;
@@ -944,7 +944,7 @@ export interface DunningStageConfigUpdate {
 }
 
 /**
- * Liste der Mahnstufen mit Zinssaetzen
+ * Liste der Mahnstufen mit Zinssätzen
  */
 export interface DunningStagesListResponse {
     stages: DunningStageConfig[];
@@ -1022,7 +1022,7 @@ export interface MahnungHistoryEntry {
 }
 
 /**
- * Alias für MahnungHistoryEntry (Kompatibilitaet)
+ * Alias für MahnungHistoryEntry (Kompatibilität)
  */
 export type MahnungHistory = MahnungHistoryEntry;
 
@@ -1084,7 +1084,7 @@ export interface VerzugszinsenCalculation {
 }
 
 /**
- * Ergebnis des taeglichen Mahnlaufs
+ * Ergebnis des täglichen Mahnlaufs
  */
 export interface MahnlaufResult {
     run_date: string;

@@ -1,7 +1,7 @@
 /**
  * Customer Lifetime Value Hook
  *
- * React Query Hook fuer Customer LTV-Metriken.
+ * React Query Hook für Customer LTV-Metriken.
  * Liefert Kundenwert, Trend und Churn-Risiko.
  *
  * Phase 7: Dashboard Widgets
@@ -21,7 +21,7 @@ interface UseCustomerLTVOptions {
 }
 
 /**
- * Hook fuer Customer LTV-Daten
+ * Hook für Customer LTV-Daten
  */
 export function useCustomerLTV(options: UseCustomerLTVOptions = {}) {
   const { periodDays = 365, enabled = true, staleTime = 5 * 60 * 1000 } = options;

@@ -7,7 +7,9 @@ Provides REST API endpoints for:
 - Batch operations (delete, tag, export)
 """
 
-from typing import Optional, List, Dict, Any, Literal
+from typing import Optional, List, Dict, Literal
+
+from app.core.types import JSONDict, OCRExtractedData
 from datetime import datetime, timezone
 from uuid import UUID
 from enum import Enum
@@ -1868,7 +1870,7 @@ async def partial_update_document(
     service = get_document_service()
 
     # Build update dict from non-None fields
-    update_data: Dict[str, Any] = {}
+    update_data: JSONDict = {}
 
     if updates.document_type is not None:
         update_data["document_type"] = updates.document_type
@@ -1957,7 +1959,7 @@ ALLOWED_EXTRACTED_DATA_PATHS: set[str] = {
 }
 
 
-def _set_nested_value(obj: Dict[str, Any], path: str, value: object) -> None:
+def _set_nested_value(obj: JSONDict, path: str, value: object) -> None:
     """Setzt einen verschachtelten Wert in einem Dict.
 
     Args:
@@ -1989,7 +1991,7 @@ class ExtractedDataUpdateRequest(BaseModel):
     - Alle Pfade werden gegen ALLOWED_EXTRACTED_DATA_PATHS validiert
     - Werte werden typgeprueft (keine Code-Injection)
     """
-    updates: Dict[str, Any] = Field(
+    updates: JSONDict = Field(
         ...,
         description="JSONB-Pfade mit neuen Werten",
         json_schema_extra={
@@ -2007,7 +2009,7 @@ class ExtractedDataUpdateRequest(BaseModel):
 
 @router.patch(
     "/{document_id}/extracted-data",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Extrahierte Daten aktualisieren",
     responses={
         200: {"description": "Aktualisierte extracted_data"},
@@ -2021,7 +2023,7 @@ async def update_extracted_data(
     request: ExtractedDataUpdateRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Aktualisiert einzelne Felder in extracted_data (JSONB).
 
     Ermoeglicht die Korrektur von OCR-Ergebnissen durch den Benutzer.
@@ -4095,7 +4097,7 @@ class UnifiedBulkOperationRequest(BaseModel):
         ...,
         description="Auszufuehrende Aktion: tag, move, delete, export, categorize"
     )
-    params: Optional[Dict[str, Any]] = Field(
+    params: Optional[JSONDict] = Field(
         None,
         description="Aktions-spezifische Parameter"
     )

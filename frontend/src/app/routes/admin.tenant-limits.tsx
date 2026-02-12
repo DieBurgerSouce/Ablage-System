@@ -1,7 +1,7 @@
 /**
  * Tenant Limits Admin Route
  *
- * Route fuer das Tenant-Metriken Dashboard.
+ * Route für das Tenant-Metriken Dashboard.
  */
 
 import { createFileRoute } from '@tanstack/react-router';

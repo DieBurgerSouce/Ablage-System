@@ -1,7 +1,7 @@
 /**
  * Lineage Feature Exports
  *
- * Document Lineage Timeline Visualisierung fuer Ablage-System.
+ * Document Lineage Timeline Visualisierung für Ablage-System.
  */
 
 // Main Component

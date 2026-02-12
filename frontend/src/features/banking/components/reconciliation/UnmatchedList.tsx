@@ -3,7 +3,7 @@
  *
  * Zeigt alle unabgeglichenen Transaktionen mit:
  * - Filterung und Sortierung
- * - Match-Vorschlag-Anzeige pro Transaktion
+ * - Match-Vorschläge-Anzeige pro Transaktion
  * - Bulk-Aktionen
  * - Priorisierung nach Alter und Betrag
  */
@@ -63,7 +63,7 @@ interface UnmatchedListProps {
     onSelectionChange?: (ids: string[]) => void;
 }
 
-// Hilfsfunktion fuer Dringlichkeits-Badge
+// Hilfsfunktion für Dringlichkeits-Badge
 function UrgencyBadge({ daysSince }: { daysSince: number }) {
     if (daysSince >= 30) {
         return (
@@ -303,7 +303,7 @@ export function UnmatchedList({
                                 onClick={() => onBulkMatch(selectedTransactionIds)}
                             >
                                 <Link2 className="h-4 w-4 mr-1" />
-                                {selectedTransactionIds.length} ausgewaehlt
+                                {selectedTransactionIds.length} ausgewählt
                             </Button>
                         )}
                         <Button
@@ -333,7 +333,7 @@ export function UnmatchedList({
                     {summary.withSuggestions > 0 && (
                         <span className="text-green-600">
                             <Sparkles className="h-3 w-3 inline mr-1" />
-                            {summary.withSuggestions} mit guten Vorschlaegen
+                            {summary.withSuggestions} mit guten Vorschlägen
                         </span>
                     )}
                 </div>
@@ -379,8 +379,8 @@ export function UnmatchedList({
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="date-desc">Neueste zuerst</SelectItem>
-                                    <SelectItem value="date-asc">Aelteste zuerst</SelectItem>
-                                    <SelectItem value="amount-desc">Hoechster Betrag</SelectItem>
+                                    <SelectItem value="date-asc">Älteste zuerst</SelectItem>
+                                    <SelectItem value="amount-desc">Höchster Betrag</SelectItem>
                                     <SelectItem value="amount-asc">Niedrigster Betrag</SelectItem>
                                     <SelectItem value="urgency-desc">Dringendste zuerst</SelectItem>
                                 </SelectContent>
@@ -397,7 +397,7 @@ export function UnmatchedList({
                             Alle Transaktionen abgeglichen!
                         </h3>
                         <p className="text-muted-foreground">
-                            Es gibt keine offenen Transaktionen zum Verknuepfen.
+                            Es gibt keine offenen Transaktionen zum Verknüpfen.
                         </p>
                     </div>
                 ) : (
@@ -413,7 +413,7 @@ export function UnmatchedList({
                                                     sortedTransactions.length
                                                 }
                                                 onCheckedChange={handleSelectAll}
-                                                aria-label="Alle auswaehlen"
+                                                aria-label="Alle auswählen"
                                             />
                                         </TableHead>
                                     )}
@@ -472,7 +472,7 @@ export function UnmatchedList({
                                                 <Checkbox
                                                     checked={selectedTransactionIds.includes(tx.id)}
                                                     onCheckedChange={() => handleSelectOne(tx.id)}
-                                                    aria-label={`Transaktion ${tx.counterparty_name} auswaehlen`}
+                                                    aria-label={`Transaktion ${tx.counterparty_name} auswählen`}
                                                 />
                                             </TableCell>
                                         )}

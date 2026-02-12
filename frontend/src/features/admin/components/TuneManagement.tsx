@@ -199,7 +199,7 @@ export function TuneManagement() {
                                             <Pencil className="h-4 w-4" />
                                         </Button>
                                         {!tune.is_system && (
-                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => deleteMutation.mutate(tune.id)} aria-label={`${tune.name} loeschen`}>
+                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => deleteMutation.mutate(tune.id)} aria-label={`${tune.name} löschen`}>
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
                                         )}

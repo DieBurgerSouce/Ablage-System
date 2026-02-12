@@ -135,7 +135,7 @@ export function ProcessHealthStats() {
             )}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            {health?.bottleneck_count || 0} Engpaesse erkannt
+            {health?.bottleneck_count || 0} Engpässe erkannt
           </p>
         </CardContent>
       </Card>

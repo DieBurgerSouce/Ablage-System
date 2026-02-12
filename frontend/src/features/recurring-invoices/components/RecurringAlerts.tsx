@@ -1,7 +1,7 @@
 /**
  * RecurringAlerts Component
  *
- * Zeigt fehlende Rechnungen und Preisaenderungen
+ * Zeigt fehlende Rechnungen und Preisänderungen
  * als Alert-Cards an.
  */
 
@@ -115,15 +115,15 @@ export default function RecurringAlerts() {
         </CardContent>
       </Card>
 
-      {/* Preisaenderungen */}
+      {/* Preisänderungen */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <TrendingUp className="h-4 w-4 text-orange-500" />
-            Preisaenderungen
+            Preisänderungen
           </CardTitle>
           <CardDescription>
-            Erkannte Preisaenderungen bei wiederkehrenden Rechnungen
+            Erkannte Preisänderungen bei wiederkehrenden Rechnungen
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -169,7 +169,7 @@ export default function RecurringAlerts() {
             </div>
           ) : (
             <div className="py-8 text-center text-muted-foreground">
-              Keine Preisaenderungen erkannt.
+              Keine Preisänderungen erkannt.
             </div>
           )}
         </CardContent>

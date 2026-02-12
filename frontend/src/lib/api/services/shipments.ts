@@ -1,7 +1,7 @@
 /**
  * Shipment Tracking API Service
  *
- * Zentraler API-Service fuer Sendungsverfolgung.
+ * Zentraler API-Service für Sendungsverfolgung.
  * Delegiert an die Feature-Level API in features/shipments.
  *
  * Endpoints: /api/v1/shipments/*

@@ -1,7 +1,7 @@
 /**
  * MLOps Dashboard Page
  *
- * Hauptseite fuer das Machine Learning Operations Dashboard.
+ * Hauptseite für das Machine Learning Operations Dashboard.
  * Zeigt Modell-Registry, Retraining-Jobs, A/B Tests und Performance-Statistiken.
  *
  * Vision 2.0 Phase 3: Erweitert um A/B Test Vergleiche und Rollback-Historie.
@@ -41,7 +41,7 @@ export function MLOpsPage() {
       {/* Main Content with Tabs */}
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="overview">Uebersicht</TabsTrigger>
+          <TabsTrigger value="overview">Übersicht</TabsTrigger>
           <TabsTrigger value="ab-tests">A/B Tests</TabsTrigger>
           <TabsTrigger value="retraining">Retraining</TabsTrigger>
           <TabsTrigger value="history">Historie</TabsTrigger>

@@ -66,7 +66,7 @@ export function SlackTestDialog({ open, onOpenChange }: SlackTestDialogProps) {
                         Test-Nachricht senden
                     </DialogTitle>
                     <DialogDescription>
-                        Senden Sie eine Test-Nachricht, um die Slack-Integration zu pruefen.
+                        Senden Sie eine Test-Nachricht, um die Slack-Integration zu prüfen.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -121,7 +121,7 @@ export function SlackTestDialog({ open, onOpenChange }: SlackTestDialogProps) {
 
                     {/* Priority */}
                     <div className="space-y-2">
-                        <Label>Prioritaet</Label>
+                        <Label>Priorität</Label>
                         <Select
                             value={priority}
                             onValueChange={(v) => setPriority(v as typeof priority)}
@@ -141,7 +141,7 @@ export function SlackTestDialog({ open, onOpenChange }: SlackTestDialogProps) {
 
                 <DialogFooter>
                     <Button variant="outline" onClick={handleClose}>
-                        Schliessen
+                        Schließen
                     </Button>
                     <Button onClick={handleSend} disabled={sendTest.isPending || !message}>
                         {sendTest.isPending ? (

@@ -1,7 +1,7 @@
 /**
  * ScheduleConfig Component
  *
- * Konfiguration fuer automatische Report-Ausfuehrung mit Cron-Presets und E-Mail-Versand.
+ * Konfiguration für automatische Report-Ausführung mit Cron-Presets und E-Mail-Versand.
  */
 
 import { useState } from 'react';
@@ -148,7 +148,7 @@ export function ScheduleConfig({ template }: ScheduleConfigProps) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-muted-foreground" />
-              <CardTitle className="text-base">Automatische Ausfuehrung</CardTitle>
+              <CardTitle className="text-base">Automatische Ausführung</CardTitle>
             </div>
             <Switch
               checked={scheduleEnabled}
@@ -157,7 +157,7 @@ export function ScheduleConfig({ template }: ScheduleConfigProps) {
             />
           </div>
           <CardDescription>
-            Fuehren Sie diesen Report automatisch nach Zeitplan aus.
+            Führen Sie diesen Report automatisch nach Zeitplan aus.
           </CardDescription>
         </CardHeader>
 
@@ -173,7 +173,7 @@ export function ScheduleConfig({ template }: ScheduleConfigProps) {
                 <div className="space-y-1 text-muted-foreground">
                   {template.schedule_config.last_run && (
                     <p>
-                      Letzte Ausfuehrung:{' '}
+                      Letzte Ausführung:{' '}
                       {formatDistanceToNow(new Date(template.schedule_config.last_run), {
                         addSuffix: true,
                         locale: de,
@@ -182,7 +182,7 @@ export function ScheduleConfig({ template }: ScheduleConfigProps) {
                   )}
                   {template.schedule_config.next_run && (
                     <p>
-                      Naechste Ausfuehrung:{' '}
+                      Nächste Ausführung:{' '}
                       {format(new Date(template.schedule_config.next_run), "d. MMMM yyyy 'um' HH:mm", {
                         locale: de,
                       })}
@@ -220,7 +220,7 @@ export function ScheduleConfig({ template }: ScheduleConfigProps) {
               ) : (
                 <Select value={selectedPreset} onValueChange={setSelectedPreset}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Zeitplan waehlen" />
+                    <SelectValue placeholder="Zeitplan wählen" />
                   </SelectTrigger>
                   <SelectContent>
                     {presets?.map((preset: SchedulePreset) => (
@@ -267,11 +267,11 @@ export function ScheduleConfig({ template }: ScheduleConfigProps) {
               </Select>
             </div>
 
-            {/* E-Mail-Empfaenger */}
+            {/* E-Mail-Empfänger */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
-                E-Mail-Empfaenger
+                E-Mail-Empfänger
               </Label>
               <p className="text-xs text-muted-foreground mb-2">
                 Der Report wird automatisch an diese Adressen gesendet.
@@ -331,8 +331,8 @@ export function ScheduleConfig({ template }: ScheduleConfigProps) {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Zeitplan deaktivieren?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Der automatische Report wird nicht mehr ausgefuehrt.
-                      Die Konfiguration wird geloescht.
+                      Der automatische Report wird nicht mehr ausgeführt.
+                      Die Konfiguration wird gelöscht.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -362,7 +362,7 @@ export function ScheduleConfig({ template }: ScheduleConfigProps) {
             <Clock className="h-10 w-10 text-muted-foreground mb-3" />
             <h3 className="font-medium mb-1">Automatische Reports</h3>
             <p className="text-sm text-muted-foreground text-center max-w-sm">
-              Aktivieren Sie den Zeitplan, um diesen Report automatisch ausfuehren
+              Aktivieren Sie den Zeitplan, um diesen Report automatisch ausführen
               und per E-Mail versenden zu lassen.
             </p>
           </CardContent>

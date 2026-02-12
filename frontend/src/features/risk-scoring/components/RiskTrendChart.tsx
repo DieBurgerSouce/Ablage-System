@@ -1,7 +1,7 @@
 /**
  * Risk Trend Chart Component
  *
- * Zeigt den Risiko-Trend ueber Zeit.
+ * Zeigt den Risiko-Trend über Zeit.
  */
 
 import {
@@ -62,7 +62,7 @@ export function RiskTrendChart({
             className="flex items-center justify-center text-muted-foreground"
             style={{ height }}
           >
-            Keine Trend-Daten verfuegbar
+            Keine Trend-Daten verfügbar
           </div>
         </CardContent>
       </Card>

@@ -1,7 +1,7 @@
 /**
  * MultiStepForm - Generischer Multi-Step Wizard
  *
- * Wiederverwendbare Komponente fuer mehrstufige Formulare mit:
+ * Wiederverwendbare Komponente für mehrstufige Formulare mit:
  * - Step-Indikator mit Fortschritt
  * - Validierung pro Step (Zod)
  * - State-Persistenz (SessionStorage)
@@ -228,15 +228,15 @@ export function MultiStepForm<T extends Record<string, unknown>>({
     const currentPersistKeyRef = useRef(persistKey);
 
     // ENTERPRISE FIX: Synchrone Key-Tracking VOR allen Effects
-    // Dies verhindert Race Conditions wo Save-Effect vor Load-Effect laeuft
-    // bei persistKey-Wechsel. Die Ref-Updates muessen SYNCHRON im Render
+    // Dies verhindert Race Conditions wo Save-Effect vor Load-Effect läuft
+    // bei persistKey-Wechsel. Die Ref-Updates müssen SYNCHRON im Render
     // passieren, nicht in Effects, damit beide Effects konsistenten State sehen.
     if (persistKey !== currentPersistKeyRef.current) {
         currentPersistKeyRef.current = persistKey;
         hasLoadedRef.current = false; // Block saves until reload completes
     }
 
-    // Effect 1: LOAD - Laeuft NUR wenn persistKey sich aendert
+    // Effect 1: LOAD - Läuft NUR wenn persistKey sich ändert
     // Separater Effect verhindert Race Condition zwischen Load und Save
     useEffect(() => {
         if (!persistKey) {
@@ -265,17 +265,17 @@ export function MultiStepForm<T extends Record<string, unknown>>({
         hasLoadedRef.current = true;
     }, [persistKey, form, safeStorageGet]); // NUR persistKey triggert reload
 
-    // Effect 2: SAVE - Laeuft bei Daten-Aenderungen, aber NUR wenn bereits geladen
+    // Effect 2: SAVE - Läuft bei Daten-Änderungen, aber NUR wenn bereits geladen
     useEffect(() => {
         // Nicht speichern wenn:
         // 1. Kein persistKey konfiguriert
         // 2. Noch nicht initial geladen (verhindert Write-on-Read)
-        // 3. Form ist nicht dirty (keine Aenderungen)
+        // 3. Form ist nicht dirty (keine Änderungen)
         if (!persistKey || !hasLoadedRef.current || !isDirty) {
             return;
         }
 
-        // SICHERHEIT: Nicht speichern wenn persistKey sich GERADE aendert
+        // SICHERHEIT: Nicht speichern wenn persistKey sich GERADE ändert
         // Dies verhindert dass alte Daten unter neuem Key gespeichert werden
         if (persistKey !== currentPersistKeyRef.current) {
             logger.warn('persistKey hat sich während dem Speichern geändert, überspringe');
@@ -284,7 +284,7 @@ export function MultiStepForm<T extends Record<string, unknown>>({
 
         // KRITISCH: Verwende currentPersistKeyRef statt persistKey aus Closure!
         // Dies stellt sicher, dass wir IMMER mit dem aktuellen Key speichern,
-        // selbst wenn dieser Effect mit alten Dependencies ausgefuehrt wird.
+        // selbst wenn dieser Effect mit alten Dependencies ausgeführt wird.
         const storageKey = `wizard-${currentPersistKeyRef.current}`;
         const data = form.getValues();
         safeStorageSet(storageKey, JSON.stringify({ data, step: currentStep }));

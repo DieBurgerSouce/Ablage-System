@@ -1,12 +1,12 @@
 /**
- * Proactive Insights Widget fuer Dashboard
+ * Proactive Insights Widget für Dashboard
  *
  * Zeigt KI-generierte Erkenntnisse und Handlungsempfehlungen:
  * - Skonto-Fristen
  * - Duplikat-Warnungen
  * - Risiko-Alerts
  * - Workflow-Optimierungen
- * - Datenqualitaets-Hinweise
+ * - Datenqualitäts-Hinweise
  */
 
 import { useMemo } from 'react';
@@ -295,7 +295,7 @@ export function ProactiveInsightsWidget() {
 
                 {isError ? (
                     <QueryErrorAlert
-                        title="Insights nicht verfuegbar"
+                        title="Insights nicht verfügbar"
                         error={summaryErrorObj as Error}
                         onRetry={() => refetchSummary()}
                     />
@@ -330,7 +330,7 @@ export function ProactiveInsightsWidget() {
                                 value={stats.critical + stats.high}
                                 icon={AlertTriangle}
                                 trend={stats.critical > 0 ? 'warning' : stats.high > 0 ? 'neutral' : 'positive'}
-                                subtext={stats.critical > 0 ? 'Sofort pruefen!' : 'Hohe Prioritaet'}
+                                subtext={stats.critical > 0 ? 'Sofort prüfen!' : 'Hohe Priorität'}
                                 href="/insights?priority=high,critical"
                                 isCurrency={false}
                             />
@@ -344,7 +344,7 @@ export function ProactiveInsightsWidget() {
                             />
                             {stats.dataQuality !== null && (
                                 <KPICard
-                                    title="Datenqualitaet"
+                                    title="Datenqualität"
                                     value={stats.dataQuality}
                                     icon={stats.dataQuality >= 80 ? CheckCircle2 : Info}
                                     trend={stats.dataQuality >= 80 ? 'positive' : stats.dataQuality >= 60 ? 'neutral' : 'warning'}

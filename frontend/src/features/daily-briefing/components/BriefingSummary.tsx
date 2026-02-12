@@ -72,8 +72,8 @@ function getHealthStatus(bySeverity: Record<string, number>): {
   const high = bySeverity.high ?? 0;
 
   if (critical > 0) return { label: "Sofortiger Handlungsbedarf", color: "text-red-600" };
-  if (high > 2) return { label: "Erhoehte Aufmerksamkeit", color: "text-orange-600" };
-  if (high > 0) return { label: "Ueberwachung empfohlen", color: "text-yellow-600" };
+  if (high > 2) return { label: "Erhöhte Aufmerksamkeit", color: "text-orange-600" };
+  if (high > 0) return { label: "Überwachung empfohlen", color: "text-yellow-600" };
   return { label: "Alles in Ordnung", color: "text-green-600" };
 }
 

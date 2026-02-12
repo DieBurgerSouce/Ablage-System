@@ -6,7 +6,7 @@
  * - Formatierten Inhalt mit Mentions
  * - Reaktionen
  * - Antworten (verschachtelt)
- * - Aktionen (Antworten, Bearbeiten, Loeschen)
+ * - Aktionen (Antworten, Bearbeiten, Löschen)
  */
 
 import { useState } from 'react';

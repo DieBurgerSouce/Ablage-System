@@ -1,12 +1,12 @@
 /**
  * Offline Queue Store
  *
- * Zustand-Store zum Verfolgen von ausstehenden Aenderungen
- * die synchronisiert werden muessen, wenn wieder online.
+ * Zustand-Store zum Verfolgen von ausstehenden Änderungen
+ * die synchronisiert werden müssen, wenn wieder online.
  *
  * Features:
  * - Persistenz in IndexedDB
- * - Zaehlt ausstehende Mutationen
+ * - Zählt ausstehende Mutationen
  * - Verfolgt Sync-Status
  * - Automatische Synchronisation bei Online-Status
  * - Integration mit TanStack Query Mutations
@@ -39,7 +39,7 @@ export interface PendingMutation {
 }
 
 interface OfflineQueueState {
-  /** Ausstehende Aenderungen (in-memory cache) */
+  /** Ausstehende Änderungen (in-memory cache) */
   pendingMutations: PendingMutation[]
 
   /** Store initialized from IndexedDB */
@@ -51,7 +51,7 @@ interface OfflineQueueState {
   /** Letzter erfolgreicher Sync-Zeitpunkt */
   lastSyncedAt: number | null
 
-  /** Anzahl der ausstehenden Aenderungen */
+  /** Anzahl der ausstehenden Änderungen */
   pendingCount: number
 }
 
@@ -93,10 +93,10 @@ interface OfflineQueueActions {
   /** Laedt die Mutationen aus IndexedDB neu */
   refresh: () => Promise<void>
 
-  /** Loescht alle ausstehenden Mutationen */
+  /** Löscht alle ausstehenden Mutationen */
   clearPendingMutations: () => Promise<void>
 
-  /** Setzt den Store zurueck */
+  /** Setzt den Store zurück */
   reset: () => void
 }
 
@@ -174,7 +174,7 @@ export const useOfflineQueueStore = create<OfflineQueueStore>((set, get) => ({
         pendingCount: state.pendingCount + 1,
       }))
 
-      logger.info('[OfflineQueue] Mutation hinzugefuegt', {
+      logger.info('[OfflineQueue] Mutation hinzugefügt', {
         id,
         type: mutation.type,
         endpoint: mutation.endpoint,
@@ -182,7 +182,7 @@ export const useOfflineQueueStore = create<OfflineQueueStore>((set, get) => ({
 
       return id
     } catch (error) {
-      logger.error('[OfflineQueue] Fehler beim Hinzufuegen', { error })
+      logger.error('[OfflineQueue] Fehler beim Hinzufügen', { error })
       throw error
     }
   },
@@ -324,9 +324,9 @@ export const useOfflineQueueStore = create<OfflineQueueStore>((set, get) => ({
         lastSyncedAt: Date.now(),
       })
 
-      logger.info('[OfflineQueue] Alle Mutationen geloescht')
+      logger.info('[OfflineQueue] Alle Mutationen gelöscht')
     } catch (error) {
-      logger.error('[OfflineQueue] Fehler beim Loeschen', { error })
+      logger.error('[OfflineQueue] Fehler beim Löschen', { error })
       throw error
     }
   },
@@ -338,23 +338,23 @@ export const useOfflineQueueStore = create<OfflineQueueStore>((set, get) => ({
 
 // ==================== Selectors ====================
 
-/** Gibt true zurueck wenn ausstehende Aenderungen existieren */
+/** Gibt true zurück wenn ausstehende Änderungen existieren */
 export const selectHasPendingChanges = (state: OfflineQueueState) =>
   state.pendingCount > 0
 
-/** Gibt die Anzahl der ausstehenden Aenderungen zurueck */
+/** Gibt die Anzahl der ausstehenden Änderungen zurück */
 export const selectPendingCount = (state: OfflineQueueState) =>
   state.pendingCount
 
-/** Gibt true zurueck wenn Sync laeuft */
+/** Gibt true zurück wenn Sync läuft */
 export const selectIsSyncing = (state: OfflineQueueState) =>
   state.isSyncing
 
-/** Gibt nur pending Mutationen zurueck */
+/** Gibt nur pending Mutationen zurück */
 export const selectPendingMutations = (state: OfflineQueueState) =>
   state.pendingMutations.filter((m) => m.status === 'pending')
 
-/** Gibt fehlgeschlagene Mutationen zurueck */
+/** Gibt fehlgeschlagene Mutationen zurück */
 export const selectFailedMutations = (state: OfflineQueueState) =>
   state.pendingMutations.filter((m) => m.status === 'failed')
 

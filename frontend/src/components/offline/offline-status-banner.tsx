@@ -154,7 +154,7 @@ export function OfflineStatusBanner({
               <div className="flex items-center gap-2">
                 {showPendingCount && pendingCount > 0 && !compact && (
                   <span className="text-sm opacity-80">
-                    {pendingCount} {pendingCount === 1 ? 'Aenderung' : 'Aenderungen'}
+                    {pendingCount} {pendingCount === 1 ? 'Änderung' : 'Änderungen'}
                   </span>
                 )}
 
@@ -192,7 +192,7 @@ export function OfflineStatusBanner({
             {/* Offline info */}
             {!isOnline && !compact && (
               <p className="text-sm mt-1 opacity-80">
-                Aenderungen werden gespeichert und automatisch synchronisiert.
+                Änderungen werden gespeichert und automatisch synchronisiert.
               </p>
             )}
           </div>

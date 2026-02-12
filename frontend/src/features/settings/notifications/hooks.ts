@@ -1,7 +1,7 @@
 /**
  * Notification Preferences Hooks
  *
- * TanStack Query Hooks fuer Benachrichtigungs-Praeferenzen.
+ * TanStack Query Hooks für Benachrichtigungs-Praeferenzen.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -33,7 +33,7 @@ export const notificationPreferencesKeys = {
 };
 
 /**
- * Hook fuer Benachrichtigungs-Praeferenzen.
+ * Hook für Benachrichtigungs-Praeferenzen.
  */
 export function useNotificationPreferences() {
   return useQuery({
@@ -44,7 +44,7 @@ export function useNotificationPreferences() {
 }
 
 /**
- * Hook fuer Kanal-Status.
+ * Hook für Kanal-Status.
  */
 export function useChannelStatus() {
   return useQuery({
@@ -55,7 +55,7 @@ export function useChannelStatus() {
 }
 
 /**
- * Hook fuer Eskalationskette.
+ * Hook für Eskalationskette.
  */
 export function useEscalationChain() {
   return useQuery({
@@ -142,7 +142,7 @@ export function useUpdateQuietHours() {
 }
 
 /**
- * Hook fuer Test-Benachrichtigungen.
+ * Hook für Test-Benachrichtigungen.
  */
 export function useTestNotification() {
   return useMutation({
@@ -192,7 +192,7 @@ export function useToggleChannel() {
     onError: (error: Error) => {
       toast({
         title: 'Fehler',
-        description: error.message || 'Kanal-Status konnte nicht geaendert werden.',
+        description: error.message || 'Kanal-Status konnte nicht geändert werden.',
         variant: 'destructive',
       });
     },

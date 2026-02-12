@@ -1,10 +1,10 @@
 /**
- * BulkActionsBar - Floating Action Bar fuer Bulk-Operationen
+ * BulkActionsBar - Floating Action Bar für Bulk-Operationen
  *
  * Phase 4.6: Frontend UX Enhancement - Bulk Actions UI
  *
- * Erscheint am unteren Bildschirmrand wenn Zeilen ausgewaehlt sind.
- * Bietet Aktionen wie Loeschen, Taggen, Verschieben, Exportieren.
+ * Erscheint am unteren Bildschirmrand wenn Zeilen ausgewählt sind.
+ * Bietet Aktionen wie Löschen, Taggen, Verschieben, Exportieren.
  */
 import * as React from "react"
 import { motion, AnimatePresence } from "framer-motion"
@@ -46,28 +46,28 @@ export interface BulkAction<TData = unknown> {
   label: string
   /** Icon (Lucide-Komponente) */
   icon: React.ComponentType<{ className?: string }>
-  /** Ausfuehren der Aktion */
+  /** Ausführen der Aktion */
   onExecute: (selectedItems: TData[]) => Promise<void> | void
-  /** Ist die Aktion verfuegbar? */
+  /** Ist die Aktion verfügbar? */
   isAvailable?: (selectedItems: TData[]) => boolean
   /** Ist die Aktion destruktiv? (rot markiert) */
   destructive?: boolean
   /** Keyboard-Shortcut (angezeigt) */
   shortcut?: string
-  /** Zusaetzliche Badge-Info */
+  /** Zusätzliche Badge-Info */
   badge?: string | ((selectedItems: TData[]) => string | undefined)
 }
 
 export interface BulkActionsBarProps<TData = unknown> {
-  /** Anzahl ausgewaehlter Items */
+  /** Anzahl ausgewählter Items */
   selectedCount: number
-  /** Die ausgewaehlten Items */
+  /** Die ausgewählten Items */
   selectedItems: TData[]
-  /** Verfuegbare Bulk-Aktionen */
+  /** Verfügbare Bulk-Aktionen */
   actions: BulkAction<TData>[]
   /** Callback zum Abbrechen der Auswahl */
   onClearSelection: () => void
-  /** Callback bei "Alle auswaehlen" */
+  /** Callback bei "Alle auswählen" */
   onSelectAll?: () => void
   /** Gesamtanzahl der Items */
   totalCount?: number
@@ -79,7 +79,7 @@ export interface BulkActionsBarProps<TData = unknown> {
     status?: "running" | "success" | "error"
     message?: string
   }
-  /** Zusaetzliche CSS-Klassen */
+  /** Zusätzliche CSS-Klassen */
   className?: string
 }
 
@@ -96,7 +96,7 @@ export function BulkActionsBar<TData = unknown>({
   const [executing, setExecuting] = React.useState<string | null>(null)
   const isVisible = selectedCount > 0
 
-  // Filter verfuegbare Aktionen
+  // Filter verfügbare Aktionen
   const availableActions = actions.filter(
     (action) => !action.isAvailable || action.isAvailable(selectedItems)
   )
@@ -114,7 +114,7 @@ export function BulkActionsBar<TData = unknown>({
         return
       }
 
-      // Ctrl+A fuer alle auswaehlen
+      // Ctrl+A für alle auswählen
       if (e.ctrlKey && e.key === "a" && onSelectAll) {
         e.preventDefault()
         onSelectAll()
@@ -185,7 +185,7 @@ export function BulkActionsBar<TData = unknown>({
           <div className="flex items-center gap-2 pr-4 border-r">
             <CheckSquare className="h-5 w-5 text-primary" />
             <span className="font-medium whitespace-nowrap">
-              {selectedCount} ausgewaehlt
+              {selectedCount} ausgewählt
               {totalCount && (
                 <span className="text-muted-foreground ml-1">
                   von {totalCount}
@@ -338,7 +338,7 @@ export function createDeleteAction<TData>(
 ): BulkAction<TData> {
   return {
     id: "delete",
-    label: "Loeschen",
+    label: "Löschen",
     icon: Trash2,
     destructive: true,
     shortcut: "Delete",
@@ -351,7 +351,7 @@ export function createTagAction<TData>(
 ): BulkAction<TData> {
   return {
     id: "tag",
-    label: "Tags hinzufuegen",
+    label: "Tags hinzufügen",
     icon: Tag,
     shortcut: "Ctrl+T",
     onExecute: onTag,

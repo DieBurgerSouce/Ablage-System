@@ -51,7 +51,7 @@ import {
 import type { ReportTemplate, ReportType, DataSource } from '../types';
 
 interface ReportsListProps {
-  // TYPE SAFETY FIX: Optional template fuer "create new" vs "edit existing"
+  // TYPE SAFETY FIX: Optional template für "create new" vs "edit existing"
   onEdit?: (template?: ReportTemplate) => void;
   onCreate?: () => void;
   onShare?: (template: ReportTemplate) => void;

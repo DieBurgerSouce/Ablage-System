@@ -1,7 +1,7 @@
 /**
  * Import Query Hooks
  *
- * TanStack Query Hooks fuer Email-, Folder-Import und Import-Regeln.
+ * TanStack Query Hooks für Email-, Folder-Import und Import-Regeln.
  */
 
 import { useCallback } from 'react';
@@ -30,7 +30,7 @@ const STALE_TIMES = {
   rules: 60 * 1000,          // 1 Minute
   logs: 30 * 1000,           // 30 Sekunden
   stats: 5 * 60 * 1000,      // 5 Minuten
-  schema: 30 * 60 * 1000,    // 30 Minuten - Schema aendert sich selten
+  schema: 30 * 60 * 1000,    // 30 Minuten - Schema ändert sich selten
 } as const;
 
 const GC_TIMES = {
@@ -147,7 +147,7 @@ export function useUpdateEmailConfig() {
 }
 
 /**
- * Email-Konfiguration loeschen
+ * Email-Konfiguration löschen
  */
 export function useDeleteEmailConfig() {
   const queryClient = useQueryClient();
@@ -173,7 +173,7 @@ export function useTestEmailConnection() {
 }
 
 /**
- * Manuellen Sync ausloesen
+ * Manuellen Sync auslösen
  */
 export function useTriggerEmailSync() {
   const queryClient = useQueryClient();
@@ -258,7 +258,7 @@ export function useUpdateFolderConfig() {
 }
 
 /**
- * Folder-Konfiguration loeschen
+ * Folder-Konfiguration löschen
  */
 export function useDeleteFolderConfig() {
   const queryClient = useQueryClient();
@@ -309,7 +309,7 @@ export function useStopFolderWatcher() {
 }
 
 /**
- * Manuellen Poll ausloesen
+ * Manuellen Poll auslösen
  */
 export function useTriggerFolderPoll() {
   const queryClient = useQueryClient();
@@ -393,7 +393,7 @@ export function useUpdateImportRule() {
 }
 
 /**
- * Import-Regel loeschen
+ * Import-Regel löschen
  */
 export function useDeleteImportRule() {
   const queryClient = useQueryClient();
@@ -548,7 +548,7 @@ export function useRetryImport() {
 }
 
 /**
- * Frontend Stats Response fuer ImportsPage
+ * Frontend Stats Response für ImportsPage
  */
 export interface ImportDashboardStats {
   documentsImportedToday: number;
@@ -561,7 +561,7 @@ export interface ImportDashboardStats {
 }
 
 /**
- * Import-Statistiken (transformiert fuer Dashboard)
+ * Import-Statistiken (transformiert für Dashboard)
  */
 export function useImportStats(
   dateFrom?: string,
@@ -593,7 +593,7 @@ export function useImportStats(
 // ==================== Combined Hooks ====================
 
 /**
- * Kombinierter Hook fuer Import-Dashboard
+ * Kombinierter Hook für Import-Dashboard
  */
 export function useImportDashboard(options?: { enabled?: boolean }) {
   const isEnabled = options?.enabled !== false;
@@ -623,7 +623,7 @@ export function useImportDashboard(options?: { enabled?: boolean }) {
 }
 
 /**
- * Hook fuer alle Email-Config-Mutationen
+ * Hook für alle Email-Config-Mutationen
  */
 export function useEmailConfigMutations() {
   const createConfig = useCreateEmailConfig();
@@ -650,7 +650,7 @@ export function useEmailConfigMutations() {
 }
 
 /**
- * Hook fuer alle Folder-Config-Mutationen
+ * Hook für alle Folder-Config-Mutationen
  */
 export function useFolderConfigMutations() {
   const createConfig = useCreateFolderConfig();
@@ -680,7 +680,7 @@ export function useFolderConfigMutations() {
 }
 
 /**
- * Hook fuer alle Import-Rule-Mutationen
+ * Hook für alle Import-Rule-Mutationen
  */
 export function useImportRuleMutations() {
   const createRule = useCreateImportRule();

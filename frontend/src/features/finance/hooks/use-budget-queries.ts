@@ -1,7 +1,7 @@
 /**
- * TanStack Query Hooks fuer Budget Management
+ * TanStack Query Hooks für Budget Management
  *
- * Zentrale Hooks fuer Budget-Verwaltung mit Kostenstellen
+ * Zentrale Hooks für Budget-Verwaltung mit Kostenstellen
  * Konsistente Query-Keys und wiederverwendbare Hooks
  *
  * Phase 2.1 der Feature-Roadmap (Januar 2026)
@@ -22,12 +22,12 @@ import {
 // ==================== Stale Time Konfiguration ====================
 
 const STALE_TIMES = {
-  kostenstellen: 10 * 60 * 1000, // 10 Minuten - Kostenstellen aendern sich selten
-  budgets: 2 * 60 * 1000,       // 2 Minuten - Budgets koennen sich durch Buchungen aendern
-  budgetList: 1 * 60 * 1000,    // 1 Minute - Liste kann sich durch neue Budgets aendern
-  summary: 30 * 1000,           // 30 Sekunden - Summary aendert sich mit Buchungen
-  lines: 1 * 60 * 1000,         // 1 Minute - Positionen aendern sich selten
-  allocations: 30 * 1000,       // 30 Sekunden - Zuweisungen koennen schnell kommen
+  kostenstellen: 10 * 60 * 1000, // 10 Minuten - Kostenstellen ändern sich selten
+  budgets: 2 * 60 * 1000,       // 2 Minuten - Budgets können sich durch Buchungen ändern
+  budgetList: 1 * 60 * 1000,    // 1 Minute - Liste kann sich durch neue Budgets ändern
+  summary: 30 * 1000,           // 30 Sekunden - Summary ändert sich mit Buchungen
+  lines: 1 * 60 * 1000,         // 1 Minute - Positionen ändern sich selten
+  allocations: 30 * 1000,       // 30 Sekunden - Zuweisungen können schnell kommen
   variance: 2 * 60 * 1000,      // 2 Minuten - Report muss nicht realtime sein
   alerts: 30 * 1000,            // 30 Sekunden - Alerts sollten schnell angezeigt werden
 } as const;
@@ -179,7 +179,7 @@ export function useActivateBudget() {
 }
 
 /**
- * Budget schliessen
+ * Budget schließen
  */
 export function useCloseBudget() {
   const queryClient = useQueryClient();
@@ -300,7 +300,7 @@ export function useBudgetAlerts(params?: {
 }
 
 /**
- * Alert bestaetigen
+ * Alert bestätigen
  */
 export function useAcknowledgeAlert() {
   const queryClient = useQueryClient();

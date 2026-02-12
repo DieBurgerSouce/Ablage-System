@@ -1,5 +1,5 @@
 /**
- * Inventory Stats Cards - Uebersicht Lagerkennzahlen
+ * Inventory Stats Cards - Übersicht Lagerkennzahlen
  */
 
 import { Card, CardContent } from '@/components/ui/card';
@@ -48,7 +48,7 @@ export function InventoryStatsCards() {
       bgColor: lowStock && lowStock.length > 0 ? 'bg-orange-500/10' : 'bg-muted/10',
     },
     {
-      title: 'Wareneingaenge',
+      title: 'Wareneingänge',
       value: receiptStats?.pending ?? 0,
       description: 'Offen zur Verarbeitung',
       icon: Package,

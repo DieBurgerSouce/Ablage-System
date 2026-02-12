@@ -1,8 +1,8 @@
 /**
  * ReportPreview Component
  *
- * Zeigt eine Vorschau der Report-Daten als Tabelle oder Platzhalter fuer Chart-Typen.
- * Bietet Download-Buttons fuer verschiedene Formate.
+ * Zeigt eine Vorschau der Report-Daten als Tabelle oder Platzhalter für Chart-Typen.
+ * Bietet Download-Buttons für verschiedene Formate.
  */
 
 import {
@@ -104,7 +104,7 @@ export function ReportPreview({
         <CardContent className="flex flex-col items-center justify-center py-12">
           <BarChart3 className="h-16 w-16 text-muted-foreground mb-4" />
           <p className="text-muted-foreground text-center">
-            Vorschau fuer {chartTypeLabels[chartType] || chartType} wird nach dem Ausfuehren angezeigt
+            Vorschau für {chartTypeLabels[chartType] || chartType} wird nach dem Ausführen angezeigt
           </p>
         </CardContent>
       </Card>
@@ -119,7 +119,7 @@ export function ReportPreview({
           <CardTitle className="text-base">Datenvorschau</CardTitle>
           {preview && (
             <CardDescription>
-              {preview.preview_limit} von {preview.total_available} Eintraegen
+              {preview.preview_limit} von {preview.total_available} Einträgen
             </CardDescription>
           )}
         </CardHeader>
@@ -155,7 +155,7 @@ export function ReportPreview({
           ) : (
             <div className="text-center text-muted-foreground py-8">
               <TableIcon className="h-10 w-10 mx-auto mb-3 opacity-50" />
-              <p>Keine Daten fuer die Vorschau verfuegbar.</p>
+              <p>Keine Daten für die Vorschau verfügbar.</p>
             </div>
           )}
         </CardContent>

@@ -1,7 +1,7 @@
 /**
  * Berichte Index Route - Reports Dashboard
  *
- * Zeigt die Haupt-Uebersicht mit Meine Berichte, Vorlagen und Geplante Exporte.
+ * Zeigt die Haupt-Übersicht mit Meine Berichte, Vorlagen und Geplante Exporte.
  */
 
 import { createFileRoute } from '@tanstack/react-router';

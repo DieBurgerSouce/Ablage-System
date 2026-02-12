@@ -56,7 +56,7 @@ const ROUTE_LABELS: Record<string, string> = {
     '/document-groups': 'Dokumentengruppen',
 
     // Ablage dynamic routes (partial matches handled in getDynamicLabel)
-    // vorgaenge is handled via getDynamicLabel
+    // vorgänge is handled via getDynamicLabel
 
     // Finanzen
     '/finanzen': 'Finanzen',
@@ -93,7 +93,7 @@ function getDynamicLabel(segment: string, fullPath: string): string {
         'einnahmen': 'Einnahmen',
         'ausgaben': 'Ausgaben',
         'belege': 'Belege',
-        'vorgaenge': 'Vorgänge',
+        'vorgänge': 'Vorgänge',
         'folie': 'Folie',
         'messer': 'Spargelmesser',
         'anfragen': 'Anfragen',

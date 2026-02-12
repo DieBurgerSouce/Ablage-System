@@ -80,7 +80,7 @@ export function useOfflineSync(options: UseOfflineSyncOptions = {}): UseOfflineS
         total: 0,
         succeeded: 0,
         failed: 0,
-        errors: [{ mutationId: '', error: 'Offline - Sync nicht moeglich' }],
+        errors: [{ mutationId: '', error: 'Offline - Sync nicht möglich' }],
       };
     }
 

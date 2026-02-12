@@ -1,7 +1,7 @@
 /**
  * Privat Portfolio Route
  *
- * Portfolio-Dashboard mit Vermoegensübersicht,
+ * Portfolio-Dashboard mit Vermögensübersicht,
  * finanzieller Gesundheit und Zielen.
  */
 

@@ -1,7 +1,7 @@
 /**
  * useNotificationPreferences Hook
  *
- * Aggregierter Hook fuer Benachrichtigungs-Praeferenzen.
+ * Aggregierter Hook für Benachrichtigungs-Praeferenzen.
  * Kombiniert alle relevanten Queries und Mutations.
  */
 

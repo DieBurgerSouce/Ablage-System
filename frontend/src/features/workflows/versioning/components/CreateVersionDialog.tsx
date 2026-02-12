@@ -86,8 +86,8 @@ export function CreateVersionDialog({
   };
 
   const changeTypeDescriptions: Record<ChangeType, string> = {
-    major: 'Inkompatible Aenderungen, neue Features',
-    minor: 'Neue Features, rueckwaertskompatibel',
+    major: 'Inkompatible Änderungen, neue Features',
+    minor: 'Neue Features, rückwärtskompatibel',
     patch: 'Bugfixes, kleine Verbesserungen',
   };
 
@@ -101,7 +101,7 @@ export function CreateVersionDialog({
           </DialogTitle>
           <DialogDescription>
             Erstellen Sie eine neue Version des Workflows mit einer Beschreibung
-            der Aenderungen.
+            der Änderungen.
           </DialogDescription>
         </DialogHeader>
 
@@ -116,13 +116,13 @@ export function CreateVersionDialog({
 
           {/* Change Type */}
           <div className="space-y-2">
-            <Label htmlFor="changeType">Aenderungstyp</Label>
+            <Label htmlFor="changeType">Änderungstyp</Label>
             <Select
               value={changeType}
               onValueChange={(value) => setChangeType(value as ChangeType)}
             >
               <SelectTrigger id="changeType">
-                <SelectValue placeholder="Typ waehlen" />
+                <SelectValue placeholder="Typ wählen" />
               </SelectTrigger>
               <SelectContent>
                 {(['major', 'minor', 'patch'] as ChangeType[]).map((type) => (
@@ -149,16 +149,16 @@ export function CreateVersionDialog({
 
           {/* Change Description */}
           <div className="space-y-2">
-            <Label htmlFor="changeDescription">Aenderungsbeschreibung *</Label>
+            <Label htmlFor="changeDescription">Änderungsbeschreibung *</Label>
             <Textarea
               id="changeDescription"
               value={changeDescription}
               onChange={(e) => setChangeDescription(e.target.value)}
-              placeholder="Beschreiben Sie die Aenderungen in dieser Version..."
+              placeholder="Beschreiben Sie die Änderungen in dieser Version..."
               rows={4}
             />
             <p className="text-xs text-muted-foreground">
-              Diese Beschreibung hilft bei der Nachverfolgung von Aenderungen.
+              Diese Beschreibung hilft bei der Nachverfolgung von Änderungen.
             </p>
           </div>
         </div>

@@ -1,6 +1,6 @@
 /**
  * Developer Portal Route
- * Route fuer das Developer Portal mit API-Dokumentation, SDKs und Webhooks
+ * Route für das Developer Portal mit API-Dokumentation, SDKs und Webhooks
  */
 
 import { createFileRoute } from '@tanstack/react-router';

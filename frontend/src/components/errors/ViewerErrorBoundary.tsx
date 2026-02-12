@@ -1,7 +1,7 @@
 /**
- * ViewerErrorBoundary - Error Boundary fuer Dokument-Viewer
+ * ViewerErrorBoundary - Error Boundary für Dokument-Viewer
  *
- * Faengt Fehler in Viewer-Komponenten ab und verhindert App-Abstuerze.
+ * Fängt Fehler in Viewer-Komponenten ab und verhindert App-Abstürze.
  * Zeigt benutzerfreundliche deutsche Fehlermeldungen.
  *
  * @example
@@ -23,13 +23,13 @@ import { logger } from '@/lib/logger';
 
 interface ViewerErrorBoundaryProps {
     children: ReactNode;
-    /** Dateityp fuer spezifische Fehlermeldungen */
+    /** Dateityp für spezifische Fehlermeldungen */
     fileType?: 'pdf' | 'docx' | 'xlsx' | 'email' | 'image' | 'unknown';
     /** Optionaler Callback bei Fehler */
     onError?: (error: Error, errorInfo: ErrorInfo) => void;
     /** Optionale Fallback-Komponente */
     fallback?: ReactNode;
-    /** CSS-Klasse fuer Container */
+    /** CSS-Klasse für Container */
     className?: string;
 }
 

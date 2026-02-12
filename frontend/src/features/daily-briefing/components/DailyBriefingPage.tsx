@@ -1,7 +1,7 @@
 /**
  * Daily Briefing Page
  *
- * Hauptseite fuer das KI-Tagesbriefing.
+ * Hauptseite für das KI-Tagesbriefing.
  * Zeigt Zusammenfassung, kategorisierte Tabs und Insight-Karten.
  */
 
@@ -108,7 +108,7 @@ export function DailyBriefingPage() {
             className={`h-4 w-4 mr-2 ${generateMutation.isPending ? "animate-spin" : ""}`}
           />
           {generateMutation.isPending
-            ? "Generierung laeuft..."
+            ? "Generierung läuft..."
             : "Neu generieren"}
         </Button>
       </div>

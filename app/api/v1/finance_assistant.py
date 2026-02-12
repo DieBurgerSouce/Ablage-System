@@ -10,7 +10,9 @@ Endpoints:
 - Buchungsvorschlaege
 """
 
-from typing import Any, List, Optional
+from typing import List, Optional
+
+from app.core.types import JSONDict, JSONValue
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -57,7 +59,7 @@ class ActionData(BaseModel):
 
     action_type: str
     description: str
-    parameters: dict[str, Any]
+    parameters: JSONDict
     confidence: float
     requires_confirmation: bool
     affected_count: int
@@ -85,7 +87,7 @@ class InsightData(BaseModel):
     category: str
     severity: str
     related_documents: List[UUID] = Field(default_factory=list)
-    data: Optional[dict[str, Any]] = None
+    data: Optional[JSONDict] = None
 
 
 class ChatResponse(BaseModel):
@@ -98,7 +100,7 @@ class ChatResponse(BaseModel):
     actions: List[ActionData] = Field(default_factory=list)
     booking_suggestions: List[BookingSuggestionData] = Field(default_factory=list)
     insights: List[InsightData] = Field(default_factory=list)
-    search_results: Optional[List[dict[str, Any]]] = None
+    search_results: Optional[List[JSONDict]] = None
     result_count: int = 0
     processing_time_ms: int = 0
     follow_up_suggestions: List[str] = Field(default_factory=list)
@@ -109,7 +111,7 @@ class ExecuteActionRequest(BaseModel):
     """Anfrage zur Aktionsausfuehrung."""
 
     action_type: str = Field(..., pattern="^[a-z_]+$")
-    parameters: dict[str, Any]
+    parameters: JSONDict
 
 
 class ExecuteActionResponse(BaseModel):
@@ -123,7 +125,7 @@ class ExecuteActionResponse(BaseModel):
     rollback_possible: bool = False
     execution_time_ms: int = 0
     error_details: Optional[str] = None
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    metadata: JSONDict = Field(default_factory=dict)
 
 
 class RollbackRequest(BaseModel):
@@ -143,7 +145,7 @@ class InsightResponse(BaseModel):
     details: str
     recommendations: List[str] = Field(default_factory=list)
     affected_entities: List[UUID] = Field(default_factory=list)
-    metrics: dict[str, Any] = Field(default_factory=dict)
+    metrics: JSONDict = Field(default_factory=dict)
     action_url: Optional[str] = None
 
 
@@ -369,7 +371,7 @@ async def get_insights(
 @router.get("/help")
 async def get_assistant_help(
     current_user: User = Depends(get_current_user),
-) -> dict[str, Any]:
+) -> JSONDict:
     """Gibt Hilfe-Informationen zum Assistenten zurueck."""
     return {
         "version": "2.0",

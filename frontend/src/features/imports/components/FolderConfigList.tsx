@@ -87,7 +87,7 @@ function WatchStatusBadge({ isWatching, isActive }: WatchStatusBadgeProps) {
     return (
       <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
         <Eye className="mr-1 h-3 w-3" />
-        Ueberwacht
+        Überwacht
       </Badge>
     );
   }
@@ -124,7 +124,7 @@ export function FolderConfigList({ onCreateNew, onEdit }: FolderConfigListProps)
       await triggerScan.mutateAsync(configId);
       toast({
         title: 'Ordner-Scan gestartet',
-        description: `Der Scan fuer "${configName}" wurde gestartet.`,
+        description: `Der Scan für "${configName}" wurde gestartet.`,
       });
     } catch (err) {
       toast({
@@ -139,13 +139,13 @@ export function FolderConfigList({ onCreateNew, onEdit }: FolderConfigListProps)
     try {
       await deleteConfig.mutateAsync(configId);
       toast({
-        title: 'Konfiguration geloescht',
-        description: 'Die Ordner-Konfiguration wurde erfolgreich geloescht.',
+        title: 'Konfiguration gelöscht',
+        description: 'Die Ordner-Konfiguration wurde erfolgreich gelöscht.',
       });
       setDeleteConfirmId(null);
     } catch (err) {
       toast({
-        title: 'Fehler beim Loeschen',
+        title: 'Fehler beim Löschen',
         description: err instanceof Error ? err.message : 'Unbekannter Fehler',
         variant: 'destructive',
       });
@@ -187,7 +187,7 @@ export function FolderConfigList({ onCreateNew, onEdit }: FolderConfigListProps)
           <Folder className="h-12 w-12 text-muted-foreground mb-4" />
           <h3 className="text-lg font-medium mb-2">Keine Ordner-Konfigurationen</h3>
           <p className="text-muted-foreground text-center mb-4">
-            Erstellen Sie eine neue Konfiguration, um Ordner automatisch zu ueberwachen.
+            Erstellen Sie eine neue Konfiguration, um Ordner automatisch zu überwachen.
           </p>
           {onCreateNew && (
             <Button onClick={onCreateNew}>
@@ -324,7 +324,7 @@ export function FolderConfigList({ onCreateNew, onEdit }: FolderConfigListProps)
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Loeschen</TooltipContent>
+                          <TooltipContent>Löschen</TooltipContent>
                         </Tooltip>
                       </div>
                     </TooltipProvider>
@@ -343,10 +343,10 @@ export function FolderConfigList({ onCreateNew, onEdit }: FolderConfigListProps)
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Konfiguration loeschen?</AlertDialogTitle>
+            <AlertDialogTitle>Konfiguration löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Diese Aktion kann nicht rueckgaengig gemacht werden. Die Konfiguration
-              und alle zugehoerigen Einstellungen werden dauerhaft geloescht.
+              Diese Aktion kann nicht rückgängig gemacht werden. Die Konfiguration
+              und alle zugehörigen Einstellungen werden dauerhaft gelöscht.
               Bereits importierte Dokumente bleiben erhalten.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -361,7 +361,7 @@ export function FolderConfigList({ onCreateNew, onEdit }: FolderConfigListProps)
               ) : (
                 <Trash2 className="mr-2 h-4 w-4" />
               )}
-              Loeschen
+              Löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -11,7 +11,9 @@ Phase 2.2 der Feature-Roadmap (Januar 2026)
 """
 
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -83,7 +85,7 @@ class PredictiveActionResponse(BaseModel):
     status: str
     created_at: datetime
 
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: JSONDict = Field(default_factory=dict)
 
     class Config:
         from_attributes = True

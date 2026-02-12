@@ -1,5 +1,5 @@
 /**
- * Compliance Deadline Widget fuer Dashboard
+ * Compliance Deadline Widget für Dashboard
  *
  * Zeigt Compliance-Fristen und Aufbewahrungspflichten:
  * - GoBD-Fristen (10 Jahre)
@@ -8,7 +8,7 @@
  * - Vertragsfristen
  *
  * Enterprise-Grade Features:
- * - ErrorBoundary fuer graceful degradation
+ * - ErrorBoundary für graceful degradation
  * - Konsistente Fehlerbehandlung
  * - Real-time Updates via WebSocket
  */
@@ -212,7 +212,7 @@ function ComplianceDeadlineWidgetContent() {
         return (
             <div className="text-center py-6 text-muted-foreground">
                 <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
-                <p className="text-sm">Compliance-Daten nicht verfuegbar</p>
+                <p className="text-sm">Compliance-Daten nicht verfügbar</p>
             </div>
         );
     }
@@ -288,7 +288,7 @@ function ComplianceDeadlineWidgetContent() {
                 <Progress value={gobdPercentage} className="h-1.5" />
                 {summary.retention_summary.gdpr_pending_deletion > 0 && (
                     <p className="text-xs text-muted-foreground mt-2">
-                        {summary.retention_summary.gdpr_pending_deletion} DSGVO-Loeschungen ausstehend
+                        {summary.retention_summary.gdpr_pending_deletion} DSGVO-Löschungen ausstehend
                     </p>
                 )}
             </div>
@@ -317,7 +317,7 @@ function ComplianceDeadlineWidgetContent() {
                 to="/admin/compliance"
                 className="flex items-center justify-center gap-2 text-sm text-primary hover:underline"
             >
-                Compliance-Uebersicht
+                Compliance-Übersicht
                 <ChevronRight className="h-4 w-4" />
             </Link>
         </div>

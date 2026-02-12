@@ -1,8 +1,8 @@
 /**
  * LoopNode Component
  *
- * ReactFlow Knoten fuer Schleifen.
- * Unterstuetzt count, while und for_each Schleifentypen.
+ * ReactFlow Knoten für Schleifen.
+ * Unterstützt count, while und for_each Schleifentypen.
  */
 
 import { memo, useMemo } from 'react';

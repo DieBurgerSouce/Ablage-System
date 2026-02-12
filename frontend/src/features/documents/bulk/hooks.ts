@@ -1,7 +1,7 @@
 /**
  * Document Bulk Operations Hooks
  *
- * React Hooks fuer Massenaktionen auf Dokumenten mit TanStack Query.
+ * React Hooks für Massenaktionen auf Dokumenten mit TanStack Query.
  *
  * Features:
  * - Selection State Management (via useBulkSelection)
@@ -36,7 +36,7 @@ import type { Document } from '../types';
 // =============================================================================
 
 export interface UseDocumentBulkOperationsOptions extends UseBulkSelectionOptions {
-  /** Query-Key fuer Invalidierung */
+  /** Query-Key für Invalidierung */
   queryKey?: string[];
   /** Callback nach erfolgreicher Operation */
   onSuccess?: (result: BulkOperationResult, action: string) => void;
@@ -191,9 +191,9 @@ export function useDocumentBulkOperations(
   // Tag mutations
   const addTagsMutation = useMutation({
     mutationFn: (tags: string[]) => bulkAddTags(selectedIds, tags),
-    onMutate: () => startBatch('Tags hinzufuegen', selectedCount),
+    onMutate: () => startBatch('Tags hinzufügen', selectedCount),
     onSuccess: (result) =>
-      handleResult(result, 'tag', `Tags zu ${result.processed} Dokumenten hinzugefuegt`),
+      handleResult(result, 'tag', `Tags zu ${result.processed} Dokumenten hinzugefügt`),
     onError: (error: Error) => handleError(error, 'tag'),
   });
 
@@ -209,7 +209,7 @@ export function useDocumentBulkOperations(
     mutationFn: (tags: string[]) => bulkSetTags(selectedIds, tags),
     onMutate: () => startBatch('Tags ersetzen', selectedCount),
     onSuccess: (result) =>
-      handleResult(result, 'tag', `Tags fuer ${result.processed} Dokumente ersetzt`),
+      handleResult(result, 'tag', `Tags für ${result.processed} Dokumente ersetzt`),
     onError: (error: Error) => handleError(error, 'tag'),
   });
 
@@ -225,9 +225,9 @@ export function useDocumentBulkOperations(
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: (reason?: string) => bulkDeleteDocuments(selectedIds, reason),
-    onMutate: () => startBatch('Loeschen', selectedCount),
+    onMutate: () => startBatch('Löschen', selectedCount),
     onSuccess: (result) =>
-      handleResult(result, 'delete', `${result.processed} Dokumente geloescht`),
+      handleResult(result, 'delete', `${result.processed} Dokumente gelöscht`),
     onError: (error: Error) => handleError(error, 'delete'),
   });
 
@@ -264,7 +264,7 @@ export function useDocumentBulkOperations(
   const addTags = useCallback(
     async (tags: string[]) => {
       if (selectedCount === 0) {
-        toast.warning('Keine Dokumente ausgewaehlt');
+        toast.warning('Keine Dokumente ausgewählt');
         return;
       }
       await addTagsMutation.mutateAsync(tags);
@@ -275,7 +275,7 @@ export function useDocumentBulkOperations(
   const removeTags = useCallback(
     async (tags: string[]) => {
       if (selectedCount === 0) {
-        toast.warning('Keine Dokumente ausgewaehlt');
+        toast.warning('Keine Dokumente ausgewählt');
         return;
       }
       await removeTagsMutation.mutateAsync(tags);
@@ -286,7 +286,7 @@ export function useDocumentBulkOperations(
   const setTags = useCallback(
     async (tags: string[]) => {
       if (selectedCount === 0) {
-        toast.warning('Keine Dokumente ausgewaehlt');
+        toast.warning('Keine Dokumente ausgewählt');
         return;
       }
       await setTagsMutation.mutateAsync(tags);
@@ -297,7 +297,7 @@ export function useDocumentBulkOperations(
   const moveToFolder = useCallback(
     async (folderId: string) => {
       if (selectedCount === 0) {
-        toast.warning('Keine Dokumente ausgewaehlt');
+        toast.warning('Keine Dokumente ausgewählt');
         return;
       }
       await moveMutation.mutateAsync(folderId);
@@ -308,7 +308,7 @@ export function useDocumentBulkOperations(
   const deleteDocuments = useCallback(
     async (reason?: string) => {
       if (selectedCount === 0) {
-        toast.warning('Keine Dokumente ausgewaehlt');
+        toast.warning('Keine Dokumente ausgewählt');
         return;
       }
       await deleteMutation.mutateAsync(reason);
@@ -319,7 +319,7 @@ export function useDocumentBulkOperations(
   const exportDocuments = useCallback(
     async (format: ExportFormat = 'zip', includeMetadata: boolean = true) => {
       if (selectedCount === 0) {
-        toast.warning('Keine Dokumente ausgewaehlt');
+        toast.warning('Keine Dokumente ausgewählt');
         return;
       }
       await exportMutation.mutateAsync({ format, includeMetadata });
@@ -330,7 +330,7 @@ export function useDocumentBulkOperations(
   const categorize = useCallback(
     async (category: string) => {
       if (selectedCount === 0) {
-        toast.warning('Keine Dokumente ausgewaehlt');
+        toast.warning('Keine Dokumente ausgewählt');
         return;
       }
       await categorizeMutation.mutateAsync(category);

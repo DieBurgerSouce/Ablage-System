@@ -143,7 +143,7 @@ export interface ExternalSource {
 // ==================== API Functions ====================
 
 /**
- * Liefert umfassendes Risikoprofil fuer eine Entity
+ * Liefert umfassendes Risikoprofil für eine Entity
  */
 export async function getEntityRiskProfile(entityId: string): Promise<RiskProfile> {
   const response = await apiClient.get<RiskProfile>(
@@ -153,7 +153,7 @@ export async function getEntityRiskProfile(entityId: string): Promise<RiskProfil
 }
 
 /**
- * Liefert Trend-Analyse fuer eine Entity
+ * Liefert Trend-Analyse für eine Entity
  */
 export async function getEntityTrend(
   entityId: string,
@@ -167,7 +167,7 @@ export async function getEntityTrend(
 }
 
 /**
- * Liefert Benchmark-Vergleich fuer eine Entity
+ * Liefert Benchmark-Vergleich für eine Entity
  */
 export async function getEntityBenchmark(
   entityId: string,
@@ -181,7 +181,7 @@ export async function getEntityBenchmark(
 }
 
 /**
- * Liefert Netzwerk-Analyse fuer eine Entity
+ * Liefert Netzwerk-Analyse für eine Entity
  */
 export async function getEntityNetwork(
   entityId: string
@@ -193,7 +193,7 @@ export async function getEntityNetwork(
 }
 
 /**
- * Prueft externe Datenquellen fuer eine Entity
+ * Prüft externe Datenquellen für eine Entity
  */
 export async function checkExternalSources(entityId: string): Promise<ExternalSourceCheck> {
   const response = await apiClient.get<ExternalSourceCheck>(
@@ -203,7 +203,7 @@ export async function checkExternalSources(entityId: string): Promise<ExternalSo
 }
 
 /**
- * Liefert Portfolio-Risikouebersicht
+ * Liefert Portfolio-Risikoübersicht
  */
 export async function getPortfolioRisk(
   entityType?: 'customer' | 'supplier'
@@ -216,7 +216,7 @@ export async function getPortfolioRisk(
 }
 
 /**
- * Liefert verfuegbare Branchen-Benchmarks
+ * Liefert verfügbare Branchen-Benchmarks
  */
 export async function getIndustryBenchmarks(): Promise<IndustryBenchmark[]> {
   const response = await apiClient.get<IndustryBenchmark[]>('/risk-intelligence/benchmarks');
@@ -224,7 +224,7 @@ export async function getIndustryBenchmarks(): Promise<IndustryBenchmark[]> {
 }
 
 /**
- * Liefert alle moeglichen Trend-Richtungen
+ * Liefert alle möglichen Trend-Richtungen
  */
 export async function getTrendDirections(): Promise<TrendDirection[]> {
   const response = await apiClient.get<TrendDirection[]>('/risk-intelligence/trend-directions');
@@ -232,7 +232,7 @@ export async function getTrendDirections(): Promise<TrendDirection[]> {
 }
 
 /**
- * Liefert verfuegbare externe Datenquellen
+ * Liefert verfügbare externe Datenquellen
  */
 export async function getExternalSources(): Promise<ExternalSource[]> {
   const response = await apiClient.get<ExternalSource[]>('/risk-intelligence/external-sources');

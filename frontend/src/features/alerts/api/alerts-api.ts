@@ -1,7 +1,7 @@
 /**
  * Alert Center API Client
  *
- * API-Funktionen fuer das zentrale Alert-Management.
+ * API-Funktionen für das zentrale Alert-Management.
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";

@@ -1,10 +1,10 @@
 # Visual Regression Testing mit Storybook
 
-Dieses Verzeichnis enthaelt alle Storybook Stories fuer Visual Regression Testing.
+Dieses Verzeichnis enthält alle Storybook Stories für Visual Regression Testing.
 
 ## Setup
 
-### 1. Abhaengigkeiten installieren
+### 1. Abhängigkeiten installieren
 
 ```bash
 npm install --save-dev @storybook/react-vite @storybook/addon-essentials @storybook/addon-a11y @storybook/addon-interactions @storybook/addon-links @storybook/addon-coverage @storybook/test-runner @storybook/test @storybook/theming @storybook/manager-api @percy/storybook axe-playwright
@@ -18,7 +18,7 @@ npm run storybook
 
 Storybook ist dann erreichbar unter: http://localhost:6006
 
-### 3. Tests ausfuehren
+### 3. Tests ausführen
 
 ```bash
 # Interaction + A11y Tests
@@ -87,9 +87,9 @@ export const DarkMode: Story = {
 
 ## Viewports
 
-Vordefinierte Viewports fuer responsive Testing:
+Vordefinierte Viewports für responsive Testing:
 
-| Name | Breite | Hoehe |
+| Name | Breite | Höhe |
 |------|--------|-------|
 | Mobile | 375px | 667px |
 | Tablet | 768px | 1024px |
@@ -117,7 +117,7 @@ Probleme werden im Storybook A11y Panel angezeigt.
 export PERCY_TOKEN=<your-token>
 ```
 
-2. Storybook bauen und Percy ausfuehren:
+2. Storybook bauen und Percy ausführen:
 ```bash
 npm run test:visual
 ```
@@ -139,18 +139,18 @@ Folgende Patterns werden von Percy ausgeschlossen:
 
 ## Best Practices
 
-1. **Jede Variante testen**: Erstelle separate Stories fuer jede visuelle Variante
+1. **Jede Variante testen**: Erstelle separate Stories für jede visuelle Variante
 2. **Dark Mode**: Inkludiere immer eine Dark Mode Story
 3. **Responsive**: Nutze die Viewports um responsive Verhalten zu testen
-4. **Interaction Tests**: Nutze `play` Functions fuer Interaktionen
+4. **Interaction Tests**: Nutze `play` Functions für Interaktionen
 5. **A11y**: Behebe alle A11y-Fehler bevor du Visual Tests machst
 
-## Neue Story hinzufuegen
+## Neue Story hinzufügen
 
 1. Erstelle `ComponentName.stories.tsx` in `src/stories/`
 2. Importiere die Komponente
 3. Definiere Meta-Objekt mit `title`, `component`, `parameters`
-4. Exportiere Stories fuer jede Variante
-5. Fuege Dark Mode Story hinzu
+4. Exportiere Stories für jede Variante
+5. Füge Dark Mode Story hinzu
 6. Teste lokal mit `npm run storybook`
-7. Committe und erstelle PR - Percy laeuft automatisch in CI
+7. Committe und erstelle PR - Percy läuft automatisch in CI

@@ -200,7 +200,7 @@ export function useUpdateRetentionSetting() {
 }
 
 /**
- * Aufbewahrungseinstellung zuruecksetzen
+ * Aufbewahrungseinstellung zurücksetzen
  */
 export function useResetRetentionSetting() {
   const queryClient = useQueryClient()
@@ -422,7 +422,7 @@ export function useRevokeTaxAdvisorInvite() {
 }
 
 /**
- * Steuerberater-Zugang verlaengern
+ * Steuerberater-Zugang verlängern
  */
 export function useExtendTaxAdvisorAccess() {
   const queryClient = useQueryClient()

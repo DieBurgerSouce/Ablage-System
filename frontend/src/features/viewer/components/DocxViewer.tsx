@@ -2,7 +2,7 @@
  * DocxViewer - Word Document Viewer
  *
  * Rendert DOCX-Dateien im Browser mithilfe von Mammoth.js.
- * Konvertiert Word-Dokumente zu HTML fuer die Anzeige.
+ * Konvertiert Word-Dokumente zu HTML für die Anzeige.
  * HTML wird mit DOMPurify sanitiert um XSS-Angriffe zu verhindern.
  */
 
@@ -169,7 +169,7 @@ export function DocxViewer({ fileData, className }: DocxViewerProps) {
     useEffect(() => {
         if (contentRef.current && htmlContent) {
             // SICHERHEIT: Verwende RETURN_DOM_FRAGMENT um innerHTML komplett zu vermeiden
-            // DOMPurify gibt direkt ein DocumentFragment zurueck
+            // DOMPurify gibt direkt ein DocumentFragment zurück
             const fragment = DOMPurify.sanitize(htmlContent, {
                 ...PURIFY_CONFIG,
                 RETURN_DOM_FRAGMENT: true,

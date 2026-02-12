@@ -1,8 +1,8 @@
 /**
  * ActionNode Component
  *
- * ReactFlow Knoten fuer Workflow-Aktionen.
- * Unterstuetzt 20+ verschiedene Aktionstypen.
+ * ReactFlow Knoten für Workflow-Aktionen.
+ * Unterstützt 20+ verschiedene Aktionstypen.
  */
 
 import { memo, useMemo } from 'react';

@@ -1,7 +1,7 @@
 /**
  * Slack Integration API.
  *
- * API-Funktionen fuer die Slack-Integration.
+ * API-Funktionen für die Slack-Integration.
  */
 
 import { apiClient } from '@/lib/api/client';
@@ -28,7 +28,7 @@ const BASE_URL = '/api/v1/slack';
 // =============================================================================
 
 /**
- * Prueft den Verbindungs-Status der Slack-Integration.
+ * Prüft den Verbindungs-Status der Slack-Integration.
  */
 export async function getSlackStatus(): Promise<SlackConnectionStatus> {
     const response = await apiClient.get<SlackConnectionStatus>(`${BASE_URL}/status`);
@@ -48,7 +48,7 @@ export async function getSlackStatistics(): Promise<SlackStatistics> {
 // =============================================================================
 
 /**
- * Listet alle Slack-Kanaele auf.
+ * Listet alle Slack-Kanäle auf.
  */
 export async function listSlackChannels(params?: {
     company_id?: string;
@@ -91,7 +91,7 @@ export async function updateSlackChannel(
 }
 
 /**
- * Loescht einen Slack-Kanal.
+ * Löscht einen Slack-Kanal.
  */
 export async function deleteSlackChannel(channelId: string): Promise<void> {
     await apiClient.delete(`${BASE_URL}/channels/${channelId}`);
@@ -145,7 +145,7 @@ export async function getMySlackMapping(): Promise<SlackUserMapping | null> {
 }
 
 /**
- * Erstellt ein Slack-Mapping fuer den aktuellen Benutzer.
+ * Erstellt ein Slack-Mapping für den aktuellen Benutzer.
  */
 export async function createMySlackMapping(
     data: SlackUserMappingCreate
@@ -155,7 +155,7 @@ export async function createMySlackMapping(
 }
 
 /**
- * Loescht das eigene Slack-Mapping.
+ * Löscht das eigene Slack-Mapping.
  */
 export async function deleteMySlackMapping(): Promise<void> {
     await apiClient.delete(`${BASE_URL}/user-mapping`);
@@ -174,7 +174,7 @@ export async function listAllUserMappings(): Promise<SlackUserMapping[]> {
 // =============================================================================
 
 /**
- * Ruft alle verfuegbaren Notification-Typen ab.
+ * Ruft alle verfügbaren Notification-Typen ab.
  */
 export async function getNotificationTypes(): Promise<SlackNotificationTypeInfo[]> {
     const response = await apiClient.get<SlackNotificationTypeInfo[]>(

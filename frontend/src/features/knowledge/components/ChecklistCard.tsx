@@ -113,7 +113,7 @@ export function ChecklistCard({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => onDelete(checklist)} className="text-destructive">
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Loeschen
+                  Löschen
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -144,7 +144,7 @@ export function ChecklistCard({
             ))}
             {sortedItems.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-2">
-                Keine Eintraege
+                Keine Einträge
               </p>
             )}
           </div>
@@ -157,7 +157,7 @@ export function ChecklistCard({
               onClick={() => onAddItem(checklist.id)}
             >
               <Plus className="h-4 w-4 mr-2" />
-              Eintrag hinzufuegen
+              Eintrag hinzufügen
             </Button>
           )}
 
@@ -205,7 +205,7 @@ function ChecklistItemRow({ item, onToggle }: ChecklistItemRowProps) {
         )}
         {item.due_date && (
           <p className={cn('text-xs mt-1', isOverdue ? 'text-destructive' : 'text-muted-foreground')}>
-            Faellig: {new Date(item.due_date).toLocaleDateString('de-DE')}
+            Fällig: {new Date(item.due_date).toLocaleDateString('de-DE')}
           </p>
         )}
       </div>

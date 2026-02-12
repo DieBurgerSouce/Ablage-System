@@ -47,7 +47,7 @@ export interface DuplicateFilterRequest {
 }
 
 /**
- * Liste alle gespeicherten Filter fuer ein Feature
+ * Liste alle gespeicherten Filter für ein Feature
  */
 export async function getSavedFilters(
   feature: string,
@@ -130,14 +130,14 @@ export async function setDefaultFilter(filterId: string): Promise<SavedFilter> {
 }
 
 /**
- * Entferne den Standard-Filter fuer ein Feature
+ * Entferne den Standard-Filter für ein Feature
  */
 export async function clearDefaultFilter(feature: string): Promise<void> {
   return apiClient.delete(`/api/v1/saved-filters/default/${feature}`)
 }
 
 /**
- * Liste verfuegbare Features
+ * Liste verfügbare Features
  */
 export async function getAvailableFeatures(): Promise<string[]> {
   return apiClient.get<string[]>("/api/v1/saved-filters/features/list")

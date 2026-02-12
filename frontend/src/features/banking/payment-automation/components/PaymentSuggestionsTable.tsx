@@ -1,7 +1,7 @@
 /**
  * Payment Suggestions Table
  *
- * Tabelle mit Zahlungsvorschlaegen und Aktionen.
+ * Tabelle mit Zahlungsvorschlägen und Aktionen.
  */
 
 import { useState } from 'react';
@@ -51,9 +51,9 @@ const PRIORITY_CONFIG: Record<PaymentPriority, { label: string; color: string; i
 };
 
 const REASON_LABELS: Record<string, string> = {
-  skonto_expiring: 'Skonto laeuft ab',
-  due_date_near: 'Faelligkeit naht',
-  overdue: 'Ueberfaellig',
+  skonto_expiring: 'Skonto läuft ab',
+  due_date_near: 'Fälligkeit naht',
+  overdue: 'Überfällig',
   approved_invoice: 'Genehmigt',
   recurring_payment: 'Wiederkehrend',
   manual_request: 'Manuell',
@@ -135,9 +135,9 @@ function SuggestionRow({ suggestion, selected, onToggle }: SuggestionRowProps) {
           {suggestion.days_until_due !== null && (
             <p className="text-xs text-muted-foreground">
               {suggestion.days_until_due < 0
-                ? `${Math.abs(suggestion.days_until_due)} Tage ueberfaellig`
+                ? `${Math.abs(suggestion.days_until_due)} Tage überfällig`
                 : suggestion.days_until_due === 0
-                  ? 'Heute faellig'
+                  ? 'Heute fällig'
                   : `${suggestion.days_until_due} Tage`}
             </p>
           )}
@@ -178,7 +178,7 @@ export function PaymentSuggestionsTable() {
 
   const handleCreateBatch = async () => {
     if (selectedIds.size === 0) {
-      toast.error('Bitte waehlen Sie mindestens einen Vorschlag aus');
+      toast.error('Bitte wählen Sie mindestens einen Vorschlag aus');
       return;
     }
 
@@ -204,7 +204,7 @@ export function PaymentSuggestionsTable() {
         <div>
           <CardTitle className="flex items-center gap-2">
             <Banknote className="h-5 w-5" />
-            Zahlungsvorschlaege
+            Zahlungsvorschläge
           </CardTitle>
           <CardDescription>
             Offene Rechnungen priorisiert nach Strategie
@@ -218,7 +218,7 @@ export function PaymentSuggestionsTable() {
             <SelectContent>
               <SelectItem value="skonto_optimized">Skonto-optimiert</SelectItem>
               <SelectItem value="cashflow_optimized">Cashflow-optimiert</SelectItem>
-              <SelectItem value="deadline_based">Nach Faelligkeit</SelectItem>
+              <SelectItem value="deadline_based">Nach Fälligkeit</SelectItem>
               <SelectItem value="immediate">Sofortzahlung</SelectItem>
             </SelectContent>
           </Select>
@@ -243,10 +243,10 @@ export function PaymentSuggestionsTable() {
                     />
                   </TableHead>
                   <TableHead>Rechnung</TableHead>
-                  <TableHead>Prioritaet</TableHead>
+                  <TableHead>Priorität</TableHead>
                   <TableHead className="text-right">Betrag</TableHead>
                   <TableHead>Skonto bis</TableHead>
-                  <TableHead>Faellig</TableHead>
+                  <TableHead>Fällig</TableHead>
                   <TableHead>Zahlung am</TableHead>
                 </TableRow>
               </TableHeader>
@@ -266,7 +266,7 @@ export function PaymentSuggestionsTable() {
             {selectedIds.size > 0 && (
               <div className="flex items-center justify-between mt-4 p-4 bg-muted rounded-lg">
                 <div>
-                  <p className="font-medium">{selectedIds.size} Zahlungen ausgewaehlt</p>
+                  <p className="font-medium">{selectedIds.size} Zahlungen ausgewählt</p>
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <span>Gesamt: {formatCurrency(totalAmount)}</span>
                     {totalSavings > 0 && (
@@ -290,9 +290,9 @@ export function PaymentSuggestionsTable() {
         ) : (
           <div className="text-center py-8 text-muted-foreground">
             <Banknote className="h-12 w-12 mx-auto mb-4 opacity-20" />
-            <p>Keine Zahlungsvorschlaege verfuegbar</p>
+            <p>Keine Zahlungsvorschläge verfügbar</p>
             <p className="text-sm mt-1">
-              Alle offenen Rechnungen sind bereits beglichen oder haben keine Faelligkeit
+              Alle offenen Rechnungen sind bereits beglichen oder haben keine Fälligkeit
             </p>
           </div>
         )}

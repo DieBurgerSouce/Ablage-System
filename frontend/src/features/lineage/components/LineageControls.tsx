@@ -1,8 +1,8 @@
 /**
  * LineageControls Component
  *
- * Filter- und Zoom-Steuerung fuer das Lineage-Flowchart.
- * Ermoeglicht Filterung nach Event-Typen und Zeitraum.
+ * Filter- und Zoom-Steuerung für das Lineage-Flowchart.
+ * Ermöglicht Filterung nach Event-Typen und Zeitraum.
  */
 
 import { memo, useMemo, useCallback, useState } from 'react';
@@ -71,7 +71,7 @@ export interface LineageControlsProps {
 }
 
 // =============================================================================
-// Event Type Groups (fuer bessere Organisation)
+// Event Type Groups (für bessere Organisation)
 // =============================================================================
 
 const EVENT_TYPE_GROUPS = {
@@ -88,7 +88,7 @@ const EVENT_TYPE_GROUPS = {
     types: ['classification', 'extraction'] as LineageEventType[],
   },
   entityLinking: {
-    label: 'Partner-Verknuepfung',
+    label: 'Partner-Verknüpfung',
     types: ['entity_link', 'entity_unlink'] as LineageEventType[],
   },
   modification: {
@@ -216,7 +216,7 @@ export const LineageControls = memo(function LineageControls({
     [filters, onFiltersChange]
   );
 
-  // Filter zuruecksetzen
+  // Filter zurücksetzen
   const handleResetFilters = useCallback(() => {
     onFiltersChange({
       eventTypes: [],
@@ -248,7 +248,7 @@ export const LineageControls = memo(function LineageControls({
           size="icon"
           className="h-8 w-8"
           onClick={() => zoomIn()}
-          title="Vergroessern"
+          title="Vergrößern"
         >
           <ZoomIn className="h-4 w-4" />
         </Button>
@@ -319,7 +319,7 @@ export const LineageControls = memo(function LineageControls({
                   onClick={handleResetFilters}
                 >
                   <RotateCcw className="h-3 w-3 mr-1" />
-                  Zuruecksetzen
+                  Zurücksetzen
                 </Button>
               )}
             </div>
@@ -395,7 +395,7 @@ export const LineageControls = memo(function LineageControls({
                 }}
               >
                 <SelectTrigger className="h-8">
-                  <SelectValue placeholder="Zeitraum waehlen" />
+                  <SelectValue placeholder="Zeitraum wählen" />
                 </SelectTrigger>
                 <SelectContent>
                   {DATE_PRESETS.map((preset) => (

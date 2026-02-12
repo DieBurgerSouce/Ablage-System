@@ -1,5 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package, Landmark, AlertTriangle, Wallet, Receipt, GitBranch, UserCircle, Shield, Lock, Bookmark, Search, Pin, Database, FileSignature, FilePlus, Building2, BookOpen, BarChart3, MessageCircle, FolderInput, Truck, Gauge, Award, CreditCard, TrendingUp, ShieldAlert, BrainCircuit, Brain, ScrollText, Link2, Trash2, Bell, Users2, HardDrive, Play, ListOrdered, Banknote, Code2, Warehouse, HeartPulse, Sparkles, FileOutput, Calculator, Heart } from 'lucide-react'
+import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package, Landmark, AlertTriangle, Wallet, Receipt, GitBranch, UserCircle, Shield, Lock, Bookmark, Search, Pin, Database, FileSignature, FilePlus, Building2, BookOpen, BarChart3, MessageCircle, FolderInput, Truck, Gauge, Award, CreditCard, TrendingUp, ShieldAlert, BrainCircuit, Brain, ScrollText, Link2, Trash2, Bell, Users2, HardDrive, Play, ListOrdered, Banknote, Code2, Warehouse, HeartPulse, Sparkles, FileOutput, Calculator, Heart, Sliders, Mail, DollarSign, Activity, ListChecks, Calendar, ScanLine, ArrowLeftRight } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { usePermissions } from '@/lib/auth/hooks/use-permissions'
@@ -20,6 +20,7 @@ interface SidebarProps {
 export function Sidebar({ onNavigate }: SidebarProps) {
     const [showAdminMenu, setShowAdminMenu] = useState(false)
     const [showSmartFolders, setShowSmartFolders] = useState(true)
+    const [showReportsMenu, setShowReportsMenu] = useState(false)
     const { user } = useAuth()
     const { canAccess, isAdmin, isEditor } = usePermissions()
     const { savedSearches, pinnedSearches, recordAccess } = useSavedSearches()
@@ -86,6 +87,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             <nav id="main-navigation" className="flex-1 px-4 space-y-2 overflow-y-auto" role="navigation" aria-label="Hauptmenü" tabIndex={-1}>
                 <SidebarLink to="/" icon={LayoutDashboard} label="Dashboard" onNavigate={onNavigate} />
                 <SidebarLink to="/chat" icon={MessageSquare} label="Chat" onNavigate={onNavigate} />
+                <SidebarLink to="/email-import" icon={Mail} label="E-Mail Import" onNavigate={onNavigate} />
                 <SidebarLink to="/upload" icon={Upload} label="Upload Wizard" onNavigate={onNavigate} />
                 <SidebarLink to="/jobs" icon={ListTodo} label="Job Queue" onNavigate={onNavigate} />
                 {permissions.canViewValidation && (
@@ -95,11 +97,33 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                 <SidebarLink to="/document-chains" icon={Link2} label="Auftragsketten" onNavigate={onNavigate} />
                 <SidebarLink to="/admin/datev" icon={FileSpreadsheet} label="DATEV Export" onNavigate={onNavigate} />
                 <SidebarLink to="/admin/datev-connect" icon={Link2} label="DATEVconnect" onNavigate={onNavigate} />
-                <SidebarLink to="/berichte" icon={BarChart3} label="Berichte" onNavigate={onNavigate} />
+
+                {/* Berichte Submenu */}
+                <button
+                    onClick={() => setShowReportsMenu(!showReportsMenu)}
+                    className="w-full flex items-center justify-between px-3 py-2 min-h-[44px] rounded-md text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    aria-expanded={showReportsMenu}
+                    aria-label={showReportsMenu ? "Berichte ausblenden" : "Berichte anzeigen"}
+                >
+                    <span className="flex items-center gap-3">
+                        <BarChart3 className="w-4 h-4" />
+                        Berichte
+                    </span>
+                    <ChevronDown className={`w-4 h-4 transition-transform ${showReportsMenu ? 'rotate-180' : ''}`} />
+                </button>
+                {showReportsMenu && (
+                    <div className="ml-2 space-y-0.5 border-l border-sidebar-border pl-2">
+                        <SidebarLink to="/reports/cost-analysis" icon={DollarSign} label="Kostenauswertung" onNavigate={onNavigate} />
+                        <SidebarLink to="/reports/cashflow-forecast" icon={TrendingUp} label="Cashflow-Prognose" onNavigate={onNavigate} />
+                        <SidebarLink to="/reports/document-volume" icon={Activity} label="Dokumenten-Volumen" onNavigate={onNavigate} />
+                    </div>
+                )}
+
                 <SidebarLink to="/holding" icon={Building2} label="Holding" onNavigate={onNavigate} />
                 <SidebarLink to="/cashflow" icon={TrendingUp} label="Cash-Flow" onNavigate={onNavigate} />
                 <SidebarLink to="/fraud" icon={ShieldAlert} label="Fraud Detection" onNavigate={onNavigate} />
                 <SidebarLink to="/alerts" icon={Bell} label="Alert Center" onNavigate={onNavigate} />
+                <SidebarLink to="/approvals" icon={CheckCircle} label="Freigaben" onNavigate={onNavigate} />
                 <SidebarLink to="/teams" icon={Users2} label="Teams" onNavigate={onNavigate} />
 
                 {/* Ablage-Struktur Section */}
@@ -121,7 +145,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                     <SidebarLink to="/spesen" icon={Receipt} label="Spesen" onNavigate={onNavigate} />
                     <SidebarLink to="/streckengeschaeft" icon={GitBranch} label="Streckengeschäft" onNavigate={onNavigate} />
                     <SidebarLink to="/personal" icon={UserCircle} label="Personal" onNavigate={onNavigate} />
-                    <SidebarLink to="/vertraege" icon={FileSignature} label="Vertraege" onNavigate={onNavigate} />
+                    <SidebarLink to="/verträge" icon={FileSignature} label="Verträge" onNavigate={onNavigate} />
                     <SidebarLink to="/vorlagen" icon={FilePlus} label="Vorlagen" onNavigate={onNavigate} />
                     <SidebarLink to="/wissen" icon={BookOpen} label="Wissen" onNavigate={onNavigate} />
                     {permissions.canViewPrivat && (
@@ -152,6 +176,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                     </div>
                     <SidebarLink to="/trash" icon={Trash2} label="Papierkorb" onNavigate={onNavigate} />
                     <SidebarLink to="/developer" icon={Code2} label="Developer Portal" onNavigate={onNavigate} />
+                    <SidebarLink to="/scanner" icon={ScanLine} label="Scanner" onNavigate={onNavigate} />
                 </div>
 
                 {/* Smart Folders (Gespeicherte Suchen) */}
@@ -245,6 +270,12 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                         </button>
                         {showAdminMenu && (
                             <div className="mt-1 ml-2 space-y-1 border-l border-sidebar-border pl-2">
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/workflows" icon={GitBranch} label="Workflow-Regeln" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/workflows/monitor" icon={Activity} label="Workflow-Monitor" onNavigate={onNavigate} />
+                                )}
                                 {permissions.canViewOCRTraining && (
                                     <SidebarLink to="/admin/ocr-training" icon={GraduationCap} label="OCR Training" onNavigate={onNavigate} />
                                 )}
@@ -262,6 +293,15 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                                 )}
                                 {permissions.isAdmin && (
                                     <SidebarLink to="/admin/ai-admin" icon={Brain} label="KI-Autonomie" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/automation/dunning" icon={Mail} label="Mahnung-Automatik" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/automation/autonomy" icon={Sliders} label="Autonomie-Config" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/automation/queue" icon={ListChecks} label="Aktions-Queue" onNavigate={onNavigate} />
                                 )}
                                 {permissions.isAdmin && (
                                     <SidebarLink to="/admin/daily-briefing" icon={Sparkles} label="Tagesbriefing" onNavigate={onNavigate} />
@@ -321,7 +361,13 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                                     <SidebarLink to="/admin/cross-tenant" icon={Building2} label="Mandanten-Berichte" onNavigate={onNavigate} />
                                 )}
                                 {permissions.isAdmin && (
-                                    <SidebarLink to="/admin/document-quality" icon={Gauge} label="Datenqualitaet" onNavigate={onNavigate} />
+                                    <SidebarLink to="/admin/document-quality" icon={Gauge} label="Datenqualität" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/calendar-sync" icon={Calendar} label="Kalender-Sync" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/integration-sync" icon={ArrowLeftRight} label="Integrations-Sync" onNavigate={onNavigate} />
                                 )}
                             </div>
                         )}

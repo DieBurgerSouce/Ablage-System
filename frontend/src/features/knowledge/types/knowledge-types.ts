@@ -1,7 +1,7 @@
 /**
  * Knowledge Management TypeScript Types
  *
- * Typen fuer Notizen, Checklisten, Knowledge Links und Tags.
+ * Typen für Notizen, Checklisten, Knowledge Links und Tags.
  */
 
 // Enums
@@ -287,12 +287,12 @@ export const LINK_TYPE_LABELS: Record<LinkType, string> = {
   replaces: 'Ersetzt',
   continues: 'Fortsetzung',
   contradicts: 'Widerspricht',
-  explains: 'Erklaert',
+  explains: 'Erklärt',
 };
 
 export const LINKABLE_TYPE_LABELS: Record<LinkableType, string> = {
   note: 'Notiz',
   document: 'Dokument',
-  entity: 'Geschaeftspartner',
+  entity: 'Geschäftspartner',
   checklist: 'Checkliste',
 };

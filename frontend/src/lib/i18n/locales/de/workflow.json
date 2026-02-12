@@ -6,7 +6,7 @@
   "process": "Prozess",
   "processes": "Prozesse",
   "list": {
-    "title": "Workflow-Uebersicht",
+    "title": "Workflow-Übersicht",
     "empty": "Keine Workflows vorhanden",
     "active": "Aktive Workflows",
     "completed": "Abgeschlossene Workflows",
@@ -36,11 +36,11 @@
   "steps": {
     "title": "Workflow-Schritte",
     "current": "Aktueller Schritt",
-    "next": "Naechster Schritt",
+    "next": "Nächster Schritt",
     "previous": "Vorheriger Schritt",
     "completed": "Abgeschlossen",
     "pending": "Ausstehend",
-    "skipped": "Uebersprungen"
+    "skipped": "Übersprungen"
   },
   "actions": {
     "start": "Workflow starten",
@@ -51,7 +51,7 @@
     "resume": "Fortsetzen",
     "reassign": "Neu zuweisen",
     "escalate": "Eskalieren",
-    "comment": "Kommentar hinzufuegen",
+    "comment": "Kommentar hinzufügen",
     "delegate": "Delegieren"
   },
   "approval": {
@@ -70,7 +70,7 @@
     "title": "Workflow-Regeln",
     "condition": "Bedingung",
     "action": "Aktion",
-    "trigger": "Ausloeser",
+    "trigger": "Auslöser",
     "assignment": "Zuweisung",
     "deadline": "Frist",
     "escalation": "Eskalation",
@@ -84,16 +84,16 @@
     "unassigned": "Nicht zugewiesen",
     "reassign": "Neu zuweisen",
     "delegate": "Delegieren",
-    "selectUser": "Benutzer auswaehlen"
+    "selectUser": "Benutzer auswählen"
   },
   "deadline": {
     "title": "Frist",
-    "dueDate": "Faelligkeit",
-    "overdue": "Ueberfaellig",
+    "dueDate": "Fälligkeit",
+    "overdue": "Überfällig",
     "daysRemaining": "{{days}} Tage verbleibend",
     "hoursRemaining": "{{hours}} Stunden verbleibend",
-    "dueSoon": "Bald faellig",
-    "dueToday": "Heute faellig",
+    "dueSoon": "Bald fällig",
+    "dueToday": "Heute fällig",
     "noDueDate": "Keine Frist"
   },
   "escalation": {
@@ -118,7 +118,7 @@
     "title": "Workflow-Vorlagen",
     "create": "Vorlage erstellen",
     "edit": "Vorlage bearbeiten",
-    "delete": "Vorlage loeschen",
+    "delete": "Vorlage löschen",
     "duplicate": "Vorlage duplizieren",
     "useTemplate": "Vorlage verwenden",
     "noTemplates": "Keine Vorlagen vorhanden"
@@ -138,6 +138,6 @@
     "completionRate": "Abschlussrate",
     "approvalRate": "Genehmigungsrate",
     "escalationRate": "Eskalationsrate",
-    "bottlenecks": "Engpaesse"
+    "bottlenecks": "Engpässe"
   }
 }

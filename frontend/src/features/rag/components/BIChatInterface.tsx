@@ -187,7 +187,7 @@ export function BIChatInterface({ onSourceClick, className }: BIChatInterfacePro
   const examplePrompts = [
     'Zeige alle offenen Rechnungen',
     'Wie ist der Umsatz dieses Jahr?',
-    'Welche Kunden haben ueberfaellige Rechnungen?',
+    'Welche Kunden haben überfällige Rechnungen?',
     'Analysiere die Trend-Entwicklung',
   ];
 
@@ -201,7 +201,7 @@ export function BIChatInterface({ onSourceClick, className }: BIChatInterfacePro
               <Sparkles className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-base">KI-Geschaeftsassistent</CardTitle>
+              <CardTitle className="text-base">KI-Geschäftsassistent</CardTitle>
               <p className="text-xs text-muted-foreground">
                 Fragen Sie zu Rechnungen, Kunden, Trends
               </p>
@@ -269,7 +269,7 @@ export function BIChatInterface({ onSourceClick, className }: BIChatInterfacePro
             </div>
             <h3 className="font-medium mb-2">Stellen Sie eine Frage</h3>
             <p className="text-sm text-muted-foreground mb-4 max-w-sm">
-              Ich kann Ihre Geschaeftsdaten analysieren, Trends erkennen und Fragen zu Dokumenten beantworten.
+              Ich kann Ihre Geschäftsdaten analysieren, Trends erkennen und Fragen zu Dokumenten beantworten.
             </p>
             <div className="flex flex-wrap gap-2 justify-center max-w-md">
               {examplePrompts.map((prompt, i) => (
@@ -388,7 +388,7 @@ export function BIChatInterface({ onSourceClick, className }: BIChatInterfacePro
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyPress}
-            placeholder="Fragen Sie etwas zu Ihren Geschaeftsdaten..."
+            placeholder="Fragen Sie etwas zu Ihren Geschäftsdaten..."
             disabled={isPending}
             className="flex-1"
           />
@@ -409,7 +409,7 @@ export function BIChatInterface({ onSourceClick, className }: BIChatInterfacePro
               BI aktiviert
             </Badge>
             <span className="text-xs text-muted-foreground">
-              Automatische Datenanalyse fuer Geschaeftsfragen
+              Automatische Datenanalyse für Geschäftsfragen
             </span>
           </div>
         )}

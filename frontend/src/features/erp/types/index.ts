@@ -1,7 +1,7 @@
 /**
  * ERP Integration Types
  *
- * TypeScript-Typen fuer ERP-Integration:
+ * TypeScript-Typen für ERP-Integration:
  * - Verbindungskonfiguration
  * - Sync-Status
  * - Konflikte

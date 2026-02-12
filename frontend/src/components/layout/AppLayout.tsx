@@ -76,7 +76,7 @@ function AppLayoutInner({ children, id }: { children: React.ReactNode; id?: stri
                 </div>
             </main>
             <Toaster />
-            {/* Session Timeout Warning - Zeigt Warnung wenn Session bald ablaeuft */}
+            {/* Session Timeout Warning - Zeigt Warnung wenn Session bald abläuft */}
             <SessionTimeoutWarning />
             {/* Global AI Assistant - Floating Widget auf jeder Seite */}
             <GlobalAIAssistant />

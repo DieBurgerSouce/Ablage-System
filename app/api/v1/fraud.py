@@ -16,7 +16,9 @@ Feinpoliert und durchdacht - Enterprise Fraud Prevention API.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, HTTPException, status
@@ -97,8 +99,8 @@ class FraudScanResultSchema(BaseModel):
     risk_score: float
     risk_level: str
     confidence: float
-    indicators: Dict[str, Any]
-    explanation: Dict[str, Any]
+    indicators: JSONDict
+    explanation: JSONDict
     status: str
     document_id: Optional[str] = None
     entity_id: Optional[str] = None
@@ -513,7 +515,7 @@ async def approve_iban_change(
     request_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Approve an IBAN change request.
 
@@ -585,7 +587,7 @@ async def reject_iban_change(
     reason: Optional[str] = Query(None, max_length=500),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Reject an IBAN change request.
     """
@@ -709,7 +711,7 @@ async def update_fraud_alert_status(
     request: UpdateScanStatusRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Update fraud alert status (reviewed, false_positive, confirmed, etc.).
     """

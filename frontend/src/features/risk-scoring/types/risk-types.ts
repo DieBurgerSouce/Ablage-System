@@ -1,7 +1,7 @@
 /**
  * Risk Scoring Types
  *
- * TypeScript Definitionen fuer das Risk Scoring System.
+ * TypeScript Definitionen für das Risk Scoring System.
  */
 
 // Risk Level Kategorien
@@ -29,17 +29,17 @@ export const RISK_FACTOR_WEIGHTS: Record<RiskFactorName, number> = {
 
 // Risk Faktor Labels (German)
 export const RISK_FACTOR_LABELS: Record<RiskFactorName, string> = {
-  payment_delay: 'Zahlungsverzoegerung',
+  payment_delay: 'Zahlungsverzögerung',
   default_rate: 'Ausfallrate',
   invoice_volume: 'Rechnungsvolumen',
-  document_frequency: 'Dokumenthaeufigkeit',
+  document_frequency: 'Dokumenthäufigkeit',
   relationship_age: 'Beziehungsdauer',
 };
 
 // Risk Faktor Beschreibungen (German)
 export const RISK_FACTOR_DESCRIPTIONS: Record<RiskFactorName, string> = {
-  payment_delay: 'Durchschnittliche Zahlungsverzoegerung in Tagen',
-  default_rate: 'Anteil ueberfaelliger Rechnungen',
+  payment_delay: 'Durchschnittliche Zahlungsverzögerung in Tagen',
+  default_rate: 'Anteil überfälliger Rechnungen',
   invoice_volume: 'Gesamtvolumen aller Rechnungen',
   document_frequency: 'Dokumente pro Monat',
   relationship_age: 'Beziehungsdauer in Monaten',
@@ -261,7 +261,7 @@ export function transformRiskStatistics(response: RiskStatisticsResponse): RiskS
 // UI Labels
 export const UI_LABELS = {
   pageTitle: 'Risiko-Scoring',
-  pageSubtitle: 'Risikobewertung fuer Kunden und Lieferanten',
+  pageSubtitle: 'Risikobewertung für Kunden und Lieferanten',
 
   // Dashboard
   dashboardTitle: 'Risiko-Dashboard',
@@ -300,7 +300,7 @@ export const UI_LABELS = {
   successRecalculateAll: 'Alle Risiko-Scores wurden aktualisiert',
   errorRecalculate: 'Fehler bei der Neuberechnung',
   errorLoad: 'Fehler beim Laden der Risiko-Daten',
-  noData: 'Keine Risiko-Daten verfuegbar',
+  noData: 'Keine Risiko-Daten verfügbar',
 
   // Chart
   trendTitle: 'Risiko-Trend (30 Tage)',

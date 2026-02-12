@@ -61,7 +61,7 @@ function BatchWorkflowPage() {
     const [showKeyboardHelp, setShowKeyboardHelp] = useState(false)
     const [autoSaveEnabled] = useState(true)
     const [lastAutoSave, setLastAutoSave] = useState<Date | null>(null)
-    // History-Stack fuer Navigation (Zurueck-Funktion)
+    // History-Stack für Navigation (Zurück-Funktion)
     const [itemHistory, setItemHistory] = useState<string[]>([])
 
     // Queries
@@ -144,7 +144,7 @@ function BatchWorkflowPage() {
 
         const validationTime = Math.round((Date.now() - startTime) / 1000)
 
-        // Speichere aktuelles Item im History-Stack (fuer Zurueck-Funktion)
+        // Speichere aktuelles Item im History-Stack (für Zurück-Funktion)
         setItemHistory(prev => [...prev.slice(-9), currentItem.id]) // Max 10 Items
 
         // Speichere korrigierten Text

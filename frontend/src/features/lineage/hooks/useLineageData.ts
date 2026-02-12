@@ -1,7 +1,7 @@
 /**
  * useLineageData Hook
  *
- * React Query Hook fuer den Abruf von Dokumenten-Lineage-Daten.
+ * React Query Hook für den Abruf von Dokumenten-Lineage-Daten.
  * Kombiniert Timeline, Statistiken und Zusammenfassung.
  */
 
@@ -88,7 +88,7 @@ export function useLineageSummary(documentId: string, enabled = true) {
 }
 
 /**
- * Ruft alle verfuegbaren Event-Typen ab.
+ * Ruft alle verfügbaren Event-Typen ab.
  */
 export function useEventTypes() {
   return useQuery({
@@ -100,7 +100,7 @@ export function useEventTypes() {
 }
 
 /**
- * Ruft alle verfuegbaren Import-Quelltypen ab.
+ * Ruft alle verfügbaren Import-Quelltypen ab.
  */
 export function useImportSourceTypes() {
   return useQuery({
@@ -128,7 +128,7 @@ export interface UseLineageDataResult {
 }
 
 /**
- * Kombinierter Hook fuer alle Lineage-Daten eines Dokuments.
+ * Kombinierter Hook für alle Lineage-Daten eines Dokuments.
  */
 export function useLineageData(
   documentId: string,

@@ -23,8 +23,10 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
+
+from app.core.types import JSONDict
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, status
@@ -156,8 +158,8 @@ class ValidationResultResponse(BaseModel):
     total_documents: int = Field(..., description="Gesamtanzahl Dokumente")
     valid_documents: int = Field(..., description="Valide Dokumente")
     invalid_documents: int = Field(..., description="Invalide Dokumente")
-    errors: List[Dict[str, Any]] = Field(default=[], description="Fehler")
-    warnings: List[Dict[str, Any]] = Field(default=[], description="Warnungen")
+    errors: List[JSONDict] = Field(default=[], description="Fehler")
+    warnings: List[JSONDict] = Field(default=[], description="Warnungen")
 
 
 # =============================================================================

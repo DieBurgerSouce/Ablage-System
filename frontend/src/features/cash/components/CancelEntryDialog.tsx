@@ -66,7 +66,7 @@ export function CancelEntryDialog({
     },
   });
 
-  // Formular zurücksetzen wenn Dialog oeffnet
+  // Formular zurücksetzen wenn Dialog öffnet
   React.useEffect(() => {
     if (open) {
       form.reset({
@@ -107,7 +107,7 @@ export function CancelEntryDialog({
           <AlertDialogDescription>
             Dieser Eintrag wird nicht gelöscht, sondern durch eine Gegenbuchung
             neutralisiert. Dies ist erforderlich für die GoBD-konforme
-            Kassenbuchfuehrung.
+            Kassenbuchführung.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -148,7 +148,7 @@ export function CancelEntryDialog({
               name="cancellation_reason"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Begruendung *</FormLabel>
+                  <FormLabel>Begründung *</FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="Warum wird dieser Eintrag storniert?"

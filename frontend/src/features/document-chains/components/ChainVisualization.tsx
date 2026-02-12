@@ -111,7 +111,7 @@ export function ChainVisualization({
           {chain.status === 'complete' && (
             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
               <CheckCircle className="w-3 h-3 mr-1" />
-              Vollstaendig
+              Vollständig
             </Badge>
           )}
         </CardTitle>
@@ -126,7 +126,7 @@ export function ChainVisualization({
               const Icon = DOCUMENT_ICONS[type];
               const hasDoc = docs.length > 0;
 
-              // Abweichungen zur naechsten Stufe
+              // Abweichungen zur nächsten Stufe
               const nextType = DOCUMENT_ORDER[index + 1];
               const connectionDiscrepancies = nextType
                 ? getConnectionDiscrepancies(type, nextType)

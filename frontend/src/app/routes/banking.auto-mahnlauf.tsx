@@ -1,6 +1,6 @@
 /**
  * Banking Auto-Mahnlauf Route
- * Route fuer automatischen Mahnlauf Dashboard
+ * Route für automatischen Mahnlauf Dashboard
  */
 
 import { createFileRoute } from '@tanstack/react-router';

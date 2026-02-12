@@ -33,7 +33,7 @@ export const ocrLearningKeys = {
 // ==================== Hooks ====================
 
 /**
- * Hook fuer Learning-Statistiken
+ * Hook für Learning-Statistiken
  */
 export function useLearningStats() {
   return useQuery({
@@ -45,7 +45,7 @@ export function useLearningStats() {
 }
 
 /**
- * Hook fuer Confidence-Statistiken
+ * Hook für Confidence-Statistiken
  */
 export function useConfidenceStats(backend?: string) {
   return useQuery({
@@ -56,7 +56,7 @@ export function useConfidenceStats(backend?: string) {
 }
 
 /**
- * Hook fuer A/B Test Ergebnis
+ * Hook für A/B Test Ergebnis
  */
 export function useABTestResult(testId: string | undefined) {
   return useQuery({
@@ -69,7 +69,7 @@ export function useABTestResult(testId: string | undefined) {
 }
 
 /**
- * Hook fuer aktuelle Modell-Version
+ * Hook für aktuelle Modell-Version
  */
 export function useCurrentModelVersion(testId?: string) {
   return useQuery({
@@ -80,7 +80,7 @@ export function useCurrentModelVersion(testId?: string) {
 }
 
 /**
- * Mutation Hook fuer Korrektur-Feedback
+ * Mutation Hook für Korrektur-Feedback
  */
 export function useSubmitCorrectionFeedback() {
   const queryClient = useQueryClient();
@@ -99,7 +99,7 @@ export function useSubmitCorrectionFeedback() {
 }
 
 /**
- * Mutation Hook fuer Confidence-Kalibrierung
+ * Mutation Hook für Confidence-Kalibrierung
  */
 export function useCalibrateConfidence() {
   return useMutation({

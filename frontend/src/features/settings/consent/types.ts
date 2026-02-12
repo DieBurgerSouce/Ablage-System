@@ -73,9 +73,9 @@ export interface ConsentHistoryResponse {
   total: number;
 }
 
-// Lokalisierte Beschreibungen fuer die UI
+// Lokalisierte Beschreibungen für die UI
 export const CONSENT_SCOPE_LABELS: Record<ConsentScope, string> = {
-  [ConsentScope.PERSONAL_DATA]: 'Persoenliche Daten',
+  [ConsentScope.PERSONAL_DATA]: 'Persönliche Daten',
   [ConsentScope.FINANCIAL_DATA]: 'Finanzdaten',
   [ConsentScope.DOCUMENT_PROCESSING]: 'Dokumentenverarbeitung',
   [ConsentScope.ANALYTICS]: 'Analyse & Statistiken',
@@ -96,12 +96,12 @@ export const CONSENT_SCOPE_DESCRIPTIONS: Record<ConsentScope, string> = {
   [ConsentScope.MARKETING]:
     'Zusendung von Marketing-Mitteilungen und Produktinformationen.',
   [ConsentScope.THIRD_PARTY_SHARING]:
-    'Weitergabe Ihrer Daten an ausgewaehlte Drittanbieter.',
+    'Weitergabe Ihrer Daten an ausgewählte Drittanbieter.',
   [ConsentScope.AUTOMATED_DECISIONS]:
     'Automatisierte Entscheidungsfindung basierend auf Ihren Daten.',
 };
 
-// Icons fuer die Scopes
+// Icons für die Scopes
 export const CONSENT_SCOPE_ICONS: Record<ConsentScope, string> = {
   [ConsentScope.PERSONAL_DATA]: 'User',
   [ConsentScope.FINANCIAL_DATA]: 'Landmark',

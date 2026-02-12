@@ -1,7 +1,7 @@
 /**
  * ReportsPage Component
  *
- * Haupt-Seite fuer den Bereich "Berichte" mit drei Tabs:
+ * Haupt-Seite für den Bereich "Berichte" mit drei Tabs:
  * - Meine Berichte: Gespeicherte Report-Templates
  * - Vorlagen: Vordefinierte Katalog-Templates
  * - Geplante Exporte: Scheduled Exports mit Cron, Format, Status
@@ -103,7 +103,7 @@ export function ReportsPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Berichte</h1>
             <p className="text-sm text-muted-foreground">
-              Reports erstellen, verwalten und automatisch ausfuehren.
+              Reports erstellen, verwalten und automatisch ausführen.
             </p>
           </div>
         </div>
@@ -206,10 +206,10 @@ export function ReportsPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Geplanten Export loeschen?</AlertDialogTitle>
+            <AlertDialogTitle>Geplanten Export löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Der geplante Export wird dauerhaft geloescht. Zukuenftige
-              automatische Ausfuehrungen werden gestoppt.
+              Der geplante Export wird dauerhaft gelöscht. Zukünftige
+              automatische Ausführungen werden gestoppt.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -221,7 +221,7 @@ export function ReportsPage() {
               {deleteMutation.isPending ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : null}
-              Loeschen
+              Löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

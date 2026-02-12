@@ -1,7 +1,7 @@
 /**
  * Activity Timeline API
  *
- * API-Funktionen fuer das Activity Timeline Feature.
+ * API-Funktionen für das Activity Timeline Feature.
  */
 
 import { apiClient } from '@/lib/api';

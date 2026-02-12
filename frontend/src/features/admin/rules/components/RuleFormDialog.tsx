@@ -47,7 +47,7 @@ const CATEGORIES: { value: RuleCategory; label: string }[] = [
   { value: 'fraud', label: 'Betrugs-Erkennung' },
   { value: 'workflow', label: 'Workflow' },
   { value: 'notification', label: 'Benachrichtigung' },
-  { value: 'data_quality', label: 'Datenqualitaet' },
+  { value: 'data_quality', label: 'Datenqualität' },
   { value: 'custom', label: 'Benutzerdefiniert' },
 ]
 
@@ -201,13 +201,13 @@ export function RuleFormDialog({ open, onOpenChange, rule }: RuleFormDialogProps
         details: result.condition_details,
       })
       toast({
-        title: result.matched ? 'Regel wuerde matchen' : 'Regel wuerde NICHT matchen',
-        description: `${result.would_trigger_actions.length} Aktion(en) wuerden ausgefuehrt.`,
+        title: result.matched ? 'Regel würde matchen' : 'Regel würde NICHT matchen',
+        description: `${result.would_trigger_actions.length} Aktion(en) würden ausgeführt.`,
       })
     } catch (e) {
       toast({
         title: 'Fehler beim Test',
-        description: e instanceof SyntaxError ? 'Ungueltiges JSON' : 'Testfehler',
+        description: e instanceof SyntaxError ? 'Ungültiges JSON' : 'Testfehler',
         variant: 'destructive',
       })
     }
@@ -223,7 +223,7 @@ export function RuleFormDialog({ open, onOpenChange, rule }: RuleFormDialogProps
             {isEdit ? 'Regel bearbeiten' : 'Neue Regel erstellen'}
           </DialogTitle>
           <DialogDescription>
-            Definieren Sie Bedingungen und Aktionen fuer die automatische Verarbeitung.
+            Definieren Sie Bedingungen und Aktionen für die automatische Verarbeitung.
           </DialogDescription>
         </DialogHeader>
 
@@ -257,7 +257,7 @@ export function RuleFormDialog({ open, onOpenChange, rule }: RuleFormDialogProps
                     id="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="z.B. Hohe Betraege an CFO"
+                    placeholder="z.B. Hohe Beträge an CFO"
                   />
                 </div>
 
@@ -302,7 +302,7 @@ export function RuleFormDialog({ open, onOpenChange, rule }: RuleFormDialogProps
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Prioritaet</Label>
+                  <Label>Priorität</Label>
                   <Select
                     value={String(priority)}
                     onValueChange={(v) => setPriority(Number(v))}
@@ -331,7 +331,7 @@ export function RuleFormDialog({ open, onOpenChange, rule }: RuleFormDialogProps
                   <Switch checked={stopOnMatch} onCheckedChange={setStopOnMatch} />
                   <Label>Bei Match stoppen</Label>
                   <span className="text-xs text-muted-foreground">
-                    (Keine weiteren Regeln ausfuehren)
+                    (Keine weiteren Regeln ausführen)
                   </span>
                 </div>
               </div>
@@ -347,22 +347,22 @@ export function RuleFormDialog({ open, onOpenChange, rule }: RuleFormDialogProps
               <ActionBuilder
                 actions={actions}
                 onChange={setActions}
-                title="Wenn Bedingung erfuellt"
-                description="Diese Aktionen werden ausgefuehrt, wenn alle Bedingungen erfuellt sind."
+                title="Wenn Bedingung erfüllt"
+                description="Diese Aktionen werden ausgeführt, wenn alle Bedingungen erfüllt sind."
               />
 
               <div className="border-t pt-4">
                 <div className="flex items-center gap-2 mb-4">
                   <Switch checked={hasElseActions} onCheckedChange={setHasElseActions} />
-                  <Label>Else-Aktionen (wenn NICHT erfuellt)</Label>
+                  <Label>Else-Aktionen (wenn NICHT erfüllt)</Label>
                 </div>
 
                 {hasElseActions && (
                   <ActionBuilder
                     actions={elseActions}
                     onChange={setElseActions}
-                    title="Wenn Bedingung NICHT erfuellt"
-                    description="Diese Aktionen werden ausgefuehrt, wenn die Bedingungen nicht erfuellt sind."
+                    title="Wenn Bedingung NICHT erfüllt"
+                    description="Diese Aktionen werden ausgeführt, wenn die Bedingungen nicht erfüllt sind."
                   />
                 )}
               </div>

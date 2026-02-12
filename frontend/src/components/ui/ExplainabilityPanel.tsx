@@ -1,7 +1,7 @@
 /**
- * ExplainabilityPanel - XAI "Warum?" Erklaerungspanel
+ * ExplainabilityPanel - XAI "Warum?" Erklärungspanel
  *
- * Zeigt detaillierte Erklaerungen fuer KI-Entscheidungen an.
+ * Zeigt detaillierte Erklärungen für KI-Entscheidungen an.
  * Features:
  * - "Warum?"-Button zum Aufklappen
  * - Confidence-Breakdown Visualisierung
@@ -378,7 +378,7 @@ export function ExplainabilityPanel({
     return (
       <div className={cn('flex items-center gap-2 text-muted-foreground', className)}>
         <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-        <span className="text-sm">Erklaerung wird geladen...</span>
+        <span className="text-sm">Erklärung wird geladen...</span>
       </div>
     );
   }
@@ -425,7 +425,7 @@ export function ExplainabilityPanel({
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg flex items-center gap-2">
                         <Lightbulb className="h-5 w-5 text-yellow-500" />
-                        KI-Erklaerung
+                        KI-Erklärung
                       </CardTitle>
                       <ConfidenceBadge
                         level={explanation.confidence_level}
@@ -447,7 +447,7 @@ export function ExplainabilityPanel({
                     {/* Detailed Explanation */}
                     {explanation.detailed_explanation && (
                       <div>
-                        <h4 className="font-medium text-sm mb-2">Detaillierte Erklaerung</h4>
+                        <h4 className="font-medium text-sm mb-2">Detaillierte Erklärung</h4>
                         <p className="text-sm text-muted-foreground">
                           {explanation.detailed_explanation}
                         </p>
@@ -587,7 +587,7 @@ export function WarumButton({
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>KI-Entscheidung erklaeren</p>
+          <p>KI-Entscheidung erklären</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

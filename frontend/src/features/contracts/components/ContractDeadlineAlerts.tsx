@@ -52,9 +52,9 @@ const urgencyConfig = {
 };
 
 const deadlineTypeLabels: Record<string, string> = {
-  notice: 'Kuendigungsfrist',
+  notice: 'Kündigungsfrist',
   end: 'Vertragsende',
-  renewal: 'Verlaengerung',
+  renewal: 'Verlängerung',
 };
 
 export function ContractDeadlineAlerts({
@@ -85,7 +85,7 @@ export function ContractDeadlineAlerts({
       <Card>
         <CardHeader>
           <CardTitle className="text-sm font-medium">Anstehende Fristen</CardTitle>
-          <CardDescription>Keine kritischen Fristen in den naechsten 90 Tagen</CardDescription>
+          <CardDescription>Keine kritischen Fristen in den nächsten 90 Tagen</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8 text-muted-foreground">

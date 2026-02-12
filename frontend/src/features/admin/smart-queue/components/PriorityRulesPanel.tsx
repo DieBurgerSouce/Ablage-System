@@ -57,10 +57,10 @@ import {
 } from '../hooks/useSmartQueue';
 
 const CONDITION_TYPES = [
-  { value: 'skonto_days', label: 'Skonto-Frist (Tage)', description: 'Prioritaet erhoehen wenn Skonto-Frist <= X Tage' },
-  { value: 'amount_threshold', label: 'Betrag-Schwelle', description: 'Prioritaet erhoehen wenn Betrag >= X EUR' },
-  { value: 'document_type', label: 'Dokumenttyp', description: 'Prioritaet basierend auf Dokumenttyp' },
-  { value: 'entity_type', label: 'Entity-Typ', description: 'Prioritaet basierend auf Kunden-/Lieferantentyp' },
+  { value: 'skonto_days', label: 'Skonto-Frist (Tage)', description: 'Priorität erhöhen wenn Skonto-Frist <= X Tage' },
+  { value: 'amount_threshold', label: 'Betrag-Schwelle', description: 'Priorität erhöhen wenn Betrag >= X EUR' },
+  { value: 'document_type', label: 'Dokumenttyp', description: 'Priorität basierend auf Dokumenttyp' },
+  { value: 'entity_type', label: 'Entity-Typ', description: 'Priorität basierend auf Kunden-/Lieferantentyp' },
   { value: 'custom', label: 'Benutzerdefiniert', description: 'Eigene Regel-Expression' },
 ];
 
@@ -197,7 +197,7 @@ function RuleFormDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="priority_boost">Prioritaets-Erhoehung</Label>
+            <Label htmlFor="priority_boost">Prioritäts-Erhöhung</Label>
             <Input
               id="priority_boost"
               type="number"
@@ -209,7 +209,7 @@ function RuleFormDialog({
               }
             />
             <p className="text-xs text-muted-foreground">
-              Erhoehung der Basis-Prioritaet (1-5)
+              Erhöhung der Basis-Priorität (1-5)
             </p>
           </div>
 
@@ -255,7 +255,7 @@ export function PriorityRulesPanel() {
       });
       toast.success(rule.enabled ? 'Regel deaktiviert' : 'Regel aktiviert');
     } catch {
-      toast.error('Fehler beim Aendern');
+      toast.error('Fehler beim Ändern');
     }
   };
 
@@ -263,17 +263,17 @@ export function PriorityRulesPanel() {
     if (!deleteRule) return;
     try {
       await deleteMutation.mutateAsync(deleteRule.id);
-      toast.success('Regel geloescht');
+      toast.success('Regel gelöscht');
       setDeleteRule(null);
     } catch {
-      toast.error('Fehler beim Loeschen');
+      toast.error('Fehler beim Löschen');
     }
   };
 
   const handleRecalculate = async () => {
     try {
       const result = await recalculateMutation.mutateAsync();
-      toast.success(`${result.recalculated} Prioritaeten neu berechnet`);
+      toast.success(`${result.recalculated} Prioritäten neu berechnet`);
     } catch {
       toast.error('Fehler bei der Neuberechnung');
     }
@@ -289,7 +289,7 @@ export function PriorityRulesPanel() {
               Priorisierungs-Regeln
             </CardTitle>
             <CardDescription>
-              Automatische Prioritaets-Zuweisung basierend auf Dokumenteigenschaften
+              Automatische Prioritäts-Zuweisung basierend auf Dokumenteigenschaften
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -353,7 +353,7 @@ export function PriorityRulesPanel() {
                           {CONDITION_TYPES.find((c) => c.value === rule.condition_type)?.label}
                         </Badge>
                         <Badge variant="secondary" className="text-xs">
-                          +{rule.priority_boost} Prioritaet
+                          +{rule.priority_boost} Priorität
                         </Badge>
                       </div>
                     </div>
@@ -411,9 +411,9 @@ export function PriorityRulesPanel() {
       <AlertDialog open={!!deleteRule} onOpenChange={() => setDeleteRule(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Regel loeschen?</AlertDialogTitle>
+            <AlertDialogTitle>Regel löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Die Regel "{deleteRule?.name}" wird unwiderruflich geloescht.
+              Die Regel "{deleteRule?.name}" wird unwiderruflich gelöscht.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -422,7 +422,7 @@ export function PriorityRulesPanel() {
               onClick={handleDelete}
               className="bg-red-500 hover:bg-red-600"
             >
-              Loeschen
+              Löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

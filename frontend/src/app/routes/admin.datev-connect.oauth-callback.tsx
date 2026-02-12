@@ -37,7 +37,7 @@ function OAuthCallbackPage() {
     const oauthCallback = useOAuth2Callback();
 
     useEffect(() => {
-        // Pruefen auf Fehler von DATEV
+        // Prüfen auf Fehler von DATEV
         if (searchParams.error) {
             setStatus('error');
             setErrorMessage(
@@ -47,10 +47,10 @@ function OAuthCallbackPage() {
             return;
         }
 
-        // Pruefen auf erforderliche Parameter
+        // Prüfen auf erforderliche Parameter
         if (!searchParams.code || !searchParams.state) {
             setStatus('error');
-            setErrorMessage('Ungueltiger OAuth2 Callback: Code oder State fehlt.');
+            setErrorMessage('Ungültiger OAuth2 Callback: Code oder State fehlt.');
             return;
         }
 
@@ -58,7 +58,7 @@ function OAuthCallbackPage() {
         const [connectionId, csrfToken] = searchParams.state.split(':');
         if (!connectionId || !csrfToken) {
             setStatus('error');
-            setErrorMessage('Ungueltiger State-Parameter im OAuth2 Callback.');
+            setErrorMessage('Ungültiger State-Parameter im OAuth2 Callback.');
             return;
         }
 
@@ -100,7 +100,7 @@ function OAuthCallbackPage() {
                             </div>
                             <CardTitle>Verbindung wird hergestellt...</CardTitle>
                             <CardDescription>
-                                Bitte warten Sie, waehrend wir Ihre DATEV-Verbindung einrichten.
+                                Bitte warten Sie, während wir Ihre DATEV-Verbindung einrichten.
                             </CardDescription>
                         </>
                     )}
@@ -149,7 +149,7 @@ function OAuthCallbackPage() {
                             <Button
                                 onClick={() => navigate({ to: '/admin/datev-connect' })}
                             >
-                                Zurueck zu den Verbindungen
+                                Zurück zu den Verbindungen
                             </Button>
                             <Button
                                 variant="outline"

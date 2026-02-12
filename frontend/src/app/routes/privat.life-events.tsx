@@ -1,7 +1,7 @@
 /**
  * Privat Lebenslagen Route
  *
- * Lebenslagen-Assistent fuer wichtige Lebensereignisse.
+ * Lebenslagen-Assistent für wichtige Lebensereignisse.
  */
 
 import { createFileRoute } from '@tanstack/react-router';

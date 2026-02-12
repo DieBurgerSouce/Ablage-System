@@ -1,7 +1,7 @@
 /**
  * GraphControls Component
  *
- * Steuerungsleiste fuer den Entity-Graph mit Filter-Optionen.
+ * Steuerungsleiste für den Entity-Graph mit Filter-Optionen.
  */
 
 import { Users, Truck, Filter, RefreshCw, Loader2, FileText, Maximize2 } from 'lucide-react';

@@ -146,7 +146,7 @@ export function UserStatsCard({ className }: UserStatsCardProps) {
     );
   }
 
-  // Naechstes Achievement berechnen
+  // Nächstes Achievement berechnen
   const nextMilestones = {
     corrections: [10, 50, 100],
     points: [100, 500, 1000],
@@ -194,14 +194,14 @@ export function UserStatsCard({ className }: UserStatsCardProps) {
             label="Genauigkeit"
             value={`${Math.round(stats.accuracy_rate * 100)}%`}
             icon={TrendingUp}
-            subValue={`Laengster Streak: ${stats.longest_streak} Tage`}
+            subValue={`Längster Streak: ${stats.longest_streak} Tage`}
           />
         </div>
 
-        {/* Fortschritt zum naechsten Achievement */}
+        {/* Fortschritt zum nächsten Achievement */}
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Naechstes Ziel: {nextCorrectionMilestone} Korrekturen</span>
+            <span className="text-muted-foreground">Nächstes Ziel: {nextCorrectionMilestone} Korrekturen</span>
             <span className="font-medium">{stats.total_corrections}/{nextCorrectionMilestone}</span>
           </div>
           <Progress value={correctionProgress} className="h-2" />
@@ -235,7 +235,7 @@ export function UserStatsCard({ className }: UserStatsCardProps) {
           </div>
         )}
 
-        {/* Punkte-Aufschluesselung */}
+        {/* Punkte-Aufschlüsselung */}
         {Object.keys(stats.points_breakdown).length > 0 && (
           <div className="space-y-2">
             <h4 className="text-sm font-medium text-muted-foreground">Punkte nach Typ</h4>

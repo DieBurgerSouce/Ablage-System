@@ -130,7 +130,7 @@ export function PWAProvider({ children }: PWAProviderProps) {
       e.preventDefault()
       // Store event for later use
       setInstallEvent(e as BeforeInstallPromptEvent)
-      logger.info('[PWA] Installation moeglich', {
+      logger.info('[PWA] Installation möglich', {
         platforms: (e as BeforeInstallPromptEvent).platforms,
       })
     }
@@ -176,7 +176,7 @@ export function PWAProvider({ children }: PWAProviderProps) {
   // Install prompt handler
   const installPrompt = useCallback(async (): Promise<boolean> => {
     if (!installEvent) {
-      logger.warn('[PWA] Kein Installations-Event verfuegbar')
+      logger.warn('[PWA] Kein Installations-Event verfügbar')
       return false
     }
 

@@ -1,7 +1,7 @@
 /**
  * Workflow Versions API Service
  *
- * API Client fuer Workflow-Versionierung, A/B Testing und Rollback.
+ * API Client für Workflow-Versionierung, A/B Testing und Rollback.
  */
 
 import { apiClient } from '../client';
@@ -77,7 +77,7 @@ export async function createVersion(
 }
 
 /**
- * Veroeffentlicht eine Draft-Version.
+ * Veröffentlicht eine Draft-Version.
  */
 export async function publishVersion(
   workflowId: string,
@@ -153,7 +153,7 @@ export async function compareVersions(
 // =============================================================================
 
 /**
- * Rollt einen Workflow auf eine vorherige Version zurueck.
+ * Rollt einen Workflow auf eine vorherige Version zurück.
  */
 export async function rollbackToVersion(
   workflowId: string,
@@ -242,7 +242,7 @@ export async function stopABTest(
 // =============================================================================
 
 /**
- * Formatiert den Versions-Status fuer die Anzeige.
+ * Formatiert den Versions-Status für die Anzeige.
  */
 export function formatVersionStatus(status: string): string {
   switch (status) {
@@ -253,7 +253,7 @@ export function formatVersionStatus(status: string): string {
     case 'deprecated':
       return 'Veraltet';
     case 'rolled_back':
-      return 'Zurueckgerollt';
+      return 'Zurückgerollt';
     case 'archived':
       return 'Archiviert';
     default:
@@ -262,7 +262,7 @@ export function formatVersionStatus(status: string): string {
 }
 
 /**
- * Gibt die Badge-Variante fuer den Status zurueck.
+ * Gibt die Badge-Variante für den Status zurück.
  */
 export function getVersionStatusVariant(
   status: string
@@ -283,14 +283,14 @@ export function getVersionStatusVariant(
 }
 
 /**
- * Formatiert den A/B Test Status fuer die Anzeige.
+ * Formatiert den A/B Test Status für die Anzeige.
  */
 export function formatABTestStatus(status: string): string {
   switch (status) {
     case 'draft':
       return 'Entwurf';
     case 'running':
-      return 'Laeuft';
+      return 'Läuft';
     case 'completed':
       return 'Abgeschlossen';
     case 'cancelled':
@@ -301,7 +301,7 @@ export function formatABTestStatus(status: string): string {
 }
 
 /**
- * Formatiert den Change-Type fuer die Anzeige.
+ * Formatiert den Change-Type für die Anzeige.
  */
 export function formatChangeType(changeType: string): string {
   switch (changeType) {

@@ -40,7 +40,7 @@ function NewProcessPage() {
   const handleSave = (data: BPMNProcessData) => {
     setProcessData(data);
     toast.success('Prozess gespeichert', {
-      description: 'Die Aenderungen wurden lokal gespeichert.',
+      description: 'Die Änderungen wurden lokal gespeichert.',
     });
   };
 
@@ -52,7 +52,7 @@ function NewProcessPage() {
 
   const handleDeployConfirm = async () => {
     if (!processData || !processKey || !processName) {
-      toast.error('Bitte alle Pflichtfelder ausfuellen');
+      toast.error('Bitte alle Pflichtfelder ausfüllen');
       return;
     }
 
@@ -87,7 +87,7 @@ function NewProcessPage() {
           onClick={() => navigate({ to: '/prozesse' })}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Zurueck
+          Zurück
         </Button>
         <div className="h-6 w-px bg-gray-200" />
         <h1 className="text-lg font-semibold text-gray-900">
@@ -106,14 +106,14 @@ function NewProcessPage() {
           <DialogHeader>
             <DialogTitle>Prozess bereitstellen</DialogTitle>
             <DialogDescription>
-              Geben Sie die Details fuer den neuen Prozess ein.
+              Geben Sie die Details für den neuen Prozess ein.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="processKey">
-                Prozess-Schluessel <span className="text-red-500">*</span>
+                Prozess-Schlüssel <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="processKey"
@@ -126,7 +126,7 @@ function NewProcessPage() {
                 placeholder="rechnungsfreigabe"
               />
               <p className="text-xs text-gray-500">
-                Eindeutiger Schluessel (nur Kleinbuchstaben, Zahlen, Bindestriche)
+                Eindeutiger Schlüssel (nur Kleinbuchstaben, Zahlen, Bindestriche)
               </p>
             </div>
 

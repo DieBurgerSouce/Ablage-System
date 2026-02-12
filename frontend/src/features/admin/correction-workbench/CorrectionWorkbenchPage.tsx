@@ -1,6 +1,6 @@
 /**
  * Correction Workbench Page
- * Hauptseite fuer die OCR-Korrektur-Workbench
+ * Hauptseite für die OCR-Korrektur-Workbench
  *
  * Features:
  * - Queue mit Dokumenten niedriger Confidence

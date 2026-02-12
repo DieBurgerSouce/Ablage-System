@@ -1,13 +1,13 @@
 /**
- * ImportUploadZone - Dual File Upload fuer Lexware Excel-Dateien
+ * ImportUploadZone - Dual File Upload für Lexware Excel-Dateien
  *
  * WICHTIG: Backend erwartet ZWEI Dateien gleichzeitig (Folie + Messer)!
  *
  * Features:
- * - Separate Upload-Zonen fuer Folie und Messer
+ * - Separate Upload-Zonen für Folie und Messer
  * - File Validation (.xlsx, .xls)
- * - File Preview mit Groessenangabe
- * - Beide Dateien muessen ausgewaehlt sein vor Import
+ * - File Preview mit Größenangabe
+ * - Beide Dateien müssen ausgewählt sein vor Import
  */
 
 import { useCallback, useState, useId } from 'react'
@@ -50,12 +50,12 @@ export function ImportUploadZone({
 
     const extension = '.' + file.name.split('.').pop()?.toLowerCase()
     if (!ACCEPTED_EXTENSIONS.includes(extension)) {
-      setError(`Ungueltiges Dateiformat. Erlaubt: ${ACCEPTED_EXTENSIONS.join(', ')}`)
+      setError(`Ungültiges Dateiformat. Erlaubt: ${ACCEPTED_EXTENSIONS.join(', ')}`)
       return false
     }
 
     if (file.type && !ACCEPTED_MIME_TYPES.includes(file.type)) {
-      setError('Ungueltiger Dateityp. Bitte eine Excel-Datei waehlen.')
+      setError('Ungültiger Dateityp. Bitte eine Excel-Datei wählen.')
       return false
     }
 
@@ -94,12 +94,12 @@ export function ImportUploadZone({
         {bothFilesSelected ? (
           <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-300">
             <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
-            <span className="font-medium">Beide Dateien ausgewaehlt - Bereit zum Import</span>
+            <span className="font-medium">Beide Dateien ausgewählt - Bereit zum Import</span>
           </div>
         ) : (
           <div className="flex items-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-yellow-700 dark:text-yellow-300">
             <AlertCircle className="h-5 w-5 flex-shrink-0" />
-            <span>Bitte waehlen Sie beide Dateien aus (Folie + Messer)</span>
+            <span>Bitte wählen Sie beide Dateien aus (Folie + Messer)</span>
           </div>
         )}
 
@@ -273,7 +273,7 @@ function SingleFileUpload({
             <Upload className="h-8 w-8 text-muted-foreground" />
             <div>
               <p className="text-sm font-medium">
-                Datei waehlen
+                Datei wählen
               </p>
               <p className="text-xs text-muted-foreground">
                 {entityLabel}-Export

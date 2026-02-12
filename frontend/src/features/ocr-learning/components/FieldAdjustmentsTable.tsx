@@ -59,7 +59,7 @@ export function FieldAdjustmentsTable({ stats }: FieldAdjustmentsTableProps) {
     const labels: Record<string, string> = {
       invoice_number: 'Rechnungsnummer',
       invoice_date: 'Rechnungsdatum',
-      due_date: 'Faelligkeitsdatum',
+      due_date: 'Fälligkeitsdatum',
       total_amount: 'Gesamtbetrag',
       net_amount: 'Nettobetrag',
       vat_amount: 'MwSt-Betrag',

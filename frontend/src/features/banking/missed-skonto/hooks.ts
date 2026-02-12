@@ -1,6 +1,6 @@
 /**
  * Missed Skonto Hooks
- * TanStack Query Hooks fuer verpasste Skonto-Daten
+ * TanStack Query Hooks für verpasste Skonto-Daten
  */
 
 import { useQuery, useMutation } from '@tanstack/react-query';

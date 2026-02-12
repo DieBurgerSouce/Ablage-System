@@ -2,7 +2,7 @@
  * DATEVExportButton Component
  *
  * Button zum Generieren und Herunterladen eines DATEV-kompatiblen Exports.
- * Zeigt Vorschau der Export-Daten und ermoeglicht Download.
+ * Zeigt Vorschau der Export-Daten und ermöglicht Download.
  */
 
 import * as React from 'react';
@@ -82,7 +82,7 @@ export function DATEVExportButton({
   const exportMutation = useDATEVExport();
   const downloadMutation = useDATEVExportDownload();
 
-  // Verfuegbare Jahre (aktuelle und letzte 5)
+  // Verfügbare Jahre (aktuelle und letzte 5)
   const availableYears = React.useMemo(() => {
     const years: number[] = [];
     for (let i = 0; i < 6; i++) {
@@ -135,7 +135,7 @@ export function DATEVExportButton({
           </DialogTitle>
           <DialogDescription>
             Exportieren Sie Ihre Steuerabzuege im DATEV-kompatiblen Format
-            fuer Ihren Steuerberater.
+            für Ihren Steuerberater.
           </DialogDescription>
         </DialogHeader>
 
@@ -259,7 +259,7 @@ export function DATEVExportButton({
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
           <Button variant="ghost" onClick={handleClose}>
-            Schliessen
+            Schließen
           </Button>
           {!exportData ? (
             <Button

@@ -206,7 +206,7 @@ export function PolicyFormDialog({ open, onOpenChange, policy }: PolicyFormDialo
             {isEditing ? 'Policy bearbeiten' : 'Neue Policy erstellen'}
           </DialogTitle>
           <DialogDescription>
-            Konfigurieren Sie Zugriffsregeln fuer Dokumente.
+            Konfigurieren Sie Zugriffsregeln für Dokumente.
           </DialogDescription>
         </DialogHeader>
 
@@ -386,7 +386,7 @@ export function PolicyFormDialog({ open, onOpenChange, policy }: PolicyFormDialo
                       <TagInput
                         value={field.value}
                         onChange={field.onChange}
-                        placeholder="Rolle hinzufuegen..."
+                        placeholder="Rolle hinzufügen..."
                         suggestions={['admin', 'manager', 'user', 'accountant', 'viewer']}
                       />
                       <FormDescription>
@@ -406,12 +406,12 @@ export function PolicyFormDialog({ open, onOpenChange, policy }: PolicyFormDialo
                       <TagInput
                         value={field.value}
                         onChange={field.onChange}
-                        placeholder="Rolle hinzufuegen..."
+                        placeholder="Rolle hinzufügen..."
                         suggestions={['guest', 'external', 'temp']}
                         variant="destructive"
                       />
                       <FormDescription>
-                        Rollen ohne Zugriff (hoechste Prioritaet)
+                        Rollen ohne Zugriff (höchste Priorität)
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -429,11 +429,11 @@ export function PolicyFormDialog({ open, onOpenChange, policy }: PolicyFormDialo
                       <TagInput
                         value={field.value}
                         onChange={field.onChange}
-                        placeholder="Typ hinzufuegen..."
+                        placeholder="Typ hinzufügen..."
                         suggestions={['all', 'pdf', 'image', 'invoice', 'contract']}
                       />
                       <FormDescription>
-                        Betroffene Dokumenttypen ("all" fuer alle)
+                        Betroffene Dokumenttypen ("all" für alle)
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -449,7 +449,7 @@ export function PolicyFormDialog({ open, onOpenChange, policy }: PolicyFormDialo
                       <TagInput
                         value={field.value}
                         onChange={field.onChange}
-                        placeholder="Tag hinzufuegen..."
+                        placeholder="Tag hinzufügen..."
                         suggestions={['vertraulich', 'intern', 'geheim']}
                       />
                       <FormDescription>
@@ -469,7 +469,7 @@ export function PolicyFormDialog({ open, onOpenChange, policy }: PolicyFormDialo
                       <TagInput
                         value={field.value}
                         onChange={field.onChange}
-                        placeholder="Tag hinzufuegen..."
+                        placeholder="Tag hinzufügen..."
                         suggestions={['public', 'draft']}
                         variant="destructive"
                       />
@@ -485,7 +485,7 @@ export function PolicyFormDialog({ open, onOpenChange, policy }: PolicyFormDialo
               {/* Time Tab */}
               <TabsContent value="time" className="space-y-4 mt-4">
                 <div className="rounded-lg border p-4 space-y-4">
-                  <h4 className="font-medium">Zeitbeschraenkung</h4>
+                  <h4 className="font-medium">Zeitbeschränkung</h4>
                   <p className="text-sm text-muted-foreground">
                     Zugriff nur innerhalb bestimmter Uhrzeiten erlauben.
                   </p>
@@ -543,8 +543,8 @@ export function PolicyFormDialog({ open, onOpenChange, policy }: PolicyFormDialo
                   </div>
 
                   <p className="text-xs text-muted-foreground">
-                    Leer lassen fuer keine Zeitbeschraenkung.
-                    Beispiel: 8-18 = nur waehrend der Geschaeftszeiten.
+                    Leer lassen für keine Zeitbeschränkung.
+                    Beispiel: 8-18 = nur während der Geschäftszeiten.
                   </p>
                 </div>
               </TabsContent>
@@ -582,7 +582,7 @@ export function PolicyFormDialog({ open, onOpenChange, policy }: PolicyFormDialo
                           <Input {...field} placeholder="VERTRAULICH" />
                         </FormControl>
                         <FormDescription>
-                          Zusaetzlicher Text im Wasserzeichen
+                          Zusätzlicher Text im Wasserzeichen
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

@@ -104,6 +104,12 @@ class RealtimeEventType(str, Enum):
     WORKFLOW_INSTANCE_COMPLETED = "workflow.instance_completed"
     WORKFLOW_SLA_WARNING = "workflow.sla_warning"
 
+    # Import Events (Phase C - EML/MSG Import)
+    IMPORT_STARTED = "import.started"
+    IMPORT_PROGRESS = "import.progress"
+    IMPORT_COMPLETED = "import.completed"
+    IMPORT_ERROR = "import.error"
+
     # Notification Events (Phase C)
     NOTIFICATION_RECEIVED = "notification.received"
 

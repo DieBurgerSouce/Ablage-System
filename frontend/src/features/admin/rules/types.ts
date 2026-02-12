@@ -1,7 +1,7 @@
 /**
  * Business Rules Types
  *
- * TypeScript-Definitionen fuer das Business Rules System.
+ * TypeScript-Definitionen für das Business Rules System.
  */
 
 export type ConditionOperator =

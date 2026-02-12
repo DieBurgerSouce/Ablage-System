@@ -150,7 +150,7 @@ export function CreateDelegationDialog({
         <DialogHeader>
           <DialogTitle>Vertretung einrichten</DialogTitle>
           <DialogDescription>
-            Waehlen Sie einen Vertreter und definieren Sie den Zeitraum und Umfang
+            Wählen Sie einen Vertreter und definieren Sie den Zeitraum und Umfang
             der Vertretung.
           </DialogDescription>
         </DialogHeader>
@@ -165,7 +165,7 @@ export function CreateDelegationDialog({
                 if (template) handleSelectTemplate(template);
               }}>
                 <SelectTrigger className="mt-1.5">
-                  <SelectValue placeholder="Vorlage auswaehlen..." />
+                  <SelectValue placeholder="Vorlage auswählen..." />
                 </SelectTrigger>
                 <SelectContent>
                   {templatesData.templates.map((template) => (
@@ -180,7 +180,7 @@ export function CreateDelegationDialog({
 
           {/* User Search */}
           <div>
-            <Label>Vertreter auswaehlen *</Label>
+            <Label>Vertreter auswählen *</Label>
             {selectedUserId ? (
               <div className="mt-1.5 flex items-center justify-between p-3 border rounded-lg bg-muted/50">
                 <div className="flex items-center gap-2">
@@ -195,7 +195,7 @@ export function CreateDelegationDialog({
                     setSelectedUserName('');
                   }}
                 >
-                  Aendern
+                  Ändern
                 </Button>
               </div>
             ) : (
@@ -300,7 +300,7 @@ export function CreateDelegationDialog({
             <Label>Anmerkung (optional)</Label>
             <Textarea
               className="mt-1.5"
-              placeholder="Zusaetzliche Informationen fuer den Vertreter..."
+              placeholder="Zusätzliche Informationen für den Vertreter..."
               value={reasonDetails}
               onChange={(e) => setReasonDetails(e.target.value)}
               rows={2}
@@ -353,9 +353,9 @@ export function CreateDelegationDialog({
 
             <div className="flex items-center justify-between">
               <div>
-                <Label>Auto-Verlaengerung</Label>
+                <Label>Auto-Verlängerung</Label>
                 <p className="text-xs text-muted-foreground">
-                  Automatisch verlaengern wenn nicht widerrufen
+                  Automatisch verlängern wenn nicht widerrufen
                 </p>
               </div>
               <Switch checked={autoExtend} onCheckedChange={setAutoExtend} />
@@ -363,7 +363,7 @@ export function CreateDelegationDialog({
 
             {autoExtend && (
               <div>
-                <Label>Maximale Verlaengerungen</Label>
+                <Label>Maximale Verlängerungen</Label>
                 <Input
                   type="number"
                   min={1}
@@ -380,7 +380,7 @@ export function CreateDelegationDialog({
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Notfall-Vertretungen werden sofort aktiv ohne Bestaetigung durch den
+                Notfall-Vertretungen werden sofort aktiv ohne Bestätigung durch den
                 Vertreter.
               </AlertDescription>
             </Alert>

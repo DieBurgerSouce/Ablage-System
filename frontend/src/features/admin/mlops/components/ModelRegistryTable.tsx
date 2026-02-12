@@ -77,7 +77,7 @@ const MODEL_TYPES: Array<{ type: ModelType; label: string; description: string }
   {
     type: 'entity_matcher',
     label: 'Entity Matching',
-    description: 'Zuordnung zu Geschaeftspartnern',
+    description: 'Zuordnung zu Geschäftspartnern',
   },
   {
     type: 'extraction_model',
@@ -94,7 +94,7 @@ const STATUS_CONFIG: Record<
   candidate: { label: 'Kandidat', icon: Clock, variant: 'outline' },
   active: { label: 'Aktiv', icon: CheckCircle, variant: 'default' },
   deprecated: { label: 'Veraltet', icon: Archive, variant: 'secondary' },
-  rolled_back: { label: 'Zurueckgesetzt', icon: RotateCcw, variant: 'destructive' },
+  rolled_back: { label: 'Zurückgesetzt', icon: RotateCcw, variant: 'destructive' },
   archived: { label: 'Archiviert', icon: Archive, variant: 'secondary' },
 };
 
@@ -250,14 +250,14 @@ function ModelTypeRow({ modelType, label, description }: ModelTypeRowProps) {
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Modell zuruecksetzen?</AlertDialogTitle>
+                        <AlertDialogTitle>Modell zurücksetzen?</AlertDialogTitle>
                         <AlertDialogDescription>
                           Das aktive Modell v{activeModel.version} wird deaktiviert und
                           die vorherige Version wird wiederhergestellt.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <div className="py-4">
-                        <Label htmlFor="reason">Grund fuer Rollback</Label>
+                        <Label htmlFor="reason">Grund für Rollback</Label>
                         <Input
                           id="reason"
                           value={rollbackReason}
@@ -272,7 +272,7 @@ function ModelTypeRow({ modelType, label, description }: ModelTypeRowProps) {
                           onClick={handleRollback}
                           disabled={rollbackMutation.isPending || !rollbackReason.trim()}
                         >
-                          Rollback durchfuehren
+                          Rollback durchführen
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>

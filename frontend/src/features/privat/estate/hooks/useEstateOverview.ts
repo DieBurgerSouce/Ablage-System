@@ -1,7 +1,7 @@
 /**
  * Estate Overview Hook
  *
- * Laedt die Nachlassuebersicht mit Summary, Steuerberechnung und Schenkungsplaenen
+ * Laedt die Nachlassübersicht mit Summary, Steuerberechnung und Schenkungsplaenen
  */
 
 import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
@@ -28,7 +28,7 @@ export const estateQueryKeys = {
 // ==================== Overview Hook ====================
 
 /**
- * Holt die komplette Nachlassuebersicht
+ * Holt die komplette Nachlassübersicht
  */
 export function useEstateOverview(
   spaceId: string,

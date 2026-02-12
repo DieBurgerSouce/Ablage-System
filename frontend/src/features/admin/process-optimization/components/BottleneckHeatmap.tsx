@@ -49,7 +49,7 @@ export function BottleneckHeatmap() {
         </CardHeader>
         <CardContent>
           <div className="text-center py-8 text-muted-foreground">
-            Keine Daten verfuegbar
+            Keine Daten verfügbar
           </div>
         </CardContent>
       </Card>
@@ -78,7 +78,7 @@ export function BottleneckHeatmap() {
           Lastverteilung
         </CardTitle>
         <CardDescription>
-          Dokumenten-Aktivitaet nach Wochentag und Uhrzeit (letzte {data.period_days} Tage)
+          Dokumenten-Aktivität nach Wochentag und Uhrzeit (letzte {data.period_days} Tage)
         </CardDescription>
       </CardHeader>
       <CardContent>

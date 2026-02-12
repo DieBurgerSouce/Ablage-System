@@ -1,7 +1,7 @@
 /**
  * OCR Self-Learning API Client
  *
- * API fuer das Self-Learning OCR System.
+ * API für das Self-Learning OCR System.
  */
 
 import { apiClient } from '@/lib/api/client';
@@ -109,7 +109,7 @@ export interface ModelVersionResponse {
 // ==================== API Functions ====================
 
 /**
- * Uebermittle Korrektur-Feedback
+ * Übermittle Korrektur-Feedback
  */
 export async function submitCorrectionFeedback(
   feedback: CorrectionFeedbackRequest

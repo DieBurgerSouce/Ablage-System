@@ -1,15 +1,15 @@
 /**
- * DocumentBulkActionsBar - Aktionsleiste fuer Massenoperationen auf Dokumenten
+ * DocumentBulkActionsBar - Aktionsleiste für Massenoperationen auf Dokumenten
  *
- * Erscheint am unteren Bildschirmrand wenn Dokumente ausgewaehlt sind.
+ * Erscheint am unteren Bildschirmrand wenn Dokumente ausgewählt sind.
  * Bietet Schnellzugriff auf gaengige Bulk-Operationen.
  *
  * Features:
- * - Tag hinzufuegen/entfernen Dialog
+ * - Tag hinzufügen/entfernen Dialog
  * - Ordner verschieben Dialog
- * - Loeschen mit Bestaetigung
+ * - Löschen mit Bestätigung
  * - Export Dialog
- * - Progress-Anzeige waehrend Operation
+ * - Progress-Anzeige während Operation
  */
 
 import * as React from 'react';
@@ -76,18 +76,18 @@ export interface Folder {
 }
 
 export interface DocumentBulkActionsBarProps {
-  /** Anzahl ausgewaehlter Dokumente */
+  /** Anzahl ausgewählter Dokumente */
   selectedCount: number;
   /** Gesamtanzahl der Dokumente */
   totalCount?: number;
   /** Callback zum Aufheben der Auswahl */
   onClearSelection: () => void;
-  /** Callback bei "Alle auswaehlen" */
+  /** Callback bei "Alle auswählen" */
   onSelectAll?: () => void;
-  /** Verfuegbare Ordner fuer Verschieben */
+  /** Verfügbare Ordner für Verschieben */
   folders?: Folder[];
 
-  // Callbacks fuer Operationen
+  // Callbacks für Operationen
   onAddTags: (tags: string[]) => Promise<void>;
   onMoveToFolder: (folderId: string) => Promise<void>;
   onDelete: (reason?: string) => Promise<void>;
@@ -108,7 +108,7 @@ export interface DocumentBulkActionsBarProps {
   isDeleting?: boolean;
   isExporting?: boolean;
 
-  /** Zusaetzliche CSS-Klassen */
+  /** Zusätzliche CSS-Klassen */
   className?: string;
 }
 
@@ -253,7 +253,7 @@ export function DocumentBulkActionsBar({
             <div className="flex items-center gap-2 pr-4 border-r">
               <CheckSquare className="h-5 w-5 text-primary" />
               <span className="font-medium whitespace-nowrap">
-                {selectedCount} ausgewaehlt
+                {selectedCount} ausgewählt
                 {totalCount && (
                   <span className="text-muted-foreground ml-1">von {totalCount}</span>
                 )}
@@ -307,7 +307,7 @@ export function DocumentBulkActionsBar({
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Tags hinzufuegen</p>
+                      <p>Tags hinzufügen</p>
                       <p className="text-xs text-muted-foreground">Strg+T</p>
                     </TooltipContent>
                   </Tooltip>
@@ -375,11 +375,11 @@ export function DocumentBulkActionsBar({
                         ) : (
                           <Trash2 className="h-4 w-4" />
                         )}
-                        <span className="hidden sm:inline">Loeschen</span>
+                        <span className="hidden sm:inline">Löschen</span>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Dokumente loeschen</p>
+                      <p>Dokumente löschen</p>
                       <p className="text-xs text-muted-foreground">Entf</p>
                     </TooltipContent>
                   </Tooltip>
@@ -405,9 +405,9 @@ export function DocumentBulkActionsBar({
       <Dialog open={tagDialogOpen} onOpenChange={setTagDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Tags hinzufuegen</DialogTitle>
+            <DialogTitle>Tags hinzufügen</DialogTitle>
             <DialogDescription>
-              Tags werden zu {selectedCount} ausgewaehlten Dokument(en) hinzugefuegt.
+              Tags werden zu {selectedCount} ausgewählten Dokument(en) hinzugefügt.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -435,7 +435,7 @@ export function DocumentBulkActionsBar({
             </Button>
             <Button onClick={handleAddTags} disabled={!tagInput.trim() || isTagging}>
               {isTagging && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Tags hinzufuegen
+              Tags hinzufügen
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -454,7 +454,7 @@ export function DocumentBulkActionsBar({
             <Label htmlFor="folder">Zielordner</Label>
             <Select value={selectedFolderId} onValueChange={setSelectedFolderId}>
               <SelectTrigger className="mt-2">
-                <SelectValue placeholder="Ordner auswaehlen..." />
+                <SelectValue placeholder="Ordner auswählen..." />
               </SelectTrigger>
               <SelectContent>
                 {folders.map((folder) => (
@@ -504,7 +504,7 @@ export function DocumentBulkActionsBar({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="zip">ZIP-Archiv (alle Dateien)</SelectItem>
-                  <SelectItem value="pdf">PDF (zusammengefuegt)</SelectItem>
+                  <SelectItem value="pdf">PDF (zusammengefügt)</SelectItem>
                   <SelectItem value="csv">CSV (nur Metadaten)</SelectItem>
                 </SelectContent>
               </Select>
@@ -536,12 +536,12 @@ export function DocumentBulkActionsBar({
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Dokumente loeschen?</AlertDialogTitle>
+            <AlertDialogTitle>Dokumente löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Moechten Sie wirklich {selectedCount} Dokument(e) loeschen?
+              Möchten Sie wirklich {selectedCount} Dokument(e) löschen?
               <br />
               <br />
-              Die Dokumente werden in den Papierkorb verschoben und koennen innerhalb von 30 Tagen
+              Die Dokumente werden in den Papierkorb verschoben und können innerhalb von 30 Tagen
               wiederhergestellt werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -549,7 +549,7 @@ export function DocumentBulkActionsBar({
             <Label htmlFor="reason">Loeschgrund (optional)</Label>
             <Input
               id="reason"
-              placeholder="z.B. Nicht mehr benoetigt"
+              placeholder="z.B. Nicht mehr benötigt"
               value={deleteReason}
               onChange={(e) => setDeleteReason(e.target.value)}
               className="mt-2"
@@ -563,7 +563,7 @@ export function DocumentBulkActionsBar({
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeleting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Loeschen
+              Löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

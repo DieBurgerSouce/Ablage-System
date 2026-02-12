@@ -1,5 +1,5 @@
 /**
- * OCRReviewModal - SplitView fuer OCR-Review Workflow
+ * OCRReviewModal - SplitView für OCR-Review Workflow
  *
  * Layout:
  * ┌────────────────────────────────────────────────────────────────────┐
@@ -164,11 +164,11 @@ function DocumentPreview({
   const [zoom, setZoom] = useState(1)
   const [rotation, setRotation] = useState(0)
 
-  // Fallback MIME-Type basierend auf Dateiendung wenn mimeType leer oder ungueltig
+  // Fallback MIME-Type basierend auf Dateiendung wenn mimeType leer oder ungültig
   const effectiveMimeType = (() => {
     if (mimeType && mimeType !== '') return mimeType
 
-    // Fallback: Dateiendung pruefen
+    // Fallback: Dateiendung prüfen
     const ext = fileName?.split('.').pop()?.toLowerCase()
     switch (ext) {
       case 'pdf':
@@ -195,10 +195,10 @@ function DocumentPreview({
   const isPDF = effectiveMimeType === 'application/pdf'
   const isImage = effectiveMimeType.startsWith('image/')
 
-  // TIFF und BMP werden von den meisten Browsern nicht nativ unterstuetzt
+  // TIFF und BMP werden von den meisten Browsern nicht nativ unterstützt
   const isUnsupportedFormat = effectiveMimeType === 'image/tiff' || effectiveMimeType === 'image/bmp'
 
-  // Browser-unterstuetzte Bildformate
+  // Browser-unterstützte Bildformate
   const isSupportedImage = isImage && !isUnsupportedFormat
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.25, 3))
@@ -227,10 +227,10 @@ function DocumentPreview({
           <ZoomOut className="w-4 h-4" />
         </Button>
         <span className="text-xs text-muted-foreground px-2" aria-live="polite">{Math.round(zoom * 100)}%</span>
-        <Button variant="ghost" size="icon" onClick={handleZoomIn} aria-label="Vergroessern">
+        <Button variant="ghost" size="icon" onClick={handleZoomIn} aria-label="Vergrößern">
           <ZoomIn className="w-4 h-4" />
         </Button>
-        <Button variant="ghost" size="icon" onClick={handleResetZoom} aria-label="Zoom zuruecksetzen">
+        <Button variant="ghost" size="icon" onClick={handleResetZoom} aria-label="Zoom zurücksetzen">
           <RotateCcw className="w-4 h-4" />
         </Button>
       </div>

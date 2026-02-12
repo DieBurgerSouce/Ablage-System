@@ -1,7 +1,7 @@
 /**
  * Cross-Tenant Reports API
  *
- * API-Funktionen fuer mandantenuebergreifende Berichte.
+ * API-Funktionen für mandantenübergreifende Berichte.
  * Erfordert Superuser-Berechtigung.
  */
 
@@ -18,7 +18,7 @@ const BASE_URL = '/cross-tenant';
 // =============================================================================
 
 /**
- * Hole mandantenuebergreifende Uebersicht (nur Admin)
+ * Hole mandantenübergreifende Übersicht (nur Admin)
  */
 export async function fetchCompanyOverview(): Promise<CrossTenantOverviewResponse> {
   const response = await apiClient.get<CrossTenantOverviewResponse>(
@@ -28,7 +28,7 @@ export async function fetchCompanyOverview(): Promise<CrossTenantOverviewRespons
 }
 
 /**
- * Hole mandantenuebergreifende Finanz-Zusammenfassung (nur Admin)
+ * Hole mandantenübergreifende Finanz-Zusammenfassung (nur Admin)
  */
 export async function fetchCompanyFinancials(): Promise<CrossTenantFinancialResponse> {
   const response = await apiClient.get<CrossTenantFinancialResponse>(

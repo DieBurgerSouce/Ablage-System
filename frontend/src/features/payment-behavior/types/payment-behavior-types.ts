@@ -1,7 +1,7 @@
 /**
  * Payment Behavior Types
  *
- * TypeScript Types fuer Zahlungsverhaltens-Analyse.
+ * TypeScript Types für Zahlungsverhaltens-Analyse.
  */
 
 // =============================================================================
@@ -19,18 +19,18 @@ export type PaymentTrend = 'improving' | 'stable' | 'declining';
 
 export const BEHAVIOR_CATEGORY_LABELS: Record<PaymentBehaviorCategory, string> = {
   excellent: 'Exzellent',
-  punctual: 'Puenktlich',
-  delayed: 'Verzoegert',
+  punctual: 'Pünktlich',
+  delayed: 'Verzögert',
   problematic: 'Problematisch',
   defaulter: 'Zahlungsausfall',
 };
 
 export const BEHAVIOR_CATEGORY_DESCRIPTIONS: Record<PaymentBehaviorCategory, string> = {
-  excellent: 'Zahlt vor Faelligkeit, nutzt Skonto optimal',
+  excellent: 'Zahlt vor Fälligkeit, nutzt Skonto optimal',
   punctual: 'Zahlt innerhalb der Zahlungsfrist',
-  delayed: '1-14 Tage nach Faelligkeit',
-  problematic: 'Haeufig stark verzoegert (>30%)',
-  defaulter: 'Regelmaessige Ausfaelle (>90 Tage)',
+  delayed: '1-14 Tage nach Fälligkeit',
+  problematic: 'Häufig stark verzögert (>30%)',
+  defaulter: 'Regelmäßige Ausfälle (>90 Tage)',
 };
 
 export const BEHAVIOR_CATEGORY_COLORS: Record<
@@ -343,14 +343,14 @@ export const UI_LABELS = {
   invoices: 'Rechnungen',
   volume: 'Volumen',
   avgDays: 'Durchschn. Zahldauer',
-  punctuality: 'Puenktlichkeit',
+  punctuality: 'Pünktlichkeit',
   skonto: 'Skonto-Nutzung',
-  overdue: 'Ueberfaellig',
+  overdue: 'Überfällig',
   topPayers: 'Beste Zahler',
   worstPayers: 'Schlechteste Zahler',
   improving: 'Verbessernd',
   declining: 'Verschlechternd',
   highRisk: 'Risiko-Kunden',
   benchmark: 'Benchmark',
-  noData: 'Keine Daten verfuegbar',
+  noData: 'Keine Daten verfügbar',
 };

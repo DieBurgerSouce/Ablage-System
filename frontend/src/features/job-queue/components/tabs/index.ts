@@ -1,7 +1,7 @@
 /**
  * Job Queue Tabs
  *
- * Zentrale Exports fuer alle Job Queue Tabs.
+ * Zentrale Exports für alle Job Queue Tabs.
  */
 
 export * from './OverviewTab';

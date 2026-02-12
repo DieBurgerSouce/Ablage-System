@@ -21,7 +21,7 @@ function EuerExportPage() {
         return (
             <div className="p-6">
                 <p className="text-muted-foreground">
-                    Bitte waehlen Sie zuerst eine Firma aus.
+                    Bitte wählen Sie zuerst eine Firma aus.
                 </p>
             </div>
         );

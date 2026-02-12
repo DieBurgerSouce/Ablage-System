@@ -161,7 +161,7 @@ export function InsightsWidget({
         ) : insights.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Keine Insights verfuegbar</p>
+            <p className="text-sm">Keine Insights verfügbar</p>
             <p className="text-xs mt-1">Alles sieht gut aus!</p>
           </div>
         ) : (

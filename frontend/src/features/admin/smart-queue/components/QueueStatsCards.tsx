@@ -1,7 +1,7 @@
 /**
  * Queue Statistics Cards
  *
- * Uebersicht ueber Queue-Statistiken mit Prioritaets-Verteilung.
+ * Übersicht über Queue-Statistiken mit Prioritäts-Verteilung.
  */
 
 import {
@@ -66,10 +66,10 @@ export function QueueStatsCards() {
         </CardContent>
       </Card>
 
-      {/* Skonto-Gefaehrdet */}
+      {/* Skonto-Gefährdet */}
       <Card className={stats.skonto_at_risk > 0 ? 'border-amber-500' : ''}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Skonto-Gefaehrdet</CardTitle>
+          <CardTitle className="text-sm font-medium">Skonto-Gefährdet</CardTitle>
           <Banknote className={`h-4 w-4 ${stats.skonto_at_risk > 0 ? 'text-amber-500' : 'text-muted-foreground'}`} />
         </CardHeader>
         <CardContent>
@@ -81,7 +81,7 @@ export function QueueStatsCards() {
           </p>
           {stats.skonto_at_risk > 0 && (
             <Badge variant="outline" className="mt-2 text-amber-500 border-amber-500">
-              Hohe Prioritaet
+              Hohe Priorität
             </Badge>
           )}
         </CardContent>

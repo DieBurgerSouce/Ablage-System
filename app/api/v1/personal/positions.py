@@ -12,7 +12,9 @@ Security Features:
 - Company Context Enforcement (Multi-Tenancy)
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -520,7 +522,7 @@ async def delete_position(
 
 # ==================== Helper Functions ====================
 
-def _dict_to_position_response(data: Dict[str, Any]) -> PositionResponse:
+def _dict_to_position_response(data: JSONDict) -> PositionResponse:
     """Konvertiert Service-Dict zu Response.
 
     Mappt salary_band_min/max -> min_salary/max_salary fuer API-Kompatibilitaet.
@@ -554,7 +556,7 @@ def _dict_to_position_response(data: Dict[str, Any]) -> PositionResponse:
     )
 
 
-def _dict_to_detail_response(data: Dict[str, Any]) -> PositionDetailResponse:
+def _dict_to_detail_response(data: JSONDict) -> PositionDetailResponse:
     """Konvertiert Service-Dict zu Detail-Response.
 
     Mappt salary_band_min/max -> min_salary/max_salary fuer API-Kompatibilitaet.

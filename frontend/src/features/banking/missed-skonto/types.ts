@@ -1,6 +1,6 @@
 /**
  * Missed Skonto Types
- * TypeScript-Definitionen fuer verpasste Skonto-Moeglichkeiten
+ * TypeScript-Definitionen für verpasste Skonto-Möglichkeiten
  */
 
 /**
@@ -40,12 +40,12 @@ export interface SkontoStatistics {
 }
 
 /**
- * Zeitraum fuer Statistik-Abfrage
+ * Zeitraum für Statistik-Abfrage
  */
 export type StatsPeriod = 'month' | 'quarter' | 'year' | 'custom';
 
 /**
- * API Response fuer Missed Skonto Liste
+ * API Response für Missed Skonto Liste
  */
 export interface MissedSkontoResponse {
   items: MissedSkontoItem[];

@@ -1,10 +1,10 @@
 /**
  * Tour Provider Component
  *
- * React Context Provider fuer das gesamte Tour-System.
+ * React Context Provider für das gesamte Tour-System.
  * Verwaltet aktive Tour-State, rendert Overlay + Tooltip,
- * hoert auf Keyboard-Events und startet automatisch die
- * Willkommens-Tour fuer neue Benutzer.
+ * hört auf Keyboard-Events und startet automatisch die
+ * Willkommens-Tour für neue Benutzer.
  */
 
 import * as React from 'react'
@@ -85,13 +85,13 @@ export function TourProvider({
     hasBadge,
   } = tour
 
-  // Auto-Start Willkommens-Tour fuer neue Benutzer
+  // Auto-Start Willkommens-Tour für neue Benutzer
   useEffect(() => {
     if (!autoStartWelcome) return
 
     const firstVisitDone = window.localStorage.getItem(FIRST_VISIT_KEY)
     if (!firstVisitDone && !isActive) {
-      // Kurze Verzoegerung, damit die App vollstaendig geladen ist
+      // Kurze Verzögerung, damit die App vollständig geladen ist
       const timer = setTimeout(() => {
         startTour('willkommen')
         window.localStorage.setItem(FIRST_VISIT_KEY, 'true')

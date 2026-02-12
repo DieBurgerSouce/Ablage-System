@@ -1,8 +1,8 @@
 /**
  * AI Decision Review - TypeScript Types
  *
- * Typen fuer ML/AI Entscheidungen, Drift Detection,
- * SHAP Erklaerungen und A/B Testing.
+ * Typen für ML/AI Entscheidungen, Drift Detection,
+ * SHAP Erklärungen und A/B Testing.
  */
 
 // =============================================================================

@@ -1,12 +1,12 @@
 /**
- * PullToRefresh - Pull-to-Refresh fuer Listen
+ * PullToRefresh - Pull-to-Refresh für Listen
  *
  * Phase 2.4: Mobile-First Gesten
  *
  * Features:
  * - Pull-Geste zum Aktualisieren
  * - Animierter Spinner
- * - Haptic Feedback (wenn verfuegbar)
+ * - Haptic Feedback (wenn verfügbar)
  * - Konfigurierbare Thresholds
  */
 
@@ -25,7 +25,7 @@ export interface PullToRefreshProps {
   onRefresh: () => void | Promise<void>
   /** Ist gerade am Laden */
   isRefreshing?: boolean
-  /** Pull-Distanz zum Ausloesen (px) */
+  /** Pull-Distanz zum Auslösen (px) */
   pullThreshold?: number
   /** Maximale Pull-Distanz (px) */
   maxPullDistance?: number
@@ -33,7 +33,7 @@ export interface PullToRefreshProps {
   disabled?: boolean
   /** Custom Loading Indicator */
   loadingIndicator?: ReactNode
-  /** Zusaetzliche CSS-Klassen */
+  /** Zusätzliche CSS-Klassen */
   className?: string
 }
 
@@ -122,7 +122,7 @@ export function PullToRefresh({
       // Trigger Refresh
       onRefresh()
 
-      // Haptic Feedback (wenn verfuegbar)
+      // Haptic Feedback (wenn verfügbar)
       if ("vibrate" in navigator) {
         navigator.vibrate(10)
       }
@@ -135,7 +135,7 @@ export function PullToRefresh({
   // Progress Prozent (0-1)
   const progress = Math.min(pullDistance / pullThreshold, 1)
 
-  // Rotation fuer Spinner
+  // Rotation für Spinner
   const rotation = progress * 180
 
   return (
@@ -206,7 +206,7 @@ export function PullToRefresh({
 }
 
 // =============================================================================
-// usePullToRefresh Hook - Fuer manuelle Integration
+// usePullToRefresh Hook - Für manuelle Integration
 // =============================================================================
 
 export interface UsePullToRefreshOptions {

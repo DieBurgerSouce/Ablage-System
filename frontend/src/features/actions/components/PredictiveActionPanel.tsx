@@ -1,7 +1,7 @@
 /**
  * Predictive Action Panel Komponente
  *
- * Zeigt proaktive Handlungsvorschlaege mit:
+ * Zeigt proaktive Handlungsvorschläge mit:
  * - Kritische Aktionen (Mahnung, Skonto)
  * - Akzeptieren/Ablehnen/Verschieben
  * - Confidence-Anzeige
@@ -352,7 +352,7 @@ function ActionCard({
                     action.metadata.daysOverdue > 0 && (
                       <span className="flex items-center gap-1 text-red-600">
                         <AlertTriangle className="h-3 w-3" />
-                        {action.metadata.daysOverdue} Tage ueberfaellig
+                        {action.metadata.daysOverdue} Tage überfällig
                       </span>
                     )}
                 </div>
@@ -389,7 +389,7 @@ function ActionCard({
                 className="w-24"
               >
                 <Pause className="h-4 w-4 mr-1" />
-                Spaeter
+                Später
               </Button>
               <Button
                 size="sm"
@@ -412,7 +412,7 @@ function ActionCard({
           <DialogHeader>
             <DialogTitle>Aktion ablehnen</DialogTitle>
             <DialogDescription>
-              Moechten Sie diese Aktion wirklich ablehnen? Optional koennen Sie
+              Möchten Sie diese Aktion wirklich ablehnen? Optional können Sie
               einen Grund angeben.
             </DialogDescription>
           </DialogHeader>
@@ -445,7 +445,7 @@ function ActionCard({
           <DialogHeader>
             <DialogTitle>Aktion verschieben</DialogTitle>
             <DialogDescription>
-              Fuer wie lange moechten Sie diese Aktion verschieben?
+              Für wie lange möchten Sie diese Aktion verschieben?
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -502,7 +502,7 @@ function ActionsList({
       <div className="text-center py-12 text-muted-foreground">
         <CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-green-500" />
         <p className="text-lg font-medium">Keine offenen Aktionen</p>
-        <p className="text-sm">Alle Handlungsvorschlaege wurden bearbeitet.</p>
+        <p className="text-sm">Alle Handlungsvorschläge wurden bearbeitet.</p>
       </div>
     );
   }
@@ -574,7 +574,7 @@ function StatisticsPanel({ stats }: { stats: ActionStatistics }) {
           <div className="grid grid-cols-2 gap-6">
             <div>
               <div className="text-sm text-muted-foreground">
-                Geschaetzte Einsparungen
+                Geschätzte Einsparungen
               </div>
               <div className="text-2xl font-bold">
                 {formatCurrency(stats.estimatedSavings)}
@@ -614,7 +614,7 @@ function StatisticsPanel({ stats }: { stats: ActionStatistics }) {
       {/* By Priority */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Nach Prioritaet</CardTitle>
+          <CardTitle className="text-base">Nach Priorität</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -756,7 +756,7 @@ export function PredictiveActionPanel({
             Fehler beim Laden der Aktionen
           </p>
           <p className="text-muted-foreground mb-4">
-            Die Handlungsvorschlaege konnten nicht geladen werden.
+            Die Handlungsvorschläge konnten nicht geladen werden.
           </p>
           <Button variant="outline" onClick={() => refetchCritical()}>
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -783,7 +783,7 @@ export function PredictiveActionPanel({
             <div>
               <CardTitle className="text-base flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-purple-500" />
-                Handlungsvorschlaege
+                Handlungsvorschläge
               </CardTitle>
               <CardDescription>
                 {criticalCount > 0
@@ -832,7 +832,7 @@ export function PredictiveActionPanel({
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <Sparkles className="h-6 w-6 text-purple-500" />
-            Proaktive Handlungsvorschlaege
+            Proaktive Handlungsvorschläge
           </h2>
           <p className="text-muted-foreground">
             KI-generierte Empfehlungen basierend auf Ihren Daten
@@ -861,7 +861,7 @@ export function PredictiveActionPanel({
           variant={criticalCount > 0 ? 'warning' : 'default'}
         />
         <SummaryCard
-          title="Skonto laeuft ab"
+          title="Skonto läuft ab"
           value={summary.expiringThisWeek ?? 0}
           subtitle="Diese Woche"
           icon={<Percent className="h-5 w-5 text-orange-500" />}
@@ -873,7 +873,7 @@ export function PredictiveActionPanel({
           icon={<Receipt className="h-5 w-5 text-blue-500" />}
         />
         <SummaryCard
-          title="Anrufe noetig"
+          title="Anrufe nötig"
           value={summary.needsCall ?? 0}
           icon={<Phone className="h-5 w-5 text-purple-500" />}
         />
@@ -977,7 +977,7 @@ export function PredictiveActionPanel({
             <StatisticsPanel stats={stats} />
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              Keine Statistiken verfuegbar
+              Keine Statistiken verfügbar
             </div>
           )}
         </TabsContent>

@@ -1,10 +1,10 @@
 /**
  * PaymentHistoryPanel - Teilzahlungs-Verwaltungskomponente
  *
- * Zeigt Zahlungsverlauf einer Rechnung und ermoeglicht:
+ * Zeigt Zahlungsverlauf einer Rechnung und ermöglicht:
  * - Neue Teilzahlung erfassen
  * - Zahlungshistorie anzeigen
- * - Einzelne Zahlungen loeschen
+ * - Einzelne Zahlungen löschen
  * - Ausstehenden Betrag anzeigen
  */
 
@@ -64,7 +64,7 @@ interface PaymentHistoryPanelProps {
 }
 
 const PAYMENT_METHODS = [
-  { value: 'bank_transfer', label: 'Bankueberweisung' },
+  { value: 'bank_transfer', label: 'Banküberweisung' },
   { value: 'cash', label: 'Barzahlung' },
   { value: 'card', label: 'Kartenzahlung' },
   { value: 'paypal', label: 'PayPal' },
@@ -114,7 +114,7 @@ export function PaymentHistoryPanel({ invoice, className }: PaymentHistoryPanelP
     if (isNaN(amount) || amount <= 0) {
       toast({
         title: 'Fehler',
-        description: 'Bitte einen gueltigen Betrag eingeben',
+        description: 'Bitte einen gültigen Betrag eingeben',
         variant: 'destructive',
       });
       return;
@@ -123,7 +123,7 @@ export function PaymentHistoryPanel({ invoice, className }: PaymentHistoryPanelP
     if (amount > outstandingAmount) {
       toast({
         title: 'Warnung',
-        description: `Der Betrag uebersteigt den ausstehenden Betrag von ${formatCurrency(outstandingAmount)}`,
+        description: `Der Betrag übersteigt den ausstehenden Betrag von ${formatCurrency(outstandingAmount)}`,
         variant: 'destructive',
       });
       return;
@@ -211,7 +211,7 @@ export function PaymentHistoryPanel({ invoice, className }: PaymentHistoryPanelP
                 <DialogHeader>
                   <DialogTitle>{UI_LABELS.partialPaymentAdd}</DialogTitle>
                   <DialogDescription>
-                    Neue Zahlung fuer diese Rechnung erfassen.
+                    Neue Zahlung für diese Rechnung erfassen.
                     Ausstehend: {formatCurrency(outstandingAmount)}
                   </DialogDescription>
                 </DialogHeader>
@@ -246,7 +246,7 @@ export function PaymentHistoryPanel({ invoice, className }: PaymentHistoryPanelP
                       onValueChange={setNewPaymentMethod}
                     >
                       <SelectTrigger id="payment-method">
-                        <SelectValue placeholder="Zahlungsart waehlen" />
+                        <SelectValue placeholder="Zahlungsart wählen" />
                       </SelectTrigger>
                       <SelectContent>
                         {PAYMENT_METHODS.map((method) => (
@@ -338,7 +338,7 @@ export function PaymentHistoryPanel({ invoice, className }: PaymentHistoryPanelP
         {isFullyPaid && (
           <div className="flex items-center gap-2 p-3 bg-green-50 text-green-700 rounded-md">
             <CheckCircle className="w-5 h-5" />
-            <div className="font-medium">Vollstaendig bezahlt</div>
+            <div className="font-medium">Vollständig bezahlt</div>
           </div>
         )}
 
@@ -383,7 +383,7 @@ export function PaymentHistoryPanel({ invoice, className }: PaymentHistoryPanelP
   );
 }
 
-// Unterkomponente fuer einzelne Zahlung
+// Unterkomponente für einzelne Zahlung
 function PaymentItem({
   payment,
   onDelete,
@@ -440,11 +440,11 @@ function PaymentItem({
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Zahlung loeschen?</AlertDialogTitle>
+            <AlertDialogTitle>Zahlung löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Moechten Sie die Zahlung ueber {formatCurrency(payment.amount)} vom{' '}
-              {formatDate(payment.paidAt)} wirklich loeschen? Diese Aktion kann nicht
-              rueckgaengig gemacht werden.
+              Möchten Sie die Zahlung über {formatCurrency(payment.amount)} vom{' '}
+              {formatDate(payment.paidAt)} wirklich löschen? Diese Aktion kann nicht
+              rückgängig gemacht werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -453,7 +453,7 @@ function PaymentItem({
               onClick={onDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Loeschen
+              Löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

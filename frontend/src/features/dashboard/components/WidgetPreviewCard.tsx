@@ -1,8 +1,8 @@
 /**
- * WidgetPreviewCard - Vorschaukarte fuer Widget-Katalog
+ * WidgetPreviewCard - Vorschaukarte für Widget-Katalog
  *
  * Zeigt eine Vorschau des Widgets mit Icon, Name und Beschreibung.
- * Ermoeglicht das Hinzufuegen zum Dashboard per Button.
+ * Ermöglicht das Hinzufügen zum Dashboard per Button.
  */
 
 import { Plus, Check } from 'lucide-react';

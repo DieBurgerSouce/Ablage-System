@@ -125,7 +125,7 @@ function MessagesPage() {
             <DialogHeader>
               <DialogTitle>Neue Nachricht senden</DialogTitle>
               <DialogDescription>
-                Senden Sie uns eine Nachricht. Wir antworten schnellstmoeglich.
+                Senden Sie uns eine Nachricht. Wir antworten schnellstmöglich.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit(onSubmit)}>
@@ -303,7 +303,7 @@ function MessagesPage() {
               <div className="flex items-center justify-center h-64 text-muted-foreground">
                 <div className="text-center">
                   <MessageSquare className="mx-auto h-12 w-12 opacity-50 mb-3" />
-                  <p>Waehlen Sie eine Nachricht aus</p>
+                  <p>Wählen Sie eine Nachricht aus</p>
                 </div>
               </div>
             )}

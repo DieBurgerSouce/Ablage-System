@@ -1,11 +1,11 @@
 /**
- * React Query Hooks fuer Altersvorsorge-Planung
+ * React Query Hooks für Altersvorsorge-Planung
  *
  * Bietet:
- * - Rentenluecken-Berechnung
+ * - Rentenlücken-Berechnung
  * - Monte-Carlo-Simulation
  * - Entnahmestrategien
- * - Riester/Ruerup-Optimierung
+ * - Riester/Rürup-Optimierung
  * - bAV-Analyse
  */
 

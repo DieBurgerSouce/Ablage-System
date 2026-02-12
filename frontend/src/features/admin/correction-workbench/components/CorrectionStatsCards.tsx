@@ -1,6 +1,6 @@
 /**
  * Correction Stats Cards Component
- * Zeigt Statistiken zur Korrektur-Aktivitaet an
+ * Zeigt Statistiken zur Korrektur-Aktivität an
  */
 
 import { Edit3, Clock, CheckCircle2, Users } from 'lucide-react';
@@ -72,7 +72,7 @@ export function CorrectionStatsCards() {
             {stats?.pendingReview.toLocaleString('de-DE') || 0}
           </div>
           <p className="text-xs text-muted-foreground">
-            Warten auf Pruefung
+            Warten auf Prüfung
           </p>
         </CardContent>
       </Card>

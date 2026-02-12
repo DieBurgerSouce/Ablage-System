@@ -1,7 +1,7 @@
 /**
  * OCR Feedback Module
  *
- * Exports fuer das OCR Feedback System mit Gamification.
+ * Exports für das OCR Feedback System mit Gamification.
  * Leaderboard, Punkte, Achievements und Korrektur-Queue.
  */
 

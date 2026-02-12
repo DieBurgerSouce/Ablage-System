@@ -94,7 +94,7 @@ function OpenFilePage() {
           })
         } else {
           // File Handling API not supported
-          logger.warn('[OpenFile] File Handling API nicht unterstuetzt')
+          logger.warn('[OpenFile] File Handling API nicht unterstützt')
 
           // Try to get files from cache (fallback for older browsers)
           if ('caches' in window) {
@@ -203,17 +203,17 @@ function OpenFilePage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileInput className="h-5 w-5" />
-              Datei oeffnen
+              Datei öffnen
             </CardTitle>
             <CardDescription>
-              Keine Datei gefunden. Waehlen Sie eine Datei manuell aus.
+              Keine Datei gefunden. Wählen Sie eine Datei manuell aus.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 dark:bg-amber-950 px-3 py-2 rounded">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
               <p>
-                Die File Handling API wird moeglicherweise nicht von Ihrem Browser unterstuetzt,
+                Die File Handling API wird möglicherweise nicht von Ihrem Browser unterstützt,
                 oder die Datei konnte nicht geladen werden.
               </p>
             </div>
@@ -227,7 +227,7 @@ function OpenFilePage() {
                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                   <Upload className="h-8 w-8 mb-2 text-muted-foreground" />
                   <p className="text-sm text-muted-foreground">
-                    Klicken Sie hier, um eine Datei auszuwaehlen
+                    Klicken Sie hier, um eine Datei auszuwählen
                   </p>
                 </div>
                 <input
@@ -256,14 +256,14 @@ function OpenFilePage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileInput className="h-5 w-5" />
-            Datei oeffnen
+            Datei öffnen
           </CardTitle>
           <CardDescription>
             {fileData.source === 'launchQueue'
-              ? 'Datei wurde mit dem Ablage-System geoeffnet'
+              ? 'Datei wurde mit dem Ablage-System geöffnet'
               : fileData.source === 'cache'
                 ? 'Datei aus Cache geladen'
-                : 'Datei manuell ausgewaehlt'}
+                : 'Datei manuell ausgewählt'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

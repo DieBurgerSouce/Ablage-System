@@ -1,7 +1,7 @@
 /**
  * PO-Matching Query Hooks
  *
- * TanStack Query Hooks fuer 3-Way Purchase Order Matching.
+ * TanStack Query Hooks für 3-Way Purchase Order Matching.
  * Konsistente Query-Keys und wiederverwendbare Hooks.
  *
  * Features:
@@ -24,9 +24,9 @@ import type { POMatchFilter } from '../types/po-matching-types';
 // ==================== Konfiguration ====================
 
 const STALE_TIMES = {
-  list: 30 * 1000,        // 30 Sekunden - Liste kann sich schnell aendern
-  detail: 60 * 1000,      // 1 Minute - Detail aendert sich seltener
-  stats: 2 * 60 * 1000,   // 2 Minuten - Statistiken aendern sich selten
+  list: 30 * 1000,        // 30 Sekunden - Liste kann sich schnell ändern
+  detail: 60 * 1000,      // 1 Minute - Detail ändert sich seltener
+  stats: 2 * 60 * 1000,   // 2 Minuten - Statistiken ändern sich selten
 } as const;
 
 const GC_TIMES = {
@@ -83,7 +83,7 @@ export function usePOMatch(
 }
 
 /**
- * PO-Matching Statistiken fuer einen Zeitraum abrufen.
+ * PO-Matching Statistiken für einen Zeitraum abrufen.
  */
 export function usePOMatchStats(
   periodStart: string,
@@ -102,7 +102,7 @@ export function usePOMatchStats(
 // ==================== Mutation Hooks ====================
 
 /**
- * Auto-Matching ausfuehren.
+ * Auto-Matching ausführen.
  */
 export function useAutoMatch() {
   const queryClient = useQueryClient();

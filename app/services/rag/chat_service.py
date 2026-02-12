@@ -3,6 +3,7 @@
 Document-aware chat service mit:
 - Semantischer Suche fuer Kontext-Retrieval
 - LLM-Integration fuer Antwortgenerierung
+- Multi-Tool Calling (Aktionen aus dem Chat)
 - Chat-History Management
 - Streaming-Unterstuetzung
 
@@ -23,7 +24,9 @@ from app.core.config import settings
 from app.services.search_service import SearchService
 from app.services.embedding_service import get_embedding_service
 from app.db.schemas import SearchType, SearchFilters
-from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_log, safe_error_detail
+from app.services.rag.tool_registry import ToolCall, get_tool_registry
+from app.services.rag.action_dispatcher import get_action_dispatcher
 
 logger = structlog.get_logger(__name__)
 
@@ -39,6 +42,7 @@ class ChatMessage:
         timestamp: Optional[datetime] = None,
         sources: Optional[List[Dict[str, Any]]] = None,
         metadata: Optional[Dict[str, Any]] = None,
+        tool_actions: Optional[List[Dict[str, Any]]] = None,
     ):
         self.id = message_id or str(uuid_module.uuid4())
         self.role = role
@@ -46,6 +50,7 @@ class ChatMessage:
         self.timestamp = timestamp or datetime.now(timezone.utc)
         self.sources = sources or []  # Referenced documents
         self.metadata = metadata or {}
+        self.tool_actions = tool_actions or []  # Tool-Call Ergebnisse
 
     def to_dict(self) -> Dict[str, Any]:
         """Konvertiert Nachricht zu Dictionary."""
@@ -56,6 +61,7 @@ class ChatMessage:
             "timestamp": self.timestamp.isoformat(),
             "sources": self.sources,
             "metadata": self.metadata,
+            "tool_actions": self.tool_actions,
         }
 
 
@@ -133,6 +139,8 @@ class RAGChatService:
         self.search_service = SearchService()
         self.embedding_service = get_embedding_service()
         self.sessions: Dict[str, ChatSession] = {}
+        self.tool_registry = get_tool_registry()
+        self.action_dispatcher = get_action_dispatcher()
 
         # LLM-Konfiguration (kann erweitert werden fuer Ollama, OpenAI, etc.)
         self.llm_enabled = getattr(settings, "LLM_ENABLED", False)
@@ -150,6 +158,7 @@ class RAGChatService:
         self,
         session_id: Optional[str] = None,
         user_id: Optional[UUID] = None,
+        user_level: str = "viewer",
     ) -> ChatSession:
         """Holt oder erstellt eine Chat-Session."""
         if session_id and session_id in self.sessions:
@@ -161,14 +170,21 @@ class RAGChatService:
         session = ChatSession(session_id=session_id, user_id=user_id)
         self.sessions[session.id] = session
 
-        # System-Prompt hinzufuegen
+        # Tool-Definitionen fuer System-Prompt
+        tools_text = self.tool_registry.format_tools_for_llm(user_level)
+
+        # System-Prompt mit Tool-Calling Instruktionen
         system_prompt = ChatMessage(
             role="system",
             content=(
                 "Du bist ein hilfreicher Assistent fuer das Ablage-System. "
                 "Du kannst auf Dokumente zugreifen und Fragen dazu beantworten. "
                 "Antworte immer auf Deutsch und nutze die bereitgestellten Dokumente als Kontext. "
-                "Wenn du dir nicht sicher bist, sage es ehrlich."
+                "Wenn du dir nicht sicher bist, sage es ehrlich.\n\n"
+                "Du hast Zugriff auf Tools die du aufrufen kannst um Aktionen auszufuehren. "
+                "Du kannst MEHRERE Tools in einer Antwort aufrufen. "
+                "Verwende Tools nur wenn der Benutzer eine Aktion anfragt oder Daten benoetigt.\n\n"
+                f"{tools_text}"
             ),
         )
         session.add_message(system_prompt)
@@ -177,6 +193,7 @@ class RAGChatService:
             "chat_session_created",
             session_id=session.id,
             user_id=str(user_id) if user_id else None,
+            user_level=user_level,
         )
         return session
 
@@ -358,6 +375,71 @@ Wenn die Dokumente keine relevanten Informationen enthalten, sage das ehrlich.
             logger.error("llm_generation_error", **safe_error_log(e))
             yield f"Fehler bei der LLM-Verbindung: {str(e)}"
 
+    async def dispatch_tool_calls(
+        self,
+        tool_calls: List[ToolCall],
+        user: Any,
+        db: AsyncSession,
+        context_id: Optional[UUID] = None,
+    ) -> List[Dict[str, Any]]:
+        """Dispatcht alle Tool-Calls und sammelt Ergebnisse.
+
+        Args:
+            tool_calls: Geparste Tool-Calls aus LLM-Antwort
+            user: Aktueller User
+            db: Database Session
+            context_id: Optionale Kontext-Dokument-ID
+
+        Returns:
+            Liste von Tool-Action Ergebnissen als Dicts
+        """
+        results: List[Dict[str, Any]] = []
+
+        for tc in tool_calls:
+            try:
+                result = await self.action_dispatcher.dispatch(
+                    tool_call=tc,
+                    user=user,
+                    db=db,
+                    context_id=context_id,
+                )
+                results.append({
+                    "action_id": str(result.action_id),
+                    "tool_name": tc.tool_name,
+                    "parameters": tc.parameters,
+                    "action_type": result.action_type.value,
+                    "status": result.status.value,
+                    "message": result.message or "",
+                    "data": result.data if hasattr(result, "data") else None,
+                    "requires_confirmation": result.status.value == "pending_confirmation",
+                    "execution_time_ms": result.execution_time_ms,
+                })
+            except Exception as e:
+                logger.error(
+                    "tool_call_dispatch_error",
+                    tool_name=tc.tool_name,
+                    **safe_error_log(e),
+                )
+                results.append({
+                    "action_id": str(uuid_module.uuid4()),
+                    "tool_name": tc.tool_name,
+                    "parameters": tc.parameters,
+                    "action_type": "unknown",
+                    "status": "failed",
+                    "message": safe_error_detail(e, "Tool-Ausfuehrung"),
+                    "data": None,
+                    "requires_confirmation": False,
+                    "execution_time_ms": 0,
+                })
+
+        logger.info(
+            "tool_calls_dispatched",
+            count=len(results),
+            tool_names=[r["tool_name"] for r in results],
+            statuses=[r["status"] for r in results],
+        )
+        return results
+
     async def chat(
         self,
         query: str,
@@ -366,6 +448,8 @@ Wenn die Dokumente keine relevanten Informationen enthalten, sage das ehrlich.
         session_id: Optional[str] = None,
         stream: bool = True,
         on_token: Optional[Callable[[str], None]] = None,
+        user: Optional[Any] = None,
+        user_level: str = "viewer",
     ) -> ChatMessage:
         """Hauptmethode fuer Chat-Interaktion.
 
@@ -376,11 +460,13 @@ Wenn die Dokumente keine relevanten Informationen enthalten, sage das ehrlich.
             session_id: Optionale Session-ID
             stream: Streaming aktivieren
             on_token: Callback fuer Streaming-Tokens
+            user: User-Objekt fuer Tool-Calling Permissions
+            user_level: User-Level fuer Tool-Zugriff
 
         Returns:
-            ChatMessage mit vollstaendiger Antwort
+            ChatMessage mit vollstaendiger Antwort und Tool-Actions
         """
-        session = self.get_or_create_session(session_id, user_id)
+        session = self.get_or_create_session(session_id, user_id, user_level=user_level)
 
         # Benutzer-Nachricht speichern
         user_message = ChatMessage(role="user", content=query)
@@ -397,6 +483,24 @@ Wenn die Dokumente keine relevanten Informationen enthalten, sage das ehrlich.
             if on_token:
                 on_token(token)
 
+        # Tool-Calls parsen und dispatchen
+        tool_actions: List[Dict[str, Any]] = []
+        parsed_calls = self.tool_registry.parse_tool_calls(full_response)
+
+        if parsed_calls and user is not None:
+            tool_actions = await self.dispatch_tool_calls(
+                tool_calls=parsed_calls,
+                user=user,
+                db=db,
+            )
+
+            logger.info(
+                "chat_tool_calls_processed",
+                session_id=session.id,
+                tool_count=len(parsed_calls),
+                action_count=len(tool_actions),
+            )
+
         # Assistent-Nachricht speichern
         sources = [
             {"document_id": doc["document_id"], "filename": doc["filename"], "similarity": doc["similarity"]}
@@ -406,6 +510,7 @@ Wenn die Dokumente keine relevanten Informationen enthalten, sage das ehrlich.
             role="assistant",
             content=full_response,
             sources=sources,
+            tool_actions=tool_actions,
         )
         session.add_message(assistant_message)
 
@@ -415,6 +520,7 @@ Wenn die Dokumente keine relevanten Informationen enthalten, sage das ehrlich.
             query_length=len(query),
             response_length=len(full_response),
             sources_count=len(sources),
+            tool_actions_count=len(tool_actions),
         )
 
         return assistant_message

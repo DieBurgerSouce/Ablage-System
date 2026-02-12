@@ -1,7 +1,7 @@
 /**
  * ActivityStats Component
  *
- * Statistik-Anzeige fuer Aktivitaeten.
+ * Statistik-Anzeige für Aktivitäten.
  */
 
 import { useMemo } from 'react';
@@ -17,7 +17,7 @@ interface ActivityStatsProps {
   className?: string;
 }
 
-// Farben fuer die Top-Typen
+// Farben für die Top-Typen
 const TYPE_COLORS = [
   'bg-blue-500',
   'bg-green-500',
@@ -74,7 +74,7 @@ export function ActivityStats({ stats, className }: ActivityStatsProps) {
         <CardContent>
           <div className="text-2xl font-bold">{stats.totalActivities.toLocaleString('de-DE')}</div>
           <p className="text-xs text-muted-foreground">
-            im ausgewaehlten Zeitraum
+            im ausgewählten Zeitraum
           </p>
         </CardContent>
       </Card>
@@ -88,7 +88,7 @@ export function ActivityStats({ stats, className }: ActivityStatsProps) {
         <CardContent>
           <div className="text-2xl font-bold">{avgPerDay}</div>
           <p className="text-xs text-muted-foreground">
-            durchschnittliche Aktivitaeten
+            durchschnittliche Aktivitäten
           </p>
         </CardContent>
       </Card>
@@ -108,7 +108,7 @@ export function ActivityStats({ stats, className }: ActivityStatsProps) {
             {trend > 0 ? '+' : ''}{trend}%
           </div>
           <p className="text-xs text-muted-foreground">
-            gegenueber Vorwoche
+            gegenüber Vorwoche
           </p>
         </CardContent>
       </Card>
@@ -130,7 +130,7 @@ export function ActivityStats({ stats, className }: ActivityStatsProps) {
       {/* Top Activity Types */}
       <Card className="md:col-span-2">
         <CardHeader>
-          <CardTitle className="text-sm font-medium">Top Aktivitaetstypen</CardTitle>
+          <CardTitle className="text-sm font-medium">Top Aktivitätstypen</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {topTypes.map(({ type, label, count, percentage, color }) => (
@@ -145,7 +145,7 @@ export function ActivityStats({ stats, className }: ActivityStatsProps) {
 
           {topTypes.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-4">
-              Keine Aktivitaeten vorhanden
+              Keine Aktivitäten vorhanden
             </p>
           )}
         </CardContent>
@@ -168,7 +168,7 @@ export function ActivityStats({ stats, className }: ActivityStatsProps) {
                     <span className="text-sm truncate">{user.userName}</span>
                   </div>
                   <span className="text-sm text-muted-foreground">
-                    {user.activityCount} Aktivitaeten
+                    {user.activityCount} Aktivitäten
                   </span>
                 </div>
               ))}

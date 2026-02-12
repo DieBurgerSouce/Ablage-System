@@ -1,6 +1,6 @@
 /**
  * Correction Workbench API
- * API-Funktionen fuer OCR-Korrektur-Workbench
+ * API-Funktionen für OCR-Korrektur-Workbench
  */
 
 import { api } from '@/lib/api';
@@ -182,7 +182,7 @@ export async function exportTrainingData(
 }
 
 /**
- * Liste der verfuegbaren Exports abrufen
+ * Liste der verfügbaren Exports abrufen
  */
 export async function getExportList(): Promise<
   Array<{
@@ -205,7 +205,7 @@ export async function getExportList(): Promise<
 }
 
 /**
- * Export loeschen
+ * Export löschen
  */
 export async function deleteExport(exportId: string): Promise<{ success: boolean }> {
   await api.delete(`${API_BASE}/exports/${exportId}`);
@@ -213,7 +213,7 @@ export async function deleteExport(exportId: string): Promise<{ success: boolean
 }
 
 /**
- * Verfuegbare OCR-Backends abrufen
+ * Verfügbare OCR-Backends abrufen
  */
 export async function getAvailableBackends(): Promise<string[]> {
   const response = await api.get('/api/v1/ocr/backends');

@@ -12,7 +12,9 @@ Phase 3.2 der Strategischen Roadmap (Januar 2026).
 """
 
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -50,7 +52,7 @@ class DelegationCreate(BaseModel):
         default=None,
         description="Liste der delegierten Berechtigungen"
     )
-    scope: Optional[Dict[str, Any]] = Field(
+    scope: Optional[JSONDict] = Field(
         default=None,
         description="Einschraenkung auf bestimmte Ressourcen"
     )
@@ -130,7 +132,7 @@ class DelegationFromTemplate(BaseModel):
 class DelegationUpdate(BaseModel):
     """Schema fuer Delegation-Update."""
     permissions: Optional[List[str]] = None
-    scope: Optional[Dict[str, Any]] = None
+    scope: Optional[JSONDict] = None
     notes: Optional[str] = Field(default=None, max_length=2000)
     notify_on_activation: Optional[bool] = None
     notify_on_expiry: Optional[bool] = None
@@ -149,7 +151,7 @@ class DelegationResponse(BaseModel):
     company_id: UUID
     delegation_type: DelegationType
     permissions: List[str]
-    scope: Dict[str, Any]
+    scope: JSONDict
     valid_from: datetime
     valid_until: datetime
     status: DelegationStatus
@@ -216,7 +218,7 @@ class AuditLogResponse(BaseModel):
     resource_name: Optional[str]
     success: bool
     error_message: Optional[str]
-    details: Dict[str, Any]
+    details: JSONDict
     ip_address: Optional[str]
     created_at: datetime
 
@@ -236,7 +238,7 @@ class TemplateCreate(BaseModel):
     description: Optional[str] = Field(default=None, max_length=1000)
     delegation_type: DelegationType
     permissions: Optional[List[str]] = None
-    scope: Optional[Dict[str, Any]] = None
+    scope: Optional[JSONDict] = None
     default_duration_days: int = Field(default=14, ge=1, le=365)
     requires_acceptance: bool = True
     notify_on_activation: bool = True
@@ -251,7 +253,7 @@ class TemplateResponse(BaseModel):
     description: Optional[str]
     delegation_type: DelegationType
     permissions: List[str]
-    scope: Dict[str, Any]
+    scope: JSONDict
     default_duration_days: int
     requires_acceptance: bool
     notify_on_activation: bool

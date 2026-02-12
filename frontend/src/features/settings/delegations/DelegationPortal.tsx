@@ -214,8 +214,8 @@ export function DelegationPortal() {
         <Info className="h-4 w-4" />
         <AlertTitle>Hinweis zur Vertretung</AlertTitle>
         <AlertDescription>
-          Vertretungen muessen vom Vertreter angenommen werden, bevor sie aktiv
-          werden. Ausnahme: Notfall-Vertretungen sind sofort aktiv. Sie koennen
+          Vertretungen müssen vom Vertreter angenommen werden, bevor sie aktiv
+          werden. Ausnahme: Notfall-Vertretungen sind sofort aktiv. Sie können
           Ihre Vertretungen jederzeit widerrufen.
         </AlertDescription>
       </Alert>

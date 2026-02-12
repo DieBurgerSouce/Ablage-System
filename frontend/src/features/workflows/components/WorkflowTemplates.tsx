@@ -1,7 +1,7 @@
 /**
  * WorkflowTemplates Component
  *
- * Template-Galerie fuer vorgefertigte Workflows.
+ * Template-Galerie für vorgefertigte Workflows.
  */
 
 import { useState } from 'react';
@@ -323,7 +323,7 @@ export default function WorkflowTemplates({ showAsGallery = true }: WorkflowTemp
       <div>
         <h2 className="text-2xl font-bold">Workflow-Templates</h2>
         <p className="text-muted-foreground">
-          Starte mit einem vorgefertigten Workflow und passe ihn an deine Beduerfnisse an.
+          Starte mit einem vorgefertigten Workflow und passe ihn an deine Bedürfnisse an.
         </p>
       </div>
 

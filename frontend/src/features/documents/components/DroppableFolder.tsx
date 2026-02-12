@@ -1,13 +1,13 @@
 /**
- * DroppableFolder - Drop-Ziel fuer Dokumente
+ * DroppableFolder - Drop-Ziel für Dokumente
  *
- * Phase 2.2: Drag & Drop ueberall
+ * Phase 2.2: Drag & Drop überall
  *
  * Features:
  * - Akzeptiert gedropte Dokumente via @dnd-kit
  * - Visuelles Feedback bei Hover (Highlighting)
  * - Validierung welche Drop-Typen akzeptiert werden
- * - Accessibility: Tastatur-Unterstuetzung
+ * - Accessibility: Tastatur-Unterstützung
  */
 
 import { forwardRef, useMemo } from "react"
@@ -35,9 +35,9 @@ export interface DroppableFolderProps {
   accepts?: DragItemType[]
   /** Drop deaktiviert */
   disabled?: boolean
-  /** Folder ist aktiv/ausgewaehlt */
+  /** Folder ist aktiv/ausgewählt */
   isActive?: boolean
-  /** Folder ist geoeffnet */
+  /** Folder ist geöffnet */
   isOpen?: boolean
   /** Click-Handler */
   onClick?: () => void
@@ -45,7 +45,7 @@ export interface DroppableFolderProps {
   onDoubleClick?: () => void
   /** Callback wenn erfolgreich gedroppt */
   onDrop?: (folderId: string, itemIds: string[]) => void
-  /** Zusaetzliche CSS-Klassen */
+  /** Zusätzliche CSS-Klassen */
   className?: string
   /** Variante */
   variant?: "default" | "compact" | "list"
@@ -90,7 +90,7 @@ export const DroppableFolder = forwardRef<HTMLDivElement, DroppableFolderProps>(
       disabled,
     })
 
-    // Pruefen ob aktueller Drag akzeptiert wird
+    // Prüfen ob aktueller Drag akzeptiert wird
     const canAccept = useMemo(() => {
       if (!active || disabled) return false
       const dragType = active.data.current?.type as DragItemType | undefined
@@ -156,7 +156,7 @@ export const DroppableFolder = forwardRef<HTMLDivElement, DroppableFolderProps>(
             "scale-105",
           ],
 
-          // Drop nicht moeglich
+          // Drop nicht möglich
           isOver && !canAccept && [
             "ring-2 ring-destructive ring-offset-2",
             "border-destructive",
@@ -249,7 +249,7 @@ export const DroppableFolder = forwardRef<HTMLDivElement, DroppableFolderProps>(
 )
 
 // =============================================================================
-// FolderDropZone - Groessere Drop-Zone fuer Sidebar
+// FolderDropZone - Größere Drop-Zone für Sidebar
 // =============================================================================
 
 export interface FolderDropZoneProps {

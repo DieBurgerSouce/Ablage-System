@@ -45,7 +45,7 @@ export class DATEVErrorBoundary extends React.Component<Props, State> {
 
     componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
         // IMMER loggen - auch in Production (via Loki)
-        // Fehler in ErrorBoundaries sind kritisch und muessen gemeldet werden
+        // Fehler in ErrorBoundaries sind kritisch und müssen gemeldet werden
         logger.error('DATEV: Error Boundary abgefangen', error, {
             componentStack: errorInfo.componentStack,
         });

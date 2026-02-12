@@ -1,7 +1,7 @@
 /**
  * NotificationBell - Benachrichtigungs-Glocke in der Header-Leiste
  *
- * Zeigt ungelesene Benachrichtigungen an und ermoeglicht:
+ * Zeigt ungelesene Benachrichtigungen an und ermöglicht:
  * - Dropdown mit Benachrichtigungsliste
  * - Als gelesen markieren
  * - Alle als gelesen markieren

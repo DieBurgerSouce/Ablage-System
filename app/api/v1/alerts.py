@@ -11,9 +11,10 @@ Zentrale API fuer Alert-Management:
 Feinpoliert und durchdacht - Enterprise-grade Alert Management.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
 
+from app.core.types import JSONDict
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -52,8 +53,8 @@ class AlertCreateRequest(BaseModel):
     source_id: Optional[str] = None
     document_id: Optional[UUID] = None
     entity_id: Optional[UUID] = None
-    metadata: Optional[Dict[str, Any]] = None
-    context: Optional[Dict[str, Any]] = None
+    metadata: Optional[JSONDict] = None
+    context: Optional[JSONDict] = None
     available_actions: Optional[List[str]] = None
     assigned_to_id: Optional[UUID] = None
     auto_dismiss_hours: Optional[int] = Field(None, ge=1, le=720)
@@ -77,8 +78,8 @@ class AlertResponse(BaseModel):
     entity_id: Optional[UUID]
     company_id: UUID
     assigned_to_id: Optional[UUID]
-    metadata: Dict[str, Any]
-    context: Dict[str, Any]
+    metadata: JSONDict
+    context: JSONDict
     available_actions: List[str]
     created_at: str
     acknowledged_at: Optional[str]

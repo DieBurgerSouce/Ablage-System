@@ -1,7 +1,7 @@
 /**
  * ConditionNode Component
  *
- * ReactFlow Knoten fuer Bedingungspruefungen.
+ * ReactFlow Knoten für Bedingungsprüfungen.
  * Zeigt AND/OR-Logik und Regel-Zusammenfassung an.
  */
 

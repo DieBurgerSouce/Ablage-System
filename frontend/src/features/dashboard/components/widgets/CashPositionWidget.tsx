@@ -1,14 +1,14 @@
 /**
- * Cash Position Widget fuer Dashboard
+ * Cash Position Widget für Dashboard
  *
- * Zeigt Echtzeit-Kassenstand und Liquiditaet:
+ * Zeigt Echtzeit-Kassenstand und Liquidität:
  * - Aktueller Kontostand (alle Konten)
  * - Tagesbewegungen
- * - Liquiditaetsprognose
+ * - Liquiditätsprognose
  * - Kritische Zahlungen
  *
  * Enterprise-Grade Features:
- * - ErrorBoundary fuer graceful degradation
+ * - ErrorBoundary für graceful degradation
  * - Konsistente Fehlerbehandlung
  * - Real-time Updates via WebSocket
  */
@@ -238,7 +238,7 @@ function CashPositionWidgetContent() {
         return (
             <div className="text-center py-6 text-muted-foreground">
                 <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
-                <p className="text-sm">Kontodaten nicht verfuegbar</p>
+                <p className="text-sm">Kontodaten nicht verfügbar</p>
             </div>
         );
     }
@@ -284,7 +284,7 @@ function CashPositionWidgetContent() {
                     <div className="flex items-center gap-1 mb-1">
                         <ArrowDownRight className="h-3 w-3 text-green-600" />
                         <span className="text-xs font-medium text-muted-foreground">
-                            Eingaenge
+                            Eingänge
                         </span>
                     </div>
                     <p className="text-lg font-bold text-green-600">
@@ -295,7 +295,7 @@ function CashPositionWidgetContent() {
                     <div className="flex items-center gap-1 mb-1">
                         <ArrowUpRight className="h-3 w-3 text-red-600" />
                         <span className="text-xs font-medium text-muted-foreground">
-                            Ausgaenge
+                            Ausgänge
                         </span>
                     </div>
                     <p className="text-lg font-bold text-red-600">
@@ -309,7 +309,7 @@ function CashPositionWidgetContent() {
                 <div className="flex items-center gap-2 mb-2">
                     <CalendarClock className="h-4 w-4 text-muted-foreground" />
                     <span className="text-xs font-medium text-muted-foreground">
-                        Liquiditaetsprognose
+                        Liquiditätsprognose
                     </span>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-sm">
@@ -354,7 +354,7 @@ function CashPositionWidgetContent() {
                     <div className="flex items-center gap-2">
                         <Banknote className="h-4 w-4 text-muted-foreground" />
                         <p className="text-xs font-medium text-muted-foreground">
-                            Naechste Zahlungen
+                            Nächste Zahlungen
                         </p>
                         {hasCriticalPayments && (
                             <Badge variant="destructive" className="text-xs h-4 px-1">
@@ -373,7 +373,7 @@ function CashPositionWidgetContent() {
                 to="/banking"
                 className="flex items-center justify-center gap-2 text-sm text-primary hover:underline"
             >
-                Banking-Uebersicht
+                Banking-Übersicht
                 <ChevronRight className="h-4 w-4" />
             </Link>
         </div>

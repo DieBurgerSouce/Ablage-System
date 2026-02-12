@@ -11,7 +11,7 @@ Alle Antworten auf Deutsch.
 
 from datetime import datetime, date
 from decimal import Decimal
-from typing import List, Optional, Any, Dict
+from typing import List, Optional, Dict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile, File, Form, Query, status, Request

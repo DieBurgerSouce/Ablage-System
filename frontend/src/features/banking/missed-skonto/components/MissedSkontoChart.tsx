@@ -1,6 +1,6 @@
 /**
  * Missed Skonto Chart
- * Chart fuer monatliche Skonto-Nutzung
+ * Chart für monatliche Skonto-Nutzung
  */
 
 import { useMemo } from 'react';
@@ -59,14 +59,14 @@ export function MissedSkontoChart({ data = [], isLoading }: MissedSkontoChartPro
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Monatliche Skonto-Uebersicht</CardTitle>
+          <CardTitle>Monatliche Skonto-Übersicht</CardTitle>
           <CardDescription>
-            Vergleich von genutzten und verpassten Skonto-Moeglichkeiten
+            Vergleich von genutzten und verpassten Skonto-Möglichkeiten
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-            Keine Daten verfuegbar
+            Keine Daten verfügbar
           </div>
         </CardContent>
       </Card>
@@ -76,9 +76,9 @@ export function MissedSkontoChart({ data = [], isLoading }: MissedSkontoChartPro
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Monatliche Skonto-Uebersicht</CardTitle>
+        <CardTitle>Monatliche Skonto-Übersicht</CardTitle>
         <CardDescription>
-          Vergleich von genutzten und verpassten Skonto-Moeglichkeiten
+          Vergleich von genutzten und verpassten Skonto-Möglichkeiten
         </CardDescription>
       </CardHeader>
       <CardContent>

@@ -1,9 +1,9 @@
 /**
- * NetWorthDashboard - Nettovermoegen-Dashboard
+ * NetWorthDashboard - Nettovermögen-Dashboard
  *
- * Umfassendes Dashboard fuer die persoenliche Vermoegensposition:
- * - Zusammenfassungskarten (Vermoegen, Verbindlichkeiten, Netto, Veraenderung)
- * - Vermoegensaufstellung nach Kategorien
+ * Umfassendes Dashboard für die persönliche Vermögensposition:
+ * - Zusammenfassungskarten (Vermögen, Verbindlichkeiten, Netto, Veränderung)
+ * - Vermögensaufstellung nach Kategorien
  * - Verbindlichkeiten-Aufstellung
  * - Charts: Allokation, Verlauf, Vergleich
  * - Quick Actions
@@ -204,7 +204,7 @@ function QuickActions({
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm">
             <Plus className="h-4 w-4 mr-2" />
-            Hinzufuegen
+            Hinzufügen
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
@@ -383,7 +383,7 @@ export function NetWorthDashboard() {
             </CardTitle>
             <CardDescription>
               Erstellen Sie zuerst einen Privat-Bereich, um das
-              Nettovermoegen-Dashboard zu nutzen.
+              Nettovermögen-Dashboard zu nutzen.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -409,7 +409,7 @@ export function NetWorthDashboard() {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Fehler beim Laden</AlertTitle>
           <AlertDescription>
-            Das Nettovermoegen-Dashboard konnte nicht geladen werden. Bitte
+            Das Nettovermögen-Dashboard konnte nicht geladen werden. Bitte
             versuchen Sie es erneut.
             <Button
               variant="outline"
@@ -441,10 +441,10 @@ export function NetWorthDashboard() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
             <Wallet className="h-8 w-8" />
-            Nettovermoegen
+            Nettovermögen
           </h1>
           <p className="text-muted-foreground mt-1">
-            Ihre persoenliche Vermoegensposition im Ueberblick
+            Ihre persönliche Vermögensposition im Überblick
           </p>
           {summary?.lastUpdated && (
             <p className="text-xs text-muted-foreground mt-1">
@@ -464,7 +464,7 @@ export function NetWorthDashboard() {
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <SummaryCard
-          title="Vermoegen"
+          title="Vermögen"
           value={totalAssets}
           icon={<TrendingUp className="h-4 w-4 text-green-500" />}
           variant="success"
@@ -476,13 +476,13 @@ export function NetWorthDashboard() {
           variant="danger"
         />
         <SummaryCard
-          title="Nettovermoegen"
+          title="Nettovermögen"
           value={netWorth}
           icon={<Wallet className="h-4 w-4 text-blue-500" />}
           variant={netWorth >= 0 ? 'info' : 'danger'}
         />
         <SummaryCard
-          title="Monatliche Veraenderung"
+          title="Monatliche Veränderung"
           value={monthlyChange}
           icon={
             monthlyChange >= 0 ? (

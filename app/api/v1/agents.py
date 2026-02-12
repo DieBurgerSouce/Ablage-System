@@ -9,7 +9,9 @@ Provides endpoints for:
 """
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+from app.core.types import JSONDict
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel, field_validator
@@ -43,7 +45,7 @@ class AgentExecuteRequest(BaseModel):
     file_path: str
     backend: str = "auto"
     priority: int = 0
-    options: Optional[Dict[str, Any]] = None
+    options: Optional[JSONDict] = None
 
     @field_validator("file_path")
     @classmethod
@@ -76,7 +78,7 @@ class BatchProcessRequest(BaseModel):
     document_ids: List[str]
     file_paths: List[str]
     backend: str = "got_ocr"
-    options: Optional[Dict[str, Any]] = None
+    options: Optional[JSONDict] = None
 
     @field_validator("file_paths")
     @classmethod
@@ -109,7 +111,7 @@ class WorkflowExecuteRequest(BaseModel):
     document_id: str
     file_path: str
     priority: int = 0
-    options: Optional[Dict[str, Any]] = None
+    options: Optional[JSONDict] = None
 
     @field_validator("file_path")
     @classmethod
@@ -368,9 +370,9 @@ async def get_task_status(
 @router.post("/route/backend")
 async def route_backend(
     request: Request,  # SECURITY FIX 28-11: Required for rate limiter
-    document_metadata: Dict[str, Any],
+    document_metadata: JSONDict,
     current_user: User = Depends(get_current_active_user),  # V.5 SECURITY FIX: Authentication required
-    sla_requirements: Optional[Dict[str, Any]] = None,
+    sla_requirements: Optional[JSONDict] = None,
 ):
     """
     Select optimal OCR backend for document.

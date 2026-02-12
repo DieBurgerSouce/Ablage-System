@@ -287,7 +287,7 @@ export function VendorMappingDialog({
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="cost_object">Kostentraeger</Label>
+                                <Label htmlFor="cost_object">Kostenträger</Label>
                                 <Input
                                     id="cost_object"
                                     placeholder="KTR001"

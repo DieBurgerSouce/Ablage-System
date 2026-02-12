@@ -1,7 +1,7 @@
 /**
  * Chart Component Stories
  *
- * Chart-Komponenten fuer Visual Regression Testing.
+ * Chart-Komponenten für Visual Regression Testing.
  * Basiert auf Recharts.
  */
 
@@ -62,7 +62,7 @@ const monthlyData = [
 const pieData = [
     { name: 'Rechnungen', value: 400, color: '#2563eb' },
     { name: 'Lieferscheine', value: 300, color: '#16a34a' },
-    { name: 'Vertraege', value: 200, color: '#dc2626' },
+    { name: 'Verträge', value: 200, color: '#dc2626' },
     { name: 'Angebote', value: 150, color: '#ca8a04' },
     { name: 'Sonstiges', value: 100, color: '#6b7280' },
 ];
@@ -71,7 +71,7 @@ const waterfallData: WaterfallDataPoint[] = [
     { name: 'Startwert', value: 10000, isSubtotal: true },
     { name: 'Rechnungen', value: 5000 },
     { name: 'Lieferungen', value: 3000 },
-    { name: 'Gebuehren', value: -1500 },
+    { name: 'Gebühren', value: -1500 },
     { name: 'Rabatte', value: -800 },
     { name: 'Steuern', value: -2200 },
     { name: 'Endwert', value: 13500, isTotal: true },
@@ -84,7 +84,7 @@ export const LineChartDefault: Story = {
         <Card className="w-[600px]">
             <CardHeader>
                 <CardTitle>Dokumentenstatistik</CardTitle>
-                <CardDescription>Monatliche Uebersicht 2024</CardDescription>
+                <CardDescription>Monatliche Übersicht 2024</CardDescription>
             </CardHeader>
             <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -122,7 +122,7 @@ export const AreaChartDefault: Story = {
         <Card className="w-[600px]">
             <CardHeader>
                 <CardTitle>Dokumentenvolumen</CardTitle>
-                <CardDescription>Verlauf ueber das Jahr</CardDescription>
+                <CardDescription>Verlauf über das Jahr</CardDescription>
             </CardHeader>
             <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -228,7 +228,7 @@ export const BarChartHorizontal: Story = {
         const data = [
             { name: 'Rechnungen', anzahl: 450 },
             { name: 'Lieferscheine', anzahl: 380 },
-            { name: 'Vertraege', anzahl: 220 },
+            { name: 'Verträge', anzahl: 220 },
             { name: 'Angebote', anzahl: 190 },
             { name: 'Mahnungen', anzahl: 85 },
         ];
@@ -333,7 +333,7 @@ export const WaterfallChartDefault: Story = {
             <WaterfallChart
                 data={waterfallData}
                 title="Finanzbewegungen"
-                description="Aufschluesselung der Wertveraenderungen"
+                description="Aufschlüsselung der Wertveränderungen"
                 prefix="EUR "
                 height={400}
             />
@@ -415,7 +415,7 @@ export const ChartDashboard: Story = {
 
             <Card className="md:col-span-2">
                 <CardHeader className="pb-2">
-                    <CardTitle className="text-base">Jahresuebersicht</CardTitle>
+                    <CardTitle className="text-base">Jahresübersicht</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <ResponsiveContainer width="100%" height={200}>

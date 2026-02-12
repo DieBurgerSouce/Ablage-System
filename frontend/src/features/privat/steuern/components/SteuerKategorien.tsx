@@ -87,7 +87,7 @@ const CATEGORY_METADATA: Record<TaxCategory, CategoryMetadata> = {
   doppelte_haushaltsfuehrung: {
     icon: <Building className="h-5 w-5" />,
     paragraph: '9 Abs. 1 Nr. 5 EStG',
-    description: 'Zweitwohnung am Arbeitsort aus beruflichen Gruenden',
+    description: 'Zweitwohnung am Arbeitsort aus beruflichen Gründen',
     color: 'bg-indigo-500',
   },
   homeoffice: {
@@ -105,13 +105,13 @@ const CATEGORY_METADATA: Record<TaxCategory, CategoryMetadata> = {
   spenden: {
     icon: <Gift className="h-5 w-5" />,
     paragraph: '10b EStG',
-    description: 'Spenden an gemeinnuetzige Organisationen (bis 20% des Einkommens)',
+    description: 'Spenden an gemeinnützige Organisationen (bis 20% des Einkommens)',
     color: 'bg-amber-500',
   },
   kirchensteuer: {
     icon: <Euro className="h-5 w-5" />,
     paragraph: '10 Abs. 1 Nr. 4 EStG',
-    description: 'Gezahlte Kirchensteuer ist vollstaendig absetzbar',
+    description: 'Gezahlte Kirchensteuer ist vollständig absetzbar',
     color: 'bg-slate-500',
   },
 };
@@ -175,7 +175,7 @@ export function SteuerKategorien({ summaries, isLoading }: SteuerKategorienProps
           Steuer-Kategorien
         </CardTitle>
         <CardDescription>
-          Absetzbare Betraege nach Kategorie mit Gesetzesreferenz
+          Absetzbare Beträge nach Kategorie mit Gesetzesreferenz
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -245,7 +245,7 @@ export function SteuerKategorien({ summaries, isLoading }: SteuerKategorienProps
                       {hasLimit && (
                         <div className="space-y-1">
                           <div className="flex justify-between text-sm">
-                            <span>Hoechstbetrag-Auslastung</span>
+                            <span>Höchstbetrag-Auslastung</span>
                             <span className="font-medium">{utilization.toFixed(1)}%</span>
                           </div>
                           <Progress
@@ -255,7 +255,7 @@ export function SteuerKategorien({ summaries, isLoading }: SteuerKategorienProps
                           {utilization >= 100 && (
                             <p className="text-xs text-amber-600 flex items-center gap-1">
                               <AlertCircle className="h-3 w-3" />
-                              Hoechstbetrag erreicht
+                              Höchstbetrag erreicht
                             </p>
                           )}
                         </div>

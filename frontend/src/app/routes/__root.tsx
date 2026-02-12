@@ -1,10 +1,13 @@
+import { useEffect } from 'react'
 import { createRootRoute, Outlet, useLocation, Navigate } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { AnimatePresence, motion } from 'framer-motion'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { SessionExpiredModal } from '@/components/auth/SessionExpiredModal'
 import { Toaster } from '@/components/ui/toaster'
 import { OfflineIndicator } from '@/components/OfflineIndicator'
+import { OfflineSyncStatusBar } from '@/components/layout/OfflineSyncStatusBar'
 import { WelcomeModal } from '@/components/onboarding/WelcomeModal'
 // Feature 12: Guided Product Tours
 import { TourProvider } from '@/features/product-tour'
@@ -18,6 +21,9 @@ import { UndoProvider } from '@/hooks/useUndoableAction'
 import { NotificationToastProvider } from '@/features/notifications/components/NotificationToastProvider'
 // WCAG 2.1 AA: Skip Links for keyboard navigation
 import { SkipLinks } from '@/components/SkipLinks'
+// Phase 6: Session resume tracking + page transitions
+import { pageTransition } from '@/lib/animations'
+import { useSessionResume } from '@/hooks/use-session-resume'
 
 export const Route = createRootRoute({
     component: RootComponent,
@@ -26,6 +32,12 @@ export const Route = createRootRoute({
 function RootComponent() {
     const { isAuthenticated, isLoading } = useAuth()
     const location = useLocation()
+    const { recordVisit } = useSessionResume()
+
+    // Phase 6: Track route visits for session resume
+    useEffect(() => {
+        recordVisit(location.pathname)
+    }, [location.pathname, recordVisit])
 
     // Show loading state while checking auth
     if (isLoading) {
@@ -65,10 +77,15 @@ function RootComponent() {
                 <TourProvider>
                     <GlobalShortcutsProvider>
                         <SkipLinks />
+                        <OfflineSyncStatusBar />
                         <GlobalCommandDialog />
                         <OfflineIndicator />
                         <AppLayout id="main-content">
-                            <Outlet />
+                            <AnimatePresence mode="wait">
+                                <motion.div key={location.pathname} {...pageTransition}>
+                                    <Outlet />
+                                </motion.div>
+                            </AnimatePresence>
                             {import.meta.env.DEV && <TanStackRouterDevtools />}
                         </AppLayout>
                         <WelcomeModal />

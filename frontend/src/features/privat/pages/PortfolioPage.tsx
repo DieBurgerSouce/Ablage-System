@@ -1,7 +1,7 @@
 /**
  * Portfolio Page
  *
- * Zeigt das Portfolio-Dashboard mit Vermoegensübersicht,
+ * Zeigt das Portfolio-Dashboard mit Vermögensübersicht,
  * Asset-Allocation und finanziellen Zielen.
  */
 
@@ -337,7 +337,7 @@ function GoalCard({
               : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300'
           }`}
         >
-          {goal.isOnTrack ? 'Auf Kurs' : 'Aufholen noetig'}
+          {goal.isOnTrack ? 'Auf Kurs' : 'Aufholen nötig'}
         </div>
       </div>
 

@@ -187,7 +187,7 @@ export function QuickAssignSheet({
       open={open}
       onOpenChange={onOpenChange}
       title="Dokument zuordnen"
-      description="Waehlen Sie einen Kunden oder Lieferanten"
+      description="Wählen Sie einen Kunden oder Lieferanten"
       defaultSnapPoint="max"
       snapPoints={['mid', 'max']}
     >
@@ -236,7 +236,7 @@ export function QuickAssignSheet({
                   {ocrSuggestion.name}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Erkannter Geschaeftspartner
+                  Erkannter Geschäftspartner
                 </p>
               </div>
               {isAssigning && assigningEntityId === ocrSuggestion.id ? (
@@ -306,7 +306,7 @@ export function QuickAssignSheet({
           <div className="text-center py-8">
             <Search className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">
-              Keine Ergebnisse fuer &quot;{searchQuery}&quot;
+              Keine Ergebnisse für &quot;{searchQuery}&quot;
             </p>
           </div>
         )}

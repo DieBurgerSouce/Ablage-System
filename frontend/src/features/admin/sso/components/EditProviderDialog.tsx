@@ -2,7 +2,7 @@
  * SSO Provider Edit Dialog
  *
  * Dialog zum Bearbeiten von SSO-Provider-Konfigurationen.
- * Unterstuetzt sowohl OIDC als auch SAML-Provider mit typspezifischen Feldern.
+ * Unterstützt sowohl OIDC als auch SAML-Provider mit typspezifischen Feldern.
  *
  * Features:
  * - Provider-Typ-Erkennung (OIDC vs SAML)
@@ -175,7 +175,7 @@ export function EditProviderDialog({
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
   const [showSecret, setShowSecret] = useState(false);
-  // P1 Fix: Track wenn group_mapping zu gross fuer Bearbeitung ist
+  // P1 Fix: Track wenn group_mapping zu gross für Bearbeitung ist
   const [isGroupMappingTruncated, setIsGroupMappingTruncated] = useState(false);
 
   const isOIDC = provider?.provider_type === 'oidc';
@@ -290,7 +290,7 @@ export function EditProviderDialog({
         } catch {
           toast({
             title: 'Fehler',
-            description: 'Ungueltige JSON-Syntax im Gruppen-Mapping',
+            description: 'Ungültige JSON-Syntax im Gruppen-Mapping',
             variant: 'destructive',
           });
           return;
@@ -315,7 +315,7 @@ export function EditProviderDialog({
           } catch {
             toast({
               title: 'Fehler',
-              description: 'Ungueltige JSON-Syntax im Claims-Mapping',
+              description: 'Ungültige JSON-Syntax im Claims-Mapping',
               variant: 'destructive',
             });
             return;
@@ -338,7 +338,7 @@ export function EditProviderDialog({
           } catch {
             toast({
               title: 'Fehler',
-              description: 'Ungueltige JSON-Syntax im Attribut-Mapping',
+              description: 'Ungültige JSON-Syntax im Attribut-Mapping',
               variant: 'destructive',
             });
             return;
@@ -444,7 +444,7 @@ export function EditProviderDialog({
                       <FormControl>
                         <Input {...field} placeholder="z.B. Firmen-SSO" />
                       </FormControl>
-                      <FormDescription>Anzeigename fuer den Provider</FormDescription>
+                      <FormDescription>Anzeigename für den Provider</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -458,7 +458,7 @@ export function EditProviderDialog({
                       <div className="space-y-0.5">
                         <FormLabel>Aktiviert</FormLabel>
                         <FormDescription>
-                          Provider fuer Anmeldung verfuegbar machen
+                          Provider für Anmeldung verfügbar machen
                         </FormDescription>
                       </div>
                       <FormControl>
@@ -474,7 +474,7 @@ export function EditProviderDialog({
                     <div>
                       <h4 className="font-medium">Verbindungstest</h4>
                       <p className="text-sm text-muted-foreground">
-                        Pruefen Sie die Erreichbarkeit des Providers
+                        Prüfen Sie die Erreichbarkeit des Providers
                       </p>
                     </div>
                     <Button
@@ -555,7 +555,7 @@ export function EditProviderDialog({
                             />
                           </FormControl>
                           <FormDescription>
-                            OAuth2 Client ID (nur eingeben wenn Aenderung gewuenscht)
+                            OAuth2 Client ID (nur eingeben wenn Änderung gewünscht)
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -573,7 +573,7 @@ export function EditProviderDialog({
                               <Input
                                 {...field}
                                 type={showSecret ? 'text' : 'password'}
-                                placeholder="******** (leer = unveraendert)"
+                                placeholder="******** (leer = unverändert)"
                               />
                             </FormControl>
                             <Button
@@ -591,7 +591,7 @@ export function EditProviderDialog({
                             </Button>
                           </div>
                           <FormDescription>
-                            Nur eingeben wenn Secret geaendert werden soll
+                            Nur eingeben wenn Secret geändert werden soll
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -656,7 +656,7 @@ export function EditProviderDialog({
                             />
                           </FormControl>
                           <FormDescription>
-                            X.509 Zertifikat des Identity Providers (leer = unveraendert)
+                            X.509 Zertifikat des Identity Providers (leer = unverändert)
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -757,7 +757,7 @@ export function EditProviderDialog({
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Rolle waehlen" />
+                            <SelectValue placeholder="Rolle wählen" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -769,7 +769,7 @@ export function EditProviderDialog({
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        Rolle fuer neu angelegte Benutzer (wenn kein Gruppen-Mapping greift)
+                        Rolle für neu angelegte Benutzer (wenn kein Gruppen-Mapping greift)
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -805,8 +805,8 @@ export function EditProviderDialog({
                       {isGroupMappingTruncated && (
                         <Alert variant="destructive" className="mb-2">
                           <AlertDescription>
-                            Das Gruppen-Mapping ist zu gross fuer die Anzeige im Browser (&gt;100KB).
-                            Es kann nur ueber die API geaendert werden. Der aktuelle Wert bleibt erhalten.
+                            Das Gruppen-Mapping ist zu gross für die Anzeige im Browser (&gt;100KB).
+                            Es kann nur über die API geändert werden. Der aktuelle Wert bleibt erhalten.
                           </AlertDescription>
                         </Alert>
                       )}
@@ -816,7 +816,7 @@ export function EditProviderDialog({
                           rows={5}
                           className="font-mono text-sm"
                           placeholder={isGroupMappingTruncated
-                            ? '(Zu gross fuer Anzeige - nur ueber API aenderbar)'
+                            ? '(Zu gross für Anzeige - nur über API änderbar)'
                             : '{"IdP-Admin-Gruppe": "admin", "IdP-Users": "user"}'}
                           readOnly={isGroupMappingTruncated}
                         />

@@ -63,9 +63,9 @@ const teamTypeOptions: { value: TeamType; label: string }[] = [
 ];
 
 const visibilityOptions: { value: TeamVisibility; label: string; description: string }[] = [
-  { value: 'public', label: 'Oeffentlich', description: 'Sichtbar fuer alle Benutzer' },
-  { value: 'private', label: 'Privat', description: 'Nur fuer Mitglieder sichtbar' },
-  { value: 'company', label: 'Firma', description: 'Sichtbar fuer alle Firmenmitglieder' },
+  { value: 'public', label: 'Öffentlich', description: 'Sichtbar für alle Benutzer' },
+  { value: 'private', label: 'Privat', description: 'Nur für Mitglieder sichtbar' },
+  { value: 'company', label: 'Firma', description: 'Sichtbar für alle Firmenmitglieder' },
 ];
 
 export function TeamFormDialog({ open, onOpenChange, team }: TeamFormDialogProps) {
@@ -126,8 +126,8 @@ export function TeamFormDialog({ open, onOpenChange, team }: TeamFormDialogProps
           <DialogTitle>{isEditing ? 'Team bearbeiten' : 'Neues Team erstellen'}</DialogTitle>
           <DialogDescription>
             {isEditing
-              ? 'Bearbeiten Sie die Einstellungen fuer dieses Team.'
-              : 'Erstellen Sie ein neues Team fuer die Zusammenarbeit.'}
+              ? 'Bearbeiten Sie die Einstellungen für dieses Team.'
+              : 'Erstellen Sie ein neues Team für die Zusammenarbeit.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -176,7 +176,7 @@ export function TeamFormDialog({ open, onOpenChange, team }: TeamFormDialogProps
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Waehlen Sie einen Team-Typ" />
+                        <SelectValue placeholder="Wählen Sie einen Team-Typ" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -201,7 +201,7 @@ export function TeamFormDialog({ open, onOpenChange, team }: TeamFormDialogProps
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Waehlen Sie die Sichtbarkeit" />
+                        <SelectValue placeholder="Wählen Sie die Sichtbarkeit" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>

@@ -1,7 +1,7 @@
 /**
  * Daily Briefing API Client
  *
- * API-Funktionen fuer das Tagesbriefing (AI Daily Insights).
+ * API-Funktionen für das Tagesbriefing (AI Daily Insights).
  * Endpoint: /api/v1/daily-insights
  */
 
@@ -78,11 +78,11 @@ export type InsightType = (typeof INSIGHT_TYPES)[number];
 
 export const INSIGHT_TYPE_LABELS: Record<InsightType, string> = {
   cashflow_warning: "Cashflow",
-  contract_expiring: "Vertraege",
+  contract_expiring: "Verträge",
   payment_risk: "Zahlungen",
   skonto_deadline: "Skonto",
   compliance_reminder: "Compliance",
-  overdue_invoice: "Ueberfaellig",
+  overdue_invoice: "Überfällig",
 };
 
 export const INSIGHT_TYPE_ENDPOINTS: Record<InsightType, string> = {

@@ -74,13 +74,13 @@ export interface ContractData {
   contract_date?: ExtractedField;     // Vertragsdatum
   start_date?: ExtractedField;        // Vertragsbeginn
   end_date?: ExtractedField;          // Vertragsende
-  notice_period?: ExtractedField;     // Kuendigungsfrist
+  notice_period?: ExtractedField;     // Kündigungsfrist
   contract_value?: ExtractedField;    // Vertragswert
   parties?: ExtractedField[];         // Vertragsparteien
   contract_type?: ExtractedField;     // Vertragsart
   duration?: ExtractedField;          // Laufzeit
-  auto_renewal?: ExtractedField;      // Automatische Verlaengerung
-  termination_notice?: ExtractedField; // Kuendigungshinweis
+  auto_renewal?: ExtractedField;      // Automatische Verlängerung
+  termination_notice?: ExtractedField; // Kündigungshinweis
   governing_law?: ExtractedField;     // Anwendbares Recht
   signatures?: ContractSignature[];   // Unterschriften
 }

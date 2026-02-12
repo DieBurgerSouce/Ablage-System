@@ -2,7 +2,7 @@
  * Facets API - Facetten-Daten vom Backend abrufen
  *
  * Endpoint: GET /search/facets
- * Unterstuetzte Facet-Felder: document_type, status, tags, ocr_backend_used, mime_type, language
+ * Unterstützte Facet-Felder: document_type, status, tags, ocr_backend_used, mime_type, language
  */
 import { apiClient } from '@/lib/api/client';
 import type { FacetResponse, FacetGroup, FacetBucket } from '../types/facets';

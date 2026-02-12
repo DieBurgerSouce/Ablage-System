@@ -172,7 +172,7 @@ export const INTENT_METADATA: Record<AssistantIntent, { label: string; icon: str
     color: 'green',
   },
   [AssistantIntent.EXPLAIN]: {
-    label: 'Erklaerung',
+    label: 'Erklärung',
     icon: 'info',
     color: 'purple',
   },
@@ -216,7 +216,7 @@ export const SEVERITY_METADATA: Record<InsightSeverity, { label: string; color: 
 // ===== Category Metadata (German Labels) =====
 
 export const CATEGORY_METADATA: Record<InsightCategory, { label: string; icon: string }> = {
-  [InsightCategory.OVERDUE]: { label: 'Ueberfaellig', icon: 'clock' },
+  [InsightCategory.OVERDUE]: { label: 'Überfällig', icon: 'clock' },
   [InsightCategory.CASHFLOW]: { label: 'Cash Flow', icon: 'dollar-sign' },
   [InsightCategory.SKONTO]: { label: 'Skonto', icon: 'percent' },
   [InsightCategory.ANOMALY]: { label: 'Anomalie', icon: 'alert-triangle' },
@@ -278,7 +278,7 @@ export const ACTION_TYPE_LABELS: Record<string, string> = {
   archive_documents: 'Dokumente archivieren',
   approve_invoices: 'Rechnungen genehmigen',
   categorize_documents: 'Dokumente kategorisieren',
-  link_entities: 'Entitaeten verknuepfen',
+  link_entities: 'Entitäten verknüpfen',
   generate_report: 'Bericht erstellen',
 };
 
@@ -293,7 +293,7 @@ export const COMMON_ACCOUNTS_SKR03: Record<string, { number: string; name: strin
   kasse: { number: '1000', name: 'Kasse' },
   forderungen: { number: '1400', name: 'Forderungen aus L+L' },
   verbindlichkeiten: { number: '1600', name: 'Verbindlichkeiten aus L+L' },
-  umsatzerloese: { number: '8400', name: 'Umsatzerloese 19%' },
+  umsatzerloese: { number: '8400', name: 'Umsatzerlöse 19%' },
   wareneinkauf: { number: '3400', name: 'Wareneingang 19%' },
   vorsteuer: { number: '1576', name: 'Vorsteuer 19%' },
   umsatzsteuer: { number: '1776', name: 'Umsatzsteuer 19%' },
@@ -304,7 +304,7 @@ export const COMMON_ACCOUNTS_SKR04: Record<string, { number: string; name: strin
   kasse: { number: '1600', name: 'Kasse' },
   forderungen: { number: '1200', name: 'Forderungen aus L+L' },
   verbindlichkeiten: { number: '3300', name: 'Verbindlichkeiten aus L+L' },
-  umsatzerloese: { number: '4400', name: 'Umsatzerloese 19%' },
+  umsatzerloese: { number: '4400', name: 'Umsatzerlöse 19%' },
   wareneinkauf: { number: '5400', name: 'Wareneingang 19%' },
   vorsteuer: { number: '1406', name: 'Vorsteuer 19%' },
   umsatzsteuer: { number: '3806', name: 'Umsatzsteuer 19%' },

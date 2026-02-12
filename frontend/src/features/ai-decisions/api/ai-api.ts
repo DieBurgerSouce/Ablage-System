@@ -1,8 +1,8 @@
 /**
  * AI Decision Review - API Client
  *
- * API-Funktionen fuer ML/AI Entscheidungen, Drift Detection,
- * SHAP Erklaerungen und A/B Testing.
+ * API-Funktionen für ML/AI Entscheidungen, Drift Detection,
+ * SHAP Erklärungen und A/B Testing.
  */
 
 import { logger } from '@/lib/logger';

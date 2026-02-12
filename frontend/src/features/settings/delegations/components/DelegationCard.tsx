@@ -185,7 +185,7 @@ export function DelegationCard({
                   {canExtend && (
                     <DropdownMenuItem onClick={() => onExtend?.(delegation.id)}>
                       <CalendarPlus className="h-4 w-4 mr-2" />
-                      Verlaengern
+                      Verlängern
                     </DropdownMenuItem>
                   )}
                   {canRevoke && (
@@ -250,7 +250,7 @@ export function DelegationCard({
                   </span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Auto-Verlaengerung:</span>
+                  <span className="text-muted-foreground">Auto-Verlängerung:</span>
                   <span className="ml-2">
                     {delegation.auto_extend
                       ? `Ja (max. ${delegation.max_extensions}x)`
@@ -259,7 +259,7 @@ export function DelegationCard({
                 </div>
                 {delegation.extension_count > 0 && (
                   <div>
-                    <span className="text-muted-foreground">Verlaengerungen:</span>
+                    <span className="text-muted-foreground">Verlängerungen:</span>
                     <span className="ml-2">{delegation.extension_count}</span>
                   </div>
                 )}

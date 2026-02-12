@@ -1,7 +1,7 @@
 /**
  * Import System React Query Hooks
  *
- * Custom Hooks fuer E-Mail-Import, Ordner-Import und Import-Regeln.
+ * Custom Hooks für E-Mail-Import, Ordner-Import und Import-Regeln.
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';

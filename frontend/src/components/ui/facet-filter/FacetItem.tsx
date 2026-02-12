@@ -2,7 +2,7 @@
  * FacetItem - Einzelner Facetten-Wert mit Checkbox und Zaehler
  *
  * Features:
- * - Checkbox fuer Auswahl
+ * - Checkbox für Auswahl
  * - Label mit Anzahl der Treffer
  * - Tastatur-Navigation
  * - Optimierte Rendering-Performance
@@ -13,19 +13,19 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 
 export interface FacetItemProps {
-  /** Eindeutiger Wert fuer diese Facette */
+  /** Eindeutiger Wert für diese Facette */
   value: string;
   /** Anzeige-Label */
   label: string;
   /** Anzahl der Treffer */
   count: number;
-  /** Ob diese Facette ausgewaehlt ist */
+  /** Ob diese Facette ausgewählt ist */
   checked: boolean;
-  /** Callback wenn sich die Auswahl aendert */
+  /** Callback wenn sich die Auswahl ändert */
   onCheckedChange: (checked: boolean) => void;
   /** Ob die Facette deaktiviert ist */
   disabled?: boolean;
-  /** Zusaetzliche CSS-Klassen */
+  /** Zusätzliche CSS-Klassen */
   className?: string;
 }
 

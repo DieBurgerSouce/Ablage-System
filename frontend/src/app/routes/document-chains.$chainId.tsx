@@ -2,7 +2,7 @@
  * Document Chain Detail Route - Einzelne Auftragskette
  *
  * Zeigt die Details einer Auftragskette mit Dokumentenfluss-Visualisierung,
- * Abweichungen und Verknuepfungsaktionen.
+ * Abweichungen und Verknüpfungsaktionen.
  */
 
 import { createFileRoute, useNavigate } from '@tanstack/react-router';

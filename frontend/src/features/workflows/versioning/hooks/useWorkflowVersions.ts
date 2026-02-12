@@ -1,7 +1,7 @@
 /**
  * Workflow Versioning Hooks
  *
- * React Query Hooks fuer Workflow-Versionierung.
+ * React Query Hooks für Workflow-Versionierung.
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -43,7 +43,7 @@ export const versionKeys = {
 // =============================================================================
 
 /**
- * Hook fuer Version-Liste.
+ * Hook für Version-Liste.
  */
 export function useWorkflowVersions(
   workflowId: string,
@@ -58,7 +58,7 @@ export function useWorkflowVersions(
 }
 
 /**
- * Hook fuer einzelne Version.
+ * Hook für einzelne Version.
  */
 export function useWorkflowVersion(
   workflowId: string,
@@ -73,7 +73,7 @@ export function useWorkflowVersion(
 }
 
 /**
- * Hook fuer aktive Version.
+ * Hook für aktive Version.
  */
 export function useActiveVersion(workflowId: string, enabled = true) {
   return useQuery({
@@ -84,7 +84,7 @@ export function useActiveVersion(workflowId: string, enabled = true) {
 }
 
 /**
- * Hook fuer Version-Diff.
+ * Hook für Version-Diff.
  */
 export function useVersionDiff(
   workflowId: string,
@@ -100,7 +100,7 @@ export function useVersionDiff(
 }
 
 /**
- * Hook fuer Versions-Vergleich.
+ * Hook für Versions-Vergleich.
  */
 export function useVersionComparison(
   workflowId: string,
@@ -119,7 +119,7 @@ export function useVersionComparison(
 // =============================================================================
 
 /**
- * Hook fuer Version-Erstellung.
+ * Hook für Version-Erstellung.
  */
 export function useCreateVersion() {
   const queryClient = useQueryClient();
@@ -144,7 +144,7 @@ export function useCreateVersion() {
 }
 
 /**
- * Hook fuer Version-Veroeffentlichung.
+ * Hook für Version-Veröffentlichung.
  */
 export function usePublishVersion() {
   const queryClient = useQueryClient();
@@ -163,16 +163,16 @@ export function usePublishVersion() {
       queryClient.invalidateQueries({
         queryKey: versionKeys.detail(workflowId, versionId),
       });
-      toast.success('Version erfolgreich veroeffentlicht');
+      toast.success('Version erfolgreich veröffentlicht');
     },
     onError: (error: Error) => {
-      toast.error(`Fehler beim Veroeffentlichen: ${error.message}`);
+      toast.error(`Fehler beim Veröffentlichen: ${error.message}`);
     },
   });
 }
 
 /**
- * Hook fuer Version-Deprecation.
+ * Hook für Version-Deprecation.
  */
 export function useDeprecateVersion() {
   const queryClient = useQueryClient();
@@ -199,7 +199,7 @@ export function useDeprecateVersion() {
 }
 
 /**
- * Hook fuer Version-Archivierung.
+ * Hook für Version-Archivierung.
  */
 export function useArchiveVersion() {
   const queryClient = useQueryClient();
@@ -226,7 +226,7 @@ export function useArchiveVersion() {
 }
 
 /**
- * Hook fuer Rollback.
+ * Hook für Rollback.
  */
 export function useRollback() {
   const queryClient = useQueryClient();
@@ -242,7 +242,7 @@ export function useRollback() {
     onSuccess: (_, { workflowId }) => {
       queryClient.invalidateQueries({ queryKey: versionKeys.list(workflowId) });
       queryClient.invalidateQueries({ queryKey: versionKeys.active(workflowId) });
-      toast.success('Rollback erfolgreich durchgefuehrt');
+      toast.success('Rollback erfolgreich durchgeführt');
     },
     onError: (error: Error) => {
       toast.error(`Fehler beim Rollback: ${error.message}`);
@@ -255,7 +255,7 @@ export function useRollback() {
 // =============================================================================
 
 /**
- * Hook fuer A/B Test Liste.
+ * Hook für A/B Test Liste.
  */
 export function useABTests(workflowId: string, enabled = true) {
   return useQuery({
@@ -266,7 +266,7 @@ export function useABTests(workflowId: string, enabled = true) {
 }
 
 /**
- * Hook fuer einzelnen A/B Test.
+ * Hook für einzelnen A/B Test.
  */
 export function useABTest(workflowId: string, testId: string, enabled = true) {
   return useQuery({
@@ -279,7 +279,7 @@ export function useABTest(workflowId: string, testId: string, enabled = true) {
 }
 
 /**
- * Hook fuer A/B Test Erstellung.
+ * Hook für A/B Test Erstellung.
  */
 export function useCreateABTest() {
   const queryClient = useQueryClient();
@@ -303,7 +303,7 @@ export function useCreateABTest() {
 }
 
 /**
- * Hook fuer A/B Test Start.
+ * Hook für A/B Test Start.
  */
 export function useStartABTest() {
   const queryClient = useQueryClient();
@@ -330,7 +330,7 @@ export function useStartABTest() {
 }
 
 /**
- * Hook fuer A/B Test Stop.
+ * Hook für A/B Test Stop.
  */
 export function useStopABTest() {
   const queryClient = useQueryClient();

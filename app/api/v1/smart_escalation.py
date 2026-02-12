@@ -10,8 +10,10 @@ KI-gestuetzte intelligente Aufgabenzuweisung:
 Phase 2.3 der Feature-Roadmap (Januar 2026)
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
+
+from app.core.types import JSONDict
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -97,10 +99,10 @@ class CandidateScoreResponse(BaseModel):
     relationship_score: float = Field(ge=0, le=100)
     total_score: float = Field(ge=0, le=100)
 
-    expertise_details: Dict[str, Any] = Field(default_factory=dict)
-    workload_details: Dict[str, Any] = Field(default_factory=dict)
-    availability_details: Dict[str, Any] = Field(default_factory=dict)
-    relationship_details: Dict[str, Any] = Field(default_factory=dict)
+    expertise_details: JSONDict = Field(default_factory=dict)
+    workload_details: JSONDict = Field(default_factory=dict)
+    availability_details: JSONDict = Field(default_factory=dict)
+    relationship_details: JSONDict = Field(default_factory=dict)
 
     is_available: bool = True
     unavailability_reason: Optional[str] = None
@@ -139,7 +141,7 @@ class AssignmentRecommendationResponse(BaseModel):
     weights_used: Dict[str, float]
 
     explanation: str
-    explanation_details: Dict[str, Any]
+    explanation_details: JSONDict
 
     @classmethod
     def from_domain(cls, rec: AssignmentRecommendation) -> "AssignmentRecommendationResponse":
@@ -407,13 +409,13 @@ async def get_user_scores(
 
 @router.get(
     "/factors",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Verfuegbare Faktoren anzeigen",
     description="Listet alle verfuegbaren Zuweisungsfaktoren und Standardgewichtungen auf.",
 )
 async def get_available_factors(
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Hole verfuegbare Faktoren und Konfiguration."""
     default_weights = FactorWeights()
 

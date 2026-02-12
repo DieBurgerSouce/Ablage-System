@@ -1,7 +1,7 @@
 /**
  * Margin Analyzer Widget
  *
- * Dashboard-Widget fuer Margenanalyse pro Kategorie.
+ * Dashboard-Widget für Margenanalyse pro Kategorie.
  *
  * Features:
  * - Gestapeltes Balkendiagramm (Umsatz vs. Kosten)
@@ -48,7 +48,7 @@ import { useTheme } from '@/lib/theme/ThemeContext';
 import { useMarginAnalyzer } from '../../hooks/useMarginAnalyzer';
 
 /**
- * Formatiere Waehrung (EUR)
+ * Formatiere Währung (EUR)
  */
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('de-DE', {
@@ -60,7 +60,7 @@ function formatCurrency(value: number): string {
 }
 
 /**
- * Hook fuer Chart-Farben basierend auf Theme
+ * Hook für Chart-Farben basierend auf Theme
  */
 function useChartColors() {
   const { displayMode } = useTheme();

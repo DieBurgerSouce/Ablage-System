@@ -2,10 +2,10 @@
  * Predictive Actions API Service
  *
  * Kommuniziert mit den /api/v1/predictive-actions Endpoints
- * fuer proaktive Handlungsvorschlaege
+ * für proaktive Handlungsvorschläge
  *
  * Features:
- * - Aktionsvorschlaege abrufen (kritisch, skonto, mahnung)
+ * - Aktionsvorschläge abrufen (kritisch, skonto, mahnung)
  * - Aktionen akzeptieren/ablehnen/verschieben
  * - Statistiken und Feedback
  *
@@ -338,7 +338,7 @@ function handleApiError(error: unknown, context: string): never {
 
 export const predictiveActionsService = {
   /**
-   * Holt alle Aktionsvorschlaege
+   * Holt alle Aktionsvorschläge
    */
   getActions: async (filter?: PredictiveActionsFilter): Promise<PredictiveActionsListResponse> => {
     try {
@@ -364,7 +364,7 @@ export const predictiveActionsService = {
   },
 
   /**
-   * Holt kritische Aktionen fuer Dashboard
+   * Holt kritische Aktionen für Dashboard
    */
   getCriticalActions: async (limit = 10): Promise<PredictiveActionsListResponse> => {
     try {
@@ -386,7 +386,7 @@ export const predictiveActionsService = {
   },
 
   /**
-   * Holt Skonto-spezifische Vorschlaege
+   * Holt Skonto-spezifische Vorschläge
    */
   getSkontoActions: async (limit = 20): Promise<PredictiveActionsListResponse> => {
     try {
@@ -408,7 +408,7 @@ export const predictiveActionsService = {
   },
 
   /**
-   * Holt Mahnungs-spezifische Vorschlaege
+   * Holt Mahnungs-spezifische Vorschläge
    */
   getDunningActions: async (limit = 20): Promise<PredictiveActionsListResponse> => {
     try {
@@ -490,7 +490,7 @@ export const predictiveActionsService = {
   },
 
   /**
-   * Holt Statistiken zu Aktionsvorschlaegen
+   * Holt Statistiken zu Aktionsvorschlägen
    */
   getStatistics: async (days = 30): Promise<ActionStatistics> => {
     try {
@@ -504,7 +504,7 @@ export const predictiveActionsService = {
   },
 
   /**
-   * Holt verfuegbare Typen
+   * Holt verfügbare Typen
    */
   getActionTypes: async (): Promise<ActionTypesResponse> => {
     try {

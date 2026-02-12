@@ -3,7 +3,7 @@
  *
  * Route: /admin/ai-decisions
  *
- * Dashboard fuer AI/ML Entscheidungen, Drift Detection,
+ * Dashboard für AI/ML Entscheidungen, Drift Detection,
  * A/B Testing und Lernfortschritt.
  */
 

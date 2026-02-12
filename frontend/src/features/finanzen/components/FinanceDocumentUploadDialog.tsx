@@ -2,7 +2,7 @@
  * FinanceDocumentUploadDialog
  *
  * Dialog zum Hochladen von Finanz-Dokumenten mit optionalen Metadaten.
- * Unterstuetzt Drag & Drop sowie manuelle Dateiauswahl.
+ * Unterstützt Drag & Drop sowie manuelle Dateiauswahl.
  */
 
 import { useState, useCallback, useRef } from 'react'
@@ -419,7 +419,7 @@ export function FinanceDocumentUploadDialog({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="einkommensteuer">Einkommensteuer</SelectItem>
-                      <SelectItem value="koerperschaftsteuer">Koerperschaftsteuer</SelectItem>
+                      <SelectItem value="koerperschaftsteuer">Körperschaftsteuer</SelectItem>
                       <SelectItem value="gewerbesteuer">Gewerbesteuer</SelectItem>
                       <SelectItem value="umsatzsteuer">Umsatzsteuer</SelectItem>
                       <SelectItem value="lohnsteuer">Lohnsteuer</SelectItem>

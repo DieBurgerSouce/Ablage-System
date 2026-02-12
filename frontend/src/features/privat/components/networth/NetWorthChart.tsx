@@ -1,9 +1,9 @@
 /**
- * NetWorthChart - Nettovermoegen-Verlauf
+ * NetWorthChart - Nettovermögen-Verlauf
  *
- * Zeigt die Entwicklung des Nettovermoegens ueber Zeit:
+ * Zeigt die Entwicklung des Nettovermögens über Zeit:
  * - Line Chart mit 12 Monaten
- * - Vermoegen vs. Verbindlichkeiten Vergleich
+ * - Vermögen vs. Verbindlichkeiten Vergleich
  * - Trend-Indikator
  */
 
@@ -90,9 +90,9 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
               />
               <span className="text-xs text-muted-foreground">
                 {entry.dataKey === 'netWorth'
-                  ? 'Nettovermoegen'
+                  ? 'Nettovermögen'
                   : entry.dataKey === 'totalAssets'
-                    ? 'Vermoegen'
+                    ? 'Vermögen'
                     : 'Verbindlichkeiten'}
               </span>
             </div>
@@ -195,10 +195,10 @@ function ComparisonChart({ data }: { data: ChartDataPoint[] }) {
           wrapperStyle={{ paddingTop: '10px' }}
           formatter={(value) =>
             value === 'totalAssets'
-              ? 'Vermoegen'
+              ? 'Vermögen'
               : value === 'totalLiabilities'
                 ? 'Verbindlichkeiten'
-                : 'Nettovermoegen'
+                : 'Nettovermögen'
           }
         />
         <Line
@@ -256,7 +256,7 @@ function AssetsVsLiabilitiesBarChart({ data }: { data: ChartDataPoint[] }) {
         <Legend
           wrapperStyle={{ paddingTop: '10px' }}
           formatter={(value) =>
-            value === 'totalAssets' ? 'Vermoegen' : 'Verbindlichkeiten'
+            value === 'totalAssets' ? 'Vermögen' : 'Verbindlichkeiten'
           }
         />
         <Bar dataKey="totalAssets" fill="#22c55e" radius={[4, 4, 0, 0]} />
@@ -283,13 +283,13 @@ export function NetWorthLineChartCard({
     return (
       <Card className={cn('', className)}>
         <CardHeader>
-          <CardTitle>Nettovermoegen-Entwicklung</CardTitle>
-          <CardDescription>Historische Entwicklung Ihres Vermoegens</CardDescription>
+          <CardTitle>Nettovermögen-Entwicklung</CardTitle>
+          <CardDescription>Historische Entwicklung Ihres Vermögens</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-64 flex items-center justify-center text-muted-foreground">
             <p className="text-center">
-              Nicht genuegend historische Daten fuer die Trend-Anzeige.
+              Nicht genügend historische Daten für die Trend-Anzeige.
               <br />
               <span className="text-sm">
                 Mindestens 2 Snapshots erforderlich.
@@ -306,9 +306,9 @@ export function NetWorthLineChartCard({
   return (
     <Card className={cn('', className)}>
       <CardHeader>
-        <CardTitle>Nettovermoegen-Entwicklung</CardTitle>
+        <CardTitle>Nettovermögen-Entwicklung</CardTitle>
         <CardDescription>
-          Historische Entwicklung Ihres Vermoegens (letzte 12 Monate)
+          Historische Entwicklung Ihres Vermögens (letzte 12 Monate)
         </CardDescription>
       </CardHeader>
       <CardContent>

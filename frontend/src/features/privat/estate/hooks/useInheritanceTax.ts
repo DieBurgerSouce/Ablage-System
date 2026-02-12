@@ -17,7 +17,7 @@ import { estateQueryKeys } from './useEstateOverview';
 // ==================== Constants ====================
 
 /**
- * Deutsche Erbschaftsteuer-Freibetraege (Stand 2024)
+ * Deutsche Erbschaftsteuer-Freibeträge (Stand 2024)
  * Alle 10 Jahre erneuerbar
  */
 export const TAX_ALLOWANCES: Record<RelationshipType, number> = {
@@ -35,7 +35,7 @@ export const TAX_ALLOWANCES: Record<RelationshipType, number> = {
 };
 
 /**
- * Versorgungsfreibetraege (nur bei Erbschaft, nicht Schenkung)
+ * Versorgungsfreibeträge (nur bei Erbschaft, nicht Schenkung)
  */
 export const CARE_ALLOWANCES = {
   ehepartner: 256000,
@@ -64,7 +64,7 @@ export const TAX_CLASS_MAPPING: Record<RelationshipType, 'I' | 'II' | 'III'> = {
 };
 
 /**
- * Steuersaetze nach Klasse und Betrag
+ * Steuersätze nach Klasse und Betrag
  */
 export const TAX_RATES: Array<{
   upTo: number;
@@ -101,7 +101,7 @@ export const RELATIONSHIP_LABELS: Record<RelationshipType, string> = {
 // ==================== Hooks ====================
 
 /**
- * Berechnet Erbschaftsteuer fuer alle Beguenstigten
+ * Berechnet Erbschaftsteuer für alle Begünstigten
  */
 export function useInheritanceTax(
   spaceId: string,
@@ -121,7 +121,7 @@ export function useInheritanceTax(
 }
 
 /**
- * Simuliert Steuer fuer einen einzelnen Erben
+ * Simuliert Steuer für einen einzelnen Erben
  */
 export function useSimulateTax() {
   return useMutation({
@@ -165,7 +165,7 @@ export function useCalculateUsufruct() {
 // ==================== Utility Functions ====================
 
 /**
- * Berechnet den Steuersatz lokal (fuer schnelle UI-Updates)
+ * Berechnet den Steuersatz lokal (für schnelle UI-Updates)
  */
 export function calculateTaxRateLocal(
   taxableAmount: number,
@@ -187,7 +187,7 @@ export function calculateTaxRateLocal(
 }
 
 /**
- * Berechnet die Steuer lokal (fuer schnelle UI-Updates)
+ * Berechnet die Steuer lokal (für schnelle UI-Updates)
  */
 export function calculateTaxLocal(
   grossAmount: number,

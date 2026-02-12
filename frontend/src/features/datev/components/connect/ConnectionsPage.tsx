@@ -1,7 +1,7 @@
 /**
  * DATEV Connect - Verbindungs-Verwaltung
  *
- * Listet alle DATEVconnect Verbindungen auf und ermoeglicht OAuth2-Anbindung.
+ * Listet alle DATEVconnect Verbindungen auf und ermöglicht OAuth2-Anbindung.
  */
 
 import { useState } from 'react';
@@ -95,13 +95,13 @@ export function ConnectionsPage() {
                 await deleteConnection.mutateAsync(deleteConfirm.id);
                 setDeleteConfirm(null);
                 toast({
-                    title: 'Verbindung geloescht',
+                    title: 'Verbindung gelöscht',
                     description: 'Die DATEV-Verbindung wurde erfolgreich entfernt.',
                 });
             } catch {
                 toast({
-                    title: 'Loeschen fehlgeschlagen',
-                    description: 'Die Verbindung konnte nicht geloescht werden.',
+                    title: 'Löschen fehlgeschlagen',
+                    description: 'Die Verbindung konnte nicht gelöscht werden.',
                     variant: 'destructive',
                 });
             }
@@ -151,7 +151,7 @@ export function ConnectionsPage() {
         } catch {
             toast({
                 title: 'Test fehlgeschlagen',
-                description: 'Der Verbindungstest konnte nicht durchgefuehrt werden.',
+                description: 'Der Verbindungstest konnte nicht durchgeführt werden.',
                 variant: 'destructive',
             });
         }
@@ -340,7 +340,7 @@ export function ConnectionsPage() {
                                                         className="text-destructive focus:text-destructive"
                                                     >
                                                         <Trash2 className="mr-2 h-4 w-4" />
-                                                        Loeschen
+                                                        Löschen
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
@@ -360,15 +360,15 @@ export function ConnectionsPage() {
                 connection={editingConnection}
             />
 
-            {/* Loesch-Bestaetigung */}
+            {/* Loesch-Bestätigung */}
             <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Verbindung loeschen?</AlertDialogTitle>
+                        <AlertDialogTitle>Verbindung löschen?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Moechten Sie die Verbindung "{deleteConfirm?.name}" wirklich loeschen?
-                            Diese Aktion kann nicht rueckgaengig gemacht werden.
-                            Alle zugehoerigen Buchungen und Sync-Daten werden ebenfalls entfernt.
+                            Möchten Sie die Verbindung "{deleteConfirm?.name}" wirklich löschen?
+                            Diese Aktion kann nicht rückgängig gemacht werden.
+                            Alle zugehörigen Buchungen und Sync-Daten werden ebenfalls entfernt.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -377,21 +377,21 @@ export function ConnectionsPage() {
                             onClick={handleDelete}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
-                            Loeschen
+                            Löschen
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Widerrufs-Bestaetigung */}
+            {/* Widerrufs-Bestätigung */}
             <AlertDialog open={!!revokeConfirm} onOpenChange={() => setRevokeConfirm(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Verbindung trennen?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Moechten Sie die Verbindung "{revokeConfirm?.name}" wirklich trennen?
-                            Sie muessen sich anschliessend erneut mit DATEV verbinden,
-                            um Synchronisierungen durchzufuehren.
+                            Möchten Sie die Verbindung "{revokeConfirm?.name}" wirklich trennen?
+                            Sie müssen sich anschließend erneut mit DATEV verbinden,
+                            um Synchronisierungen durchzuführen.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

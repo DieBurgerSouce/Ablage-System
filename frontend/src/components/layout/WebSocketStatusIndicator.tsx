@@ -2,7 +2,7 @@
  * WebSocketStatusIndicator - Global WebSocket Connection Status
  *
  * Zeigt den Status der globalen WebSocket-Verbindung an.
- * Kompakter Indikator fuer Header/Statusbar.
+ * Kompakter Indikator für Header/Statusbar.
  *
  * Features:
  * - Echtzeit-Status (verbunden/verbindend/getrennt/reconnecting)

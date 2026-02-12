@@ -134,7 +134,7 @@ registerRoute(
         JSON.stringify({
           success: true,
           queued: true,
-          message: 'Anfrage fuer Hintergrund-Sync gespeichert',
+          message: 'Anfrage für Hintergrund-Sync gespeichert',
         }),
         {
           status: 202,

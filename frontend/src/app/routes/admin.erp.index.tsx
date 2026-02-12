@@ -1,7 +1,7 @@
 /**
  * ERP Connections Index Route
  *
- * Hauptseite fuer ERP-Verbindungsverwaltung.
+ * Hauptseite für ERP-Verbindungsverwaltung.
  */
 
 import { createFileRoute } from '@tanstack/react-router'

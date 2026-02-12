@@ -161,8 +161,8 @@ export function DashboardGridEnhanced() {
     // Handle reset
     const handleReset = useCallback(() => {
         resetToDefault()
-        toast.success('Dashboard zurueckgesetzt', {
-            description: 'Das Dashboard wurde auf die Standardansicht zurueckgesetzt.',
+        toast.success('Dashboard zurückgesetzt', {
+            description: 'Das Dashboard wurde auf die Standardansicht zurückgesetzt.',
         })
     }, [resetToDefault])
 
@@ -219,10 +219,10 @@ export function DashboardGridEnhanced() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => setShowCatalog(true)}
-                                aria-label="Neues Widget zum Dashboard hinzufuegen"
+                                aria-label="Neues Widget zum Dashboard hinzufügen"
                             >
                                 <Plus className="w-4 h-4 mr-2" aria-hidden="true" />
-                                Widget hinzufuegen
+                                Widget hinzufügen
                             </Button>
 
                             {/* Preset Selector */}
@@ -281,7 +281,7 @@ export function DashboardGridEnhanced() {
                                 variant="outline"
                                 size="sm"
                                 onClick={handleReset}
-                                aria-label="Dashboard auf Standardansicht zuruecksetzen"
+                                aria-label="Dashboard auf Standardansicht zurücksetzen"
                             >
                                 <RotateCcw className="w-4 h-4 mr-2" aria-hidden="true" />
                                 Reset
@@ -396,11 +396,11 @@ export function DashboardGridEnhanced() {
                     <LayoutGrid className="w-12 h-12 text-muted-foreground mb-4" />
                     <h3 className="text-lg font-semibold mb-2">Keine Widgets</h3>
                     <p className="text-muted-foreground mb-4">
-                        Fuegen Sie Widgets hinzu, um Ihr Dashboard zu personalisieren.
+                        Fügen Sie Widgets hinzu, um Ihr Dashboard zu personalisieren.
                     </p>
                     <Button onClick={() => { setIsEditMode(true); setShowCatalog(true); }}>
                         <Plus className="w-4 h-4 mr-2" />
-                        Widgets hinzufuegen
+                        Widgets hinzufügen
                     </Button>
                 </div>
             )}

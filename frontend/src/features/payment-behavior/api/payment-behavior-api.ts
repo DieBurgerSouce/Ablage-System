@@ -1,7 +1,7 @@
 /**
  * Payment Behavior API Service
  *
- * API-Service fuer Zahlungsverhaltens-Analyse.
+ * API-Service für Zahlungsverhaltens-Analyse.
  */
 
 import { apiClient } from '@/lib/api/client';
@@ -63,7 +63,7 @@ export const paymentBehaviorService = {
   },
 
   /**
-   * Erstellt Gesamtreport ueber alle Kunden.
+   * Erstellt Gesamtreport über alle Kunden.
    */
   async getPaymentBehaviorReport(
     periodDays = 365,

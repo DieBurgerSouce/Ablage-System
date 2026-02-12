@@ -2,10 +2,10 @@
  * SearchAutocomplete - Enhanced Search Input with Dropdown
  *
  * Features:
- * - Typeahead Suchvorschlaege
+ * - Typeahead Suchvorschläge
  * - Letzte Suchanfragen
  * - Did-you-mean Korrektur
- * - Kategorisierte Vorschlaege (Tags, Kunden, Dokumenttypen)
+ * - Kategorisierte Vorschläge (Tags, Kunden, Dokumenttypen)
  * - Tastatur-Navigation (Arrow keys, Enter, Escape)
  *
  * WCAG 2.1 AA konform mit korrekter ARIA-Auszeichnung.
@@ -34,15 +34,15 @@ import { useRecentSearches } from '../hooks/use-recent-searches';
 interface SearchAutocompleteProps {
   /** Aktueller Suchwert */
   value: string;
-  /** Callback bei Wertaenderung */
+  /** Callback bei Wertänderung */
   onChange: (value: string) => void;
-  /** Callback bei Suche ausfuehren */
+  /** Callback bei Suche ausführen */
   onSearch: (query: string) => void;
   /** Placeholder-Text */
   placeholder?: string;
   /** Ist das Input aktiv? */
   disabled?: boolean;
-  /** Zusaetzliche Klassen */
+  /** Zusätzliche Klassen */
   className?: string;
 }
 
@@ -98,14 +98,14 @@ export function SearchAutocomplete({
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
 
-  // Hooks fuer Vorschlaege und letzte Suchen
+  // Hooks für Vorschläge und letzte Suchen
   const { suggestions, didYouMean, isLoading } = useSearchSuggestions(value, {
     enabled: isOpen && value.length >= 2,
   });
   const { recentSearches, addRecentSearch, removeRecentSearch, clearRecentSearches } =
     useRecentSearches();
 
-  // Kombiniere alle Items fuer das Dropdown
+  // Kombiniere alle Items für das Dropdown
   const dropdownItems = useMemo<DropdownItem[]>(() => {
     const items: DropdownItem[] = [];
 
@@ -118,7 +118,7 @@ export function SearchAutocomplete({
       });
     }
 
-    // Suchvorschlaege
+    // Suchvorschläge
     suggestions.forEach((s) => {
       items.push({
         id: s.id,
@@ -143,12 +143,12 @@ export function SearchAutocomplete({
     return items;
   }, [suggestions, didYouMean, value, recentSearches]);
 
-  // Reset highlight wenn Items sich aendern
+  // Reset highlight wenn Items sich ändern
   useEffect(() => {
     setHighlightedIndex(-1);
   }, [dropdownItems.length]);
 
-  // Schliesse Dropdown bei Klick ausserhalb
+  // Schließe Dropdown bei Klick außerhalb
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -165,7 +165,7 @@ export function SearchAutocomplete({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Item auswaehlen
+  // Item auswählen
   const selectItem = useCallback(
     (item: DropdownItem) => {
       onChange(item.text);
@@ -373,7 +373,7 @@ export function SearchAutocomplete({
                   </Badge>
                 )}
 
-                {/* Remove Button fuer Recent */}
+                {/* Remove Button für Recent */}
                 {item.type === 'recent' && (
                   <Button
                     variant="ghost"

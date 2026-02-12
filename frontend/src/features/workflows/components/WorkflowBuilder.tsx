@@ -2,7 +2,7 @@
  * WorkflowBuilder Component
  *
  * Visueller Workflow-Editor mit ReactFlow.
- * Ermoeglicht Drag-and-Drop Erstellung von Workflows.
+ * Ermöglicht Drag-and-Drop Erstellung von Workflows.
  */
 
 import { useCallback, useMemo, useState, useRef } from 'react';

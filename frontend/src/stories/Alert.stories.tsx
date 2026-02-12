@@ -1,7 +1,7 @@
 /**
  * Alert Component Stories
  *
- * Alert-Komponenten fuer Visual Regression Testing.
+ * Alert-Komponenten für Visual Regression Testing.
  * Basiert auf shadcn/ui Alert.
  */
 
@@ -74,7 +74,7 @@ export const Info: Story = {
             <Info className="h-4 w-4" />
             <AlertTitle>Information</AlertTitle>
             <AlertDescription>
-                Ihre Aenderungen wurden gespeichert.
+                Ihre Änderungen wurden gespeichert.
             </AlertDescription>
         </Alert>
     ),
@@ -167,7 +167,7 @@ export const WithList: Story = {
             <AlertTitle>Validierungsfehler</AlertTitle>
             <AlertDescription>
                 <ul className="list-disc list-inside mt-2 space-y-1">
-                    <li>E-Mail-Adresse ist ungueltig</li>
+                    <li>E-Mail-Adresse ist ungültig</li>
                     <li>Passwort muss mindestens 8 Zeichen haben</li>
                     <li>Benutzername ist bereits vergeben</li>
                 </ul>
@@ -193,7 +193,7 @@ export const AllVariants: Story = {
                 <CheckCircle className="h-4 w-4" />
                 <AlertTitle>Erfolg</AlertTitle>
                 <AlertDescription>
-                    Aktion erfolgreich ausgefuehrt.
+                    Aktion erfolgreich ausgeführt.
                 </AlertDescription>
             </Alert>
 
@@ -201,7 +201,7 @@ export const AllVariants: Story = {
                 <TriangleAlert className="h-4 w-4" />
                 <AlertTitle>Warnung</AlertTitle>
                 <AlertDescription>
-                    Achtung, bitte pruefen Sie Ihre Eingaben.
+                    Achtung, bitte prüfen Sie Ihre Eingaben.
                 </AlertDescription>
             </Alert>
 

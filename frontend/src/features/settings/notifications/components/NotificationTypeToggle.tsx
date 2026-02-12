@@ -1,8 +1,8 @@
 /**
  * NotificationTypeToggle Component
  *
- * Toggle-Komponente fuer einzelne Benachrichtigungstypen.
- * Ermoeglicht Opt-in/Opt-out pro Benachrichtigungskategorie.
+ * Toggle-Komponente für einzelne Benachrichtigungstypen.
+ * Ermöglicht Opt-in/Opt-out pro Benachrichtigungskategorie.
  */
 
 import { useState } from 'react';
@@ -57,7 +57,7 @@ const CATEGORY_DESCRIPTIONS: Record<NotificationCategory, string> = {
   alert: 'Warnungen und kritische Hinweise, die Ihre Aufmerksamkeit erfordern',
   workflow: 'Status-Updates zu Workflows, Genehmigungen und Aufgaben',
   system: 'Systemmeldungen, Updates und technische Benachrichtigungen',
-  security: 'Sicherheitsrelevante Ereignisse wie Login-Versuche und Zugriffsaenderungen',
+  security: 'Sicherheitsrelevante Ereignisse wie Login-Versuche und Zugriffsänderungen',
   finance: 'Finanzielle Benachrichtigungen zu Rechnungen, Zahlungen und Fristen',
   compliance: 'Compliance-bezogene Meldungen und regulatorische Hinweise',
   reminder: 'Erinnerungen an Fristen, Termine und ausstehende Aufgaben',
@@ -107,7 +107,7 @@ export function NotificationTypeToggle({
                 </span>
                 {activeChannelsCount > 0 && config.enabled && (
                   <span className="text-xs text-muted-foreground">
-                    ({activeChannelsCount} {activeChannelsCount === 1 ? 'Kanal' : 'Kanaele'})
+                    ({activeChannelsCount} {activeChannelsCount === 1 ? 'Kanal' : 'Kanäle'})
                   </span>
                 )}
               </div>
@@ -133,7 +133,7 @@ export function NotificationTypeToggle({
                 size="sm"
                 className="w-full mt-3 justify-between text-muted-foreground hover:text-foreground"
               >
-                <span>Kanaele konfigurieren</span>
+                <span>Kanäle konfigurieren</span>
                 {isOpen ? (
                   <ChevronUp className="h-4 w-4" />
                 ) : (
@@ -144,7 +144,7 @@ export function NotificationTypeToggle({
             <CollapsibleContent>
               <div className="mt-3 pt-3 border-t space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  Waehlen Sie die Kanaele aus, ueber die Sie diese Benachrichtigungen erhalten moechten:
+                  Wählen Sie die Kanäle aus, über die Sie diese Benachrichtigungen erhalten möchten:
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   {availableChannels.map((channel) => (

@@ -1,7 +1,7 @@
 /**
  * Life Events Feature - Lebenslagen-Assistent
  *
- * Proaktiver Begleiter fuer wichtige Lebensereignisse.
+ * Proaktiver Begleiter für wichtige Lebensereignisse.
  */
 
 // Components

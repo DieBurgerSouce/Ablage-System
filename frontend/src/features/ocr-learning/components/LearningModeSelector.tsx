@@ -1,7 +1,7 @@
 /**
  * Learning Mode Selector Component
  *
- * Erlaubt Admins den Learning-Modus zu aendern.
+ * Erlaubt Admins den Learning-Modus zu ändern.
  * Enterprise-Grade mit Error Handling und Feedback.
  */
 
@@ -22,7 +22,7 @@ const modes = [
     id: 'aggressive',
     name: 'Aggressiv',
     icon: Zap,
-    description: 'Jede User-Korrektur fliesst sofort ins System ein.',
+    description: 'Jede User-Korrektur fließt sofort ins System ein.',
     color: 'text-yellow-500',
     bgColor: 'bg-yellow-500/10',
   },
@@ -30,7 +30,7 @@ const modes = [
     id: 'cautious',
     name: 'Vorsichtig',
     icon: Shield,
-    description: 'Nur verifizierte Korrekturen werden uebernommen.',
+    description: 'Nur verifizierte Korrekturen werden übernommen.',
     color: 'text-blue-500',
     bgColor: 'bg-blue-500/10',
   },
@@ -38,7 +38,7 @@ const modes = [
     id: 'batch',
     name: 'Batch',
     icon: RefreshCw,
-    description: 'Korrekturen werden taeglich im Batch verarbeitet.',
+    description: 'Korrekturen werden täglich im Batch verarbeitet.',
     color: 'text-purple-500',
     bgColor: 'bg-purple-500/10',
   },
@@ -53,12 +53,12 @@ export function LearningModeSelector({ stats }: LearningModeSelectorProps) {
       try {
         await setLearningMode.mutateAsync(mode);
         const modeName = modes.find(m => m.id === mode)?.name || mode;
-        toast.success('Lernmodus geaendert', {
+        toast.success('Lernmodus geändert', {
           description: `Der Modus "${modeName}" ist jetzt aktiv.`,
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unbekannter Fehler';
-        toast.error('Fehler beim Aendern des Modus', {
+        toast.error('Fehler beim Ändern des Modus', {
           description: message,
         });
       }
@@ -115,7 +115,7 @@ export function LearningModeSelector({ stats }: LearningModeSelectorProps) {
         </div>
         <p className="text-xs text-muted-foreground mt-4">
           Hinweis: Der Modus beeinflusst wie schnell das System aus Korrekturen lernt.
-          Im aggressiven Modus koennen einzelne Fehlkorrekturen das System negativ
+          Im aggressiven Modus können einzelne Fehlkorrekturen das System negativ
           beeinflussen.
         </p>
       </CardContent>

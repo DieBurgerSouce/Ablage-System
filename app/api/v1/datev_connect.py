@@ -15,7 +15,9 @@ Feinpoliert und durchdacht - Enterprise-Ready DATEV Integration.
 import uuid
 from datetime import date
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
+
+from app.core.types import JSONDict
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -152,7 +154,7 @@ class KontierungResponse(BaseModel):
     confidence: float
     source: str
     explanation: str
-    alternatives: List[Dict[str, Any]] = []
+    alternatives: List[JSONDict] = []
 
 
 class BuchungCreate(BaseModel):
@@ -208,8 +210,8 @@ class GoBDValidationResponse(BaseModel):
 
     is_compliant: bool
     pruefung_datum: str
-    findings: List[Dict[str, Any]]
-    statistics: Dict[str, Any]
+    findings: List[JSONDict]
+    statistics: JSONDict
 
 
 class SyncTriggerResponse(BaseModel):
@@ -560,7 +562,7 @@ async def oauth_callback(
     state: str = Query(...),
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Verarbeitet OAuth2-Callback nach User-Consent.
 
@@ -624,7 +626,7 @@ async def test_connection(
     connection_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Testet die DATEV-Verbindung."""
     from app.services.datev.connect import DATEVConnector, DATEVConnectionConfig
     from app.core.encryption import decrypt_value

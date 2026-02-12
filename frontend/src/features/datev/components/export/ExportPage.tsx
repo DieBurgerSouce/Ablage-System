@@ -64,7 +64,7 @@ export function ExportPage() {
             });
             setPreview(result);
         } catch (error) {
-            // IMMER loggen (auch Production) - Fehler sind kritisch fuer Monitoring
+            // IMMER loggen (auch Production) - Fehler sind kritisch für Monitoring
             logger.error('DATEV: Preview-Fehler', error);
         }
     };
@@ -81,7 +81,7 @@ export function ExportPage() {
             // Preview zurücksetzen nach erfolgreichem Export
             setPreview(null);
         } catch (error) {
-            // IMMER loggen (auch Production) - Fehler sind kritisch fuer Monitoring
+            // IMMER loggen (auch Production) - Fehler sind kritisch für Monitoring
             logger.error('DATEV: Export-Fehler', error);
         }
     };

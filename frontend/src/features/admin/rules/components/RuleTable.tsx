@@ -47,7 +47,7 @@ const CATEGORY_LABELS: Record<RuleCategory, string> = {
   fraud: 'Fraud',
   workflow: 'Workflow',
   notification: 'Benachrichtigung',
-  data_quality: 'Datenqualitaet',
+  data_quality: 'Datenqualität',
   custom: 'Benutzerdefiniert',
 }
 
@@ -94,7 +94,7 @@ export function RuleTable({
     } catch {
       toast({
         title: 'Fehler',
-        description: 'Status konnte nicht geaendert werden.',
+        description: 'Status konnte nicht geändert werden.',
         variant: 'destructive',
       })
     }
@@ -106,13 +106,13 @@ export function RuleTable({
     try {
       await deleteMutation.mutateAsync(ruleToDelete.id)
       toast({
-        title: 'Regel geloescht',
-        description: `"${ruleToDelete.name}" wurde geloescht.`,
+        title: 'Regel gelöscht',
+        description: `"${ruleToDelete.name}" wurde gelöscht.`,
       })
     } catch {
       toast({
         title: 'Fehler',
-        description: 'Regel konnte nicht geloescht werden.',
+        description: 'Regel konnte nicht gelöscht werden.',
         variant: 'destructive',
       })
     } finally {
@@ -155,8 +155,8 @@ export function RuleTable({
             <TableHead>Aktiv</TableHead>
             <TableHead>Name</TableHead>
             <TableHead>Kategorie</TableHead>
-            <TableHead className="text-center">Prioritaet</TableHead>
-            <TableHead className="text-right">Ausfuehrungen</TableHead>
+            <TableHead className="text-center">Priorität</TableHead>
+            <TableHead className="text-right">Ausführungen</TableHead>
             <TableHead className="text-right">Matches</TableHead>
             <TableHead>Zuletzt</TableHead>
             <TableHead className="w-[50px]"></TableHead>
@@ -238,7 +238,7 @@ export function RuleTable({
                     {onViewLogs && (
                       <DropdownMenuItem onClick={() => onViewLogs(rule)}>
                         <History className="h-4 w-4 mr-2" />
-                        Ausfuehrungslog
+                        Ausführungslog
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
@@ -247,7 +247,7 @@ export function RuleTable({
                       className="text-destructive focus:text-destructive"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
-                      Loeschen
+                      Löschen
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -260,10 +260,10 @@ export function RuleTable({
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Regel loeschen?</AlertDialogTitle>
+            <AlertDialogTitle>Regel löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Moechten Sie die Regel "{ruleToDelete?.name}" wirklich loeschen?
-              Diese Aktion kann nicht rueckgaengig gemacht werden.
+              Möchten Sie die Regel "{ruleToDelete?.name}" wirklich löschen?
+              Diese Aktion kann nicht rückgängig gemacht werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -272,7 +272,7 @@ export function RuleTable({
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Loeschen
+              Löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

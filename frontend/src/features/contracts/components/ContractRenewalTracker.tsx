@@ -1,10 +1,10 @@
 /**
- * ContractRenewalTracker - Anstehende Verlaengerungen und Ablaufdaten
+ * ContractRenewalTracker - Anstehende Verlängerungen und Ablaufdaten
  *
  * Features:
  * - Farbcodierte Zeilen nach Dringlichkeit
  * - Sortierung nach Ablaufdatum
- * - Aktionsbuttons (Verlaengern, Kuendigen, Details)
+ * - Aktionsbuttons (Verlängern, Kündigen, Details)
  * - Filter nach Zeitraum
  */
 
@@ -76,7 +76,7 @@ const urgencyConfig: Record<UrgencyLevel, {
   caution: {
     rowClass: 'bg-yellow-50 border-l-4 border-l-yellow-400',
     badgeVariant: 'secondary',
-    label: 'Bald faellig',
+    label: 'Bald fällig',
   },
   ok: {
     rowClass: 'bg-green-50 border-l-4 border-l-green-400',
@@ -117,7 +117,7 @@ export function ContractRenewalTracker({
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-medium">Verlaengerungstracker</CardTitle>
+          <CardTitle className="text-sm font-medium">Verlängerungstracker</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -137,7 +137,7 @@ export function ContractRenewalTracker({
           <div>
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Clock className="h-4 w-4" />
-              Verlaengerungstracker
+              Verlängerungstracker
             </CardTitle>
             <CardDescription className="mt-1">
               {stats.critical > 0 && (
@@ -146,11 +146,11 @@ export function ContractRenewalTracker({
               {stats.critical > 0 && stats.actionRequired > 0 && ' · '}
               {stats.actionRequired > 0 && (
                 <span className="text-orange-600 font-medium">
-                  {stats.actionRequired} Entscheidung noetig
+                  {stats.actionRequired} Entscheidung nötig
                 </span>
               )}
               {stats.critical === 0 && stats.actionRequired === 0 && (
-                <span className="text-green-600">Keine dringenden Verlaengerungen</span>
+                <span className="text-green-600">Keine dringenden Verlängerungen</span>
               )}
             </CardDescription>
           </div>
@@ -172,7 +172,7 @@ export function ContractRenewalTracker({
         {filteredRenewals.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            Keine Verlaengerungen im gewaehlten Zeitraum
+            Keine Verlängerungen im gewählten Zeitraum
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -182,7 +182,7 @@ export function ContractRenewalTracker({
                   <th className="text-left py-2 pr-3 font-medium">Vertrag</th>
                   <th className="text-left py-2 px-3 font-medium">Partner</th>
                   <th className="text-left py-2 px-3 font-medium">Ablaufdatum</th>
-                  <th className="text-left py-2 px-3 font-medium">Kuendigungsfrist</th>
+                  <th className="text-left py-2 px-3 font-medium">Kündigungsfrist</th>
                   <th className="text-right py-2 px-3 font-medium">Jahreskosten</th>
                   <th className="text-center py-2 px-3 font-medium">Status</th>
                   <th className="text-right py-2 pl-3 font-medium">Aktion</th>
@@ -235,7 +235,7 @@ export function ContractRenewalTracker({
                               size="sm"
                               onClick={() => onRenewContract(renewal.contract_id)}
                             >
-                              Verlaengern
+                              Verlängern
                             </Button>
                           )}
                           {onTerminateContract && (
@@ -245,7 +245,7 @@ export function ContractRenewalTracker({
                               className="text-orange-600 hover:text-orange-700"
                               onClick={() => onTerminateContract(renewal.contract_id)}
                             >
-                              Kuendigen
+                              Kündigen
                             </Button>
                           )}
                           {onViewContract && (

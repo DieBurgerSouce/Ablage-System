@@ -1,7 +1,7 @@
 /**
  * Net Worth Components - Export Index
  *
- * Komponenten fuer das Nettovermoegen-Dashboard
+ * Komponenten für das Nettovermögen-Dashboard
  */
 
 export { AssetBreakdownCard } from './AssetBreakdownCard';

@@ -2,7 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { ScrollSync, ScrollSyncPane } from 'react-scroll-sync';
 import SplitPane from 'react-split-pane';
-import { FileText, ScanLine, FileCode, Loader2, AlertTriangle, Edit, MessageSquare, Diff } from 'lucide-react';
+import { FileText, ScanLine, FileCode, Loader2, AlertTriangle, Edit, MessageSquare, Diff, Link2 } from 'lucide-react';
 import { ViewerToolbar } from './ViewerToolbar';
 import { BoundingBoxOverlay, type BoundingBox } from './BoundingBoxOverlay';
 import { ImageViewer } from './ImageViewer';
@@ -13,6 +13,7 @@ import { ExtractedDataPanel } from '@/features/extracted-data';
 import { EInvoicePanel } from '@/features/einvoice';
 import { CommentsPanel, ActivityStream } from '@/features/collaboration';
 import { OCRDiffViewer } from '@/features/ocr-review/components/OCRDiffViewer';
+import { DocumentContextPanel } from './DocumentContextPanel';
 import { apiClient } from '@/lib/api/client';
 import { AnnotationLayer } from './AnnotationLayer';
 import { ViewerErrorBoundary } from '@/components/errors';
@@ -178,7 +179,7 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
             <div className="h-full flex flex-col">
                 <div className="px-4 pt-3 pb-2 border-b bg-background sticky top-0 z-10 flex items-center justify-between">
                     <Tabs value="ocr-diff" onValueChange={setActiveRightTab}>
-                        <TabsList className="grid grid-cols-6 max-w-2xl">
+                        <TabsList className="grid grid-cols-7 max-w-3xl">
                             <TabsTrigger value="cockpit" className="gap-2">
                                 <Edit className="h-4 w-4" />
                                 Cockpit
@@ -202,6 +203,10 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
                             <TabsTrigger value="ocr-diff" className="gap-2">
                                 <Diff className="h-4 w-4" />
                                 OCR Vergleich
+                            </TabsTrigger>
+                            <TabsTrigger value="context" className="gap-2">
+                                <Link2 className="h-4 w-4" />
+                                Kontext
                             </TabsTrigger>
                         </TabsList>
                     </Tabs>
@@ -317,7 +322,7 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
                             <div className="h-full overflow-auto bg-background">
                                 <Tabs value={activeRightTab} onValueChange={setActiveRightTab} className="h-full flex flex-col">
                                     <div className="px-4 pt-4 pb-2 border-b bg-background sticky top-0 z-10">
-                                        <TabsList className="grid w-full grid-cols-6 max-w-2xl">
+                                        <TabsList className="grid w-full grid-cols-7 max-w-3xl">
                                             <TabsTrigger value="cockpit" className="gap-2">
                                                 <Edit className="h-4 w-4" />
                                                 Cockpit
@@ -342,6 +347,10 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
                                                 <Diff className="h-4 w-4" />
                                                 OCR Vergleich
                                             </TabsTrigger>
+                                            <TabsTrigger value="context" className="gap-2">
+                                                <Link2 className="h-4 w-4" />
+                                                Kontext
+                                            </TabsTrigger>
                                         </TabsList>
                                     </div>
                                     <TabsContent value="cockpit" className="flex-1 overflow-auto mt-0">
@@ -363,6 +372,9 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
                                     <TabsContent value="collaboration" className="flex-1 p-4 overflow-auto mt-0 space-y-6">
                                         <CommentsPanel documentId={documentId} />
                                         <ActivityStream documentId={documentId} />
+                                    </TabsContent>
+                                    <TabsContent value="context" className="flex-1 p-4 overflow-auto mt-0">
+                                        <DocumentContextPanel documentId={documentId} />
                                     </TabsContent>
                                     {/* ocr-diff tab triggers full-width mode via early return above */}
                                 </Tabs>

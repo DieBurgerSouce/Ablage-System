@@ -1,6 +1,6 @@
 /**
  * Training Data Export Component
- * Konfiguration und Ausfuehrung von Training-Daten-Exporten
+ * Konfiguration und Ausführung von Training-Daten-Exporten
  */
 
 import { useState } from 'react';
@@ -58,13 +58,13 @@ const EXPORT_FORMATS = [
   {
     value: 'deepseek_jsonl',
     label: 'DeepSeek JSONL',
-    description: 'Fuer DeepSeek-Janus Fine-Tuning',
+    description: 'Für DeepSeek-Janus Fine-Tuning',
     icon: FileJson,
   },
   {
     value: 'surya_hf',
     label: 'Surya HuggingFace',
-    description: 'Fuer Surya OCR Training',
+    description: 'Für Surya OCR Training',
     icon: FileJson,
   },
   {
@@ -76,22 +76,22 @@ const EXPORT_FORMATS = [
   {
     value: 'csv',
     label: 'CSV',
-    description: 'Tabellen-Format fuer Excel',
+    description: 'Tabellen-Format für Excel',
     icon: FileSpreadsheet,
   },
 ];
 
 const SPLIT_STRATEGIES = [
-  { value: 'random', label: 'Zufaellig', description: 'Zufaellige Verteilung' },
+  { value: 'random', label: 'Zufällig', description: 'Zufällige Verteilung' },
   {
     value: 'stratified',
     label: 'Stratifiziert',
-    description: 'Gleichmaessige Typen-Verteilung',
+    description: 'Gleichmäßige Typen-Verteilung',
   },
   {
     value: 'temporal',
     label: 'Zeitlich',
-    description: 'Aeltere Daten fuer Training',
+    description: 'Ältere Daten für Training',
   },
 ];
 
@@ -185,13 +185,13 @@ export function TrainingDataExport() {
     try {
       await deleteMutation.mutateAsync(exportId);
       toast({
-        title: 'Export geloescht',
+        title: 'Export gelöscht',
         description: 'Der Export wurde erfolgreich entfernt.',
       });
     } catch {
       toast({
         title: 'Fehler',
-        description: 'Der Export konnte nicht geloescht werden.',
+        description: 'Der Export konnte nicht gelöscht werden.',
         variant: 'destructive',
       });
     }
@@ -524,9 +524,9 @@ export function TrainingDataExport() {
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Export loeschen?</AlertDialogTitle>
+                            <AlertDialogTitle>Export löschen?</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Der Export wird unwiderruflich geloescht.
+                              Der Export wird unwiderruflich gelöscht.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
@@ -534,7 +534,7 @@ export function TrainingDataExport() {
                             <AlertDialogAction
                               onClick={() => handleDelete(exp.exportId)}
                             >
-                              Loeschen
+                              Löschen
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>

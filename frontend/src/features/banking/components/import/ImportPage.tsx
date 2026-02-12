@@ -126,7 +126,7 @@ export function ImportPage() {
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">Transaktionen importieren</h1>
                 <p className="text-muted-foreground">
-                    Importieren Sie Kontoauszuege aus verschiedenen Formaten.
+                    Importieren Sie Kontoauszüge aus verschiedenen Formaten.
                 </p>
             </div>
 

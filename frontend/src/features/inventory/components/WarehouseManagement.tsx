@@ -193,7 +193,7 @@ export function WarehouseManagement() {
             onCheckedChange={(checked) => setFormData({ ...formData, is_default: checked })}
           />
           <span className="text-sm text-muted-foreground">
-            Als Standard fuer neue Wareneingaenge verwenden
+            Als Standard für neue Wareneingänge verwenden
           </span>
         </div>
       </div>
@@ -219,7 +219,7 @@ export function WarehouseManagement() {
               <DialogHeader>
                 <DialogTitle>Neues Lager erstellen</DialogTitle>
                 <DialogDescription>
-                  Erstellen Sie einen neuen Lagerort fuer Ihre Bestandsfuehrung.
+                  Erstellen Sie einen neuen Lagerort für Ihre Bestandsführung.
                 </DialogDescription>
               </DialogHeader>
               <WarehouseForm />
@@ -310,7 +310,7 @@ export function WarehouseManagement() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Lager bearbeiten</DialogTitle>
-              <DialogDescription>Aendern Sie die Daten des Lagers.</DialogDescription>
+              <DialogDescription>Ändern Sie die Daten des Lagers.</DialogDescription>
             </DialogHeader>
             <WarehouseForm isEdit />
             <DialogFooter>

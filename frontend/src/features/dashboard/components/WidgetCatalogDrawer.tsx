@@ -1,14 +1,14 @@
 /**
  * WidgetCatalogDrawer - Widget-Katalog Seitenleiste
  *
- * Sheet-Komponente die von rechts einschiebt und alle verfuegbaren
- * Widgets zum Hinzufuegen anzeigt.
+ * Sheet-Komponente die von rechts einschiebt und alle verfügbaren
+ * Widgets zum Hinzufügen anzeigt.
  *
  * Features:
  * - Auflistung aller Widgets aus WIDGET_REGISTRY
  * - Anzeige ob Widget bereits aktiv
  * - Filterung nach Kategorie
- * - Hinzufuegen zum Dashboard
+ * - Hinzufügen zum Dashboard
  */
 
 import { useState, useMemo } from 'react';
@@ -68,8 +68,8 @@ export function WidgetCatalogDrawer({ open, onOpenChange }: WidgetCatalogDrawerP
     const size = widgetDef?.defaultSize ?? { w: 4, h: 3 };
 
     addWidget(normalizedType, size);
-    toast.success('Widget hinzugefuegt', {
-      description: `${widgetDef?.label || type} wurde zum Dashboard hinzugefuegt.`,
+    toast.success('Widget hinzugefügt', {
+      description: `${widgetDef?.label || type} wurde zum Dashboard hinzugefügt.`,
     });
   };
 

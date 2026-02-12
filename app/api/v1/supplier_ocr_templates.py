@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+from app.core.types import JSONDict
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -100,7 +102,7 @@ class TemplateResponse(BaseModel):
     version: int
     matching_strategy: str
     text_anchors: List[str] = Field(default_factory=list)
-    field_definitions: List[Dict[str, Any]] = Field(default_factory=list)
+    field_definitions: List[JSONDict] = Field(default_factory=list)
     training_document_count: int = 0
     accuracy_score: Optional[float] = None
     usage_count: int = 0
@@ -120,7 +122,7 @@ class TemplateResponse(BaseModel):
 class TrainFromDocumentRequest(BaseModel):
     """Request fuer Template-Training."""
     document_id: uuid.UUID = Field(..., description="Dokument-ID")
-    corrected_values: Dict[str, Any] = Field(..., description="Korrigierte Feldwerte")
+    corrected_values: JSONDict = Field(..., description="Korrigierte Feldwerte")
     entity_id: Optional[uuid.UUID] = Field(None, description="Lieferanten-ID")
     template_id: Optional[uuid.UUID] = Field(None, description="Existierendes Template")
 
@@ -454,7 +456,7 @@ async def get_entity_templates(
     summary="Verfuegbare Feldtypen",
     description="Listet alle verfuegbaren Extraktions-Typen auf.",
 )
-async def get_field_types() -> Dict[str, Any]:
+async def get_field_types() -> JSONDict:
     """Listet verfuegbare Feld-Extraktions-Typen auf."""
     return {
         "field_types": [

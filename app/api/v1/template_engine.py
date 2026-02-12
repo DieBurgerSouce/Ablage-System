@@ -4,8 +4,10 @@ API Router für Template Engine.
 Endpoints für PDF/DOCX/HTML-Generierung aus Templates.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 from uuid import UUID
+
+from app.core.types import JSONDict
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -36,7 +38,7 @@ router = APIRouter(prefix="/templates", tags=["templates"])
 class RenderTemplateRequest(BaseModel):
     """Request für Template-Rendering."""
 
-    data: Dict[str, Any] = Field(..., description="Template-Variablen")
+    data: JSONDict = Field(..., description="Template-Variablen")
     format: str = Field(
         "pdf",
         description="Ausgabeformat (pdf, docx, html)",

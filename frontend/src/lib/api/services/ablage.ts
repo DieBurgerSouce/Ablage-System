@@ -395,7 +395,7 @@ export const ablageService = {
   },
 
   /**
-   * Loescht mehrere Dokumente (Soft-Delete)
+   * Löscht mehrere Dokumente (Soft-Delete)
    */
   bulkDelete: async (
     documentIds: string[],

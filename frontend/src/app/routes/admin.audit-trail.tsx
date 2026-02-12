@@ -2,7 +2,7 @@
  * Admin Audit-Trail Route
  *
  * Kryptografisch gesicherter Audit-Trail-Viewer
- * mit Merkle Proof Verifikation und Integritaetsbericht.
+ * mit Merkle Proof Verifikation und Integritätsbericht.
  */
 
 import { createFileRoute } from '@tanstack/react-router';

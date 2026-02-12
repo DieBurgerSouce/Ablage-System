@@ -10,15 +10,18 @@ ENTERPRISE: Alle Aktionen fuehren echte DB-Operationen durch.
 """
 
 import asyncio
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 from typing import Optional, List, Dict
 from uuid import UUID, uuid4
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func as sa_func
 
-from app.db.models import User, Document, BusinessEntity, Tag, ProcessingStatus, document_tags
+from app.db.models import (
+    User, Document, BusinessEntity, Tag, ProcessingStatus, document_tags,
+    InvoiceTracking, InvoiceStatus,
+)
 from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.api.schemas.rag import (
     AIActionType,
@@ -36,6 +39,68 @@ logger = structlog.get_logger(__name__)
 
 
 # ============================================================================
+# PERIOD PARSING HELPERS
+# ============================================================================
+
+def _parse_period_range(period: str) -> tuple:
+    """Parst Periodenbezeichnung in Start/End-Datetime.
+
+    Unterstuetzte Formate:
+    - YYYY-MM (z.B. '2025-01')
+    - Qx_YYYY (z.B. 'Q3_2025')
+    - letzter_monat, dieser_monat
+
+    Args:
+        period: Periodenstring
+
+    Returns:
+        Tuple (start_datetime, end_datetime) in UTC
+    """
+    import re as _re
+    import calendar
+
+    now = datetime.now(timezone.utc)
+
+    # YYYY-MM Format
+    match = _re.match(r'^(\d{4})-(\d{2})$', period)
+    if match:
+        year, month = int(match.group(1)), int(match.group(2))
+        start = datetime(year, month, 1, tzinfo=timezone.utc)
+        last_day = calendar.monthrange(year, month)[1]
+        end = datetime(year, month, last_day, 23, 59, 59, tzinfo=timezone.utc)
+        return start, end
+
+    # Qx_YYYY Format
+    match = _re.match(r'^Q(\d)_(\d{4})$', period, _re.IGNORECASE)
+    if match:
+        quarter, year = int(match.group(1)), int(match.group(2))
+        start_month = (quarter - 1) * 3 + 1
+        end_month = start_month + 2
+        start = datetime(year, start_month, 1, tzinfo=timezone.utc)
+        last_day = calendar.monthrange(year, end_month)[1]
+        end = datetime(year, end_month, last_day, 23, 59, 59, tzinfo=timezone.utc)
+        return start, end
+
+    # Relative Perioden
+    if period in ("letzter_monat", "last_month"):
+        first_of_this_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        end = first_of_this_month - timedelta(seconds=1)
+        start = end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        return start, end
+
+    if period in ("dieser_monat", "this_month"):
+        start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        last_day = calendar.monthrange(now.year, now.month)[1]
+        end = now.replace(day=last_day, hour=23, minute=59, second=59, microsecond=0)
+        return start, end
+
+    # Fallback: letztes Jahr
+    start = datetime(now.year - 1, 1, 1, tzinfo=timezone.utc)
+    end = datetime(now.year - 1, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
+    return start, end
+
+
+# ============================================================================
 # ACTION DEFINITIONS
 # ============================================================================
 
@@ -45,6 +110,9 @@ VIEWER_ACTIONS = {
     AIActionType.ANALYZE_ENTITY,
     AIActionType.GENERATE_REPORT,
     AIActionType.EXPLAIN_DOCUMENT,
+    AIActionType.GET_DAILY_AGENDA,
+    AIActionType.COMPARE_EXPENSES,
+    AIActionType.GET_SKONTO,
 }
 
 EDITOR_ACTIONS = VIEWER_ACTIONS | {
@@ -59,6 +127,7 @@ ADMIN_ACTIONS = EDITOR_ACTIONS | {
     AIActionType.TRIGGER_OCR,
     AIActionType.SEND_NOTIFICATION,
     AIActionType.BULK_CATEGORIZE,
+    AIActionType.BOOK_INVOICE,
 }
 
 # Actions that require confirmation at Editor level
@@ -71,6 +140,7 @@ SUPERVISED_ACTIONS = {
     AIActionType.TRIGGER_OCR,
     AIActionType.SEND_NOTIFICATION,
     AIActionType.BULK_CATEGORIZE,
+    AIActionType.BOOK_INVOICE,
 }
 
 # German action descriptions
@@ -134,6 +204,26 @@ ACTION_DESCRIPTIONS: Dict[AIActionType, Dict[str, str]] = {
         "title": "Mehrere kategorisieren",
         "description": "Kategorisiert mehrere Dokumente gleichzeitig.",
         "impact": "Aendert mehrere Dokumente",
+    },
+    AIActionType.GET_DAILY_AGENDA: {
+        "title": "Tagesagenda anzeigen",
+        "description": "Zeigt Fristen, offene Freigaben, Skonto-Deadlines und ueberfaellige Rechnungen.",
+        "impact": "Keine Aenderungen - nur Lesezugriff",
+    },
+    AIActionType.COMPARE_EXPENSES: {
+        "title": "Ausgaben vergleichen",
+        "description": "Vergleicht Ausgaben zwischen zwei Zeitraeumen nach Kategorie oder Lieferant.",
+        "impact": "Keine Aenderungen - nur Analyse",
+    },
+    AIActionType.GET_SKONTO: {
+        "title": "Skonto-Moeglichkeiten anzeigen",
+        "description": "Zeigt aktuelle Skonto-Moeglichkeiten mit Fristen und Ersparnissen.",
+        "impact": "Keine Aenderungen - nur Analyse",
+    },
+    AIActionType.BOOK_INVOICE: {
+        "title": "Rechnung buchen",
+        "description": "Bucht eine Rechnung auf ein bestimmtes Sachkonto oder eine Kostenstelle.",
+        "impact": "Aendert Buchungsdaten der Rechnung",
     },
 }
 
@@ -737,6 +827,301 @@ class AIActionService:
                 )
             else:
                 message = "Keine Dokumente zur Kategorisierung angegeben."
+
+        elif request.action_type == AIActionType.GET_DAILY_AGENDA:
+            include_future_days = request.parameters.get("include_future_days", 3)
+            now = datetime.now(timezone.utc)
+            future_cutoff = now + timedelta(days=int(include_future_days))
+
+            # Ueberfaellige Rechnungen (via InvoiceTracking)
+            overdue_result = await db.execute(
+                select(InvoiceTracking).where(
+                    InvoiceTracking.company_id == user.company_id,
+                    InvoiceTracking.status == InvoiceStatus.OVERDUE.value,
+                    InvoiceTracking.deleted_at.is_(None),
+                )
+            )
+            overdue_invoices = overdue_result.scalars().all()
+
+            # Ausstehende Validierungen (Dokumente im Pending-Status)
+            pending_result = await db.execute(
+                select(sa_func.count()).select_from(Document).where(
+                    Document.company_id == user.company_id,
+                    Document.status == ProcessingStatus.PENDING.value,
+                    Document.deleted_at.is_(None),
+                )
+            )
+            pending_count = pending_result.scalar() or 0
+
+            # Skonto-Deadlines die bald ablaufen
+            skonto_result = await db.execute(
+                select(InvoiceTracking).where(
+                    InvoiceTracking.company_id == user.company_id,
+                    InvoiceTracking.skonto_deadline.isnot(None),
+                    InvoiceTracking.skonto_used.is_(False),
+                    InvoiceTracking.skonto_deadline >= now,
+                    InvoiceTracking.skonto_deadline <= future_cutoff,
+                    InvoiceTracking.status.in_([
+                        InvoiceStatus.OPEN.value,
+                        InvoiceStatus.SENT.value,
+                    ]),
+                    InvoiceTracking.deleted_at.is_(None),
+                )
+            )
+            skonto_invoices = skonto_result.scalars().all()
+
+            agenda_items: List[Dict[str, object]] = []
+            for inv in overdue_invoices:
+                agenda_items.append({
+                    "typ": "ueberfaellig",
+                    "document_id": str(inv.document_id),
+                    "rechnungsnummer": inv.invoice_number or "Unbekannt",
+                    "betrag": float(inv.amount or 0),
+                    "tage_verzug": inv.days_overdue,
+                })
+            for inv in skonto_invoices:
+                days_left = inv.days_until_skonto_expires
+                agenda_items.append({
+                    "typ": "skonto_frist",
+                    "document_id": str(inv.document_id),
+                    "rechnungsnummer": inv.invoice_number or "Unbekannt",
+                    "betrag": float(inv.amount or 0),
+                    "skonto_prozent": float(inv.skonto_percentage or 0),
+                    "tage_verbleibend": days_left if days_left is not None else 0,
+                })
+
+            details = {
+                "ueberfaellige_rechnungen": len(overdue_invoices),
+                "ausstehende_validierungen": pending_count,
+                "skonto_fristen": len(skonto_invoices),
+                "items": agenda_items,
+            }
+            message = (
+                f"Tagesagenda: {len(overdue_invoices)} ueberfaellige Rechnungen, "
+                f"{pending_count} ausstehende Validierungen, "
+                f"{len(skonto_invoices)} ablaufende Skonto-Fristen."
+            )
+            logger.info(
+                "daily_agenda_generated",
+                overdue=len(overdue_invoices),
+                pending=pending_count,
+                skonto=len(skonto_invoices),
+                user_id=str(user.id),
+            )
+
+        elif request.action_type == AIActionType.COMPARE_EXPENSES:
+            period_1 = request.parameters.get("period_1", "")
+            period_2 = request.parameters.get("period_2", "")
+            group_by = request.parameters.get("group_by", "kategorie")
+
+            range_1_start, range_1_end = _parse_period_range(str(period_1))
+            range_2_start, range_2_end = _parse_period_range(str(period_2))
+
+            # Summe und Anzahl fuer Periode 1
+            result_1 = await db.execute(
+                select(
+                    sa_func.coalesce(sa_func.sum(InvoiceTracking.amount), 0),
+                    sa_func.count(InvoiceTracking.id),
+                ).where(
+                    InvoiceTracking.company_id == user.company_id,
+                    InvoiceTracking.invoice_date >= range_1_start,
+                    InvoiceTracking.invoice_date < range_1_end,
+                    InvoiceTracking.deleted_at.is_(None),
+                )
+            )
+            row_1 = result_1.one()
+            total_1 = float(row_1[0])
+            count_1 = int(row_1[1])
+
+            # Summe und Anzahl fuer Periode 2
+            result_2 = await db.execute(
+                select(
+                    sa_func.coalesce(sa_func.sum(InvoiceTracking.amount), 0),
+                    sa_func.count(InvoiceTracking.id),
+                ).where(
+                    InvoiceTracking.company_id == user.company_id,
+                    InvoiceTracking.invoice_date >= range_2_start,
+                    InvoiceTracking.invoice_date < range_2_end,
+                    InvoiceTracking.deleted_at.is_(None),
+                )
+            )
+            row_2 = result_2.one()
+            total_2 = float(row_2[0])
+            count_2 = int(row_2[1])
+
+            diff = total_2 - total_1
+            diff_percent = (diff / total_1 * 100) if total_1 > 0 else 0.0
+
+            details = {
+                "periode_1": {"label": period_1, "summe": total_1, "anzahl": count_1},
+                "periode_2": {"label": period_2, "summe": total_2, "anzahl": count_2},
+                "differenz": diff,
+                "differenz_prozent": round(diff_percent, 1),
+                "gruppierung": group_by,
+            }
+            direction = "mehr" if diff > 0 else "weniger"
+            message = (
+                f"Ausgabenvergleich: {period_1} ({total_1:.2f} EUR, {count_1} Rechnungen) vs. "
+                f"{period_2} ({total_2:.2f} EUR, {count_2} Rechnungen) - "
+                f"{abs(diff):.2f} EUR {direction} ({abs(diff_percent):.1f}%)."
+            )
+            logger.info(
+                "expenses_compared",
+                period_1=period_1,
+                period_2=period_2,
+                diff=diff,
+                user_id=str(user.id),
+            )
+
+        elif request.action_type == AIActionType.GET_SKONTO:
+            days_ahead = request.parameters.get("days_ahead", 14)
+            now = datetime.now(timezone.utc)
+            cutoff = now + timedelta(days=int(days_ahead))
+
+            # Rechnungen mit Skonto-Bedingungen (via InvoiceTracking)
+            skonto_result = await db.execute(
+                select(InvoiceTracking).where(
+                    InvoiceTracking.company_id == user.company_id,
+                    InvoiceTracking.skonto_deadline.isnot(None),
+                    InvoiceTracking.skonto_used.is_(False),
+                    InvoiceTracking.skonto_deadline >= now,
+                    InvoiceTracking.skonto_deadline <= cutoff,
+                    InvoiceTracking.status.in_([
+                        InvoiceStatus.OPEN.value,
+                        InvoiceStatus.SENT.value,
+                    ]),
+                    InvoiceTracking.deleted_at.is_(None),
+                )
+            )
+            skonto_invoices = skonto_result.scalars().all()
+
+            opportunities: List[Dict[str, object]] = []
+            total_savings = 0.0
+            for inv in skonto_invoices:
+                amount = float(inv.amount or 0)
+                skonto_pct = float(inv.skonto_percentage or 0)
+                saving = float(inv.skonto_amount or (amount * skonto_pct / 100))
+                total_savings += saving
+                days_left = inv.days_until_skonto_expires
+                opportunities.append({
+                    "document_id": str(inv.document_id),
+                    "rechnungsnummer": inv.invoice_number or "Unbekannt",
+                    "betrag": amount,
+                    "skonto_prozent": skonto_pct,
+                    "ersparnis": round(saving, 2),
+                    "tage_verbleibend": days_left if days_left is not None else 0,
+                })
+
+            details = {
+                "anzahl": len(opportunities),
+                "gesamt_ersparnis": round(total_savings, 2),
+                "opportunities": opportunities,
+            }
+            message = (
+                f"{len(opportunities)} Skonto-Moeglichkeiten in den naechsten {days_ahead} Tagen. "
+                f"Potenzielle Ersparnis: {total_savings:.2f} EUR."
+            )
+            logger.info(
+                "skonto_opportunities_retrieved",
+                count=len(opportunities),
+                total_savings=total_savings,
+                user_id=str(user.id),
+            )
+
+        elif request.action_type == AIActionType.BOOK_INVOICE:
+            from app.db.models import DATEVBuchung, DATEVConnection
+            doc_id = request.parameters.get("document_id")
+            account_number = request.parameters.get("account_number", "")
+            cost_center = request.parameters.get("cost_center")
+
+            if doc_id and account_number:
+                doc_uuid = UUID(doc_id) if isinstance(doc_id, str) else doc_id
+
+                # Hole Rechnungsdaten
+                doc_result = await db.execute(
+                    select(Document).where(
+                        Document.id == doc_uuid,
+                        Document.company_id == user.company_id,
+                    )
+                )
+                doc = doc_result.scalar_one_or_none()
+                if not doc:
+                    message = "Fehler: Dokument nicht gefunden."
+                else:
+                    # Aktive DATEV-Verbindung fuer diese Company
+                    conn_result = await db.execute(
+                        select(DATEVConnection).where(
+                            DATEVConnection.company_id == user.company_id,
+                            DATEVConnection.is_active.is_(True),
+                            DATEVConnection.connection_status == "connected",
+                        ).limit(1)
+                    )
+                    datev_conn = conn_result.scalar_one_or_none()
+                    if not datev_conn:
+                        message = "Fehler: Keine aktive DATEV-Verbindung konfiguriert."
+                    else:
+                        # Betrag aus InvoiceTracking
+                        inv_result = await db.execute(
+                            select(InvoiceTracking).where(
+                                InvoiceTracking.document_id == doc_uuid,
+                                InvoiceTracking.deleted_at.is_(None),
+                            )
+                        )
+                        inv = inv_result.scalar_one_or_none()
+                        betrag = float(inv.amount) if inv else 0.0
+
+                        # DATEVBuchung erstellen
+                        buchung = DATEVBuchung(
+                            id=uuid4(),
+                            connection_id=datev_conn.id,
+                            document_id=doc_uuid,
+                            entity_id=doc.business_entity_id,
+                            belegdatum=date.today(),
+                            buchungsdatum=date.today(),
+                            betrag_soll=betrag,
+                            betrag_haben=betrag,
+                            konto_soll=str(account_number),
+                            konto_haben="1200",  # Standard-Gegenkonto (Bank)
+                            buchungstext=f"AI-Buchung: {doc.original_filename or 'Rechnung'}",
+                            belegnummer=inv.invoice_number if inv else None,
+                            kostenstelle_1=str(cost_center) if cost_center else None,
+                            created_by=user.id,
+                        )
+                        db.add(buchung)
+
+                        # Rechnung als abgeschlossen markieren
+                        await db.execute(
+                            update(Document)
+                            .where(Document.id == doc_uuid)
+                            .values(
+                                status=ProcessingStatus.COMPLETED.value,
+                                updated_at=datetime.now(timezone.utc),
+                            )
+                        )
+                        await db.commit()
+
+                        affected_items.append(doc_uuid)
+                        affected_items.append(buchung.id)
+                        cost_info = f" (Kostenstelle: {cost_center})" if cost_center else ""
+                        message = f"Rechnung auf Konto {account_number} gebucht{cost_info}. Betrag: {betrag:.2f} EUR."
+                        details = {
+                            "buchung_id": str(buchung.id),
+                            "document_id": str(doc_uuid),
+                            "account_number": str(account_number),
+                            "cost_center": cost_center,
+                            "betrag": betrag,
+                        }
+                        logger.info(
+                            "invoice_booked_by_ai",
+                            document_id=str(doc_uuid),
+                            buchung_id=str(buchung.id),
+                            account_number=str(account_number),
+                            cost_center=cost_center,
+                            betrag=betrag,
+                            user_id=str(user.id),
+                        )
+            else:
+                message = "Fehler: Dokument-ID und Kontonummer sind erforderlich."
 
         else:
             message = "Unbekannte Aktion."

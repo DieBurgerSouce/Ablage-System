@@ -27,6 +27,8 @@ from typing import Callable, Dict, Optional, TypeVar, Union
 
 import structlog
 
+from app.core.safe_errors import safe_error_log
+
 # Lazy imports fuer OpenTelemetry (optional dependency)
 try:
     from opentelemetry import trace
@@ -41,6 +43,10 @@ try:
     from opentelemetry.sdk.resources import Resource, SERVICE_NAME, SERVICE_VERSION
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
+    from opentelemetry.sdk.trace.sampling import (
+        ParentBasedTraceIdRatio,
+        ALWAYS_ON,
+    )
     from opentelemetry.trace import SpanKind, Status, StatusCode
     from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
     OPENTELEMETRY_AVAILABLE = True
@@ -96,6 +102,15 @@ class TracingService:
             "true"
         ).lower() == "true"
 
+        # Sampling-Konfiguration
+        self.sample_rate = float(os.environ.get("TRACE_SAMPLE_RATE", "1.0"))
+        self.always_sample_errors = os.environ.get(
+            "TRACE_ALWAYS_SAMPLE_ERRORS", "true"
+        ).lower() == "true"
+        self.slow_threshold = float(os.environ.get(
+            "TRACE_SLOW_THRESHOLD_SECONDS", "1.0"
+        ))
+
         self._tracer: Optional[object] = None
         self._provider: Optional[object] = None
         self._initialized = False
@@ -132,8 +147,19 @@ class TracingService:
                 "host.name": os.environ.get("HOSTNAME", "unknown"),
             })
 
+            # Sampling-Konfiguration
+            if self.sample_rate < 1.0:
+                sampler = ParentBasedTraceIdRatio(self.sample_rate)
+                logger.info("trace_sampling_configured", rate=self.sample_rate)
+            else:
+                sampler = ALWAYS_ON
+                logger.info("trace_sampling_full", rate=1.0)
+
             # Tracer Provider erstellen
-            self._provider = TracerProvider(resource=resource)
+            self._provider = TracerProvider(
+                resource=resource,
+                sampler=sampler,
+            )
 
             # OTLP Exporter
             try:

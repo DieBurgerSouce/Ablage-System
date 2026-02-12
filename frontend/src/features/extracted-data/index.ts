@@ -1,7 +1,7 @@
 /**
  * Extracted Data Feature - Index
  *
- * Re-exportiert alle oeffentlichen Komponenten, Hooks und Types.
+ * Re-exportiert alle öffentlichen Komponenten, Hooks und Types.
  */
 
 // Components

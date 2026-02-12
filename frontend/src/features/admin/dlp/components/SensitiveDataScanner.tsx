@@ -70,7 +70,7 @@ export function SensitiveDataScanner() {
             Text scannen
           </CardTitle>
           <CardDescription>
-            Geben Sie Text ein, um ihn auf sensible Daten zu pruefen.
+            Geben Sie Text ein, um ihn auf sensible Daten zu prüfen.
             Der Text wird nicht gespeichert.
           </CardDescription>
         </CardHeader>
@@ -85,7 +85,7 @@ export function SensitiveDataScanner() {
 
           {/* Type Selection */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Zu pruefende Typen (leer = alle)</Label>
+            <Label className="text-sm font-medium">Zu prüfende Typen (leer = alle)</Label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {(availableTypes ?? Object.keys(dataTypeLabels)).map((type) => {
                 const typeKey = type as SensitiveDataType;
@@ -129,7 +129,7 @@ export function SensitiveDataScanner() {
               )}
             </Button>
             <Button variant="outline" onClick={clearAll}>
-              Zuruecksetzen
+              Zurücksetzen
             </Button>
           </div>
         </CardContent>
@@ -147,7 +147,7 @@ export function SensitiveDataScanner() {
           {!result ? (
             <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
               <Search className="h-12 w-12 mb-4 opacity-50" />
-              <p>Noch kein Scan durchgefuehrt</p>
+              <p>Noch kein Scan durchgeführt</p>
               <p className="text-sm">Geben Sie Text ein und klicken Sie auf "Scannen"</p>
             </div>
           ) : result.has_sensitive_data ? (

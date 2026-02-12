@@ -1,7 +1,7 @@
 /**
  * Collaboration Feature - Exports
  *
- * Stellt Kommentare, Aktivitaetsverlauf und Benachrichtigungen bereit.
+ * Stellt Kommentare, Aktivitätsverlauf und Benachrichtigungen bereit.
  */
 
 // Types

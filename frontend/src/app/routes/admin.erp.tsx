@@ -1,7 +1,7 @@
 /**
  * ERP Integration Layout Route
  *
- * Layout fuer alle ERP-bezogenen Admin-Seiten.
+ * Layout für alle ERP-bezogenen Admin-Seiten.
  */
 
 import { createFileRoute, Outlet, Link, useLocation } from '@tanstack/react-router'

@@ -1,7 +1,7 @@
 /**
  * Supplier Ranking Query Hooks
  *
- * TanStack Query Hooks fuer das Lieferanten-Ranking System.
+ * TanStack Query Hooks für das Lieferanten-Ranking System.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';

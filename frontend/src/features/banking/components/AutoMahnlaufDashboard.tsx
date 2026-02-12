@@ -3,8 +3,8 @@
  *
  * Features:
  * - Vorschau der geplanten Mahnaktionen (Dry-Run)
- * - Einstellungen fuer den automatischen Mahnlauf
- * - Ausfuehrung des Mahnlaufs mit Bestaetigung
+ * - Einstellungen für den automatischen Mahnlauf
+ * - Ausführung des Mahnlaufs mit Bestätigung
  * - Statistiken und Zusammenfassung
  */
 
@@ -106,7 +106,7 @@ const getActionLabel = (actionType: ActionType): string => {
         case 'create_task':
             return 'Aufgabe';
         case 'skip':
-            return 'Uebersprungen';
+            return 'Übersprungen';
         default:
             return actionType;
     }
@@ -150,7 +150,7 @@ function PreviewStatsCard({ actions }: { actions: AutomaticDunningAction[] }) {
                 <CardContent className="pt-4">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-muted-foreground">Uebersprungen</p>
+                            <p className="text-sm text-muted-foreground">Übersprungen</p>
                             <p className="text-2xl font-bold text-muted-foreground">{skippedCount}</p>
                         </div>
                         <Ban className="h-8 w-8 text-muted-foreground/30" />
@@ -191,7 +191,7 @@ function PreviewTable({
                 <CheckCircle2 className="h-12 w-12 text-green-500 mb-4" />
                 <h3 className="text-lg font-semibold">Keine Aktionen erforderlich</h3>
                 <p className="text-muted-foreground">
-                    Aktuell gibt es keine Mahnvorgaenge, die eskaliert werden muessen.
+                    Aktuell gibt es keine Mahnvorgänge, die eskaliert werden müssen.
                 </p>
             </div>
         );
@@ -323,7 +323,7 @@ function SettingsCard({
                     Auto-Mahnlauf Einstellungen
                 </CardTitle>
                 <CardDescription>
-                    Konfigurieren Sie den automatischen taeglichen Mahnlauf
+                    Konfigurieren Sie den automatischen täglichen Mahnlauf
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -332,7 +332,7 @@ function SettingsCard({
                     <div className="space-y-1">
                         <Label className="text-base font-medium">Automatischer Mahnlauf</Label>
                         <p className="text-sm text-muted-foreground">
-                            Mahnungen werden taeglich automatisch verarbeitet
+                            Mahnungen werden täglich automatisch verarbeitet
                         </p>
                     </div>
                     <Switch
@@ -348,7 +348,7 @@ function SettingsCard({
                     <div className="space-y-2">
                         <Label htmlFor="run_time">
                             <Clock className="h-4 w-4 inline mr-1" />
-                            Ausfuehrungszeit
+                            Ausführungszeit
                         </Label>
                         <Input
                             id="run_time"
@@ -357,7 +357,7 @@ function SettingsCard({
                             onChange={(e) => updateSetting('run_time', e.target.value)}
                         />
                         <p className="text-xs text-muted-foreground">
-                            Taeglicher Mahnlauf wird zu dieser Uhrzeit ausgefuehrt
+                            Täglicher Mahnlauf wird zu dieser Uhrzeit ausgeführt
                         </p>
                     </div>
                     <div className="space-y-2">
@@ -374,7 +374,7 @@ function SettingsCard({
                             onChange={(e) => updateSetting('min_amount', Number(e.target.value))}
                         />
                         <p className="text-xs text-muted-foreground">
-                            Nur Rechnungen ueber diesem Betrag werden gemahnt
+                            Nur Rechnungen über diesem Betrag werden gemahnt
                         </p>
                     </div>
                 </div>
@@ -386,7 +386,7 @@ function SettingsCard({
                     <h4 className="text-sm font-medium">Ausnahmen</h4>
                     <div className="flex items-center justify-between">
                         <div className="space-y-1">
-                            <Label>Wochenenden ausschliessen</Label>
+                            <Label>Wochenenden ausschließen</Label>
                             <p className="text-xs text-muted-foreground">
                                 Kein Mahnlauf an Samstagen und Sonntagen
                             </p>
@@ -398,9 +398,9 @@ function SettingsCard({
                     </div>
                     <div className="flex items-center justify-between">
                         <div className="space-y-1">
-                            <Label>Feiertage ausschliessen</Label>
+                            <Label>Feiertage ausschließen</Label>
                             <p className="text-xs text-muted-foreground">
-                                Deutsche Feiertage werden automatisch uebersprungen
+                                Deutsche Feiertage werden automatisch übersprungen
                             </p>
                         </div>
                         <Switch
@@ -416,7 +416,7 @@ function SettingsCard({
                 <div className="space-y-4">
                     <h4 className="text-sm font-medium flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
-                        Mahnintervalle (Tage nach Faelligkeit)
+                        Mahnintervalle (Tage nach Fälligkeit)
                     </h4>
                     <div className="grid gap-4 md:grid-cols-3">
                         <div className="space-y-2">
@@ -541,14 +541,14 @@ export function AutoMahnlaufDashboard() {
             const result = await processAutoDunning.mutateAsync(false);
             const executed = result.filter((a: AutomaticDunningAction) => !a.skipped).length;
             toast({
-                title: 'Mahnlauf ausgefuehrt',
+                title: 'Mahnlauf ausgeführt',
                 description: `${executed} Mahnung(en) wurden verarbeitet.`,
             });
             refetchPreview();
         } catch {
             toast({
                 title: 'Fehler beim Mahnlauf',
-                description: 'Der Mahnlauf konnte nicht ausgefuehrt werden.',
+                description: 'Der Mahnlauf konnte nicht ausgeführt werden.',
                 variant: 'destructive',
             });
         }
@@ -563,7 +563,7 @@ export function AutoMahnlaufDashboard() {
                 <div>
                     <h2 className="text-2xl font-bold">Automatischer Mahnlauf</h2>
                     <p className="text-muted-foreground">
-                        Vorschau und Ausfuehrung des automatischen Mahnverfahrens
+                        Vorschau und Ausführung des automatischen Mahnverfahrens
                     </p>
                 </div>
                 <div className="flex gap-2">
@@ -584,7 +584,7 @@ export function AutoMahnlaufDashboard() {
                         ) : (
                             <Play className="h-4 w-4 mr-2" />
                         )}
-                        Mahnlauf ausfuehren
+                        Mahnlauf ausführen
                     </Button>
                 </div>
             </div>
@@ -600,7 +600,7 @@ export function AutoMahnlaufDashboard() {
                         Vorschau: Geplante Aktionen
                     </CardTitle>
                     <CardDescription>
-                        Diese Aktionen werden beim naechsten Mahnlauf ausgefuehrt
+                        Diese Aktionen werden beim nächsten Mahnlauf ausgeführt
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -623,10 +623,10 @@ export function AutoMahnlaufDashboard() {
             <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Mahnlauf ausfuehren?</AlertDialogTitle>
+                        <AlertDialogTitle>Mahnlauf ausführen?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Es werden <strong>{actionsToExecute.length}</strong> Mahnaktionen ausgefuehrt.
-                            Dieser Vorgang kann nicht rueckgaengig gemacht werden.
+                            Es werden <strong>{actionsToExecute.length}</strong> Mahnaktionen ausgeführt.
+                            Dieser Vorgang kann nicht rückgängig gemacht werden.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

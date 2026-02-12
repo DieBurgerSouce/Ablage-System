@@ -151,7 +151,7 @@ function TriggerConfig({ data, onChange, disabled }: TriggerConfigProps) {
           disabled={disabled}
         >
           <SelectTrigger id="trigger-type">
-            <SelectValue placeholder="Typ waehlen" />
+            <SelectValue placeholder="Typ wählen" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="document_event">Dokument-Event</SelectItem>
@@ -181,7 +181,7 @@ function TriggerConfig({ data, onChange, disabled }: TriggerConfigProps) {
             <SelectContent>
               <SelectItem value="created">Erstellt</SelectItem>
               <SelectItem value="updated">Aktualisiert</SelectItem>
-              <SelectItem value="deleted">Geloescht</SelectItem>
+              <SelectItem value="deleted">Gelöscht</SelectItem>
               <SelectItem value="ocr_completed">OCR abgeschlossen</SelectItem>
             </SelectContent>
           </Select>
@@ -204,7 +204,7 @@ function TriggerConfig({ data, onChange, disabled }: TriggerConfigProps) {
             disabled={disabled}
           />
           <p className="text-xs text-muted-foreground">
-            Beispiel: 0 9 * * * = Taeglich um 9 Uhr
+            Beispiel: 0 9 * * * = Täglich um 9 Uhr
           </p>
         </div>
       )}
@@ -276,7 +276,7 @@ function ConditionConfig({ data, onChange, disabled }: TriggerConfigProps) {
       <div className="rounded-lg border border-dashed p-4 text-center">
         <Info className="mx-auto h-8 w-8 text-muted-foreground" />
         <p className="mt-2 text-sm text-muted-foreground">
-          Erweiterte Bedingungsregeln koennen im Detail-Editor konfiguriert werden.
+          Erweiterte Bedingungsregeln können im Detail-Editor konfiguriert werden.
         </p>
       </div>
     </div>
@@ -289,7 +289,7 @@ function DelayConfig({ data, onChange, disabled }: TriggerConfigProps) {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="delay-seconds">Verzoegerung (Sekunden)</Label>
+        <Label htmlFor="delay-seconds">Verzögerung (Sekunden)</Label>
         <Input
           id="delay-seconds"
           type="number"
@@ -304,7 +304,7 @@ function DelayConfig({ data, onChange, disabled }: TriggerConfigProps) {
           disabled={disabled}
         />
         <p className="text-xs text-muted-foreground">
-          Workflow pausiert fuer diese Zeit
+          Workflow pausiert für diese Zeit
         </p>
       </div>
     </div>
@@ -332,9 +332,9 @@ function LoopConfig({ data, onChange, disabled }: TriggerConfigProps) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="count">Anzahl Durchlaeufe</SelectItem>
+            <SelectItem value="count">Anzahl Durchläufe</SelectItem>
             <SelectItem value="while">Solange (While)</SelectItem>
-            <SelectItem value="for_each">Fuer jeden (For Each)</SelectItem>
+            <SelectItem value="for_each">Für jeden (For Each)</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -417,7 +417,7 @@ function ActionConfig({ data, onChange, disabled }: TriggerConfigProps) {
       {actionType === 'send_email' && (
         <>
           <div className="space-y-2">
-            <Label htmlFor="email-to">Empfaenger</Label>
+            <Label htmlFor="email-to">Empfänger</Label>
             <Input
               id="email-to"
               type="email"
@@ -428,7 +428,7 @@ function ActionConfig({ data, onChange, disabled }: TriggerConfigProps) {
                   config: { ...config, to: [e.target.value] },
                 })
               }
-              placeholder="empfaenger@beispiel.de"
+              placeholder="empfänger@beispiel.de"
               disabled={disabled}
             />
           </div>
@@ -544,7 +544,7 @@ export function NodeConfigPanel({
           <div>
             <Settings className="mx-auto h-12 w-12 text-muted-foreground/50" />
             <p className="mt-4 text-sm text-muted-foreground">
-              Waehlen Sie einen Knoten aus, um ihn zu konfigurieren
+              Wählen Sie einen Knoten aus, um ihn zu konfigurieren
             </p>
           </div>
         </div>
@@ -592,7 +592,7 @@ export function NodeConfigPanel({
           variant="ghost"
           size="icon"
           onClick={onClose}
-          aria-label="Konfiguration schliessen"
+          aria-label="Konfiguration schließen"
         >
           <X className="h-4 w-4" />
         </Button>
@@ -668,7 +668,7 @@ export function NodeConfigPanel({
               <div className="rounded-lg border border-dashed p-4 text-center">
                 <Info className="mx-auto h-8 w-8 text-muted-foreground" />
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Konfiguration im Detail-Editor verfuegbar
+                  Konfiguration im Detail-Editor verfügbar
                 </p>
               </div>
             )}
@@ -721,7 +721,7 @@ export function NodeConfigPanel({
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm">Timeout</CardTitle>
                 <CardDescription>
-                  Maximale Ausfuehrungszeit
+                  Maximale Ausführungszeit
                 </CardDescription>
               </CardHeader>
               <CardContent>

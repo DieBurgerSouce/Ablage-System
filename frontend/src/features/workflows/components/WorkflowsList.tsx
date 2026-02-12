@@ -140,7 +140,7 @@ function WorkflowCard({
               {onViewExecution && (
                 <DropdownMenuItem onClick={() => onViewExecution(workflow.id)}>
                   <Eye className="mr-2 h-4 w-4" />
-                  Ausfuehrung anzeigen
+                  Ausführung anzeigen
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />

@@ -1,6 +1,6 @@
 /**
  * Missed Skonto Feature Index
- * Verpasste Skonto-Moeglichkeiten Feature
+ * Verpasste Skonto-Möglichkeiten Feature
  */
 
 // Components

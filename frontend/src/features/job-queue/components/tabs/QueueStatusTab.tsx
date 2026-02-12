@@ -347,7 +347,7 @@ export function QueueStatusTab() {
           ))
         ) : queuesData?.queues && queuesData.queues.length > 0 ? (
           queuesData.queues
-            .sort((a, b) => b.priority - a.priority) // Hoechste Priorität zuerst
+            .sort((a, b) => b.priority - a.priority) // Höchste Priorität zuerst
             .map((queue) => (
               <QueueCard
                 key={queue.name}

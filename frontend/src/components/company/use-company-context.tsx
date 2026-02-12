@@ -1,7 +1,7 @@
 /**
  * Company Context Hook
  *
- * Verwaltet die aktuelle Firma und stellt sie der gesamten App zur Verfuegung.
+ * Verwaltet die aktuelle Firma und stellt sie der gesamten App zur Verfügung.
  */
 
 import * as React from 'react';
@@ -69,7 +69,7 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
   const switchMutation = useMutation({
     mutationFn: (companyId: string) => companyService.switchCompany(companyId),
     onSuccess: () => {
-      // Invalidiere alle firmenabhaengigen Queries
+      // Invalidiere alle firmenabhängigen Queries
       queryClient.invalidateQueries({ queryKey: companyQueryKeys.current() });
       queryClient.invalidateQueries({ queryKey: companyQueryKeys.list() });
       // Invalidiere Cash und Expenses

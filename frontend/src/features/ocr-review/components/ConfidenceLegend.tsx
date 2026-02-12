@@ -1,5 +1,5 @@
 /**
- * ConfidenceLegend - Farbskala-Legende fuer Confidence-Level
+ * ConfidenceLegend - Farbskala-Legende für Confidence-Level
  *
  * Zeigt horizontale Leiste mit Confidence-Gradienten
  * und Wort-Zaehler pro Kategorie.

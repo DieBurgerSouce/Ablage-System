@@ -8,23 +8,23 @@
   "upload": {
     "title": "Dokument hochladen",
     "subtitle": "Laden Sie Dokumente zur Verarbeitung hoch",
-    "dragDrop": "Dateien hierher ziehen oder klicken zum Auswaehlen",
-    "selectFiles": "Dateien auswaehlen",
+    "dragDrop": "Dateien hierher ziehen oder klicken zum Auswählen",
+    "selectFiles": "Dateien auswählen",
     "dropHere": "Dateien hier ablegen",
-    "supportedFormats": "Unterstuetzte Formate: PDF, PNG, JPG, TIFF, BMP",
-    "maxSize": "Maximale Dateigroesse: {{size}} MB",
+    "supportedFormats": "Unterstützte Formate: PDF, PNG, JPG, TIFF, BMP",
+    "maxSize": "Maximale Dateigröße: {{size}} MB",
     "maxFiles": "Maximal {{count}} Dateien gleichzeitig",
     "processing": "Wird verarbeitet...",
     "success": "Dokument erfolgreich hochgeladen",
     "error": "Fehler beim Hochladen des Dokuments",
-    "invalidType": "Ungueltiger Dateityp",
-    "fileTooLarge": "Datei zu gross (max. {{size}} MB)",
+    "invalidType": "Ungültiger Dateityp",
+    "fileTooLarge": "Datei zu groß (max. {{size}} MB)",
     "uploadProgress": "Hochladen: {{percent}}%",
     "processingProgress": "Verarbeitung: {{percent}}%",
     "queued": "In Warteschlange",
     "batch": {
       "title": "Stapelverarbeitung",
-      "filesSelected": "{{count}} Dateien ausgewaehlt",
+      "filesSelected": "{{count}} Dateien ausgewählt",
       "startUpload": "Hochladen starten",
       "cancelAll": "Alle abbrechen"
     }
@@ -39,7 +39,7 @@
       "name": "Dateiname",
       "originalName": "Originaldateiname",
       "type": "Typ",
-      "size": "Groesse",
+      "size": "Größe",
       "pages": "Seiten",
       "uploadedAt": "Hochgeladen am",
       "processedAt": "Verarbeitet am",
@@ -47,7 +47,7 @@
       "confidence": "Konfidenz",
       "backend": "OCR-Backend",
       "actions": "Aktionen",
-      "entity": "Geschaeftspartner",
+      "entity": "Geschäftspartner",
       "folder": "Ordner",
       "tags": "Tags"
     }
@@ -58,7 +58,7 @@
     "processing": "Wird verarbeitet",
     "completed": "Abgeschlossen",
     "failed": "Fehlgeschlagen",
-    "reviewing": "In Pruefung",
+    "reviewing": "In Prüfung",
     "approved": "Genehmigt",
     "rejected": "Abgelehnt",
     "archived": "Archiviert"
@@ -84,7 +84,7 @@
   "actions": {
     "view": "Anzeigen",
     "download": "Herunterladen",
-    "delete": "Loeschen",
+    "delete": "Löschen",
     "reprocess": "Erneut verarbeiten",
     "edit": "Bearbeiten",
     "archive": "Archivieren",
@@ -96,11 +96,11 @@
     "export": "Exportieren",
     "duplicate": "Duplizieren",
     "move": "Verschieben",
-    "assignEntity": "Geschaeftspartner zuweisen",
-    "addTags": "Tags hinzufuegen",
+    "assignEntity": "Geschäftspartner zuweisen",
+    "addTags": "Tags hinzufügen",
     "removeTag": "Tag entfernen",
     "compare": "Vergleichen",
-    "merge": "Zusammenfuehren"
+    "merge": "Zusammenführen"
   },
   "detail": {
     "title": "Dokumentdetails",
@@ -111,8 +111,8 @@
     "history": "Verlauf",
     "versions": "Versionen",
     "comments": "Kommentare",
-    "relatedDocuments": "Zugehoerige Dokumente",
-    "attachments": "Anhaenge",
+    "relatedDocuments": "Zugehörige Dokumente",
+    "attachments": "Anhänge",
     "noTextExtracted": "Kein Text extrahiert",
     "confidence": "Erkennungssicherheit: {{percent}}%",
     "processingTime": "Verarbeitungszeit: {{time}}",
@@ -120,21 +120,21 @@
     "fileInfo": {
       "title": "Dateiinformationen",
       "name": "Dateiname",
-      "size": "Groesse",
+      "size": "Größe",
       "type": "MIME-Typ",
       "pages": "Seitenzahl",
       "created": "Erstellt",
-      "modified": "Geaendert"
+      "modified": "Geändert"
     }
   },
   "delete": {
-    "title": "Dokument loeschen",
-    "message": "Moechten Sie dieses Dokument wirklich loeschen?",
-    "messagePlural": "Moechten Sie {{count}} Dokumente wirklich loeschen?",
-    "warning": "Diese Aktion kann nicht rueckgaengig gemacht werden.",
-    "success": "Dokument erfolgreich geloescht",
-    "successPlural": "{{count}} Dokumente erfolgreich geloescht",
-    "error": "Fehler beim Loeschen des Dokuments"
+    "title": "Dokument löschen",
+    "message": "Möchten Sie dieses Dokument wirklich löschen?",
+    "messagePlural": "Möchten Sie {{count}} Dokumente wirklich löschen?",
+    "warning": "Diese Aktion kann nicht rückgängig gemacht werden.",
+    "success": "Dokument erfolgreich gelöscht",
+    "successPlural": "{{count}} Dokumente erfolgreich gelöscht",
+    "error": "Fehler beim Löschen des Dokuments"
   },
   "search": {
     "title": "Dokumentensuche",
@@ -155,7 +155,7 @@
       "dateRange": "Zeitraum",
       "status": "Status",
       "type": "Dokumenttyp",
-      "entity": "Geschaeftspartner",
+      "entity": "Geschäftspartner",
       "folder": "Ordner",
       "confidence": "Mindest-Konfidenz"
     }
@@ -165,7 +165,7 @@
     "root": "Hauptordner",
     "new": "Neuer Ordner",
     "rename": "Umbenennen",
-    "delete": "Loeschen",
+    "delete": "Löschen",
     "move": "Verschieben",
     "empty": "Ordner ist leer",
     "documents": "{{count}} Dokumente",
@@ -182,23 +182,23 @@
       "xml": "XML"
     },
     "options": {
-      "includeMetadata": "Metadaten einschliessen",
-      "includeText": "Extrahierten Text einschliessen",
-      "includeImages": "Bilder einschliessen"
+      "includeMetadata": "Metadaten einschließen",
+      "includeText": "Extrahierten Text einschließen",
+      "includeImages": "Bilder einschließen"
     },
     "success": "Export erfolgreich",
     "error": "Fehler beim Export"
   },
   "validation": {
-    "extractedData": "Extrahierte Daten pruefen",
+    "extractedData": "Extrahierte Daten prüfen",
     "confidence": "Konfidenz",
     "field": "Feld",
     "value": "Wert",
     "suggested": "Vorschlag",
     "corrected": "Korrigiert",
-    "approve": "Bestaetigen",
+    "approve": "Bestätigen",
     "correct": "Korrigieren",
-    "skip": "Ueberspringen"
+    "skip": "Überspringen"
   },
   "lineage": {
     "title": "Dokumentenhistorie",
@@ -208,8 +208,8 @@
     "ocr": "OCR-Verarbeitung",
     "classification": "Klassifikation",
     "extraction": "Datenextraktion",
-    "entityLink": "Geschaeftspartner-Verknuepfung",
-    "modification": "Aenderung",
+    "entityLink": "Geschäftspartner-Verknüpfung",
+    "modification": "Änderung",
     "approval": "Genehmigung",
     "export": "Export",
     "archive": "Archivierung"

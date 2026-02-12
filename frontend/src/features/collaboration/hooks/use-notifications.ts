@@ -1,7 +1,7 @@
 /**
- * useNotifications - Hook fuer Benutzer-Benachrichtigungen
+ * useNotifications - Hook für Benutzer-Benachrichtigungen
  *
- * Laedt, markiert als gelesen und verwaltet Benachrichtigungen.
+ * Lädt, markiert als gelesen und verwaltet Benachrichtigungen.
  * Integriert mit Backend API: /api/v1/notifications
  *
  * Enterprise Features:

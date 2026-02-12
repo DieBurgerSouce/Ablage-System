@@ -1,7 +1,7 @@
 /**
  * Cashflow Summary Cards
  *
- * Kompakte Uebersicht der wichtigsten Cashflow-Kennzahlen.
+ * Kompakte Übersicht der wichtigsten Cashflow-Kennzahlen.
  */
 
 import { Card, CardContent } from '@/components/ui/card';
@@ -59,14 +59,14 @@ export function CashflowSummaryCards({ summary }: CashflowSummaryCardsProps) {
       bg: summary.min_balance_30d >= 0 ? 'bg-slate-50 dark:bg-slate-950' : 'bg-red-50 dark:bg-red-950',
     },
     {
-      label: 'Erw. Eingaenge (7d)',
+      label: 'Erw. Eingänge (7d)',
       value: formatCurrency(summary.expected_inflows_7d),
       icon: TrendingUp,
       color: 'text-green-600',
       bg: 'bg-green-50 dark:bg-green-950',
     },
     {
-      label: 'Erw. Ausgaenge (7d)',
+      label: 'Erw. Ausgänge (7d)',
       value: formatCurrency(summary.expected_outflows_7d),
       icon: TrendingDown,
       color: 'text-orange-600',

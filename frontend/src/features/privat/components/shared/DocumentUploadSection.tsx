@@ -1,8 +1,8 @@
 /**
- * DocumentUploadSection - Dokument-Upload-Sektion fuer Privat-Modul
+ * DocumentUploadSection - Dokument-Upload-Sektion für Privat-Modul
  *
  * Wiederverwendbare Komponente zum Hochladen von Dokumenten
- * fuer Immobilien, Fahrzeuge, Versicherungen, Kredite und Geldanlagen.
+ * für Immobilien, Fahrzeuge, Versicherungen, Kredite und Geldanlagen.
  */
 
 import * as React from 'react';

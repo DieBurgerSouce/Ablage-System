@@ -1,7 +1,7 @@
 /**
  * Risk Intelligence Dashboard
  *
- * Hauptseite fuer erweiterte Risikoanalyse mit Branchen-Benchmarks,
+ * Hauptseite für erweiterte Risikoanalyse mit Branchen-Benchmarks,
  * Trends und Netzwerk-Analyse.
  */
 
@@ -160,7 +160,7 @@ export function RiskIntelligenceDashboard() {
               <CardContent className="py-12 text-center">
                 <Search className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
                 <p className="text-muted-foreground">
-                  Geben Sie eine Entity-ID ein oder waehlen Sie eine Entity aus dem Portfolio.
+                  Geben Sie eine Entity-ID ein oder wählen Sie eine Entity aus dem Portfolio.
                 </p>
               </CardContent>
             </Card>
@@ -171,7 +171,7 @@ export function RiskIntelligenceDashboard() {
               <AlertCircle className="w-4 h-4" />
               <AlertTitle>Fehler</AlertTitle>
               <AlertDescription>
-                Risikoprofil konnte nicht geladen werden. Pruefen Sie die Entity-ID.
+                Risikoprofil konnte nicht geladen werden. Prüfen Sie die Entity-ID.
               </AlertDescription>
             </Alert>
           ) : riskProfile ? (
@@ -189,7 +189,7 @@ export function RiskIntelligenceDashboard() {
             <CardHeader>
               <CardTitle>Branchen-Benchmarks</CardTitle>
               <CardDescription>
-                Vergleichswerte fuer verschiedene Branchen
+                Vergleichswerte für verschiedene Branchen
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -214,7 +214,7 @@ export function RiskIntelligenceDashboard() {
                         <div className="space-y-2 text-sm">
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">
-                              Durchschn. Zahlungsverzoegerung
+                              Durchschn. Zahlungsverzögerung
                             </span>
                             <span className="font-medium">{b.avg_payment_delay} Tage</span>
                           </div>
@@ -317,7 +317,7 @@ function EntityProfile({
               </p>
             </div>
             <div className="text-center p-4 bg-muted rounded-lg">
-              <p className="text-sm text-muted-foreground">Zahlungsverzoegerung</p>
+              <p className="text-sm text-muted-foreground">Zahlungsverzögerung</p>
               <p className="text-2xl font-bold">
                 {profile.analysis.internal.payment_delay_avg.toFixed(0)} Tage
               </p>
@@ -333,7 +333,7 @@ function EntityProfile({
               <p className="text-2xl font-bold">{profile.analysis.internal.total_invoices}</p>
             </div>
             <div className="text-center p-4 bg-muted rounded-lg">
-              <p className="text-sm text-muted-foreground">Ueberfaellig</p>
+              <p className="text-sm text-muted-foreground">Überfällig</p>
               <p className="text-2xl font-bold text-orange-500">
                 {profile.analysis.internal.overdue_invoices}
               </p>

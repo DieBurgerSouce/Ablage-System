@@ -150,7 +150,7 @@ export interface ExtractedInvoiceData {
     vat_exemption_reason?: string;
     intra_community_supply?: boolean;
 
-    // Betraege
+    // Beträge
     net_amount?: number;
     vat_rate?: number;
     vat_amount?: number;
@@ -224,7 +224,7 @@ export interface ExtractedOrderData {
     // Positionen
     line_items?: ExtractedLineItem[];
 
-    // Betraege
+    // Beträge
     total_amount?: number;
     currency?: string;
 

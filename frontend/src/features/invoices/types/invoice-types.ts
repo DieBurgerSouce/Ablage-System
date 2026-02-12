@@ -21,11 +21,11 @@ export type DunningLevel = 0 | 1 | 2 | 3 | 4;
 // ==================== Skonto Types ====================
 
 /**
- * Skonto-Informationen fuer eine Rechnung
+ * Skonto-Informationen für eine Rechnung
  */
 export interface SkontoInfo {
-  percentage: number | null;      // z.B. 2.0 fuer 2%
-  days: number | null;            // Tage fuer Skonto-Frist
+  percentage: number | null;      // z.B. 2.0 für 2%
+  days: number | null;            // Tage für Skonto-Frist
   deadline: string | null;        // ISO Date der Frist
   amount: number | null;          // Berechneter Skonto-Betrag
   used: boolean;                  // True wenn Skonto genutzt wurde
@@ -73,7 +73,7 @@ export interface PaymentTransaction {
 }
 
 /**
- * Backend Response fuer PaymentTransaction
+ * Backend Response für PaymentTransaction
  */
 export interface PaymentTransactionBackend {
   id: string;
@@ -100,7 +100,7 @@ export interface PaymentCreate {
 }
 
 /**
- * Zahlungsuebersicht fuer eine Rechnung
+ * Zahlungsübersicht für eine Rechnung
  */
 export interface PaymentSummary {
   totalPaid: number;
@@ -326,9 +326,9 @@ export const UI_LABELS = {
   skontoDeadline: 'Skonto-Frist',
   skontoAmount: 'Skonto-Betrag',
   skontoSavings: 'Ersparnis',
-  skontoExpiring: 'Skonto laeuft ab',
+  skontoExpiring: 'Skonto läuft ab',
   skontoExpired: 'Skonto abgelaufen',
-  skontoAvailable: 'Skonto verfuegbar',
+  skontoAvailable: 'Skonto verfügbar',
   skontoUsed: 'Skonto genutzt',
   skontoNotConfigured: 'Kein Skonto',
   skontoApply: 'Skonto anwenden',
@@ -346,7 +346,7 @@ export const UI_LABELS = {
   partialPaymentReference: 'Referenz',
   partialPaymentOutstanding: 'Ausstehend',
   partialPaymentTotal: 'Gesamt bezahlt',
-  partialPaymentDelete: 'Zahlung loeschen',
+  partialPaymentDelete: 'Zahlung löschen',
   partialPaymentReconciled: 'Abgeglichen',
   partialPaymentPending: 'Offen',
   partialPaymentUnmatched: 'Nicht zugeordnet',
@@ -355,11 +355,11 @@ export const UI_LABELS = {
   successApplySkonto: 'Skonto angewendet',
   successUpdateSkonto: 'Skonto aktualisiert',
   successAddPayment: 'Zahlung erfasst',
-  successDeletePayment: 'Zahlung geloescht',
+  successDeletePayment: 'Zahlung gelöscht',
   errorApplySkonto: 'Fehler beim Anwenden des Skontos',
   errorUpdateSkonto: 'Fehler beim Aktualisieren des Skontos',
   errorAddPayment: 'Fehler beim Erfassen der Zahlung',
-  errorDeletePayment: 'Fehler beim Loeschen der Zahlung',
+  errorDeletePayment: 'Fehler beim Löschen der Zahlung',
   errorLoadPayments: 'Fehler beim Laden der Zahlungen',
 } as const;
 

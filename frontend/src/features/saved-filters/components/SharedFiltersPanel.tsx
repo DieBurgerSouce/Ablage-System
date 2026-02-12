@@ -35,7 +35,7 @@ export interface SharedFiltersPanelProps {
   onDuplicateFilter: (filter: SavedFilter) => void
   /** Callback zum Setzen als Standard */
   onSetDefault: (filter: SavedFilter) => void
-  /** Zusaetzliche Klassennamen */
+  /** Zusätzliche Klassennamen */
   className?: string
 }
 
@@ -53,7 +53,7 @@ export function SharedFiltersPanel({
         <CardContent className="flex flex-col items-center justify-center py-8 text-center">
           <Users className="h-10 w-10 text-muted-foreground/40 mb-3" />
           <p className="text-sm text-muted-foreground">
-            Keine geteilten Filter verfuegbar
+            Keine geteilten Filter verfügbar
           </p>
           <p className="text-xs text-muted-foreground mt-1">
             Teilen Sie einen Filter, damit Ihr Team ihn nutzen kann

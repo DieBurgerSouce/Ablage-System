@@ -65,7 +65,7 @@ export function PredictiveAlertsList({ alerts, isLoading }: PredictiveAlertsList
                 {alertList.length === 0 ? (
                     <div className="text-center py-6 text-muted-foreground">
                         <p className="text-sm">Keine aktiven Warnungen</p>
-                        <p className="text-xs mt-1">Das System laeuft im normalen Betrieb</p>
+                        <p className="text-xs mt-1">Das System läuft im normalen Betrieb</p>
                     </div>
                 ) : (
                     <div className="space-y-3">
@@ -80,7 +80,7 @@ export function PredictiveAlertsList({ alerts, isLoading }: PredictiveAlertsList
                                         {getSeverityBadge(alert.severity)}
                                         {alert.acknowledged && (
                                             <Badge variant="outline" className="text-xs">
-                                                Bestaetigt
+                                                Bestätigt
                                             </Badge>
                                         )}
                                     </div>

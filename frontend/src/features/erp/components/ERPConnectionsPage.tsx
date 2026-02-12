@@ -1,7 +1,7 @@
 /**
  * ERP Connections Admin Page
  *
- * Hauptseite fuer ERP-Verbindungsverwaltung.
+ * Hauptseite für ERP-Verbindungsverwaltung.
  */
 
 import { useState } from 'react';

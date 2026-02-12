@@ -2,7 +2,7 @@
  * RecurringInvoiceDetail Component
  *
  * Detailansicht einer Abo-Rechnung mit Occurrence-Tabelle
- * und Kuendigungsinformationen.
+ * und Kündigungsinformationen.
  */
 
 import { ArrowLeft, Calendar, AlertTriangle, Clock } from 'lucide-react';
@@ -106,10 +106,10 @@ export default function RecurringInvoiceDetail({
 
   return (
     <div className="space-y-6">
-      {/* Zurueck-Button */}
+      {/* Zurück-Button */}
       <Button variant="ghost" onClick={onBack} className="gap-2">
         <ArrowLeft className="h-4 w-4" />
-        Zurueck zur Liste
+        Zurück zur Liste
       </Button>
 
       {/* Header */}
@@ -141,7 +141,7 @@ export default function RecurringInvoiceDetail({
               <p className="font-medium">{formatDate(invoice.last_seen_date)}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Naechste Faelligkeit</p>
+              <p className="text-sm text-muted-foreground">Nächste Fälligkeit</p>
               <p className="font-medium">{formatDate(invoice.next_expected_date)}</p>
             </div>
             <div>
@@ -170,7 +170,7 @@ export default function RecurringInvoiceDetail({
         </CardContent>
       </Card>
 
-      {/* Kuendigungsinformationen */}
+      {/* Kündigungsinformationen */}
       {invoice.cancellation_deadline && (
         <Card
           className={
@@ -182,23 +182,23 @@ export default function RecurringInvoiceDetail({
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
               <AlertTriangle className="h-4 w-4" />
-              Kuendigungsinformationen
+              Kündigungsinformationen
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
               <div>
-                <p className="text-sm text-muted-foreground">Kuendigungsfrist</p>
+                <p className="text-sm text-muted-foreground">Kündigungsfrist</p>
                 <p className="font-medium">{formatDate(invoice.cancellation_deadline)}</p>
               </div>
               {invoice.notice_period_days !== null && (
                 <div>
-                  <p className="text-sm text-muted-foreground">Kuendigungsfrist (Tage)</p>
+                  <p className="text-sm text-muted-foreground">Kündigungsfrist (Tage)</p>
                   <p className="font-medium">{invoice.notice_period_days} Tage</p>
                 </div>
               )}
               <div>
-                <p className="text-sm text-muted-foreground">Automatische Verlaengerung</p>
+                <p className="text-sm text-muted-foreground">Automatische Verlängerung</p>
                 <p className="font-medium">{invoice.auto_renewal ? 'Ja' : 'Nein'}</p>
               </div>
               {cancellationDays !== null && (
@@ -222,7 +222,7 @@ export default function RecurringInvoiceDetail({
             Soll/Ist-Verlauf
           </CardTitle>
           <CardDescription>
-            {invoice.occurrences.length} Eintraege
+            {invoice.occurrences.length} Einträge
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -271,7 +271,7 @@ export default function RecurringInvoiceDetail({
             </Table>
           ) : (
             <div className="py-8 text-center text-muted-foreground">
-              Noch keine Eintraege vorhanden.
+              Noch keine Einträge vorhanden.
             </div>
           )}
         </CardContent>

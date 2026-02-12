@@ -1,5 +1,5 @@
 /**
- * LifeEventCard - Karte fuer einen Lebensereignis-Typ
+ * LifeEventCard - Karte für einen Lebensereignis-Typ
  *
  * Zeigt Icon, deutschen Titel und Beschreibung.
  * Falls aktives Ereignis existiert, wird Fortschritt angezeigt.
@@ -38,7 +38,7 @@ export const EVENT_TYPE_CONFIG: Record<LifeEventType, EventTypeConfig> = {
   umzug: {
     icon: Truck,
     label: 'Umzug',
-    description: 'Adressaenderung, Ummeldungen und Vertraege',
+    description: 'Adressänderung, Ummeldungen und Verträge',
     color: 'text-blue-600 bg-blue-50 dark:bg-blue-950',
   },
   heirat: {
@@ -56,7 +56,7 @@ export const EVENT_TYPE_CONFIG: Record<LifeEventType, EventTypeConfig> = {
   jobwechsel: {
     icon: Briefcase,
     label: 'Jobwechsel',
-    description: 'Kuendigung, Versicherungen und Steuern',
+    description: 'Kündigung, Versicherungen und Steuern',
     color: 'text-orange-600 bg-orange-50 dark:bg-orange-950',
   },
   ruhestand: {
@@ -91,7 +91,7 @@ export const EVENT_TYPE_CONFIG: Record<LifeEventType, EventTypeConfig> = {
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Ausstehend',
-  confirmed: 'Bestaetigt',
+  confirmed: 'Bestätigt',
   in_progress: 'In Bearbeitung',
   completed: 'Abgeschlossen',
 };

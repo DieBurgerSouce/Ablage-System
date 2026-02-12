@@ -43,7 +43,7 @@ export function BookingSuggestionCard({
 Soll: ${suggestion.debit_account} - ${suggestion.debit_account_name}
 Haben: ${suggestion.credit_account} - ${suggestion.credit_account_name}
 Betrag: ${formatCurrency(suggestion.amount)}
-${suggestion.tax_code ? `Steuerschluessel: ${suggestion.tax_code}` : ''}
+${suggestion.tax_code ? `Steuerschlüssel: ${suggestion.tax_code}` : ''}
 Beschreibung: ${suggestion.description}
     `.trim();
 
@@ -125,7 +125,7 @@ Beschreibung: ${suggestion.description}
         {/* Tax Code */}
         {suggestion.tax_code && (
           <div className="mt-3 flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Steuerschluessel:</span>
+            <span className="text-sm text-muted-foreground">Steuerschlüssel:</span>
             <Badge variant="secondary">{suggestion.tax_code}</Badge>
           </div>
         )}
@@ -150,7 +150,7 @@ Beschreibung: ${suggestion.description}
           ) : (
             <ChevronDown className="h-4 w-4" />
           )}
-          Begruendung anzeigen
+          Begründung anzeigen
         </button>
         {isExpanded && (
           <motion.div
@@ -169,7 +169,7 @@ Beschreibung: ${suggestion.description}
         {onApply && (
           <Button size="sm" className="flex-1" onClick={() => onApply(suggestion)}>
             <Check className="mr-2 h-4 w-4" />
-            Uebernehmen
+            Übernehmen
           </Button>
         )}
         <Button variant="outline" size="sm" onClick={handleCopy}>

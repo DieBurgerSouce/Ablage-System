@@ -1,6 +1,6 @@
 /**
  * Dunning Templates Feature
- * Admin-UI fuer Mahnbrief-Vorlagen und PDF-Generierung
+ * Admin-UI für Mahnbrief-Vorlagen und PDF-Generierung
  */
 
 export * from './types';

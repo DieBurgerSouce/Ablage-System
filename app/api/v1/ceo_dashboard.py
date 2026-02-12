@@ -10,7 +10,9 @@ REST API fuer Digital Twin des Unternehmens:
 Feinpoliert und durchdacht - Enterprise CEO Dashboard.
 """
 
-from typing import Dict, List, Any
+from typing import Dict, List
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 import structlog
@@ -34,7 +36,7 @@ router = APIRouter(prefix="/ceo-dashboard", tags=["CEO Dashboard"])
 
 @router.get(
     "/overview",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Unternehmens-Uebersicht",
     description="Vollstaendige Uebersicht fuer CEO Dashboard mit allen Metriken"
 )
@@ -42,7 +44,7 @@ async def get_overview(
     current_user: User = Depends(get_current_active_user),
     company_id: UUID = Depends(get_current_company_id),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Holt Unternehmens-Uebersicht.
 
@@ -81,7 +83,7 @@ async def get_overview(
 
 @router.get(
     "/health-score",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Gesundheits-Score",
     description="Detaillierter Gesundheits-Score mit allen Dimensionen"
 )
@@ -89,7 +91,7 @@ async def get_health_score(
     current_user: User = Depends(get_current_active_user),
     company_id: UUID = Depends(get_current_company_id),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Holt Gesundheits-Score.
 
@@ -178,7 +180,7 @@ async def get_trends(
 
 @router.get(
     "/anomalies",
-    response_model=List[Dict[str, Any]],
+    response_model=List[JSONDict],
     summary="Anomalie-Erkennung",
     description="Erkennt Anomalien in Unternehmens-Metriken"
 )
@@ -186,7 +188,7 @@ async def get_anomalies(
     current_user: User = Depends(get_current_active_user),
     company_id: UUID = Depends(get_current_company_id),
     db: AsyncSession = Depends(get_db),
-) -> List[Dict[str, Any]]:
+) -> List[JSONDict]:
     """
     Erkennt Anomalien.
 

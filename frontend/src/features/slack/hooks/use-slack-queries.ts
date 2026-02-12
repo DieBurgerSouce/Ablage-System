@@ -1,7 +1,7 @@
 /**
  * Slack Integration React Query Hooks.
  *
- * TanStack Query Hooks fuer die Slack-Integration.
+ * TanStack Query Hooks für die Slack-Integration.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -44,7 +44,7 @@ export const slackKeys = {
 // =============================================================================
 
 /**
- * Hook fuer Slack-Verbindungsstatus.
+ * Hook für Slack-Verbindungsstatus.
  */
 export function useSlackStatus() {
     return useQuery({
@@ -56,7 +56,7 @@ export function useSlackStatus() {
 }
 
 /**
- * Hook fuer Slack-Statistiken.
+ * Hook für Slack-Statistiken.
  */
 export function useSlackStatistics() {
     return useQuery({
@@ -71,7 +71,7 @@ export function useSlackStatistics() {
 // =============================================================================
 
 /**
- * Hook fuer Slack-Kanal-Liste.
+ * Hook für Slack-Kanal-Liste.
  */
 export function useSlackChannels(params?: { company_id?: string; active_only?: boolean }) {
     return useQuery({
@@ -82,7 +82,7 @@ export function useSlackChannels(params?: { company_id?: string; active_only?: b
 }
 
 /**
- * Hook fuer einzelnen Slack-Kanal.
+ * Hook für einzelnen Slack-Kanal.
  */
 export function useSlackChannel(channelId: string) {
     return useQuery({
@@ -93,7 +93,7 @@ export function useSlackChannel(channelId: string) {
 }
 
 /**
- * Hook fuer Kanal-Erstellung.
+ * Hook für Kanal-Erstellung.
  */
 export function useCreateSlackChannel() {
     const queryClient = useQueryClient();
@@ -104,14 +104,14 @@ export function useCreateSlackChannel() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: slackKeys.channels() });
             toast({
-                title: 'Kanal hinzugefuegt',
+                title: 'Kanal hinzugefügt',
                 description: 'Der Slack-Kanal wurde erfolgreich konfiguriert.',
             });
         },
         onError: (error: Error) => {
             toast({
                 title: 'Fehler',
-                description: error.message || 'Kanal konnte nicht hinzugefuegt werden.',
+                description: error.message || 'Kanal konnte nicht hinzugefügt werden.',
                 variant: 'destructive',
             });
         },
@@ -119,7 +119,7 @@ export function useCreateSlackChannel() {
 }
 
 /**
- * Hook fuer Kanal-Update.
+ * Hook für Kanal-Update.
  */
 export function useUpdateSlackChannel() {
     const queryClient = useQueryClient();
@@ -147,7 +147,7 @@ export function useUpdateSlackChannel() {
 }
 
 /**
- * Hook fuer Kanal-Loeschung.
+ * Hook für Kanal-Löschung.
  */
 export function useDeleteSlackChannel() {
     const queryClient = useQueryClient();
@@ -158,14 +158,14 @@ export function useDeleteSlackChannel() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: slackKeys.channels() });
             toast({
-                title: 'Geloescht',
+                title: 'Gelöscht',
                 description: 'Der Slack-Kanal wurde entfernt.',
             });
         },
         onError: (error: Error) => {
             toast({
                 title: 'Fehler',
-                description: error.message || 'Kanal konnte nicht geloescht werden.',
+                description: error.message || 'Kanal konnte nicht gelöscht werden.',
                 variant: 'destructive',
             });
         },
@@ -177,7 +177,7 @@ export function useDeleteSlackChannel() {
 // =============================================================================
 
 /**
- * Hook fuer Nachrichten-Liste.
+ * Hook für Nachrichten-Liste.
  */
 export function useSlackMessages(params?: {
     channel_id?: string;
@@ -194,7 +194,7 @@ export function useSlackMessages(params?: {
 }
 
 /**
- * Hook fuer Test-Nachricht.
+ * Hook für Test-Nachricht.
  */
 export function useSendTestMessage() {
     const { toast } = useToast();
@@ -230,7 +230,7 @@ export function useSendTestMessage() {
 // =============================================================================
 
 /**
- * Hook fuer eigenes User-Mapping.
+ * Hook für eigenes User-Mapping.
  */
 export function useMySlackMapping() {
     return useQuery({
@@ -241,7 +241,7 @@ export function useMySlackMapping() {
 }
 
 /**
- * Hook fuer User-Mapping Erstellung.
+ * Hook für User-Mapping Erstellung.
  */
 export function useCreateMySlackMapping() {
     const queryClient = useQueryClient();
@@ -252,14 +252,14 @@ export function useCreateMySlackMapping() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: slackKeys.userMapping() });
             toast({
-                title: 'Verknuepft',
-                description: 'Ihr Slack-Account wurde erfolgreich verknuepft.',
+                title: 'Verknüpft',
+                description: 'Ihr Slack-Account wurde erfolgreich verknüpft.',
             });
         },
         onError: (error: Error) => {
             toast({
                 title: 'Fehler',
-                description: error.message || 'Verknuepfung konnte nicht erstellt werden.',
+                description: error.message || 'Verknüpfung konnte nicht erstellt werden.',
                 variant: 'destructive',
             });
         },
@@ -267,7 +267,7 @@ export function useCreateMySlackMapping() {
 }
 
 /**
- * Hook fuer User-Mapping Loeschung.
+ * Hook für User-Mapping Löschung.
  */
 export function useDeleteMySlackMapping() {
     const queryClient = useQueryClient();
@@ -279,13 +279,13 @@ export function useDeleteMySlackMapping() {
             queryClient.invalidateQueries({ queryKey: slackKeys.userMapping() });
             toast({
                 title: 'Entfernt',
-                description: 'Die Slack-Verknuepfung wurde aufgehoben.',
+                description: 'Die Slack-Verknüpfung wurde aufgehoben.',
             });
         },
         onError: (error: Error) => {
             toast({
                 title: 'Fehler',
-                description: error.message || 'Verknuepfung konnte nicht entfernt werden.',
+                description: error.message || 'Verknüpfung konnte nicht entfernt werden.',
                 variant: 'destructive',
             });
         },
@@ -293,7 +293,7 @@ export function useDeleteMySlackMapping() {
 }
 
 /**
- * Hook fuer alle User-Mappings (Admin).
+ * Hook für alle User-Mappings (Admin).
  */
 export function useAllSlackUserMappings() {
     return useQuery({
@@ -308,7 +308,7 @@ export function useAllSlackUserMappings() {
 // =============================================================================
 
 /**
- * Hook fuer Notification-Typen.
+ * Hook für Notification-Typen.
  */
 export function useSlackNotificationTypes() {
     return useQuery({

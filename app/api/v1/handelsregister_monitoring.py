@@ -19,7 +19,9 @@ Endpoints:
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 import structlog
@@ -70,7 +72,7 @@ class MonitoringAlertResponse(BaseModel):
     severity: str = Field(..., description="Schweregrad")
     title: str = Field(..., description="Titel")
     message: str = Field(..., description="Nachricht")
-    details: Dict[str, Any] = Field(default_factory=dict, description="Details")
+    details: JSONDict = Field(default_factory=dict, description="Details")
     risk_impact: Optional[float] = Field(None, description="Risiko-Auswirkung")
     created_at: str = Field(..., description="Erstellt am")
     acknowledged: bool = Field(default=False, description="Bestätigt")
@@ -145,7 +147,7 @@ class InsolvencyStatusResponse(BaseModel):
     entity_name: str = Field(..., description="Firmenname")
     status: str = Field(..., description="Insolvenz-Status")
     has_active_proceedings: bool = Field(default=False, description="Aktives Verfahren")
-    proceedings: List[Dict[str, Any]] = Field(default=[], description="Verfahren")
+    proceedings: List[JSONDict] = Field(default=[], description="Verfahren")
     last_checked_at: str = Field(..., description="Letzte Prüfung")
     risk_level: str = Field(default="none", description="Risikostufe")
 
@@ -283,7 +285,7 @@ async def acknowledge_alert(
     alert_id: UUID = Path(..., description="Alert-ID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Bestätigt einen Monitoring-Alert."""
     company_id = current_user.company_id
     if not company_id:
@@ -741,7 +743,7 @@ async def check_all_monitored_entities(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Prüft alle überwachten Entities sofort.
 

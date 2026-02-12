@@ -1,6 +1,6 @@
 /**
  * Banking Payment Automation Route
- * Route fuer Auto-Zahlungsvorschlaege Dashboard
+ * Route für Auto-Zahlungsvorschläge Dashboard
  */
 
 import { createFileRoute } from '@tanstack/react-router';

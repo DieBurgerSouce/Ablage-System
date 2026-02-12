@@ -1,8 +1,8 @@
 /**
  * Tour Progress Dots Component
  *
- * Zeigt eine Reihe von Punkten fuer den aktuellen Tour-Fortschritt.
- * Aktiver Punkt ist hervorgehoben, abgeschlossene Punkte sind ausgefuellt.
+ * Zeigt eine Reihe von Punkten für den aktuellen Tour-Fortschritt.
+ * Aktiver Punkt ist hervorgehoben, abgeschlossene Punkte sind ausgefüllt.
  */
 
 import { cn } from '@/lib/utils'

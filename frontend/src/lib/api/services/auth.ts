@@ -233,7 +233,7 @@ export const authService = {
 
 /**
  * Helper-Funktion um das Auth-Token zu holen.
- * Wird für WebSocket-Authentifizierung benoetigt.
+ * Wird für WebSocket-Authentifizierung benötigt.
  *
  * @returns Access Token oder null wenn nicht eingeloggt
  */

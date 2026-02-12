@@ -1,8 +1,8 @@
 /**
  * WorkflowSimulator Component
  *
- * Dry-Run Simulationspanel fuer Workflows.
- * Zeigt Schritt-fuer-Schritt-Ausfuehrung mit Testdaten.
+ * Dry-Run Simulationspanel für Workflows.
+ * Zeigt Schritt-für-Schritt-Ausführung mit Testdaten.
  */
 
 import { useState } from 'react';
@@ -70,7 +70,7 @@ const INITIAL_STEPS: SimulationStep[] = [
   },
   {
     id: '2',
-    name: 'Bedingung: OCR Konfidenz pruefen',
+    name: 'Bedingung: OCR Konfidenz prüfen',
     type: 'condition',
     status: 'pending',
     timestamp: null,
@@ -115,10 +115,10 @@ const statusConfig: Record<
   { icon: React.ElementType; color: string; label: string }
 > = {
   pending: { icon: Clock, color: 'text-muted-foreground', label: 'Ausstehend' },
-  running: { icon: Loader2, color: 'text-blue-500', label: 'Laeuft...' },
+  running: { icon: Loader2, color: 'text-blue-500', label: 'Läuft...' },
   passed: { icon: CheckCircle, color: 'text-green-500', label: 'Erfolgreich' },
   failed: { icon: XCircle, color: 'text-red-500', label: 'Fehlgeschlagen' },
-  skipped: { icon: Clock, color: 'text-yellow-500', label: 'Uebersprungen' },
+  skipped: { icon: Clock, color: 'text-yellow-500', label: 'Übersprungen' },
 };
 
 interface WorkflowSimulatorProps {
@@ -157,7 +157,7 @@ export function WorkflowSimulator({ workflowId: _workflowId }: WorkflowSimulator
     if (step.type === 'condition' && confidence < 70) {
       step.status = 'failed';
       step.duration = Math.random() * 50 + 10;
-      step.result = 'Bedingung nicht erfuellt';
+      step.result = 'Bedingung nicht erfüllt';
       step.details = `OCR Konfidenz ${confidence}% < 70% Schwellwert`;
 
       // Skip remaining steps
@@ -174,11 +174,11 @@ export function WorkflowSimulator({ workflowId: _workflowId }: WorkflowSimulator
           step.details = `Datei: ${input.fileName} (${input.documentType})`;
           break;
         case 'condition':
-          step.result = 'Bedingung erfuellt';
+          step.result = 'Bedingung erfüllt';
           step.details = `OCR Konfidenz ${confidence}% >= 70% Schwellwert`;
           break;
         case 'action':
-          step.result = 'Aktion ausgefuehrt';
+          step.result = 'Aktion ausgeführt';
           step.details = stepIndex === 2
             ? `Dokument als "${input.documentType}" klassifiziert`
             : `Verschoben nach /archiv/${input.documentType}/`;
@@ -250,14 +250,14 @@ export function WorkflowSimulator({ workflowId: _workflowId }: WorkflowSimulator
               Workflow-Simulation
             </CardTitle>
             <CardDescription>
-              Testen Sie den Workflow mit Beispieldaten ohne echte Ausfuehrung.
+              Testen Sie den Workflow mit Beispieldaten ohne echte Ausführung.
             </CardDescription>
           </div>
           <div className="flex gap-2">
             {isComplete && (
               <Button variant="outline" size="sm" onClick={handleReset}>
                 <RotateCcw className="mr-2 h-4 w-4" />
-                Zuruecksetzen
+                Zurücksetzen
               </Button>
             )}
             <Button
@@ -268,7 +268,7 @@ export function WorkflowSimulator({ workflowId: _workflowId }: WorkflowSimulator
               {isRunning ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Simulation laeuft...
+                  Simulation läuft...
                 </>
               ) : (
                 <>
@@ -342,7 +342,7 @@ export function WorkflowSimulator({ workflowId: _workflowId }: WorkflowSimulator
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="sim-custom">Zusaetzliche Daten</Label>
+                <Label htmlFor="sim-custom">Zusätzliche Daten</Label>
                 <Input
                   id="sim-custom"
                   value={input.customData}
@@ -475,7 +475,7 @@ export function WorkflowSimulator({ workflowId: _workflowId }: WorkflowSimulator
                 {steps.filter((s) => s.status === 'passed').length} von{' '}
                 {steps.length} Schritten erfolgreich
                 {steps.filter((s) => s.status === 'skipped').length > 0 &&
-                  `, ${steps.filter((s) => s.status === 'skipped').length} uebersprungen`}
+                  `, ${steps.filter((s) => s.status === 'skipped').length} übersprungen`}
               </p>
             </div>
           </>

@@ -1,7 +1,7 @@
 /**
  * DATEV Export Historie Seite
  *
- * Zeigt die vollstaendige Export-Historie mit Pagination.
+ * Zeigt die vollständige Export-Historie mit Pagination.
  */
 
 import { useState } from 'react';

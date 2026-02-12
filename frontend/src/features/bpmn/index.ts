@@ -6,12 +6,12 @@
  * Features:
  * - BPMN 2.0 konformer Prozess-Designer (React Flow)
  * - Drag & Drop Element-Palette
- * - Properties Panel fuer Element-Konfiguration
+ * - Properties Panel für Element-Konfiguration
  * - Prozess-Definition Deployment & Versionierung
  * - Prozess-Instanz Management
  * - Task Inbox & Bearbeitung
  * - Timer & Ereignis-Verarbeitung
- * - Ausfuehrungs-Historie & Monitoring
+ * - Ausführungs-Historie & Monitoring
  */
 
 // Components

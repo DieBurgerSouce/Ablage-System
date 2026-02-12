@@ -1,7 +1,7 @@
 /**
- * useOptimisticMutation - Generischer Hook fuer Optimistic Updates
+ * useOptimisticMutation - Generischer Hook für Optimistic Updates
  *
- * Abstrahiert das Pattern aus use-job-mutations.ts fuer wiederverwendbare
+ * Abstrahiert das Pattern aus use-job-mutations.ts für wiederverwendbare
  * optimistische Mutations mit automatischem Rollback und Undo-Support.
  *
  * @example
@@ -10,8 +10,8 @@
  *   mutationFn: (id) => api.deleteDocument(id),
  *   queryKey: ['documents'],
  *   optimisticUpdate: (cache, id) => cache.filter(d => d.id !== id),
- *   successMessage: 'Dokument geloescht',
- *   errorMessage: 'Fehler beim Loeschen',
+ *   successMessage: 'Dokument gelöscht',
+ *   errorMessage: 'Fehler beim Löschen',
  *   undoable: true,
  *   undoFn: (id) => api.restoreDocument(id),
  * });
@@ -32,17 +32,17 @@ export interface OptimisticMutationOptions<
   /** Die Mutation-Funktion die die API aufruft */
   mutationFn: (variables: TVariables) => Promise<TData>;
 
-  /** Query Key fuer den zu aktualisierenden Cache */
+  /** Query Key für den zu aktualisierenden Cache */
   queryKey: QueryKey;
 
   /**
    * Funktion die den Cache optimistisch aktualisiert.
-   * Gibt die neuen Cache-Daten zurueck.
+   * Gibt die neuen Cache-Daten zurück.
    */
   optimisticUpdate: (cache: TCacheData, variables: TVariables) => TCacheData;
 
   /**
-   * Optional: Zusaetzliche Query Keys die invalidiert werden sollen
+   * Optional: Zusätzliche Query Keys die invalidiert werden sollen
    */
   invalidateKeys?: QueryKey[];
 
@@ -59,8 +59,8 @@ export interface OptimisticMutationOptions<
   undoable?: boolean;
 
   /**
-   * Funktion zum Rueckgaengig machen der Operation.
-   * Wird nur benoetigt wenn undoable=true
+   * Funktion zum Rückgängig machen der Operation.
+   * Wird nur benötigt wenn undoable=true
    */
   undoFn?: (variables: TVariables) => Promise<void>;
 
@@ -134,7 +134,7 @@ export function useOptimisticMutation<
     ) => {
       // SECURITY: Check mutationId FIRST - prevents stale undo from old mutations
       // Dies muss VOR dem isUndoLockedRef Check kommen, da mutationId sich
-      // zwischen schnellen Clicks aendern kann waehrend Lock noch nicht gesetzt ist
+      // zwischen schnellen Clicks ändern kann während Lock noch nicht gesetzt ist
       if (mutationId !== mutationIdRef.current) {
         toast.error('Diese Aktion ist nicht mehr verfügbar');
         return;
@@ -148,7 +148,7 @@ export function useOptimisticMutation<
 
       // KRITISCH: Lock SOFORT via ref BEVOR async Operation startet!
       // Dies verhindert Race Conditions wenn Toast zwischen Renders geklickt wird.
-      // Der Ref-Update ist synchron und sofort sichtbar fuer alle Closures.
+      // Der Ref-Update ist synchron und sofort sichtbar für alle Closures.
       isUndoLockedRef.current = true;
       setIsUndoLocked(true);
 
@@ -163,7 +163,7 @@ export function useOptimisticMutation<
         toast.error('Rückgängig machen fehlgeschlagen');
         queryClient.invalidateQueries({ queryKey });
       } finally {
-        // WICHTIG: Ref UND State zuruecksetzen fuer Konsistenz
+        // WICHTIG: Ref UND State zurücksetzen für Konsistenz
         isUndoLockedRef.current = false;
         setIsUndoLocked(false);
       }
@@ -273,7 +273,7 @@ export function useOptimisticMutation<
 // ==================== Convenience Hooks ====================
 
 /**
- * Vorkonfigurierter Hook fuer Loeschoperationen mit Undo
+ * Vorkonfigurierter Hook für Loeschoperationen mit Undo
  */
 export function useOptimisticDelete<TItem extends { id: string }>(options: {
   queryKey: QueryKey;
@@ -295,7 +295,7 @@ export function useOptimisticDelete<TItem extends { id: string }>(options: {
 }
 
 /**
- * Vorkonfigurierter Hook fuer Update-Operationen
+ * Vorkonfigurierter Hook für Update-Operationen
  */
 export function useOptimisticUpdate<TItem extends { id: string }>(options: {
   queryKey: QueryKey;

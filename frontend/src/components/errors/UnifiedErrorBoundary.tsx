@@ -112,7 +112,7 @@ function classifyError(error: unknown): ClassifiedError {
     return {
       type: 'network',
       message: 'Netzwerkfehler',
-      details: 'Die Verbindung zum Server konnte nicht hergestellt werden. Bitte ueberpruefen Sie Ihre Internetverbindung.',
+      details: 'Die Verbindung zum Server konnte nicht hergestellt werden. Bitte überprüfen Sie Ihre Internetverbindung.',
       retryable: true,
     };
   }
@@ -138,7 +138,7 @@ function classifyError(error: unknown): ClassifiedError {
         type: 'validation',
         message: 'Validierungsfehler',
         statusCode: status,
-        details: (err.message as string) || 'Die eingegebenen Daten sind ungueltig.',
+        details: (err.message as string) || 'Die eingegebenen Daten sind ungültig.',
         retryable: false,
       };
     }
@@ -148,7 +148,7 @@ function classifyError(error: unknown): ClassifiedError {
         type: 'validation',
         message: 'Zugriff verweigert',
         statusCode: status,
-        details: 'Sie haben keine Berechtigung fuer diese Aktion.',
+        details: 'Sie haben keine Berechtigung für diese Aktion.',
         retryable: false,
       };
     }
@@ -158,7 +158,7 @@ function classifyError(error: unknown): ClassifiedError {
         type: 'server_error',
         message: 'Serverfehler',
         statusCode: status,
-        details: 'Ein interner Serverfehler ist aufgetreten. Bitte versuchen Sie es spaeter erneut.',
+        details: 'Ein interner Serverfehler ist aufgetreten. Bitte versuchen Sie es später erneut.',
         retryable: true,
       };
     }
@@ -186,7 +186,7 @@ function classifyError(error: unknown): ClassifiedError {
 const VIEWER_MESSAGES: Record<string, { title: string; description: string }> = {
   pdf: {
     title: 'PDF konnte nicht angezeigt werden',
-    description: 'Die PDF-Datei ist moeglicherweise beschaedigt oder verwendet ein nicht unterstuetztes Format.',
+    description: 'Die PDF-Datei ist möglicherweise beschädigt oder verwendet ein nicht unterstütztes Format.',
   },
   docx: {
     title: 'Word-Dokument konnte nicht angezeigt werden',
@@ -194,7 +194,7 @@ const VIEWER_MESSAGES: Record<string, { title: string; description: string }> = 
   },
   xlsx: {
     title: 'Excel-Tabelle konnte nicht angezeigt werden',
-    description: 'Die Excel-Datei konnte nicht geladen werden. Sehr grosse Dateien koennen Probleme verursachen.',
+    description: 'Die Excel-Datei konnte nicht geladen werden. Sehr große Dateien können Probleme verursachen.',
   },
   email: {
     title: 'E-Mail konnte nicht angezeigt werden',
@@ -329,7 +329,7 @@ function ErrorFallback({
     if (context === 'viewer' && fileType) {
       return VIEWER_MESSAGES[fileType]?.description ?? VIEWER_MESSAGES.unknown.description;
     }
-    return classifiedError?.details ?? 'Die Anwendung konnte diese Aktion nicht ausfuehren.';
+    return classifiedError?.details ?? 'Die Anwendung konnte diese Aktion nicht ausführen.';
   };
 
   const title = getTitle();
@@ -444,7 +444,7 @@ function ErrorFallback({
           <div className="rounded-lg border border-border bg-muted/50 p-4 space-y-3">
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <Bug className="h-4 w-4" />
-              <span>Technische Details (nur fuer Entwickler)</span>
+              <span>Technische Details (nur für Entwickler)</span>
             </div>
             <div className="space-y-1">
               <p className="text-xs font-semibold text-destructive">

@@ -53,7 +53,7 @@ export function SaveFilterDialog({
   const [isShared, setIsShared] = useState(false)
   const [isDefault, setIsDefault] = useState(false)
 
-  // Formular bei Oeffnen/Aendern zuruecksetzen
+  // Formular bei Öffnen/Ändern zurücksetzen
   useEffect(() => {
     if (open) {
       if (filter) {
@@ -94,8 +94,8 @@ export function SaveFilterDialog({
             </DialogTitle>
             <DialogDescription>
               {isEditing
-                ? "Aendern Sie die Einstellungen dieses Filters."
-                : "Speichern Sie die aktuelle Filtereinstellung fuer spaetere Verwendung."}
+                ? "Ändern Sie die Einstellungen dieses Filters."
+                : "Speichern Sie die aktuelle Filtereinstellung für spätere Verwendung."}
             </DialogDescription>
           </DialogHeader>
 
@@ -119,7 +119,7 @@ export function SaveFilterDialog({
                 id="filter-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Optionale Beschreibung fuer diesen Filter..."
+                placeholder="Optionale Beschreibung für diesen Filter..."
                 maxLength={1000}
                 rows={2}
               />
@@ -134,7 +134,7 @@ export function SaveFilterDialog({
                   </Label>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Andere Teammitglieder koennen diesen Filter sehen
+                  Andere Teammitglieder können diesen Filter sehen
                 </p>
               </div>
               <Switch
@@ -150,7 +150,7 @@ export function SaveFilterDialog({
                   Als Standard verwenden
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Automatisch anwenden beim Oeffnen
+                  Automatisch anwenden beim Öffnen
                 </p>
               </div>
               <Switch

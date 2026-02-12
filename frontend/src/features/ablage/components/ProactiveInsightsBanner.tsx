@@ -2,12 +2,12 @@
  * ProactiveInsightsBanner - KI-gesteuerte Insights mit Aktionen
  *
  * Zeigt proaktive Hinweise und Empfehlungen:
- * - Optimierungs-Vorschlaege
- * - Warnungen (z.B. ueberfaellige Rechnungen)
- * - Chancen (z.B. Skonto-Moeglichkeiten)
- * - Erinnerungen (z.B. bald faellig)
+ * - Optimierungs-Vorschläge
+ * - Warnungen (z.B. überfällige Rechnungen)
+ * - Chancen (z.B. Skonto-Möglichkeiten)
+ * - Erinnerungen (z.B. bald fällig)
  *
- * Jeder Insight kann eine Aktion haben, die direkt ausgefuehrt werden kann.
+ * Jeder Insight kann eine Aktion haben, die direkt ausgeführt werden kann.
  */
 
 import { useState, useMemo, useCallback } from 'react';
@@ -61,7 +61,7 @@ interface ProactiveInsightsBannerProps {
 // ==================== Helper Functions ====================
 
 /**
- * Formatiert einen Betrag als Waehrung (EUR)
+ * Formatiert einen Betrag als Währung (EUR)
  */
 function formatCurrency(amount: number, currency = 'EUR'): string {
   return new Intl.NumberFormat('de-DE', {
@@ -98,17 +98,17 @@ function generateInsights(
 ): ProactiveInsight[] {
   const insights: ProactiveInsight[] = [];
 
-  // Nur fuer Rechnungen-bezogene Kategorien
+  // Nur für Rechnungen-bezogene Kategorien
   const isInvoiceCategory = ['rechnungen', 'offene_rechnungen', 'mahnungen'].includes(category);
 
   if (!isInvoiceCategory || !aggregations) {
     return insights;
   }
 
-  // 1. Ueberfaellige Rechnungen (kritisch)
+  // 1. Überfällige Rechnungen (kritisch)
   const overdueCount = aggregations.overdueCount || 0;
   const overdueAmount = aggregations.totalOverdue || 0;
-  const overdueDocuments = documents.filter((d) => d.paymentStatus === 'ueberfaellig');
+  const overdueDocuments = documents.filter((d) => d.paymentStatus === 'überfällig');
   const oldestOverdue = overdueDocuments.reduce(
     (oldest, doc) => {
       const age = getInvoiceAge(doc.dueDate);
@@ -135,10 +135,10 @@ function generateInsights(
     });
   }
 
-  // 2. Bald faellige Rechnungen (Erinnerung)
+  // 2. Bald fällige Rechnungen (Erinnerung)
   const dueSoonDocuments = documents.filter((d) => {
     if (d.paymentStatus !== 'offen' || !d.dueDate) return false;
-    const daysUntil = -getInvoiceAge(d.dueDate); // Negativ = noch nicht faellig
+    const daysUntil = -getInvoiceAge(d.dueDate); // Negativ = noch nicht fällig
     return daysUntil > 0 && daysUntil <= 7;
   });
   const dueSoonAmount = dueSoonDocuments.reduce((sum, d) => sum + (d.totalAmount || 0), 0);
@@ -148,8 +148,8 @@ function generateInsights(
       id: 'due-soon',
       type: 'reminder',
       priority: 'medium',
-      title: `${dueSoonDocuments.length} Rechnung${dueSoonDocuments.length > 1 ? 'en' : ''} bald faellig`,
-      description: `${formatCurrency(dueSoonAmount)} in den naechsten 7 Tagen`,
+      title: `${dueSoonDocuments.length} Rechnung${dueSoonDocuments.length > 1 ? 'en' : ''} bald fällig`,
+      description: `${formatCurrency(dueSoonAmount)} in den nächsten 7 Tagen`,
       action: actions.onFilterDocuments
         ? {
             label: 'Anzeigen',
@@ -161,8 +161,8 @@ function generateInsights(
     });
   }
 
-  // 3. Skonto-Moeglichkeit (Chance)
-  // Simuliert: Rechnungen mit > 5 Tagen bis Faelligkeit koennen Skonto haben
+  // 3. Skonto-Möglichkeit (Chance)
+  // Simuliert: Rechnungen mit > 5 Tagen bis Fälligkeit können Skonto haben
   const skontoDocuments = documents.filter((d) => {
     if (d.paymentStatus !== 'offen' || !d.dueDate) return false;
     const daysUntil = -getInvoiceAge(d.dueDate);
@@ -196,13 +196,13 @@ function generateInsights(
       type: 'warning',
       priority: 'high',
       title: `${failedDocuments.length} Dokument${failedDocuments.length > 1 ? 'e' : ''} mit Fehlern`,
-      description: 'OCR-Verarbeitung fehlgeschlagen - manuelle Pruefung erforderlich',
+      description: 'OCR-Verarbeitung fehlgeschlagen - manuelle Prüfung erforderlich',
       dismissible: true,
       documentIds: failedDocuments.map((d) => d.id),
     });
   }
 
-  // Sortiere nach Prioritaet
+  // Sortiere nach Priorität
   const priorityOrder: Record<InsightPriority, number> = {
     critical: 0,
     high: 1,

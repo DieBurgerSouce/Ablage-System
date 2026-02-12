@@ -133,7 +133,7 @@ export function CompanyOverviewTable({ companies }: CompanyOverviewTableProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <CardTitle className="text-lg">Dokumenten-Uebersicht</CardTitle>
+        <CardTitle className="text-lg">Dokumenten-Übersicht</CardTitle>
         <Select
           value={activeFilter}
           onValueChange={(v) => setActiveFilter(v as ActiveFilter)}

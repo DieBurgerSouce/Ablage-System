@@ -1,7 +1,7 @@
 /**
  * Payment Automation Hooks
  *
- * Hooks fuer automatisierte Zahlungsvorschlaege und -batches.
+ * Hooks für automatisierte Zahlungsvorschläge und -batches.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -157,7 +157,7 @@ export const paymentAutomationKeys = {
 // =============================================================================
 
 /**
- * Hook zum Abrufen von Zahlungsvorschlaegen
+ * Hook zum Abrufen von Zahlungsvorschlägen
  */
 export function usePaymentSuggestions(
   strategy: PaymentStrategy = 'skonto_optimized',
@@ -286,7 +286,7 @@ export function useSkontoAlerts(days: number = 7) {
 }
 
 /**
- * Hook zum Erstellen eines Batches aus Vorschlaegen
+ * Hook zum Erstellen eines Batches aus Vorschlägen
  */
 export function useCreateBatch() {
   const queryClient = useQueryClient();

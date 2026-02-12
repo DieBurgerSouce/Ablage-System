@@ -1,7 +1,7 @@
 /**
  * Process Mining Hooks
  *
- * Hooks fuer Process Mining Dashboard.
+ * Hooks für Process Mining Dashboard.
  * Vision 2.0 Phase 3: Process Mining & Autonome Automatisierung
  */
 
@@ -187,7 +187,7 @@ export function useBottleneckHeatmap(days = 7) {
 }
 
 /**
- * Hook zum Abrufen der Automatisierungsvorschlaege
+ * Hook zum Abrufen der Automatisierungsvorschläge
  */
 export function useAutomationSuggestions(status?: SuggestionStatus, limit = 20) {
   return useQuery({
@@ -270,7 +270,7 @@ export function useProcessVariants(days = 30, limit = 10) {
 }
 
 /**
- * Hook zum Generieren neuer Vorschlaege
+ * Hook zum Generieren neuer Vorschläge
  */
 export function useGenerateSuggestions() {
   const queryClient = useQueryClient();

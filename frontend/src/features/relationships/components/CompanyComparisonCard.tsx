@@ -1,7 +1,7 @@
 /**
  * CompanyComparisonCard Component
  *
- * Zeigt zusammenfassende Statistiken fuer die Cross-Company Uebersicht.
+ * Zeigt zusammenfassende Statistiken für die Cross-Company Übersicht.
  * Drei Karten: Beide Firmen, Nur Folie, Nur Messer
  */
 
@@ -76,7 +76,7 @@ function StatCard({ title, value, description, icon, variant, isActive, onClick 
 }
 
 /**
- * Grid mit drei Vergleichskarten fuer die Firmen-Uebersicht.
+ * Grid mit drei Vergleichskarten für die Firmen-Übersicht.
  */
 export function CompanyComparisonCard({
     summary,
@@ -87,21 +87,21 @@ export function CompanyComparisonCard({
             <StatCard
                 title="Beide Firmen"
                 value={summary.multiCompanyCount}
-                description="Geschaeftspartner in Folie UND Messer"
+                description="Geschäftspartner in Folie UND Messer"
                 icon={<Layers className="h-5 w-5" />}
                 variant="both"
             />
             <StatCard
                 title="Nur Folie"
                 value={summary.folieOnlyCount}
-                description="Ausschliesslich in Spargelfolie"
+                description="Ausschließlich in Spargelfolie"
                 icon={<Building2 className="h-5 w-5" />}
                 variant="folie"
             />
             <StatCard
                 title="Nur Messer"
                 value={summary.messerOnlyCount}
-                description="Ausschliesslich in Spargelmesser"
+                description="Ausschließlich in Spargelmesser"
                 icon={<Factory className="h-5 w-5" />}
                 variant="messer"
             />

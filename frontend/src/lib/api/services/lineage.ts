@@ -1,8 +1,8 @@
 /**
  * Document Lineage API Service
  *
- * API-Service fuer Datenherkunfts-Tracking.
- * Ermoeglicht Abruf der Dokumenten-Timeline und Statistiken.
+ * API-Service für Datenherkunfts-Tracking.
+ * Ermöglicht Abruf der Dokumenten-Timeline und Statistiken.
  */
 
 import { apiClient } from '../client';
@@ -347,7 +347,7 @@ export interface GetTimelineParams {
 
 export const lineageService = {
   /**
-   * Ruft die vollstaendige Lineage-Timeline eines Dokuments ab.
+   * Ruft die vollständige Lineage-Timeline eines Dokuments ab.
    */
   getTimeline: async (
     documentId: string,
@@ -381,7 +381,7 @@ export const lineageService = {
   },
 
   /**
-   * Ruft die vollstaendige Lineage-Zusammenfassung ab.
+   * Ruft die vollständige Lineage-Zusammenfassung ab.
    */
   getSummary: async (documentId: string): Promise<LineageSummary> => {
     const response = await apiClient.get<LineageSummaryBackend>(
@@ -392,7 +392,7 @@ export const lineageService = {
   },
 
   /**
-   * Gibt alle verfuegbaren Event-Typen mit deutschen Labels zurueck.
+   * Gibt alle verfügbaren Event-Typen mit deutschen Labels zurück.
    */
   getEventTypes: async (): Promise<EventTypeLabels> => {
     const response = await apiClient.get<EventTypeLabels>(
@@ -403,7 +403,7 @@ export const lineageService = {
   },
 
   /**
-   * Gibt alle verfuegbaren Import-Quelltypen mit deutschen Labels zurueck.
+   * Gibt alle verfügbaren Import-Quelltypen mit deutschen Labels zurück.
    */
   getImportSourceTypes: async (): Promise<Record<string, string>> => {
     const response = await apiClient.get<Record<string, string>>(

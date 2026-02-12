@@ -106,7 +106,7 @@ export interface CategoryDocumentListState {
     view_mode: 'grid' | 'list';
 }
 
-// Available backends - IDs muessen mit Backend-Endpunkt uebereinstimmen
+// Available backends - IDs müssen mit Backend-Endpunkt übereinstimmen
 // Backend akzeptiert: auto, surya, got_ocr, deepseek, surya_gpu
 export const OCR_BACKENDS: OCRBackend[] = [
     {
@@ -141,7 +141,7 @@ export const OCR_BACKENDS: OCRBackend[] = [
         available: true,
     },
     {
-        id: 'auto',  // Backend: auto (waehlt bestes verfuegbares Backend)
+        id: 'auto',  // Backend: auto (wählt bestes verfügbares Backend)
         name: 'CPU OCR (Tesseract)',
         description: 'Fallback ohne GPU-Anforderung',
         features: ['Keine GPU erforderlich', 'Langsamer'],

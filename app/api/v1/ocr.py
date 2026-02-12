@@ -9,7 +9,9 @@ Feinpoliert und durchdacht - Enterprise OCR API.
 """
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 import structlog
@@ -58,7 +60,7 @@ class OCRStatusResponse(BaseModel):
     """Status des OCR-Systems."""
 
     verfuegbar: bool = Field(..., description="Ist OCR-System verfuegbar?")
-    backends: Dict[str, Any] = Field(..., description="Status der OCR-Backends")
+    backends: JSONDict = Field(..., description="Status der OCR-Backends")
     gpu_verfuegbar: bool = Field(..., description="Ist GPU verfuegbar?")
     pymupdf_verfuegbar: bool = Field(..., description="Ist PyMuPDF verfuegbar?")
     tesseract_verfuegbar: bool = Field(..., description="Ist Tesseract verfuegbar?")
@@ -362,7 +364,7 @@ async def ocr_status(
         gpu_verfuegbar = False
 
     # Backend-Status sammeln
-    backends: Dict[str, Any] = {
+    backends: JSONDict = {
         "pymupdf": {
             "verfuegbar": pymupdf_verfuegbar,
             "beschreibung": "PDF-Text-Extraktion (schnell)",
@@ -1613,7 +1615,7 @@ class HandwritingAnalysisResponse(BaseModel):
     regions: list[HandwritingRegionResponse]
     recommended_backend: str
     confidence_penalty: float
-    analysis_details: Dict[str, Any]
+    analysis_details: JSONDict
 
 
 @router.post(
@@ -1795,7 +1797,7 @@ async def analyze_document_handwriting(
 
 @router.get(
     "/documents/{document_id}/handwriting-report",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Handschrift-Report abrufen",
     description="Ruft den letzten Handschrift-Analyse-Report ab.",
 )
@@ -1803,7 +1805,7 @@ async def get_handwriting_report(
     document_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Ruft den letzten Handschrift-Analyse-Report fuer ein Dokument ab.
 
@@ -1851,7 +1853,7 @@ async def get_handwriting_report(
 
 @router.post(
     "/upload/analyze-handwriting",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Handschrift-Analyse aus Upload",
     description="Analysiert eine hochgeladene Datei auf Handschrift ohne Dokument-Erstellung.",
 )
@@ -1859,7 +1861,7 @@ async def analyze_upload_handwriting(
     file: UploadFile = File(..., description="Dokument (PDF, PNG, JPG, TIFF)"),
     detect_signatures: bool = Query(True, description="Unterschriften erkennen"),
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Analysiert eine hochgeladene Datei auf handschriftliche Inhalte.
 
@@ -2037,7 +2039,7 @@ class TableExtractionResultResponse(BaseModel):
     extraction_timestamp: str
     processing_time_ms: int
     tables: List[ExtractedTableResponse]
-    metadata: Dict[str, Any]
+    metadata: JSONDict
 
 
 @router.post(
@@ -2050,7 +2052,7 @@ async def extract_document_tables(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Extrahiert Tabellen aus einem Dokument.
 
@@ -2135,7 +2137,7 @@ async def get_document_tables(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Ruft bereits extrahierte Tabellen aus einem Dokument ab.
     """
@@ -2341,7 +2343,7 @@ async def export_document_table(
 async def extract_upload_tables(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Extrahiert Tabellen aus einer hochgeladenen Datei.
 
@@ -2628,7 +2630,7 @@ async def check_document_consistency(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Prueft die Konsistenz zwischen OCR-Backend-Ergebnissen.
 
@@ -2732,7 +2734,7 @@ async def get_consistency_report(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Ruft bereits erstellten Konsistenz-Report ab."""
     # Dokument laden
     doc_query = select(Document).where(Document.id == str(document_id))
@@ -2777,7 +2779,7 @@ async def get_inconsistent_regions(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Ruft inkonsistente Regionen fuer Review ab.
 
@@ -2864,7 +2866,7 @@ async def compare_backend_texts(
         description="Optionale Backend-Namen",
     ),
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Vergleicht OCR-Texte verschiedener Backends.
 
@@ -2937,7 +2939,7 @@ async def get_consistency_statistics(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Ruft Konsistenz-Statistiken fuer den Mandanten ab.
 
@@ -3033,9 +3035,9 @@ class ExtractedFormulaResponse(BaseModel):
     context: str = Field(..., description="Kontext: financial, scientific, general")
     is_valid: bool = Field(..., description="Syntax valide?")
     confidence: float = Field(..., ge=0, le=1, description="Confidence-Score")
-    extracted_values: List[Dict[str, Any]] = Field(default_factory=list, description="Extrahierte Zahlen/Einheiten")
+    extracted_values: List[JSONDict] = Field(default_factory=list, description="Extrahierte Zahlen/Einheiten")
     variables: List[str] = Field(default_factory=list, description="Erkannte Variablen")
-    validation_issues: List[Dict[str, Any]] = Field(default_factory=list, description="Validierungsprobleme")
+    validation_issues: List[JSONDict] = Field(default_factory=list, description="Validierungsprobleme")
     mathml: Optional[str] = Field(None, description="MathML-Repraesentation")
 
 
@@ -3052,7 +3054,7 @@ class FormulaValidationResponse(BaseModel):
     """Antwort fuer Formel-Validierung."""
 
     is_valid: bool = Field(..., description="Formel syntaktisch korrekt?")
-    issues: List[Dict[str, Any]] = Field(default_factory=list, description="Gefundene Probleme")
+    issues: List[JSONDict] = Field(default_factory=list, description="Gefundene Probleme")
     severity: str = Field(..., description="Hoechster Schweregrad: error, warning, info")
     suggestions: List[str] = Field(default_factory=list, description="Korrekturvorschlaege")
 

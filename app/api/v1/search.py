@@ -149,6 +149,67 @@ async def get_search_facets(
 
 
 @router.get(
+    "/suggestions",
+    summary="Suchvorschläge und Filter",
+    description="Gibt vordefinierte Filter-Vorschläge und häufige Suchen zurück."
+)
+async def get_search_suggestions_filters(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> dict:
+    """
+    Suchvorschläge mit beliebten Filtern.
+
+    Gibt zurück:
+    - popular_filters: Vordefinierte Filter-Vorschläge
+    - recent_queries: Platzhalter für zukünftige Funktionalität
+    """
+    from datetime import datetime, timedelta, timezone
+
+    # Beliebte Filter-Vorschläge mit deutschen Labels
+    seven_days_ago = (datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=7)).isoformat()
+
+    popular_filters = [
+        {
+            "label": "Offene Rechnungen",
+            "filters": {
+                "document_type": "invoice",
+                "status": "open"
+            }
+        },
+        {
+            "label": "Letzte 7 Tage",
+            "filters": {
+                "date_from": seven_days_ago
+            }
+        },
+        {
+            "label": "Hohe Beträge",
+            "filters": {
+                "amount_min": 1000
+            }
+        },
+        {
+            "label": "Verträge",
+            "filters": {
+                "document_type": "contract"
+            }
+        },
+        {
+            "label": "Abgeschlossen",
+            "filters": {
+                "status": "completed"
+            }
+        }
+    ]
+
+    return {
+        "popular_filters": popular_filters,
+        "recent_queries": []  # Platzhalter für zukünftige Implementierung
+    }
+
+
+@router.get(
     "/suggest",
     response_model=SuggestResponse,
     summary="Suchvorschläge",

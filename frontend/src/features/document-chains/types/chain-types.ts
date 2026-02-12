@@ -1,7 +1,7 @@
 /**
  * Document Chain Types
  *
- * TypeScript Typen fuer Auftragsketten-Tracking.
+ * TypeScript Typen für Auftragsketten-Tracking.
  * Workflow: Angebot → Auftrag → Lieferschein → Rechnung
  */
 
@@ -65,7 +65,7 @@ export interface ChainDocumentBackend {
 // ==================== Chain Info ====================
 
 /**
- * Vollstaendige Ketten-Information
+ * Vollständige Ketten-Information
  */
 export interface DocumentChainInfo {
   chainId: string;
@@ -80,7 +80,7 @@ export interface DocumentChainInfo {
 }
 
 export type ChainStatus =
-  | 'in_progress'  // Kette unvollstaendig
+  | 'in_progress'  // Kette unvollständig
   | 'complete'     // Alle Dokumente vorhanden
   | 'has_issues';  // Abweichungen vorhanden
 
@@ -195,7 +195,7 @@ export interface ChainCreate {
 }
 
 /**
- * Payload zum Verknuepfen von Dokumenten
+ * Payload zum Verknüpfen von Dokumenten
  */
 export interface LinkDocumentsRequest {
   sourceDocumentId: string;
@@ -205,7 +205,7 @@ export interface LinkDocumentsRequest {
 }
 
 /**
- * Payload zum Aufloesen einer Abweichung
+ * Payload zum Auflösen einer Abweichung
  */
 export interface ResolveDiscrepancyRequest {
   resolutionNotes: string;
@@ -226,7 +226,7 @@ export interface ChainFilter {
 export const CHAIN_UI_LABELS = {
   // Page
   pageTitle: 'Auftragsketten',
-  pageDescription: 'Verknuepfung von Angeboten, Auftraegen, Lieferscheinen und Rechnungen',
+  pageDescription: 'Verknüpfung von Angeboten, Aufträgen, Lieferscheinen und Rechnungen',
 
   // Document Types
   typeQuote: 'Angebot',
@@ -236,7 +236,7 @@ export const CHAIN_UI_LABELS = {
 
   // Status
   statusInProgress: 'In Bearbeitung',
-  statusComplete: 'Vollstaendig',
+  statusComplete: 'Vollständig',
   statusHasIssues: 'Mit Abweichungen',
 
   // Relationship Types
@@ -259,20 +259,20 @@ export const CHAIN_UI_LABELS = {
 
   // Actions
   actionCreateChain: 'Kette erstellen',
-  actionLinkDocuments: 'Dokumente verknuepfen',
-  actionAutoMatch: 'Automatisch verknuepfen',
+  actionLinkDocuments: 'Dokumente verknüpfen',
+  actionAutoMatch: 'Automatisch verknüpfen',
   actionViewChain: 'Kette anzeigen',
-  actionResolveDiscrepancy: 'Abweichung aufloesen',
-  actionRemoveLink: 'Verknuepfung entfernen',
+  actionResolveDiscrepancy: 'Abweichung auflösen',
+  actionRemoveLink: 'Verknüpfung entfernen',
 
   // Toasts
   successCreateChain: 'Auftragskette erstellt',
-  successLinkDocuments: 'Dokumente verknuepft',
-  successResolveDiscrepancy: 'Abweichung aufgeloest',
+  successLinkDocuments: 'Dokumente verknüpft',
+  successResolveDiscrepancy: 'Abweichung aufgelöst',
   errorCreateChain: 'Fehler beim Erstellen der Kette',
-  errorLinkDocuments: 'Fehler beim Verknuepfen',
+  errorLinkDocuments: 'Fehler beim Verknüpfen',
   errorAutoMatch: 'Fehler beim automatischen Matching',
-  errorResolveDiscrepancy: 'Fehler beim Aufloesen der Abweichung',
+  errorResolveDiscrepancy: 'Fehler beim Auflösen der Abweichung',
 
   // Empty States
   emptyNoChains: 'Noch keine Auftragsketten',

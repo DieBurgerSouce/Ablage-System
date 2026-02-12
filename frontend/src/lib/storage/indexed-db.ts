@@ -176,7 +176,7 @@ export async function getDB(): Promise<IDBPDatabase<AblageDBSchema>> {
     logger.info('[IndexedDB] Datenbank initialisiert', { version: dbInstance.version })
     return dbInstance
   } catch (error) {
-    logger.error('[IndexedDB] Fehler beim Oeffnen der Datenbank', { error })
+    logger.error('[IndexedDB] Fehler beim Öffnen der Datenbank', { error })
     throw error
   }
 }
@@ -212,7 +212,7 @@ export async function addMutation(mutation: Omit<OfflineMutation, 'id' | 'timest
   }
 
   await db.put('mutations', fullMutation)
-  logger.info('[IndexedDB] Mutation hinzugefuegt', { id, endpoint: mutation.endpoint })
+  logger.info('[IndexedDB] Mutation hinzugefügt', { id, endpoint: mutation.endpoint })
   return id
 }
 
@@ -409,7 +409,7 @@ export async function clearExpiredQueryCache(): Promise<number> {
     await db.delete('queryCache', entry.queryHash)
   }
   if (expired.length > 0) {
-    logger.info('[IndexedDB] Abgelaufene Query-Cache-Eintraege entfernt', { count: expired.length })
+    logger.info('[IndexedDB] Abgelaufene Query-Cache-Einträge entfernt', { count: expired.length })
   }
   return expired.length
 }
@@ -504,7 +504,7 @@ export async function clearAllData(): Promise<void> {
     db.clear('queryCache'),
     db.clear('documents'),
   ])
-  logger.info('[IndexedDB] Alle Daten geloescht')
+  logger.info('[IndexedDB] Alle Daten gelöscht')
 }
 
 /**

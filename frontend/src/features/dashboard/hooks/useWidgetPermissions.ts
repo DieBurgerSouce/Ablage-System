@@ -1,7 +1,7 @@
 /**
  * Widget Permissions Hook
  *
- * Filtert verfuegbare Widgets basierend auf Benutzerberechtigungen.
+ * Filtert verfügbare Widgets basierend auf Benutzerberechtigungen.
  */
 
 import { useMemo } from 'react';

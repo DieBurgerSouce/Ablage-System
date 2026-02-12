@@ -4,10 +4,10 @@
  * Phase 2.4: Mobile-First Gesten
  *
  * Features:
- * - Swipe links -> Loeschen (mit Bestaetigung)
+ * - Swipe links -> Löschen (mit Bestätigung)
  * - Swipe rechts -> Archivieren
  * - Animierte Aktions-Buttons
- * - Snap-Back bei unvollstaendigem Swipe
+ * - Snap-Back bei unvollständigem Swipe
  */
 
 import { useCallback, useRef, useState } from "react"
@@ -25,7 +25,7 @@ export interface SwipeActionConfig {
   label: string
   icon: React.ReactNode
   color: string
-  /** Bestaetigung erforderlich */
+  /** Bestätigung erforderlich */
   requiresConfirmation?: boolean
   /** Custom Handler */
   onAction?: () => void
@@ -34,7 +34,7 @@ export interface SwipeActionConfig {
 export interface SwipeableItemProps {
   /** Inhalt des Elements */
   children: React.ReactNode
-  /** Callback bei Swipe links (Loeschen) */
+  /** Callback bei Swipe links (Löschen) */
   onSwipeLeft?: () => void
   /** Callback bei Swipe rechts (Archivieren) */
   onSwipeRight?: () => void
@@ -44,9 +44,9 @@ export interface SwipeableItemProps {
   rightAction?: SwipeActionConfig
   /** Swipe deaktivieren */
   disabled?: boolean
-  /** Zusaetzliche CSS-Klassen */
+  /** Zusätzliche CSS-Klassen */
   className?: string
-  /** Threshold fuer vollstaendigen Swipe (0-1) */
+  /** Threshold für vollständigen Swipe (0-1) */
   threshold?: number
 }
 
@@ -56,7 +56,7 @@ export interface SwipeableItemProps {
 
 const DEFAULT_LEFT_ACTION: SwipeActionConfig = {
   type: "delete",
-  label: "Loeschen",
+  label: "Löschen",
   icon: <Trash2 className="h-5 w-5" />,
   color: "bg-destructive",
   requiresConfirmation: true,
@@ -73,7 +73,7 @@ const DEFAULT_RIGHT_ACTION: SwipeActionConfig = {
 // Constants
 // =============================================================================
 
-const SWIPE_THRESHOLD = 0.3 // 30% der Breite fuer Aktion
+const SWIPE_THRESHOLD = 0.3 // 30% der Breite für Aktion
 const MAX_SWIPE = 0.7 // Maximaler Swipe (70% der Breite)
 const ANIMATION_DURATION = 200 // ms
 
@@ -150,7 +150,7 @@ export function SwipeableItem({
     const deltaTime = Date.now() - startTime.current
     const velocity = Math.abs(translateX) / deltaTime
 
-    // Schneller Swipe oder ueber Threshold
+    // Schneller Swipe oder über Threshold
     const isQuickSwipe = velocity > 0.5 && Math.abs(translateX) > 50
     const isOverThreshold = Math.abs(translateX) > thresholdDistance
 
@@ -178,14 +178,14 @@ export function SwipeableItem({
     }
   }, [isDragging, translateX, threshold, leftAction, rightAction])
 
-  // Aktion ausfuehren
+  // Aktion ausführen
   const handleAction = useCallback(
     (direction: "left" | "right") => {
       // Animation: Element raussliden
       const containerWidth = containerRef.current?.offsetWidth || 300
       setTranslateX(direction === "left" ? -containerWidth : containerWidth)
 
-      // Nach Animation: Callback ausfuehren
+      // Nach Animation: Callback ausführen
       setTimeout(() => {
         if (direction === "left") {
           leftAction.onAction?.()
@@ -202,13 +202,13 @@ export function SwipeableItem({
     [leftAction, rightAction, onSwipeLeft, onSwipeRight]
   )
 
-  // Bestaetigung abbrechen
+  // Bestätigung abbrechen
   const handleCancelConfirmation = useCallback(() => {
     setShowConfirmation(null)
     setTranslateX(0)
   }, [])
 
-  // Bestaetigung annehmen
+  // Bestätigung annehmen
   const handleConfirm = useCallback(() => {
     if (showConfirmation) {
       handleAction(showConfirmation)

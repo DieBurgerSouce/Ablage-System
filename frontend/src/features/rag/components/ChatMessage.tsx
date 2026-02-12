@@ -19,6 +19,9 @@ import {
 import type { ChatMessage as ChatMessageType } from '../types/chat-types';
 import { formatTimestamp, formatSimilarity } from '../types/chat-types';
 import { ChatActionCard } from './ChatActionCard';
+import { DailyAgendaCard } from './DailyAgendaCard';
+import { ComparisonChart } from './ComparisonChart';
+import { SkontoCard } from './SkontoCard';
 
 interface ChatMessageProps {
     message: ChatMessageType;
@@ -140,16 +143,42 @@ export const ChatMessage = memo(function ChatMessage({
 
                 {/* Actions */}
                 {isAssistant && message.actions && message.actions.length > 0 && (
-                    <div className="flex flex-col gap-2 mt-2 w-full max-w-md">
-                        {message.actions.map((action) => (
-                            <ChatActionCard
-                                key={action.action_id}
-                                action={action}
-                                onConfirm={onConfirmAction || (() => {})}
-                                onReject={onRejectAction || (() => {})}
-                                isConfirming={confirmingActionId === action.action_id}
-                            />
-                        ))}
+                    <div className="flex flex-col gap-3 mt-2 w-full max-w-md">
+                        {message.actions.map((action) => {
+                            if (action.result_type === 'agenda' && action.agenda_items) {
+                                return (
+                                    <DailyAgendaCard
+                                        key={action.action_id}
+                                        items={action.agenda_items}
+                                    />
+                                );
+                            }
+                            if (action.result_type === 'comparison' && action.comparison_data) {
+                                return (
+                                    <ComparisonChart
+                                        key={action.action_id}
+                                        data={action.comparison_data}
+                                    />
+                                );
+                            }
+                            if (action.result_type === 'skonto' && action.skonto_items) {
+                                return (
+                                    <SkontoCard
+                                        key={action.action_id}
+                                        items={action.skonto_items}
+                                    />
+                                );
+                            }
+                            return (
+                                <ChatActionCard
+                                    key={action.action_id}
+                                    action={action}
+                                    onConfirm={onConfirmAction || (() => {})}
+                                    onReject={onRejectAction || (() => {})}
+                                    isConfirming={confirmingActionId === action.action_id}
+                                />
+                            );
+                        })}
                     </div>
                 )}
 

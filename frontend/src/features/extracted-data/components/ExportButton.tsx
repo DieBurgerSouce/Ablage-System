@@ -27,7 +27,7 @@ interface ExportButtonProps {
 const DOCUMENT_TYPE_FILENAMES: Record<string, string> = {
     invoice: "rechnungen",
     order: "bestellungen",
-    contract: "vertraege",
+    contract: "verträge",
 };
 
 export function ExportButton({ documentType = "invoice", className }: ExportButtonProps) {

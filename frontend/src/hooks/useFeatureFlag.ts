@@ -16,7 +16,7 @@ interface AllFlagsResult {
 }
 
 /**
- * Hook fuer Feature-Flag Evaluation.
+ * Hook für Feature-Flag Evaluation.
  *
  * @param key - Feature-Flag Key
  * @returns Feature-Flag Evaluation Result
@@ -46,7 +46,7 @@ export function useFeatureFlag(key: string) {
 }
 
 /**
- * Hook fuer alle Feature-Flags auf einmal.
+ * Hook für alle Feature-Flags auf einmal.
  */
 export function useAllFeatureFlags() {
   const query = useQuery<AllFlagsResult>({

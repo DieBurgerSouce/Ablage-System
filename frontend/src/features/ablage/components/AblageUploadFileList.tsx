@@ -3,10 +3,10 @@
  *
  * Zeigt alle hochgeladenen Dateien mit:
  * - DirectionBadge (Eingangs-/Ausgangsrechnung)
- * - EntityBadge (erkannter Geschaeftspartner)
+ * - EntityBadge (erkannter Geschäftspartner)
  * - RenameSuggestionBadge (Umbenennungsvorschlag)
  * - Status-Icons und Progress
- * - Review-Button zum Oeffnen des OCRReviewModal
+ * - Review-Button zum Öffnen des OCRReviewModal
  *
  * Basiert auf dem Upload Wizard Pattern.
  */
@@ -101,10 +101,10 @@ function getStatusText(
     case 'uploading':
       return `Wird hochgeladen... ${progress}%`;
     case 'processing':
-      if (ocrProgress !== undefined && ocrProgress > 0) return `OCR laeuft... ${ocrProgress}%`;
-      return 'OCR laeuft...';
+      if (ocrProgress !== undefined && ocrProgress > 0) return `OCR läuft... ${ocrProgress}%`;
+      return 'OCR läuft...';
     case 'review':
-      return 'Bereit zur Pruefung';
+      return 'Bereit zur Prüfung';
     case 'completed':
       return 'Gespeichert';
     case 'error':
@@ -135,7 +135,7 @@ function DirectionBadge({
           className="gap-1 bg-orange-500/10 text-orange-600 border-orange-500/30 dark:text-orange-400"
         >
           <AlertTriangle className="w-3 h-3" />
-          Bitte waehlen
+          Bitte wählen
         </Badge>
         {onConfirm && (
           <div className="flex gap-1 ml-1">
@@ -188,7 +188,7 @@ function DirectionBadge({
               variant="ghost"
               size="sm"
               className="h-6 w-6 p-0"
-              title="Bestaetigen"
+              title="Bestätigen"
               onClick={(e) => {
                 e.stopPropagation();
                 onConfirm(direction);
@@ -200,7 +200,7 @@ function DirectionBadge({
               variant="ghost"
               size="sm"
               className="h-6 px-2 text-xs"
-              title={isIncoming ? 'Zu Ausgangsrechnung aendern' : 'Zu Eingangsrechnung aendern'}
+              title={isIncoming ? 'Zu Ausgangsrechnung ändern' : 'Zu Eingangsrechnung ändern'}
               onClick={(e) => {
                 e.stopPropagation();
                 onConfirm(isIncoming ? 'outgoing' : 'incoming');
@@ -246,7 +246,7 @@ function DirectionBadge({
 }
 
 /**
- * EntityBadge - Zeigt den erkannten Geschaeftspartner (Lieferant/Kunde)
+ * EntityBadge - Zeigt den erkannten Geschäftspartner (Lieferant/Kunde)
  */
 function EntityBadge({
   entityName,
@@ -272,7 +272,7 @@ function EntityBadge({
           : 'bg-slate-500/10 text-slate-600 border-slate-500/30 dark:text-slate-400',
         isLowConfidence && 'border-dashed'
       )}
-      title={`${typeLabel}: ${entityName}${autoLinked ? ' (automatisch verknuepft)' : ''}${confidence ? ` - ${Math.round(confidence * 100)}% Konfidenz` : ''}`}
+      title={`${typeLabel}: ${entityName}${autoLinked ? ' (automatisch verknüpft)' : ''}${confidence ? ` - ${Math.round(confidence * 100)}% Konfidenz` : ''}`}
     >
       {autoLinked ? (
         <Link2 className="w-3 h-3 flex-shrink-0" />
@@ -286,7 +286,7 @@ function EntityBadge({
 }
 
 /**
- * RenameSuggestionBadge - Zeigt Umbenennungsvorschlag mit Bestaetigen-Button
+ * RenameSuggestionBadge - Zeigt Umbenennungsvorschlag mit Bestätigen-Button
  */
 function RenameSuggestionBadge({
   suggestion,
@@ -330,7 +330,7 @@ function RenameSuggestionBadge({
           size="sm"
           className="h-6 w-6 p-0"
           disabled={isLoading}
-          title="Umbenennung bestaetigen"
+          title="Umbenennung bestätigen"
           onClick={(e) => {
             e.stopPropagation();
             onConfirm();
@@ -460,7 +460,7 @@ function FileItem({
               }}
             >
               <Eye className="w-4 h-4" />
-              Pruefen
+              Prüfen
             </Button>
           )}
           <Button

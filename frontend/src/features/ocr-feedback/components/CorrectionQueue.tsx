@@ -2,7 +2,7 @@
  * CorrectionQueue Component
  *
  * Zeigt niedrig-konfidente OCR-Extraktionen zur Korrektur.
- * Mit Prioritaets-Filter und Inline-Korrektur-Dialog.
+ * Mit Prioritäts-Filter und Inline-Korrektur-Dialog.
  */
 
 import { useState } from 'react';

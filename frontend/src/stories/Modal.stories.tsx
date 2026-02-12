@@ -1,7 +1,7 @@
 /**
  * Modal/Dialog Component Stories
  *
- * Dialog und AlertDialog Stories fuer Visual Regression Testing.
+ * Dialog und AlertDialog Stories für Visual Regression Testing.
  * Basiert auf Radix UI Dialog.
  */
 
@@ -66,13 +66,13 @@ export const DialogDefault: Story = {
     render: () => (
         <Dialog>
             <DialogTrigger asChild>
-                <Button>Dialog oeffnen</Button>
+                <Button>Dialog öffnen</Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle>Dialog Titel</DialogTitle>
                     <DialogDescription>
-                        Eine Beschreibung des Dialogs. Hier koennen Sie weitere
+                        Eine Beschreibung des Dialogs. Hier können Sie weitere
                         Informationen bereitstellen.
                     </DialogDescription>
                 </DialogHeader>
@@ -102,7 +102,7 @@ export const DialogWithForm: Story = {
                 <DialogHeader>
                     <DialogTitle>Profil bearbeiten</DialogTitle>
                     <DialogDescription>
-                        Aendern Sie hier Ihre Profilinformationen.
+                        Ändern Sie hier Ihre Profilinformationen.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -128,7 +128,7 @@ export const DialogWithForm: Story = {
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button type="submit">Aenderungen speichern</Button>
+                    <Button type="submit">Änderungen speichern</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -147,7 +147,7 @@ export const DialogLarge: Story = {
                 <DialogHeader>
                     <DialogTitle>Dokumentdetails</DialogTitle>
                     <DialogDescription>
-                        Vollstaendige Informationen zum Dokument.
+                        Vollständige Informationen zum Dokument.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
@@ -159,7 +159,7 @@ export const DialogLarge: Story = {
                             </p>
                         </div>
                         <div>
-                            <Label>Groesse</Label>
+                            <Label>Größe</Label>
                             <p className="text-sm text-muted-foreground">245 KB</p>
                         </div>
                         <div>
@@ -184,7 +184,7 @@ export const DialogLarge: Story = {
                 </div>
                 <DialogFooter>
                     <DialogClose asChild>
-                        <Button variant="outline">Schliessen</Button>
+                        <Button variant="outline">Schließen</Button>
                     </DialogClose>
                     <Button>Herunterladen</Button>
                 </DialogFooter>
@@ -201,21 +201,21 @@ export const AlertDialogDefault: Story = {
             <AlertDialogTrigger asChild>
                 <Button variant="destructive">
                     <Trash2 className="mr-2 h-4 w-4" />
-                    Loeschen
+                    Löschen
                 </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle>Sind Sie sicher?</AlertDialogTitle>
                     <AlertDialogDescription>
-                        Diese Aktion kann nicht rueckgaengig gemacht werden. Das Dokument
-                        wird dauerhaft geloescht.
+                        Diese Aktion kann nicht rückgängig gemacht werden. Das Dokument
+                        wird dauerhaft gelöscht.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel>Abbrechen</AlertDialogCancel>
                     <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                        Loeschen
+                        Löschen
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
@@ -239,7 +239,7 @@ export const AlertDialogWarning: Story = {
                         <AlertDialogTitle>Warnung</AlertDialogTitle>
                     </div>
                     <AlertDialogDescription>
-                        Sie haben ungespeicherte Aenderungen. Moechten Sie die Seite
+                        Sie haben ungespeicherte Änderungen. Möchten Sie die Seite
                         wirklich verlassen?
                     </AlertDialogDescription>
                 </AlertDialogHeader>
@@ -329,7 +329,7 @@ export const SheetLeft: Story = {
                 <SheetHeader>
                     <SheetTitle>Navigation</SheetTitle>
                     <SheetDescription>
-                        Waehlen Sie einen Bereich aus.
+                        Wählen Sie einen Bereich aus.
                     </SheetDescription>
                 </SheetHeader>
                 <div className="py-4 space-y-2">
@@ -361,7 +361,7 @@ export const SheetBottom: Story = {
                 <SheetHeader>
                     <SheetTitle>Schnellaktionen</SheetTitle>
                     <SheetDescription>
-                        Waehlen Sie eine Aktion aus.
+                        Wählen Sie eine Aktion aus.
                     </SheetDescription>
                 </SheetHeader>
                 <div className="py-4 flex gap-4 justify-center">
@@ -395,7 +395,7 @@ function ControlledDialogExample() {
                     <p>Der Dialog ist {open ? 'offen' : 'geschlossen'}.</p>
                 </div>
                 <DialogFooter>
-                    <Button onClick={() => setOpen(false)}>Schliessen</Button>
+                    <Button onClick={() => setOpen(false)}>Schließen</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

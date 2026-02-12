@@ -1,7 +1,7 @@
 /**
  * Fraud Detection Dashboard
  *
- * Hauptseite fuer KI-gestuetzte Betrugserkennung.
+ * Hauptseite für KI-gestützte Betrugserkennung.
  */
 
 import { useState } from 'react';
@@ -61,7 +61,7 @@ export function FraudDashboard() {
             Fraud Detection
           </h1>
           <p className="text-muted-foreground">
-            KI-gestuetzte Betrugserkennung und Risikoanalyse
+            KI-gestützte Betrugserkennung und Risikoanalyse
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -165,7 +165,7 @@ export function FraudDashboard() {
                   setTypeFilter('all');
                 }}
               >
-                Filter zuruecksetzen
+                Filter zurücksetzen
               </Button>
             )}
           </div>
@@ -265,10 +265,10 @@ export function FraudDashboard() {
             <CardContent className="space-y-2 text-sm">
               <p>
                 <strong>Duplikat-Erkennung:</strong> Hash-basiert (Rechnungsnummer + Betrag + Lieferant)
-                und Fuzzy-Match fuer aehnliche Betraege
+                und Fuzzy-Match für ähnliche Beträge
               </p>
               <p>
-                <strong>Preis-Anomalien:</strong> Statistische Analyse mit Z-Score gegenueber
+                <strong>Preis-Anomalien:</strong> Statistische Analyse mit Z-Score gegenüber
                 historischem Durchschnitt pro Lieferant
               </p>
               <p>

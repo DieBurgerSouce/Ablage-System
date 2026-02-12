@@ -64,7 +64,7 @@ const CATEGORY_STYLES: Record<string, { bg: string; border: string; text: string
         border: 'border-blue-200 dark:border-blue-800',
         text: 'text-blue-600 dark:text-blue-400',
     },
-    geschaeftspartner: {
+    geschäftspartner: {
         bg: 'bg-purple-50 dark:bg-purple-900/20',
         border: 'border-purple-200 dark:border-purple-800',
         text: 'text-purple-600 dark:text-purple-400',
@@ -81,7 +81,7 @@ const CATEGORY_STYLES: Record<string, { bg: string; border: string; text: string
 const DATA_SOURCE_LABELS: Record<string, string> = {
     documents: 'Dokumente',
     invoices: 'Rechnungen',
-    entities: 'Geschaeftspartner',
+    entities: 'Geschäftspartner',
     ocr_results: 'OCR-Ergebnisse',
 };
 

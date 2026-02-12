@@ -1,7 +1,7 @@
 /**
  * Product Tour Feature Exports
  *
- * Interaktive Produkttour fuer gefuehrtes Onboarding
+ * Interaktive Produkttour für geführtes Onboarding
  */
 
 // Components

@@ -1,7 +1,7 @@
 /**
  * ConditionBuilder Component
  *
- * Visueller Builder fuer Regel-Bedingungen.
+ * Visueller Builder für Regel-Bedingungen.
  */
 
 import { useState } from 'react'
@@ -21,7 +21,7 @@ import { Switch } from '@/components/ui/switch'
 import { Plus, Trash2, GitBranch } from 'lucide-react'
 import type { RuleCondition, SimpleCondition, CompositeCondition, ConditionOperator } from '../types'
 
-// Vordefinierte Felder fuer Dokumentkontext
+// Vordefinierte Felder für Dokumentkontext
 const COMMON_FIELDS = [
   { value: 'amount', label: 'Betrag' },
   { value: 'document_type', label: 'Dokumenttyp' },
@@ -32,20 +32,20 @@ const COMMON_FIELDS = [
   { value: 'confidence', label: 'OCR-Confidence' },
   { value: 'created_at', label: 'Erstellt am' },
   { value: 'invoice_date', label: 'Rechnungsdatum' },
-  { value: 'due_date', label: 'Faelligkeitsdatum' },
+  { value: 'due_date', label: 'Fälligkeitsdatum' },
 ]
 
 const OPERATOR_OPTIONS: { value: ConditionOperator; label: string; group: string }[] = [
   // Vergleich
   { value: '==', label: 'ist gleich', group: 'Vergleich' },
   { value: '!=', label: 'ist ungleich', group: 'Vergleich' },
-  { value: '>', label: 'groesser als', group: 'Vergleich' },
-  { value: '>=', label: 'groesser oder gleich', group: 'Vergleich' },
+  { value: '>', label: 'größer als', group: 'Vergleich' },
+  { value: '>=', label: 'größer oder gleich', group: 'Vergleich' },
   { value: '<', label: 'kleiner als', group: 'Vergleich' },
   { value: '<=', label: 'kleiner oder gleich', group: 'Vergleich' },
   // String
-  { value: 'contains', label: 'enthaelt', group: 'Text' },
-  { value: 'not_contains', label: 'enthaelt nicht', group: 'Text' },
+  { value: 'contains', label: 'enthält', group: 'Text' },
+  { value: 'not_contains', label: 'enthält nicht', group: 'Text' },
   { value: 'starts_with', label: 'beginnt mit', group: 'Text' },
   { value: 'ends_with', label: 'endet mit', group: 'Text' },
   { value: 'matches', label: 'Regex-Match', group: 'Text' },
@@ -96,7 +96,7 @@ function SimpleConditionEditor({
               onValueChange={(value) => onChange({ ...condition, field: value })}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Feld waehlen" />
+                <SelectValue placeholder="Feld wählen" />
               </SelectTrigger>
               <SelectContent>
                 {COMMON_FIELDS.map((field) => (
@@ -144,7 +144,7 @@ function SimpleConditionEditor({
                   value: !isNaN(numVal) && val.trim() !== '' ? numVal : val,
                 })
               }}
-              placeholder={needsValue ? 'Wert eingeben' : '(nicht benoetigt)'}
+              placeholder={needsValue ? 'Wert eingeben' : '(nicht benötigt)'}
               disabled={!needsValue}
             />
           </div>
@@ -158,7 +158,7 @@ function SimpleConditionEditor({
             />
           </div>
 
-          {/* Loeschen */}
+          {/* Löschen */}
           <div className="col-span-1">
             <Button variant="ghost" size="icon" onClick={onRemove}>
               <Trash2 className="h-4 w-4 text-destructive" />
@@ -234,7 +234,7 @@ function ConditionGroupEditor({
           onClick={() => onChangeType(type === 'and' ? 'or' : 'and')}
         >
           <GitBranch className="h-3 w-3 mr-1" />
-          {type === 'and' ? 'UND (alle muessen zutreffen)' : 'ODER (eine muss zutreffen)'}
+          {type === 'and' ? 'UND (alle müssen zutreffen)' : 'ODER (eine muss zutreffen)'}
         </Badge>
 
         <span className="text-xs text-muted-foreground">
@@ -309,7 +309,7 @@ interface ConditionBuilderProps {
 }
 
 export function ConditionBuilder({ condition, onChange }: ConditionBuilderProps) {
-  // Normalisiere zu CompositeCondition fuer den Editor
+  // Normalisiere zu CompositeCondition für den Editor
   const isSimple = (c: RuleCondition): c is SimpleCondition => {
     return 'field' in c && 'op' in c
   }
@@ -325,7 +325,7 @@ export function ConditionBuilder({ condition, onChange }: ConditionBuilderProps)
     : normalizedCondition.or) ?? []
 
   const handleChange = (newConditions: Array<SimpleCondition | CompositeCondition>) => {
-    // Wenn nur eine einfache Bedingung, gib sie direkt zurueck
+    // Wenn nur eine einfache Bedingung, gib sie direkt zurück
     if (newConditions.length === 1 && isSimple(newConditions[0])) {
       onChange(newConditions[0])
     } else {
@@ -340,7 +340,7 @@ export function ConditionBuilder({ condition, onChange }: ConditionBuilderProps)
   return (
     <div className="space-y-4">
       <div className="text-sm text-muted-foreground">
-        Definieren Sie die Bedingungen, unter denen diese Regel ausgefuehrt wird.
+        Definieren Sie die Bedingungen, unter denen diese Regel ausgeführt wird.
       </div>
 
       <ConditionGroupEditor

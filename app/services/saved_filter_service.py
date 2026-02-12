@@ -421,6 +421,84 @@ class SavedFilterService:
             is_default=False,  # Kopien sind nicht default
         )
 
+    async def share_filter(
+        self,
+        filter_id: UUID,
+        user_id: UUID,
+        company_id: UUID
+    ) -> SavedFilter:
+        """Teilt einen Filter innerhalb der Company.
+
+        Args:
+            filter_id: Filter-ID
+            user_id: ID des aktuellen Users (muss Eigentuemer sein)
+            company_id: Company-ID
+
+        Returns:
+            Aktualisierter SavedFilter
+
+        Raises:
+            NotFoundError: Filter nicht gefunden
+            ForbiddenError: Kein Schreibzugriff (nicht Eigentuemer)
+        """
+        saved_filter = await self._get_owned_filter(filter_id, user_id)
+
+        # Setze is_shared auf True
+        saved_filter.is_shared = True
+        saved_filter.updated_at = datetime.now(timezone.utc)
+        await self.db.flush()
+
+        import structlog
+        logger = structlog.get_logger(__name__)
+        logger.info(
+            "filter_shared",
+            filter_id=str(filter_id),
+            user_id=str(user_id),
+            company_id=str(company_id),
+            filter_name=saved_filter.name
+        )
+
+        return saved_filter
+
+    async def get_shared_filters(
+        self,
+        user_id: UUID,
+        company_id: UUID,
+        feature: Optional[str] = None
+    ) -> List[SavedFilter]:
+        """Hole alle Filter die mit dem User geteilt wurden.
+
+        Args:
+            user_id: ID des aktuellen Users
+            company_id: Company-ID
+            feature: Optional: Filter nach Feature
+
+        Returns:
+            Liste von geteilten SavedFilter
+        """
+        conditions = [
+            SavedFilter.company_id == company_id,
+            SavedFilter.is_shared == True,  # noqa: E712
+            SavedFilter.user_id != user_id,  # Nicht eigene Filter
+            SavedFilter.deleted_at.is_(None),
+        ]
+
+        if feature:
+            self._validate_feature(feature)
+            conditions.append(SavedFilter.feature == feature)
+
+        query = (
+            select(SavedFilter)
+            .where(and_(*conditions))
+            .order_by(
+                SavedFilter.use_count.desc(),
+                SavedFilter.last_used_at.desc().nullslast(),
+            )
+        )
+
+        result = await self.db.execute(query)
+        return list(result.scalars().all())
+
     # -------------------------------------------------------------------------
     # Private Helper Methods
     # -------------------------------------------------------------------------

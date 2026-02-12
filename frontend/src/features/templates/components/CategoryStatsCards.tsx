@@ -4,7 +4,7 @@
  * Features:
  * - Anzahl Vorlagen pro Kategorie
  * - Standard-Vorlage Anzeige
- * - Klickbare Karten fuer Filter
+ * - Klickbare Karten für Filter
  */
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

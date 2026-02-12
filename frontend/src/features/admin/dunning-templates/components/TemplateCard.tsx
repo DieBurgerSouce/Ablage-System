@@ -61,7 +61,7 @@ export function TemplateCard({ template, isSelected, onClick }: TemplateCardProp
             <span>
               {template.fee > 0
                 ? `${template.fee.toFixed(2).replace('.', ',')} EUR`
-                : 'Keine Gebuehr'}
+                : 'Keine Gebühr'}
             </span>
           </div>
           <div className="flex items-center gap-2">

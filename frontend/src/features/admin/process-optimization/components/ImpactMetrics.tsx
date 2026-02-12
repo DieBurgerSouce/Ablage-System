@@ -10,7 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSuggestionStats, useProcessHealth, useMetricsSummary } from '../hooks/useProcessMining';
 
-// Annahmen fuer ROI-Berechnung
+// Annahmen für ROI-Berechnung
 const HOURLY_RATE = 50; // EUR pro Stunde
 const WORKING_HOURS_PER_WEEK = 40;
 const WEEKS_PER_YEAR = 50;
@@ -122,7 +122,7 @@ export function ImpactMetrics() {
               {stats?.total_activated || 0}
             </div>
             <div className="text-sm text-orange-600">
-              {stats?.total_pending || 0} weitere verfuegbar
+              {stats?.total_pending || 0} weitere verfügbar
             </div>
           </div>
         </div>

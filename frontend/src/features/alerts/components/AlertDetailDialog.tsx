@@ -2,7 +2,7 @@
  * Alert Detail Dialog Component
  *
  * Detailansicht eines Alerts mit:
- * - Vollstaendige Informationen
+ * - Vollständige Informationen
  * - Aktions-Buttons
  * - Metadaten und Kontext
  * - Zeitliche Informationen
@@ -185,7 +185,7 @@ export function AlertDetailDialog({
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <CheckCircle className="h-4 w-4" />
-                  <span>Bestaetigt</span>
+                  <span>Bestätigt</span>
                 </div>
                 <p>{formatDateTime(alert.acknowledged_at)}</p>
               </div>
@@ -195,7 +195,7 @@ export function AlertDetailDialog({
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span>Geloest</span>
+                  <span>Gelöst</span>
                 </div>
                 <p>{formatDateTime(alert.resolved_at)}</p>
               </div>
@@ -230,7 +230,7 @@ export function AlertDetailDialog({
             <>
               <Separator />
               <div className="space-y-2">
-                <h4 className="text-sm font-medium">Zusaetzliche Informationen</h4>
+                <h4 className="text-sm font-medium">Zusätzliche Informationen</h4>
                 <div className="bg-muted/50 rounded-lg p-3 space-y-2">
                   {Object.entries(alert.context).map(([key, value]) => (
                     <div key={key} className="flex justify-between text-sm">
@@ -255,7 +255,7 @@ export function AlertDetailDialog({
                   rel="noopener noreferrer"
                 >
                   <FileText className="mr-2 h-4 w-4" />
-                  Dokument oeffnen
+                  Dokument öffnen
                 </a>
               </Button>
             )}
@@ -267,7 +267,7 @@ export function AlertDetailDialog({
                   rel="noopener noreferrer"
                 >
                   <User className="mr-2 h-4 w-4" />
-                  Geschaeftspartner anzeigen
+                  Geschäftspartner anzeigen
                 </a>
               </Button>
             )}
@@ -280,7 +280,7 @@ export function AlertDetailDialog({
               {alert.status === "new" && (
                 <Button variant="outline" onClick={handleAcknowledge}>
                   <CheckCircle className="mr-2 h-4 w-4" />
-                  Bestaetigen
+                  Bestätigen
                 </Button>
               )}
               <Button variant="outline" onClick={handleDismiss}>
@@ -289,13 +289,13 @@ export function AlertDetailDialog({
               </Button>
               <Button onClick={handleResolve}>
                 <CheckCircle className="mr-2 h-4 w-4" />
-                Als geloest markieren
+                Als gelöst markieren
               </Button>
             </>
           )}
           {!isActive && (
             <Button variant="outline" onClick={onClose}>
-              Schliessen
+              Schließen
             </Button>
           )}
         </DialogFooter>

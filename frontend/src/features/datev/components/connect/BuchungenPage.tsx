@@ -164,7 +164,7 @@ export function BuchungenPage() {
                         }}
                     >
                         <SelectTrigger className="w-[250px]">
-                            <SelectValue placeholder="Verbindung waehlen..." />
+                            <SelectValue placeholder="Verbindung wählen..." />
                         </SelectTrigger>
                         <SelectContent>
                             {connectionsLoading ? (
@@ -225,7 +225,7 @@ export function BuchungenPage() {
                                 </p>
                             </div>
                             <div>
-                                <p className="text-sm text-muted-foreground">Integritaetsprobleme</p>
+                                <p className="text-sm text-muted-foreground">Integritätsprobleme</p>
                                 <p className="text-2xl font-bold text-red-600">
                                     {complianceReport.integrity_check.failed}
                                 </p>
@@ -235,7 +235,7 @@ export function BuchungenPage() {
                             <div className="mt-4 p-3 bg-red-50 dark:bg-red-950 rounded-md">
                                 <div className="flex items-center gap-2 text-red-600 mb-2">
                                     <AlertTriangle className="h-4 w-4" />
-                                    <span className="font-medium">Integritaetsprobleme erkannt</span>
+                                    <span className="font-medium">Integritätsprobleme erkannt</span>
                                 </div>
                                 <ul className="text-sm text-red-600 space-y-1">
                                     {complianceReport.integrity_check.issues.slice(0, 3).map((issue) => (
@@ -298,7 +298,7 @@ export function BuchungenPage() {
                         <div className="text-center py-10">
                             <FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
                             <p className="text-muted-foreground">
-                                Waehlen Sie eine Verbindung aus, um Buchungen anzuzeigen.
+                                Wählen Sie eine Verbindung aus, um Buchungen anzuzeigen.
                             </p>
                         </div>
                     ) : buchungenLoading ? (
@@ -364,19 +364,19 @@ export function BuchungenPage() {
                         <AlertDialogDescription>
                             {festschreibenAll ? (
                                 <>
-                                    Moechten Sie <strong>alle {pendingBuchungen.length} ausstehenden Buchungen</strong>{' '}
+                                    Möchten Sie <strong>alle {pendingBuchungen.length} ausstehenden Buchungen</strong>{' '}
                                     GoBD-konform festschreiben?
                                 </>
                             ) : (
                                 <>
-                                    Moechten Sie <strong>{selectedBuchungen.size} ausgewaehlte Buchungen</strong>{' '}
+                                    Möchten Sie <strong>{selectedBuchungen.size} ausgewählte Buchungen</strong>{' '}
                                     GoBD-konform festschreiben?
                                 </>
                             )}
                             <br />
                             <br />
-                            <strong>Achtung:</strong> Festgeschriebene Buchungen koennen nicht mehr geaendert
-                            oder geloescht werden. Diese Aktion ist unwiderruflich und dient der GoBD-Compliance.
+                            <strong>Achtung:</strong> Festgeschriebene Buchungen können nicht mehr geändert
+                            oder gelöscht werden. Diese Aktion ist unwiderruflich und dient der GoBD-Compliance.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

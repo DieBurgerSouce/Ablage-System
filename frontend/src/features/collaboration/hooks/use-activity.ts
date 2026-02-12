@@ -1,12 +1,12 @@
 /**
- * useActivity - Hook fuer Dokumenten-Aktivitaetsverlauf
+ * useActivity - Hook für Dokumenten-Aktivitätsverlauf
  *
- * Laedt die Aktivitaetshistorie eines Dokuments.
+ * Lädt die Aktivitätshistorie eines Dokuments.
  * Integriert mit Backend API: /api/v1/documents/{documentId}/activity
  *
  * Enterprise Features:
  * - Error State mit Retry-Logik
- * - Stale Time fuer Performance
+ * - Stale Time für Performance
  */
 
 import { useQuery } from '@tanstack/react-query';

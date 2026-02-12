@@ -1,8 +1,8 @@
 {
-  "title": "Geschaeftspartner",
+  "title": "Geschäftspartner",
   "subtitle": "Kunden- und Lieferantenverwaltung",
-  "entity": "Geschaeftspartner",
-  "entities": "Geschaeftspartner",
+  "entity": "Geschäftspartner",
+  "entities": "Geschäftspartner",
   "customer": "Kunde",
   "customers": "Kunden",
   "supplier": "Lieferant",
@@ -10,9 +10,9 @@
   "partner": "Partner",
   "partners": "Partner",
   "list": {
-    "title": "Geschaeftspartnerliste",
-    "empty": "Keine Geschaeftspartner vorhanden",
-    "searchPlaceholder": "Geschaeftspartner suchen...",
+    "title": "Geschäftspartnerliste",
+    "empty": "Keine Geschäftspartner vorhanden",
+    "searchPlaceholder": "Geschäftspartner suchen...",
     "columns": {
       "name": "Name",
       "type": "Typ",
@@ -29,7 +29,7 @@
       "riskScore": "Risiko-Score",
       "balance": "Saldo",
       "documents": "Dokumente",
-      "lastActivity": "Letzte Aktivitaet"
+      "lastActivity": "Letzte Aktivität"
     }
   },
   "type": {
@@ -48,8 +48,8 @@
     "archived": "Archiviert"
   },
   "detail": {
-    "title": "Geschaeftspartnerdetails",
-    "overview": "Uebersicht",
+    "title": "Geschäftspartnerdetails",
+    "overview": "Übersicht",
     "documents": "Dokumente",
     "transactions": "Transaktionen",
     "invoices": "Rechnungen",
@@ -72,7 +72,7 @@
     "website": "Website",
     "address": {
       "title": "Adresse",
-      "street": "Strasse",
+      "street": "Straße",
       "houseNumber": "Hausnummer",
       "postalCode": "Postleitzahl",
       "city": "Stadt",
@@ -95,15 +95,15 @@
     }
   },
   "actions": {
-    "create": "Geschaeftspartner anlegen",
+    "create": "Geschäftspartner anlegen",
     "edit": "Bearbeiten",
-    "delete": "Loeschen",
+    "delete": "Löschen",
     "archive": "Archivieren",
     "restore": "Wiederherstellen",
     "block": "Sperren",
     "unblock": "Entsperren",
-    "merge": "Zusammenfuehren",
-    "linkDocument": "Dokument verknuepfen",
+    "merge": "Zusammenführen",
+    "linkDocument": "Dokument verknüpfen",
     "sendEmail": "E-Mail senden",
     "exportData": "Daten exportieren"
   },
@@ -115,30 +115,30 @@
     "high": "Hohes Risiko",
     "critical": "Kritisches Risiko",
     "factors": {
-      "paymentDelay": "Zahlungsverzoegerung",
+      "paymentDelay": "Zahlungsverzögerung",
       "defaultRate": "Ausfallrate",
       "invoiceVolume": "Rechnungsvolumen",
-      "documentFrequency": "Dokumenthaeufigkeit",
+      "documentFrequency": "Dokumenthäufigkeit",
       "relationshipAge": "Beziehungsdauer"
     },
     "lastCalculated": "Zuletzt berechnet: {{date}}",
     "recalculate": "Neu berechnen"
   },
   "import": {
-    "title": "Geschaeftspartner importieren",
+    "title": "Geschäftspartner importieren",
     "lexware": "Aus Lexware importieren",
     "csv": "CSV-Import",
     "excel": "Excel-Import",
     "mapping": "Felderzuordnung",
     "preview": "Vorschau",
     "conflicts": "Konflikte",
-    "success": "{{count}} Geschaeftspartner importiert",
+    "success": "{{count}} Geschäftspartner importiert",
     "duplicates": "{{count}} Duplikate gefunden",
     "errors": "{{count}} Fehler"
   },
   "linking": {
-    "title": "Automatische Verknuepfung",
-    "subtitle": "Dokumente automatisch Geschaeftspartnern zuordnen",
+    "title": "Automatische Verknüpfung",
+    "subtitle": "Dokumente automatisch Geschäftspartnern zuordnen",
     "confidence": "Sicherheit: {{percent}}%",
     "matchBy": "Erkannt anhand:",
     "matchTypes": {
@@ -149,14 +149,14 @@
       "email": "E-Mail",
       "name": "Name"
     },
-    "approve": "Verknuepfung bestaetigen",
-    "reject": "Verknuepfung ablehnen",
+    "approve": "Verknüpfung bestätigen",
+    "reject": "Verknüpfung ablehnen",
     "manual": "Manuell zuordnen"
   },
   "validation": {
-    "vatIdInvalid": "Ungueltige USt-IdNr.",
-    "ibanInvalid": "Ungueltige IBAN",
-    "emailInvalid": "Ungueltige E-Mail-Adresse",
+    "vatIdInvalid": "Ungültige USt-IdNr.",
+    "ibanInvalid": "Ungültige IBAN",
+    "emailInvalid": "Ungültige E-Mail-Adresse",
     "customerNumberExists": "Kundennummer bereits vergeben",
     "supplierNumberExists": "Lieferantennummer bereits vergeben"
   }

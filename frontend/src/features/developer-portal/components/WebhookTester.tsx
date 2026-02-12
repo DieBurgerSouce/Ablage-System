@@ -97,17 +97,17 @@ function WebhookCard({ webhook }: { webhook: WebhookSubscription }) {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Webhook wirklich loeschen?')) return;
+    if (!confirm('Webhook wirklich löschen?')) return;
     try {
       await deleteMutation.mutateAsync(webhook.id);
-      toast.success('Webhook geloescht');
+      toast.success('Webhook gelöscht');
     } catch {
-      toast.error('Loeschen fehlgeschlagen');
+      toast.error('Löschen fehlgeschlagen');
     }
   };
 
   const handleRotateSecret = async () => {
-    if (!confirm('Secret wirklich rotieren? Das alte Secret ist danach ungueltig.')) return;
+    if (!confirm('Secret wirklich rotieren? Das alte Secret ist danach ungültig.')) return;
     try {
       const result = await rotateMutation.mutateAsync(webhook.id);
       toast.success('Neues Secret: ' + result.secret);
@@ -167,7 +167,7 @@ function WebhookCard({ webhook }: { webhook: WebhookSubscription }) {
         {/* Test Section */}
         <div className="flex items-end gap-2 pt-2 border-t">
           <div className="flex-1">
-            <Label className="text-xs">Event-Typ fuer Test</Label>
+            <Label className="text-xs">Event-Typ für Test</Label>
             <Select value={selectedEventType} onValueChange={setSelectedEventType}>
               <SelectTrigger>
                 <SelectValue />
@@ -272,7 +272,7 @@ function CreateWebhookDialog() {
 
   const handleCreate = async () => {
     if (!name || !url || selectedEvents.length === 0) {
-      toast.error('Bitte alle Pflichtfelder ausfuellen');
+      toast.error('Bitte alle Pflichtfelder ausfüllen');
       return;
     }
 
@@ -317,7 +317,7 @@ function CreateWebhookDialog() {
         <DialogHeader>
           <DialogTitle>Neuen Webhook erstellen</DialogTitle>
           <DialogDescription>
-            Konfigurieren Sie einen Webhook fuer Event-Benachrichtigungen
+            Konfigurieren Sie einen Webhook für Event-Benachrichtigungen
           </DialogDescription>
         </DialogHeader>
 
@@ -347,7 +347,7 @@ function CreateWebhookDialog() {
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={handleClose}>Schliessen</Button>
+              <Button onClick={handleClose}>Schließen</Button>
             </DialogFooter>
           </div>
         ) : (
@@ -465,7 +465,7 @@ export function WebhookTester() {
             <Webhook className="h-12 w-12 mx-auto mb-4 opacity-20" />
             <p className="text-muted-foreground">Keine Webhooks konfiguriert</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Erstellen Sie einen Webhook fuer Echtzeit-Benachrichtigungen
+              Erstellen Sie einen Webhook für Echtzeit-Benachrichtigungen
             </p>
           </CardContent>
         </Card>

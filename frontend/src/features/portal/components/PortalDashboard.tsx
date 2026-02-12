@@ -63,7 +63,7 @@ export function PortalDashboard() {
         <KPICard
           title="Überfällig"
           value={summary?.overdue_count}
-          description={`${formatCurrency(summary?.overdue_amount)} ueberfaellig`}
+          description={`${formatCurrency(summary?.overdue_amount)} überfällig`}
           icon={AlertCircle}
           loading={summaryLoading}
           variant="destructive"

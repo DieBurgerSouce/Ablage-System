@@ -1,7 +1,7 @@
 /**
  * Process Optimization Admin Route
  *
- * Route fuer das Process Mining und Optimierungs-Dashboard.
+ * Route für das Process Mining und Optimierungs-Dashboard.
  * Vision 2.0 Phase 3
  */
 

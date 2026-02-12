@@ -5,8 +5,10 @@ Unified Search API Endpoint.
 Vereint Dokument-Suche und Chunk-basierte RAG-Suche in einem Endpoint.
 """
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 from uuid import UUID
+
+from app.core.types import JSONDict
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -235,7 +237,7 @@ async def unified_search(
     summary="Verfuegbare Suchmodi",
     description="Gibt die verfuegbaren Suchmodi zurueck"
 )
-async def get_search_modes() -> Dict[str, Any]:
+async def get_search_modes() -> JSONDict:
     """Gibt die verfuegbaren Suchmodi mit Beschreibungen zurueck."""
     return {
         "modes": [

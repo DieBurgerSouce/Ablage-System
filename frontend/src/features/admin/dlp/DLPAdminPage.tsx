@@ -1,7 +1,7 @@
 /**
  * DLP Admin Page
  *
- * Hauptseite fuer die Verwaltung von DLP-Policies.
+ * Hauptseite für die Verwaltung von DLP-Policies.
  */
 
 import { useState } from 'react';
@@ -52,7 +52,7 @@ export function DLPAdminPage() {
             Data Loss Prevention
           </h1>
           <p className="text-muted-foreground">
-            Schuetzen Sie sensible Dokumente durch Zugriffskontrollen und Wasserzeichen.
+            Schützen Sie sensible Dokumente durch Zugriffskontrollen und Wasserzeichen.
           </p>
         </div>
 
@@ -140,7 +140,7 @@ export function DLPAdminPage() {
             <CardHeader>
               <CardTitle>DLP-Policies</CardTitle>
               <CardDescription>
-                Verwalten Sie Regeln fuer den Zugriff auf sensible Dokumente.
+                Verwalten Sie Regeln für den Zugriff auf sensible Dokumente.
               </CardDescription>
             </CardHeader>
             <CardContent>

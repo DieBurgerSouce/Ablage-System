@@ -18,7 +18,9 @@ import platform
 import sys
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
+
+from app.core.types import JSONDict
 import threading
 
 import structlog
@@ -95,7 +97,7 @@ class KomponentenStatus(BaseModel):
     gesund: bool = Field(..., description="Ist Komponente gesund?")
     nachricht: Optional[str] = Field(None, description="Status-Nachricht")
     latenz_ms: Optional[float] = Field(None, description="Antwortzeit in ms")
-    details: Optional[Dict[str, Any]] = Field(None, description="Weitere Details")
+    details: Optional[JSONDict] = Field(None, description="Weitere Details")
 
 
 class BasicHealthResponse(BaseModel):
@@ -509,7 +511,7 @@ async def check_dependencies(
     summary="OCR-Modell-Status",
     description="Zeigt Verfuegbarkeit und Ladezustand aller OCR-Modelle.",
 )
-async def model_health() -> Dict[str, Any]:
+async def model_health() -> JSONDict:
     """OCR-Modell-Verfuegbarkeit pruefen."""
     ocr_status = _check_ocr_models()
     return {
@@ -540,7 +542,7 @@ async def liveness_probe() -> Dict[str, str]:
 )
 async def readiness_probe(
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Kubernetes Readiness Probe."""
     db_status = await _check_database(db)
 
@@ -562,7 +564,7 @@ async def readiness_probe(
 )
 async def startup_probe(
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Kubernetes Startup Probe.
 
@@ -942,7 +944,7 @@ class OCRBackendHealth(BaseModel):
 
     gesund: bool = Field(..., description="Ist Backend gesund?")
     grund: Optional[str] = Field(None, description="Grund falls ungesund")
-    status: Optional[Dict[str, Any]] = Field(None, description="Backend-Status")
+    status: Optional[JSONDict] = Field(None, description="Backend-Status")
 
 
 class OCRHealthResponse(BaseModel):
@@ -1208,16 +1210,16 @@ class PipelineHealthResponse(BaseModel):
     circuit_breaker_enabled: bool = Field(..., description="Circuit Breaker aktiv")
     memory_guard_enabled: bool = Field(..., description="Memory Guard aktiv")
     min_confidence_threshold: float = Field(..., description="Min. Confidence Schwelle")
-    fallback_chain_status: Optional[Dict[str, Any]] = Field(
+    fallback_chain_status: Optional[JSONDict] = Field(
         None, description="Fallback Chain Metriken"
     )
-    circuit_breaker_status: Optional[Dict[str, Any]] = Field(
+    circuit_breaker_status: Optional[JSONDict] = Field(
         None, description="Circuit Breaker Status"
     )
-    memory_guard_status: Optional[Dict[str, Any]] = Field(
+    memory_guard_status: Optional[JSONDict] = Field(
         None, description="GPU Memory Guard Status"
     )
-    german_correction_stats: Optional[Dict[str, Any]] = Field(
+    german_correction_stats: Optional[JSONDict] = Field(
         None, description="German Correction Statistiken"
     )
 
@@ -1949,10 +1951,10 @@ class CacheStatsResponse(BaseModel):
 
     zeitstempel: str = Field(..., description="ISO-Zeitstempel")
     redis_verfuegbar: bool = Field(..., description="Redis erreichbar")
-    health_cache: Dict[str, Any] = Field(..., description="Health Check Cache Stats")
-    ocr_cache: Optional[Dict[str, Any]] = Field(None, description="OCR Cache Stats")
-    session_cache: Optional[Dict[str, Any]] = Field(None, description="Session Cache Stats")
-    redis_info: Optional[Dict[str, Any]] = Field(None, description="Redis Server Info")
+    health_cache: JSONDict = Field(..., description="Health Check Cache Stats")
+    ocr_cache: Optional[JSONDict] = Field(None, description="OCR Cache Stats")
+    session_cache: Optional[JSONDict] = Field(None, description="Session Cache Stats")
+    redis_info: Optional[JSONDict] = Field(None, description="Redis Server Info")
 
 
 @router.get(
@@ -1971,7 +1973,7 @@ async def cache_stats() -> CacheStatsResponse:
     - Redis Server Informationen
     """
     # Health check cache stats
-    health_cache_stats: Dict[str, Any] = {
+    health_cache_stats: JSONDict = {
         "cachetools_available": CACHETOOLS_AVAILABLE,
         "maxsize": HEALTH_CHECK_CACHE_MAXSIZE,
         "ttl_seconds": HEALTH_CHECK_CACHE_TTL,

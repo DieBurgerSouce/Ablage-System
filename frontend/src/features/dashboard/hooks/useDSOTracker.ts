@@ -1,8 +1,8 @@
 /**
  * DSO Tracker Hook
  *
- * React Query Hook fuer Forderungslaufzeit (Days Sales Outstanding).
- * Nutzt den globalen DateRange-Filter fuer zeitraumbasierte Abfragen.
+ * React Query Hook für Forderungslaufzeit (Days Sales Outstanding).
+ * Nutzt den globalen DateRange-Filter für zeitraumbasierte Abfragen.
  *
  * Phase C: Business KPIs
  */

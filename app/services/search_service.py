@@ -374,7 +374,7 @@ class SearchService:
         per_page: int = 20,
         sort_by: SortField = SortField.RELEVANCE,
         sort_order: SortOrder = SortOrder.DESC,
-        highlight: bool = True,
+        highlight: bool = False,
         similarity_threshold: Optional[float] = None,
         skip_cache: bool = False,
         rerank: bool = True,
@@ -636,9 +636,13 @@ class SearchService:
                             THEN :orig_filename_boost
                         ELSE :text_boost
                     END AS fts_rank,
-                    ts_headline('german_text', COALESCE(d.extracted_text, ''), sq.query,
-                        'MaxWords=50, MinWords=25, StartSel=<mark>, StopSel=</mark>'
-                    ) AS highlight
+                    CASE
+                        WHEN :enable_highlight THEN
+                            ts_headline('german_text', COALESCE(d.extracted_text, ''), sq.query,
+                                'MaxWords=35, MinWords=15, ShortWord=3, StartSel=<mark>, StopSel=</mark>'
+                            )
+                        ELSE NULL
+                    END AS highlight
                 FROM documents d, search_query sq
                 WHERE d.id IN (SELECT document_id FROM accessible_docs)
                     AND d.search_vector @@ sq.query
@@ -676,7 +680,8 @@ class SearchService:
             "offset": offset,
             "filename_boost": filename_boost,
             "orig_filename_boost": orig_filename_boost,
-            "text_boost": text_boost
+            "text_boost": text_boost,
+            "enable_highlight": highlight
         }
         params.update(self._get_filter_params(filters))
 

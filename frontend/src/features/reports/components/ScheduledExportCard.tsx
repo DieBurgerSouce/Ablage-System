@@ -66,15 +66,15 @@ function cronToGerman(cron: string): string {
   const [minute, hour, dayOfMonth, , dayOfWeek] = parts;
 
   if (dayOfWeek === '*' && dayOfMonth === '*') {
-    return `Taeglich um ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
+    return `Täglich um ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
   }
 
   if (dayOfWeek === '1' && dayOfMonth === '*') {
-    return `Woechentlich (Mo) um ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
+    return `Wöchentlich (Mo) um ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
   }
 
   if (dayOfWeek === '5' && dayOfMonth === '*') {
-    return `Woechentlich (Fr) um ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
+    return `Wöchentlich (Fr) um ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
   }
 
   if (dayOfWeek === '1-5' && dayOfMonth === '*') {
@@ -133,7 +133,7 @@ export function ScheduledExportCard({
                   ) : (
                     <Play className="h-4 w-4 mr-2" />
                   )}
-                  Jetzt ausfuehren
+                  Jetzt ausführen
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -141,7 +141,7 @@ export function ScheduledExportCard({
                   className="text-destructive focus:text-destructive"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Loeschen
+                  Löschen
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -189,7 +189,7 @@ export function ScheduledExportCard({
             )}
           </div>
 
-          {/* Letzte / Naechste Ausfuehrung */}
+          {/* Letzte / Nächste Ausführung */}
           <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
             {exportItem.last_run_at ? (
               <span className="flex items-center gap-1">
@@ -203,12 +203,12 @@ export function ScheduledExportCard({
             ) : (
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
-                Noch nicht ausgefuehrt
+                Noch nicht ausgeführt
               </span>
             )}
             {exportItem.next_run_at && exportItem.is_active && (
               <span>
-                Naechste:{' '}
+                Nächste:{' '}
                 {format(new Date(exportItem.next_run_at), 'dd.MM. HH:mm', {
                   locale: de,
                 })}
@@ -216,10 +216,10 @@ export function ScheduledExportCard({
             )}
           </div>
 
-          {/* Ausfuehrungen zaehler */}
+          {/* Ausführungen zaehler */}
           {exportItem.run_count > 0 && (
             <div className="text-xs text-muted-foreground">
-              {exportItem.run_count} Ausfuehrung{exportItem.run_count !== 1 ? 'en' : ''} insgesamt
+              {exportItem.run_count} Ausführung{exportItem.run_count !== 1 ? 'en' : ''} insgesamt
             </div>
           )}
         </div>

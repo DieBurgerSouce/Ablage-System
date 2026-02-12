@@ -1,13 +1,13 @@
 /**
- * ActivityFeed - Echtzeit-Aktivitaetsverlauf
+ * ActivityFeed - Echtzeit-Aktivitätsverlauf
  *
  * Features:
- * - Zeitstempel + Benutzer + Aktion Eintraege
- * - Aktionstypen: "hat Dokument hochgeladen", "hat Kommentar hinzugefuegt", etc.
+ * - Zeitstempel + Benutzer + Aktion Einträge
+ * - Aktionstypen: "hat Dokument hochgeladen", "hat Kommentar hinzugefügt", etc.
  * - Auto-Scroll zum neuesten Eintrag
- * - Max 50 Eintraege mit "Aeltere laden" Button
+ * - Max 50 Einträge mit "Ältere laden" Button
  * - Filter nach Aktionstyp
- * - WebSocket-Updates fuer neue Aktivitaeten
+ * - WebSocket-Updates für neue Aktivitäten
  */
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
@@ -69,7 +69,7 @@ const ACTIVITY_CONFIG: Record<
   },
   comment_added: {
     icon: MessageSquare,
-    label: 'hat Kommentar hinzugefuegt',
+    label: 'hat Kommentar hinzugefügt',
     color: 'text-amber-500',
   },
   comment_replied: {
@@ -79,12 +79,12 @@ const ACTIVITY_CONFIG: Record<
   },
   status_changed: {
     icon: CheckCircle,
-    label: 'hat Status geaendert',
+    label: 'hat Status geändert',
     color: 'text-emerald-500',
   },
   tags_changed: {
     icon: Tag,
-    label: 'hat Tags geaendert',
+    label: 'hat Tags geändert',
     color: 'text-orange-500',
   },
   metadata_updated: {
@@ -100,11 +100,11 @@ const ACTIVITY_CONFIG: Record<
 };
 
 const FILTER_OPTIONS: { value: ActivityType | 'all'; label: string }[] = [
-  { value: 'all', label: 'Alle Aktivitaeten' },
+  { value: 'all', label: 'Alle Aktivitäten' },
   { value: 'document_created', label: 'Hochgeladen' },
   { value: 'document_updated', label: 'Aktualisiert' },
   { value: 'comment_added', label: 'Kommentare' },
-  { value: 'status_changed', label: 'Statusaenderungen' },
+  { value: 'status_changed', label: 'Statusänderungen' },
   { value: 'document_shared', label: 'Geteilt' },
 ];
 
@@ -176,17 +176,17 @@ function ActivityEntry({ activity }: ActivityEntryProps) {
 // ==================== Main Component ====================
 
 interface ActivityFeedProps {
-  /** Initiale Aktivitaeten */
+  /** Initiale Aktivitäten */
   activities?: Activity[];
-  /** Maximale Eintraege im Feed */
+  /** Maximale Einträge im Feed */
   maxEntries?: number;
-  /** Callback zum Laden aelterer Eintraege */
+  /** Callback zum Laden älterer Einträge */
   onLoadMore?: () => void;
-  /** Gibt es weitere Eintraege */
+  /** Gibt es weitere Einträge */
   hasMore?: boolean;
   /** Laede-Status */
   isLoading?: boolean;
-  /** Hoehe des Scroll-Bereichs */
+  /** Höhe des Scroll-Bereichs */
   height?: string;
   className?: string;
 }
@@ -269,7 +269,7 @@ export function ActivityFeed({
       <div className="flex items-center justify-between px-3 py-2 border-b">
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-medium">Aktivitaeten</h3>
+          <h3 className="text-sm font-medium">Aktivitäten</h3>
           {activities.length > 0 && (
             <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
               {filteredActivities.length}
@@ -305,7 +305,7 @@ export function ActivityFeed({
           {filteredActivities.length === 0 && (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
               <Clock className="h-8 w-8 mb-2 opacity-50" />
-              <p className="text-sm">Keine Aktivitaeten vorhanden</p>
+              <p className="text-sm">Keine Aktivitäten vorhanden</p>
             </div>
           )}
           {filteredActivities.map((activity) => (
@@ -323,7 +323,7 @@ export function ActivityFeed({
               onClick={onLoadMore}
               disabled={isLoading}
             >
-              {isLoading ? 'Wird geladen...' : 'Aeltere laden'}
+              {isLoading ? 'Wird geladen...' : 'Ältere laden'}
             </Button>
           </div>
         )}

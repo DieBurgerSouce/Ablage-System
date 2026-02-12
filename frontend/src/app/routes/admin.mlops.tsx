@@ -1,7 +1,7 @@
 /**
  * MLOps Admin Route
  *
- * Route fuer das Machine Learning Operations Dashboard.
+ * Route für das Machine Learning Operations Dashboard.
  */
 
 import { createFileRoute } from '@tanstack/react-router';

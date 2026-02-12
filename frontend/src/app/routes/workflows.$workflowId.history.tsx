@@ -1,7 +1,7 @@
 /**
  * Workflow Execution History Route
  *
- * Zeigt die Ausfuehrungshistorie eines Workflows.
+ * Zeigt die Ausführungshistorie eines Workflows.
  */
 
 import { createFileRoute } from '@tanstack/react-router';

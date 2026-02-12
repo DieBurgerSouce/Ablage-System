@@ -2,7 +2,7 @@
  * Imports API Service
  *
  * Kommuniziert mit den /api/v1/imports Endpoints
- * fuer Email-Import, Folder-Import und Import-Regeln.
+ * für Email-Import, Folder-Import und Import-Regeln.
  */
 
 import { AxiosError } from 'axios';
@@ -403,13 +403,13 @@ export const emailConfigService = {
   },
 
   /**
-   * Loescht eine Email-Konfiguration
+   * Löscht eine Email-Konfiguration
    */
   deleteConfig: async (configId: string): Promise<void> => {
     try {
       await apiClient.delete(`/imports/email/configs/${configId}`);
     } catch (error) {
-      handleApiError(error, 'Email-Konfiguration loeschen');
+      handleApiError(error, 'Email-Konfiguration löschen');
     }
   },
 
@@ -560,13 +560,13 @@ export const folderConfigService = {
   },
 
   /**
-   * Loescht eine Folder-Konfiguration
+   * Löscht eine Folder-Konfiguration
    */
   deleteConfig: async (configId: string): Promise<void> => {
     try {
       await apiClient.delete(`/imports/folder/configs/${configId}`);
     } catch (error) {
-      handleApiError(error, 'Folder-Konfiguration loeschen');
+      handleApiError(error, 'Folder-Konfiguration löschen');
     }
   },
 
@@ -708,18 +708,18 @@ export const importRulesService = {
   },
 
   /**
-   * Loescht eine Regel
+   * Löscht eine Regel
    */
   deleteRule: async (ruleId: string): Promise<void> => {
     try {
       await apiClient.delete(`/imports/rules/${ruleId}`);
     } catch (error) {
-      handleApiError(error, 'Import-Regel loeschen');
+      handleApiError(error, 'Import-Regel löschen');
     }
   },
 
   /**
-   * Ordnet Regeln neu (Prioritaeten)
+   * Ordnet Regeln neu (Prioritäten)
    */
   reorderRules: async (
     priorities: Array<{ ruleId: string; priority: number }>
@@ -789,7 +789,7 @@ export const importRulesService = {
   },
 
   /**
-   * Ruft verfuegbare Felder fuer Regeln ab
+   * Ruft verfügbare Felder für Regeln ab
    */
   getFields: async (): Promise<RuleFieldSchema[]> => {
     try {
@@ -804,7 +804,7 @@ export const importRulesService = {
   },
 
   /**
-   * Ruft verfuegbare Operatoren fuer Regeln ab
+   * Ruft verfügbare Operatoren für Regeln ab
    */
   getOperators: async (): Promise<RuleOperatorSchema[]> => {
     try {
@@ -819,7 +819,7 @@ export const importRulesService = {
   },
 
   /**
-   * Ruft verfuegbare Actions fuer Regeln ab
+   * Ruft verfügbare Actions für Regeln ab
    */
   getActions: async (): Promise<RuleActionSchema[]> => {
     try {

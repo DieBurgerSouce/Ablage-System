@@ -1,7 +1,7 @@
 /**
  * OCR Feedback API Client
  *
- * API fuer das OCR-Korrektur-System mit Gamification.
+ * API für das OCR-Korrektur-System mit Gamification.
  * Leaderboard, Punkte, Achievements und Korrektur-Queue.
  */
 

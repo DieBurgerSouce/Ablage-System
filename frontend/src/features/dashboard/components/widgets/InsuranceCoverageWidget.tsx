@@ -1,14 +1,14 @@
 /**
- * Insurance Coverage Widget fuer Dashboard
+ * Insurance Coverage Widget für Dashboard
  *
- * Zeigt Versicherungsschutz-Uebersicht:
- * - Deckungsluecken
- * - Kuendigungsfristen
- * - Praemien-Uebersicht
+ * Zeigt Versicherungsschutz-Übersicht:
+ * - Deckungslücken
+ * - Kündigungsfristen
+ * - Praemien-Übersicht
  * - Status der Policen
  *
  * Enterprise-Grade Features:
- * - ErrorBoundary fuer graceful degradation
+ * - ErrorBoundary für graceful degradation
  * - Konsistente Fehlerbehandlung
  * - Real-time Updates via WebSocket
  */
@@ -118,8 +118,8 @@ const getRiskLabel = (level: string): string => {
 
 const getDeadlineTypeLabel = (type: string): string => {
     const labels: Record<string, string> = {
-        cancellation: 'Kuendigungsfrist',
-        renewal: 'Verlaengerung',
+        cancellation: 'Kündigungsfrist',
+        renewal: 'Verlängerung',
         payment: 'Zahlung',
     };
     return labels[type] || type;
@@ -228,7 +228,7 @@ function InsuranceCoverageWidgetContent() {
         return (
             <div className="text-center py-6 text-muted-foreground">
                 <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
-                <p className="text-sm">Versicherungsdaten nicht verfuegbar</p>
+                <p className="text-sm">Versicherungsdaten nicht verfügbar</p>
             </div>
         );
     }
@@ -276,7 +276,7 @@ function InsuranceCoverageWidgetContent() {
                 <Alert variant="destructive" className="py-2">
                     <ShieldAlert className="h-4 w-4" />
                     <AlertDescription className="text-xs">
-                        {summary.coverage_gaps.length} Deckungsluecke{summary.coverage_gaps.length > 1 ? 'n' : ''} erkannt
+                        {summary.coverage_gaps.length} Deckungslücke{summary.coverage_gaps.length > 1 ? 'n' : ''} erkannt
                     </AlertDescription>
                 </Alert>
             )}
@@ -285,7 +285,7 @@ function InsuranceCoverageWidgetContent() {
             {summary.coverage_gaps.length > 0 && (
                 <div className="space-y-2">
                     <p className="text-xs font-medium text-muted-foreground">
-                        Deckungsluecken
+                        Deckungslücken
                     </p>
                     {summary.coverage_gaps.slice(0, 2).map((gap, index) => (
                         <CoverageGapItem key={index} gap={gap} />
@@ -313,10 +313,10 @@ function InsuranceCoverageWidgetContent() {
                 <div className="text-center py-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
                     <CheckCircle2 className="h-8 w-8 text-green-600 mx-auto mb-2" />
                     <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                        Versicherungsschutz vollstaendig
+                        Versicherungsschutz vollständig
                     </p>
                     <p className="text-xs text-green-600 dark:text-green-400">
-                        Keine Luecken oder dringenden Fristen
+                        Keine Lücken oder dringenden Fristen
                     </p>
                 </div>
             )}

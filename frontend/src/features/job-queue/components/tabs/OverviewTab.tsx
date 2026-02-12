@@ -1,7 +1,7 @@
 /**
  * Overview Tab
  *
- * KPI Cards und Mini-Charts für schnellen Ueberblick.
+ * KPI Cards und Mini-Charts für schnellen Überblick.
  */
 
 import { useMemo } from 'react';

@@ -1,11 +1,11 @@
 /**
  * Budget Dashboard Komponente
  *
- * Zentrale Ansicht fuer Budget-Verwaltung mit:
- * - Budget-Uebersicht mit Soll/Ist-Vergleich
+ * Zentrale Ansicht für Budget-Verwaltung mit:
+ * - Budget-Übersicht mit Soll/Ist-Vergleich
  * - Kostenstellen-Hierarchie
  * - Abweichungsanalyse (Drill-Down)
- * - Alert-System bei Ueberschreitung
+ * - Alert-System bei Überschreitung
  *
  * Phase 2.1 der Feature-Roadmap (Januar 2026)
  */
@@ -169,7 +169,7 @@ const STATUS_CONFIG: Record<
     textColor: 'text-red-700 dark:text-red-400',
   },
   exceeded: {
-    label: 'Ueberschritten',
+    label: 'Überschritten',
     icon: TrendingDown,
     color: '#dc2626',
     bgColor: 'bg-red-100 dark:bg-red-900',
@@ -206,7 +206,7 @@ const ALERT_SEVERITY_CONFIG: Record<
     bgColor: 'bg-orange-50 dark:bg-orange-950',
   },
   exceeded: {
-    label: 'Ueberschritten',
+    label: 'Überschritten',
     icon: TrendingDown,
     variant: 'destructive',
     bgColor: 'bg-red-50 dark:bg-red-950',
@@ -348,7 +348,7 @@ function BudgetSummaryCards({ summary }: { summary: BudgetSummary }) {
       <KPICard
         title="Verbleibendes Budget"
         value={formatCurrency(Math.abs(remaining))}
-        subtitle={isOverBudget ? 'Ueberschreitung' : 'Noch verfuegbar'}
+        subtitle={isOverBudget ? 'Überschreitung' : 'Noch verfügbar'}
         icon={
           isOverBudget ? (
             <AlertTriangle className="h-6 w-6 text-red-500" />
@@ -689,7 +689,7 @@ function AlertsPanel({ budgetId }: { budgetId?: string }) {
                 ) : (
                   <Check className="h-4 w-4" />
                 )}
-                Bestaetigen
+                Bestätigen
               </Button>
             </AlertTitle>
             <AlertDescription className="mt-2">
@@ -775,7 +775,7 @@ function BudgetSelector({ selectedBudgetId, onSelect }: BudgetSelectorProps) {
   return (
     <Select value={selectedBudgetId ?? 'none'} onValueChange={onSelect}>
       <SelectTrigger className="w-[250px]">
-        <SelectValue placeholder="Budget auswaehlen" />
+        <SelectValue placeholder="Budget auswählen" />
       </SelectTrigger>
       <SelectContent>
         {budgets.map((budget) => (
@@ -843,11 +843,11 @@ export function BudgetDashboard({ initialBudgetId }: BudgetDashboardProps) {
               <Wallet className="h-5 w-5" />
               Budget-Verwaltung
             </CardTitle>
-            <CardDescription>Waehlen Sie ein Budget aus, um Details anzuzeigen</CardDescription>
+            <CardDescription>Wählen Sie ein Budget aus, um Details anzuzeigen</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Building2 className="h-16 w-16 text-muted-foreground mb-4" />
-            <p className="text-lg font-medium mb-4">Kein Budget ausgewaehlt</p>
+            <p className="text-lg font-medium mb-4">Kein Budget ausgewählt</p>
             <BudgetSelector selectedBudgetId={selectedBudgetId} onSelect={setSelectedBudgetId} />
           </CardContent>
         </Card>
@@ -907,7 +907,7 @@ export function BudgetDashboard({ initialBudgetId }: BudgetDashboardProps) {
               disabled={closeMutation.isPending}
             >
               {closeMutation.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-              Budget abschliessen
+              Budget abschließen
             </Button>
           )}
         </div>
@@ -933,7 +933,7 @@ export function BudgetDashboard({ initialBudgetId }: BudgetDashboardProps) {
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Uebersicht</TabsTrigger>
+          <TabsTrigger value="overview">Übersicht</TabsTrigger>
           <TabsTrigger value="variance">Abweichungsanalyse</TabsTrigger>
           <TabsTrigger value="alerts">
             Alerts
@@ -1025,7 +1025,7 @@ export function BudgetDashboard({ initialBudgetId }: BudgetDashboardProps) {
                 <VarianceReportTable report={varianceReport} />
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
-                  Keine Abweichungsdaten verfuegbar
+                  Keine Abweichungsdaten verfügbar
                 </div>
               )}
             </CardContent>
@@ -1037,7 +1037,7 @@ export function BudgetDashboard({ initialBudgetId }: BudgetDashboardProps) {
           <Card>
             <CardHeader>
               <CardTitle>Budget-Alerts</CardTitle>
-              <CardDescription>Warnungen und Benachrichtigungen bei Budgetueberschreitung</CardDescription>
+              <CardDescription>Warnungen und Benachrichtigungen bei Budgetüberschreitung</CardDescription>
             </CardHeader>
             <CardContent>
               <AlertsPanel budgetId={selectedBudgetId} />

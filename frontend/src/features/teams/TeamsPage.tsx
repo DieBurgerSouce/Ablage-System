@@ -1,7 +1,7 @@
 /**
  * TeamsPage Component
  *
- * Hauptseite fuer die Team-Verwaltung mit Uebersicht aller Teams.
+ * Hauptseite für die Team-Verwaltung mit Übersicht aller Teams.
  */
 
 import { useState } from 'react';
@@ -322,11 +322,11 @@ export function TeamsPage() {
       <AlertDialog open={!!teamToDelete} onOpenChange={() => setTeamToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Team loeschen?</AlertDialogTitle>
+            <AlertDialogTitle>Team löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Moechten Sie das Team <strong>{teamToDelete?.name}</strong> wirklich loeschen? Alle
+              Möchten Sie das Team <strong>{teamToDelete?.name}</strong> wirklich löschen? Alle
               Mitgliedschaften und geteilten Dokumente werden entfernt. Diese Aktion kann nicht
-              rueckgaengig gemacht werden.
+              rückgängig gemacht werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -335,7 +335,7 @@ export function TeamsPage() {
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground"
             >
-              Loeschen
+              Löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -347,8 +347,8 @@ export function TeamsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Team archivieren?</AlertDialogTitle>
             <AlertDialogDescription>
-              Moechten Sie das Team <strong>{teamToArchive?.name}</strong> archivieren? Das Team
-              wird deaktiviert, bleibt aber erhalten und kann spaeter wiederhergestellt werden.
+              Möchten Sie das Team <strong>{teamToArchive?.name}</strong> archivieren? Das Team
+              wird deaktiviert, bleibt aber erhalten und kann später wiederhergestellt werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

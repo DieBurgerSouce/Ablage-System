@@ -132,7 +132,7 @@ export function ActionProposalCard({
             {action.requires_confirmation && (
               <Badge variant="outline\" className="text-xs">
                 <AlertTriangle className="mr-1 h-3 w-3" />
-                Bestaetigung
+                Bestätigung
               </Badge>
             )}
           </div>
@@ -242,7 +242,7 @@ export function ActionProposalCard({
               ) : (
                 <Play className="mr-2 h-4 w-4" />
               )}
-              Ausfuehren
+              Ausführen
             </Button>
             <Button variant="outline" size="sm" onClick={onDismiss}>
               Verwerfen
@@ -260,7 +260,7 @@ export function ActionProposalCard({
             ) : (
               <Undo2 className="mr-2 h-4 w-4" />
             )}
-            Rueckgaengig
+            Rückgängig
           </Button>
         ) : null}
       </div>
@@ -269,10 +269,10 @@ export function ActionProposalCard({
       <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Aktion bestaetigen</AlertDialogTitle>
+            <AlertDialogTitle>Aktion bestätigen</AlertDialogTitle>
             <AlertDialogDescription>
-              Moechten Sie die Aktion "{getActionTypeLabel(action.action_type)}" wirklich
-              ausfuehren? Dies betrifft {action.affected_count} Elemente.
+              Möchten Sie die Aktion "{getActionTypeLabel(action.action_type)}" wirklich
+              ausführen? Dies betrifft {action.affected_count} Elemente.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -281,7 +281,7 @@ export function ActionProposalCard({
               {isExecuting ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
-              Bestaetigen
+              Bestätigen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

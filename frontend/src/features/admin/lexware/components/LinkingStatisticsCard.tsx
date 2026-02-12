@@ -1,12 +1,12 @@
 /**
- * LinkingStatisticsCard - Statistiken fuer Dokumenten-Verknuepfung
+ * LinkingStatisticsCard - Statistiken für Dokumenten-Verknüpfung
  *
- * WICHTIG: Types muessen EXAKT mit Backend uebereinstimmen!
+ * WICHTIG: Types müssen EXAKT mit Backend übereinstimmen!
  * Backend verwendet snake_case: total_documents, linked_documents, etc.
  * @see app/api/v1/lexware.py:LinkingStatistics
  *
  * Zeigt:
- * - Verknuepfte vs Unverknuepfte Dokumente (%)
+ * - Verknüpfte vs Unverknüpfte Dokumente (%)
  * - Matching-Strategie-Verteilung
  * - Confidence-Level-Verteilung
  * - Entity-Type-Verteilung
@@ -131,7 +131,7 @@ export function LinkingStatisticsCard({
         <CardContent className="py-8">
           <div className="flex flex-col items-center gap-3 text-center">
             <Link2Off className="h-12 w-12 text-muted-foreground" />
-            <p className="font-medium">Keine Statistiken verfuegbar</p>
+            <p className="font-medium">Keine Statistiken verfügbar</p>
             <p className="text-sm text-muted-foreground">
               Importieren Sie zuerst Kunden oder Lieferanten aus Lexware.
             </p>
@@ -148,7 +148,7 @@ export function LinkingStatisticsCard({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <PieChart className="h-5 w-5" />
-            Verknuepfungs-Uebersicht
+            Verknüpfungs-Übersicht
           </CardTitle>
           <CardDescription>
             Dokumente mit zugeordneten Kunden/Lieferanten
@@ -158,7 +158,7 @@ export function LinkingStatisticsCard({
           {/* Linking Progress - using snake_case fields */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span>Verknuepfungsrate</span>
+              <span>Verknüpfungsrate</span>
               <span className="font-medium">
                 {statistics.linked_percentage.toFixed(1)}%
               </span>
@@ -184,7 +184,7 @@ export function LinkingStatisticsCard({
                   {statistics.linked_documents.toLocaleString('de-DE')}
                 </p>
               </div>
-              <p className="text-sm text-green-600 dark:text-green-400">Verknuepft</p>
+              <p className="text-sm text-green-600 dark:text-green-400">Verknüpft</p>
             </div>
             <div className="p-4 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg text-center">
               <div className="flex items-center justify-center gap-1">
@@ -243,7 +243,7 @@ export function LinkingStatisticsCard({
           <CardHeader>
             <CardTitle>Confidence-Verteilung</CardTitle>
             <CardDescription>
-              Wie sicher sind die Verknuepfungen?
+              Wie sicher sind die Verknüpfungen?
             </CardDescription>
           </CardHeader>
           <CardContent>

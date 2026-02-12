@@ -13,7 +13,9 @@ Feinpoliert und durchdacht - Personalisierte Dashboards auf Enterprise-Niveau.
 
 import structlog
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -53,7 +55,7 @@ class WidgetCreate(BaseModel):
 
     widget_type: str = Field(..., min_length=1, max_length=50)
     position: Optional[WidgetPositionSchema] = None
-    config: Optional[Dict[str, Any]] = None
+    config: Optional[JSONDict] = None
     title_override: Optional[str] = Field(None, max_length=100)
 
 
@@ -61,7 +63,7 @@ class WidgetUpdate(BaseModel):
     """Schema fuer Widget-Update."""
 
     position: Optional[WidgetPositionSchema] = None
-    config: Optional[Dict[str, Any]] = None
+    config: Optional[JSONDict] = None
     title_override: Optional[str] = None
     is_visible: Optional[bool] = None
     is_collapsed: Optional[bool] = None
@@ -80,9 +82,9 @@ class WidgetResponse(BaseModel):
     minH: Optional[int] = None
     maxW: Optional[int] = None
     maxH: Optional[int] = None
-    config: Optional[Dict[str, Any]] = None
+    config: Optional[JSONDict] = None
     title_override: Optional[str] = None
-    filter_overrides: Optional[Dict[str, Any]] = None
+    filter_overrides: Optional[JSONDict] = None
     is_visible: bool = True
     is_collapsed: bool = False
     sort_order: int = 0
@@ -97,7 +99,7 @@ class DashboardCreate(BaseModel):
     columns: int = Field(default=12, ge=1, le=24)
     row_height: int = Field(default=80, ge=20, le=200)
     compact_type: Optional[str] = Field(None, pattern="^(vertical|horizontal)$")
-    widgets: Optional[List[Dict[str, Any]]] = None
+    widgets: Optional[List[JSONDict]] = None
 
 
 class DashboardUpdate(BaseModel):
@@ -145,7 +147,7 @@ class DashboardListItem(BaseModel):
 class LayoutUpdate(BaseModel):
     """Schema fuer Layout-Update (Batch)."""
 
-    widgets: List[Dict[str, Any]] = Field(..., description="Liste von Widget-Positionen mit ID")
+    widgets: List[JSONDict] = Field(..., description="Liste von Widget-Positionen mit ID")
 
 
 class AvailableWidget(BaseModel):
@@ -164,7 +166,7 @@ class TemplateResponse(BaseModel):
     description: Optional[str] = None
     category: str
     for_roles: Optional[List[str]] = None
-    layout: List[Dict[str, Any]]
+    layout: List[JSONDict]
     preview_image_url: Optional[str] = None
 
 
@@ -414,7 +416,7 @@ async def update_layout(
     data: LayoutUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Aktualisiert das komplette Layout (alle Widget-Positionen).
 

@@ -1,7 +1,7 @@
 /**
  * Document Bulk Operations Module
  *
- * Stellt alle Komponenten und Hooks fuer Massenoperationen auf Dokumenten bereit.
+ * Stellt alle Komponenten und Hooks für Massenoperationen auf Dokumenten bereit.
  *
  * Exports:
  * - API functions: executeBulkOperation, bulkAddTags, bulkMoveToFolder, etc.

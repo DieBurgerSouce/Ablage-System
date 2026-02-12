@@ -1,7 +1,7 @@
 /**
  * Privat Intelligence API Service
  *
- * Enterprise-Level Intelligence Features fuer das Privat-Modul:
+ * Enterprise-Level Intelligence Features für das Privat-Modul:
  * - Investment Analytics (Performance, Allocation, Diversification, Risk)
  * - Financial Health Score (6 Dimensionen)
  * - Smart Recommendations Engine
@@ -507,7 +507,7 @@ export const privatIntelligenceService = {
   // ==================== Investment Intelligence ====================
 
   /**
-   * Holt Performance-Daten fuer ein Investment
+   * Holt Performance-Daten für ein Investment
    */
   getInvestmentPerformance: async (investmentId: string): Promise<InvestmentPerformance> => {
     try {
@@ -521,7 +521,7 @@ export const privatIntelligenceService = {
   },
 
   /**
-   * Holt Portfolio-Allokation fuer einen Space
+   * Holt Portfolio-Allokation für einen Space
    */
   getPortfolioAllocation: async (spaceId: string): Promise<PortfolioAllocation> => {
     try {
@@ -563,7 +563,7 @@ export const privatIntelligenceService = {
   },
 
   /**
-   * Holt Rebalancing-Vorschlaege
+   * Holt Rebalancing-Vorschläge
    */
   getRebalancingSuggestions: async (spaceId: string): Promise<RebalancingSuggestion> => {
     try {
@@ -572,12 +572,12 @@ export const privatIntelligenceService = {
       );
       return transformRebalancingSuggestion(response.data);
     } catch (error) {
-      handleApiError(error, 'Rebalancing-Vorschlaege laden');
+      handleApiError(error, 'Rebalancing-Vorschläge laden');
     }
   },
 
   /**
-   * Holt vollstaendige Investment-Analyse
+   * Holt vollständige Investment-Analyse
    */
   getFullInvestmentAnalytics: async (spaceId: string): Promise<InvestmentFullAnalytics> => {
     try {
@@ -606,7 +606,7 @@ export const privatIntelligenceService = {
   // ==================== Financial Health ====================
 
   /**
-   * Holt Nettovermoegen-Aufstellung
+   * Holt Nettovermögen-Aufstellung
    */
   getNetWorth: async (spaceId: string): Promise<NetWorthComponents> => {
     try {
@@ -615,7 +615,7 @@ export const privatIntelligenceService = {
       );
       return transformNetWorth(response.data);
     } catch (error) {
-      handleApiError(error, 'Nettovermoegen laden');
+      handleApiError(error, 'Nettovermögen laden');
     }
   },
 
@@ -661,7 +661,7 @@ export const privatIntelligenceService = {
   // ==================== Loan Scenarios ====================
 
   /**
-   * Simuliert Sonderzahlung fuer einen Kredit
+   * Simuliert Sonderzahlung für einen Kredit
    */
   simulateExtraPayment: async (
     loanId: string,
@@ -679,7 +679,7 @@ export const privatIntelligenceService = {
   },
 
   /**
-   * Simuliert Umschuldung fuer einen Kredit
+   * Simuliert Umschuldung für einen Kredit
    */
   simulateRefinancing: async (
     loanId: string,
@@ -701,7 +701,7 @@ export const privatIntelligenceService = {
   },
 
   /**
-   * Holt vollstaendigen Tilgungsplan
+   * Holt vollständigen Tilgungsplan
    */
   getFullAmortization: async (loanId: string): Promise<FullAmortizationSchedule> => {
     try {
@@ -769,7 +769,7 @@ export const privatIntelligenceService = {
   },
 
   /**
-   * Triggert Berechnung aller Intelligence-Features fuer einen Space
+   * Triggert Berechnung aller Intelligence-Features für einen Space
    */
   calculateAllIntelligence: async (spaceId: string): Promise<{ message: string; taskIds: Record<string, string> }> => {
     try {

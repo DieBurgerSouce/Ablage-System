@@ -1,5 +1,5 @@
 /**
- * Collaboration Types - Typen fuer Kommentare, Aktivitaeten und Benachrichtigungen
+ * Collaboration Types - Typen für Kommentare, Aktivitäten und Benachrichtigungen
  */
 
 // ==================== Comments ====================

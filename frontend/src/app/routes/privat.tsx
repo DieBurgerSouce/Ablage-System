@@ -1,7 +1,7 @@
 /**
  * Privat Route Layout
  *
- * Layout fuer alle Privat-Modul-Routen.
+ * Layout für alle Privat-Modul-Routen.
  */
 
 import { createFileRoute, Outlet } from '@tanstack/react-router';

@@ -1,5 +1,5 @@
 /**
- * ContractFilters - Filter-Leiste fuer Vertrags-Liste
+ * ContractFilters - Filter-Leiste für Vertrags-Liste
  *
  * Filter:
  * - Status (Entwurf, Aktiv, Ablaufend, etc.)
@@ -35,7 +35,7 @@ interface ContractFiltersProps {
 }
 
 const EXPIRING_OPTIONS = [
-  { value: 'all', label: 'Alle Vertraege' },
+  { value: 'all', label: 'Alle Verträge' },
   { value: '30', label: 'Ablaufend in 30 Tagen' },
   { value: '60', label: 'Ablaufend in 60 Tagen' },
   { value: '90', label: 'Ablaufend in 90 Tagen' },
@@ -110,7 +110,7 @@ export function ContractFilters({
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Vertraege durchsuchen..."
+            placeholder="Verträge durchsuchen..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={handleSearchKeyDown}
@@ -204,7 +204,7 @@ export function ContractFilters({
               className="h-8 px-2"
             >
               <X className="h-4 w-4 mr-1" />
-              Zuruecksetzen
+              Zurücksetzen
             </Button>
           </div>
         )}

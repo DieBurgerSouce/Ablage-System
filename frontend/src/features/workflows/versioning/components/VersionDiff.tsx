@@ -75,7 +75,7 @@ export function VersionDiff({ workflowId, versionA, versionB }: VersionDiffProps
       {/* Diff Tabs */}
       <Tabs defaultValue="visual" className="w-full">
         <TabsList>
-          <TabsTrigger value="visual">Uebersicht</TabsTrigger>
+          <TabsTrigger value="visual">Übersicht</TabsTrigger>
           <TabsTrigger value="json">JSON Diff</TabsTrigger>
           {diff?.details.nodes && <TabsTrigger value="nodes">Knoten</TabsTrigger>}
           {diff?.details.edges && <TabsTrigger value="edges">Verbindungen</TabsTrigger>}
@@ -101,7 +101,7 @@ export function VersionDiff({ workflowId, versionA, versionB }: VersionDiffProps
         {diff?.details.nodes && (
           <TabsContent value="nodes" className="mt-4">
             <DetailedChanges
-              title="Knoten-Aenderungen"
+              title="Knoten-Änderungen"
               changes={diff.details.nodes}
             />
           </TabsContent>
@@ -110,7 +110,7 @@ export function VersionDiff({ workflowId, versionA, versionB }: VersionDiffProps
         {diff?.details.edges && (
           <TabsContent value="edges" className="mt-4">
             <DetailedChanges
-              title="Verbindungs-Aenderungen"
+              title="Verbindungs-Änderungen"
               changes={diff.details.edges}
             />
           </TabsContent>
@@ -132,7 +132,7 @@ function ChangeSummary({ diff }: ChangeSummaryProps) {
     return (
       <Card>
         <CardContent className="py-6 text-center text-muted-foreground">
-          Keine Aenderungen zwischen diesen Versionen
+          Keine Änderungen zwischen diesen Versionen
         </CardContent>
       </Card>
     );
@@ -146,7 +146,7 @@ function ChangeSummary({ diff }: ChangeSummaryProps) {
             <Plus className="h-5 w-5 text-green-600" />
             <div>
               <p className="text-2xl font-bold text-green-600">{added.length}</p>
-              <p className="text-sm text-muted-foreground">Hinzugefuegt</p>
+              <p className="text-sm text-muted-foreground">Hinzugefügt</p>
             </div>
           </div>
           {added.length > 0 && (
@@ -182,7 +182,7 @@ function ChangeSummary({ diff }: ChangeSummaryProps) {
             <Edit3 className="h-5 w-5 text-yellow-600" />
             <div>
               <p className="text-2xl font-bold text-yellow-600">{modified.length}</p>
-              <p className="text-sm text-muted-foreground">Geaendert</p>
+              <p className="text-sm text-muted-foreground">Geändert</p>
             </div>
           </div>
           {modified.length > 0 && (
@@ -304,7 +304,7 @@ function DetailedChanges({ title, changes }: DetailedChangesProps) {
           <div>
             <h4 className="text-sm font-medium text-green-600 mb-2 flex items-center gap-1">
               <Plus className="h-4 w-4" />
-              Hinzugefuegt ({changes.added.length})
+              Hinzugefügt ({changes.added.length})
             </h4>
             <div className="flex flex-wrap gap-2">
               {changes.added.map((id) => (
@@ -336,7 +336,7 @@ function DetailedChanges({ title, changes }: DetailedChangesProps) {
           <div>
             <h4 className="text-sm font-medium text-yellow-600 mb-2 flex items-center gap-1">
               <Edit3 className="h-4 w-4" />
-              Geaendert ({changes.modified.length})
+              Geändert ({changes.modified.length})
             </h4>
             <div className="flex flex-wrap gap-2">
               {changes.modified.map((id) => (
@@ -352,7 +352,7 @@ function DetailedChanges({ title, changes }: DetailedChangesProps) {
           changes.removed.length === 0 &&
           changes.modified.length === 0 && (
             <p className="text-muted-foreground text-center py-4">
-              Keine Aenderungen in diesem Bereich
+              Keine Änderungen in diesem Bereich
             </p>
           )}
       </CardContent>
@@ -361,7 +361,7 @@ function DetailedChanges({ title, changes }: DetailedChangesProps) {
 }
 
 /**
- * Simple Diff Viewer - Ersatz fuer react-diff-viewer ohne externe Abhaengigkeit
+ * Simple Diff Viewer - Ersatz für react-diff-viewer ohne externe Abhängigkeit
  */
 interface SimpleDiffViewerProps {
   oldValue: string;

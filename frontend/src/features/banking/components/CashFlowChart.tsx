@@ -2,7 +2,7 @@
  * Cash-Flow Chart Komponente
  * Zeigt tägliche Einnahmen, Ausgaben und Netto als AreaChart
  *
- * WICHTIG: Verwendet CSS-Variablen fuer Display-Mode-Unterstuetzung:
+ * WICHTIG: Verwendet CSS-Variablen für Display-Mode-Unterstützung:
  * - --chart-2: Einnahmen (gruen/success)
  * - --chart-4: Ausgaben (rot/destructive)
  * - --chart-1: Kumuliert (blau/primary)

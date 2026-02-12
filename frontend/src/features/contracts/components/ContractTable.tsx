@@ -145,7 +145,7 @@ export function ContractTable({
   if (contracts.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
-        <p>Keine Vertraege gefunden</p>
+        <p>Keine Verträge gefunden</p>
       </div>
     );
   }
@@ -187,7 +187,7 @@ export function ContractTable({
             <TableHead>
               <SortHeader
                 column="notice_deadline"
-                label="Kuendigungsfrist"
+                label="Kündigungsfrist"
                 currentSort={sortBy}
                 currentDir={sortDir}
                 onSort={onSort}
@@ -315,7 +315,7 @@ export function ContractTable({
                       {showRenewalAction && onRenewal && (
                         <DropdownMenuItem onClick={() => onRenewal(contract)}>
                           <RefreshCw className="h-4 w-4 mr-2" />
-                          Verlaengern
+                          Verlängern
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuSeparator />
@@ -324,7 +324,7 @@ export function ContractTable({
                         onClick={() => onDelete(contract)}
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
-                        Loeschen
+                        Löschen
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

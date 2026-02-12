@@ -154,7 +154,7 @@ export default function RecurringInvoiceList() {
               <SelectItem value="all">Alle Status</SelectItem>
               <SelectItem value="active">Aktiv</SelectItem>
               <SelectItem value="paused">Pausiert</SelectItem>
-              <SelectItem value="cancelled">Gekuendigt</SelectItem>
+              <SelectItem value="cancelled">Gekündigt</SelectItem>
               <SelectItem value="expired">Abgelaufen</SelectItem>
             </SelectContent>
           </Select>
@@ -178,7 +178,7 @@ export default function RecurringInvoiceList() {
                   <TableHead>Lieferant</TableHead>
                   <TableHead>Intervall</TableHead>
                   <TableHead className="text-right">Betrag</TableHead>
-                  <TableHead>Naechste Faelligkeit</TableHead>
+                  <TableHead>Nächste Fälligkeit</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Konfidenz</TableHead>
                 </TableRow>
@@ -231,7 +231,7 @@ export default function RecurringInvoiceList() {
                     disabled={page <= 1}
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    Zurueck
+                    Zurück
                   </Button>
                   <Button
                     variant="outline"

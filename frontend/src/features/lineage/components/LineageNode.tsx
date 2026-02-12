@@ -1,7 +1,7 @@
 /**
  * LineageNode Component
  *
- * Custom Node fuer React Flow mit Event-spezifischen Icons und Styling.
+ * Custom Node für React Flow mit Event-spezifischen Icons und Styling.
  * Zeigt Lineage-Events mit visueller Unterscheidung nach Typ.
  */
 

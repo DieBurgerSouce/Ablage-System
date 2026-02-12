@@ -1,8 +1,8 @@
 /**
  * Supplier Performance Hook
  *
- * React Query Hook fuer Lieferanten-Performance-Metriken.
- * Liefert Puenktlichkeit, Genauigkeit und Preistrend.
+ * React Query Hook für Lieferanten-Performance-Metriken.
+ * Liefert Pünktlichkeit, Genauigkeit und Preistrend.
  *
  * Phase 7: Dashboard Widgets
  */
@@ -21,7 +21,7 @@ interface UseSupplierPerformanceOptions {
 }
 
 /**
- * Hook fuer Lieferanten-Performance-Daten
+ * Hook für Lieferanten-Performance-Daten
  */
 export function useSupplierPerformance(options: UseSupplierPerformanceOptions = {}) {
   const { periodDays = 90, enabled = true, staleTime = 5 * 60 * 1000 } = options;
@@ -51,7 +51,7 @@ export function getTrendIconClass(direction: 'up' | 'down' | 'stable'): string {
 }
 
 /**
- * Formatiere Puenktlichkeit/Genauigkeit als Farbe
+ * Formatiere Pünktlichkeit/Genauigkeit als Farbe
  */
 export function getScoreColor(score: number): string {
   if (score >= 90) return 'text-green-600';

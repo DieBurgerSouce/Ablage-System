@@ -885,7 +885,7 @@ export const bankingService = {
     // ==================== Enhanced Reconciliation (New API) ====================
 
     /**
-     * Startet automatischen Bulk-Abgleich fuer alle unabgeglichenen Transaktionen
+     * Startet automatischen Bulk-Abgleich für alle unabgeglichenen Transaktionen
      */
     autoMatchTransactions: async (params?: {
         bank_account_id?: string;
@@ -927,7 +927,7 @@ export const bankingService = {
     },
 
     /**
-     * Holt erweiterte Match-Vorschlaege fuer eine Transaktion
+     * Holt erweiterte Match-Vorschläge für eine Transaktion
      */
     getMatchSuggestionsEnhanced: async (transactionId: string, params?: {
         limit?: number;

@@ -1,10 +1,10 @@
 /**
- * RiskScoreBadge - Zeigt den Risiko-Score eines Geschaeftspartners an
+ * RiskScoreBadge - Zeigt den Risiko-Score eines Geschäftspartners an
  *
  * Farbkodierung:
  * - Rot (> 75): Hohes Risiko
  * - Gelb (50-75): Mittleres Risiko
- * - Gruen (< 50): Niedriges Risiko
+ * - Grün (< 50): Niedriges Risiko
  * - Grau (null): Keine Daten
  */
 
@@ -24,7 +24,7 @@ interface RiskScoreBadgeProps {
   score: number | null;
   /** Kompakte Anzeige (nur Icon + Zahl) */
   compact?: boolean;
-  /** Zeigt Tooltip mit Erklaerung */
+  /** Zeigt Tooltip mit Erklärung */
   showTooltip?: boolean;
   /** Custom className */
   className?: string;
@@ -50,7 +50,7 @@ function getRiskConfig(score: number | null): RiskConfig {
       level: 'none',
       label: 'Kein Score',
       shortLabel: '-',
-      description: 'Fuer diesen Geschaeftspartner wurde noch kein Risiko-Score berechnet.',
+      description: 'Für diesen Geschäftspartner wurde noch kein Risiko-Score berechnet.',
       icon: ShieldQuestion,
       className: 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700',
       iconClassName: 'text-gray-500 dark:text-gray-400',
@@ -62,7 +62,7 @@ function getRiskConfig(score: number | null): RiskConfig {
       level: 'high',
       label: 'Hohes Risiko',
       shortLabel: 'Hoch',
-      description: 'Dieser Geschaeftspartner zeigt ein erhoehtes Zahlungsrisiko. Pruefen Sie offene Forderungen und Zahlungshistorie.',
+      description: 'Dieser Geschäftspartner zeigt ein erhöhtes Zahlungsrisiko. Prüfen Sie offene Forderungen und Zahlungshistorie.',
       icon: ShieldAlert,
       className: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800',
       iconClassName: 'text-red-600 dark:text-red-400',
@@ -74,7 +74,7 @@ function getRiskConfig(score: number | null): RiskConfig {
       level: 'medium',
       label: 'Mittleres Risiko',
       shortLabel: 'Mittel',
-      description: 'Dieser Geschaeftspartner zeigt ein moderates Risiko. Regelmaessige Ueberwachung empfohlen.',
+      description: 'Dieser Geschäftspartner zeigt ein moderates Risiko. Regelmäßige Überwachung empfohlen.',
       icon: AlertTriangle,
       className: 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800',
       iconClassName: 'text-yellow-600 dark:text-yellow-400',
@@ -85,7 +85,7 @@ function getRiskConfig(score: number | null): RiskConfig {
     level: 'low',
     label: 'Niedriges Risiko',
     shortLabel: 'Niedrig',
-    description: 'Dieser Geschaeftspartner zeigt ein geringes Zahlungsrisiko mit guter Zahlungshistorie.',
+    description: 'Dieser Geschäftspartner zeigt ein geringes Zahlungsrisiko mit guter Zahlungshistorie.',
     icon: ShieldCheck,
     className: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800',
     iconClassName: 'text-green-600 dark:text-green-400',

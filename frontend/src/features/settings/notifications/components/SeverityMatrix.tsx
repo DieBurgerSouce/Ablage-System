@@ -58,7 +58,7 @@ const CHANNEL_ICONS: Record<NotificationChannel, React.ElementType> = {
 const SEVERITIES: NotificationSeverity[] = ['info', 'low', 'medium', 'high', 'critical'];
 const DISPLAY_CHANNELS: NotificationChannel[] = ['email', 'slack', 'teams', 'push', 'sms', 'in_app'];
 
-// Standard-Kanaele pro Schweregrad (aus Backend)
+// Standard-Kanäle pro Schweregrad (aus Backend)
 const DEFAULT_CHANNELS_BY_SEVERITY: Record<NotificationSeverity, NotificationChannel[]> = {
   info: ['in_app'],
   low: ['in_app', 'websocket'],
@@ -73,7 +73,7 @@ export function SeverityMatrix({
   isLoading = false,
   disabled = false,
 }: SeverityMatrixProps) {
-  // Lokaler State fuer die Matrix
+  // Lokaler State für die Matrix
   const [matrix, setMatrix] = useState<Record<NotificationSeverity, NotificationChannel[]>>(
     DEFAULT_CHANNELS_BY_SEVERITY
   );
@@ -160,8 +160,8 @@ export function SeverityMatrix({
       <CardHeader>
         <CardTitle className="text-lg">Schweregrad-Matrix</CardTitle>
         <CardDescription>
-          Legen Sie fest, ueber welche Kanaele Sie bei verschiedenen Schweregraden
-          benachrichtigt werden moechten.
+          Legen Sie fest, über welche Kanäle Sie bei verschiedenen Schweregraden
+          benachrichtigt werden möchten.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -206,7 +206,7 @@ export function SeverityMatrix({
                           checked={isActive && channelEnabled}
                           onCheckedChange={() => handleToggle(severity, channel)}
                           disabled={disabled || isLoading || !channelEnabled}
-                          aria-label={`${CHANNEL_LABELS[channel]} fuer ${SEVERITY_LABELS[severity]}`}
+                          aria-label={`${CHANNEL_LABELS[channel]} für ${SEVERITY_LABELS[severity]}`}
                         />
                       </TableCell>
                     );
@@ -219,8 +219,8 @@ export function SeverityMatrix({
 
         <div className="mt-4 text-sm text-muted-foreground">
           <p>
-            <strong>Hinweis:</strong> Deaktivierte Kanaele (grau) muessen zuerst in der
-            Kanal-Uebersicht aktiviert werden.
+            <strong>Hinweis:</strong> Deaktivierte Kanäle (grau) müssen zuerst in der
+            Kanal-Übersicht aktiviert werden.
           </p>
         </div>
       </CardContent>

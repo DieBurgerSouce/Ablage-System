@@ -75,7 +75,7 @@ export function ViolationsTable({ violations, isLoading }: ViolationsTableProps)
           <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
             <Shield className="h-12 w-12 mb-4 text-green-500" />
             <p className="text-lg font-medium">Alles in Ordnung!</p>
-            <p className="text-sm">Keine Rate-Limit-Verletzungen im ausgewaehlten Zeitraum.</p>
+            <p className="text-sm">Keine Rate-Limit-Verletzungen im ausgewählten Zeitraum.</p>
           </div>
         ) : (
           <Table>

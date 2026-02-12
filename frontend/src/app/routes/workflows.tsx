@@ -1,7 +1,7 @@
 /**
  * Workflows Layout Route
  *
- * Container-Layout fuer alle Workflow-Seiten.
+ * Container-Layout für alle Workflow-Seiten.
  */
 
 import { createFileRoute, Outlet } from '@tanstack/react-router';

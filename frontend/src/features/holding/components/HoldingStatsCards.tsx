@@ -1,7 +1,7 @@
 /**
  * Holding Stats Cards
  *
- * Uebersichtskarten mit Key-Metriken der Holding.
+ * Übersichtskarten mit Key-Metriken der Holding.
  */
 
 import { Card, CardContent } from '@/components/ui/card';
@@ -66,7 +66,7 @@ export function HoldingStatsCards({ overview }: HoldingStatsCardsProps) {
       label: 'Forderungen',
       value: formatCurrency(overview.financials.total_receivables),
       subValue: overview.financials.overdue_receivables > 0
-        ? `${formatCurrency(overview.financials.overdue_receivables)} ueberfaellig`
+        ? `${formatCurrency(overview.financials.overdue_receivables)} überfällig`
         : undefined,
       icon: TrendingUp,
       color: 'text-blue-600',
@@ -77,7 +77,7 @@ export function HoldingStatsCards({ overview }: HoldingStatsCardsProps) {
       label: 'Verbindlichkeiten',
       value: formatCurrency(overview.financials.total_payables),
       subValue: overview.financials.overdue_payables > 0
-        ? `${formatCurrency(overview.financials.overdue_payables)} ueberfaellig`
+        ? `${formatCurrency(overview.financials.overdue_payables)} überfällig`
         : undefined,
       icon: TrendingDown,
       color: 'text-orange-600',

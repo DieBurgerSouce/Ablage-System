@@ -2,13 +2,13 @@
  * Recurring Invoice API Service
  *
  * Kommuniziert mit den /api/v1/recurring-invoices Endpoints
- * fuer Abo-Rechnungsverwaltung und -erkennung.
+ * für Abo-Rechnungsverwaltung und -erkennung.
  *
  * Features:
- * - CRUD fuer wiederkehrende Rechnungen
+ * - CRUD für wiederkehrende Rechnungen
  * - Muster-Erkennung
  * - Fehlende Rechnungen
- * - Preisaenderungen
+ * - Preisänderungen
  * - Soll/Ist-Berichte
  * - Manuelle Dokumentzuordnung
  */
@@ -141,7 +141,7 @@ export async function fetchMissingInvoices(): Promise<MissingInvoiceResponse[]> 
 }
 
 /**
- * Ruft Preisaenderungen ab
+ * Ruft Preisänderungen ab
  */
 export async function fetchPriceChanges(): Promise<PriceChangeResponse[]> {
   const response = await apiClient.get<PriceChangeResponse[]>(

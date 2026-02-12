@@ -2,13 +2,13 @@
  * Smart Escalation API Service
  *
  * Kommuniziert mit den /api/v1/smart-escalation Endpoints
- * fuer KI-gestuetzte intelligente Aufgabenzuweisung
+ * für KI-gestützte intelligente Aufgabenzuweisung
  *
  * Features:
  * - Zuweisungsempfehlungen basierend auf KI-Faktoren
- * - Team-Auslastungsuebersicht
+ * - Team-Auslastungsübersicht
  * - User-Score Debugging/Analyse
- * - Verfuegbare Faktoren und Gewichtungen
+ * - Verfügbare Faktoren und Gewichtungen
  *
  * Phase 2.3 der Feature-Roadmap (Januar 2026)
  */
@@ -373,7 +373,7 @@ export const smartEscalationService = {
   },
 
   /**
-   * Holt Team-Auslastungsuebersicht
+   * Holt Team-Auslastungsübersicht
    */
   getTeamWorkload: async (): Promise<TeamWorkload> => {
     try {
@@ -385,7 +385,7 @@ export const smartEscalationService = {
   },
 
   /**
-   * Holt User-Scores fuer Debugging/Analyse
+   * Holt User-Scores für Debugging/Analyse
    */
   getUserScores: async (userId: string, filter?: UserScoresFilter): Promise<CandidateScore> => {
     try {
@@ -402,7 +402,7 @@ export const smartEscalationService = {
   },
 
   /**
-   * Holt verfuegbare Faktoren und Konfiguration
+   * Holt verfügbare Faktoren und Konfiguration
    */
   getFactors: async (): Promise<FactorsResponse> => {
     try {

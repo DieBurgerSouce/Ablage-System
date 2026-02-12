@@ -78,7 +78,7 @@ export function QuickFeedback({ messageId, onDetailedFeedback }: QuickFeedbackPr
     return (
       <div className="flex items-center gap-1 text-xs text-muted-foreground">
         <Check className="h-3 w-3 text-green-500" />
-        <span>Danke fuer das Feedback!</span>
+        <span>Danke für das Feedback!</span>
       </div>
     );
   }
@@ -279,7 +279,7 @@ export function FeedbackDialog({
             <Label htmlFor="comment">Kommentar (optional)</Label>
             <Textarea
               id="comment"
-              placeholder="Was koennten wir besser machen?"
+              placeholder="Was könnten wir besser machen?"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               disabled={isSubmitting}

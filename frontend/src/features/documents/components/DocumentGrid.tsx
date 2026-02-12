@@ -47,7 +47,7 @@ interface DocumentGridProps {
     selectedIds: string[];
     onSelect: (id: string, selected: boolean) => void;
     onDocumentClick: (id: string) => void;
-    /** Callback um alle Dokumente auszuwaehlen */
+    /** Callback um alle Dokumente auszuwählen */
     onSelectAll?: () => void;
     /** Callback um Auswahl aufzuheben */
     onClearSelection?: () => void;
@@ -81,7 +81,7 @@ export function DocumentGrid({
         useSensor(KeyboardSensor)
     );
 
-    // Aktives Dokument fuer Drag Overlay
+    // Aktives Dokument für Drag Overlay
     const activeDocument = activeDocumentId
         ? documents.find((d) => d.id === activeDocumentId)
         : null;
@@ -98,13 +98,13 @@ export function DocumentGrid({
 
             if (!over) return;
 
-            // Pruefen ob auf Folder gedropped wurde
+            // Prüfen ob auf Folder gedropped wurde
             const overData = over.data.current;
             if (overData?.type === 'folder' && onMoveToFolder) {
                 const documentId = active.id as string;
                 const folderId = over.id as string;
 
-                // Bei Multi-Select: Alle ausgewaehlten Dokumente verschieben
+                // Bei Multi-Select: Alle ausgewählten Dokumente verschieben
                 const documentIds = selectedIds.includes(documentId)
                     ? selectedIds
                     : [documentId];

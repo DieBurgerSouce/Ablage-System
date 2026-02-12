@@ -37,7 +37,7 @@ export function QualityAmpel({
     return (
         <div
             className={cn("inline-flex items-center gap-1.5", className)}
-            title={`Qualitaet: ${(score * 100).toFixed(0)}% - ${label}`}
+            title={`Qualität: ${(score * 100).toFixed(0)}% - ${label}`}
         >
             <span
                 className={cn(

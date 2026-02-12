@@ -1,7 +1,7 @@
 /**
  * Workflow API Client
  *
- * TypeScript API Client fuer Workflow-Automation.
+ * TypeScript API Client für Workflow-Automation.
  */
 
 import { apiClient } from '@/lib/api/client';
@@ -79,7 +79,7 @@ export async function updateWorkflow(
 }
 
 /**
- * Loescht einen Workflow.
+ * Löscht einen Workflow.
  */
 export async function deleteWorkflow(workflowId: string): Promise<void> {
   await apiClient.delete(`${BASE_URL}/${workflowId}`);
@@ -180,7 +180,7 @@ export async function updateStep(
 }
 
 /**
- * Loescht einen Step.
+ * Löscht einen Step.
  */
 export async function deleteStep(
   workflowId: string,
@@ -222,7 +222,7 @@ export async function batchUpdateSteps(
 // =============================================================================
 
 /**
- * Startet eine Workflow-Ausfuehrung.
+ * Startet eine Workflow-Ausführung.
  */
 export async function executeWorkflow(
   workflowId: string,
@@ -236,7 +236,7 @@ export async function executeWorkflow(
 }
 
 /**
- * Ruft Ausfuehrungen eines Workflows ab.
+ * Ruft Ausführungen eines Workflows ab.
  */
 export async function getWorkflowExecutions(
   workflowId: string,
@@ -250,7 +250,7 @@ export async function getWorkflowExecutions(
 }
 
 /**
- * Ruft eine Ausfuehrung nach ID ab.
+ * Ruft eine Ausführung nach ID ab.
  */
 export async function getExecution(
   executionId: string
@@ -262,7 +262,7 @@ export async function getExecution(
 }
 
 /**
- * Ruft Step-Ausfuehrungen ab.
+ * Ruft Step-Ausführungen ab.
  */
 export async function getStepExecutions(
   executionId: string
@@ -274,7 +274,7 @@ export async function getStepExecutions(
 }
 
 /**
- * Pausiert eine Ausfuehrung.
+ * Pausiert eine Ausführung.
  */
 export async function pauseExecution(
   executionId: string
@@ -286,7 +286,7 @@ export async function pauseExecution(
 }
 
 /**
- * Setzt eine Ausfuehrung fort.
+ * Setzt eine Ausführung fort.
  */
 export async function resumeExecution(
   executionId: string
@@ -298,7 +298,7 @@ export async function resumeExecution(
 }
 
 /**
- * Bricht eine Ausfuehrung ab.
+ * Bricht eine Ausführung ab.
  */
 export async function cancelExecution(
   executionId: string
@@ -310,7 +310,7 @@ export async function cancelExecution(
 }
 
 /**
- * Wiederholt eine fehlgeschlagene Ausfuehrung.
+ * Wiederholt eine fehlgeschlagene Ausführung.
  */
 export async function retryExecution(
   executionId: string
@@ -326,7 +326,7 @@ export async function retryExecution(
 // =============================================================================
 
 /**
- * Listet verfuegbare Templates.
+ * Listet verfügbare Templates.
  */
 export async function listTemplates(category?: string): Promise<Workflow[]> {
   const response = await apiClient.get<Workflow[]>(`${BASE_URL}/templates`, {
@@ -426,7 +426,7 @@ export async function getOverviewStats(): Promise<OverviewStats> {
 }
 
 /**
- * Ruft Ausfuehrungs-Historie ab.
+ * Ruft Ausführungs-Historie ab.
  */
 export async function getExecutionHistory(
   days: number = 30
@@ -443,7 +443,7 @@ export async function getExecutionHistory(
 // =============================================================================
 
 /**
- * Ruft verfuegbare Operatoren ab.
+ * Ruft verfügbare Operatoren ab.
  */
 export async function getAvailableOperators(): Promise<OperatorInfo[]> {
   const response = await apiClient.get<OperatorInfo[]>(`${BASE_URL}/operators`);
@@ -451,7 +451,7 @@ export async function getAvailableOperators(): Promise<OperatorInfo[]> {
 }
 
 /**
- * Ruft verfuegbare Felder ab.
+ * Ruft verfügbare Felder ab.
  */
 export async function getAvailableFields(): Promise<Record<string, string>> {
   const response = await apiClient.get<Record<string, string>>(
@@ -465,7 +465,7 @@ export async function getAvailableFields(): Promise<Record<string, string>> {
 // =============================================================================
 
 /**
- * Ruft den aktuellen Ausfuehrungs-Status ab.
+ * Ruft den aktuellen Ausführungs-Status ab.
  */
 export async function getExecutionState(instanceId: string): Promise<import('../types/workflow-types').ExecutionState> {
   const response = await apiClient.get<import('../types/workflow-types').ExecutionState>(
@@ -475,7 +475,7 @@ export async function getExecutionState(instanceId: string): Promise<import('../
 }
 
 /**
- * Ruft die Ausfuehrungs-Timeline ab.
+ * Ruft die Ausführungs-Timeline ab.
  */
 export async function getExecutionTimeline(instanceId: string): Promise<import('../types/workflow-types').TimelineEntry[]> {
   const response = await apiClient.get<import('../types/workflow-types').TimelineEntry[]>(
@@ -485,7 +485,7 @@ export async function getExecutionTimeline(instanceId: string): Promise<import('
 }
 
 /**
- * Ruft die Ausfuehrungs-Metriken ab.
+ * Ruft die Ausführungs-Metriken ab.
  */
 export async function getExecutionMetrics(instanceId: string): Promise<import('../types/workflow-types').ExecutionMetrics> {
   const response = await apiClient.get<import('../types/workflow-types').ExecutionMetrics>(

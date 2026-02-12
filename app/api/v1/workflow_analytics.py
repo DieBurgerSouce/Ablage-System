@@ -16,8 +16,10 @@ Enterprise Workflow Analytics und SLA Monitoring mit:
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
+
+from app.core.types import JSONDict
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -109,16 +111,16 @@ class SLAMetricsResponse(BaseModel):
     breached: int
     compliance_rate: float
     avg_duration_hours: float
-    by_workflow: Dict[str, Any]
+    by_workflow: JSONDict
 
 
 class BottleneckAnalysisResponse(BaseModel):
     """Schema fuer Bottleneck-Analyse."""
 
     time_range_days: int
-    slow_tasks: List[Dict[str, Any]]
-    blocked_tasks: List[Dict[str, Any]]
-    escalation_hotspots: List[Dict[str, Any]]
+    slow_tasks: List[JSONDict]
+    blocked_tasks: List[JSONDict]
+    escalation_hotspots: List[JSONDict]
     recommendations: List[str]
 
 
@@ -127,8 +129,8 @@ class ThroughputResponse(BaseModel):
 
     time_range_days: int
     group_by: str
-    data: List[Dict[str, Any]]
-    summary: Dict[str, Any]
+    data: List[JSONDict]
+    summary: JSONDict
 
 
 class UserProductivityResponse(BaseModel):
@@ -136,17 +138,17 @@ class UserProductivityResponse(BaseModel):
 
     user_id: str
     time_range_days: int
-    metrics: Dict[str, Any]
-    performance_score: Dict[str, Any]
-    score_breakdown: Dict[str, Any]
+    metrics: JSONDict
+    performance_score: JSONDict
+    score_breakdown: JSONDict
 
 
 class DurationResponse(BaseModel):
     """Schema fuer Dauern pro Workflow-Typ."""
 
     time_range_days: int
-    by_workflow_type: List[Dict[str, Any]]
-    summary: Dict[str, Any]
+    by_workflow_type: List[JSONDict]
+    summary: JSONDict
 
 
 class ParallelApprovalCreate(BaseModel):
@@ -180,7 +182,7 @@ class ParallelApprovalResponse(BaseModel):
     created_at: Optional[str] = None
     due_date: Optional[str] = None
     final_decision: Optional[str] = None
-    votes: Optional[Dict[str, Any]] = None
+    votes: Optional[JSONDict] = None
     votes_summary: Dict[str, int]
 
 
@@ -701,7 +703,7 @@ async def list_pending_approvals(
 
 @router.delete(
     "/approvals/{approval_id}",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Genehmigung abbrechen",
 )
 async def cancel_approval(
@@ -709,7 +711,7 @@ async def cancel_approval(
     reason: Optional[str] = Query(None, description="Abbruchgrund"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Bricht eine parallele Genehmigung ab."""
     company_id = await get_user_company_id(db, current_user)
     if not company_id:

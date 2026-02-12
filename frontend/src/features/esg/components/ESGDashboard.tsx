@@ -1,7 +1,7 @@
 /**
  * ESG Dashboard
  *
- * Uebersicht ueber alle ESG-Kennzahlen und -Metriken.
+ * Übersicht über alle ESG-Kennzahlen und -Metriken.
  * Verbunden mit der ESG API via TanStack Query Hooks.
  */
 

@@ -1,7 +1,7 @@
 /**
  * Settings Model Types
  *
- * Typen fuer Benutzer-Praeferenzen und Firmeneinstellungen.
+ * Typen für Benutzer-Praeferenzen und Firmeneinstellungen.
  */
 
 // ==================== User Preferences ====================
@@ -12,7 +12,7 @@
 export type ThemeMode = 'light' | 'dark' | 'system';
 
 /**
- * Display-Modus fuer Dokument-Viewer
+ * Display-Modus für Dokument-Viewer
  */
 export type DisplayMode = 'light' | 'dark' | 'whitescreen' | 'blackscreen';
 
@@ -49,9 +49,9 @@ export interface NotificationPreferences {
   on_deadline_approaching: boolean;
   /** Benachrichtigung bei Systemwarnungen */
   on_system_alert: boolean;
-  /** Taegliche Zusammenfassung */
+  /** Tägliche Zusammenfassung */
   daily_digest: boolean;
-  /** Woechentliche Zusammenfassung */
+  /** Wöchentliche Zusammenfassung */
   weekly_digest: boolean;
   /** Digest-Uhrzeit (HH:MM) */
   digest_time: string;
@@ -61,7 +61,7 @@ export interface NotificationPreferences {
  * Dashboard-Praeferenzen
  */
 export interface DashboardPreferences {
-  /** Standard-Zeitraum fuer Metriken */
+  /** Standard-Zeitraum für Metriken */
   default_period: '7d' | '30d' | '90d' | '1y';
   /** Sichtbare Widgets */
   visible_widgets: string[];
@@ -77,7 +77,7 @@ export interface DashboardPreferences {
  * Tabellen-Praeferenzen
  */
 export interface TablePreferences {
-  /** Standard-Seitengroesse */
+  /** Standard-Seitengröße */
   default_page_size: 10 | 25 | 50 | 100;
   /** Sichtbare Spalten pro Tabelle */
   visible_columns: Record<string, string[]>;
@@ -93,7 +93,7 @@ export interface TablePreferences {
 export interface OnboardingStatus {
   /** Onboarding abgeschlossen */
   completed: boolean;
-  /** Onboarding uebersprungen */
+  /** Onboarding übersprungen */
   skipped: boolean;
   /** Abgeschlossene Schritte */
   completed_steps: string[];
@@ -116,12 +116,12 @@ export interface TooltipPreferences {
 }
 
 /**
- * Vollstaendige Benutzer-Praeferenzen
+ * Vollständige Benutzer-Praeferenzen
  */
 export interface UserPreferences {
   /** Theme */
   theme: ThemeMode;
-  /** Display-Modus fuer Viewer */
+  /** Display-Modus für Viewer */
   display_mode: DisplayMode;
   /** Sprache */
   language: Language;
@@ -141,13 +141,13 @@ export interface UserPreferences {
   tooltips: TooltipPreferences;
   /** Sidebar minimiert */
   sidebar_collapsed: boolean;
-  /** Tastenkuerzel aktiviert */
+  /** Tastenkürzel aktiviert */
   keyboard_shortcuts_enabled: boolean;
   /** Animationen reduziert (a11y) */
   reduced_motion: boolean;
   /** Hoher Kontrast (a11y) */
   high_contrast: boolean;
-  /** Schriftgroesse-Multiplikator */
+  /** Schriftgröße-Multiplikator */
   font_size_multiplier: number;
 }
 
@@ -166,9 +166,9 @@ export interface OCRSettings {
   default_backend: 'auto' | 'deepseek' | 'got_ocr' | 'surya' | 'surya_gpu';
   /** Auto-Verarbeitung aktiviert */
   auto_process_enabled: boolean;
-  /** Minimale Confidence fuer Auto-Accept */
+  /** Minimale Confidence für Auto-Accept */
   auto_accept_confidence: number;
-  /** Unterstuetzte Sprachen */
+  /** Unterstützte Sprachen */
   supported_languages: string[];
   /** Tabellenerkennung aktiviert */
   table_detection_enabled: boolean;
@@ -186,7 +186,7 @@ export interface InvoiceSettings {
   default_skonto_percent: number;
   /** Skonto-Frist (Tage) */
   default_skonto_days: number;
-  /** Automatische Mahnstufen-Erhoehung */
+  /** Automatische Mahnstufen-Erhöhung */
   auto_dunning_enabled: boolean;
   /** Mahnstufen-Konfiguration */
   dunning_levels: DunningLevelConfig[];
@@ -227,7 +227,7 @@ export interface SecuritySettings {
   session_timeout_minutes: number;
   /** Passwort-Ablauf (Tage, 0 = nie) */
   password_expiry_days: number;
-  /** Minimale Passwort-Laenge */
+  /** Minimale Passwort-Länge */
   min_password_length: number;
   /** Passwort-Komplexitaet erzwingen */
   require_complex_password: boolean;
@@ -247,7 +247,7 @@ export interface DLPSettings {
   watermark_enabled: boolean;
   /** Wasserzeichen-Text */
   watermark_text: string;
-  /** Download-Beschraenkungen aktiv */
+  /** Download-Beschränkungen aktiv */
   download_restrictions_enabled: boolean;
   /** Sensible Daten maskieren */
   mask_sensitive_data: boolean;
@@ -274,7 +274,7 @@ export interface IntegrationSettings {
 }
 
 /**
- * Vollstaendige Firmeneinstellungen
+ * Vollständige Firmeneinstellungen
  */
 export interface CompanySettings {
   company_id: string;
@@ -352,8 +352,8 @@ export interface Subscription {
   features: FeatureFlags;
   /** Startdatum */
   started_at: string;
-  /** Enddatum (bei Kuendigung) */
+  /** Enddatum (bei Kündigung) */
   ends_at: string | null;
-  /** Naechste Abrechnung */
+  /** Nächste Abrechnung */
   next_billing_at: string | null;
 }

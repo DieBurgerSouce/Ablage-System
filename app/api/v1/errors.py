@@ -9,7 +9,9 @@ Feinpoliert und durchdacht - Enterprise Error Analytics.
 """
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+from app.core.types import JSONDict
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -46,7 +48,7 @@ class AllErrorStatsResponse(BaseModel):
     """Alle Fehler-Statistiken Response."""
     zeitstempel: str = Field(..., description="Zeitstempel der Abfrage")
     kategorien: Dict[str, ErrorStatsResponse] = Field(..., description="Statistiken pro Kategorie")
-    zusammenfassung: Dict[str, Any] = Field(..., description="Zusammenfassung")
+    zusammenfassung: JSONDict = Field(..., description="Zusammenfassung")
 
 
 class RecentErrorResponse(BaseModel):
@@ -248,7 +250,7 @@ async def configure_alert(
     category: ErrorCategory,
     config: AlertConfigRequest,
     current_user: User = Depends(get_current_superuser),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Konfiguriere Alert-Schwellenwert fuer eine Kategorie.
 
@@ -284,7 +286,7 @@ async def configure_alert(
 async def clear_alert(
     category: ErrorCategory,
     current_user: User = Depends(get_current_superuser),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Loesche aktiven Alert fuer eine Kategorie.
 
@@ -313,7 +315,7 @@ async def clear_alert(
 async def reset_error_stats(
     category: Optional[ErrorCategory] = Query(None, description="Kategorie (leer = alle)"),
     current_user: User = Depends(get_current_superuser),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Setze Fehler-Statistiken zurueck.
 
@@ -353,7 +355,7 @@ async def reset_error_stats(
 )
 async def cleanup_old_errors(
     current_user: User = Depends(get_current_superuser),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Bereinige alte Fehler aus dem Buffer (aelter als Retention-Zeit).
 
@@ -378,7 +380,7 @@ async def cleanup_old_errors(
 )
 async def prometheus_error_metrics(
     current_user: User = Depends(get_current_superuser),  # X.2 SECURITY FIX: Admin required
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Prometheus-kompatible Metriken fuer Error Tracking.
 

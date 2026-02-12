@@ -1,7 +1,7 @@
 /**
  * Cash/Kassenbuch API Service
  *
- * API-Client für GoBD-konforme Kassenbuchfuehrung.
+ * API-Client für GoBD-konforme Kassenbuchführung.
  *
  * WICHTIG: CashEntry ist APPEND-ONLY!
  */
@@ -71,7 +71,7 @@ export const cashService = {
   // ==================== Entries (APPEND-ONLY!) ====================
 
   /**
-   * Kassenbucheintraege auflisten
+   * Kassenbucheinträge auflisten
    */
   async listEntries(params?: {
     register_id?: string;

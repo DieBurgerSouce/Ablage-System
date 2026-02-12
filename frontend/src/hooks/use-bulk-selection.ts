@@ -1,12 +1,12 @@
 /**
- * useBulkSelection Hook - Verwaltet Multi-Selection fuer Bulk-Operationen
+ * useBulkSelection Hook - Verwaltet Multi-Selection für Bulk-Operationen
  *
  * Phase 4.6: Frontend UX Enhancement - Bulk Actions UI
  *
  * Bietet:
  * - Selection State Management
  * - Keyboard Shortcuts (Ctrl+A, Shift+Click)
- * - Progress Tracking fuer Batch-Operationen
+ * - Progress Tracking für Batch-Operationen
  */
 import { useState, useCallback, useMemo } from "react"
 
@@ -17,24 +17,24 @@ export interface BulkSelectionState<TData> {
   selectedIds: string[]
   /** Items als Array */
   selectedItems: TData[]
-  /** Anzahl ausgewaehlter Items */
+  /** Anzahl ausgewählter Items */
   selectedCount: number
-  /** Ist ein bestimmtes Item ausgewaehlt? */
+  /** Ist ein bestimmtes Item ausgewählt? */
   isSelected: (id: string) => boolean
-  /** Alle Items ausgewaehlt? */
+  /** Alle Items ausgewählt? */
   allSelected: boolean
-  /** Einige Items ausgewaehlt? (fuer Indeterminate-Checkbox) */
+  /** Einige Items ausgewählt? (für Indeterminate-Checkbox) */
   someSelected: boolean
 }
 
 export interface BulkSelectionActions<TData> {
-  /** Item zur Auswahl hinzufuegen/entfernen */
+  /** Item zur Auswahl hinzufügen/entfernen */
   toggleSelection: (id: string, item: TData) => void
-  /** Alle Items auswaehlen */
+  /** Alle Items auswählen */
   selectAll: (items: TData[], getIdFn: (item: TData) => string) => void
-  /** Alle Items abwaehlen */
+  /** Alle Items abwählen */
   clearSelection: () => void
-  /** Mehrere Items auswaehlen */
+  /** Mehrere Items auswählen */
   selectMany: (items: TData[], getIdFn: (item: TData) => string) => void
   /** Range-Selection (Shift+Click) */
   selectRange: (
@@ -43,14 +43,14 @@ export interface BulkSelectionActions<TData> {
     allItems: TData[],
     getIdFn: (item: TData) => string
   ) => void
-  /** Bestimmte Items entfernen (z.B. nach Loeschung) */
+  /** Bestimmte Items entfernen (z.B. nach Löschung) */
   removeFromSelection: (ids: string[]) => void
 }
 
 export interface UseBulkSelectionOptions {
   /** Maximale Anzahl selektierbarer Items */
   maxSelection?: number
-  /** Callback bei Aenderung */
+  /** Callback bei Änderung */
   onChange?: (selectedIds: string[]) => void
 }
 
@@ -91,7 +91,7 @@ export function useBulkSelection<TData>(
     [maxSelection, onChange]
   )
 
-  // Alle auswaehlen
+  // Alle auswählen
   const selectAll = useCallback(
     (items: TData[], getIdFn: (item: TData) => string) => {
       setSelectedMap(() => {
@@ -113,7 +113,7 @@ export function useBulkSelection<TData>(
     onChange?.([])
   }, [onChange])
 
-  // Mehrere auswaehlen
+  // Mehrere auswählen
   const selectMany = useCallback(
     (items: TData[], getIdFn: (item: TData) => string) => {
       setSelectedMap((prev) => {
@@ -188,7 +188,7 @@ export function useBulkSelection<TData>(
 }
 
 // =============================================================================
-// Progress Tracking fuer Batch-Operationen
+// Progress Tracking für Batch-Operationen
 // =============================================================================
 
 export interface BatchProgress {
@@ -263,7 +263,7 @@ export function useBatchProgress(): UseBatchProgressReturn {
 }
 
 // =============================================================================
-// Batch Executor fuer sequentielle Verarbeitung
+// Batch Executor für sequentielle Verarbeitung
 // =============================================================================
 
 export interface BatchExecutorOptions<TData, TResult> {

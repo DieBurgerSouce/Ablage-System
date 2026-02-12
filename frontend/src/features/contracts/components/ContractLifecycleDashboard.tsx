@@ -1,11 +1,11 @@
 /**
- * ContractLifecycleDashboard - Vertrags-Lifecycle Uebersicht
+ * ContractLifecycleDashboard - Vertrags-Lifecycle Übersicht
  *
  * Features:
- * - 4 KPI-Karten (Aktive Vertraege, Bald ablaufend, Entscheidung noetig, Jahreskosten)
- * - Kostenaufschluesselung nach Kategorie/Lieferant
+ * - 4 KPI-Karten (Aktive Verträge, Bald ablaufend, Entscheidung nötig, Jahreskosten)
+ * - Kostenaufschlüsselung nach Kategorie/Lieferant
  * - Monatlicher Kostentrend (Balkendiagramm)
- * - Verlaengerungstracker
+ * - Verlängerungstracker
  */
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -62,7 +62,7 @@ export function ContractLifecycleDashboard({
 
   const kpis = [
     {
-      title: 'Aktive Vertraege',
+      title: 'Aktive Verträge',
       value: lifecycle?.active_contracts ?? 0,
       icon: CheckCircle,
       color: 'text-green-600',
@@ -75,16 +75,16 @@ export function ContractLifecycleDashboard({
       icon: Clock,
       color: 'text-orange-600',
       bgColor: 'bg-orange-100',
-      description: 'Naechste 90 Tage',
+      description: 'Nächste 90 Tage',
       formatted: (lifecycle?.expiring_soon ?? 0).toLocaleString('de-DE'),
     },
     {
-      title: 'Entscheidung noetig',
+      title: 'Entscheidung nötig',
       value: lifecycle?.pending_renewal_decision ?? 0,
       icon: AlertTriangle,
       color: 'text-red-600',
       bgColor: 'bg-red-100',
-      description: 'Verlaengerung ausstehend',
+      description: 'Verlängerung ausstehend',
       formatted: (lifecycle?.pending_renewal_decision ?? 0).toLocaleString('de-DE'),
     },
     {

@@ -7,8 +7,8 @@
  * - Swipe-to-close (nach unten ziehen)
  * - Touch-optimierte Interaktion
  * - Animierte Ein-/Ausblendung
- * - Snap Points (Hoehen-Stufen)
- * - Backdrop-Tap zum Schliessen
+ * - Snap Points (Höhen-Stufen)
+ * - Backdrop-Tap zum Schließen
  */
 
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -26,7 +26,7 @@ export type SnapPoint = "min" | "mid" | "max" | number
 export interface BottomSheetProps {
   /** Ist das Sheet offen? */
   open: boolean
-  /** Callback beim Schliessen */
+  /** Callback beim Schließen */
   onOpenChange: (open: boolean) => void
   /** Inhalt */
   children: React.ReactNode
@@ -34,19 +34,19 @@ export interface BottomSheetProps {
   title?: string
   /** Beschreibung (optional) */
   description?: string
-  /** Initiale Hoehe */
+  /** Initiale Höhe */
   defaultSnapPoint?: SnapPoint
   /** Erlaubte Snap Points */
   snapPoints?: SnapPoint[]
   /** Swipe-to-close deaktivieren */
   disableSwipeClose?: boolean
-  /** Backdrop-Tap zum Schliessen deaktivieren */
+  /** Backdrop-Tap zum Schließen deaktivieren */
   disableBackdropClose?: boolean
-  /** Schliessen-Button anzeigen */
+  /** Schließen-Button anzeigen */
   showCloseButton?: boolean
   /** Handle/Grip anzeigen */
   showHandle?: boolean
-  /** Zusaetzliche CSS-Klassen */
+  /** Zusätzliche CSS-Klassen */
   className?: string
 }
 
@@ -60,8 +60,8 @@ const SNAP_POINT_VALUES: Record<string, number> = {
   max: 0.9,
 }
 
-const SWIPE_THRESHOLD = 50 // Mindest-Swipe-Distanz zum Schliessen
-const VELOCITY_THRESHOLD = 0.5 // Mindest-Geschwindigkeit zum Schliessen
+const SWIPE_THRESHOLD = 50 // Mindest-Swipe-Distanz zum Schließen
+const VELOCITY_THRESHOLD = 0.5 // Mindest-Geschwindigkeit zum Schließen
 
 // =============================================================================
 // Component
@@ -96,14 +96,14 @@ export function BottomSheet({
     return window.innerHeight * ratio
   }, [])
 
-  // Naechsten Snap Point finden
+  // Nächsten Snap Point finden
   const findNearestSnapPoint = useCallback(
     (height: number, velocity: number): number => {
       const sortedPoints = snapPoints
         .map(snapPointToPixels)
         .sort((a, b) => a - b)
 
-      // Bei schnellem Swipe nach unten: schliessen
+      // Bei schnellem Swipe nach unten: schließen
       if (velocity > VELOCITY_THRESHOLD && !disableSwipeClose) {
         return 0
       }
@@ -113,7 +113,7 @@ export function BottomSheet({
         return sortedPoints[sortedPoints.length - 1]
       }
 
-      // Naechsten Punkt finden
+      // Nächsten Punkt finden
       let nearest = sortedPoints[0]
       let minDiff = Math.abs(height - nearest)
 
@@ -161,7 +161,7 @@ export function BottomSheet({
       const deltaY = dragStartY - touch.clientY
       const newHeight = Math.max(0, dragStartHeight + deltaY)
 
-      // Maximal-Hoehe begrenzen
+      // Maximal-Höhe begrenzen
       const maxHeight = window.innerHeight * 0.95
       setCurrentHeight(Math.min(newHeight, maxHeight))
     },
@@ -179,10 +179,10 @@ export function BottomSheet({
       const deltaY = dragStartY - touch.clientY
       const velocity = deltaY / 100 // Vereinfachte Velocity
 
-      // Naechsten Snap Point finden
+      // Nächsten Snap Point finden
       const targetHeight = findNearestSnapPoint(currentHeight, -velocity)
 
-      // Unter Schwelle = schliessen
+      // Unter Schwelle = schließen
       if (targetHeight < SWIPE_THRESHOLD) {
         onOpenChange(false)
       } else {
@@ -298,7 +298,7 @@ export function BottomSheet({
                 className="h-8 w-8"
               >
                 <X className="h-4 w-4" />
-                <span className="sr-only">Schliessen</span>
+                <span className="sr-only">Schließen</span>
               </Button>
             )}
           </div>

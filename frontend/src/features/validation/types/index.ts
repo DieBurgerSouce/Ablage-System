@@ -1,10 +1,10 @@
 /**
  * Validation Types Index
  *
- * Re-exports alle Typen fuer das Validierungs-Feature.
+ * Re-exports alle Typen für das Validierungs-Feature.
  */
 
-// Legacy Training Types (fuer Rueckwaertskompatibilitaet)
+// Legacy Training Types (für Rückwärtskompatibilität)
 export * from '../types';
 
 // Neue Queue-basierte Typen

@@ -1,8 +1,8 @@
 /**
- * useFacets Hook - TanStack Query Hook fuer Facetten-Daten
+ * useFacets Hook - TanStack Query Hook für Facetten-Daten
  *
- * Ruft Facetten vom Backend ab und cached sie fuer 30 Sekunden.
- * Unterstuetzt Filter-Parameter fuer kontextabhaengige Facetten.
+ * Ruft Facetten vom Backend ab und cached sie für 30 Sekunden.
+ * Unterstützt Filter-Parameter für kontextabhängige Facetten.
  */
 import { useQuery } from '@tanstack/react-query';
 import { getSearchFacets } from '../api/facets-api';

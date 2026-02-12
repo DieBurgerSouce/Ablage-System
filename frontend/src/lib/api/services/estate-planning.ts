@@ -1,9 +1,9 @@
 /**
  * Estate Planning API Service
  *
- * Nachlassplanung fuer das Privat-Modul:
+ * Nachlassplanung für das Privat-Modul:
  * - Erbschaftsteuer-Berechnung (deutsches Recht)
- * - Beguenstigte/Erben-Verwaltung
+ * - Begünstigte/Erben-Verwaltung
  * - Vollmachten-Management
  * - Niessbrauch-Berechnung
  * - Zeitgesteuerter Dokumentenzugriff
@@ -551,7 +551,7 @@ export const estatePlanningService = {
   // ==================== Estate Overview ====================
 
   /**
-   * Holt die Nachlassuebersicht
+   * Holt die Nachlassübersicht
    */
   getEstateOverview: async (spaceId: string): Promise<EstateOverview> => {
     try {
@@ -567,7 +567,7 @@ export const estatePlanningService = {
         giftPlans: response.data.gift_plans.map(transformGiftPlan),
       };
     } catch (error) {
-      handleApiError(error, 'Nachlassuebersicht laden');
+      handleApiError(error, 'Nachlassübersicht laden');
     }
   },
 
@@ -588,7 +588,7 @@ export const estatePlanningService = {
   // ==================== Beneficiaries ====================
 
   /**
-   * Listet alle Beguenstigten
+   * Listet alle Begünstigten
    */
   listBeneficiaries: async (spaceId: string): Promise<Beneficiary[]> => {
     try {
@@ -597,12 +597,12 @@ export const estatePlanningService = {
       );
       return response.data.map(transformBeneficiary);
     } catch (error) {
-      handleApiError(error, 'Beguenstigte laden');
+      handleApiError(error, 'Begünstigte laden');
     }
   },
 
   /**
-   * Erstellt einen Beguenstigten
+   * Erstellt einen Begünstigten
    */
   createBeneficiary: async (spaceId: string, data: BeneficiaryCreate): Promise<Beneficiary> => {
     try {
@@ -619,12 +619,12 @@ export const estatePlanningService = {
       );
       return transformBeneficiary(response.data);
     } catch (error) {
-      handleApiError(error, 'Beguenstigten erstellen');
+      handleApiError(error, 'Begünstigten erstellen');
     }
   },
 
   /**
-   * Aktualisiert einen Beguenstigten
+   * Aktualisiert einen Begünstigten
    */
   updateBeneficiary: async (
     beneficiaryId: string,
@@ -644,18 +644,18 @@ export const estatePlanningService = {
       );
       return transformBeneficiary(response.data);
     } catch (error) {
-      handleApiError(error, 'Beguenstigten aktualisieren');
+      handleApiError(error, 'Begünstigten aktualisieren');
     }
   },
 
   /**
-   * Loescht einen Beguenstigten
+   * Löscht einen Begünstigten
    */
   deleteBeneficiary: async (beneficiaryId: string): Promise<void> => {
     try {
       await apiClient.delete(`/privat/estate-planning/beneficiaries/${beneficiaryId}`);
     } catch (error) {
-      handleApiError(error, 'Beguenstigten loeschen');
+      handleApiError(error, 'Begünstigten löschen');
     }
   },
 
@@ -685,7 +685,7 @@ export const estatePlanningService = {
   },
 
   /**
-   * Simuliert Erbschaftsteuer fuer einen einzelnen Erben
+   * Simuliert Erbschaftsteuer für einen einzelnen Erben
    */
   simulateTaxForHeir: async (
     spaceId: string,
@@ -814,13 +814,13 @@ export const estatePlanningService = {
   },
 
   /**
-   * Loescht eine Vollmacht
+   * Löscht eine Vollmacht
    */
   deletePowerOfAttorney: async (poaId: string): Promise<void> => {
     try {
       await apiClient.delete(`/privat/estate-planning/powers-of-attorney/${poaId}`);
     } catch (error) {
-      handleApiError(error, 'Vollmacht loeschen');
+      handleApiError(error, 'Vollmacht löschen');
     }
   },
 
@@ -868,13 +868,13 @@ export const estatePlanningService = {
   },
 
   /**
-   * Loescht einen zeitgesteuerten Zugriff
+   * Löscht einen zeitgesteuerten Zugriff
    */
   deleteHeirDocumentAccess: async (accessId: string): Promise<void> => {
     try {
       await apiClient.delete(`/privat/estate-planning/heir-access/${accessId}`);
     } catch (error) {
-      handleApiError(error, 'Erben-Zugriff loeschen');
+      handleApiError(error, 'Erben-Zugriff löschen');
     }
   },
 

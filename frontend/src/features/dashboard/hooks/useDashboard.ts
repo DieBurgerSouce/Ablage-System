@@ -1,7 +1,7 @@
 /**
  * Dashboard React Query Hooks
  *
- * React Query Hooks fuer Dashboard-Management mit optimistic updates.
+ * React Query Hooks für Dashboard-Management mit optimistic updates.
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';

@@ -1,9 +1,9 @@
 /**
  * Document Quality Hooks
  *
- * React Query Hooks fuer Datenqualitaets-Ampel.
+ * React Query Hooks für Datenqualitäts-Ampel.
  * - useDocumentQuality: Einzeldokument-Score
- * - useCompanyQualityOverview: Unternehmensweite Uebersicht
+ * - useCompanyQualityOverview: Unternehmensweite Übersicht
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -22,10 +22,10 @@ import type {
 // =============================================================================
 
 /**
- * Hook fuer Qualitaets-Score eines einzelnen Dokuments
+ * Hook für Qualitäts-Score eines einzelnen Dokuments
  *
  * @param documentId - Die UUID des Dokuments
- * @param enabled - Optional: Query nur ausfuehren wenn true (default: true)
+ * @param enabled - Optional: Query nur ausführen wenn true (default: true)
  */
 export function useDocumentQuality(documentId: string, enabled = true) {
   return useQuery<DocumentQualityResponse, Error>({
@@ -39,7 +39,7 @@ export function useDocumentQuality(documentId: string, enabled = true) {
 }
 
 /**
- * Hook fuer unternehmensweite Qualitaetsuebersicht
+ * Hook für unternehmensweite Qualitätsübersicht
  */
 export function useCompanyQualityOverview() {
   return useQuery<CompanyQualityOverviewResponse, Error>({

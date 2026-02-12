@@ -1,7 +1,7 @@
 /**
  * Payment Behavior Route
  *
- * Route fuer Zahlungsverhaltens-Dashboard.
+ * Route für Zahlungsverhaltens-Dashboard.
  */
 
 import { createFileRoute } from '@tanstack/react-router';

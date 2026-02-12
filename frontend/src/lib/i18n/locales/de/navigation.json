@@ -5,7 +5,7 @@
     "documents": "Dokumente",
     "upload": "Hochladen",
     "search": "Suche",
-    "entities": "Geschaeftspartner",
+    "entities": "Geschäftspartner",
     "customers": "Kunden",
     "suppliers": "Lieferanten",
     "banking": "Banking",
@@ -41,11 +41,11 @@
   "user": {
     "profile": "Profil",
     "settings": "Einstellungen",
-    "preferences": "Praeferenzen",
+    "preferences": "Präferenzen",
     "notifications": "Benachrichtigungen",
     "security": "Sicherheit",
     "sessions": "Sitzungen",
-    "apiKeys": "API-Schluessel",
+    "apiKeys": "API-Schlüssel",
     "help": "Hilfe",
     "support": "Support",
     "documentation": "Dokumentation",
@@ -68,14 +68,14 @@
         "system": "Systemeinstellung",
         "light": "Hell",
         "dark": "Dunkel",
-        "whitescreen": "Weissschirm (Hoher Kontrast)",
+        "whitescreen": "Weißschirm (Hoher Kontrast)",
         "blackscreen": "Schwarzschirm (OLED)"
       },
       "density": "Informationsdichte",
       "densityOptions": {
         "compact": "Kompakt",
         "comfortable": "Komfortabel",
-        "spacious": "Grosszuegig"
+        "spacious": "Großzügig"
       }
     },
     "notifications": {
@@ -94,23 +94,23 @@
     },
     "security": {
       "title": "Sicherheit",
-      "changePassword": "Passwort aendern",
+      "changePassword": "Passwort ändern",
       "twoFactor": "Zwei-Faktor-Authentifizierung",
       "sessions": "Aktive Sitzungen",
       "loginHistory": "Anmeldeverlauf",
-      "apiKeys": "API-Schluessel"
+      "apiKeys": "API-Schlüssel"
     },
     "privacy": {
       "title": "Datenschutz",
       "dataExport": "Daten exportieren",
-      "deleteAccount": "Konto loeschen",
+      "deleteAccount": "Konto löschen",
       "analytics": "Nutzungsanalyse",
       "cookies": "Cookie-Einstellungen"
     }
   },
   "breadcrumb": {
     "home": "Startseite",
-    "back": "Zurueck",
+    "back": "Zurück",
     "separator": "/"
   },
   "footer": {
@@ -122,9 +122,9 @@
     "support": "Support"
   },
   "mobile": {
-    "menu": "Menue",
-    "openMenu": "Menue oeffnen",
-    "closeMenu": "Menue schliessen",
-    "swipeToClose": "Wischen zum Schliessen"
+    "menu": "Menü",
+    "openMenu": "Menü öffnen",
+    "closeMenu": "Menü schließen",
+    "swipeToClose": "Wischen zum Schließen"
   }
 }

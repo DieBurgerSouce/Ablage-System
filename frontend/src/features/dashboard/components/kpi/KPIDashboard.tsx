@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { KPICard, type KPICardProps } from "./KPICard"
+import { AnimatedList, AnimatedListItem } from "@/components/animations"
 
 // KPI Group for organizing related KPIs
 export interface KPIGroup {
@@ -190,21 +191,24 @@ export function KPIDashboard({
                                 </CardHeader>
                                 <CardContent>
                                     {layout === "grid" ? (
-                                        <div className={cn("grid gap-4", gridCols[columns])}>
+                                        <AnimatedList className={cn("grid gap-4", gridCols[columns])}>
                                             {group.kpis.map((kpi) => (
-                                                <KPICard key={kpi.id} {...kpi} />
+                                                <AnimatedListItem key={kpi.id}>
+                                                    <KPICard {...kpi} />
+                                                </AnimatedListItem>
                                             ))}
-                                        </div>
+                                        </AnimatedList>
                                     ) : (
-                                        <div className="space-y-3">
+                                        <AnimatedList className="space-y-3">
                                             {group.kpis.map((kpi) => (
-                                                <KPICard
-                                                    key={kpi.id}
-                                                    {...kpi}
-                                                    className="max-w-full"
-                                                />
+                                                <AnimatedListItem key={kpi.id}>
+                                                    <KPICard
+                                                        {...kpi}
+                                                        className="max-w-full"
+                                                    />
+                                                </AnimatedListItem>
                                             ))}
-                                        </div>
+                                        </AnimatedList>
                                     )}
                                 </CardContent>
                             </Card>

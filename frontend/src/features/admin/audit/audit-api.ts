@@ -1,7 +1,7 @@
 /**
  * Audit Log API Hooks
  *
- * TanStack Query hooks fuer Audit-Log Administration.
+ * TanStack Query hooks für Audit-Log Administration.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';

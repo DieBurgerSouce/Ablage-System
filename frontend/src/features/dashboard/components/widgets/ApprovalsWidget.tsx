@@ -1,13 +1,13 @@
 /**
- * Approvals Widget fuer Dashboard
+ * Approvals Widget für Dashboard
  *
  * Zeigt ausstehende Genehmigungsanfragen:
  * - Anzahl offener Genehmigungen
- * - Kritische/ueberfaellige Anfragen
+ * - Kritische/überfällige Anfragen
  * - Schnellzugriff auf Genehmigungsliste
  *
  * Enterprise-Grade Features:
- * - ErrorBoundary fuer graceful degradation
+ * - ErrorBoundary für graceful degradation
  * - Konsistente Fehlerbehandlung
  * - Real-time Updates via WebSocket
  */
@@ -177,12 +177,12 @@ function ApprovalItem({ request }: { request: ApprovalRequest }) {
                     {isOverdue ? (
                         <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
                             <AlertTriangle className="h-3 w-3" />
-                            Ueberfaellig
+                            Überfällig
                         </span>
                     ) : request.due_date && (
                         <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            Faellig: {new Date(request.due_date).toLocaleDateString('de-DE')}
+                            Fällig: {new Date(request.due_date).toLocaleDateString('de-DE')}
                         </span>
                     )}
                 </div>
@@ -229,7 +229,7 @@ function ApprovalsWidgetContent() {
         return (
             <div className="text-center py-6 text-muted-foreground">
                 <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
-                <p className="text-sm">Genehmigungsdaten nicht verfuegbar</p>
+                <p className="text-sm">Genehmigungsdaten nicht verfügbar</p>
             </div>
         );
     }
@@ -270,7 +270,7 @@ function ApprovalsWidgetContent() {
                             hasUrgent ? 'text-red-600' : 'text-muted-foreground'
                         )} />
                         <span className="text-xs font-medium text-muted-foreground">
-                            Ueberfaellig
+                            Überfällig
                         </span>
                     </div>
                     <p className="text-2xl font-bold mt-1">{summary.overdue_count}</p>

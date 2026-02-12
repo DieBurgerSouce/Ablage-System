@@ -1,6 +1,6 @@
 /**
  * Dunning Templates API
- * API-Funktionen fuer Mahnbrief-Vorlagen und PDF-Generierung
+ * API-Funktionen für Mahnbrief-Vorlagen und PDF-Generierung
  */
 
 import { api } from '@/lib/api';
@@ -14,7 +14,7 @@ import type {
 const API_BASE = '/api/v1/banking/dunning';
 
 /**
- * Verfuegbare Mahnbrief-Vorlagen abrufen
+ * Verfügbare Mahnbrief-Vorlagen abrufen
  */
 export async function getLetterTemplates(): Promise<DunningTemplate[]> {
   const response = await api.get(`${API_BASE}/letter-templates`);
@@ -33,7 +33,7 @@ export async function getLetterTemplates(): Promise<DunningTemplate[]> {
 }
 
 /**
- * Aktuelle Verzugszinssaetze abrufen
+ * Aktuelle Verzugszinssätze abrufen
  */
 export async function getInterestRates(): Promise<InterestRates> {
   const response = await api.get(`${API_BASE}/interest-rates`);

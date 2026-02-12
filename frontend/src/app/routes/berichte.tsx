@@ -1,7 +1,7 @@
 /**
  * Berichte Route - Report Builder Dashboard
  *
- * Haupt-Route mit Outlet fuer verschachtelte Routen (z.B. Builder).
+ * Haupt-Route mit Outlet für verschachtelte Routen (z.B. Builder).
  */
 
 import { createFileRoute, Outlet } from '@tanstack/react-router';

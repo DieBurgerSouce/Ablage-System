@@ -9,7 +9,9 @@ Stellt Endpoints bereit fuer:
 Vision 2.0 - Feature #10 (Januar 2026)
 """
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 import structlog
@@ -259,7 +261,7 @@ async def list_industries(
 
 @router.get(
     "/percentile",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Perzentil-Ranking",
     description="Zeigt das Perzentil-Ranking der Firma im Branchenvergleich.",
 )
@@ -267,7 +269,7 @@ async def get_percentile_ranking(
     industry: Optional[str] = Query(None, description="Branche"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Holt Perzentil-Ranking."""
     if not current_user.default_company_id:
         raise HTTPException(status_code=400, detail="Keine Firma zugeordnet.")
@@ -360,7 +362,7 @@ async def get_trends(
 
 @router.get(
     "/summary",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Benchmark-Zusammenfassung",
     description="Kompakte Zusammenfassung der wichtigsten Benchmark-KPIs.",
 )
@@ -368,7 +370,7 @@ async def get_benchmark_summary(
     industry: Optional[str] = Query(None, description="Branche"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Holt kompakte Benchmark-Zusammenfassung."""
     if not current_user.default_company_id:
         raise HTTPException(status_code=400, detail="Keine Firma zugeordnet.")

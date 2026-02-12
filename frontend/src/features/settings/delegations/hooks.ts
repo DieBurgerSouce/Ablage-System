@@ -234,10 +234,10 @@ export function useExtendDelegation() {
       queryClient.invalidateQueries({
         queryKey: delegationKeys.detail(variables.delegationId),
       });
-      toast.success(data.nachricht || 'Vertretung verlaengert');
+      toast.success(data.nachricht || 'Vertretung verlängert');
     },
     onError: (error: Error) => {
-      toast.error(`Fehler beim Verlaengern: ${error.message}`);
+      toast.error(`Fehler beim Verlängern: ${error.message}`);
     },
   });
 }

@@ -1,13 +1,13 @@
 /**
  * ActivityFeed Component.
  *
- * Live-Feed von System-Aktivitaeten mit Echtzeit-Updates via WebSocket.
+ * Live-Feed von System-Aktivitäten mit Echtzeit-Updates via WebSocket.
  *
  * Features:
  * - Echtzeit-Updates ohne Refresh
  * - Event-Kategorisierung mit Icons
  * - Zeitstempel mit relative Zeit
- * - Click-Handler fuer Navigation
+ * - Click-Handler für Navigation
  * - Expandable Details
  * - Priorisierung (kritische Events oben)
  */
@@ -60,7 +60,7 @@ import {
 interface ActivityFeedProps {
   /** Maximale Anzahl angezeigter Events */
   maxEvents?: number;
-  /** Hoehe der ScrollArea */
+  /** Höhe der ScrollArea */
   height?: string;
   /** Nur bestimmte Event-Kategorien zeigen */
   categories?: string[];
@@ -123,7 +123,7 @@ const eventConfig: Record<string, EventConfig> = {
   },
   'document.deleted': {
     icon: XCircle,
-    label: 'Dokument geloescht',
+    label: 'Dokument gelöscht',
     color: 'text-red-600',
     bgColor: 'bg-red-50',
     category: 'document',
@@ -199,7 +199,7 @@ const eventConfig: Record<string, EventConfig> = {
   },
   'invoice.overdue': {
     icon: AlertTriangle,
-    label: 'Rechnung ueberfaellig',
+    label: 'Rechnung überfällig',
     color: 'text-red-600',
     bgColor: 'bg-red-50',
     category: 'finance',
@@ -252,14 +252,14 @@ const eventConfig: Record<string, EventConfig> = {
   // Entity Events
   'entity.linked': {
     icon: Link2,
-    label: 'Entity verknuepft',
+    label: 'Entity verknüpft',
     color: 'text-blue-600',
     bgColor: 'bg-blue-50',
     category: 'entity',
   },
   'entity.risk_changed': {
     icon: AlertTriangle,
-    label: 'Risiko-Score geaendert',
+    label: 'Risiko-Score geändert',
     color: 'text-orange-600',
     bgColor: 'bg-orange-50',
     category: 'entity',
@@ -298,7 +298,7 @@ const eventConfig: Record<string, EventConfig> = {
   },
   'user.mention': {
     icon: Bell,
-    label: 'Erwaehnung',
+    label: 'Erwähnung',
     color: 'text-blue-600',
     bgColor: 'bg-blue-50',
     category: 'user',
@@ -349,13 +349,13 @@ function getEventDescription(event: RealtimeEvent): string {
     case 'document.uploaded':
       return `"${payload.filename || 'Dokument'}" wurde hochgeladen`;
     case 'document.ocr_completed':
-      return `OCR fuer "${payload.filename || 'Dokument'}" abgeschlossen`;
+      return `OCR für "${payload.filename || 'Dokument'}" abgeschlossen`;
     case 'document.categorized':
       return `Dokument als "${payload.category || 'Unbekannt'}" kategorisiert`;
     case 'validation.item_added':
-      return `Neues Item zur Validierung: ${payload.field || 'Feld'} pruefen`;
+      return `Neues Item zur Validierung: ${payload.field || 'Feld'} prüfen`;
     case 'approval.requested':
-      return `Genehmigung fuer ${payload.title || 'Antrag'} erforderlich`;
+      return `Genehmigung für ${payload.title || 'Antrag'} erforderlich`;
     case 'approval.approved':
       return `${payload.title || 'Antrag'} wurde genehmigt`;
     case 'approval.rejected':
@@ -363,15 +363,15 @@ function getEventDescription(event: RealtimeEvent): string {
     case 'invoice.paid':
       return `Rechnung bezahlt: ${payload.amount ? `${payload.amount}€` : ''}`;
     case 'invoice.overdue':
-      return `Rechnung ueberfaellig seit ${payload.days_overdue || '?'} Tagen`;
+      return `Rechnung überfällig seit ${payload.days_overdue || '?'} Tagen`;
     case 'payment.received':
       return `Zahlung eingegangen: ${payload.amount ? `${payload.amount}€` : ''}`;
     case 'budget.alert':
-      return `Budget ${payload.budget_name || ''} zu ${payload.percent_used || '?'}% ausgeschoepft`;
+      return `Budget ${payload.budget_name || ''} zu ${payload.percent_used || '?'}% ausgeschöpft`;
     case 'transaction.imported':
       return `${payload.count || 1} Transaktion(en) importiert`;
     case 'entity.risk_changed':
-      return `Risiko-Score geaendert auf ${payload.new_score || '?'}`;
+      return `Risiko-Score geändert auf ${payload.new_score || '?'}`;
     case 'system.notification':
       return typeof payload.message === 'string' ? payload.message : 'System-Benachrichtigung';
     case 'system.error':
@@ -592,7 +592,7 @@ export function ActivityFeed({
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 border-b">
-        <h3 className="text-sm font-semibold">Aktivitaeten</h3>
+        <h3 className="text-sm font-semibold">Aktivitäten</h3>
         <div className="flex items-center gap-2">
           {showConnectionStatus && <ConnectionStatus state={state} />}
           <Badge variant="secondary" className="text-xs">
@@ -607,7 +607,7 @@ export function ActivityFeed({
           {filteredEvents.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
               <Bell className="h-8 w-8 mb-2 opacity-50" />
-              <p className="text-sm">Keine Aktivitaeten</p>
+              <p className="text-sm">Keine Aktivitäten</p>
               {state !== 'connected' && (
                 <p className="text-xs mt-1">WebSocket nicht verbunden</p>
               )}
@@ -629,7 +629,7 @@ export function ActivityFeed({
 }
 
 // ============================================================================
-// Widget Export (fuer Dashboard)
+// Widget Export (für Dashboard)
 // ============================================================================
 
 export function ActivityFeedWidget() {

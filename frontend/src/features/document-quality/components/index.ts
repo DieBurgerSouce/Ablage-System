@@ -1,7 +1,7 @@
 /**
  * Document Quality Components
  *
- * Barrel-Exports fuer alle Datenqualitaets-Komponenten.
+ * Barrel-Exports für alle Datenqualitäts-Komponenten.
  */
 
 export { AmpelBadge } from './AmpelBadge';

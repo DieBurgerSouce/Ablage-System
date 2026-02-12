@@ -1,7 +1,7 @@
 /**
  * FinanceDocumentCard - Mobile-optimierte Dokument-Karte
  *
- * Wird auf mobilen Geraeten anstelle der Tabelle verwendet.
+ * Wird auf mobilen Geräten anstelle der Tabelle verwendet.
  * Zeigt alle wichtigen Dokument-Informationen in kompakter Form.
  *
  * Optimiert mit React.memo für bessere Performance bei langen Listen.
@@ -94,7 +94,7 @@ const FinanceDocumentCardInner = memo(function FinanceDocumentCard({
             </div>
           )}
 
-          {/* Betraege */}
+          {/* Beträge */}
           {showAmounts && (document.totalAmount || document.nachzahlung || document.erstattung) && (
             <div className="col-span-2 flex flex-wrap gap-2 mt-1">
               {document.totalAmount && (

@@ -159,7 +159,7 @@ export function InsightCard({ insight, onDismiss, compact = false, className }: 
       {/* Affected Entities */}
       {insight.affected_entities.length > 0 && (
         <div className="mt-3 text-xs text-muted-foreground">
-          {insight.affected_entities.length} betroffene Entitaeten
+          {insight.affected_entities.length} betroffene Entitäten
         </div>
       )}
 
@@ -173,7 +173,7 @@ export function InsightCard({ insight, onDismiss, compact = false, className }: 
         )}
         {onDismiss && (
           <Button variant="outline" size="sm" onClick={onDismiss}>
-            Schliessen
+            Schließen
           </Button>
         )}
       </div>
@@ -188,8 +188,8 @@ function formatMetricKey(key: string): string {
     total_amount: 'Gesamtbetrag',
     count: 'Anzahl',
     average: 'Durchschnitt',
-    days_overdue: 'Tage ueberfaellig',
-    potential_savings: 'Moegliche Ersparnis',
+    days_overdue: 'Tage überfällig',
+    potential_savings: 'Mögliche Ersparnis',
     risk_score: 'Risiko-Score',
     trend_percentage: 'Trend',
   };
@@ -239,7 +239,7 @@ export function InsightsList({
     return (
       <div className={cn('text-center py-8 text-muted-foreground', className)}>
         <Star className="h-8 w-8 mx-auto mb-2 opacity-50" />
-        <p className="text-sm">Keine Insights verfuegbar</p>
+        <p className="text-sm">Keine Insights verfügbar</p>
       </div>
     );
   }

@@ -199,7 +199,7 @@ export function LowConfidenceQueue({
                 Keine Dokumente mit niedriger Confidence gefunden.
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Erhoehen Sie den Max-Confidence-Filter.
+                Erhöhen Sie den Max-Confidence-Filter.
               </p>
             </div>
           ) : (

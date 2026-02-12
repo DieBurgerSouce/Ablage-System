@@ -1,8 +1,8 @@
 /**
  * Life Events API Client
  *
- * API-Funktionen fuer den Lebenslagen-Assistenten.
- * Verwendet apiClient fuer automatische Retry-Logik und Token-Refresh.
+ * API-Funktionen für den Lebenslagen-Assistenten.
+ * Verwendet apiClient für automatische Retry-Logik und Token-Refresh.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';

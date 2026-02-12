@@ -107,7 +107,7 @@ export function PWAUpdateNotification({
                 <Download className="h-5 w-5" />
               </div>
               <div className="flex-1">
-                <p className="font-medium">Update verfuegbar</p>
+                <p className="font-medium">Update verfügbar</p>
                 <p className="text-sm opacity-80 mt-1">
                   Eine neue Version von Ablage-System ist bereit.
                 </p>
@@ -127,7 +127,7 @@ export function PWAUpdateNotification({
                     onClick={handleDismiss}
                     className="hover:bg-white/20"
                   >
-                    Spaeter
+                    Später
                   </Button>
                 </div>
               </div>

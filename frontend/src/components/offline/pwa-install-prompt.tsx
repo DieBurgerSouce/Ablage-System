@@ -76,7 +76,7 @@ export function usePWAInstall() {
       const promptEvent = e as BeforeInstallPromptEvent;
       setInstallPrompt(promptEvent);
       setIsInstallable(true);
-      logger.info('[PWA] Install prompt verfuegbar');
+      logger.info('[PWA] Install prompt verfügbar');
     };
 
     // Listen for successful install
@@ -98,7 +98,7 @@ export function usePWAInstall() {
 
   const install = React.useCallback(async () => {
     if (!installPrompt) {
-      logger.warn('[PWA] Kein Install-Prompt verfuegbar');
+      logger.warn('[PWA] Kein Install-Prompt verfügbar');
       return false;
     }
 
@@ -237,7 +237,7 @@ export function PWAInstallPrompt({
           </Button>
         </div>
         <CardDescription>
-          Installieren Sie Ablage-System als App fuer schnelleren Zugriff
+          Installieren Sie Ablage-System als App für schnelleren Zugriff
         </CardDescription>
       </CardHeader>
       <CardContent className="pb-3">

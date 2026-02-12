@@ -474,7 +474,7 @@ class EInvoiceService {
                 version: null,
                 invoiceData: null,
                 xmlContent: null,
-                errors: ['Ungueltige Server-Antwort'],
+                errors: ['Ungültige Server-Antwort'],
             };
         }
         return {
@@ -534,7 +534,7 @@ class EInvoiceService {
                 schemaValid: false,
                 schematronValid: false,
                 pdfACompliant: null,
-                errors: [{ code: 'INTERNAL', location: '', message: 'Ungueltige Server-Antwort', severity: 'error' }],
+                errors: [{ code: 'INTERNAL', location: '', message: 'Ungültige Server-Antwort', severity: 'error' }],
                 warnings: [],
                 errorCount: 1,
                 warningCount: 0,

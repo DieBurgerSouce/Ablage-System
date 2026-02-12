@@ -11,7 +11,9 @@ Bietet Admin-Endpoints fuer:
 Alle Endpoints erfordern Superuser-Authentifizierung.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+from app.core.types import JSONDict
 
 import structlog
 from fastapi import APIRouter, Depends, Query
@@ -42,7 +44,7 @@ class ReadinessCheckResponse(BaseModel):
     category: str
     status: str
     message: str
-    details: Dict[str, Any] = Field(default_factory=dict)
+    details: JSONDict = Field(default_factory=dict)
     recommendation: Optional[str] = None
 
 

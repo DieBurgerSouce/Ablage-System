@@ -58,7 +58,7 @@ export function ItemsTable() {
   const [formData, setFormData] = useState<ItemCreate>({
     item_number: '',
     name: '',
-    unit: 'Stueck',
+    unit: 'Stück',
     category: '',
     ean: '',
     purchase_price: undefined,
@@ -83,7 +83,7 @@ export function ItemsTable() {
     setFormData({
       item_number: '',
       name: '',
-      unit: 'Stueck',
+      unit: 'Stück',
       category: '',
       ean: '',
       purchase_price: undefined,
@@ -124,7 +124,7 @@ export function ItemsTable() {
               <DialogHeader>
                 <DialogTitle>Neuen Artikel anlegen</DialogTitle>
                 <DialogDescription>
-                  Erstellen Sie einen neuen Artikel fuer die Bestandsfuehrung.
+                  Erstellen Sie einen neuen Artikel für die Bestandsführung.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -164,7 +164,7 @@ export function ItemsTable() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Stueck">Stueck</SelectItem>
+                      <SelectItem value="Stück">Stück</SelectItem>
                       <SelectItem value="kg">Kilogramm</SelectItem>
                       <SelectItem value="m">Meter</SelectItem>
                       <SelectItem value="l">Liter</SelectItem>

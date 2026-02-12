@@ -93,7 +93,7 @@ function KontenplanPage() {
                     }}
                 >
                     <SelectTrigger className="w-[250px]">
-                        <SelectValue placeholder="Verbindung waehlen..." />
+                        <SelectValue placeholder="Verbindung wählen..." />
                     </SelectTrigger>
                     <SelectContent>
                         {connectionsLoading ? (
@@ -187,7 +187,7 @@ function KontenplanPage() {
                         <div className="text-center py-10">
                             <BookOpen className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
                             <p className="text-muted-foreground">
-                                Waehlen Sie eine Verbindung aus, um den Kontenplan anzuzeigen.
+                                Wählen Sie eine Verbindung aus, um den Kontenplan anzuzeigen.
                             </p>
                         </div>
                     ) : kontenplanLoading ? (

@@ -64,7 +64,7 @@ export function usePWAFeatures(): UsePWAFeaturesResult {
       setRegistrationError(error);
     },
     onNeedRefresh() {
-      logger.info('[PWA] Neues Update verfuegbar');
+      logger.info('[PWA] Neues Update verfügbar');
     },
     onOfflineReady() {
       logger.info('[PWA] App ist offline-bereit');
@@ -77,7 +77,7 @@ export function usePWAFeatures(): UsePWAFeaturesResult {
   const registerBackgroundSync = useCallback(
     async (tag: string): Promise<boolean> => {
       if (!('serviceWorker' in navigator)) {
-        logger.warn('[PWA] Service Worker nicht unterstuetzt');
+        logger.warn('[PWA] Service Worker nicht unterstützt');
         return false;
       }
 
@@ -91,7 +91,7 @@ export function usePWAFeatures(): UsePWAFeaturesResult {
           return true;
         }
 
-        logger.warn('[PWA] Background Sync API nicht unterstuetzt');
+        logger.warn('[PWA] Background Sync API nicht unterstützt');
         return false;
       } catch (error) {
         logger.error('[PWA] Background Sync Registrierung fehlgeschlagen', {

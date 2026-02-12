@@ -1,7 +1,7 @@
 /**
  * Cash Feature
  *
- * Kassenbuch-Modul mit GoBD-konformer Buchfuehrung.
+ * Kassenbuch-Modul mit GoBD-konformer Buchführung.
  */
 
 // Components

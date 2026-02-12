@@ -1,7 +1,7 @@
 /**
  * DSO Tracker Widget
  *
- * Dashboard-Widget fuer Forderungslaufzeit (Days Sales Outstanding).
+ * Dashboard-Widget für Forderungslaufzeit (Days Sales Outstanding).
  *
  * Features:
  * - Aktueller DSO-Wert mit Trend-Pfeil

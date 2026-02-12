@@ -1,13 +1,13 @@
 /**
- * useSearchSuggestions - Suchvorschlaege aus API
+ * useSearchSuggestions - Suchvorschläge aus API
  *
- * Holt Suchvorschlaege vom Backend basierend auf der aktuellen Eingabe.
+ * Holt Suchvorschläge vom Backend basierend auf der aktuellen Eingabe.
  * Verwendet Debouncing um API-Calls zu reduzieren.
  * Integriert mit Backend API: /api/v1/search/suggest
  *
  * Features:
  * - Debounced API calls (300ms)
- * - Kategorisierte Vorschlaege (Tags, Kunden, Dokumenttypen)
+ * - Kategorisierte Vorschläge (Tags, Kunden, Dokumenttypen)
  * - Loading und Error States
  *
  * @example
@@ -106,7 +106,7 @@ async function fetchSuggestions(
 // ==================== Hook ====================
 
 export interface UseSearchSuggestionsOptions {
-  /** Minimale Zeichenanzahl bevor Vorschlaege geladen werden */
+  /** Minimale Zeichenanzahl bevor Vorschläge geladen werden */
   minLength?: number;
   /** Debounce-Zeit in ms */
   debounceMs?: number;
@@ -115,10 +115,10 @@ export interface UseSearchSuggestionsOptions {
 }
 
 export interface UseSearchSuggestionsReturn {
-  /** Kategorisierte Suchvorschlaege */
+  /** Kategorisierte Suchvorschläge */
   suggestions: SearchSuggestion[];
 
-  /** Gruppierte Vorschlaege nach Kategorie */
+  /** Gruppierte Vorschläge nach Kategorie */
   groupedSuggestions: Record<SearchSuggestion['category'], SearchSuggestion[]>;
 
   /** Did-you-mean Korrekturvorschlag */
@@ -149,7 +149,7 @@ export function useSearchSuggestions(
     gcTime: 300000, // 5 Minuten (was cacheTime in v4)
   });
 
-  // Gruppiere Vorschlaege nach Kategorie
+  // Gruppiere Vorschläge nach Kategorie
   const groupedSuggestions = useMemo(() => {
     const groups: Record<SearchSuggestion['category'], SearchSuggestion[]> = {
       tag: [],

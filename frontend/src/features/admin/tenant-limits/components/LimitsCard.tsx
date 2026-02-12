@@ -40,7 +40,7 @@ const TIER_LABELS: Record<string, string> = {
 export function LimitsCard({ limits, usage }: LimitsCardProps) {
   const tierDefaults = limits.tier_defaults;
 
-  // Berechne Prozentsaetze fuer Quotas
+  // Berechne Prozentsätze für Quotas
   const documentsUsed = usage?.documents_processed ?? 0;
   const documentsPercent = Math.min(100, (documentsUsed / limits.max_documents_per_month) * 100);
 

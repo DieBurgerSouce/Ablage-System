@@ -1,8 +1,8 @@
 /**
  * EntityGraphPage Component
  *
- * Vollstaendige Seite fuer die Entity-Graph-Visualisierung.
- * Nutzt @xyflow/react fuer interaktive Graph-Darstellung.
+ * Vollständige Seite für die Entity-Graph-Visualisierung.
+ * Nutzt @xyflow/react für interaktive Graph-Darstellung.
  */
 
 import { useState, useCallback, useMemo, useRef } from 'react';
@@ -60,7 +60,7 @@ const defaultEdgeOptions = {
 // ==================== Component ====================
 
 export function EntityGraphPage() {
-    // State fuer Filter
+    // State für Filter
     const [entityType, setEntityType] = useState<string>('all');
     const [minDocuments, setMinDocuments] = useState(1);
     const [includeDocuments, setIncludeDocuments] = useState(false);
@@ -94,7 +94,7 @@ export function EntityGraphPage() {
         queryFn: () => fetchEntityGraphData(queryParams),
     });
 
-    // Update Nodes & Edges wenn Daten sich aendern
+    // Update Nodes & Edges wenn Daten sich ändern
     useMemo(() => {
         if (data) {
             // Konvertiere API Response zu React Flow Format
@@ -129,7 +129,7 @@ export function EntityGraphPage() {
     // On Init Handler
     const onInit = useCallback((instance: ReactFlowInstance) => {
         reactFlowInstance.current = instance;
-        // Initial Fit View nach kurzer Verzoegerung
+        // Initial Fit View nach kurzer Verzögerung
         setTimeout(() => {
             instance.fitView({ padding: 0.2, duration: 300 });
         }, 100);
@@ -145,7 +145,7 @@ export function EntityGraphPage() {
                         Entity-Graph
                     </CardTitle>
                     <CardDescription>
-                        Interaktive Visualisierung der Geschaeftspartner-Beziehungen
+                        Interaktive Visualisierung der Geschäftspartner-Beziehungen
                     </CardDescription>
                 </CardHeader>
             </Card>

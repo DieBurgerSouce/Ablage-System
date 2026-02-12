@@ -121,7 +121,7 @@ export function ChunkResultCard({
                             onClick={() => onDocumentClick(chunk.documentId)}
                         >
                             <FileText className="h-3 w-3" />
-                            Dokument oeffnen
+                            Dokument öffnen
                             <ExternalLink className="h-3 w-3" />
                         </Button>
                     </div>

@@ -1,7 +1,7 @@
 /**
  * WithdrawConsentDialog Component
  *
- * Bestaetigung fuer den Widerruf einer Einwilligung mit optionalem Grund.
+ * Bestätigung für den Widerruf einer Einwilligung mit optionalem Grund.
  */
 
 import { useState } from 'react';
@@ -66,23 +66,23 @@ export function WithdrawConsentDialog({
           </div>
           <AlertDialogDescription className="pt-2 space-y-3">
             <p>
-              Moechten Sie Ihre Einwilligung fuer <strong>{scopeLabel}</strong> wirklich
+              Möchten Sie Ihre Einwilligung für <strong>{scopeLabel}</strong> wirklich
               widerrufen?
             </p>
             <p>
               Nach dem Widerruf wird die Verarbeitung Ihrer Daten in diesem Bereich
-              eingestellt. Sie koennen die Einwilligung jederzeit erneut erteilen.
+              eingestellt. Sie können die Einwilligung jederzeit erneut erteilen.
             </p>
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         <div className="py-4">
           <Label htmlFor="withdraw-reason" className="text-sm font-medium">
-            Grund fuer den Widerruf (optional)
+            Grund für den Widerruf (optional)
           </Label>
           <Textarea
             id="withdraw-reason"
-            placeholder="Warum moechten Sie die Einwilligung widerrufen?"
+            placeholder="Warum möchten Sie die Einwilligung widerrufen?"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             className="mt-2"

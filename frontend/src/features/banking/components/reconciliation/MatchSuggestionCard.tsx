@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatDate } from '@/features/banking/utils/format';
 import type { BankTransaction } from '@/lib/api/services/banking';
 
-// Lokaler Type für Match-Vorschlaege
+// Lokaler Type für Match-Vorschläge
 interface MatchSuggestion {
     id: string;
     transaction: BankTransaction;

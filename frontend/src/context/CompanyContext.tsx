@@ -2,8 +2,8 @@
  * CompanyContext - Multi-Mandanten State Management
  *
  * Verwaltet den Zustand der aktuellen Firma:
- * - currentCompany: Die aktuell ausgewaehlte Firma
- * - companies: Alle verfuegbaren Firmen des Benutzers
+ * - currentCompany: Die aktuell ausgewählte Firma
+ * - companies: Alle verfügbaren Firmen des Benutzers
  * - switchCompany: Firma wechseln
  * - isLoading: Ladezustand
  *
@@ -20,9 +20,9 @@ import type { Company, CompanyListResponse } from '@/types/models/company';
 // ==================== Types ====================
 
 interface CompanyContextType {
-    /** Die aktuell ausgewaehlte Firma */
+    /** Die aktuell ausgewählte Firma */
     currentCompany: Company | null;
-    /** Alle verfuegbaren Firmen des Benutzers */
+    /** Alle verfügbaren Firmen des Benutzers */
     companies: Company[];
     /** Anzahl der Firmen */
     companyCount: number;
@@ -34,7 +34,7 @@ interface CompanyContextType {
     error: Error | null;
     /** Firmen neu laden */
     refetch: () => Promise<void>;
-    /** Ob mehrere Firmen verfuegbar sind */
+    /** Ob mehrere Firmen verfügbar sind */
     hasMultipleCompanies: boolean;
 }
 
@@ -94,9 +94,9 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
         onSuccess: (newCompany) => {
             // Cache aktualisieren
             queryClient.setQueryData(companyQueryKeys.current(), newCompany);
-            // Company-ID im sessionStorage speichern fuer API-Client Header
+            // Company-ID im sessionStorage speichern für API-Client Header
             sessionStorage.setItem('current_company_id', newCompany.id);
-            // Alle dokument-bezogenen Queries invalidieren da sich die Daten aendern
+            // Alle dokument-bezogenen Queries invalidieren da sich die Daten ändern
             queryClient.invalidateQueries({ queryKey: ['documents'] });
             queryClient.invalidateQueries({ queryKey: ['cash'] });
             queryClient.invalidateQueries({ queryKey: ['expenses'] });

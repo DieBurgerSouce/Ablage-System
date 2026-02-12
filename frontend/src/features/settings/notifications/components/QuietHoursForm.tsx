@@ -1,7 +1,7 @@
 /**
  * QuietHoursForm Component
  *
- * Konfiguration fuer Ruhezeiten (Benachrichtigungen pausieren).
+ * Konfiguration für Ruhezeiten (Benachrichtigungen pausieren).
  */
 
 import { useState, useEffect } from 'react';
@@ -29,13 +29,13 @@ interface QuietHoursFormProps {
   disabled?: boolean;
 }
 
-// Stunden-Optionen fuer Select
+// Stunden-Optionen für Select
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => ({
   value: i.toString(),
   label: `${i.toString().padStart(2, '0')}:00`,
 }));
 
-// Verfuegbare Zeitzonen (Deutschland-relevante)
+// Verfügbare Zeitzonen (Deutschland-relevante)
 const TIMEZONE_OPTIONS = [
   { value: 'Europe/Berlin', label: 'Berlin (MEZ/MESZ)' },
   { value: 'Europe/Vienna', label: 'Wien (MEZ/MESZ)' },
@@ -100,8 +100,8 @@ export function QuietHoursForm({
           <CardTitle className="text-lg">Ruhezeiten</CardTitle>
         </div>
         <CardDescription>
-          Legen Sie Zeiten fest, in denen Sie keine Benachrichtigungen erhalten moechten.
-          Kritische Alerts koennen optional durchgelassen werden.
+          Legen Sie Zeiten fest, in denen Sie keine Benachrichtigungen erhalten möchten.
+          Kritische Alerts können optional durchgelassen werden.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -110,7 +110,7 @@ export function QuietHoursForm({
           <div className="space-y-0.5">
             <Label htmlFor="quiet-hours-enabled">Ruhezeiten aktivieren</Label>
             <p className="text-sm text-muted-foreground">
-              Benachrichtigungen waehrend der Ruhezeit pausieren
+              Benachrichtigungen während der Ruhezeit pausieren
             </p>
           </div>
           <Switch
@@ -186,7 +186,7 @@ export function QuietHoursForm({
                 disabled={disabled || isLoading}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Zeitzone waehlen" />
+                  <SelectValue placeholder="Zeitzone wählen" />
                 </SelectTrigger>
                 <SelectContent>
                   {TIMEZONE_OPTIONS.map((option) => (
@@ -217,7 +217,7 @@ export function QuietHoursForm({
                 ))}
               </div>
               <p className="text-sm text-muted-foreground">
-                Ruhezeiten gelten nur an den ausgewaehlten Tagen.
+                Ruhezeiten gelten nur an den ausgewählten Tagen.
               </p>
             </div>
 
@@ -229,7 +229,7 @@ export function QuietHoursForm({
                   Kritische Alerts durchlassen
                 </Label>
                 <p className="text-sm text-muted-foreground">
-                  Kritische Benachrichtigungen werden auch waehrend der Ruhezeit gesendet.
+                  Kritische Benachrichtigungen werden auch während der Ruhezeit gesendet.
                 </p>
               </div>
               <Switch
@@ -245,8 +245,8 @@ export function QuietHoursForm({
                 <AlertTriangle className="h-4 w-4 text-yellow-500" />
                 <AlertDescription>
                   <strong>Achtung:</strong> Kritische Sicherheits- und System-Alerts werden
-                  ebenfalls pausiert. Dies kann zu verzoegerten Reaktionen auf wichtige
-                  Ereignisse fuehren.
+                  ebenfalls pausiert. Dies kann zu verzögerten Reaktionen auf wichtige
+                  Ereignisse führen.
                 </AlertDescription>
               </Alert>
             )}
@@ -260,7 +260,7 @@ export function QuietHoursForm({
               Speichern
             </Button>
             <Button variant="outline" onClick={handleReset} disabled={isLoading}>
-              Zuruecksetzen
+              Zurücksetzen
             </Button>
           </div>
         )}

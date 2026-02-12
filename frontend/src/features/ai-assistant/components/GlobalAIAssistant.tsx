@@ -126,7 +126,7 @@ function AutonomyLevelBadge({ level }: AutonomyLevelBadgeProps) {
     [AIActionAutonomyLevel.EDITOR]: {
       icon: Edit3,
       label: 'Editor',
-      description: 'Mit Bestaetigung',
+      description: 'Mit Bestätigung',
       variant: 'default' as const,
     },
     [AIActionAutonomyLevel.ADMIN]: {
@@ -213,7 +213,7 @@ function ActionSuggestionCard({
           ) : (
             <CheckCircle className="h-3 w-3 mr-1" />
           )}
-          Ausfuehren
+          Ausführen
         </Button>
         <Button
           size="sm"
@@ -428,7 +428,7 @@ export function GlobalAIAssistant() {
   );
 
   const handleClear = useCallback(() => {
-    if (window.confirm('Chat-Verlauf wirklich loeschen?')) {
+    if (window.confirm('Chat-Verlauf wirklich löschen?')) {
       clearHistory();
     }
   }, [clearHistory]);
@@ -443,7 +443,7 @@ export function GlobalAIAssistant() {
           autonomyLevel === AIActionAutonomyLevel.ADMIN
         );
         // If suggestion returned, it will be handled by the effect
-        logger.info('AI Aktion ausgefuehrt', { actionType, status: result.status });
+        logger.info('AI Aktion ausgeführt', { actionType, status: result.status });
       } catch (error) {
         logger.error('AI Aktion fehlgeschlagen', error);
       }
@@ -457,7 +457,7 @@ export function GlobalAIAssistant() {
       await confirm(pendingSuggestion.action_id, true);
       setPendingSuggestion(null);
     } catch (error) {
-      logger.error('Bestaetigung fehlgeschlagen', error);
+      logger.error('Bestätigung fehlgeschlagen', error);
     }
   }, [confirm, pendingSuggestion]);
 
@@ -507,7 +507,7 @@ export function GlobalAIAssistant() {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="left">
-                  <p>AI-Assistent oeffnen</p>
+                  <p>AI-Assistent öffnen</p>
                   <p className="text-xs text-muted-foreground">Ctrl+K</p>
                 </TooltipContent>
               </Tooltip>
@@ -729,13 +729,13 @@ export function GlobalAIAssistant() {
 
               {/* Keyboard Hint */}
               <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-                <span>Ctrl+K zum Oeffnen/Schliessen</span>
+                <span>Ctrl+K zum Öffnen/Schließen</span>
                 {messages.length > 0 && (
                   <button
                     onClick={handleClear}
                     className="hover:text-foreground transition-colors"
                   >
-                    Verlauf loeschen
+                    Verlauf löschen
                   </button>
                 )}
               </div>

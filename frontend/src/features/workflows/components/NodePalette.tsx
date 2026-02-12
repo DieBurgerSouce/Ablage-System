@@ -70,7 +70,7 @@ export const nodeTemplates: NodeTemplate[] = [
     id: 'trigger-document-event',
     type: 'trigger',
     label: 'Dokument-Event',
-    description: 'Startet bei Dokument-Erstellung, -Aenderung oder -Loeschung',
+    description: 'Startet bei Dokument-Erstellung, -Änderung oder -Löschung',
     icon: 'file-text',
     category: 'trigger',
     color: 'bg-blue-500',
@@ -127,7 +127,7 @@ export const nodeTemplates: NodeTemplate[] = [
     id: 'logic-condition',
     type: 'condition',
     label: 'Bedingung',
-    description: 'Prueft Bedingungen und verzweigt entsprechend',
+    description: 'Prüft Bedingungen und verzweigt entsprechend',
     icon: 'filter',
     category: 'logic',
     color: 'bg-amber-500',
@@ -150,7 +150,7 @@ export const nodeTemplates: NodeTemplate[] = [
   {
     id: 'logic-delay',
     type: 'delay',
-    label: 'Verzoegerung',
+    label: 'Verzögerung',
     description: 'Wartet eine bestimmte Zeit',
     icon: 'timer',
     category: 'logic',
@@ -163,7 +163,7 @@ export const nodeTemplates: NodeTemplate[] = [
     id: 'logic-parallel',
     type: 'parallel',
     label: 'Parallel',
-    description: 'Fuehrt mehrere Schritte gleichzeitig aus',
+    description: 'Führt mehrere Schritte gleichzeitig aus',
     icon: 'git-fork',
     category: 'logic',
     color: 'bg-amber-500',
@@ -224,7 +224,7 @@ export const nodeTemplates: NodeTemplate[] = [
     id: 'action-send-email',
     type: 'action',
     label: 'E-Mail senden',
-    description: 'Sendet E-Mail an Empfaenger',
+    description: 'Sendet E-Mail an Empfänger',
     icon: 'mail',
     category: 'action',
     color: 'bg-green-500',
@@ -342,7 +342,7 @@ function DraggableNode({ template, onDragStart, disabled }: DraggableNodeProps) 
             )}
             role="button"
             tabIndex={disabled ? -1 : 0}
-            aria-label={`${template.label} - ${template.description}. Ziehen zum Hinzufuegen.`}
+            aria-label={`${template.label} - ${template.description}. Ziehen zum Hinzufügen.`}
             aria-disabled={disabled}
           >
             <div

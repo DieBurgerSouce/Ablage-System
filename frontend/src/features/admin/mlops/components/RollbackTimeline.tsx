@@ -167,7 +167,7 @@ export function RollbackTimeline() {
           Rollback-Historie
         </CardTitle>
         <CardDescription>
-          Verlauf von Modell-Rollbacks mit Gruenden und Auswirkungen
+          Verlauf von Modell-Rollbacks mit Gründen und Auswirkungen
         </CardDescription>
       </CardHeader>
       <CardContent>

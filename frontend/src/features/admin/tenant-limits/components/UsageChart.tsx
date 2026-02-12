@@ -36,7 +36,7 @@ export function UsageChart({ timeline, periodType }: UsageChartProps) {
       <CardHeader>
         <CardTitle>Nutzungsverlauf</CardTitle>
         <CardDescription>
-          API-Anfragen und verarbeitete Dokumente ({periodType === 'hourly' ? 'stuendlich' : periodType === 'daily' ? 'taeglich' : 'monatlich'})
+          API-Anfragen und verarbeitete Dokumente ({periodType === 'hourly' ? 'stündlich' : periodType === 'daily' ? 'täglich' : 'monatlich'})
         </CardDescription>
       </CardHeader>
       <CardContent>

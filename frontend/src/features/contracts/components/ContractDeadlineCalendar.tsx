@@ -1,10 +1,10 @@
 /**
  * ContractDeadlineCalendar Component
  *
- * Kalenderansicht fuer Vertragsfristen mit:
+ * Kalenderansicht für Vertragsfristen mit:
  * - Monats-/Wochen-/Tagesansicht
  * - Farbcodierung nach Dringlichkeit
- * - Klick auf Ereignisse oeffnet Vertragsdetails
+ * - Klick auf Ereignisse öffnet Vertragsdetails
  */
 
 import { useState, useMemo } from 'react';
@@ -79,9 +79,9 @@ const urgencyConfig = {
 };
 
 const deadlineTypeLabels: Record<string, string> = {
-  notice: 'Kuendigungsfrist',
+  notice: 'Kündigungsfrist',
   end: 'Vertragsende',
-  renewal: 'Verlaengerung',
+  renewal: 'Verlängerung',
 };
 
 export function ContractDeadlineCalendar({

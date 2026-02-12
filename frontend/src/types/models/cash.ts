@@ -1,7 +1,7 @@
 /**
  * Cash/Kassenbuch Model Types
  *
- * Typen für GoBD-konforme Kassenbuchfuehrung.
+ * Typen für GoBD-konforme Kassenbuchführung.
  *
  * WICHTIG: CashEntry ist APPEND-ONLY!
  * - Keine Updates oder Deletes
@@ -204,7 +204,7 @@ export interface CashCategoryCreate {
 // ==================== Cash Count (Kassensturz) ====================
 
 /**
- * Stueckelung-Details
+ * Stückelung-Details
  */
 export interface DenominationDetails {
   // Scheine

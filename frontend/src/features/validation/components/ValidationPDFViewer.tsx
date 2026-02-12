@@ -1,8 +1,8 @@
 /**
  * ValidationPDFViewer
  *
- * Enterprise-Grade PDF-Viewer fuer die Validierungsseite.
- * Rendert PDFs mit pdfjs-dist und zeigt Bounding-Boxes fuer Felder an.
+ * Enterprise-Grade PDF-Viewer für die Validierungsseite.
+ * Rendert PDFs mit pdfjs-dist und zeigt Bounding-Boxes für Felder an.
  *
  * Features:
  * - PDF Rendering mit react-pdf/pdfjs-dist
@@ -27,7 +27,7 @@ import 'react-pdf/dist/Page/TextLayer.css';
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 /**
- * BoundingBox Interface fuer Overlay
+ * BoundingBox Interface für Overlay
  */
 interface BoundingBox {
   id: string;
@@ -43,7 +43,7 @@ interface BoundingBox {
 
 /**
  * Hook um Dokument-Preview mit Auth-Token zu laden.
- * Erstellt Object-URL aus Blob fuer PDF.js.
+ * Erstellt Object-URL aus Blob für PDF.js.
  */
 function useAuthenticatedPreview(documentId: string) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
@@ -108,7 +108,7 @@ function useAuthenticatedPreview(documentId: string) {
  * Confidence-Farbe basierend auf Score
  */
 function getConfidenceColor(confidence: number): string {
-  if (confidence >= 0.95) return 'oklch(0.72 0.17 145)'; // Gruen
+  if (confidence >= 0.95) return 'oklch(0.72 0.17 145)'; // Grün
   if (confidence >= 0.85) return 'oklch(0.82 0.15 75)';  // Gelb
   if (confidence >= 0.70) return 'oklch(0.75 0.18 50)';  // Orange
   return 'oklch(0.55 0.22 25)'; // Rot
@@ -124,7 +124,7 @@ function fieldsToBoundingBoxes(
   return fields
     .filter((f) => f.bounding_box)
     .filter((f) => {
-      // Wenn page definiert, nur Boxes fuer aktuelle Seite zeigen
+      // Wenn page definiert, nur Boxes für aktuelle Seite zeigen
       const boxPage = f.bounding_box?.page ?? 1;
       return boxPage === currentPage;
     })
@@ -264,7 +264,7 @@ export function ValidationPDFViewer({
     [onNumPagesChange]
   );
 
-  // Page Load Handler - holt die tatsaechliche Seitengroesse
+  // Page Load Handler - holt die tatsaechliche Seitengröße
   const handlePageLoadSuccess = useCallback(
     (page: { width: number; height: number }) => {
       setPageSize({ width: page.width, height: page.height });
@@ -272,20 +272,20 @@ export function ValidationPDFViewer({
     []
   );
 
-  // Bounding Boxes fuer aktuelle Seite berechnen
+  // Bounding Boxes für aktuelle Seite berechnen
   const boundingBoxes = useMemo(
     () => fieldsToBoundingBoxes(fields, currentPage),
     [fields, currentPage]
   );
 
-  // Seite begrenzen auf gueltigen Bereich
+  // Seite begrenzen auf gültigen Bereich
   useEffect(() => {
     if (numPages && currentPage > numPages) {
       onPageChange(numPages);
     }
   }, [numPages, currentPage, onPageChange]);
 
-  // Pruefen ob es ein Bild ist
+  // Prüfen ob es ein Bild ist
   const isImage = mimeType?.startsWith('image/');
 
   // Loading State

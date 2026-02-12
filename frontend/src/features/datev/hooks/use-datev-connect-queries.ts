@@ -1,8 +1,8 @@
 /**
  * DATEV Connect Query Hooks
  *
- * Query-Verwaltung fuer die DATEVconnect API Integration.
- * Verwendet TanStack Query fuer Server-State-Management.
+ * Query-Verwaltung für die DATEVconnect API Integration.
+ * Verwendet TanStack Query für Server-State-Management.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -24,7 +24,7 @@ import {
 
 const STALE_TIMES = {
     connections: 5 * 60 * 1000,     // 5 Minuten
-    syncStatus: 30 * 1000,          // 30 Sekunden (haeufig aktualisiert)
+    syncStatus: 30 * 1000,          // 30 Sekunden (häufig aktualisiert)
     syncHistory: 60 * 1000,         // 1 Minute
     kontenplan: 30 * 60 * 1000,     // 30 Minuten
     buchungen: 60 * 1000,           // 1 Minute
@@ -139,7 +139,7 @@ export function useUpdateConnection() {
 }
 
 /**
- * Verbindung loeschen
+ * Verbindung löschen
  */
 export function useDeleteConnection() {
     const queryClient = useQueryClient();
@@ -151,7 +151,7 @@ export function useDeleteConnection() {
         },
         onError: (error) => {
             if (import.meta.env.DEV) {
-                logger.error('DATEV Connect: Verbindung loeschen fehlgeschlagen', error);
+                logger.error('DATEV Connect: Verbindung löschen fehlgeschlagen', error);
             }
         },
     });
@@ -274,7 +274,7 @@ export function useSyncStatus(connectionId: string, enabled = true) {
 }
 
 /**
- * Sync manuell ausloesen
+ * Sync manuell auslösen
  */
 export function useTriggerSync() {
     const queryClient = useQueryClient();
@@ -292,7 +292,7 @@ export function useTriggerSync() {
         },
         onError: (error) => {
             if (import.meta.env.DEV) {
-                logger.error('DATEV Connect: Sync ausloesen fehlgeschlagen', error);
+                logger.error('DATEV Connect: Sync auslösen fehlgeschlagen', error);
             }
         },
     });
@@ -543,7 +543,7 @@ export function useFestschreiben() {
 }
 
 /**
- * Integritaet pruefen
+ * Integrität prüfen
  */
 export function useVerifyIntegrity() {
     return useMutation({
@@ -551,7 +551,7 @@ export function useVerifyIntegrity() {
             datevConnectService.verifyIntegrity(connectionId, buchungId),
         onError: (error) => {
             if (import.meta.env.DEV) {
-                logger.error('DATEV Connect: Integritaetspruefung fehlgeschlagen', error);
+                logger.error('DATEV Connect: Integritätsprüfung fehlgeschlagen', error);
             }
         },
     });

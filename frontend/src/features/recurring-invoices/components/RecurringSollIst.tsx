@@ -1,8 +1,8 @@
 /**
  * RecurringSollIst Component
  *
- * Soll/Ist-Vergleichsbericht fuer wiederkehrende Rechnungen.
- * Zeigt erwartete vs. tatsaechliche Betraege pro Monat.
+ * Soll/Ist-Vergleichsbericht für wiederkehrende Rechnungen.
+ * Zeigt erwartete vs. tatsaechliche Beträge pro Monat.
  */
 
 import { useState } from 'react';
@@ -60,7 +60,7 @@ function formatPercent(value: number | null): string {
 }
 
 const MONTH_NAMES = [
-  'Januar', 'Februar', 'Maerz', 'April', 'Mai', 'Juni',
+  'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
   'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
 ];
 
@@ -73,7 +73,7 @@ export default function RecurringSollIst() {
 
   const { data: report, isLoading } = useSollIstReport(year, month);
 
-  // Jahr-Optionen: aktuelles Jahr und 2 zurueck
+  // Jahr-Optionen: aktuelles Jahr und 2 zurück
   const yearOptions = Array.from({ length: 3 }, (_, i) => now.getFullYear() - i);
 
   return (
@@ -276,7 +276,7 @@ export default function RecurringSollIst() {
           </>
         ) : (
           <div className="py-12 text-center text-muted-foreground">
-            Keine Daten fuer {MONTH_NAMES[month - 1]} {year} vorhanden.
+            Keine Daten für {MONTH_NAMES[month - 1]} {year} vorhanden.
           </div>
         )}
       </CardContent>

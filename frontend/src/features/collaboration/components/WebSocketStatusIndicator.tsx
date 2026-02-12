@@ -1,8 +1,8 @@
 /**
  * WebSocketStatusIndicator - Collaboration WebSocket Verbindungsstatus
  *
- * Kompakter Indikator fuer den Collaboration-WebSocket:
- * - Gruen = Verbunden
+ * Kompakter Indikator für den Collaboration-WebSocket:
+ * - Grün = Verbunden
  * - Gelb + Spinner = Verbindung wird hergestellt...
  * - Rot = Getrennt (mit Reconnect-Button)
  * - Tooltip mit Verbindungsdetails

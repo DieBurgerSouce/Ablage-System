@@ -1,5 +1,5 @@
 /**
- * KanbanBoard - Hauptkomponente fuer das Dokument-Workflow-Board.
+ * KanbanBoard - Hauptkomponente für das Dokument-Workflow-Board.
  * Drag-and-Drop zwischen Spalten mit @dnd-kit.
  */
 import { useState, useCallback } from 'react';

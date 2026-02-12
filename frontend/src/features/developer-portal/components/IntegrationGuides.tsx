@@ -1,7 +1,7 @@
 /**
  * Integration Guides
  *
- * Zeigt verfuegbare Integrations-Anleitungen im Developer Portal.
+ * Zeigt verfügbare Integrations-Anleitungen im Developer Portal.
  */
 
 import { useState, useMemo } from 'react';
@@ -145,7 +145,7 @@ export function IntegrationGuides() {
       <div>
         <h3 className="text-lg font-semibold">Integrations-Anleitungen</h3>
         <p className="text-sm text-muted-foreground">
-          Schritt-fuer-Schritt Anleitungen fuer verschiedene Integrationsszenarien
+          Schritt-für-Schritt Anleitungen für verschiedene Integrationsszenarien
         </p>
       </div>
 
@@ -213,7 +213,7 @@ export function IntegrationGuides() {
         <CardHeader>
           <CardTitle>Weitere Ressourcen</CardTitle>
           <CardDescription>
-            Zusaetzliche Dokumentation und Hilfe
+            Zusätzliche Dokumentation und Hilfe
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -230,7 +230,7 @@ export function IntegrationGuides() {
                 <ExternalLink className="h-3 w-3 ml-auto" />
               </div>
               <p className="text-sm text-muted-foreground">
-                Vollstaendige API-Dokumentation (OpenAPI/Swagger)
+                Vollständige API-Dokumentation (OpenAPI/Swagger)
               </p>
             </a>
 

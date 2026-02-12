@@ -156,7 +156,7 @@ export function ChainCard({ chain, onClick, className }: ChainCardProps) {
   );
 }
 
-// Kompakte Variante fuer Tabellen
+// Kompakte Variante für Tabellen
 export function ChainCardCompact({
   chain,
   onClick,

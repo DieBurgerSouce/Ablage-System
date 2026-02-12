@@ -1,7 +1,7 @@
 /**
  * OCRFeedbackPage
  *
- * Hauptseite fuer das OCR Feedback System mit Gamification.
+ * Hauptseite für das OCR Feedback System mit Gamification.
  * Zeigt Leaderboard, Benutzer-Statistiken, Korrektur-Queue und Achievements.
  */
 
@@ -74,7 +74,7 @@ function PointsGuideCard() {
           </div>
         </div>
         <div className="pt-2 text-xs text-muted-foreground">
-          Mindestens 5 Korrekturen fuer Leaderboard-Platzierung erforderlich.
+          Mindestens 5 Korrekturen für Leaderboard-Platzierung erforderlich.
         </div>
       </CardContent>
     </Card>
@@ -193,7 +193,7 @@ export function OCRFeedbackPage() {
         <div>
           <h1 className="text-2xl font-bold">OCR Feedback Leaderboard</h1>
           <p className="text-muted-foreground">
-            Korrigieren Sie OCR-Fehler und sammeln Sie Punkte fuer das Leaderboard.
+            Korrigieren Sie OCR-Fehler und sammeln Sie Punkte für das Leaderboard.
           </p>
         </div>
       </div>
@@ -215,7 +215,7 @@ export function OCRFeedbackPage() {
         <TabsList>
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <Trophy className="w-4 h-4" />
-            Uebersicht
+            Übersicht
           </TabsTrigger>
           <TabsTrigger value="queue" className="flex items-center gap-2">
             <Target className="w-4 h-4" />
@@ -227,7 +227,7 @@ export function OCRFeedbackPage() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Uebersicht Tab */}
+        {/* Übersicht Tab */}
         <TabsContent value="overview" className="space-y-6">
           {/* Eigene Stats */}
           <UserStatsCard />

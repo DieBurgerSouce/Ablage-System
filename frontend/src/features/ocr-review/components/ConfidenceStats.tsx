@@ -1,5 +1,5 @@
 /**
- * ConfidenceStats - Schnelle Statistik-Anzeige fuer Confidence-Daten
+ * ConfidenceStats - Schnelle Statistik-Anzeige für Confidence-Daten
  *
  * Zeigt Gesamt-Confidence, Wort-Zaehler und Backend-Info.
  */
@@ -81,7 +81,7 @@ export function ConfidenceStats({
                     </Badge>
                     {stats.totalWords > 0 && (
                         <Badge variant="secondary" className="text-xs">
-                            {stats.totalWords} Woerter
+                            {stats.totalWords} Wörter
                         </Badge>
                     )}
                 </div>

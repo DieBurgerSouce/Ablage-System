@@ -1,11 +1,11 @@
 /**
  * Intercompany Reconciliation Page
  *
- * Vollstaendige IC-Abstimmung und Konsolidierung:
- * - Transaktionsuebersicht mit Statusfilter
+ * Vollständige IC-Abstimmung und Konsolidierung:
+ * - Transaktionsübersicht mit Statusfilter
  * - Salden-Matrix zwischen Firmenpaarungen
- * - Differenzenliste mit Loesungsvorschlaegen
- * - Eliminierungsbuchungen fuer Konsolidierung
+ * - Differenzenliste mit Lösungsvorschlägen
+ * - Eliminierungsbuchungen für Konsolidierung
  *
  * Feature 15: Intercompany Reconciliation UI
  */
@@ -478,7 +478,7 @@ function DifferencesList({
                                 )}
                             </div>
                             <div className="p-3 rounded-lg bg-muted">
-                                <div className="text-xs text-muted-foreground">Tatsaechlich</div>
+                                <div className="text-xs text-muted-foreground">Tatsächlich</div>
                                 <div className="font-medium">{formatCurrency(diff.actual_amount)}</div>
                                 {diff.actual_date && (
                                     <div className="text-xs text-muted-foreground">
@@ -532,7 +532,7 @@ function EliminationsTable({
         <div className="space-y-4">
             <Alert>
                 <Calculator className="h-4 w-4" />
-                <AlertTitle>Eliminierungsbuchungen fuer Konsolidierung</AlertTitle>
+                <AlertTitle>Eliminierungsbuchungen für Konsolidierung</AlertTitle>
                 <AlertDescription>
                     Diese Buchungen eliminieren interne Forderungen und Verbindlichkeiten.
                     Gesamtvolumen: {formatCurrency(totalEliminated)}
@@ -740,7 +740,7 @@ export function IntercompanyReconciliation() {
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                                <p>Fuehrt automatische Abstimmung aller IC-Transaktionen durch</p>
+                                <p>Führt automatische Abstimmung aller IC-Transaktionen durch</p>
                             </TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
@@ -859,7 +859,7 @@ export function IntercompanyReconciliation() {
                         <CardHeader>
                             <CardTitle>Eliminierungsbuchungen</CardTitle>
                             <CardDescription>
-                                Buchungen fuer die Konzern-Konsolidierung
+                                Buchungen für die Konzern-Konsolidierung
                             </CardDescription>
                         </CardHeader>
                         <CardContent>

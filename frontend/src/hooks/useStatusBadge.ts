@@ -326,20 +326,20 @@ export function useDaysOverdueBadge(daysOverdue: number): StatusBadgeConfig {
     }
     if (daysOverdue <= 7) {
       return {
-        label: `${daysOverdue} Tage ueberfaellig`,
+        label: `${daysOverdue} Tage überfällig`,
         variant: 'warning' as StatusBadgeVariant,
         icon: Clock,
       };
     }
     if (daysOverdue <= 30) {
       return {
-        label: `${daysOverdue} Tage ueberfaellig`,
+        label: `${daysOverdue} Tage überfällig`,
         variant: 'pending' as StatusBadgeVariant,
         icon: AlertTriangle,
       };
     }
     return {
-      label: `${daysOverdue} Tage ueberfaellig`,
+      label: `${daysOverdue} Tage überfällig`,
       variant: 'error' as StatusBadgeVariant,
       icon: XCircle,
       pulse: true,

@@ -234,7 +234,7 @@ export function ContractDataSection({ data, onFieldEdit }: ContractDataSectionPr
 
           {/* Termination */}
           {renderFieldGroup(
-            'Kuendigung',
+            'Kündigung',
             <Clock className="h-4 w-4" />,
             terminationFields
           )}
@@ -245,7 +245,7 @@ export function ContractDataSection({ data, onFieldEdit }: ContractDataSectionPr
               <RefreshCcw className="h-4 w-4 text-yellow-600 mt-0.5" />
               <div>
                 <div className="text-sm font-medium text-yellow-800">
-                  Automatische Verlaengerung
+                  Automatische Verlängerung
                 </div>
                 <div className="text-sm text-yellow-700">
                   {data.auto_renewal.value}
@@ -260,7 +260,7 @@ export function ContractDataSection({ data, onFieldEdit }: ContractDataSectionPr
               <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5" />
               <div>
                 <div className="text-sm font-medium text-blue-800">
-                  Kuendigungsfrist beachten
+                  Kündigungsfrist beachten
                 </div>
                 <div className="text-sm text-blue-700">
                   {data.notice_period.value}
@@ -293,7 +293,7 @@ export function ContractDataSection({ data, onFieldEdit }: ContractDataSectionPr
           {data.termination_notice?.value && (
             <div className="mt-4 p-3 border-l-4 border-red-400 bg-red-50/50 rounded-r-lg">
               <div className="text-sm font-medium text-red-800 mb-1">
-                Kuendigungshinweis
+                Kündigungshinweis
               </div>
               <div className="text-sm text-red-700">
                 {data.termination_notice.value}

@@ -1,7 +1,7 @@
 /**
  * My Activity Route
  *
- * Hauptseite fuer persoenliche Aktivitaeten.
+ * Hauptseite für persönliche Aktivitäten.
  */
 
 import { useState, useCallback, useMemo } from 'react';
@@ -78,9 +78,9 @@ function MyActivityPage() {
           <History className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">Meine Aktivitaeten</h1>
+          <h1 className="text-2xl font-bold">Meine Aktivitäten</h1>
           <p className="text-muted-foreground">
-            Ueberblick ueber alle Ihre Aktionen und Ereignisse
+            Überblick über alle Ihre Aktionen und Ereignisse
           </p>
         </div>
       </div>
@@ -117,8 +117,8 @@ function MyActivityPage() {
             onLoadMore={handleLoadMore}
             isLoadingMore={isFetchingNextPage}
             showTarget={true}
-            title={`Aktivitaeten (${activities.length})`}
-            emptyMessage="Keine Aktivitaeten gefunden"
+            title={`Aktivitäten (${activities.length})`}
+            emptyMessage="Keine Aktivitäten gefunden"
           />
         </TabsContent>
 
@@ -132,7 +132,7 @@ function MyActivityPage() {
             <ActivityStats stats={stats} />
           ) : (
             <div className="text-center py-16 text-muted-foreground">
-              Keine Statistiken verfuegbar
+              Keine Statistiken verfügbar
             </div>
           )}
         </TabsContent>

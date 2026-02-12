@@ -148,7 +148,7 @@ async function optimizeImage(
           quality
         );
       } else {
-        reject(new Error('Canvas-Kontext nicht verfuegbar'));
+        reject(new Error('Canvas-Kontext nicht verfügbar'));
       }
     };
 
@@ -180,7 +180,7 @@ async function applyRotation(dataUrl: string, degrees: number): Promise<string> 
         ctx.drawImage(img, -img.width / 2, -img.height / 2);
         resolve(canvas.toDataURL('image/jpeg', 0.92));
       } else {
-        reject(new Error('Canvas-Kontext nicht verfuegbar'));
+        reject(new Error('Canvas-Kontext nicht verfügbar'));
       }
     };
 
@@ -252,13 +252,13 @@ export function CameraCapture({
 
       // Validate file size
       if (file.size > maxFileSize) {
-        setError(`Datei ist zu gross (max. ${Math.round(maxFileSize / 1024 / 1024)}MB)`);
+        setError(`Datei ist zu groß (max. ${Math.round(maxFileSize / 1024 / 1024)}MB)`);
         return;
       }
 
       // Validate file type
       if (!file.type.startsWith('image/')) {
-        setError('Nur Bilder werden unterstuetzt');
+        setError('Nur Bilder werden unterstützt');
         return;
       }
 
@@ -492,7 +492,7 @@ export function CameraCapture({
   const handleClose = React.useCallback(() => {
     if (pages.length > 0 && !isUploading) {
       // Confirm if pages exist
-      if (window.confirm('Moechten Sie die aufgenommenen Seiten verwerfen?')) {
+      if (window.confirm('Möchten Sie die aufgenommenen Seiten verwerfen?')) {
         setPages([]);
         setCurrentPageIndex(0);
         setIsOpen(false);
@@ -561,12 +561,12 @@ export function CameraCapture({
                 <div className="text-center">
                   <p className="font-medium">Dokument fotografieren</p>
                   <p className="text-sm text-muted-foreground">
-                    Halten Sie die Kamera ueber das Dokument
+                    Halten Sie die Kamera über das Dokument
                   </p>
                 </div>
                 <Button size="lg" onClick={openCamera} disabled={disabled}>
                   <Camera className="h-5 w-5 mr-2" />
-                  Kamera oeffnen
+                  Kamera öffnen
                 </Button>
               </div>
             ) : (
@@ -636,7 +636,7 @@ export function CameraCapture({
                     variant="outline"
                     size="icon"
                     onClick={handleDeletePage}
-                    title="Seite loeschen"
+                    title="Seite löschen"
                     className="text-destructive hover:text-destructive"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -646,7 +646,7 @@ export function CameraCapture({
                       variant="outline"
                       size="icon"
                       onClick={openCamera}
-                      title="Weitere Seite hinzufuegen"
+                      title="Weitere Seite hinzufügen"
                     >
                       <Plus className="h-4 w-4" />
                     </Button>

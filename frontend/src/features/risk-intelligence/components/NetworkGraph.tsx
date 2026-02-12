@@ -75,7 +75,7 @@ export function NetworkGraph({ network, className }: NetworkGraphProps) {
             <AlertTitle>Verdaechtige Verbindungen</AlertTitle>
             <AlertDescription>
               Es wurden potenziell verdaechtige Verbindungen zu anderen Entities gefunden.
-              Eine manuelle Pruefung wird empfohlen.
+              Eine manuelle Prüfung wird empfohlen.
             </AlertDescription>
           </Alert>
         )}

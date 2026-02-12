@@ -1,7 +1,7 @@
 /**
  * Tenant Metrics Dashboard
  *
- * Hauptseite fuer die Anzeige von Tenant-spezifischen Metriken,
+ * Hauptseite für die Anzeige von Tenant-spezifischen Metriken,
  * Rate Limits und Quota-Nutzung.
  */
 
@@ -52,7 +52,7 @@ export function TenantMetricsDashboard() {
   const limitsLoading = urlCompanyId ? companyLimitsLoading : ownLimitsLoading;
   const limitsError = urlCompanyId ? companyLimitsError : ownLimitsError;
 
-  // Company ID fuer Metriken (eigene oder aus URL)
+  // Company ID für Metriken (eigene oder aus URL)
   const effectiveCompanyId = urlCompanyId || ownLimits?.company_id;
 
   const {
@@ -84,7 +84,7 @@ export function TenantMetricsDashboard() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Tenant-Metriken</h1>
           <p className="text-muted-foreground">
-            Uebersicht ueber Nutzung, Limits und Performance
+            Übersicht über Nutzung, Limits und Performance
           </p>
         </div>
 
@@ -95,8 +95,8 @@ export function TenantMetricsDashboard() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="hourly">Stuendlich</SelectItem>
-              <SelectItem value="daily">Taeglich</SelectItem>
+              <SelectItem value="hourly">Stündlich</SelectItem>
+              <SelectItem value="daily">Täglich</SelectItem>
               <SelectItem value="monthly">Monatlich</SelectItem>
             </SelectContent>
           </Select>
@@ -120,7 +120,7 @@ export function TenantMetricsDashboard() {
         <TabsList>
           <TabsTrigger value="overview" className="gap-2">
             <TrendingUp className="h-4 w-4" />
-            Uebersicht
+            Übersicht
           </TabsTrigger>
           <TabsTrigger value="usage" className="gap-2">
             <BarChart3 className="h-4 w-4" />
@@ -220,7 +220,7 @@ export function TenantMetricsDashboard() {
 }
 
 /**
- * Card fuer Custom-Limits (Admin-only)
+ * Card für Custom-Limits (Admin-only)
  */
 function CustomLimitsCard({ limits }: { limits: { custom_limits: Array<{ id: string; endpoint_pattern: string; requests_per_minute: number; requests_per_hour: number; requests_per_day: number; burst_limit: number; is_custom: boolean }> } }) {
   if (limits.custom_limits.length === 0) {

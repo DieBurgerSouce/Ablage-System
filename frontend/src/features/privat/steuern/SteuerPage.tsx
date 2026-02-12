@@ -1,8 +1,8 @@
 /**
  * SteuerPage - Steueroptimierung Dashboard
  *
- * Hauptseite fuer Steuer-relevante Informationen:
- * - Absetzbare Betraege nach Kategorie
+ * Hauptseite für Steuer-relevante Informationen:
+ * - Absetzbare Beträge nach Kategorie
  * - Fristen-Kalender
  * - DATEV-Export
  * - Absetzbarkeits-Checker
@@ -38,7 +38,7 @@ import { DATEVExportButton } from './components/DATEVExportButton';
 import { useTaxOptimization, useTaxDeadlines, useYearComparison } from './hooks';
 import { useDefaultSpace } from '../hooks/use-privat-queries';
 
-// Hilfsfunktion fuer Waehrungsformatierung
+// Hilfsfunktion für Währungsformatierung
 const formatCurrency = (value: number): string => {
   return new Intl.NumberFormat('de-DE', {
     style: 'currency',
@@ -86,10 +86,10 @@ export function SteuerPage() {
     0
   ) ?? 0;
 
-  // Naechste wichtige Frist
+  // Nächste wichtige Frist
   const nextDeadline = deadlines?.find((d) => new Date(d.dueDate) > new Date());
 
-  // Jahre fuer Auswahl (letzte 3 Jahre)
+  // Jahre für Auswahl (letzte 3 Jahre)
   const years = [currentYear, currentYear - 1, currentYear - 2];
 
   if (isLoading) {
@@ -116,7 +116,7 @@ export function SteuerPage() {
               Steueroptimierung
             </h1>
             <p className="text-muted-foreground mt-1">
-              Ueberblick ueber absetzbare Betraege und Steuerfristen
+              Überblick über absetzbare Beträge und Steuerfristen
             </p>
           </div>
 
@@ -160,7 +160,7 @@ export function SteuerPage() {
             </CardContent>
           </Card>
 
-          {/* Geschaetzte Erstattung */}
+          {/* Geschätzte Erstattung */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -212,11 +212,11 @@ export function SteuerPage() {
             </CardContent>
           </Card>
 
-          {/* Naechste Frist */}
+          {/* Nächste Frist */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Naechste Frist
+                Nächste Frist
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -242,13 +242,13 @@ export function SteuerPage() {
           </Card>
         </div>
 
-        {/* Warnung fuer kritische Fristen */}
+        {/* Warnung für kritische Fristen */}
         {nextDeadline && nextDeadline.daysRemaining !== undefined && nextDeadline.daysRemaining <= 7 && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Frist beachten!</AlertTitle>
             <AlertDescription>
-              Die Frist fuer <strong>{nextDeadline.name}</strong> endet in{' '}
+              Die Frist für <strong>{nextDeadline.name}</strong> endet in{' '}
               {nextDeadline.daysRemaining} Tagen (
               {new Date(nextDeadline.dueDate).toLocaleDateString('de-DE')}).
             </AlertDescription>
@@ -268,7 +268,7 @@ export function SteuerPage() {
             </TabsTrigger>
             <TabsTrigger value="checker" className="flex items-center gap-2">
               <FileSearch className="h-4 w-4" />
-              Absetzbarkeit pruefen
+              Absetzbarkeit prüfen
             </TabsTrigger>
           </TabsList>
 
@@ -328,7 +328,7 @@ export function SteuerPage() {
                       </div>
                     )) ?? (
                       <p className="text-sm text-muted-foreground">
-                        Alle Hoechstbetraege sind ausgeschoepft.
+                        Alle Höchstbeträge sind ausgeschöpft.
                       </p>
                     )}
                   </CardContent>

@@ -19,21 +19,21 @@ export type FinanceDocumentCategory =
   | 'grundabgabenbescheid'
   | 'steuerbescheide'
   | 'vorauszahlungen'
-  | 'steuererklaerungen'
+  | 'steuererklärungen'
   | 'finanzamt_korrespondenz'
   // Personal-Paket
   | 'lohn_gehalt'
   | 'sozialversicherung'
   | 'berufsgenossenschaft'
-  | 'arbeitsvertraege'
+  | 'arbeitsverträge'
   // Versicherungs-Paket
   | 'betriebshaftpflicht'
   | 'sachversicherungen'
   | 'kfz_versicherung'
   | 'rechtsschutz'
   // Bank-Paket
-  | 'kontoauszuege'
-  | 'kreditvertraege'
+  | 'kontoauszüge'
+  | 'kreditverträge'
   | 'buergschaften'
   | 'darlehen';
 
@@ -96,11 +96,11 @@ export interface FinanceExtractedData {
   steuerart?: TaxType;
   zeitraum?: string;
 
-  // Betraege
+  // Beträge
   nachzahlung?: number;
   erstattung?: number;
 
-  // Versicherung/Vertraege
+  // Versicherung/Verträge
   versicherungsnummer?: string;
   vertragsnummer?: string;
   policennummer?: string;
@@ -161,7 +161,7 @@ export const FINANCE_CATEGORIES: FinanceCategoryInfo[] = [
     package: 'steuern'
   },
   {
-    id: 'steuererklaerungen',
+    id: 'steuererklärungen',
     label: 'Steuererklärungen',
     shortCode: 'STE',
     icon: 'ClipboardList',
@@ -197,7 +197,7 @@ export const FINANCE_CATEGORIES: FinanceCategoryInfo[] = [
     package: 'personal'
   },
   {
-    id: 'arbeitsvertraege',
+    id: 'arbeitsverträge',
     label: 'Arbeitsverträge',
     shortCode: 'AV',
     icon: 'FileSignature',
@@ -236,14 +236,14 @@ export const FINANCE_CATEGORIES: FinanceCategoryInfo[] = [
 
   // BANK-PAKET
   {
-    id: 'kontoauszuege',
+    id: 'kontoauszüge',
     label: 'Kontoauszüge',
     shortCode: 'KA',
     icon: 'CreditCard',
     package: 'bank'
   },
   {
-    id: 'kreditvertraege',
+    id: 'kreditverträge',
     label: 'Kreditverträge',
     shortCode: 'KV',
     icon: 'FileText',
@@ -317,7 +317,7 @@ export const FINANCE_CATEGORIES_WITH_DEADLINES = [
 ];
 
 /**
- * Kategorien mit Zahlungsbetraegen
+ * Kategorien mit Zahlungsbeträgen
  */
 export const FINANCE_CATEGORIES_WITH_AMOUNTS = [
   'grundabgabenbescheid',
@@ -328,7 +328,7 @@ export const FINANCE_CATEGORIES_WITH_AMOUNTS = [
   'sachversicherungen',
   'kfz_versicherung',
   'rechtsschutz',
-  'kreditvertraege',
+  'kreditverträge',
   'darlehen',
 ];
 
@@ -339,18 +339,18 @@ export const FINANCE_CATEGORY_TO_DOCUMENT_TYPE: Record<FinanceDocumentCategory, 
   grundabgabenbescheid: 'tax_assessment',
   steuerbescheide: 'tax_notice',
   vorauszahlungen: 'tax_prepayment',
-  steuererklaerungen: 'tax_return',
+  steuererklärungen: 'tax_return',
   finanzamt_korrespondenz: 'tax_correspondence',
   lohn_gehalt: 'payroll',
   sozialversicherung: 'social_security',
   berufsgenossenschaft: 'trade_association',
-  arbeitsvertraege: 'employment_contract',
+  arbeitsverträge: 'employment_contract',
   betriebshaftpflicht: 'liability_insurance',
   sachversicherungen: 'property_insurance',
   kfz_versicherung: 'vehicle_insurance',
   rechtsschutz: 'legal_insurance',
-  kontoauszuege: 'bank_statement',
-  kreditvertraege: 'credit_agreement',
+  kontoauszüge: 'bank_statement',
+  kreditverträge: 'credit_agreement',
   buergschaften: 'guarantee',
   darlehen: 'loan',
 };
@@ -360,12 +360,12 @@ export const FINANCE_CATEGORY_TO_DOCUMENT_TYPE: Record<FinanceDocumentCategory, 
  */
 export const TAX_TYPE_LABELS: Record<TaxType, string> = {
   einkommensteuer: 'Einkommensteuer',
-  koerperschaftsteuer: 'Koerperschaftsteuer',
+  koerperschaftsteuer: 'Körperschaftsteuer',
   gewerbesteuer: 'Gewerbesteuer',
   umsatzsteuer: 'Umsatzsteuer',
   lohnsteuer: 'Lohnsteuer',
   kirchensteuer: 'Kirchensteuer',
-  solidaritaetszuschlag: 'Solidaritaetszuschlag',
+  solidaritaetszuschlag: 'Solidaritätszuschlag',
   grundsteuer: 'Grundsteuer',
   kfz_steuer: 'KFZ-Steuer',
   sonstige: 'Sonstige',
@@ -390,18 +390,18 @@ export const CATEGORY_ICON_MAP: Record<FinanceDocumentCategory, string> = {
   grundabgabenbescheid: 'Landmark',
   steuerbescheide: 'FileText',
   vorauszahlungen: 'Calculator',
-  steuererklaerungen: 'ClipboardList',
+  steuererklärungen: 'ClipboardList',
   finanzamt_korrespondenz: 'Mail',
   lohn_gehalt: 'Wallet',
   sozialversicherung: 'Shield',
   berufsgenossenschaft: 'HardHat',
-  arbeitsvertraege: 'FileSignature',
+  arbeitsverträge: 'FileSignature',
   betriebshaftpflicht: 'ShieldCheck',
   sachversicherungen: 'Home',
   kfz_versicherung: 'Car',
   rechtsschutz: 'Scale',
-  kontoauszuege: 'CreditCard',
-  kreditvertraege: 'FileText',
+  kontoauszüge: 'CreditCard',
+  kreditverträge: 'FileText',
   buergschaften: 'Handshake',
   darlehen: 'Banknote',
 } as const;
@@ -433,14 +433,14 @@ export function getFinancePackageById(packageId: FinancePackageType): FinanceCat
 }
 
 /**
- * Prueft ob Kategorie Fristen hat
+ * Prüft ob Kategorie Fristen hat
  */
 export function categoryHasDeadlines(categoryId: string): boolean {
   return FINANCE_CATEGORIES_WITH_DEADLINES.includes(categoryId);
 }
 
 /**
- * Prueft ob Kategorie Betraege hat
+ * Prüft ob Kategorie Beträge hat
  */
 export function categoryHasAmounts(categoryId: string): boolean {
   return FINANCE_CATEGORIES_WITH_AMOUNTS.includes(categoryId);

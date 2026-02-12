@@ -1,7 +1,7 @@
 /**
  * Admin Mahnungen - Einstellungen
  *
- * Konfiguration des Mahnwesens (Stufen, Gebuehren, Automatisierung)
+ * Konfiguration des Mahnwesens (Stufen, Gebühren, Automatisierung)
  */
 
 import { createFileRoute } from '@tanstack/react-router';

@@ -1,7 +1,7 @@
 /**
  * OCR Feedback React Query Hooks
  *
- * Hooks fuer Leaderboard, Statistiken, Queue und Korrekturen.
+ * Hooks für Leaderboard, Statistiken, Queue und Korrekturen.
  */
 
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
@@ -34,7 +34,7 @@ export const ocrFeedbackKeys = {
 // ==================== Leaderboard Hooks ====================
 
 /**
- * Hook fuer Leaderboard
+ * Hook für Leaderboard
  */
 export function useLeaderboard(period: LeaderboardPeriod = 'weekly', limit: number = 10) {
   return useQuery({
@@ -48,7 +48,7 @@ export function useLeaderboard(period: LeaderboardPeriod = 'weekly', limit: numb
 // ==================== User Stats Hooks ====================
 
 /**
- * Hook fuer eigene Statistiken
+ * Hook für eigene Statistiken
  */
 export function useUserStats() {
   return useQuery({
@@ -60,7 +60,7 @@ export function useUserStats() {
 }
 
 /**
- * Hook fuer Statistiken eines bestimmten Benutzers
+ * Hook für Statistiken eines bestimmten Benutzers
  */
 export function useUserStatsById(userId: string | undefined) {
   return useQuery({
@@ -74,7 +74,7 @@ export function useUserStatsById(userId: string | undefined) {
 // ==================== Queue Hooks ====================
 
 /**
- * Hook fuer Korrektur-Queue
+ * Hook für Korrektur-Queue
  */
 export function useCorrectionQueue(params?: {
   priority?: QueuePriority;
@@ -90,7 +90,7 @@ export function useCorrectionQueue(params?: {
 }
 
 /**
- * Hook fuer Korrektur-Queue mit Infinite Scroll
+ * Hook für Korrektur-Queue mit Infinite Scroll
  */
 export function useCorrectionQueueInfinite(params?: {
   priority?: QueuePriority;
@@ -165,7 +165,7 @@ export function useSubmitBatchCorrections() {
 // ==================== Achievements Hooks ====================
 
 /**
- * Hook fuer Achievements
+ * Hook für Achievements
  */
 export function useAchievements() {
   return useQuery({

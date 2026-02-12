@@ -1,15 +1,15 @@
 /**
  * Workflows Feature
  *
- * Visual Workflow Automation fuer Dokumentverarbeitung.
+ * Visual Workflow Automation für Dokumentverarbeitung.
  *
  * Features:
- * - ReactFlow Visual Editor fuer Workflow-Erstellung
+ * - ReactFlow Visual Editor für Workflow-Erstellung
  * - Trigger-Typen: Dokument-Events, Zeitplaene, Webhooks, Manuell
- * - 20+ Aktionstypen fuer Dokumentverarbeitung
- * - Bedingungen, Verzweigungen, Schleifen, Parallele Ausfuehrung
- * - Ausfuehrungs-Historie und Statistiken
- * - Template-Galerie fuer Schnellstart
+ * - 20+ Aktionstypen für Dokumentverarbeitung
+ * - Bedingungen, Verzweigungen, Schleifen, Parallele Ausführung
+ * - Ausführungs-Historie und Statistiken
+ * - Template-Galerie für Schnellstart
  */
 
 // Components

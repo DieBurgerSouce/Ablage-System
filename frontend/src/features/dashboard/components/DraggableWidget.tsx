@@ -1,7 +1,7 @@
 /**
  * DraggableWidget - Enhanced Widget with Drag Preview
  *
- * Phase 2.2: Drag & Drop ueberall
+ * Phase 2.2: Drag & Drop überall
  *
  * Features:
  * - Erweitert SortableWidget mit besserem Drag-Preview
@@ -48,11 +48,11 @@ export interface DraggableWidgetProps {
   isDragOverlay?: boolean
   /** Entfernen-Handler */
   onRemove?: (id: string) => void
-  /** Konfiguration oeffnen */
+  /** Konfiguration öffnen */
   onConfigure?: (id: string) => void
   /** Maximieren */
   onMaximize?: (id: string) => void
-  /** Zusaetzliche CSS-Klassen */
+  /** Zusätzliche CSS-Klassen */
   className?: string
 }
 
@@ -260,7 +260,7 @@ export const DraggableWidget = forwardRef<HTMLDivElement, DraggableWidgetProps>(
 )
 
 // =============================================================================
-// Widget Drag Overlay - Fuer DragOverlay in DndContext
+// Widget Drag Overlay - Für DragOverlay in DndContext
 // =============================================================================
 
 export interface WidgetDragOverlayProps {
@@ -302,7 +302,7 @@ export function WidgetDragOverlay({ widget }: WidgetDragOverlayProps) {
       {/* Size Indicator */}
       {widget.size && (
         <div className="mt-2 text-xs text-muted-foreground text-center">
-          Groesse: {widget.size}
+          Größe: {widget.size}
         </div>
       )}
     </div>

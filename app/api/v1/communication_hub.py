@@ -11,7 +11,9 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+from app.core.types import JSONDict
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -49,7 +51,7 @@ class TimelineItemResponse(BaseModel):
     direction: Optional[str] = None
     sentiment: Optional[str] = None
     actor_name: Optional[str] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: JSONDict = Field(default_factory=dict)
 
     class Config:
         from_attributes = True
@@ -80,14 +82,14 @@ class RiskTrendResponse(BaseModel):
 
 class CommunicationHubResponse(BaseModel):
     """Vollstaendige 360°-Ansicht eines Geschaeftspartners."""
-    entity: Dict[str, Any]
+    entity: JSONDict
     timeline: List[TimelineItemResponse]
     invoice_summary: InvoiceSummaryResponse
     risk_trend: RiskTrendResponse
-    communication_stats: Dict[str, Any]
-    recent_documents: List[Dict[str, Any]]
-    open_tasks: List[Dict[str, Any]]
-    phone_notes: List[Dict[str, Any]]
+    communication_stats: JSONDict
+    recent_documents: List[JSONDict]
+    open_tasks: List[JSONDict]
+    phone_notes: List[JSONDict]
 
 
 class PhoneNoteCreate(BaseModel):
@@ -561,7 +563,7 @@ async def get_quick_stats(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     company_id: Optional[UUID] = Depends(get_current_company_id),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Holt schnelle Statistiken fuer Badge-Anzeigen etc."""
     # SECURITY FIX: Multi-Tenant Check
     if not company_id:

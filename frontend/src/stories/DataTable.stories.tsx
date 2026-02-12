@@ -1,7 +1,7 @@
 /**
  * EnterpriseDataTable Component Stories
  *
- * Data Table Stories fuer Visual Regression Testing.
+ * Data Table Stories für Visual Regression Testing.
  * Enterprise-ready Table mit Sorting, Filtering, Pagination.
  */
 
@@ -109,8 +109,8 @@ const sampleDocuments: Document[] = [
     },
     {
         id: '9',
-        name: 'Auftragsbestaetigung_A001.pdf',
-        type: 'Auftragsbestaetigung',
+        name: 'Auftragsbestätigung_A001.pdf',
+        type: 'Auftragsbestätigung',
         status: 'verarbeitet',
         uploadedAt: '2024-01-07',
         size: '178 KB',
@@ -157,14 +157,14 @@ const columns: ColumnDef<Document>[] = [
                     (table.getIsSomePageRowsSelected() && 'indeterminate')
                 }
                 onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-                aria-label="Alle auswaehlen"
+                aria-label="Alle auswählen"
             />
         ),
         cell: ({ row }) => (
             <Checkbox
                 checked={row.getIsSelected()}
                 onCheckedChange={(value) => row.toggleSelected(!!value)}
-                aria-label="Zeile auswaehlen"
+                aria-label="Zeile auswählen"
             />
         ),
         enableSorting: false,
@@ -245,7 +245,7 @@ const columns: ColumnDef<Document>[] = [
     },
     {
         accessorKey: 'size',
-        header: 'Groesse',
+        header: 'Größe',
     },
     {
         id: 'actions',
@@ -255,7 +255,7 @@ const columns: ColumnDef<Document>[] = [
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Menue oeffnen</span>
+                            <span className="sr-only">Menue öffnen</span>
                             <MoreHorizontal className="h-4 w-4" />
                         </Button>
                     </DropdownMenuTrigger>
@@ -270,7 +270,7 @@ const columns: ColumnDef<Document>[] = [
                         <DropdownMenuItem>Anzeigen</DropdownMenuItem>
                         <DropdownMenuItem>Bearbeiten</DropdownMenuItem>
                         <DropdownMenuItem className="text-destructive">
-                            Loeschen
+                            Löschen
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>

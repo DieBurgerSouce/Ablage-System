@@ -1,7 +1,7 @@
 /**
  * MLOps Hooks
  *
- * Hooks fuer Model Registry und Retraining Management.
+ * Hooks für Model Registry und Retraining Management.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';

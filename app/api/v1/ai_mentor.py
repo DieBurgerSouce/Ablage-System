@@ -10,7 +10,7 @@ Stellt Endpoints bereit fuer:
 Vision 2.0 - Feature #9 (Januar 2026)
 """
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 from uuid import UUID
 
 import structlog

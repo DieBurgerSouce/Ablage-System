@@ -3,14 +3,14 @@
  *
  * Verwaltung von SSO-Providern:
  * - Provider-Liste
- * - Provider hinzufuegen/bearbeiten
+ * - Provider hinzufügen/bearbeiten
  * - Provider aktivieren/deaktivieren
  *
  * Enterprise-Grade Features:
- * - ErrorBoundary fuer graceful degradation
+ * - ErrorBoundary für graceful degradation
  * - Optimistische Updates
  * - Real-time Status
- * - EditProviderDialog fuer Provider-Bearbeitung
+ * - EditProviderDialog für Provider-Bearbeitung
  */
 
 import { useState } from 'react';
@@ -305,14 +305,14 @@ function AddProviderDialog({ presets, onAdd }: {
             <DialogTrigger asChild>
                 <Button>
                     <Plus className="h-4 w-4 mr-2" />
-                    Provider hinzufuegen
+                    Provider hinzufügen
                 </Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg">
                 <DialogHeader>
-                    <DialogTitle>SSO-Provider hinzufuegen</DialogTitle>
+                    <DialogTitle>SSO-Provider hinzufügen</DialogTitle>
                     <DialogDescription>
-                        Konfigurieren Sie einen neuen SSO-Provider fuer Ihre Organisation.
+                        Konfigurieren Sie einen neuen SSO-Provider für Ihre Organisation.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -322,7 +322,7 @@ function AddProviderDialog({ presets, onAdd }: {
                         {/* value={preset || undefined} ensures no crash on empty string (CLAUDE.md Rule 7) */}
                         <Select value={preset} onValueChange={setPreset}>
                             <SelectTrigger>
-                                <SelectValue placeholder="Provider auswaehlen" />
+                                <SelectValue placeholder="Provider auswählen" />
                             </SelectTrigger>
                             <SelectContent>
                                 {presets.map(p => (
@@ -447,7 +447,7 @@ function SSOAdminPage() {
             const result = validateProviderResponse(response.data);
             if (!result.success) {
                 console.error('[SSO] Invalid create response:', result.error);
-                throw new Error(`Ungueltige Server-Antwort: ${result.error}`);
+                throw new Error(`Ungültige Server-Antwort: ${result.error}`);
             }
             return result.data;
         },
@@ -467,7 +467,7 @@ function SSOAdminPage() {
             const result = validateProviderResponse(response.data);
             if (!result.success) {
                 console.error('[SSO] Invalid update response:', result.error);
-                throw new Error(`Ungueltige Server-Antwort: ${result.error}`);
+                throw new Error(`Ungültige Server-Antwort: ${result.error}`);
             }
             return result.data;
         },
@@ -483,7 +483,7 @@ function SSOAdminPage() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['sso', 'providers'] });
-            toast({ title: 'Provider geloescht' });
+            toast({ title: 'Provider gelöscht' });
         },
     });
 
@@ -494,7 +494,7 @@ function SSOAdminPage() {
             const result = validateProviderResponse(response.data);
             if (!result.success) {
                 console.error('[SSO] Invalid setPrimary response:', result.error);
-                throw new Error(`Ungueltige Server-Antwort: ${result.error}`);
+                throw new Error(`Ungültige Server-Antwort: ${result.error}`);
             }
             return result.data;
         },
@@ -547,7 +547,7 @@ function SSOAdminPage() {
                             Single Sign-On (SSO)
                         </h1>
                         <p className="text-muted-foreground">
-                            Verwalten Sie SSO-Provider fuer Ihre Organisation
+                            Verwalten Sie SSO-Provider für Ihre Organisation
                         </p>
                     </div>
                     {presets && (
@@ -563,8 +563,8 @@ function SSOAdminPage() {
                     <Key className="h-4 w-4" />
                     <AlertTitle>Enterprise SSO</AlertTitle>
                     <AlertDescription>
-                        SSO ermoeglicht Ihren Mitarbeitern die Anmeldung mit ihren bestehenden
-                        Unternehmens-Zugangsdaten. Unterstuetzt werden OIDC (OpenID Connect) und SAML 2.0.
+                        SSO ermöglicht Ihren Mitarbeitern die Anmeldung mit ihren bestehenden
+                        Unternehmens-Zugangsdaten. Unterstützt werden OIDC (OpenID Connect) und SAML 2.0.
                     </AlertDescription>
                 </Alert>
 
@@ -597,7 +597,7 @@ function SSOAdminPage() {
                                 provider={provider}
                                 onEdit={() => handleEdit(provider)}
                                 onDelete={() => {
-                                    if (confirm('Provider wirklich loeschen?')) {
+                                    if (confirm('Provider wirklich löschen?')) {
                                         deleteMutation.mutate(provider.id);
                                     }
                                 }}
@@ -622,7 +622,7 @@ function SSOAdminPage() {
                         <Shield className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                         <h3 className="text-lg font-medium mb-2">Keine SSO-Provider konfiguriert</h3>
                         <p className="text-muted-foreground mb-4">
-                            Fuegen Sie einen SSO-Provider hinzu, um Enterprise-Anmeldung zu aktivieren.
+                            Fügen Sie einen SSO-Provider hinzu, um Enterprise-Anmeldung zu aktivieren.
                         </p>
                         {presets && (
                             <AddProviderDialog

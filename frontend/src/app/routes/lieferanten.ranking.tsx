@@ -1,7 +1,7 @@
 /**
  * Supplier Ranking Route
  *
- * Route fuer das Lieferanten-Ranking Dashboard.
+ * Route für das Lieferanten-Ranking Dashboard.
  */
 
 import { createFileRoute } from '@tanstack/react-router';

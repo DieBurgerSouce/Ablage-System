@@ -2,9 +2,9 @@
  * CompanyDashboardPage - Multi-Firma Dashboard
  *
  * Features:
- * - Uebersicht aller Firmen-Metriken
+ * - Übersicht aller Firmen-Metriken
  * - Health Score Visualisierung
- * - Alerts fuer kritische Situationen
+ * - Alerts für kritische Situationen
  * - Firmen-Vergleich mit Charts
  */
 
@@ -54,7 +54,7 @@ import type {
 // ==================== Hilfsfunktionen ====================
 
 /**
- * Formatiert einen Betrag als Waehrung
+ * Formatiert einen Betrag als Währung
  */
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('de-DE', {
@@ -73,7 +73,7 @@ function formatNumber(value: number): string {
 }
 
 /**
- * Gibt die Farbe fuer einen Health Score zurueck
+ * Gibt die Farbe für einen Health Score zurück
  */
 function getHealthScoreColor(score: number): string {
   if (score >= 80) return 'text-green-600';
@@ -83,7 +83,7 @@ function getHealthScoreColor(score: number): string {
 }
 
 /**
- * Gibt die Progress-Farbe fuer einen Health Score zurueck
+ * Gibt die Progress-Farbe für einen Health Score zurück
  */
 function getHealthScoreProgressColor(score: number): string {
   if (score >= 80) return 'bg-green-500';
@@ -95,7 +95,7 @@ function getHealthScoreProgressColor(score: number): string {
 // ==================== Sub-Komponenten ====================
 
 /**
- * Summary-Karte fuer eine einzelne Metrik
+ * Summary-Karte für eine einzelne Metrik
  */
 function SummaryCard({
   title,
@@ -144,7 +144,7 @@ function SummaryCard({
 }
 
 /**
- * Alert-Banner fuer kritische Meldungen
+ * Alert-Banner für kritische Meldungen
  */
 function AlertBanner({ alerts }: { alerts: DashboardAlert[] }) {
   if (alerts.length === 0) return null;
@@ -209,7 +209,7 @@ function CompanyMetricsTable({ companies }: { companies: CompanyMetrics[] }) {
             <TableHead className="text-right">Dokumente</TableHead>
             <TableHead className="text-right">Rechnungen</TableHead>
             <TableHead className="text-right">Offen</TableHead>
-            <TableHead className="text-right">Ueberfaellig</TableHead>
+            <TableHead className="text-right">Überfällig</TableHead>
             <TableHead className="text-center">Mahnungen</TableHead>
           </TableRow>
         </TableHeader>
@@ -319,7 +319,7 @@ function CompanyMetricsTable({ companies }: { companies: CompanyMetrics[] }) {
 }
 
 /**
- * Einfaches Balkendiagramm fuer Vergleiche
+ * Einfaches Balkendiagramm für Vergleiche
  */
 function ComparisonChart({
   data,
@@ -407,7 +407,7 @@ export function CompanyDashboardPage() {
         <div>
           <h1 className="text-2xl font-bold">Multi-Firma Dashboard</h1>
           <p className="text-muted-foreground">
-            Uebersicht aller {summary?.active_companies ?? 0} aktiven Firmen
+            Übersicht aller {summary?.active_companies ?? 0} aktiven Firmen
           </p>
         </div>
         <Button variant="outline" onClick={() => refetch()}>
@@ -447,7 +447,7 @@ export function CompanyDashboardPage() {
         <SummaryCard
           title="Offene Forderungen"
           value={formatCurrency(summary?.total_outstanding_amount ?? 0)}
-          subtitle={`${formatCurrency(summary?.total_overdue_amount ?? 0)} ueberfaellig`}
+          subtitle={`${formatCurrency(summary?.total_overdue_amount ?? 0)} überfällig`}
           icon={DollarSign}
           trend={
             (summary?.total_overdue_amount ?? 0) > 0 ? 'down' : null
@@ -502,9 +502,9 @@ export function CompanyDashboardPage() {
                   <SelectContent>
                     <SelectItem value="invoices">Rechnungsvolumen</SelectItem>
                     <SelectItem value="outstanding">Offene Forderungen</SelectItem>
-                    <SelectItem value="overdue">Ueberfaellige</SelectItem>
+                    <SelectItem value="overdue">Überfällige</SelectItem>
                     <SelectItem value="documents">Dokumente</SelectItem>
-                    <SelectItem value="entities">Geschaeftspartner</SelectItem>
+                    <SelectItem value="entities">Geschäftspartner</SelectItem>
                     <SelectItem value="health">Health Score</SelectItem>
                   </SelectContent>
                 </Select>
@@ -524,7 +524,7 @@ export function CompanyDashboardPage() {
                 />
               ) : (
                 <p className="text-muted-foreground text-center py-8">
-                  Keine Vergleichsdaten verfuegbar
+                  Keine Vergleichsdaten verfügbar
                 </p>
               )}
             </CardContent>
@@ -535,7 +535,7 @@ export function CompanyDashboardPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                Geschaeftspartner
+                Geschäftspartner
               </CardTitle>
             </CardHeader>
             <CardContent>

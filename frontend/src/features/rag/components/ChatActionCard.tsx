@@ -1,7 +1,7 @@
 /**
  * Chat Action Card Component
  *
- * Zeigt eine Tool-Aktion im Chat an mit Bestaetigung/Ablehnung.
+ * Zeigt eine Tool-Aktion im Chat an mit Bestätigung/Ablehnung.
  */
 
 import { memo } from 'react';
@@ -36,6 +36,12 @@ const toolLabels: Record<string, string> = {
     get_entity_summary: 'Geschäftspartner-Zusammenfassung',
     categorize_document: 'Dokument kategorisieren',
     create_reminder: 'Erinnerung erstellen',
+    get_daily_agenda: 'Tagesplanung',
+    compare_expenses: 'Ausgabenvergleich',
+    book_invoice: 'Rechnung buchen',
+    approve_document: 'Dokument genehmigen',
+    get_skonto_opportunities: 'Skonto-Möglichkeiten',
+    get_overdue_invoices: 'Überfällige Rechnungen',
 };
 
 /**

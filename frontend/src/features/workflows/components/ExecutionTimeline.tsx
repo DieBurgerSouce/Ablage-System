@@ -1,7 +1,7 @@
 /**
  * Execution Timeline
  *
- * Vertikale Zeitleiste der Workflow-Ausfuehrung.
+ * Vertikale Zeitleiste der Workflow-Ausführung.
  */
 
 import { useState } from 'react';
@@ -241,7 +241,7 @@ export default function ExecutionTimeline({ executionId }: ExecutionTimelineProp
         </CardHeader>
         <CardContent className="p-8 text-center text-muted-foreground">
           <Clock className="mx-auto h-12 w-12 mb-4" />
-          <p>Keine Timeline-Eintraege vorhanden</p>
+          <p>Keine Timeline-Einträge vorhanden</p>
         </CardContent>
       </Card>
     );

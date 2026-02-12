@@ -51,7 +51,7 @@ export const contractsService = {
   // ==================== Contract CRUD ====================
 
   /**
-   * Liste aller Vertraege mit optionalen Filtern
+   * Liste aller Verträge mit optionalen Filtern
    */
   listContracts: async (params: ContractListParams = {}): Promise<ContractListResponse> => {
     const response = await apiClient.get<ContractListResponse>(API_BASE, { params });
@@ -83,7 +83,7 @@ export const contractsService = {
   },
 
   /**
-   * Vertrag loeschen
+   * Vertrag löschen
    */
   deleteContract: async (id: string): Promise<void> => {
     await apiClient.delete(`${API_BASE}/${id}`);
@@ -166,7 +166,7 @@ export const contractsService = {
   },
 
   /**
-   * Meilenstein loeschen
+   * Meilenstein löschen
    */
   deleteMilestone: async (contractId: string, milestoneId: string): Promise<void> => {
     await apiClient.delete(`${API_BASE}/${contractId}/milestones/${milestoneId}`);
@@ -190,7 +190,7 @@ export const contractsService = {
   // ==================== Renewal Options ====================
 
   /**
-   * Verlaengerungsoptionen abrufen
+   * Verlängerungsoptionen abrufen
    */
   listRenewalOptions: async (contractId: string): Promise<ContractRenewalOption[]> => {
     const response = await apiClient.get<ContractRenewalOption[]>(`${API_BASE}/${contractId}/renewal-options`);
@@ -198,7 +198,7 @@ export const contractsService = {
   },
 
   /**
-   * Verlaengerungsentscheidung treffen
+   * Verlängerungsentscheidung treffen
    */
   makeRenewalDecision: async (
     contractId: string,
@@ -238,7 +238,7 @@ export const contractsService = {
   },
 
   /**
-   * Nachtrag loeschen
+   * Nachtrag löschen
    */
   deleteAmendment: async (contractId: string, amendmentId: string): Promise<void> => {
     await apiClient.delete(`${API_BASE}/${contractId}/amendments/${amendmentId}`);
@@ -257,7 +257,7 @@ export const contractsService = {
   // ==================== Bulk Operations ====================
 
   /**
-   * Mehrere Vertraege exportieren
+   * Mehrere Verträge exportieren
    */
   bulkExport: async (contractIds: string[], format: 'csv' | 'xlsx' | 'pdf' = 'xlsx'): Promise<Blob> => {
     const response = await apiClient.post(
@@ -269,7 +269,7 @@ export const contractsService = {
   },
 
   /**
-   * Erinnerungen fuer mehrere Vertraege senden
+   * Erinnerungen für mehrere Verträge senden
    */
   bulkSendReminders: async (contractIds: string[]): Promise<{ sent: number; failed: number }> => {
     const response = await apiClient.post<{ sent: number; failed: number }>(

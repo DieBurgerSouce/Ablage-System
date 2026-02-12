@@ -4,7 +4,7 @@
  * Zeigt alle Details einer einzelnen Auftragskette:
  * - Dokumentenfluss-Visualisierung
  * - Abweichungen
- * - Verknuepfungsaktionen
+ * - Verknüpfungsaktionen
  */
 
 import { useState } from 'react';
@@ -127,12 +127,12 @@ export function ChainDetailPage({
       await removeLink.mutateAsync({ relationshipId, chainId });
       toast({
         title: 'Erfolg',
-        description: 'Verknuepfung entfernt',
+        description: 'Verknüpfung entfernt',
       });
     } catch {
       toast({
         title: 'Fehler',
-        description: 'Verknuepfung konnte nicht entfernt werden',
+        description: 'Verknüpfung konnte nicht entfernt werden',
         variant: 'destructive',
       });
     }
@@ -192,7 +192,7 @@ export function ChainDetailPage({
           isText
         />
         <StatCard
-          label="Verknuepfungen"
+          label="Verknüpfungen"
           value={chain.relationships.length}
           icon={Link2}
         />
@@ -245,14 +245,14 @@ export function ChainDetailPage({
                       }
                     >
                       <Plus className="w-4 h-4 mr-1" />
-                      Verknuepfen
+                      Verknüpfen
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => onDocumentClick?.(doc.id)}
                     >
-                      Oeffnen
+                      Öffnen
                     </Button>
                   </div>
                 </div>
@@ -265,13 +265,13 @@ export function ChainDetailPage({
       {/* Relationships */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Verknuepfungen</CardTitle>
+          <CardTitle className="text-base">Verknüpfungen</CardTitle>
         </CardHeader>
         <CardContent>
           {chain.relationships.length === 0 ? (
             <div className="text-center py-6 text-muted-foreground">
               <Link2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p>Keine Verknuepfungen vorhanden</p>
+              <p>Keine Verknüpfungen vorhanden</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -316,9 +316,9 @@ export function ChainDetailPage({
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Verknuepfung entfernen?</AlertDialogTitle>
+                          <AlertDialogTitle>Verknüpfung entfernen?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Moechten Sie diese Verknuepfung wirklich entfernen? Die
+                            Möchten Sie diese Verknüpfung wirklich entfernen? Die
                             Dokumente bleiben erhalten.
                           </AlertDialogDescription>
                         </AlertDialogHeader>

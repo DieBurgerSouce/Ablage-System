@@ -1,6 +1,6 @@
 /**
  * Correction Workbench Components
- * Export aller Komponenten fuer die OCR-Korrektur-Workbench
+ * Export aller Komponenten für die OCR-Korrektur-Workbench
  */
 
 export { CorrectionStatsCards } from './CorrectionStatsCards';

@@ -40,6 +40,7 @@ export interface SearchResultItem {
     ftsRank?: number | null;
     semanticSimilarity?: number | null;
     highlight?: string | null;
+    highlightSnippets?: string | null;
     textPreview?: string | null;
     tags: string[];
     matchedEntity?: MatchedEntity;
@@ -161,9 +162,16 @@ export function SearchResultCard({ result, className }: SearchResultCardProps) {
                         )}
 
                         {/* Highlight / Preview */}
-                        {(result.highlight || result.textPreview) && (
-                            <div className="text-sm text-muted-foreground bg-muted/30 rounded-lg p-3 border border-border/50">
-                                {result.highlight ? (
+                        {(result.highlightSnippets || result.highlight || result.textPreview) && (
+                            <div className="text-sm text-muted-foreground bg-muted/30 rounded-lg p-3 border border-border/50 [&_mark]:bg-yellow-200 [&_mark]:dark:bg-yellow-800 [&_mark]:px-0.5 [&_mark]:rounded-sm">
+                                {result.highlightSnippets ? (
+                                    <p
+                                        className="line-clamp-3"
+                                        dangerouslySetInnerHTML={{
+                                            __html: sanitizeHighlight(result.highlightSnippets),
+                                        }}
+                                    />
+                                ) : result.highlight ? (
                                     <p
                                         className="line-clamp-3"
                                         dangerouslySetInnerHTML={{

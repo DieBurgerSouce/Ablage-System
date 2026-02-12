@@ -1,0 +1,76 @@
+groups:
+  - name: ablage_system_slo_alerts
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          (
+            rate(system_errors_total[5m])
+            / rate(system_requests_total[5m])
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "Fehlerrate über 1%"
+          description: "Die API-Fehlerrate liegt bei {{ $value | humanizePercentage }} (Schwellenwert: 1%)"
+
+      - alert: HighLatencyP99
+        expr: histogram_quantile(0.99, rate(system_request_duration_seconds_bucket[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "p99 Latenz über 500ms"
+          description: "Die p99 Latenz beträgt {{ $value | humanizeDuration }}"
+
+      - alert: GPUMemoryHigh
+        expr: (gpu_memory_allocated_bytes / gpu_memory_total_bytes) > 0.85
+        for: 2m
+        labels:
+          severity: critical
+          team: infrastructure
+        annotations:
+          summary: "GPU VRAM über 85%"
+          description: "GPU VRAM-Auslastung bei {{ $value | humanizePercentage }}"
+
+      - alert: GPUOOMEvent
+        expr: increase(gpu_oom_events_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          team: infrastructure
+        annotations:
+          summary: "GPU Out-of-Memory Ereignis"
+          description: "{{ $value }} OOM-Ereignisse in den letzten 5 Minuten"
+
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: infrastructure
+        annotations:
+          summary: "Service {{ $labels.job }} nicht erreichbar"
+          description: "Der Service {{ $labels.job }} ist seit 1 Minute nicht erreichbar"
+
+      - alert: OCRQualityLow
+        expr: avg(ocr_confidence_score) < 0.85
+        for: 15m
+        labels:
+          severity: warning
+          team: ocr
+        annotations:
+          summary: "OCR Konfidenz unter 85%"
+          description: "Durchschnittliche OCR-Konfidenz: {{ $value | humanize }}"
+
+      - alert: CeleryQueueBacklog
+        expr: celery_queue_length > 100
+        for: 10m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Celery Warteschlange über 100 Tasks"
+          description: "Queue {{ $labels.queue_name }} hat {{ $value }} ausstehende Tasks"

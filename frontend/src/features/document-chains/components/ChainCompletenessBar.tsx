@@ -1,7 +1,7 @@
 /**
- * ChainCompletenessBar - Visueller Fortschrittsbalken fuer Kettenvollstaendigkeit
+ * ChainCompletenessBar - Visueller Fortschrittsbalken für Kettenvollständigkeit
  *
- * Zeigt den Vervollstaendigungsgrad einer Auftragskette als farbigen Balken.
+ * Zeigt den Vervollständigungsgrad einer Auftragskette als farbigen Balken.
  * Wird in ChainCard und ChainDetailPage verwendet.
  */
 
@@ -27,8 +27,8 @@ function getBarColor(percentage: number): string {
 }
 
 function getStatusLabel(percentage: number): string {
-  if (percentage >= 100) return 'Vollstaendig';
-  if (percentage >= 75) return 'Fast vollstaendig';
+  if (percentage >= 100) return 'Vollständig';
+  if (percentage >= 75) return 'Fast vollständig';
   if (percentage >= 50) return 'In Bearbeitung';
   if (percentage >= 25) return 'Begonnen';
   return 'Gestartet';

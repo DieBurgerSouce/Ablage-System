@@ -1,8 +1,8 @@
 /**
  * AutoMatchDialog - Automatisches Dokument-Matching
  *
- * Dialog zum automatischen Finden und Verknuepfen passender Dokumente.
- * Zeigt Vorschlaege mit Confidence-Score und Match-Gruenden.
+ * Dialog zum automatischen Finden und Verknüpfen passender Dokumente.
+ * Zeigt Vorschläge mit Confidence-Score und Match-Gründen.
  */
 
 import { useState } from 'react';
@@ -103,7 +103,7 @@ export function AutoMatchDialog({
             {CHAIN_UI_LABELS.actionAutoMatch}
           </DialogTitle>
           <DialogDescription>
-            Passende Dokumente fuer &quot;{documentName}&quot; werden gesucht.
+            Passende Dokumente für &quot;{documentName}&quot; werden gesucht.
           </DialogDescription>
         </DialogHeader>
 
@@ -122,7 +122,7 @@ export function AutoMatchDialog({
               <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
               <p>{CHAIN_UI_LABELS.emptyNoMatches}</p>
               <p className="text-xs mt-1">
-                Versuchen Sie, das Dokument manuell zu verknuepfen.
+                Versuchen Sie, das Dokument manuell zu verknüpfen.
               </p>
             </div>
           )}
@@ -210,7 +210,7 @@ export function AutoMatchDialog({
                             {Math.round(match.confidence * 100)}%
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            Uebereinstimmung
+                            Übereinstimmung
                           </div>
                         </div>
                       </div>
@@ -226,7 +226,7 @@ export function AutoMatchDialog({
             <>
               <Separator />
               <div className="p-3 bg-muted rounded-md">
-                <div className="text-sm font-medium mb-2">Verknuepfung erstellen:</div>
+                <div className="text-sm font-medium mb-2">Verknüpfung erstellen:</div>
                 <div className="flex items-center gap-2 text-sm">
                   <span className="truncate max-w-[120px]">{documentName}</span>
                   <ArrowRight className="w-4 h-4 flex-shrink-0" />

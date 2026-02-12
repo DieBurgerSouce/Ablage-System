@@ -1,8 +1,8 @@
 /**
  * AbsetzbarkeitsChecker Component
  *
- * Ermoeglicht die Pruefung einzelner Dokumente auf steuerliche Absetzbarkeit.
- * Zeigt Kategorie, Paragraph und geschaetzten absetzbaren Betrag.
+ * Ermöglicht die Prüfung einzelner Dokumente auf steuerliche Absetzbarkeit.
+ * Zeigt Kategorie, Paragraph und geschätzten absetzbaren Betrag.
  */
 
 import * as React from 'react';
@@ -46,10 +46,10 @@ import type { DeductibilityCheckResult, TaxCategory } from '@/lib/api/services/t
 const CATEGORY_LABELS: Record<TaxCategory, { label: string; paragraph: string }> = {
   werbungskosten: { label: 'Werbungskosten', paragraph: '9 EStG' },
   sonderausgaben: { label: 'Sonderausgaben', paragraph: '10 EStG' },
-  aussergewoehnliche_belastungen: { label: 'Aussergewoehnliche Belastungen', paragraph: '33 EStG' },
+  aussergewoehnliche_belastungen: { label: 'Außergewöhnliche Belastungen', paragraph: '33 EStG' },
   haushaltsnahe_dienstleistungen: { label: 'Haushaltsnahe Dienstleistungen', paragraph: '35a Abs. 2 EStG' },
   handwerkerleistungen: { label: 'Handwerkerleistungen', paragraph: '35a Abs. 3 EStG' },
-  doppelte_haushaltsfuehrung: { label: 'Doppelte Haushaltsfuehrung', paragraph: '9 Abs. 1 Nr. 5 EStG' },
+  doppelte_haushaltsfuehrung: { label: 'Doppelte Haushaltsführung', paragraph: '9 Abs. 1 Nr. 5 EStG' },
   homeoffice: { label: 'Homeoffice-Pauschale', paragraph: '4 Abs. 5 EStG' },
   kinderbetreuung: { label: 'Kinderbetreuungskosten', paragraph: '10 Abs. 1 Nr. 5 EStG' },
   spenden: { label: 'Spenden', paragraph: '10b EStG' },
@@ -118,7 +118,7 @@ export function AbsetzbarkeitsChecker({
           Absetzbarkeits-Checker
         </CardTitle>
         <CardDescription>
-          Pruefen Sie, ob ein Dokument steuerlich absetzbar ist
+          Prüfen Sie, ob ein Dokument steuerlich absetzbar ist
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -153,7 +153,7 @@ export function AbsetzbarkeitsChecker({
             <Label htmlFor="documentType">Dokumenttyp (optional)</Label>
             <Select value={documentType} onValueChange={setDocumentType}>
               <SelectTrigger>
-                <SelectValue placeholder="Dokumenttyp waehlen..." />
+                <SelectValue placeholder="Dokumenttyp wählen..." />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="invoice">Rechnung</SelectItem>
@@ -168,7 +168,7 @@ export function AbsetzbarkeitsChecker({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="documentText">Dokumenttext (fuer manuelle Pruefung)</Label>
+            <Label htmlFor="documentText">Dokumenttext (für manuelle Prüfung)</Label>
             <Textarea
               id="documentText"
               placeholder="Beschreibung oder OCR-Text des Dokuments eingeben..."
@@ -187,18 +187,18 @@ export function AbsetzbarkeitsChecker({
               {checkMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Pruefe...
+                  Prüfe...
                 </>
               ) : (
                 <>
                   <FileCheck className="h-4 w-4 mr-2" />
-                  Absetzbarkeit pruefen
+                  Absetzbarkeit prüfen
                 </>
               )}
             </Button>
             {result && (
               <Button variant="outline" onClick={handleReset}>
-                Zuruecksetzen
+                Zurücksetzen
               </Button>
             )}
           </div>
@@ -208,9 +208,9 @@ export function AbsetzbarkeitsChecker({
         {checkMutation.isError && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Fehler bei der Pruefung</AlertTitle>
+            <AlertTitle>Fehler bei der Prüfung</AlertTitle>
             <AlertDescription>
-              Die Absetzbarkeit konnte nicht geprueft werden. Bitte versuchen Sie es erneut.
+              Die Absetzbarkeit konnte nicht geprüft werden. Bitte versuchen Sie es erneut.
             </AlertDescription>
           </Alert>
         )}
@@ -255,7 +255,7 @@ export function AbsetzbarkeitsChecker({
               {confidencePercent < 50 && (
                 <p className="text-xs text-amber-600 flex items-center gap-1">
                   <AlertCircle className="h-3 w-3" />
-                  Niedrige Konfidenz - manuelle Pruefung empfohlen
+                  Niedrige Konfidenz - manuelle Prüfung empfohlen
                 </p>
               )}
             </div>
@@ -276,7 +276,7 @@ export function AbsetzbarkeitsChecker({
             {/* Erkannte Keywords */}
             {result.matchedKeywords && result.matchedKeywords.length > 0 && (
               <div className="space-y-2">
-                <span className="text-sm font-medium">Erkannte Schluesselwoerter:</span>
+                <span className="text-sm font-medium">Erkannte Schlüsselwörter:</span>
                 <div className="flex flex-wrap gap-1">
                   {result.matchedKeywords.map((kw, idx) => (
                     <Badge key={idx} variant="outline" className="text-xs">
@@ -287,7 +287,7 @@ export function AbsetzbarkeitsChecker({
               </div>
             )}
 
-            {/* Betraege */}
+            {/* Beträge */}
             {(result.amount || result.deductibleAmount) && (
               <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
                 {result.amount && (
@@ -315,7 +315,7 @@ export function AbsetzbarkeitsChecker({
                 {result.maxDeductible && (
                   <div className="col-span-2">
                     <p className="text-sm text-muted-foreground">
-                      Hoechstbetrag dieser Kategorie: {parseFloat(result.maxDeductible).toLocaleString('de-DE', {
+                      Höchstbetrag dieser Kategorie: {parseFloat(result.maxDeductible).toLocaleString('de-DE', {
                         style: 'currency',
                         currency: 'EUR',
                       })}

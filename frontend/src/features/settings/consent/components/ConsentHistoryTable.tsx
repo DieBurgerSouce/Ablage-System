@@ -1,7 +1,7 @@
 /**
  * ConsentHistoryTable Component
  *
- * Zeigt die vollstaendige Historie aller Einwilligungs-Aenderungen.
+ * Zeigt die vollständige Historie aller Einwilligungs-Änderungen.
  */
 
 import {
@@ -124,9 +124,9 @@ export function ConsentHistoryTable({
       {history.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
           <History className="h-12 w-12 mx-auto mb-3 opacity-50" />
-          <p>Keine Eintraeге gefunden</p>
+          <p>Keine Einträge gefunden</p>
           <p className="text-sm">
-            Hier werden alle Aenderungen an Ihren Einwilligungen angezeigt.
+            Hier werden alle Änderungen an Ihren Einwilligungen angezeigt.
           </p>
         </div>
       ) : (
@@ -137,7 +137,7 @@ export function ConsentHistoryTable({
                 <TableHead>Datum</TableHead>
                 <TableHead>Bereich</TableHead>
                 <TableHead>Aktion</TableHead>
-                <TableHead>Aenderung</TableHead>
+                <TableHead>Änderung</TableHead>
                 <TableHead className="hidden md:table-cell">Grund</TableHead>
               </TableRow>
             </TableHeader>

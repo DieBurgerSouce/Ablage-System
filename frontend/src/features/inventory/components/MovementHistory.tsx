@@ -81,7 +81,7 @@ export function MovementHistory() {
     <Card>
       <CardHeader>
         <CardTitle>Warenbewegungen</CardTitle>
-        <CardDescription>Historie aller Bestandsaenderungen</CardDescription>
+        <CardDescription>Historie aller Bestandsänderungen</CardDescription>
       </CardHeader>
       <CardContent>
         {/* Filters */}
@@ -182,7 +182,7 @@ export function MovementHistory() {
                     onClick={() => setPage(page - 1)}
                     disabled={page === 0}
                   >
-                    Zurueck
+                    Zurück
                   </Button>
                   <Button
                     variant="outline"

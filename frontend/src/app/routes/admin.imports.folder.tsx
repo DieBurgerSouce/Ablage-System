@@ -51,7 +51,7 @@ function AdminFolderImportsPage() {
         <div>
           <h1 className="text-3xl font-bold">Ordner-Import</h1>
           <p className="text-muted-foreground">
-            Konfigurieren Sie automatische Ordner-Ueberwachung fuer Dokument-Importe.
+            Konfigurieren Sie automatische Ordner-Überwachung für Dokument-Importe.
           </p>
         </div>
       </div>

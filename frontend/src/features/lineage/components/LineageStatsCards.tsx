@@ -2,7 +2,7 @@
  * LineageStatsCards Component
  *
  * Zeigt aggregierte Statistiken zur Dokumenten-Lineage.
- * Wird oberhalb des Flowcharts fuer schnelle Uebersicht angezeigt.
+ * Wird oberhalb des Flowcharts für schnelle Übersicht angezeigt.
  */
 
 import { memo } from 'react';
@@ -176,7 +176,7 @@ export const LineageStatsCards = memo(function LineageStatsCards({
       {/* Entity Linking */}
       <StatCard
         icon={Link2}
-        label="Partner-Verknuepfung"
+        label="Partner-Verknüpfung"
         value={
           stats.entityLinking.confidence !== null ? (
             <Badge
@@ -192,7 +192,7 @@ export const LineageStatsCards = memo(function LineageStatsCards({
         }
         subValue={
           summary?.entityLinking.linkCount
-            ? `${summary.entityLinking.linkCount} Verknuepfung(en)`
+            ? `${summary.entityLinking.linkCount} Verknüpfung(en)`
             : undefined
         }
         colorClass="bg-cyan-100 text-cyan-600 dark:bg-cyan-900 dark:text-cyan-400"

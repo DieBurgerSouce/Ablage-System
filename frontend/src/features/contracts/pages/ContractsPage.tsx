@@ -1,5 +1,5 @@
 /**
- * ContractsPage - Hauptseite fuer Vertragsmanagement
+ * ContractsPage - Hauptseite für Vertragsmanagement
  *
  * Features:
  * - Dashboard mit KPIs
@@ -246,7 +246,7 @@ export function ContractsPage() {
             Vertragsmanagement
           </h1>
           <p className="text-muted-foreground">
-            Verwalten Sie Ihre B2B-Vertraege, Fristen und Verlaengerungen
+            Verwalten Sie Ihre B2B-Verträge, Fristen und Verlängerungen
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -273,12 +273,12 @@ export function ContractsPage() {
       {/* Stats Cards */}
       <ContractStatsCards summary={summary} isLoading={isLoadingSummary} />
 
-      {/* Tabs: Vertraege / Lifecycle */}
+      {/* Tabs: Verträge / Lifecycle */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="contracts" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
-            Vertraege
+            Verträge
           </TabsTrigger>
           <TabsTrigger value="lifecycle" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
@@ -286,7 +286,7 @@ export function ContractsPage() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Vertraege Tab */}
+        {/* Verträge Tab */}
         <TabsContent value="contracts" className="space-y-6">
           <div className="grid gap-6 lg:grid-cols-3">
             {/* Main Content */}
@@ -306,7 +306,7 @@ export function ContractsPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-sm font-medium">
-                    Vertraege ({contractsData?.total || 0})
+                    Verträge ({contractsData?.total || 0})
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -334,7 +334,7 @@ export function ContractsPage() {
                           onClick={() => handlePageChange(currentPage - 1)}
                           disabled={currentPage === 0}
                         >
-                          Zurueck
+                          Zurück
                         </Button>
                         <Button
                           variant="outline"
@@ -401,10 +401,10 @@ export function ContractsPage() {
       <AlertDialog open={!!deleteContract} onOpenChange={(open) => !open && setDeleteContract(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Vertrag loeschen</AlertDialogTitle>
+            <AlertDialogTitle>Vertrag löschen</AlertDialogTitle>
             <AlertDialogDescription>
-              Moechten Sie den Vertrag "{deleteContract?.title}" ({deleteContract?.contract_number})
-              wirklich loeschen? Diese Aktion kann nicht rueckgaengig gemacht werden.
+              Möchten Sie den Vertrag "{deleteContract?.title}" ({deleteContract?.contract_number})
+              wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -413,7 +413,7 @@ export function ContractsPage() {
               onClick={handleDeleteConfirm}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Loeschen
+              Löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -425,13 +425,13 @@ export function ContractsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>
               {renewalConfirm?.decision === 'exercise'
-                ? 'Verlaengerung ausueben?'
-                : 'Verlaengerung ablehnen?'}
+                ? 'Verlängerung ausüben?'
+                : 'Verlängerung ablehnen?'}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {renewalConfirm?.decision === 'exercise'
-                ? 'Moechten Sie diese Verlaengerungsoption ausueben? Der Vertrag wird entsprechend verlaengert.'
-                : 'Moechten Sie diese Verlaengerungsoption ablehnen? Der Vertrag endet dann zum geplanten Termin.'}
+                ? 'Möchten Sie diese Verlängerungsoption ausüben? Der Vertrag wird entsprechend verlängert.'
+                : 'Möchten Sie diese Verlängerungsoption ablehnen? Der Vertrag endet dann zum geplanten Termin.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -444,7 +444,7 @@ export function ContractsPage() {
                   : undefined
               }
             >
-              {renewalConfirm?.decision === 'exercise' ? 'Ausueben' : 'Ablehnen'}
+              {renewalConfirm?.decision === 'exercise' ? 'Ausüben' : 'Ablehnen'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

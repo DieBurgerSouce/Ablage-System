@@ -1,7 +1,7 @@
 /**
  * Consent Management Hooks
  *
- * TanStack Query Hooks fuer Einwilligungsverwaltung
+ * TanStack Query Hooks für Einwilligungsverwaltung
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -22,7 +22,7 @@ export const consentKeys = {
 };
 
 /**
- * Hook fuer Einwilligungs-Status
+ * Hook für Einwilligungs-Status
  */
 export function useConsentStatus() {
   return useQuery({
@@ -33,7 +33,7 @@ export function useConsentStatus() {
 }
 
 /**
- * Hook fuer Einwilligungs-Historie
+ * Hook für Einwilligungs-Historie
  */
 export function useConsentHistory(scope?: ConsentScope, limit: number = 50) {
   return useQuery({

@@ -1,10 +1,10 @@
 /**
- * MobileActionMenu - Kontextmenue fuer Mobile
+ * MobileActionMenu - Kontextmenü für Mobile
  *
  * Phase 2.4: Mobile-First Gesten
  *
  * Features:
- * - Touch-optimierte Button-Groessen (min 44px)
+ * - Touch-optimierte Button-Größen (min 44px)
  * - Als Bottom Sheet oder Dropdown
  * - Gruppierte Aktionen
  * - Keyboard-Accessible
@@ -57,19 +57,19 @@ export interface MenuAction {
 }
 
 export interface MobileActionMenuProps {
-  /** Ist das Menue offen? */
+  /** Ist das Menü offen? */
   open: boolean
-  /** Callback beim Schliessen */
+  /** Callback beim Schließen */
   onOpenChange: (open: boolean) => void
   /** Callback bei Aktionsauswahl */
   onAction: (actionId: string) => void
-  /** Verfuegbare Aktionen */
+  /** Verfügbare Aktionen */
   actions?: MenuAction[]
   /** Titel */
   title?: string
   /** Untertitel */
   subtitle?: string
-  /** Zusaetzliche CSS-Klassen */
+  /** Zusätzliche CSS-Klassen */
   className?: string
 }
 
@@ -85,7 +85,7 @@ const DEFAULT_ACTIONS: MenuAction[] = [
   { id: "move", label: "Verschieben", icon: FolderInput, group: "secondary" },
   { id: "tag", label: "Tags bearbeiten", icon: Tag, group: "secondary" },
   { id: "archive", label: "Archivieren", icon: Archive, group: "secondary" },
-  { id: "delete", label: "Loeschen", icon: Trash2, group: "danger", destructive: true },
+  { id: "delete", label: "Löschen", icon: Trash2, group: "danger", destructive: true },
 ]
 
 // =============================================================================
@@ -214,7 +214,7 @@ function ActionButton({ action, onClick }: ActionButtonProps) {
 }
 
 // =============================================================================
-// MobileActionTrigger - Button zum Oeffnen des Menues
+// MobileActionTrigger - Button zum Öffnen des Menüs
 // =============================================================================
 
 export interface MobileActionTriggerProps {

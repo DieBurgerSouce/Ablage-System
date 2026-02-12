@@ -1,7 +1,7 @@
 /**
  * Payment Behavior Dashboard
  *
- * Hauptseite fuer Zahlungsverhaltens-Analyse.
+ * Hauptseite für Zahlungsverhaltens-Analyse.
  */
 
 import { useState } from 'react';
@@ -99,7 +99,7 @@ export function PaymentBehaviorDashboard({ className }: PaymentBehaviorDashboard
             {UI_LABELS.dashboard}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Analyse des Kunden-Zahlungsverhaltens fuer bessere Kreditentscheidungen.
+            Analyse des Kunden-Zahlungsverhaltens für bessere Kreditentscheidungen.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -142,7 +142,7 @@ export function PaymentBehaviorDashboard({ className }: PaymentBehaviorDashboard
           isLoading={isLoading}
         />
         <SummaryCard
-          title="Puenktlichkeitsrate"
+          title="Pünktlichkeitsrate"
           value={
             isLoading
               ? undefined
@@ -153,7 +153,7 @@ export function PaymentBehaviorDashboard({ className }: PaymentBehaviorDashboard
           isLoading={isLoading}
         />
         <SummaryCard
-          title="Ueberfaelliges Volumen"
+          title="Überfälliges Volumen"
           value={isLoading ? undefined : formatCurrency(report?.summary.overdueTotal || 0)}
           icon={AlertTriangle}
           isLoading={isLoading}
@@ -192,7 +192,7 @@ export function PaymentBehaviorDashboard({ className }: PaymentBehaviorDashboard
         <TabsList>
           <TabsTrigger value="overview" className="gap-2">
             <Users className="h-4 w-4" />
-            Uebersicht
+            Übersicht
           </TabsTrigger>
           <TabsTrigger value="top" className="gap-2">
             <TrendingUp className="h-4 w-4" />
@@ -577,7 +577,7 @@ function CustomerDetails({ customer }: CustomerDetailsProps) {
             <dd className="font-medium">{customer.unpaidInvoices}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-muted-foreground">Ueberfaellig</dt>
+            <dt className="text-muted-foreground">Überfällig</dt>
             <dd className="font-medium text-red-600">{customer.overdueInvoices}</dd>
           </div>
         </dl>
@@ -609,13 +609,13 @@ function CustomerDetails({ customer }: CustomerDetailsProps) {
         <h4 className="text-sm font-medium mb-3">Zahlungsverhalten</h4>
         <dl className="space-y-2 text-sm">
           <div className="flex justify-between">
-            <dt className="text-muted-foreground">Frueh-Rate</dt>
+            <dt className="text-muted-foreground">Früh-Rate</dt>
             <dd className="font-medium text-green-600">
               {(customer.earlyPaymentRate * 100).toFixed(0)}%
             </dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-muted-foreground">Spaet-Rate</dt>
+            <dt className="text-muted-foreground">Spät-Rate</dt>
             <dd className="font-medium text-red-600">
               {(customer.latePaymentRate * 100).toFixed(0)}%
             </dd>

@@ -1,7 +1,7 @@
 /**
  * DocumentActivityWidget Component
  *
- * Kompakte Activity-Ansicht fuer Integration in Dokumentenansichten.
+ * Kompakte Activity-Ansicht für Integration in Dokumentenansichten.
  */
 
 import { useMemo } from 'react';
@@ -41,7 +41,7 @@ export function DocumentActivityWidget({
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-sm font-medium">
             <History className="h-4 w-4" />
-            Aktivitaeten
+            Aktivitäten
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -59,12 +59,12 @@ export function DocumentActivityWidget({
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-sm font-medium">
             <History className="h-4 w-4" />
-            Aktivitaeten
+            Aktivitäten
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground text-center py-4">
-            Aktivitaeten konnten nicht geladen werden.
+            Aktivitäten konnten nicht geladen werden.
           </p>
         </CardContent>
       </Card>
@@ -77,12 +77,12 @@ export function DocumentActivityWidget({
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-sm font-medium">
             <History className="h-4 w-4" />
-            Aktivitaeten
+            Aktivitäten
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground text-center py-4">
-            Noch keine Aktivitaeten
+            Noch keine Aktivitäten
           </p>
         </CardContent>
       </Card>
@@ -95,7 +95,7 @@ export function DocumentActivityWidget({
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-sm font-medium">
             <History className="h-4 w-4" />
-            Aktivitaeten ({activities.length})
+            Aktivitäten ({activities.length})
           </CardTitle>
           {showViewAll && (
             <Link
@@ -132,7 +132,7 @@ export function DocumentActivityWidget({
               className="block"
             >
               <Button variant="outline" size="sm" className="w-full">
-                Alle Aktivitaeten anzeigen
+                Alle Aktivitäten anzeigen
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </Link>

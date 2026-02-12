@@ -22,7 +22,9 @@ Feinpoliert und durchdacht.
 import datetime as dt
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -140,7 +142,7 @@ class ScenarioRequest(BaseModel):
         ...,
         description="Art des Szenarios: customer_late_payment, delay_outgoing, new_order, customer_default, accelerate_collection"
     )
-    parameters: Dict[str, Any] = Field(
+    parameters: JSONDict = Field(
         default_factory=dict,
         description="Szenario-spezifische Parameter"
     )

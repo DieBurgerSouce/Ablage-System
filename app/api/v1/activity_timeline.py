@@ -14,7 +14,9 @@ Phase 3.3 der Strategischen Roadmap (Januar 2026).
 """
 
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -67,7 +69,7 @@ class ActivityResponse(BaseModel):
     chain_id: Optional[UUID] = None
 
     # Metadata
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: JSONDict = Field(default_factory=dict)
 
     # Timestamps
     created_at: datetime
@@ -106,8 +108,8 @@ class StatisticsResponse(BaseModel):
     """Response fuer Activity-Statistiken."""
     total_activities: int
     activities_by_type: Dict[str, int]
-    activities_by_day: List[Dict[str, Any]]
-    top_users: List[Dict[str, Any]]
+    activities_by_day: List[JSONDict]
+    top_users: List[JSONDict]
     date_range: Dict[str, str]
 
 

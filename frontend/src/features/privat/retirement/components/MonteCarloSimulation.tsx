@@ -74,9 +74,9 @@ const formatCurrencyCompact = (value: number): string => {
 
 // Risikoprofil-Labels
 const riskProfileLabels: Record<RiskProfile, string> = {
-  konservativ: 'Konservativ (4% Rendite, 6% Volatilitaet)',
-  ausgewogen: 'Ausgewogen (6% Rendite, 12% Volatilitaet)',
-  wachstum: 'Wachstum (8% Rendite, 18% Volatilitaet)',
+  konservativ: 'Konservativ (4% Rendite, 6% Volatilität)',
+  ausgewogen: 'Ausgewogen (6% Rendite, 12% Volatilität)',
+  wachstum: 'Wachstum (8% Rendite, 18% Volatilität)',
 };
 
 export function MonteCarloSimulation({
@@ -154,9 +154,9 @@ export function MonteCarloSimulation({
               </div>
             </div>
 
-            {/* Jaehrliche Entnahme */}
+            {/* Jährliche Entnahme */}
             <div className="space-y-2">
-              <Label htmlFor="withdrawal">Jaehrliche Entnahme</Label>
+              <Label htmlFor="withdrawal">Jährliche Entnahme</Label>
               <div className="relative">
                 <Input
                   id="withdrawal"
@@ -214,7 +214,7 @@ export function MonteCarloSimulation({
             className="w-full"
           >
             {simulationMutation.isPending ? (
-              'Simulation laeuft...'
+              'Simulation läuft...'
             ) : (
               <>
                 <Play className="mr-2 h-4 w-4" />
@@ -231,7 +231,7 @@ export function MonteCarloSimulation({
           <CardContent className="pt-6">
             <div className="flex items-center justify-center gap-3">
               <Activity className="h-6 w-6 animate-pulse text-primary" />
-              <span>Simulation laeuft... Bitte warten.</span>
+              <span>Simulation läuft... Bitte warten.</span>
             </div>
             <div className="mt-4 space-y-2">
               <Skeleton className="h-4 w-full" />
@@ -252,7 +252,7 @@ export function MonteCarloSimulation({
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Simulationsfehler</AlertTitle>
           <AlertDescription>
-            Die Monte-Carlo-Simulation konnte nicht durchgefuehrt werden.
+            Die Monte-Carlo-Simulation konnte nicht durchgeführt werden.
           </AlertDescription>
         </Alert>
       )}
@@ -352,7 +352,7 @@ function MonteCarloResultDisplay({ result }: MonteCarloResultDisplayProps) {
             <p className="text-sm text-muted-foreground mt-1">
               In {(result.successRate * result.iterations / 100).toFixed(0)} von{' '}
               {result.iterations.toLocaleString('de-DE')} Szenarien reicht das Portfolio
-              ueber {result.timeHorizonYears} Jahre.
+              über {result.timeHorizonYears} Jahre.
             </p>
           </div>
 
@@ -391,11 +391,11 @@ function MonteCarloResultDisplay({ result }: MonteCarloResultDisplayProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5" />
-            Portfolio-Entwicklung (Konfidenzbaender)
+            Portfolio-Entwicklung (Konfidenzbänder)
           </CardTitle>
           <CardDescription>
-            Zeigt die Bandbreite moeglicher Portfolio-Entwicklungen. Das dunkle Band
-            repraesentiert 50% der Szenarien (25.-75. Perzentil).
+            Zeigt die Bandbreite möglicher Portfolio-Entwicklungen. Das dunkle Band
+            repräsentiert 50% der Szenarien (25.-75. Perzentil).
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -484,7 +484,7 @@ function MonteCarloResultDisplay({ result }: MonteCarloResultDisplayProps) {
             </ResponsiveContainer>
           ) : (
             <div className="h-64 flex items-center justify-center text-muted-foreground">
-              Keine Visualisierungsdaten verfuegbar
+              Keine Visualisierungsdaten verfügbar
             </div>
           )}
         </CardContent>

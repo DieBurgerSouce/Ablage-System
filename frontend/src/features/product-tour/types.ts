@@ -1,7 +1,7 @@
 /**
  * Interaktive Produkttour - Type Definitions
  *
- * Vision 2026+ Feature: Gefuehrtes Onboarding mit Highlight-Tour
+ * Vision 2026+ Feature: Geführtes Onboarding mit Highlight-Tour
  */
 
 export type TourCategory = 'grundlagen' | 'dokumente' | 'fortgeschritten'
@@ -10,7 +10,7 @@ export interface TourStep {
   id: string
   title: string
   description: string
-  targetSelector?: string // CSS selector fuer Element highlight
+  targetSelector?: string // CSS selector für Element highlight
   position: 'top' | 'bottom' | 'left' | 'right' | 'center'
   order: number
   icon?: string
@@ -86,7 +86,7 @@ export const TOURS: Tour[] = [
       {
         id: 'willkommen-seitenleiste',
         title: 'Seitenleiste navigieren',
-        description: 'Die Seitenleiste enthaelt alle Hauptbereiche: Dokumente, Rechnungen, Banking und mehr. Klicken Sie auf einen Eintrag, um den Bereich zu oeffnen.',
+        description: 'Die Seitenleiste enthält alle Hauptbereiche: Dokumente, Rechnungen, Banking und mehr. Klicken Sie auf einen Eintrag, um den Bereich zu öffnen.',
         targetSelector: '[data-tour="sidebar"]',
         position: 'right',
         order: 1,
@@ -95,7 +95,7 @@ export const TOURS: Tour[] = [
       {
         id: 'willkommen-dashboard',
         title: 'Dashboard verstehen',
-        description: 'Das Dashboard zeigt Ihnen eine Uebersicht ueber alle wichtigen Kennzahlen und aktuelle Aufgaben auf einen Blick.',
+        description: 'Das Dashboard zeigt Ihnen eine Übersicht über alle wichtigen Kennzahlen und aktuelle Aufgaben auf einen Blick.',
         targetSelector: '[data-tour="dashboard-widgets"]',
         position: 'bottom',
         order: 2,
@@ -113,7 +113,7 @@ export const TOURS: Tour[] = [
       {
         id: 'willkommen-suche',
         title: 'Suche benutzen',
-        description: 'Mit der Volltextsuche finden Sie jedes Dokument blitzschnell. Nutzen Sie Stichwoerter, Dateinamen oder OCR-erkannten Text.',
+        description: 'Mit der Volltextsuche finden Sie jedes Dokument blitzschnell. Nutzen Sie Stichwörter, Dateinamen oder OCR-erkannten Text.',
         targetSelector: '[data-tour="search-bar"]',
         position: 'bottom',
         order: 4,
@@ -122,7 +122,7 @@ export const TOURS: Tour[] = [
       {
         id: 'willkommen-einstellungen',
         title: 'Einstellungen finden',
-        description: 'Unter Einstellungen passen Sie das System an Ihre Beduerfnisse an: Sprache, Benachrichtigungen, OCR-Backends und mehr.',
+        description: 'Unter Einstellungen passen Sie das System an Ihre Bedürfnisse an: Sprache, Benachrichtigungen, OCR-Backends und mehr.',
         targetSelector: '[data-tour="settings-link"]',
         position: 'right',
         order: 5,
@@ -139,23 +139,23 @@ export const TOURS: Tour[] = [
     badge: {
       id: 'archivar',
       name: 'Archivar',
-      description: 'Sie wissen jetzt, wie man Dokumente hochlaedt und verarbeitet!',
+      description: 'Sie wissen jetzt, wie man Dokumente hochlädt und verarbeitet!',
       icon: 'Archive',
     },
     steps: [
       {
         id: 'upload-button-finden',
         title: 'Upload-Button finden',
-        description: 'Der Upload-Button befindet sich oben in der Dokumentenliste. Klicken Sie darauf, um neue Dokumente hinzuzufuegen.',
+        description: 'Der Upload-Button befindet sich oben in der Dokumentenliste. Klicken Sie darauf, um neue Dokumente hinzuzufügen.',
         targetSelector: '[data-tour="upload-button"]',
         position: 'bottom',
         order: 1,
         icon: 'Upload',
       },
       {
-        id: 'upload-datei-auswaehlen',
-        title: 'Datei auswaehlen',
-        description: 'Waehlen Sie eine oder mehrere Dateien aus. Unterstuetzt werden PDF, JPG, PNG und TIFF. Sie koennen Dateien auch per Drag & Drop ablegen.',
+        id: 'upload-datei-auswählen',
+        title: 'Datei auswählen',
+        description: 'Wählen Sie eine oder mehrere Dateien aus. Unterstützt werden PDF, JPG, PNG und TIFF. Sie können Dateien auch per Drag & Drop ablegen.',
         targetSelector: '[data-tour="upload-dropzone"]',
         position: 'bottom',
         order: 2,
@@ -163,8 +163,8 @@ export const TOURS: Tour[] = [
       },
       {
         id: 'upload-ocr-backend',
-        title: 'OCR-Backend waehlen',
-        description: 'Waehlen Sie das passende OCR-Backend: DeepSeek fuer beste Qualitaet, GOT-OCR fuer Tabellen oder Surya als schnelle Alternative.',
+        title: 'OCR-Backend wählen',
+        description: 'Wählen Sie das passende OCR-Backend: DeepSeek für beste Qualität, GOT-OCR für Tabellen oder Surya als schnelle Alternative.',
         targetSelector: '[data-tour="ocr-backend-select"]',
         position: 'bottom',
         order: 3,
@@ -181,8 +181,8 @@ export const TOURS: Tour[] = [
       },
       {
         id: 'upload-ergebnis',
-        title: 'Ergebnis pruefen',
-        description: 'Nach der Verarbeitung sehen Sie den erkannten Text und koennen ihn pruefen. Metadaten wie Datum und Betrag werden automatisch extrahiert.',
+        title: 'Ergebnis prüfen',
+        description: 'Nach der Verarbeitung sehen Sie den erkannten Text und können ihn prüfen. Metadaten wie Datum und Betrag werden automatisch extrahiert.',
         targetSelector: '[data-tour="ocr-result"]',
         position: 'left',
         order: 5,
@@ -204,9 +204,9 @@ export const TOURS: Tour[] = [
     },
     steps: [
       {
-        id: 'suche-oeffnen',
-        title: 'Suchleiste oeffnen',
-        description: 'Klicken Sie in die Suchleiste oder druecken Sie Strg+K, um die Schnellsuche zu oeffnen.',
+        id: 'suche-öffnen',
+        title: 'Suchleiste öffnen',
+        description: 'Klicken Sie in die Suchleiste oder drücken Sie Strg+K, um die Schnellsuche zu öffnen.',
         targetSelector: '[data-tour="search-bar"]',
         position: 'bottom',
         order: 1,
@@ -215,7 +215,7 @@ export const TOURS: Tour[] = [
       {
         id: 'suche-eingeben',
         title: 'Suchbegriff eingeben',
-        description: 'Geben Sie einen Suchbegriff ein. Die Suche durchsucht Dateinamen, OCR-Text, Metadaten und Geschaeftspartner gleichzeitig.',
+        description: 'Geben Sie einen Suchbegriff ein. Die Suche durchsucht Dateinamen, OCR-Text, Metadaten und Geschäftspartner gleichzeitig.',
         targetSelector: '[data-tour="search-input"]',
         position: 'bottom',
         order: 2,
@@ -224,7 +224,7 @@ export const TOURS: Tour[] = [
       {
         id: 'suche-filter',
         title: 'Filter nutzen',
-        description: 'Verfeinern Sie die Ergebnisse mit Filtern: Datumsbereich, Dokumenttyp, Geschaeftspartner oder OCR-Backend.',
+        description: 'Verfeinern Sie die Ergebnisse mit Filtern: Datumsbereich, Dokumenttyp, Geschäftspartner oder OCR-Backend.',
         targetSelector: '[data-tour="search-filters"]',
         position: 'bottom',
         order: 3,
@@ -233,7 +233,7 @@ export const TOURS: Tour[] = [
       {
         id: 'suche-sortieren',
         title: 'Ergebnisse sortieren',
-        description: 'Sortieren Sie Ergebnisse nach Relevanz, Datum, Name oder Groesse. Die Standardsortierung zeigt die relevantesten Treffer zuerst.',
+        description: 'Sortieren Sie Ergebnisse nach Relevanz, Datum, Name oder Größe. Die Standardsortierung zeigt die relevantesten Treffer zuerst.',
         targetSelector: '[data-tour="search-sort"]',
         position: 'bottom',
         order: 4,
@@ -244,28 +244,28 @@ export const TOURS: Tour[] = [
   {
     id: 'ocr-korrektur',
     name: 'OCR-Ergebnisse korrigieren',
-    description: 'Erfahren Sie, wie Sie OCR-Ergebnisse pruefen und korrigieren.',
+    description: 'Erfahren Sie, wie Sie OCR-Ergebnisse prüfen und korrigieren.',
     category: 'fortgeschritten',
     estimatedMinutes: 2,
     badge: {
-      id: 'qualitaetssicherer',
-      name: 'Qualitaetssicherer',
+      id: 'qualitätssicherer',
+      name: 'Qualitätssicherer',
       description: 'Sie wissen, wie man OCR-Ergebnisse professionell korrigiert!',
       icon: 'ShieldCheck',
     },
     steps: [
       {
-        id: 'korrektur-dokument-oeffnen',
-        title: 'Dokument oeffnen',
-        description: 'Oeffnen Sie ein verarbeitetes Dokument, um den erkannten Text neben dem Originalbild zu sehen.',
+        id: 'korrektur-dokument-öffnen',
+        title: 'Dokument öffnen',
+        description: 'Öffnen Sie ein verarbeitetes Dokument, um den erkannten Text neben dem Originalbild zu sehen.',
         targetSelector: '[data-tour="document-viewer"]',
         position: 'bottom',
         order: 1,
         icon: 'FileText',
       },
       {
-        id: 'korrektur-text-pruefen',
-        title: 'Erkannten Text pruefen',
+        id: 'korrektur-text-prüfen',
+        title: 'Erkannten Text prüfen',
         description: 'Vergleichen Sie den erkannten Text mit dem Originaldokument. Fehler werden farblich hervorgehoben, wenn die Konfidenz niedrig ist.',
         targetSelector: '[data-tour="ocr-text-panel"]',
         position: 'left',
@@ -275,7 +275,7 @@ export const TOURS: Tour[] = [
       {
         id: 'korrektur-vornehmen',
         title: 'Korrekturen vornehmen',
-        description: 'Klicken Sie auf einen Textabschnitt, um ihn zu bearbeiten. Ihre Korrekturen verbessern das System automatisch fuer zukuenftige Erkennungen.',
+        description: 'Klicken Sie auf einen Textabschnitt, um ihn zu bearbeiten. Ihre Korrekturen verbessern das System automatisch für zukünftige Erkennungen.',
         targetSelector: '[data-tour="ocr-correction"]',
         position: 'left',
         order: 3,
@@ -283,8 +283,8 @@ export const TOURS: Tour[] = [
       },
       {
         id: 'korrektur-tastenkuerzel',
-        title: 'Tastenkuerzel nutzen',
-        description: 'Nutzen Sie Tastenkuerzel fuer schnelleres Arbeiten: A = Akzeptieren, C = Korrigieren, S = Ueberspringen, R = Zuruecksetzen.',
+        title: 'Tastenkürzel nutzen',
+        description: 'Nutzen Sie Tastenkürzel für schnelleres Arbeiten: A = Akzeptieren, C = Korrigieren, S = Überspringen, R = Zurücksetzen.',
         position: 'center',
         order: 4,
         icon: 'Keyboard',

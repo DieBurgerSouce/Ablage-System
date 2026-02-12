@@ -46,7 +46,7 @@ export function OCRQualityPanel({ degradationAlerts, isLoading }: OCRQualityPane
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Eye className="h-5 w-5" />
-                        OCR-Qualitaet
+                        OCR-Qualität
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -65,16 +65,16 @@ export function OCRQualityPanel({ degradationAlerts, isLoading }: OCRQualityPane
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <Eye className="h-5 w-5" />
-                    OCR-Qualitaet
+                    OCR-Qualität
                 </CardTitle>
                 <CardDescription>
-                    Ueberwachung der OCR-Backend-Qualitaet und Degradations-Erkennung
+                    Überwachung der OCR-Backend-Qualität und Degradations-Erkennung
                 </CardDescription>
             </CardHeader>
             <CardContent>
                 {alerts.length === 0 ? (
                     <div className="text-center py-6 text-muted-foreground">
-                        <p className="text-sm">Keine Qualitaetsprobleme erkannt</p>
+                        <p className="text-sm">Keine Qualitätsprobleme erkannt</p>
                         <p className="text-xs mt-1">Alle OCR-Backends arbeiten im normalen Bereich</p>
                     </div>
                 ) : (

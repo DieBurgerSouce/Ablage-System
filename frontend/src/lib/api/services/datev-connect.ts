@@ -1,7 +1,7 @@
 /**
  * DATEV Connect API Service
  *
- * Vollstaendige DATEVconnect API Integration mit OAuth2, Sync und Kontierung.
+ * Vollständige DATEVconnect API Integration mit OAuth2, Sync und Kontierung.
  * Basiert auf dem Backend unter /api/v1/datev-connect/
  */
 
@@ -324,7 +324,7 @@ export const datevConnectService = {
     },
 
     /**
-     * Verbindung loeschen
+     * Verbindung löschen
      */
     deleteConnection: async (id: string): Promise<void> => {
         await apiClient.delete(`${BASE_URL}/connections/${id}`);
@@ -400,7 +400,7 @@ export const datevConnectService = {
     },
 
     /**
-     * Sync manuell ausloesen
+     * Sync manuell auslösen
      */
     triggerSync: async (
         connectionId: string,
@@ -501,7 +501,7 @@ export const datevConnectService = {
     // =========================================================================
 
     /**
-     * Kontierungsvorschlag fuer Dokument abrufen
+     * Kontierungsvorschlag für Dokument abrufen
      */
     getKontierungsvorschlag: async (
         connectionId: string,
@@ -613,7 +613,7 @@ export const datevConnectService = {
     },
 
     /**
-     * Integritaet einer Buchung pruefen
+     * Integrität einer Buchung prüfen
      */
     verifyIntegrity: async (
         connectionId: string,
@@ -631,7 +631,7 @@ export const datevConnectService = {
 // =============================================================================
 
 /**
- * Formatiert den Verbindungsstatus fuer die Anzeige
+ * Formatiert den Verbindungsstatus für die Anzeige
  */
 export function formatConnectionStatus(status: DATEVConnectionStatus): string {
     switch (status) {
@@ -651,7 +651,7 @@ export function formatConnectionStatus(status: DATEVConnectionStatus): string {
 }
 
 /**
- * Gibt die Badge-Variante fuer den Status zurueck
+ * Gibt die Badge-Variante für den Status zurück
  */
 export function getConnectionStatusVariant(
     status: DATEVConnectionStatus
@@ -671,7 +671,7 @@ export function getConnectionStatusVariant(
 }
 
 /**
- * Formatiert den Sync-Typ fuer die Anzeige
+ * Formatiert den Sync-Typ für die Anzeige
  */
 export function formatSyncType(syncType: DATEVSyncType): string {
     switch (syncType) {

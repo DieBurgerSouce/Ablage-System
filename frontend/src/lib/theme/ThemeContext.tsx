@@ -5,7 +5,7 @@
  * - 4 Display-Modi (light, dark, whitescreen, blackscreen)
  * - Anpassbare Primaer- und Akzentfarben
  * - Border Radius Anpassung
- * - Saettigung
+ * - Sättigung
  * - LocalStorage Persistenz
  * - System Preference Detection
  */
@@ -119,7 +119,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     const [config, setConfigState] = useState<ThemeConfig>(getStoredConfig);
 
     // Check if config is customized from defaults
-    // WICHTIG: Memoized um unnoetige Re-Renders zu verhindern
+    // WICHTIG: Memoized um unnötige Re-Renders zu verhindern
     const isCustomized = useMemo(
         () =>
             config.primaryHue !== defaultThemeConfig.primaryHue ||
@@ -166,13 +166,13 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
             // Access current config via ref to avoid stale closure
             const currentMode = configRef.current.displayMode;
 
-            // ENTERPRISE FIX: Nutze nur configRef statt localStorage fuer den Check
-            // localStorage.getItem waehrend setConfigState erzeugt Race Condition
+            // ENTERPRISE FIX: Nutze nur configRef statt localStorage für den Check
+            // localStorage.getItem während setConfigState erzeugt Race Condition
             // mit dem Save-Effect (Storage write vs read)
             //
             // Logik: Nur auto-switch wenn User auf light/dark ist (nicht high contrast)
             // Der Ref-Wert ist die "Source of Truth" - localStorage wird asynchron
-            // vom Save-Effect aktualisiert und koennte veraltet sein.
+            // vom Save-Effect aktualisiert und könnte veraltet sein.
             if (currentMode === 'light' || currentMode === 'dark') {
                 // ENTERPRISE FIX: Atomare Operation - speichere UND update zusammen
                 // Dies verhindert Race Condition zwischen mediaQuery-Event und Save-Effect
@@ -186,7 +186,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
                 saveConfig(newConfig);
                 setConfigState(newConfig);
             }
-            // Wenn User explizit whitescreen/blackscreen gewaehlt hat,
+            // Wenn User explizit whitescreen/blackscreen gewählt hat,
             // wird NICHT auto-switched (currentMode ist weder light noch dark)
         };
 

@@ -1,7 +1,7 @@
 /**
  * Cross-Tenant Reports Types
  *
- * TypeScript-Definitionen fuer mandantenuebergreifende Berichte.
+ * TypeScript-Definitionen für mandantenübergreifende Berichte.
  * Spiegelt die Backend-Pydantic-Modelle aus cross_tenant_reports.py.
  */
 

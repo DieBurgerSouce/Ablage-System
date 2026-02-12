@@ -277,7 +277,7 @@ export interface CustomerForFrontend {
     isActive: boolean;
     companyPresence: string[];  // ["folie", "messer"]
     folderStats: Record<string, FolderStats>;
-    riskScore: number | null;   // Risiko-Score (0-100, hoeher = riskanter)
+    riskScore: number | null;   // Risiko-Score (0-100, höher = riskanter)
 }
 
 /**
@@ -291,7 +291,7 @@ export interface SupplierForFrontend {
     isActive: boolean;
     companyPresence: string[];  // ["folie", "messer"]
     folderStats: Record<string, FolderStats>;
-    riskScore: number | null;   // Risiko-Score (0-100, hoeher = riskanter)
+    riskScore: number | null;   // Risiko-Score (0-100, höher = riskanter)
 }
 
 /**
@@ -457,8 +457,8 @@ import type {
 
 /**
  * OCR-Verarbeitung mit Quick Classification und Temp Storage.
- * Gibt OCR-Ergebnis, Klassifizierung und Rename-Vorschlag zurueck.
- * Datei wird temporaer gespeichert (1h TTL) bis upload-complete aufgerufen wird.
+ * Gibt OCR-Ergebnis, Klassifizierung und Rename-Vorschlag zurück.
+ * Datei wird temporär gespeichert (1h TTL) bis upload-complete aufgerufen wird.
  */
 export async function processDocumentOCR(
     file: File,
@@ -569,7 +569,7 @@ export async function processDocumentOCR(
 }
 
 /**
- * Speichert Dokument endgueltig nach OCR-Review.
+ * Speichert Dokument endgültig nach OCR-Review.
  * Datei wird von Temp-Storage nach MinIO verschoben.
  */
 export async function uploadComplete(
@@ -600,8 +600,8 @@ export async function uploadComplete(
 }
 
 /**
- * Verlaengert TTL einer temporaeren Datei.
- * Nuetzlich wenn User laenger im Review-Dialog bleibt.
+ * Verlängert TTL einer temporären Datei.
+ * Nützlich wenn User länger im Review-Dialog bleibt.
  */
 export async function extendTempFileTTL(tempFileId: string): Promise<boolean> {
     try {

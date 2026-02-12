@@ -1,7 +1,7 @@
 /**
  * Companies Admin API
  *
- * React Query Hooks fuer die Firmenverwaltung im Admin-Bereich.
+ * React Query Hooks für die Firmenverwaltung im Admin-Bereich.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -101,7 +101,7 @@ export function useUpdateCompany() {
 }
 
 /**
- * Firma loeschen
+ * Firma löschen
  */
 export function useDeleteCompany() {
   const queryClient = useQueryClient();
@@ -130,7 +130,7 @@ export function useCompanyUsers(companyId: string | null) {
 }
 
 /**
- * Benutzer zu Firma hinzufuegen
+ * Benutzer zu Firma hinzufügen
  */
 export function useAddUserToCompany() {
   const queryClient = useQueryClient();

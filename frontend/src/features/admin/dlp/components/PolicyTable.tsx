@@ -109,7 +109,7 @@ export function PolicyTable({ policies, isLoading, onEdit }: PolicyTableProps) {
         <Shield className="h-12 w-12 text-muted-foreground mb-4" />
         <h3 className="text-lg font-medium">Keine Policies vorhanden</h3>
         <p className="text-sm text-muted-foreground mt-1">
-          Erstellen Sie eine neue DLP-Policy, um Dokumente zu schuetzen.
+          Erstellen Sie eine neue DLP-Policy, um Dokumente zu schützen.
         </p>
       </div>
     );
@@ -147,10 +147,10 @@ export function PolicyTable({ policies, isLoading, onEdit }: PolicyTableProps) {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Policy loeschen?</AlertDialogTitle>
+            <AlertDialogTitle>Policy löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Moechten Sie die Policy "{selectedPolicy?.name}" wirklich loeschen?
-              Diese Aktion kann nicht rueckgaengig gemacht werden.
+              Möchten Sie die Policy "{selectedPolicy?.name}" wirklich löschen?
+              Diese Aktion kann nicht rückgängig gemacht werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -159,7 +159,7 @@ export function PolicyTable({ policies, isLoading, onEdit }: PolicyTableProps) {
               onClick={confirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Loeschen
+              Löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -266,7 +266,7 @@ function PolicyRow({ policy, onEdit, onDelete }: PolicyRowProps) {
             <Eye className="h-4 w-4 text-muted-foreground" title="Zugriffs-Logging" />
           )}
           {policy.time_restrictions && (
-            <ShieldAlert className="h-4 w-4 text-orange-500" title="Zeitbeschraenkung" />
+            <ShieldAlert className="h-4 w-4 text-orange-500" title="Zeitbeschränkung" />
           )}
         </div>
       </TableCell>
@@ -291,7 +291,7 @@ function PolicyRow({ policy, onEdit, onDelete }: PolicyRowProps) {
               className="text-destructive focus:text-destructive"
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              Loeschen
+              Löschen
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

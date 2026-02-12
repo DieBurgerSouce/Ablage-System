@@ -1,7 +1,7 @@
 /**
  * DATEV Connect - Sync-Status Dashboard
  *
- * Uebersicht ueber Synchronisierungen und manuelle Sync-Trigger.
+ * Übersicht über Synchronisierungen und manuelle Sync-Trigger.
  */
 
 import { useState } from 'react';
@@ -84,7 +84,7 @@ export function SyncStatusPage() {
                 title: 'Synchronisierung gestartet',
                 description: `${result.task_ids.length} Sync-Task(s) wurden gestartet.`,
             });
-            // Refresh nach kurzer Verzoegerung
+            // Refresh nach kurzer Verzögerung
             setTimeout(() => {
                 refetchStatus();
                 refetchHistory();
@@ -126,7 +126,7 @@ export function SyncStatusPage() {
                 return (
                     <Badge className="bg-blue-100 text-blue-800">
                         <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                        Laeuft
+                        Läuft
                     </Badge>
                 );
             case 'failed':
@@ -168,7 +168,7 @@ export function SyncStatusPage() {
                 <div>
                     <h2 className="text-xl font-semibold">Synchronisierung</h2>
                     <p className="text-sm text-muted-foreground">
-                        Ueberwachen und steuern Sie die Datensynchronisierung mit DATEV.
+                        Überwachen und steuern Sie die Datensynchronisierung mit DATEV.
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -181,7 +181,7 @@ export function SyncStatusPage() {
                         }}
                     >
                         <SelectTrigger className="w-[250px]">
-                            <SelectValue placeholder="Verbindung waehlen..." />
+                            <SelectValue placeholder="Verbindung wählen..." />
                         </SelectTrigger>
                         <SelectContent>
                             {connectionsLoading ? (
@@ -300,7 +300,7 @@ export function SyncStatusPage() {
                         <div>
                             <CardTitle className="text-base">Sync-Historie</CardTitle>
                             <CardDescription>
-                                Die letzten Synchronisierungsvorgaenge.
+                                Die letzten Synchronisierungsvorgänge.
                             </CardDescription>
                         </div>
                         <Button
@@ -318,7 +318,7 @@ export function SyncStatusPage() {
                         <div className="text-center py-10">
                             <RefreshCw className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
                             <p className="text-muted-foreground">
-                                Waehlen Sie eine Verbindung aus, um die Historie anzuzeigen.
+                                Wählen Sie eine Verbindung aus, um die Historie anzuzeigen.
                             </p>
                         </div>
                     ) : historyLoading ? (
@@ -368,14 +368,14 @@ export function SyncStatusPage() {
                 </CardContent>
             </Card>
 
-            {/* Naechster geplanter Sync */}
+            {/* Nächster geplanter Sync */}
             {syncStatus?.next_scheduled && (
                 <Card>
                     <CardContent className="py-4">
                         <div className="flex items-center gap-3">
                             <Clock className="h-5 w-5 text-muted-foreground" />
                             <div>
-                                <p className="text-sm font-medium">Naechster geplanter Sync</p>
+                                <p className="text-sm font-medium">Nächster geplanter Sync</p>
                                 <p className="text-sm text-muted-foreground">
                                     {formatDateTime(syncStatus.next_scheduled)}
                                 </p>

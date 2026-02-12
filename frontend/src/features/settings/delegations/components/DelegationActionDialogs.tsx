@@ -49,15 +49,15 @@ export function DeclineDelegationDialog({
             Vertretung ablehnen
           </AlertDialogTitle>
           <AlertDialogDescription>
-            Moechten Sie diese Vertretungsanfrage wirklich ablehnen? Der
-            Anfragende wird ueber Ihre Ablehnung informiert.
+            Möchten Sie diese Vertretungsanfrage wirklich ablehnen? Der
+            Anfragende wird über Ihre Ablehnung informiert.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <div className="py-4">
           <Label>Grund der Ablehnung (optional)</Label>
           <Textarea
             className="mt-1.5"
-            placeholder="z.B. Zeitlich nicht moeglich..."
+            placeholder="z.B. Zeitlich nicht möglich..."
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             rows={2}
@@ -107,15 +107,15 @@ export function RevokeDelegationDialog({
             Vertretung widerrufen
           </AlertDialogTitle>
           <AlertDialogDescription>
-            Moechten Sie diese Vertretung wirklich widerrufen? Der Vertreter
-            verliert sofort alle uebertragenen Berechtigungen.
+            Möchten Sie diese Vertretung wirklich widerrufen? Der Vertreter
+            verliert sofort alle übertragenen Berechtigungen.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <div className="py-4">
           <Label>Grund des Widerrufs (optional)</Label>
           <Textarea
             className="mt-1.5"
-            placeholder="z.B. Fruehzeitige Rueckkehr..."
+            placeholder="z.B. Frühzeitige Rückkehr..."
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             rows={2}
@@ -178,11 +178,11 @@ export function ExtendDelegationDialog({
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            Vertretung verlaengern
+            Vertretung verlängern
           </AlertDialogTitle>
           <AlertDialogDescription>
             Aktuelles Enddatum:{' '}
-            {new Date(currentEndDate).toLocaleDateString('de-DE')}. Waehlen Sie
+            {new Date(currentEndDate).toLocaleDateString('de-DE')}. Wählen Sie
             ein neues Enddatum.
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -210,7 +210,7 @@ export function ExtendDelegationDialog({
             onClick={handleConfirm}
             disabled={!isValid || isLoading}
           >
-            {isLoading ? 'Wird verlaengert...' : 'Verlaengern'}
+            {isLoading ? 'Wird verlängert...' : 'Verlängern'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

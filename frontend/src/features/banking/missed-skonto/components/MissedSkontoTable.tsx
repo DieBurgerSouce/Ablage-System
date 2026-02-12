@@ -1,6 +1,6 @@
 /**
  * Missed Skonto Table
- * Tabelle mit verpassten Skonto-Moeglichkeiten
+ * Tabelle mit verpassten Skonto-Möglichkeiten
  */
 
 import { useState } from 'react';
@@ -59,9 +59,9 @@ export function MissedSkontoTable({
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <AlertCircle className="h-12 w-12 text-muted-foreground/50 mb-4" />
-        <h3 className="text-lg font-semibold">Keine verpassten Skonto-Moeglichkeiten</h3>
+        <h3 className="text-lg font-semibold">Keine verpassten Skonto-Möglichkeiten</h3>
         <p className="text-muted-foreground max-w-md">
-          Im ausgewaehlten Zeitraum wurden keine Skonto-Fristen verpasst. Sehr gut!
+          Im ausgewählten Zeitraum wurden keine Skonto-Fristen verpasst. Sehr gut!
         </p>
       </div>
     );
@@ -138,7 +138,7 @@ export function MissedSkontoTable({
                             </Link>
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Dokument oeffnen</TooltipContent>
+                        <TooltipContent>Dokument öffnen</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   )}
@@ -154,7 +154,7 @@ export function MissedSkontoTable({
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
             Zeige {(page - 1) * perPage + 1} bis {Math.min(page * perPage, total)} von{' '}
-            {total} Eintraegen
+            {total} Einträgen
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -164,7 +164,7 @@ export function MissedSkontoTable({
               onClick={() => onPageChange?.(page - 1)}
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
-              Zurueck
+              Zurück
             </Button>
             <span className="text-sm">
               Seite {page} von {totalPages}

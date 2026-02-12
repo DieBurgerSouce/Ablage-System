@@ -2,7 +2,7 @@
  * SkipLinks Component
  *
  * WCAG 2.1 AA Skip Navigation Links
- * Ermoeglicht Tastaturnutzern schnellen Zugriff auf Hauptbereiche.
+ * Ermöglicht Tastaturnutzern schnellen Zugriff auf Hauptbereiche.
  */
 
 import { useCallback, useState } from 'react'

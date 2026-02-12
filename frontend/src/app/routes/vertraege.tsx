@@ -1,12 +1,12 @@
 /**
- * Vertraege Route
+ * Verträge Route
  *
- * B2B-Vertragsmanagement mit Fristen und Verlaengerungsoptionen.
+ * B2B-Vertragsmanagement mit Fristen und Verlängerungsoptionen.
  */
 
 import { createFileRoute } from '@tanstack/react-router';
 import { ContractsPage } from '@/features/contracts';
 
-export const Route = createFileRoute('/vertraege')({
+export const Route = createFileRoute('/verträge')({
   component: ContractsPage,
 });

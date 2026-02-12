@@ -2,7 +2,7 @@
  * Chain Intelligence API Service
  *
  * Kommuniziert mit den /api/v1/document-chains/v2/intelligence Endpoints
- * fuer proaktive Kettenluecken-Erkennung und Vorschlaege.
+ * für proaktive Kettenlücken-Erkennung und Vorschläge.
  */
 
 import { apiClient } from '@/lib/api/client';
@@ -135,7 +135,7 @@ function handleApiError(error: unknown, context: string): never {
 
 export const chainIntelligenceService = {
   /**
-   * Ruft den Ketten-Intelligenz-Bericht ab (Luecken, Statistiken)
+   * Ruft den Ketten-Intelligenz-Bericht ab (Lücken, Statistiken)
    */
   getChainGaps: async (): Promise<ChainIntelligenceReport> => {
     try {
@@ -144,7 +144,7 @@ export const chainIntelligenceService = {
       );
       return transformReport(response.data);
     } catch (error) {
-      handleApiError(error, 'Kettenluecken laden');
+      handleApiError(error, 'Kettenlücken laden');
     }
   },
 
@@ -164,7 +164,7 @@ export const chainIntelligenceService = {
   },
 
   /**
-   * Ruft Vervollstaendigungs-Vorschlaege fuer eine Kette ab
+   * Ruft Vervollständigungs-Vorschläge für eine Kette ab
    */
   getChainSuggestions: async (chainId: string): Promise<ChainSuggestionsResponse> => {
     try {
@@ -180,7 +180,7 @@ export const chainIntelligenceService = {
         suggestions: response.data.suggestions.map(transformGap),
       };
     } catch (error) {
-      handleApiError(error, 'Kettenvorschlaege laden');
+      handleApiError(error, 'Kettenvorschläge laden');
     }
   },
 };

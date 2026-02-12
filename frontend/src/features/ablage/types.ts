@@ -15,7 +15,7 @@ export type CustomerDocumentCategory =
   | 'archiv'
   | 'druckdaten';  // NUR für Spargelmesser-Kunden!
 
-// Lieferanten haben zusaetzlich "Bestellungen"
+// Lieferanten haben zusätzlich "Bestellungen"
 export type SupplierDocumentCategory =
   | CustomerDocumentCategory
   | 'bestellungen';
@@ -594,7 +594,7 @@ export function getEntityMatchLevel(confidence: number): keyof typeof ENTITY_MAT
 // ==================== DOCUMENT TYPE OPTIONS ====================
 
 /**
- * Dokumenttyp-Option fuer Select-Dropdown
+ * Dokumenttyp-Option für Select-Dropdown
  */
 export interface DocumentTypeOption {
   value: string;
@@ -602,7 +602,7 @@ export interface DocumentTypeOption {
 }
 
 /**
- * Dokumenttypen fuer Kunden (Ausgangsbelege)
+ * Dokumenttypen für Kunden (Ausgangsbelege)
  */
 export const CUSTOMER_DOCUMENT_TYPES: DocumentTypeOption[] = [
   { value: 'offer', label: 'Angebot' },
@@ -618,7 +618,7 @@ export const CUSTOMER_DOCUMENT_TYPES: DocumentTypeOption[] = [
 ];
 
 /**
- * Dokumenttypen fuer Lieferanten (Eingangsbelege)
+ * Dokumenttypen für Lieferanten (Eingangsbelege)
  */
 export const SUPPLIER_DOCUMENT_TYPES: DocumentTypeOption[] = [
   { value: 'inquiry', label: 'Anfrage' },
@@ -635,7 +635,7 @@ export const SUPPLIER_DOCUMENT_TYPES: DocumentTypeOption[] = [
 ];
 
 // ==================== RE-EXPORTS FROM ABLAGE-TYPES ====================
-// Upload-bezogene Types und Utilities fuer DocumentUploadDialog
+// Upload-bezogene Types und Utilities für DocumentUploadDialog
 
 export {
   type UploadFile,
@@ -657,8 +657,8 @@ export {
 export type AblageUploadFileStatus =
   | 'pending'      // Wartet auf Upload
   | 'uploading'    // Wird hochgeladen
-  | 'processing'   // OCR laeuft
-  | 'review'       // Bereit zur Pruefung (Quick Classification fertig)
+  | 'processing'   // OCR läuft
+  | 'review'       // Bereit zur Prüfung (Quick Classification fertig)
   | 'completed'    // Gespeichert
   | 'error';       // Fehler
 
@@ -670,7 +670,7 @@ export interface AblageUploadingFile {
   // Identifikation
   id: string;
   file: File | null;                  // Kann null sein nach Page-Reload
-  originalFilename: string;           // Fuer Persistenz
+  originalFilename: string;           // Für Persistenz
 
   // Status
   status: AblageUploadFileStatus;
@@ -683,7 +683,7 @@ export interface AblageUploadingFile {
   tempFileId?: string;                // Temp Storage ID
   taskId?: string;                    // Celery Task ID
 
-  // Preview URL (Blob URL fuer lokale Vorschau)
+  // Preview URL (Blob URL für lokale Vorschau)
   fileUrl?: string;
 
   // Quick Classification Ergebnis
@@ -692,7 +692,7 @@ export interface AblageUploadingFile {
   // Rename-Vorschlag
   renameSuggestion?: RenameSuggestion;
 
-  // User-Bestaetigung
+  // User-Bestätigung
   confirmedDirection?: InvoiceDirection;
   renameConfirmed?: boolean;
   renamedFilename?: string;
@@ -706,7 +706,7 @@ export interface AblageUploadingFile {
 }
 
 /**
- * State fuer den Multi-File Upload Hook
+ * State für den Multi-File Upload Hook
  */
 export interface AblageMultiUploadState {
   files: AblageUploadingFile[];
@@ -717,7 +717,7 @@ export interface AblageMultiUploadState {
 }
 
 /**
- * Optionen fuer den Multi-File Upload Hook
+ * Optionen für den Multi-File Upload Hook
  */
 export interface UseAblageMultiUploadOptions {
   entityId: string;

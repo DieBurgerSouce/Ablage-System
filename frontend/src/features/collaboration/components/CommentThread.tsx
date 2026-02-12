@@ -3,11 +3,11 @@
  *
  * Features:
  * - Liste von Kommentaren mit Autor, Zeitstempel, Text
- * - "Kommentar hinzufuegen" Input mit Submit
+ * - "Kommentar hinzufügen" Input mit Submit
  * - @mention-Anzeige (formatiert als farbiger Text)
- * - Bearbeiten/Loeschen eigener Kommentare
+ * - Bearbeiten/Löschen eigener Kommentare
  * - Thread-Struktur (Antworten auf Kommentare)
- * - Echtzeit-Updates ueber WebSocket
+ * - Echtzeit-Updates über WebSocket
  */
 
 import { useState, useRef, useCallback, useMemo } from 'react';
@@ -39,7 +39,7 @@ interface CommentInputProps {
 function CommentInput({
   onSubmit,
   isSubmitting,
-  placeholder = 'Kommentar hinzufuegen...',
+  placeholder = 'Kommentar hinzufügen...',
   autoFocus = false,
   onCancel,
 }: CommentInputProps) {
@@ -168,7 +168,7 @@ interface CommentThreadProps {
   documentId: string;
   /** Aktuelle User-ID */
   currentUserId?: string;
-  /** Hoehe des Scroll-Bereichs */
+  /** Höhe des Scroll-Bereichs */
   height?: string;
   className?: string;
 }
@@ -332,7 +332,7 @@ export function CommentThread({
         <CommentInput
           onSubmit={handleAddComment}
           isSubmitting={addCommentMutation.isPending}
-          placeholder="Kommentar hinzufuegen... (Strg+Enter zum Senden)"
+          placeholder="Kommentar hinzufügen... (Strg+Enter zum Senden)"
         />
       </div>
     </div>

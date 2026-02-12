@@ -14,8 +14,10 @@ Endpoints:
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
+
+from app.core.types import JSONDict
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, status
@@ -68,7 +70,7 @@ class DecisionExplanationResponse(BaseModel):
 
     decision_id: str = Field(..., description="Entscheidungs-ID")
     decision_type: str = Field(..., description="Typ der Entscheidung")
-    decision_value: Dict[str, Any] = Field(..., description="Entscheidungswert")
+    decision_value: JSONDict = Field(..., description="Entscheidungswert")
     explanation_type: str = Field(..., description="Erklärungstyp")
     summary: str = Field(..., description="Zusammenfassung der Erklärung")
     factors: List[ExplanationFactorResponse] = Field(
@@ -436,7 +438,7 @@ async def get_xai_stats(
     days: int = Query(30, ge=1, le=365, description="Tage für Statistik"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Gibt XAI-Nutzungsstatistiken zurück.
 
@@ -485,7 +487,7 @@ async def submit_explanation_feedback(
     comment: Optional[str] = Query(None, max_length=500, description="Kommentar"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Gibt Feedback zur Qualität einer Erklärung.
 

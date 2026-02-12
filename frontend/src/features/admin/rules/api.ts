@@ -1,7 +1,7 @@
 /**
  * Business Rules API
  *
- * TanStack Query Hooks fuer Business Rules.
+ * TanStack Query Hooks für Business Rules.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -64,7 +64,7 @@ export function useRule(id: string) {
 }
 
 /**
- * Verfuegbare Operatoren abrufen
+ * Verfügbare Operatoren abrufen
  */
 export function useOperators() {
   return useQuery({
@@ -73,7 +73,7 @@ export function useOperators() {
       const response = await api.get<OperatorsResponse>('/api/v1/rules/schema/operators')
       return response.data
     },
-    staleTime: Infinity, // Schema aendert sich nicht
+    staleTime: Infinity, // Schema ändert sich nicht
   })
 }
 
@@ -113,7 +113,7 @@ export function useUpdateRule() {
 }
 
 /**
- * Regel loeschen
+ * Regel löschen
  */
 export function useDeleteRule() {
   const queryClient = useQueryClient()
@@ -178,7 +178,7 @@ interface GeneratedRule {
 }
 
 /**
- * Regel aus natuerlicher Sprache generieren
+ * Regel aus natürlicher Sprache generieren
  */
 export function useGenerateRule() {
   return useMutation({

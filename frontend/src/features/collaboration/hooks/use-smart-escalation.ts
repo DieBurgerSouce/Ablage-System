@@ -1,7 +1,7 @@
 /**
  * Smart Escalation Hooks
  *
- * TanStack Query Hooks fuer KI-gestuetzte intelligente Aufgabenzuweisung
+ * TanStack Query Hooks für KI-gestützte intelligente Aufgabenzuweisung
  *
  * Features:
  * - Zuweisungsempfehlungen abrufen
@@ -45,17 +45,17 @@ export const smartEscalationQueryKeys = {
 
 const STALE_TIMES = {
   recommendation: 1000 * 60, // 1 Minute
-  teamWorkload: 1000 * 30, // 30 Sekunden (haeufiger aktualisieren)
+  teamWorkload: 1000 * 30, // 30 Sekunden (häufiger aktualisieren)
   userScores: 1000 * 60 * 2, // 2 Minuten
-  factors: 1000 * 60 * 30, // 30 Minuten (selten aendernd)
+  factors: 1000 * 60 * 30, // 30 Minuten (selten ändernd)
 };
 
 // ==================== Query Hooks ====================
 
 /**
- * Holt Zuweisungsempfehlung fuer eine Aufgabe
+ * Holt Zuweisungsempfehlung für eine Aufgabe
  *
- * @param request - Parameter fuer die Empfehlung
+ * @param request - Parameter für die Empfehlung
  * @param enabled - Ob die Query aktiv ist
  */
 export function useAssignmentRecommendation(
@@ -71,7 +71,7 @@ export function useAssignmentRecommendation(
 }
 
 /**
- * Holt Zuweisungsempfehlung via GET (fuer einfache Faelle)
+ * Holt Zuweisungsempfehlung via GET (für einfache Fälle)
  *
  * @param params - Query-Parameter
  * @param enabled - Ob die Query aktiv ist
@@ -95,12 +95,12 @@ export function useAssignmentRecommendationQuery(
 }
 
 /**
- * Holt Team-Auslastungsuebersicht
+ * Holt Team-Auslastungsübersicht
  *
  * Zeigt Auslastung aller Team-Mitglieder mit:
  * - Anzahl offener Items
  * - Workload-Score
- * - Verfuegbarkeits-Status
+ * - Verfügbarkeits-Status
  */
 export function useTeamWorkload() {
   return useQuery({
@@ -114,7 +114,7 @@ export function useTeamWorkload() {
 /**
  * Holt detaillierte Scores eines Users
  *
- * Nuetzlich fuer Debugging und Analyse der Score-Berechnung
+ * Nützlich für Debugging und Analyse der Score-Berechnung
  *
  * @param userId - User-ID
  * @param filter - Optionale Filter (documentType, entityId)
@@ -134,9 +134,9 @@ export function useUserScores(
 }
 
 /**
- * Holt verfuegbare Faktoren und Konfiguration
+ * Holt verfügbare Faktoren und Konfiguration
  *
- * Enthaelt:
+ * Enthält:
  * - Liste der Faktoren mit Beschreibungen
  * - Standard-Gewichtungen
  * - Score-Bereich
@@ -183,7 +183,7 @@ export function useInvalidateSmartEscalationQueries() {
 }
 
 /**
- * Prefetch Team-Workload fuer schnellere Darstellung
+ * Prefetch Team-Workload für schnellere Darstellung
  */
 export function usePrefetchTeamWorkload() {
   const queryClient = useQueryClient();
@@ -198,7 +198,7 @@ export function usePrefetchTeamWorkload() {
 }
 
 /**
- * Prefetch Faktoren fuer schnellere Darstellung
+ * Prefetch Faktoren für schnellere Darstellung
  */
 export function usePrefetchFactors() {
   const queryClient = useQueryClient();

@@ -1,7 +1,7 @@
 /**
  * Skonto Alerts Panel
  *
- * Zeigt Warnungen fuer bald ablaufende Skonto-Fristen.
+ * Zeigt Warnungen für bald ablaufende Skonto-Fristen.
  */
 
 import {
@@ -125,12 +125,12 @@ export function SkontoAlertsPanel() {
               )}
             </CardTitle>
             <CardDescription>
-              Ablaufende Skonto-Fristen in den naechsten 14 Tagen
+              Ablaufende Skonto-Fristen in den nächsten 14 Tagen
             </CardDescription>
           </div>
           {totalPotentialSavings > 0 && (
             <div className="text-right">
-              <p className="text-sm text-muted-foreground">Moegliche Ersparnis</p>
+              <p className="text-sm text-muted-foreground">Mögliche Ersparnis</p>
               <p className="text-xl font-bold text-green-600">
                 {formatCurrency(totalPotentialSavings)}
               </p>
@@ -159,7 +159,7 @@ export function SkontoAlertsPanel() {
               <div className="space-y-3">
                 <h4 className="text-sm font-medium text-amber-600 flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                  Bald faellig ({warningAlerts.length})
+                  Bald fällig ({warningAlerts.length})
                 </h4>
                 {warningAlerts.map((alert) => (
                   <AlertItem key={alert.invoice_id} alert={alert} />

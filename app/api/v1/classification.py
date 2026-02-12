@@ -14,7 +14,9 @@ Feinpoliert und durchdacht.
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -107,11 +109,11 @@ class MultiLabelClassificationResponse(BaseModel):
 
 class ClassificationStatsResponse(BaseModel):
     """Klassifikations-Statistiken."""
-    multi_label: Dict[str, Any]
-    document_type: Dict[str, Any]
-    urgency: Dict[str, Any]
-    department: Dict[str, Any]
-    confidentiality: Dict[str, Any]
+    multi_label: JSONDict
+    document_type: JSONDict
+    urgency: JSONDict
+    department: JSONDict
+    confidentiality: JSONDict
 
 
 class UrgencyLevelsResponse(BaseModel):

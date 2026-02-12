@@ -1,7 +1,7 @@
 /**
  * Holding Dashboard
  *
- * Hauptseite fuer die Multi-Company Holding-Sicht mit konsolidierten KPIs.
+ * Hauptseite für die Multi-Company Holding-Sicht mit konsolidierten KPIs.
  */
 
 import { useState, useMemo } from 'react';
@@ -92,7 +92,7 @@ export function HoldingDashboard() {
             Holding-Dashboard
           </h1>
           <p className="text-muted-foreground">
-            Konsolidierte Uebersicht ueber alle Firmen
+            Konsolidierte Übersicht über alle Firmen
           </p>
         </div>
 
@@ -127,7 +127,7 @@ export function HoldingDashboard() {
         <TabsList>
           <TabsTrigger value="overview" className="gap-2">
             <TrendingUp className="h-4 w-4" />
-            Uebersicht
+            Übersicht
           </TabsTrigger>
           <TabsTrigger value="comparison" className="gap-2">
             <Building2 className="h-4 w-4" />
@@ -216,7 +216,7 @@ export function HoldingDashboard() {
           ) : (
             <Alert>
               <AlertDescription>
-                Waehlen Sie mindestens zwei Firmen fuer einen Vergleich aus.
+                Wählen Sie mindestens zwei Firmen für einen Vergleich aus.
               </AlertDescription>
             </Alert>
           )}
@@ -259,7 +259,7 @@ export function HoldingDashboard() {
           <Alert>
             <AlertDescription>
               Intercompany-Transaktionen werden automatisch erkannt wenn Rechnungen
-              zwischen Firmen der Holding ausgestellt werden. Diese Betraege muessen
+              zwischen Firmen der Holding ausgestellt werden. Diese Beträge müssen
               bei der Konzernkonsolidierung eliminiert werden.
             </AlertDescription>
           </Alert>

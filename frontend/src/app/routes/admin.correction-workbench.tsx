@@ -1,6 +1,6 @@
 /**
  * Admin Correction Workbench Route
- * Route fuer die OCR-Korrektur-Workbench
+ * Route für die OCR-Korrektur-Workbench
  */
 
 import { createFileRoute } from '@tanstack/react-router';

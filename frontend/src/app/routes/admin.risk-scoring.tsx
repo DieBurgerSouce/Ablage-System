@@ -1,7 +1,7 @@
 /**
  * Risk Scoring Admin Route
  *
- * Route fuer das Risk Scoring Dashboard im Admin-Bereich.
+ * Route für das Risk Scoring Dashboard im Admin-Bereich.
  */
 
 import { createFileRoute } from '@tanstack/react-router';

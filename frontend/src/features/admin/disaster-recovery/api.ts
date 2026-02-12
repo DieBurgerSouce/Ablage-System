@@ -1,7 +1,7 @@
 /**
  * Disaster Recovery API Client
  *
- * API-Funktionen fuer Backup und Disaster Recovery Management.
+ * API-Funktionen für Backup und Disaster Recovery Management.
  */
 
 import { apiClient } from '@/lib/api/client';
@@ -13,16 +13,16 @@ export interface BackupStatus {
   encryption_aktiv: boolean;
   storage_pfad: string;
   letzte_vollsicherung?: string;
-  naechste_geplante_sicherung?: string;
-  verfuegbarer_speicherplatz_gb?: number;
-  gesamt_backup_groesse_gb?: number;
+  nächste_geplante_sicherung?: string;
+  verfügbarer_speicherplatz_gb?: number;
+  gesamt_backup_größe_gb?: number;
 }
 
 export interface Backup {
   typ: 'full' | 'incremental' | 'differential';
   name: string;
   pfad: string;
-  groesse: number;
+  größe: number;
   erstellt: string;
   verschluesselt: boolean;
   validiert?: boolean;
@@ -157,7 +157,7 @@ export async function validateAllBackups(): Promise<BackupValidationResult[]> {
 }
 
 /**
- * Erstelle vollstaendiges Backup
+ * Erstelle vollständiges Backup
  */
 export async function createFullBackup(): Promise<{ message: string; backup_pfad: string }> {
   const response = await apiClient.post<{ message: string; backup_pfad: string }>(
@@ -167,7 +167,7 @@ export async function createFullBackup(): Promise<{ message: string; backup_pfad
 }
 
 /**
- * Fuehre Restore-Test durch
+ * Führe Restore-Test durch
  */
 export async function runRestoreTest(params: {
   test_type?: 'full' | 'partial' | 'database' | 'files';

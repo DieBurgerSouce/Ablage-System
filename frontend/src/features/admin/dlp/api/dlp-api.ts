@@ -12,7 +12,7 @@ export type DLPAction = 'allow' | 'block' | 'watermark' | 'notify' | 'audit_only
 
 /**
  * Typen sensibler Daten die vom DLP-Scanner erkannt werden.
- * WICHTIG: Diese Werte muessen mit dem Backend (SensitiveDataType in dlp_service.py) synchron sein!
+ * WICHTIG: Diese Werte müssen mit dem Backend (SensitiveDataType in dlp_service.py) synchron sein!
  */
 export type SensitiveDataType =
   | 'credit_card'
@@ -161,14 +161,14 @@ export async function updatePolicy(
 }
 
 /**
- * Policy loeschen (Admin)
+ * Policy löschen (Admin)
  */
 export async function deletePolicy(policyId: string): Promise<void> {
   await apiClient.delete(`/dlp/policies/${policyId}`);
 }
 
 /**
- * Zugriffspruefung durchfuehren
+ * Zugriffsprüfung durchführen
  */
 export async function checkAccess(data: AccessCheckRequest): Promise<DLPCheckResult> {
   const response = await apiClient.post<DLPCheckResult>('/dlp/check', data);
@@ -184,7 +184,7 @@ export async function scanSensitiveData(data: ScanRequest): Promise<ScanResponse
 }
 
 /**
- * Verfuegbare Typen sensibler Daten abrufen
+ * Verfügbare Typen sensibler Daten abrufen
  */
 export async function getSensitiveDataTypes(): Promise<string[]> {
   const response = await apiClient.get<string[]>('/dlp/sensitive-data-types');

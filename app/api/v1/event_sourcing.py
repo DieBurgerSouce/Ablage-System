@@ -1,7 +1,9 @@
 """Event-Sourcing API - Event Store und Projektionen."""
 
 import structlog
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict
+
+from app.core.types import JSONDict
 from uuid import UUID
 from datetime import datetime
 
@@ -32,8 +34,8 @@ class EventResponse(BaseModel):
     aggregate_id: UUID
     sequence_number: int
     event_type: str
-    event_data: Dict[str, Any]
-    metadata: Dict[str, Any]
+    event_data: JSONDict
+    metadata: JSONDict
     correlation_id: Optional[UUID]
     causation_id: Optional[UUID]
     user_id: Optional[UUID]
@@ -50,7 +52,7 @@ class SnapshotResponse(BaseModel):
     aggregate_type: str
     aggregate_id: UUID
     sequence_number: int
-    state: Dict[str, Any]
+    state: JSONDict
     version: int
     created_at: datetime
 
@@ -63,7 +65,7 @@ class ProjectionResponse(BaseModel):
 
     aggregate_type: str
     aggregate_id: UUID
-    state: Dict[str, Any]
+    state: JSONDict
     event_count: int
     last_sequence: int
 

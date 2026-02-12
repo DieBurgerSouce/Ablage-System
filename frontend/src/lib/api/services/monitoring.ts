@@ -38,7 +38,7 @@ export interface KomponentenStatus {
 }
 
 export interface DetailedHealthResponse {
-    status: 'gesund' | 'beeintraechtigt' | 'kritisch';
+    status: 'gesund' | 'beeinträchtigt' | 'kritisch';
     zeitstempel: string;
     version: string;
     komponenten: Record<string, KomponentenStatus>;
@@ -112,7 +112,7 @@ export const monitoringService = {
     },
 
     /**
-     * Detaillierte Gesundheitspruefung aller Komponenten
+     * Detaillierte Gesundheitsprüfung aller Komponenten
      */
     getDetailedHealth: async (): Promise<DetailedHealthResponse> => {
         const response = await apiClient.get<DetailedHealthResponse>('/health/detailed');
@@ -128,7 +128,7 @@ export const monitoringService = {
     },
 
     /**
-     * OCR Qualitaets-Degradation Alerts
+     * OCR Qualitäts-Degradation Alerts
      */
     getOCRDegradation: async (): Promise<DegradationAlertResponse[]> => {
         const response = await apiClient.get<DegradationAlertResponse[]>('/health/predictions/ocr/degradation');

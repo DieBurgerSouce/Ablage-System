@@ -1,12 +1,12 @@
 /**
  * Notification Preferences Types
  *
- * Type-Definitionen fuer das erweiterte Benachrichtigungssystem.
+ * Type-Definitionen für das erweiterte Benachrichtigungssystem.
  * Basiert auf UnifiedNotificationHub Backend-Modellen.
  */
 
 /**
- * Verfuegbare Benachrichtigungskanaele.
+ * Verfügbare Benachrichtigungskanaele.
  */
 export type NotificationChannel =
   | 'email'
@@ -42,7 +42,7 @@ export type NotificationCategory =
 export type EscalationLevel = 0 | 1 | 2 | 3 | 4 | 5;
 
 /**
- * Wochentag fuer Ruhezeiten.
+ * Wochentag für Ruhezeiten.
  */
 export type Weekday = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
 
@@ -60,7 +60,7 @@ export interface ChannelConfig {
 
 /**
  * Schweregrad-Matrix-Eintrag.
- * Definiert welche Kanaele bei welchem Schweregrad aktiviert sind.
+ * Definiert welche Kanäle bei welchem Schweregrad aktiviert sind.
  */
 export interface SeverityChannelMapping {
   severity: NotificationSeverity;
@@ -90,7 +90,7 @@ export interface EscalationStep {
 }
 
 /**
- * Vollstaendige Benachrichtigungs-Praeferenzen.
+ * Vollständige Benachrichtigungs-Praeferenzen.
  */
 export interface NotificationPreferences {
   // Globale Einstellungen
@@ -127,7 +127,7 @@ export interface NotificationPreferences {
 }
 
 /**
- * API Response fuer Praeferenzen.
+ * API Response für Praeferenzen.
  */
 export interface NotificationPreferencesResponse {
   preferences: NotificationPreferences;
@@ -136,7 +136,7 @@ export interface NotificationPreferencesResponse {
 }
 
 /**
- * Update Request fuer Praeferenzen.
+ * Update Request für Praeferenzen.
  */
 export interface UpdateNotificationPreferencesRequest {
   enabled?: boolean;
@@ -186,7 +186,7 @@ export interface UpdateSeverityMatrixRequest {
 }
 
 /**
- * Hilfs-Konstanten fuer UI.
+ * Hilfs-Konstanten für UI.
  */
 export const CHANNEL_LABELS: Record<NotificationChannel, string> = {
   email: 'E-Mail',

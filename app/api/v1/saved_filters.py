@@ -443,3 +443,72 @@ async def list_available_features() -> List[str]:
     von Filtern verwendet werden koennen.
     """
     return sorted(ALLOWED_FEATURES)
+
+
+@router.post("/{filter_id}/share", response_model=SavedFilterResponse)
+async def share_saved_filter(
+    filter_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> SavedFilterResponse:
+    """Teile einen Filter mit der Company.
+
+    Nur der Eigentuemer kann einen Filter teilen.
+    Geteilte Filter sind fuer alle User der gleichen Company sichtbar.
+    """
+    service = SavedFilterService(db)
+
+    try:
+        saved_filter = await service.share_filter(
+            filter_id=filter_id,
+            user_id=current_user.id,
+            company_id=current_user.company_id,
+        )
+        await db.commit()
+    except NotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=safe_error_detail(e, "Filter"),
+        )
+    except ForbiddenError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=safe_error_detail(e, "Filter"),
+        )
+
+    return _filter_to_response(saved_filter, current_user.id)
+
+
+@router.get("/shared", response_model=SavedFilterListResponse)
+async def list_shared_filters(
+    feature: Optional[str] = Query(None, description=f"Feature: {', '.join(sorted(ALLOWED_FEATURES))}"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> SavedFilterListResponse:
+    """Liste alle mit mir geteilte Filter.
+
+    Gibt Filter zurueck die von anderen Usern der gleichen Company
+    geteilt wurden.
+    """
+    service = SavedFilterService(db)
+
+    try:
+        filters = await service.get_shared_filters(
+            user_id=current_user.id,
+            company_id=current_user.company_id,
+            feature=feature,
+        )
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=safe_error_detail(e, "Filter"),
+        )
+
+    filter_responses = [
+        _filter_to_response(f, current_user.id) for f in filters
+    ]
+
+    return SavedFilterListResponse(
+        filters=filter_responses,
+        total=len(filter_responses),
+    )

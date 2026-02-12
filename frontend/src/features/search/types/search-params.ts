@@ -1,8 +1,8 @@
 /**
  * Search Params Schema - URL-synchronisierte Suchparameter
  *
- * Definiert das Zod-Schema fuer TanStack Router Search Params.
- * Ermoeglicht URL-Sync, Deep-Linking und Validierung.
+ * Definiert das Zod-Schema für TanStack Router Search Params.
+ * Ermöglicht URL-Sync, Deep-Linking und Validierung.
  *
  * @example
  * // URL: /search?q=rechnung&mode=hybrid&type=pdf&type=image
@@ -29,8 +29,8 @@ export type DateRange = z.infer<typeof dateRangeSchema>;
 // ==================== Search Params Schema ====================
 
 /**
- * Hauptschema fuer URL Search Params.
- * Verwendet catch() fuer Fehlertoleranz bei ungueltigten URL-Parametern.
+ * Hauptschema für URL Search Params.
+ * Verwendet catch() für Fehlertoleranz bei ungültigten URL-Parametern.
  */
 export const searchParamsSchema = z.object({
   /** Suchbegriff */
@@ -130,7 +130,7 @@ export function serializeSearchParams(
 }
 
 /**
- * Prueft ob es aktive Filter gibt (ausser Suchbegriff).
+ * Prüft ob es aktive Filter gibt (außer Suchbegriff).
  */
 export function hasActiveFilters(params: SearchParams): boolean {
   return (
@@ -142,7 +142,7 @@ export function hasActiveFilters(params: SearchParams): boolean {
 }
 
 /**
- * Zaehlt die Anzahl aktiver Filter.
+ * Zählt die Anzahl aktiver Filter.
  */
 export function countActiveFilters(params: SearchParams): number {
   let count = 0;
@@ -156,7 +156,7 @@ export function countActiveFilters(params: SearchParams): number {
 
 /**
  * Konvertiert alte SearchFilters in SearchParams.
- * Fuer Rueckwaertskompatibilitaet mit bestehenden Komponenten.
+ * Für Rückwärtskompatibilität mit bestehenden Komponenten.
  */
 export interface LegacySearchFilters {
   type: string[];

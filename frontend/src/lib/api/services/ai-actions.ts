@@ -1,7 +1,7 @@
 /**
  * AI Actions API Service
  *
- * API Client fuer role-basierte AI-Aktionen.
+ * API Client für role-basierte AI-Aktionen.
  * Endpoints: /api/v1/rag/ai/*
  */
 
@@ -33,14 +33,14 @@ export enum AIActionType {
 
 export enum AIActionAutonomyLevel {
     VIEWER = 'viewer',     // Read-Only
-    EDITOR = 'editor',     // Supervised (Vorschlag + Bestaetigung)
-    ADMIN = 'admin',       // Autonomous (selbststaendig)
+    EDITOR = 'editor',     // Supervised (Vorschlag + Bestätigung)
+    ADMIN = 'admin',       // Autonomous (selbstständig)
 }
 
 export enum AIActionStatus {
     PENDING = 'pending',
-    SUGGESTED = 'suggested',     // Wartet auf User-Bestaetigung
-    CONFIRMED = 'confirmed',     // User hat bestaetigt
+    SUGGESTED = 'suggested',     // Wartet auf User-Bestätigung
+    CONFIRMED = 'confirmed',     // User hat bestätigt
     EXECUTING = 'executing',
     COMPLETED = 'completed',
     REJECTED = 'rejected',       // User hat abgelehnt
@@ -136,7 +136,7 @@ export const ACTION_METADATA: Record<AIActionType, {
     },
     [AIActionType.ANALYZE_ENTITY]: {
         name: 'Entity analysieren',
-        description: 'Analysiert einen Geschaeftspartner mit allen Dokumenten',
+        description: 'Analysiert einen Geschäftspartner mit allen Dokumenten',
         icon: 'user-search',
         requiredLevel: AIActionAutonomyLevel.VIEWER,
     },
@@ -147,8 +147,8 @@ export const ACTION_METADATA: Record<AIActionType, {
         requiredLevel: AIActionAutonomyLevel.VIEWER,
     },
     [AIActionType.EXPLAIN_DOCUMENT]: {
-        name: 'Dokument erklaeren',
-        description: 'Erklaert den Inhalt und Kontext eines Dokuments',
+        name: 'Dokument erklären',
+        description: 'Erklärt den Inhalt und Kontext eines Dokuments',
         icon: 'book-open',
         requiredLevel: AIActionAutonomyLevel.VIEWER,
     },
@@ -162,19 +162,19 @@ export const ACTION_METADATA: Record<AIActionType, {
     },
     [AIActionType.TAG_DOCUMENT]: {
         name: 'Dokument taggen',
-        description: 'Fuegt Tags zu einem Dokument hinzu',
+        description: 'Fügt Tags zu einem Dokument hinzu',
         icon: 'tag',
         requiredLevel: AIActionAutonomyLevel.EDITOR,
     },
     [AIActionType.LINK_ENTITY]: {
-        name: 'Entity verknuepfen',
-        description: 'Verknuepft ein Dokument mit einem Geschaeftspartner',
+        name: 'Entity verknüpfen',
+        description: 'Verknüpft ein Dokument mit einem Geschäftspartner',
         icon: 'link',
         requiredLevel: AIActionAutonomyLevel.EDITOR,
     },
     [AIActionType.CREATE_REMINDER]: {
         name: 'Erinnerung erstellen',
-        description: 'Erstellt eine Erinnerung fuer eine Aufgabe',
+        description: 'Erstellt eine Erinnerung für eine Aufgabe',
         icon: 'bell',
         requiredLevel: AIActionAutonomyLevel.EDITOR,
     },
@@ -188,7 +188,7 @@ export const ACTION_METADATA: Record<AIActionType, {
     },
     [AIActionType.TRIGGER_OCR]: {
         name: 'OCR starten',
-        description: 'Startet die OCR-Verarbeitung fuer Dokumente',
+        description: 'Startet die OCR-Verarbeitung für Dokumente',
         icon: 'scan',
         requiredLevel: AIActionAutonomyLevel.ADMIN,
     },
@@ -212,7 +212,7 @@ export const ACTION_METADATA: Record<AIActionType, {
 
 export const aiActionsApi = {
     /**
-     * Listet verfuegbare Aktionen basierend auf User-Rolle
+     * Listet verfügbare Aktionen basierend auf User-Rolle
      */
     getAvailableActions: async (contextType?: string): Promise<AIActionListResponse> => {
         const response = await apiClient.get<AIActionListResponse>('/rag/ai/actions', {
@@ -222,10 +222,10 @@ export const aiActionsApi = {
     },
 
     /**
-     * Fuehrt eine AI-Aktion aus
+     * Führt eine AI-Aktion aus
      *
-     * Fuer Editor-Level: Gibt Suggestion zurueck wenn requires_confirmation
-     * Fuer Admin-Level mit auto_execute: Fuehrt direkt aus
+     * Für Editor-Level: Gibt Suggestion zurück wenn requires_confirmation
+     * Für Admin-Level mit auto_execute: Führt direkt aus
      */
     executeAction: async (request: AIActionRequest): Promise<AIActionResult> => {
         const response = await apiClient.post<AIActionResult>('/rag/ai/actions/execute', request);
@@ -233,7 +233,7 @@ export const aiActionsApi = {
     },
 
     /**
-     * Bestaetigt oder lehnt eine vorgeschlagene Aktion ab
+     * Bestätigt oder lehnt eine vorgeschlagene Aktion ab
      */
     confirmAction: async (request: AIActionConfirmRequest): Promise<AIActionResult> => {
         const response = await apiClient.post<AIActionResult>('/rag/ai/actions/confirm', request);
@@ -241,7 +241,7 @@ export const aiActionsApi = {
     },
 
     /**
-     * Holt Kontext-Informationen fuer die aktuelle Seite
+     * Holt Kontext-Informationen für die aktuelle Seite
      */
     getContextInfo: async (
         pageType: string,

@@ -1,8 +1,8 @@
 /**
  * FolderWatcherStatus Component
  *
- * Zeigt detaillierten Watcher-Status fuer eine Ordner-Konfiguration.
- * Ermoeglicht Starten/Stoppen des Watchers und zeigt Statistiken an.
+ * Zeigt detaillierten Watcher-Status für eine Ordner-Konfiguration.
+ * Ermöglicht Starten/Stoppen des Watchers und zeigt Statistiken an.
  */
 
 import { formatDistanceToNow, format } from 'date-fns';
@@ -73,7 +73,7 @@ const STATUS_CONFIG: Record<
 > = {
   running: {
     label: 'Aktiv',
-    description: 'Watcher ueberwacht den Ordner',
+    description: 'Watcher überwacht den Ordner',
     icon: PlayCircle,
     color: 'text-green-600',
     bgColor: 'bg-green-50 dark:bg-green-950/30',
@@ -138,13 +138,13 @@ function CompactStatus({
         await stopWatcher.mutateAsync(configId);
         toast({
           title: 'Watcher gestoppt',
-          description: `Ordner-Ueberwachung fuer "${config.name}" wurde gestoppt.`,
+          description: `Ordner-Überwachung für "${config.name}" wurde gestoppt.`,
         });
       } else {
         await startWatcher.mutateAsync(configId);
         toast({
           title: 'Watcher gestartet',
-          description: `Ordner-Ueberwachung fuer "${config.name}" wurde gestartet.`,
+          description: `Ordner-Überwachung für "${config.name}" wurde gestartet.`,
         });
       }
     } catch (err) {
@@ -251,13 +251,13 @@ function FullStatusCard({
         await stopWatcher.mutateAsync(configId);
         toast({
           title: 'Watcher gestoppt',
-          description: `Ordner-Ueberwachung fuer "${config.name}" wurde gestoppt.`,
+          description: `Ordner-Überwachung für "${config.name}" wurde gestoppt.`,
         });
       } else {
         await startWatcher.mutateAsync(configId);
         toast({
           title: 'Watcher gestartet',
-          description: `Ordner-Ueberwachung fuer "${config.name}" wurde gestartet.`,
+          description: `Ordner-Überwachung für "${config.name}" wurde gestartet.`,
         });
       }
     } catch (err) {
@@ -326,7 +326,7 @@ function FullStatusCard({
         {/* Activity Indicator */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Heutige Aktivitaet</span>
+            <span className="text-sm font-medium">Heutige Aktivität</span>
             <span className="text-sm text-muted-foreground">
               {config.filesProcessedToday} Dateien heute
             </span>
@@ -339,7 +339,7 @@ function FullStatusCard({
           <div className="flex items-center gap-2">
             <FolderOpen className="h-4 w-4 text-muted-foreground" />
             <div className="min-w-0 flex-1">
-              <p className="text-xs text-muted-foreground">Ueberwachter Pfad</p>
+              <p className="text-xs text-muted-foreground">Überwachter Pfad</p>
               <p className="text-sm font-medium truncate" title={config.watchPath}>
                 {config.watchPath}
               </p>
@@ -391,7 +391,7 @@ function FullStatusCard({
           )}
           {config.deleteAfterProcessing && (
             <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-800">
-              Loescht Dateien
+              Löscht Dateien
             </Badge>
           )}
           {config.moveAfterProcessing && (

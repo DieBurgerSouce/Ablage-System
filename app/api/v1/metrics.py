@@ -5,7 +5,9 @@ Provides Prometheus metrics scraping and custom business metrics.
 All sensitive endpoints require proper authentication.
 """
 
-from typing import Any, Dict, Optional
+from typing import Optional
+
+from app.core.types import JSONDict
 from datetime import datetime, timedelta, timezone
 
 import httpx
@@ -1736,7 +1738,7 @@ async def get_dashboard_links(
 @router.get("/ab-testing")
 async def get_ab_testing_metrics(
     current_user: User = Depends(get_current_superuser),  # W.2 SECURITY FIX: Admin required
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     A/B Testing Status fuer Vector Search (pgvector vs Qdrant).
 
@@ -1935,7 +1937,7 @@ async def get_ab_testing_metrics(
 async def update_ab_testing_traffic_split(
     new_split: int,
     current_user: User = Depends(get_current_superuser)
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     A/B Testing Traffic-Split aendern.
 
@@ -1995,7 +1997,7 @@ async def update_ab_testing_traffic_split(
 @router.post("/ab-testing/reset-metrics")
 async def reset_ab_testing_metrics(
     current_user: User = Depends(get_current_superuser)
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     A/B Testing Metriken zuruecksetzen.
 

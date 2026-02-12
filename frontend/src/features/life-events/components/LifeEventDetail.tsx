@@ -35,7 +35,7 @@ const PRIORITY_CONFIG: Record<string, { label: string; variant: 'destructive' | 
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Ausstehend',
-  confirmed: 'Bestaetigt',
+  confirmed: 'Bestätigt',
   in_progress: 'In Bearbeitung',
   completed: 'Abgeschlossen',
 };
@@ -68,7 +68,7 @@ export function LifeEventDetail({ eventId, onBack }: LifeEventDetailProps) {
       <div className="text-center py-12">
         <p className="text-muted-foreground">Lebensereignis nicht gefunden.</p>
         <Button variant="outline" className="mt-4" onClick={onBack}>
-          Zurueck
+          Zurück
         </Button>
       </div>
     );
@@ -101,7 +101,7 @@ export function LifeEventDetail({ eventId, onBack }: LifeEventDetailProps) {
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" onClick={onBack}>
           <ArrowLeft className="w-4 h-4 mr-1" />
-          Zurueck
+          Zurück
         </Button>
       </div>
 
@@ -190,7 +190,7 @@ export function LifeEventDetail({ eventId, onBack }: LifeEventDetailProps) {
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-muted-foreground">Geschaetzte Kosten</p>
+                <p className="text-sm text-muted-foreground">Geschätzte Kosten</p>
                 <p className="text-lg font-semibold">
                   {event.financial_impact.estimated_cost}
                 </p>
@@ -243,7 +243,7 @@ export function LifeEventDetail({ eventId, onBack }: LifeEventDetailProps) {
             ) : (
               <CheckCircle2 className="w-4 h-4 mr-2" />
             )}
-            Ereignis abschliessen
+            Ereignis abschließen
           </Button>
         </div>
       )}

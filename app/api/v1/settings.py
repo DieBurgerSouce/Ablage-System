@@ -7,8 +7,10 @@ Provides REST API endpoints for:
 - Privacy settings
 """
 
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, List
 from datetime import datetime, timezone
+
+from app.core.types import JSONDict
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
@@ -174,7 +176,7 @@ DEFAULT_WIDGET_CONFIG = {
 
 # ==================== Helper Functions ====================
 
-def get_user_settings(user: User) -> Dict[str, Any]:
+def get_user_settings(user: User) -> JSONDict:
     """Lädt Benutzereinstellungen aus User.preferences oder gibt Defaults zurück."""
     settings = dict(DEFAULT_SETTINGS)
 
@@ -482,7 +484,7 @@ async def reset_settings(
 
 # ==================== Widget Config Endpoints ====================
 
-def get_widget_config(user: User) -> Dict[str, Any]:
+def get_widget_config(user: User) -> JSONDict:
     """Laedt Widget-Konfiguration aus User.preferences oder gibt Defaults zurueck."""
     config = dict(DEFAULT_WIDGET_CONFIG)
 

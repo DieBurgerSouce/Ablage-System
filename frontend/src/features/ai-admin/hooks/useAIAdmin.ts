@@ -1,7 +1,7 @@
 /**
  * AI Admin React Query Hooks
  *
- * Custom Hooks fuer AI Admin mit TanStack Query.
+ * Custom Hooks für AI Admin mit TanStack Query.
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';

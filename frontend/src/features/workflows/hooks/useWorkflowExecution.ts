@@ -1,8 +1,8 @@
 /**
  * Workflow Execution Visualization Hooks
  *
- * React Query Hooks fuer Echtzeit-Ausfuehrungsvisualisierung.
- * Auto-refresh bei laufenden Ausfuehrungen.
+ * React Query Hooks für Echtzeit-Ausführungsvisualisierung.
+ * Auto-refresh bei laufenden Ausführungen.
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -24,7 +24,7 @@ export const executionVizKeys = {
 // =============================================================================
 
 /**
- * Hook fuer Execution State mit Auto-Refresh bei laufenden Ausfuehrungen.
+ * Hook für Execution State mit Auto-Refresh bei laufenden Ausführungen.
  */
 export function useExecutionState(instanceId: string, enabled = true) {
   return useQuery({
@@ -39,7 +39,7 @@ export function useExecutionState(instanceId: string, enabled = true) {
 }
 
 /**
- * Hook fuer Execution Timeline mit Auto-Refresh bei laufenden Ausfuehrungen.
+ * Hook für Execution Timeline mit Auto-Refresh bei laufenden Ausführungen.
  */
 export function useExecutionTimeline(instanceId: string, enabled = true) {
   return useQuery({
@@ -47,7 +47,7 @@ export function useExecutionTimeline(instanceId: string, enabled = true) {
     queryFn: () => workflowsApi.getExecutionTimeline(instanceId),
     enabled: enabled && !!instanceId,
     refetchInterval: (data) => {
-      // Auto-refresh alle 3 Sekunden wenn noch Eintraege mit Status "running" vorhanden
+      // Auto-refresh alle 3 Sekunden wenn noch Einträge mit Status "running" vorhanden
       const hasRunning = data?.some((entry) => entry.status === 'running');
       return hasRunning ? 3000 : false;
     },
@@ -55,7 +55,7 @@ export function useExecutionTimeline(instanceId: string, enabled = true) {
 }
 
 /**
- * Hook fuer Execution Metrics mit Auto-Refresh bei laufenden Ausfuehrungen.
+ * Hook für Execution Metrics mit Auto-Refresh bei laufenden Ausführungen.
  */
 export function useExecutionMetrics(instanceId: string, enabled = true) {
   return useQuery({

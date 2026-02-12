@@ -1,7 +1,7 @@
 /**
  * Activity Timeline Hooks
  *
- * TanStack Query Hooks fuer das Activity Timeline Feature.
+ * TanStack Query Hooks für das Activity Timeline Feature.
  */
 
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
@@ -245,7 +245,7 @@ export function useActivityTypeOptions() {
     { value: 'document_viewed', label: 'Dokument angesehen' },
     { value: 'document_downloaded', label: 'Dokument heruntergeladen' },
     { value: 'document_edited', label: 'Dokument bearbeitet' },
-    { value: 'document_deleted', label: 'Dokument geloescht' },
+    { value: 'document_deleted', label: 'Dokument gelöscht' },
     { value: 'document_shared', label: 'Dokument geteilt' },
     { value: 'ocr_started', label: 'OCR gestartet' },
     { value: 'ocr_completed', label: 'OCR abgeschlossen' },
@@ -253,7 +253,7 @@ export function useActivityTypeOptions() {
     { value: 'approval_requested', label: 'Genehmigung angefordert' },
     { value: 'approval_granted', label: 'Genehmigung erteilt' },
     { value: 'approval_rejected', label: 'Genehmigung abgelehnt' },
-    { value: 'comment_added', label: 'Kommentar hinzugefuegt' },
+    { value: 'comment_added', label: 'Kommentar hinzugefügt' },
   ];
 
   return options;

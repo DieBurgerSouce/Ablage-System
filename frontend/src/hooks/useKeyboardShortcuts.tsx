@@ -682,7 +682,7 @@ export function useGlobalShortcuts() {
     },
     {
       id: 'go-command',
-      description: 'Befehlspalette oeffnen',
+      description: 'Befehlspalette öffnen',
       keys: 'ctrl+k',
       category: 'navigation',
       handler: () => {
@@ -701,14 +701,14 @@ export function useGlobalShortcuts() {
     // Help
     {
       id: 'show-help',
-      description: 'Tastenkuerzel anzeigen',
+      description: 'Tastenkürzel anzeigen',
       keys: '?',
       category: 'help',
       handler: () => setHelpOpen(true),
     },
     {
       id: 'close-modal',
-      description: 'Dialog schliessen',
+      description: 'Dialog schließen',
       keys: 'escape',
       category: 'help',
       handler: () => {
@@ -749,9 +749,9 @@ export const SHORTCUT_CATEGORY_LABELS: Record<ShortcutCategory, string> = {
  * German labels for common shortcuts
  */
 export const SHORTCUT_LABELS = {
-  delete: 'Loeschen',
+  delete: 'Löschen',
   move: 'Verschieben',
-  undo: 'Rueckgaengig',
+  undo: 'Rückgängig',
   redo: 'Wiederholen',
   search: 'Suche',
   help: 'Hilfe',
@@ -760,11 +760,11 @@ export const SHORTCUT_LABELS = {
   cancel: 'Abbrechen',
   navigation: 'Navigation',
   actions: 'Aktionen',
-  close: 'Schliessen',
-  select_all: 'Alle auswaehlen',
+  close: 'Schließen',
+  select_all: 'Alle auswählen',
   deselect: 'Auswahl aufheben',
   copy: 'Kopieren',
-  paste: 'Einfuegen',
+  paste: 'Einfügen',
   cut: 'Ausschneiden',
 } as const;
 

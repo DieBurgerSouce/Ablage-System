@@ -9,8 +9,9 @@ Feinpoliert und durchdacht - Enterprise Backup API.
 
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
+from app.core.types import JSONDict
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
@@ -187,7 +188,7 @@ class BackupStatusResponse(BaseModel):
     remote_sync_aktiviert: bool = Field(..., description="Ist Remote-Sync aktiv?")
     backup_verzeichnis: str = Field(..., description="Pfad zum Backup-Verzeichnis")
     aufbewahrung_tage: int = Field(..., description="Retention in Tagen")
-    speicherplatz: Dict[str, Any] = Field(..., description="Speicherplatz-Info")
+    speicherplatz: JSONDict = Field(..., description="Speicherplatz-Info")
     backup_dateien: Dict[str, int] = Field(..., description="Anzahl Dateien pro Typ")
 
 
@@ -371,7 +372,7 @@ class ValidationIssueResponse(BaseModel):
     schweregrad: str = Field(..., description="error, warning, info")
     code: str = Field(..., description="Fehlercode")
     nachricht: str = Field(..., description="Beschreibung des Problems")
-    details: Optional[Dict[str, Any]] = Field(None, description="Zusaetzliche Details")
+    details: Optional[JSONDict] = Field(None, description="Zusaetzliche Details")
 
 
 class ValidateBackupResponse(BaseModel):
@@ -390,7 +391,7 @@ class ValidateBackupResponse(BaseModel):
     probleme: List[ValidationIssueResponse] = Field(default_factory=list, description="Gefundene Probleme")
     anzahl_fehler: int = Field(0, description="Anzahl Fehler")
     anzahl_warnungen: int = Field(0, description="Anzahl Warnungen")
-    details: Dict[str, Any] = Field(default_factory=dict, description="Weitere Metadaten")
+    details: JSONDict = Field(default_factory=dict, description="Weitere Metadaten")
     fehler: Optional[str] = Field(None, description="Hauptfehlermeldung bei ungueltigem Backup")
 
 
@@ -702,7 +703,7 @@ async def sync_to_remote(
 )
 async def list_remote_backups(
     current_user: User = Depends(get_current_superuser),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Liste Backups auf dem Remote-Server auf."""
     service = get_backup_service()
 

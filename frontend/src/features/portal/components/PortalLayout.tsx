@@ -2,7 +2,7 @@
  * Portal Layout Component
  *
  * Separates Kundenportal-Layout mit eigenem Header, Navigation und Footer.
- * NICHT das Admin-Layout - eigene Struktur fuer Kunden-Zugang.
+ * NICHT das Admin-Layout - eigene Struktur für Kunden-Zugang.
  */
 
 import { Link, useNavigate } from '@tanstack/react-router';

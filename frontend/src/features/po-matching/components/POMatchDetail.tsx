@@ -5,7 +5,7 @@
  * - Header mit Bestellnummer, Lieferant, Status, Match-Score
  * - 3-Spalten-Vergleich: Bestellung | Lieferschein | Rechnung
  * - Abweichungen-Tabelle mit Schweregrad-Badges
- * - Aktionen: Freigeben (mit Bestaetigung), Bewerten, Zurueck
+ * - Aktionen: Freigeben (mit Bestätigung), Bewerten, Zurück
  */
 
 import { useState } from 'react';
@@ -75,7 +75,7 @@ const STATUS_CONFIG: Record<
     className: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   },
   full: {
-    label: 'Vollstaendig',
+    label: 'Vollständig',
     className: 'bg-green-100 text-green-800 border-green-200',
   },
   discrepancy: {
@@ -183,7 +183,7 @@ export function POMatchDetail({ matchId, onBack }: POMatchDetailProps) {
         <p className="text-lg">Match nicht gefunden</p>
         <Button variant="outline" className="mt-4" onClick={onBack}>
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Zurueck zur Liste
+          Zurück zur Liste
         </Button>
       </div>
     );
@@ -199,7 +199,7 @@ export function POMatchDetail({ matchId, onBack }: POMatchDetailProps) {
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={onBack}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Zurueck
+            Zurück
           </Button>
           <div>
             <h2 className="text-2xl font-bold tracking-tight">
@@ -261,7 +261,7 @@ export function POMatchDetail({ matchId, onBack }: POMatchDetailProps) {
               <p className="text-sm font-mono">
                 {match.purchase_order_id
                   ? match.purchase_order_id.slice(0, 8) + '...'
-                  : 'Nicht verknuepft'}
+                  : 'Nicht verknüpft'}
               </p>
             </div>
             <div>
@@ -288,7 +288,7 @@ export function POMatchDetail({ matchId, onBack }: POMatchDetailProps) {
               <p className="text-sm font-mono">
                 {match.delivery_note_id
                   ? match.delivery_note_id.slice(0, 8) + '...'
-                  : 'Nicht verknuepft'}
+                  : 'Nicht verknüpft'}
               </p>
             </div>
             <div>
@@ -315,7 +315,7 @@ export function POMatchDetail({ matchId, onBack }: POMatchDetailProps) {
               <p className="text-sm font-mono">
                 {match.invoice_id
                   ? match.invoice_id.slice(0, 8) + '...'
-                  : 'Nicht verknuepft'}
+                  : 'Nicht verknüpft'}
               </p>
             </div>
             <div>
@@ -340,7 +340,7 @@ export function POMatchDetail({ matchId, onBack }: POMatchDetailProps) {
               <p className="font-medium">{match.document_count} / 3</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Vollstaendig</p>
+              <p className="text-muted-foreground">Vollständig</p>
               <p className="font-medium">{match.is_complete ? 'Ja' : 'Nein'}</p>
             </div>
             <div>
@@ -394,10 +394,10 @@ export function POMatchDetail({ matchId, onBack }: POMatchDetailProps) {
                     <TableHead>Kategorie</TableHead>
                     <TableHead>Beschreibung</TableHead>
                     <TableHead className="text-right">Erwartet</TableHead>
-                    <TableHead className="text-right">Tatsaechlich</TableHead>
+                    <TableHead className="text-right">Tatsächlich</TableHead>
                     <TableHead className="text-right">Abweichung</TableHead>
                     <TableHead>Schweregrad</TableHead>
-                    <TableHead className="text-center">Geloest</TableHead>
+                    <TableHead className="text-center">Gelöst</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -482,11 +482,11 @@ export function POMatchDetail({ matchId, onBack }: POMatchDetailProps) {
             <DialogHeader>
               <DialogTitle>Match freigeben</DialogTitle>
               <DialogDescription>
-                Moechten Sie diesen Match wirklich freigeben?
+                Möchten Sie diesen Match wirklich freigeben?
                 {discrepancies.filter((d) => !d.resolved).length > 0 && (
                   <span className="block mt-2 text-yellow-600 font-medium">
                     Achtung: Es gibt noch{' '}
-                    {discrepancies.filter((d) => !d.resolved).length} ungeloeste
+                    {discrepancies.filter((d) => !d.resolved).length} ungelöste
                     Abweichung(en).
                   </span>
                 )}
@@ -508,7 +508,7 @@ export function POMatchDetail({ matchId, onBack }: POMatchDetailProps) {
                 ) : (
                   <CheckCircle2 className="mr-2 h-4 w-4" />
                 )}
-                Freigabe bestaetigen
+                Freigabe bestätigen
               </Button>
             </DialogFooter>
           </DialogContent>

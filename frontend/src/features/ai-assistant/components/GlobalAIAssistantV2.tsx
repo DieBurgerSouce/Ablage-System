@@ -160,7 +160,7 @@ function AutonomyLevelBadge({ level }: AutonomyLevelBadgeProps) {
     [AIActionAutonomyLevel.EDITOR]: {
       icon: Edit3,
       label: 'Editor',
-      description: 'Mit Bestaetigung',
+      description: 'Mit Bestätigung',
       variant: 'default' as const,
     },
     [AIActionAutonomyLevel.ADMIN]: {
@@ -557,7 +557,7 @@ export function GlobalAIAssistantV2() {
           toast({
             title: 'Verbinde...',
             description: 'Die Verbindung zum RAG-Service wird aufgebaut. Bitte warten Sie einen Moment.',
-            variant: 'default',  // P0 Fix: Kein destructive fuer connecting!
+            variant: 'default',  // P0 Fix: Kein destructive für connecting!
           });
           return;
         } else if (ragStatus === 'disconnected') {
@@ -664,7 +664,7 @@ export function GlobalAIAssistantV2() {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="left">
-                  <p>AI-Assistent oeffnen</p>
+                  <p>AI-Assistent öffnen</p>
                   <p className="text-xs text-muted-foreground">Ctrl+K</p>
                 </TooltipContent>
               </Tooltip>
@@ -854,7 +854,7 @@ export function GlobalAIAssistantV2() {
                 </Button>
               </div>
               <div className="mt-2 text-xs text-muted-foreground text-center">
-                Ctrl+K zum Oeffnen/Schliessen • Shift+Enter fuer neue Zeile
+                Ctrl+K zum Öffnen/Schließen • Shift+Enter für neue Zeile
               </div>
             </div>
           </motion.div>

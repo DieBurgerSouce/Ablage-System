@@ -1,7 +1,7 @@
 /**
  * Navigation Component Stories
  *
- * Navigation-Komponenten fuer Visual Regression Testing.
+ * Navigation-Komponenten für Visual Regression Testing.
  * Tabs, Breadcrumbs, Pagination, etc.
  */
 
@@ -71,7 +71,7 @@ export const TabsDefault: Story = {
                 </p>
             </TabsContent>
             <TabsContent value="password" className="p-4 border rounded-lg mt-2">
-                <h3 className="font-medium">Passwort aendern</h3>
+                <h3 className="font-medium">Passwort ändern</h3>
                 <p className="text-sm text-muted-foreground mt-1">
                     Aktualisieren Sie Ihr Passwort.
                 </p>
@@ -330,7 +330,7 @@ function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) 
                 size="icon"
                 onClick={() => onPageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                aria-label="Naechste Seite"
+                aria-label="Nächste Seite"
             >
                 <ChevronRight className="h-4 w-4" />
             </Button>
@@ -383,7 +383,7 @@ export const PaginationCompact: Story = {
                     disabled={currentPage === 1}
                 >
                     <ChevronLeft className="h-4 w-4 mr-1" />
-                    Zurueck
+                    Zurück
                 </Button>
                 <span className="text-sm">
                     Seite {currentPage} von {totalPages}
@@ -408,7 +408,7 @@ export const DropdownMenuDefault: Story = {
     render: () => (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="outline">Menue oeffnen</Button>
+                <Button variant="outline">Menue öffnen</Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56">
                 <DropdownMenuLabel>Mein Konto</DropdownMenuLabel>

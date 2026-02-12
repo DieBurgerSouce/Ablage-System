@@ -1,7 +1,7 @@
 /**
  * Admin Import Rules Route
  *
- * Verwaltung von Import-Regeln fuer automatische Kategorisierung.
+ * Verwaltung von Import-Regeln für automatische Kategorisierung.
  */
 
 import { createFileRoute } from '@tanstack/react-router'

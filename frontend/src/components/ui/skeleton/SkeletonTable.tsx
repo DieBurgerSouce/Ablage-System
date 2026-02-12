@@ -1,10 +1,10 @@
 /**
- * SkeletonTable - Loading Skeleton fuer Tabellen
+ * SkeletonTable - Loading Skeleton für Tabellen
  *
  * Features:
  * - Konfigurierbare Zeilen- und Spaltenanzahl
  * - Optionale Header-Zeile
- * - Variierende Spaltenbreiten fuer natuerliches Aussehen
+ * - Variierende Spaltenbreiten für natürliches Aussehen
  * - Animierte Pulse-Animation
  */
 
@@ -31,11 +31,11 @@ export interface SkeletonTableProps {
   showCheckbox?: boolean;
   /** Aktions-Spalte anzeigen */
   showActions?: boolean;
-  /** Spaltenkonfiguration fuer Breiten */
+  /** Spaltenkonfiguration für Breiten */
   columnWidths?: ('sm' | 'md' | 'lg' | 'xl')[];
   /** Kompakte Darstellung */
   compact?: boolean;
-  /** Zusaetzliche CSS-Klassen */
+  /** Zusätzliche CSS-Klassen */
   className?: string;
 }
 

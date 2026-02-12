@@ -1,9 +1,9 @@
 /**
  * DiscrepancyPanel - Abweichungs-Verwaltungskomponente
  *
- * Zeigt Abweichungen einer Auftragskette und ermoeglicht:
+ * Zeigt Abweichungen einer Auftragskette und ermöglicht:
  * - Abweichungen auflisten
- * - Abweichungen aufloesen
+ * - Abweichungen auflösen
  * - Differenzen anzeigen
  */
 
@@ -157,7 +157,7 @@ export function DiscrepancyPanel({
             </div>
           )}
 
-          {/* Aufgeloeste Abweichungen (eingeklappt) */}
+          {/* Aufgelöste Abweichungen (eingeklappt) */}
           {resolvedDiscrepancies.length > 0 && (
             <>
               <Separator />
@@ -166,7 +166,7 @@ export function DiscrepancyPanel({
                   <AccordionTrigger className="py-2 hover:no-underline">
                     <span className="flex items-center gap-2 text-sm text-muted-foreground">
                       <CheckCircle className="w-4 h-4" />
-                      {resolvedDiscrepancies.length} aufgeloest
+                      {resolvedDiscrepancies.length} aufgelöst
                     </span>
                   </AccordionTrigger>
                   <AccordionContent>
@@ -191,7 +191,7 @@ export function DiscrepancyPanel({
               <CheckCircle className="w-8 h-8 mx-auto mb-2 opacity-50 text-green-500" />
               <p>{CHAIN_UI_LABELS.emptyNoDiscrepancies}</p>
               <p className="text-xs mt-1">
-                Alle Dokumente in dieser Kette stimmen ueberein.
+                Alle Dokumente in dieser Kette stimmen überein.
               </p>
             </div>
           )}
@@ -207,7 +207,7 @@ export function DiscrepancyPanel({
           <DialogHeader>
             <DialogTitle>{CHAIN_UI_LABELS.actionResolveDiscrepancy}</DialogTitle>
             <DialogDescription>
-              Erklaeren Sie, wie diese Abweichung behoben wurde.
+              Erklären Sie, wie diese Abweichung behoben wurde.
             </DialogDescription>
           </DialogHeader>
 
@@ -256,7 +256,7 @@ export function DiscrepancyPanel({
                   id="resolution-notes"
                   value={resolutionNotes}
                   onChange={(e) => setResolutionNotes(e.target.value)}
-                  placeholder="z.B. Rabatt nachtraeglich gewaehrt, Differenz erklaert..."
+                  placeholder="z.B. Rabatt nachträglich gewährt, Differenz erklärt..."
                   rows={3}
                 />
               </div>
@@ -275,7 +275,7 @@ export function DiscrepancyPanel({
               {resolveDiscrepancy.isPending && (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               )}
-              Als aufgeloest markieren
+              Als aufgelöst markieren
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -347,7 +347,7 @@ function DiscrepancyItem({
             )}
             {isResolved && discrepancy.resolutionNotes && (
               <div className="mt-2 p-2 bg-green-50 rounded text-xs text-green-700">
-                <div className="font-medium">Aufgeloest:</div>
+                <div className="font-medium">Aufgelöst:</div>
                 <div>{discrepancy.resolutionNotes}</div>
                 <div className="text-green-600 mt-1">
                   {formatDateTime(discrepancy.resolvedAt)}
@@ -358,7 +358,7 @@ function DiscrepancyItem({
         </div>
         {!isResolved && onResolve && (
           <Button variant="ghost" size="sm" onClick={onResolve}>
-            Aufloesen
+            Auflösen
           </Button>
         )}
       </div>

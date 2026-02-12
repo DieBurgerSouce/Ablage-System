@@ -1,9 +1,9 @@
 /**
  * ContractQuickActions Component
  *
- * Schnellaktionen fuer Vertraege:
- * - Als verlaengert markieren
- * - Kuendigen
+ * Schnellaktionen für Verträge:
+ * - Als verlängert markieren
+ * - Kündigen
  * - Archivieren
  * - Erinnerung senden
  */
@@ -92,7 +92,7 @@ export function ContractQuickActions({
       onTerminate(contract, terminationReason);
       setActiveDialog(null);
       setTerminationReason('');
-      toast.success('Vertrag wird gekuendigt');
+      toast.success('Vertrag wird gekündigt');
     }
   };
 
@@ -100,7 +100,7 @@ export function ContractQuickActions({
     if (onRenew) {
       onRenew(contract);
       setActiveDialog(null);
-      toast.success('Vertrag wird verlaengert');
+      toast.success('Vertrag wird verlängert');
     }
   };
 
@@ -159,7 +159,7 @@ export function ContractQuickActions({
             disabled={isLoading}
           >
             <RefreshCw className="h-4 w-4 mr-1" />
-            Verlaengern
+            Verlängern
           </Button>
         )}
         {canTerminate && onTerminate && (
@@ -171,7 +171,7 @@ export function ContractQuickActions({
             disabled={isLoading}
           >
             <XCircle className="h-4 w-4 mr-1" />
-            Kuendigen
+            Kündigen
           </Button>
         )}
 
@@ -188,12 +188,12 @@ export function ContractQuickActions({
         <AlertDialog open={activeDialog === 'renew'} onOpenChange={(open) => !open && setActiveDialog(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Vertrag verlaengern</AlertDialogTitle>
+              <AlertDialogTitle>Vertrag verlängern</AlertDialogTitle>
               <AlertDialogDescription>
-                Moechten Sie den Vertrag "{contract.title}" verlaengern?
+                Möchten Sie den Vertrag "{contract.title}" verlängern?
                 {contract.renewal_period_months && (
                   <span className="block mt-2">
-                    Der Vertrag wird um {contract.renewal_period_months} Monate verlaengert.
+                    Der Vertrag wird um {contract.renewal_period_months} Monate verlängert.
                   </span>
                 )}
               </AlertDialogDescription>
@@ -202,7 +202,7 @@ export function ContractQuickActions({
               <AlertDialogCancel>Abbrechen</AlertDialogCancel>
               <AlertDialogAction onClick={handleRenew}>
                 <CheckCircle2 className="h-4 w-4 mr-2" />
-                Verlaengern
+                Verlängern
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -212,17 +212,17 @@ export function ContractQuickActions({
         <Dialog open={activeDialog === 'terminate'} onOpenChange={(open) => !open && setActiveDialog(null)}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Vertrag kuendigen</DialogTitle>
+              <DialogTitle>Vertrag kündigen</DialogTitle>
               <DialogDescription>
-                Moechten Sie den Vertrag "{contract.title}" ({contract.contract_number}) kuendigen?
+                Möchten Sie den Vertrag "{contract.title}" ({contract.contract_number}) kündigen?
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="reason">Kuendigungsgrund</Label>
+                <Label htmlFor="reason">Kündigungsgrund</Label>
                 <Textarea
                   id="reason"
-                  placeholder="Geben Sie den Grund fuer die Kuendigung an..."
+                  placeholder="Geben Sie den Grund für die Kündigung an..."
                   value={terminationReason}
                   onChange={(e) => setTerminationReason(e.target.value)}
                   rows={3}
@@ -230,7 +230,7 @@ export function ContractQuickActions({
               </div>
               {contract.notice_period_days > 0 && (
                 <p className="text-sm text-muted-foreground">
-                  <strong>Hinweis:</strong> Die Kuendigungsfrist betraegt {contract.notice_period_days} Tage.
+                  <strong>Hinweis:</strong> Die Kündigungsfrist beträgt {contract.notice_period_days} Tage.
                 </p>
               )}
             </div>
@@ -244,7 +244,7 @@ export function ContractQuickActions({
                 disabled={!terminationReason.trim()}
               >
                 <XCircle className="h-4 w-4 mr-2" />
-                Kuendigen
+                Kündigen
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -256,7 +256,7 @@ export function ContractQuickActions({
             <AlertDialogHeader>
               <AlertDialogTitle>Vertrag archivieren</AlertDialogTitle>
               <AlertDialogDescription>
-                Moechten Sie den Vertrag "{contract.title}" archivieren?
+                Möchten Sie den Vertrag "{contract.title}" archivieren?
                 Der Vertrag bleibt im System, wird aber aus der aktiven Liste entfernt.
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -274,10 +274,10 @@ export function ContractQuickActions({
         <AlertDialog open={activeDialog === 'delete'} onOpenChange={(open) => !open && setActiveDialog(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Vertrag loeschen</AlertDialogTitle>
+              <AlertDialogTitle>Vertrag löschen</AlertDialogTitle>
               <AlertDialogDescription>
-                Moechten Sie den Vertrag "{contract.title}" ({contract.contract_number}) wirklich loeschen?
-                Diese Aktion kann nicht rueckgaengig gemacht werden.
+                Möchten Sie den Vertrag "{contract.title}" ({contract.contract_number}) wirklich löschen?
+                Diese Aktion kann nicht rückgängig gemacht werden.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -287,7 +287,7 @@ export function ContractQuickActions({
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 <Trash2 className="h-4 w-4 mr-2" />
-                Loeschen
+                Löschen
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -302,7 +302,7 @@ export function ContractQuickActions({
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" disabled={isLoading}>
             <MoreHorizontal className="h-4 w-4" />
-            <span className="sr-only">Aktionen oeffnen</span>
+            <span className="sr-only">Aktionen öffnen</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
@@ -335,7 +335,7 @@ export function ContractQuickActions({
           {canRenew && onRenew && (
             <DropdownMenuItem onClick={() => setActiveDialog('renew')}>
               <RefreshCw className="h-4 w-4 mr-2" />
-              Verlaengern
+              Verlängern
             </DropdownMenuItem>
           )}
 
@@ -345,7 +345,7 @@ export function ContractQuickActions({
               className="text-red-600 focus:text-red-600"
             >
               <XCircle className="h-4 w-4 mr-2" />
-              Kuendigen
+              Kündigen
             </DropdownMenuItem>
           )}
 
@@ -364,7 +364,7 @@ export function ContractQuickActions({
                 className="text-destructive focus:text-destructive"
               >
                 <Trash2 className="h-4 w-4 mr-2" />
-                Loeschen
+                Löschen
               </DropdownMenuItem>
             </>
           )}

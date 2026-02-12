@@ -77,7 +77,7 @@ export function DashboardList() {
       await deleteMutation.mutateAsync(deleteId);
       setDeleteId(null);
     } catch (error) {
-      logger.error('Dashboard loeschen fehlgeschlagen', error);
+      logger.error('Dashboard löschen fehlgeschlagen', error);
     }
   };
 

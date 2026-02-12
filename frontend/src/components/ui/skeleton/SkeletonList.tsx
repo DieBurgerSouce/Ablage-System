@@ -1,5 +1,5 @@
 /**
- * SkeletonList - Loading Skeleton fuer Listen
+ * SkeletonList - Loading Skeleton für Listen
  *
  * Features:
  * - Verschiedene Varianten (simple, detailed, avatar)
@@ -21,7 +21,7 @@ export interface SkeletonListProps {
   variant?: SkeletonListVariant;
   /** Trenner zwischen Items anzeigen */
   showDividers?: boolean;
-  /** Zusaetzliche CSS-Klassen */
+  /** Zusätzliche CSS-Klassen */
   className?: string;
 }
 
@@ -116,7 +116,7 @@ export interface SkeletonDocumentListProps {
   count?: number;
   /** Kompakte Darstellung */
   compact?: boolean;
-  /** Zusaetzliche CSS-Klassen */
+  /** Zusätzliche CSS-Klassen */
   className?: string;
 }
 
@@ -160,7 +160,7 @@ export interface SkeletonFormProps {
   fields?: number;
   /** Button anzeigen */
   showButton?: boolean;
-  /** Zusaetzliche CSS-Klassen */
+  /** Zusätzliche CSS-Klassen */
   className?: string;
 }
 

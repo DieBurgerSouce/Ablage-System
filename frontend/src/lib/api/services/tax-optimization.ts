@@ -1,10 +1,10 @@
 /**
  * Tax Optimization API Service
  *
- * Enterprise-Level Steueroptimierung fuer das Privat-Modul:
+ * Enterprise-Level Steueroptimierung für das Privat-Modul:
  * - Steuerabzuege nach Kategorien (Werbungskosten, Sonderausgaben, etc.)
  * - Steuerliche Fristen und Deadlines
- * - Absetzbarkeitspruefung fuer Dokumente
+ * - Absetzbarkeitsprüfung für Dokumente
  * - DATEV-Export
  * - Jahresvergleich
  */
@@ -67,7 +67,7 @@ export type TaxDeadlineType =
   | 'einkommensteuer'
   | 'gewerbesteuer'
   | 'umsatzsteuer_voranmeldung'
-  | 'umsatzsteuer_erklaerung'
+  | 'umsatzsteuer_erklärung'
   | 'grundsteuer'
   | 'koerperschaftsteuer'
   | 'lohnsteuer'
@@ -114,7 +114,7 @@ export interface TaxDeadline {
   reminderSent: boolean;
 }
 
-/** Vollstaendiges Steueroptimierungs-Ergebnis */
+/** Vollständiges Steueroptimierungs-Ergebnis */
 export interface TaxOptimizationResult {
   spaceId: string;
   taxYear: number;
@@ -131,7 +131,7 @@ export interface TaxOptimizationResult {
   calculatedAt: string;
 }
 
-/** Absetzbarkeitspruefung Ergebnis */
+/** Absetzbarkeitsprüfung Ergebnis */
 export interface DeductibilityCheckResult {
   isDeductible: boolean;
   confidence: number;
@@ -399,7 +399,7 @@ function transformYearComparison(data: TaxYearComparisonBackend): TaxYearCompari
 
 export const taxOptimizationService = {
   /**
-   * Analysiert Steueroptimierungsmoeglichkeiten fuer einen Space
+   * Analysiert Steueroptimierungsmöglichkeiten für einen Space
    */
   analyzeTaxOptimization: async (
     spaceId: string,
@@ -475,7 +475,7 @@ export const taxOptimizationService = {
   },
 
   /**
-   * Prueft ob ein Dokument steuerlich absetzbar ist
+   * Prüft ob ein Dokument steuerlich absetzbar ist
    */
   checkDeductibility: async (
     documentId: string,
@@ -496,7 +496,7 @@ export const taxOptimizationService = {
       );
       return transformDeductibilityCheck(response.data);
     } catch (error) {
-      handleApiError(error, 'Absetzbarkeit pruefen');
+      handleApiError(error, 'Absetzbarkeit prüfen');
     }
   },
 

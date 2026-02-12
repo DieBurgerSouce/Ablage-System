@@ -1,7 +1,7 @@
 /**
  * Workflow Execution Page
  *
- * Seite zur Anzeige einer Workflow-Ausfuehrung mit Visualisierung und Timeline.
+ * Seite zur Anzeige einer Workflow-Ausführung mit Visualisierung und Timeline.
  */
 
 import { useParams } from '@tanstack/react-router';
@@ -20,7 +20,7 @@ export default function WorkflowExecutionPage() {
       <div className="container py-8">
         <div className="text-center">
           <p className="text-lg text-muted-foreground">
-            Keine Ausfuehrungs-ID angegeben
+            Keine Ausführungs-ID angegeben
           </p>
           <Button onClick={() => navigate({ to: '/workflows' })} className="mt-4">
             Zurück zu Workflows

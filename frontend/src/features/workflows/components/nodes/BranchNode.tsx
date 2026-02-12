@@ -1,8 +1,8 @@
 /**
  * BranchNode Component
  *
- * ReactFlow Knoten fuer Verzweigungen (If-Then-Else).
- * Unterstuetzt mehrere benannte Ausgaenge.
+ * ReactFlow Knoten für Verzweigungen (If-Then-Else).
+ * Unterstützt mehrere benannte Ausgänge.
  */
 
 import { memo, useMemo } from 'react';

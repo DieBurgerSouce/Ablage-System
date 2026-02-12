@@ -1,7 +1,7 @@
 /**
  * Fraud Detection Stats Cards
  *
- * Zeigt Uebersichtskarten fuer Fraud-Statistiken.
+ * Zeigt Übersichtskarten für Fraud-Statistiken.
  */
 
 import { Card, CardContent } from '@/components/ui/card';

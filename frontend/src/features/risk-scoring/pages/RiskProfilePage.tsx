@@ -1,7 +1,7 @@
 /**
  * Risk Profile Page Component
  *
- * Vollstaendige Seite fuer detaillierte Risiko-Analyse eines Geschaeftspartners.
+ * Vollständige Seite für detaillierte Risiko-Analyse eines Geschäftspartners.
  */
 
 import { useParams } from '@tanstack/react-router';

@@ -66,19 +66,19 @@ const paletteCategories: PaletteCategory[] = [
         type: 'userTask',
         label: 'Benutzer-Aufgabe',
         icon: User,
-        description: 'Manuelle Aufgabe fuer Benutzer',
+        description: 'Manuelle Aufgabe für Benutzer',
       },
       {
         type: 'serviceTask',
         label: 'Service-Aufgabe',
         icon: Cog,
-        description: 'Automatische Service-Ausfuehrung',
+        description: 'Automatische Service-Ausführung',
       },
       {
         type: 'scriptTask',
         label: 'Script-Aufgabe',
         icon: Code,
-        description: 'Fuehrt ein Script aus',
+        description: 'Führt ein Script aus',
       },
       {
         type: 'manualTask',
@@ -100,9 +100,9 @@ const paletteCategories: PaletteCategory[] = [
       },
       {
         type: 'businessRuleTask',
-        label: 'Geschaeftsregel',
+        label: 'Geschäftsregel',
         icon: BookOpen,
-        description: 'Wertet Geschaeftsregeln aus',
+        description: 'Wertet Geschäftsregeln aus',
       },
     ],
   },
@@ -113,7 +113,7 @@ const paletteCategories: PaletteCategory[] = [
         type: 'exclusiveGateway',
         label: 'Exklusiv (XOR)',
         icon: X,
-        description: 'Genau ein Pfad wird gewaehlt',
+        description: 'Genau ein Pfad wird gewählt',
       },
       {
         type: 'parallelGateway',

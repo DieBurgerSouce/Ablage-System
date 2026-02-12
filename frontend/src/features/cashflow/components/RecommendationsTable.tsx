@@ -24,7 +24,7 @@ interface RecommendationsTableProps {
 }
 
 const urgencyConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  overdue: { label: 'Ueberfaellig', variant: 'destructive' },
+  overdue: { label: 'Überfällig', variant: 'destructive' },
   critical: { label: 'Kritisch', variant: 'destructive' },
   high: { label: 'Hoch', variant: 'default' },
   medium: { label: 'Mittel', variant: 'secondary' },
@@ -95,7 +95,7 @@ export function RecommendationsTable({
             {totalSkontoSavings > 0 && (
               <div className="flex items-center gap-1 text-green-600">
                 <Euro className="h-4 w-4" />
-                {formatCurrency(totalSkontoSavings)} Skonto moeglich
+                {formatCurrency(totalSkontoSavings)} Skonto möglich
               </div>
             )}
           </div>
@@ -107,8 +107,8 @@ export function RecommendationsTable({
             <TableRow>
               <TableHead>Rechnung</TableHead>
               <TableHead>Betrag</TableHead>
-              <TableHead>Faellig</TableHead>
-              <TableHead>Prioritaet</TableHead>
+              <TableHead>Fällig</TableHead>
+              <TableHead>Priorität</TableHead>
               <TableHead>Empfehlung</TableHead>
               <TableHead>Skonto</TableHead>
               <TableHead></TableHead>
@@ -128,7 +128,7 @@ export function RecommendationsTable({
                     <div className="flex items-center gap-1">
                       {rec.days_until_due < 0 ? (
                         <span className="text-destructive font-medium">
-                          {Math.abs(rec.days_until_due)} Tage ueberfaellig
+                          {Math.abs(rec.days_until_due)} Tage überfällig
                         </span>
                       ) : (
                         <>

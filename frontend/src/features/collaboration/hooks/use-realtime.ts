@@ -1,10 +1,10 @@
 /**
- * useRealtime - WebSocket Hook fuer Echtzeit-Collaboration
+ * useRealtime - WebSocket Hook für Echtzeit-Collaboration
  *
- * Verwaltet die WebSocket-Verbindung fuer:
- * - Praesenz (wer betrachtet ein Dokument)
+ * Verwaltet die WebSocket-Verbindung für:
+ * - Präsenz (wer betrachtet ein Dokument)
  * - Kommentar-Updates in Echtzeit
- * - Aktivitaets-Stream
+ * - Aktivitäts-Stream
  *
  * Features:
  * - Automatischer Reconnect mit Exponential Backoff
@@ -41,9 +41,9 @@ interface UseRealtimeOptions {
   enabled?: boolean;
   /** Maximale Reconnect-Versuche */
   maxRetries?: number;
-  /** Initiale Verzoegerung zwischen Reconnects (ms) */
+  /** Initiale Verzögerung zwischen Reconnects (ms) */
   retryDelay?: number;
-  /** Callback bei Verbindungsstatus-Aenderung */
+  /** Callback bei Verbindungsstatus-Änderung */
   onStatusChange?: (status: ConnectionStatus) => void;
 }
 
@@ -54,13 +54,13 @@ interface UseRealtimeReturn {
   joinRoom: (roomId: string) => void;
   /** Einen Dokument-Room verlassen */
   leaveRoom: (roomId: string) => void;
-  /** Message-Handler registrieren (gibt Unsubscribe-Funktion zurueck) */
+  /** Message-Handler registrieren (gibt Unsubscribe-Funktion zurück) */
   onMessage: (handler: MessageHandler) => () => void;
   /** Verbindung manuell trennen */
   disconnect: () => void;
   /** Verbindung neu aufbauen */
   reconnect: () => void;
-  /** Praesenz-User im aktuellen Room */
+  /** Präsenz-User im aktuellen Room */
   presenceUsers: PresenceUser[];
 }
 

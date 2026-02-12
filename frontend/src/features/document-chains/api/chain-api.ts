@@ -2,7 +2,7 @@
  * Document Chain API Service
  *
  * Kommuniziert mit den /api/v1/document-chains Endpoints
- * fuer Auftragsketten-Tracking.
+ * für Auftragsketten-Tracking.
  */
 
 import { AxiosError } from 'axios';
@@ -229,7 +229,7 @@ export const chainService = {
   // ==================== Link Documents ====================
 
   /**
-   * Verknuepft zwei Dokumente
+   * Verknüpft zwei Dokumente
    */
   linkDocuments: async (
     data: LinkDocumentsRequest
@@ -247,14 +247,14 @@ export const chainService = {
 
       return transformRelationship(response.data);
     } catch (error) {
-      handleApiError(error, 'Dokumente verknuepfen');
+      handleApiError(error, 'Dokumente verknüpfen');
     }
   },
 
   // ==================== Auto-Match ====================
 
   /**
-   * Findet automatisch passende Dokumente fuer ein Dokument
+   * Findet automatisch passende Dokumente für ein Dokument
    */
   autoMatch: async (documentId: string): Promise<ChainMatchResult[]> => {
     try {
@@ -310,27 +310,27 @@ export const chainService = {
 
       return transformDiscrepancy(response.data);
     } catch (error) {
-      handleApiError(error, 'Abweichung aufloesen');
+      handleApiError(error, 'Abweichung auflösen');
     }
   },
 
   // ==================== Remove Link ====================
 
   /**
-   * Entfernt eine Verknuepfung zwischen Dokumenten
+   * Entfernt eine Verknüpfung zwischen Dokumenten
    */
   removeLink: async (relationshipId: string): Promise<void> => {
     try {
       await apiClient.delete(`/document-chains/relationships/${relationshipId}`);
     } catch (error) {
-      handleApiError(error, 'Verknuepfung entfernen');
+      handleApiError(error, 'Verknüpfung entfernen');
     }
   },
 
   // ==================== Get Document Chain ====================
 
   /**
-   * Ruft die Kette ab, zu der ein Dokument gehoert
+   * Ruft die Kette ab, zu der ein Dokument gehört
    */
   getDocumentChain: async (documentId: string): Promise<DocumentChainInfo | null> => {
     try {

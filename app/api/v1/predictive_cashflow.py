@@ -13,7 +13,9 @@ Created: 2026-01-19
 """
 
 from datetime import datetime, timezone
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -37,7 +39,7 @@ class PaymentPredictionResponse(BaseModel):
     predicted_days: int
     confidence: float
     delay_probability: float
-    factors: Dict[str, Any]
+    factors: JSONDict
 
 
 class ForecastDayResponse(BaseModel):
@@ -93,7 +95,7 @@ class ScenarioRequest(BaseModel):
         pattern="^(delayed_payments|large_expense|revenue_drop)$",
         description="Szenario-Typ"
     )
-    parameters: Dict[str, Any] = Field(
+    parameters: JSONDict = Field(
         default_factory=dict,
         description="Szenario-spezifische Parameter"
     )
@@ -102,7 +104,7 @@ class ScenarioRequest(BaseModel):
 class ScenarioResponse(BaseModel):
     """Ergebnis einer Szenario-Analyse."""
     scenario_type: str
-    parameters: Dict[str, Any]
+    parameters: JSONDict
     base_min_balance: float
     scenario_min_balance: float
     forecast: List[ForecastDayResponse]

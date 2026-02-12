@@ -1,8 +1,8 @@
 /**
  * NotificationPreferencesPage
  *
- * Hauptseite fuer Benachrichtigungs-Einstellungen.
- * Ermoeglicht Konfiguration von Kanaelen, Schweregrad-Matrix und Ruhezeiten.
+ * Hauptseite für Benachrichtigungs-Einstellungen.
+ * Ermöglicht Konfiguration von Kanälen, Schweregrad-Matrix und Ruhezeiten.
  */
 
 import { useState } from 'react';
@@ -55,7 +55,7 @@ export function NotificationPreferencesPage() {
 
   const isLoading = prefsLoading || channelsLoading || escalationLoading;
 
-  // Handler fuer Kanal-Toggle mit GDPR-Check
+  // Handler für Kanal-Toggle mit GDPR-Check
   const handleChannelToggle = (channel: NotificationChannel, enabled: boolean) => {
     const channelConfig = channelStatus?.find((c: ChannelConfig) => c.channel === channel);
 
@@ -69,7 +69,7 @@ export function NotificationPreferencesPage() {
     toggleChannel.mutate({ channel, enabled });
   };
 
-  // Handler fuer GDPR-Einwilligung
+  // Handler für GDPR-Einwilligung
   const handleGdprConsent = (consented: boolean) => {
     if (consented && pendingGdprChannel) {
       toggleChannel.mutate({ channel: pendingGdprChannel, enabled: true });
@@ -78,12 +78,12 @@ export function NotificationPreferencesPage() {
     setPendingGdprChannel(null);
   };
 
-  // Handler fuer Test-Benachrichtigung
+  // Handler für Test-Benachrichtigung
   const handleTestNotification = (channel: NotificationChannel) => {
     testNotification.mutate({ channel });
   };
 
-  // Handler fuer globales Aktivieren/Deaktivieren
+  // Handler für globales Aktivieren/Deaktivieren
   const handleGlobalToggle = (enabled: boolean) => {
     updatePreferences.mutate({ enabled });
   };
@@ -111,7 +111,7 @@ export function NotificationPreferencesPage() {
               Benachrichtigungen
             </h1>
             <p className="text-muted-foreground mt-1">
-              Konfigurieren Sie, wie und wann Sie benachrichtigt werden moechten.
+              Konfigurieren Sie, wie und wann Sie benachrichtigt werden möchten.
             </p>
           </div>
 
@@ -145,7 +145,7 @@ export function NotificationPreferencesPage() {
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="channels" className="flex items-center gap-2">
               <Settings2 className="h-4 w-4" />
-              Kanaele
+              Kanäle
             </TabsTrigger>
             <TabsTrigger value="severity" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
@@ -161,14 +161,14 @@ export function NotificationPreferencesPage() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Kanaele Tab */}
+          {/* Kanäle Tab */}
           <TabsContent value="channels" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Benachrichtigungskanaele</CardTitle>
+                <CardTitle>Benachrichtigungskanäle</CardTitle>
                 <CardDescription>
-                  Aktivieren oder deaktivieren Sie einzelne Kanaele. DSGVO-relevante
-                  Kanaele (SMS, WhatsApp) erfordern Ihre explizite Einwilligung.
+                  Aktivieren oder deaktivieren Sie einzelne Kanäle. DSGVO-relevante
+                  Kanäle (SMS, WhatsApp) erfordern Ihre explizite Einwilligung.
                 </CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4 md:grid-cols-2">
@@ -193,7 +193,7 @@ export function NotificationPreferencesPage() {
                   Test-Benachrichtigung
                 </CardTitle>
                 <CardDescription>
-                  Senden Sie eine Test-Nachricht an einen Kanal, um die Konfiguration zu pruefen.
+                  Senden Sie eine Test-Nachricht an einen Kanal, um die Konfiguration zu prüfen.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -210,7 +210,7 @@ export function NotificationPreferencesPage() {
                     ))}
                   {channelStatus?.filter((c: ChannelConfig) => c.enabled && c.configured).length === 0 && (
                     <Alert>
-                      <AlertTitle>Keine aktiven Kanaele</AlertTitle>
+                      <AlertTitle>Keine aktiven Kanäle</AlertTitle>
                       <AlertDescription>
                         Aktivieren Sie mindestens einen Kanal, um Test-Benachrichtigungen zu senden.
                       </AlertDescription>
@@ -227,8 +227,8 @@ export function NotificationPreferencesPage() {
               <CardHeader>
                 <CardTitle>Schweregrad-Matrix</CardTitle>
                 <CardDescription>
-                  Legen Sie fest, welche Kanaele bei welchem Schweregrad verwendet werden sollen.
-                  Kritische Meldungen werden immer ueber alle aktivierten Kanaele gesendet.
+                  Legen Sie fest, welche Kanäle bei welchem Schweregrad verwendet werden sollen.
+                  Kritische Meldungen werden immer über alle aktivierten Kanäle gesendet.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -247,8 +247,8 @@ export function NotificationPreferencesPage() {
               <CardHeader>
                 <CardTitle>Ruhezeiten</CardTitle>
                 <CardDescription>
-                  Konfigurieren Sie Zeitraeume, in denen keine Benachrichtigungen gesendet werden.
-                  Kritische Alerts koennen optional trotzdem zugestellt werden.
+                  Konfigurieren Sie Zeiträume, in denen keine Benachrichtigungen gesendet werden.
+                  Kritische Alerts können optional trotzdem zugestellt werden.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -266,8 +266,8 @@ export function NotificationPreferencesPage() {
               <CardHeader>
                 <CardTitle>Eskalationskette</CardTitle>
                 <CardDescription>
-                  Wenn eine kritische Benachrichtigung nicht bestaetigt wird, eskaliert das
-                  System automatisch zu weiteren Kanaelen. Die Zeiten sind konfigurierbar.
+                  Wenn eine kritische Benachrichtigung nicht bestätigt wird, eskaliert das
+                  System automatisch zu weiteren Kanälen. Die Zeiten sind konfigurierbar.
                 </CardDescription>
               </CardHeader>
               <CardContent>

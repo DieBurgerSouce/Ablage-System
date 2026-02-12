@@ -5,7 +5,7 @@
  * - Vertrags-Titel und Nummer
  * - Status-Badge mit Farbcodierung
  * - Vertragspartner
- * - Kuendigungsfrist-Countdown
+ * - Kündigungsfrist-Countdown
  * - Vertragsende-Countdown
  * - Quick-Actions
  */
@@ -173,7 +173,7 @@ export function ContractCard({ contract, onView, onEdit, onDelete }: ContractCar
                       <RefreshCw className="h-3.5 w-3.5 text-blue-500" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Automatische Verlaengerung aktiv</p>
+                      <p>Automatische Verlängerung aktiv</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -206,7 +206,7 @@ export function ContractCard({ contract, onView, onEdit, onDelete }: ContractCar
                 onClick={() => onDelete(contract)}
               >
                 <Trash2 className="h-4 w-4 mr-2" />
-                Loeschen
+                Löschen
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -257,7 +257,7 @@ export function ContractCard({ contract, onView, onEdit, onDelete }: ContractCar
             contract.days_until_notice_deadline >= 0 && (
               <CountdownBadge
                 days={contract.days_until_notice_deadline}
-                label="Kuendigungsfrist"
+                label="Kündigungsfrist"
                 isCritical={contract.is_notice_deadline_critical}
                 icon={Bell}
               />
@@ -277,7 +277,7 @@ export function ContractCard({ contract, onView, onEdit, onDelete }: ContractCar
                   <AlertTriangle className="h-4 w-4 text-orange-500" />
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Vertrag laeuft bald ab</p>
+                  <p>Vertrag läuft bald ab</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

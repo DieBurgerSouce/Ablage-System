@@ -1,7 +1,7 @@
 /**
  * Learning Stats Cards Component
  *
- * Zeigt Uebersichts-Karten fuer das Self-Learning System.
+ * Zeigt Übersichts-Karten für das Self-Learning System.
  */
 
 import { Card, CardContent } from '@/components/ui/card';
@@ -80,7 +80,7 @@ export function LearningStatsCards({ stats }: LearningStatsCardsProps) {
           <div className="flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-blue-500" />
             <div>
-              <p className="text-sm text-muted-foreground">Qualitaets-Score</p>
+              <p className="text-sm text-muted-foreground">Qualitäts-Score</p>
               <p className="text-2xl font-bold">{qualityScore.toFixed(1)}</p>
             </div>
           </div>

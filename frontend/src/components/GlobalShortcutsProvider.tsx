@@ -78,7 +78,7 @@ function useDefaultShortcuts(): { shortcuts: KeyboardShortcut[]; sequences: KeyS
     },
     {
       id: 'nav-command',
-      description: 'Befehlspalette oeffnen',
+      description: 'Befehlspalette öffnen',
       keys: 'ctrl+k',
       category: 'navigation',
       scope: 'global',
@@ -98,7 +98,7 @@ function useDefaultShortcuts(): { shortcuts: KeyboardShortcut[]; sequences: KeyS
     // Document Action Shortcuts (list-view scope)
     {
       id: 'action-delete',
-      description: 'Ausgewaehlte Dokumente loeschen',
+      description: 'Ausgewählte Dokumente löschen',
       keys: 'ctrl+d',
       category: 'actions',
       scope: 'list-view',
@@ -108,7 +108,7 @@ function useDefaultShortcuts(): { shortcuts: KeyboardShortcut[]; sequences: KeyS
     },
     {
       id: 'action-move',
-      description: 'Ausgewaehlte Dokumente verschieben',
+      description: 'Ausgewählte Dokumente verschieben',
       keys: 'ctrl+m',
       category: 'actions',
       scope: 'list-view',
@@ -212,7 +212,7 @@ function GlobalShortcutsInner({ children }: { children: ReactNode }) {
       // Help shortcut
       {
         id: 'help-show',
-        description: 'Tastenkuerzel anzeigen',
+        description: 'Tastenkürzel anzeigen',
         keys: '?',
         category: 'help',
         scope: 'global',
@@ -221,7 +221,7 @@ function GlobalShortcutsInner({ children }: { children: ReactNode }) {
       // Modal close shortcut
       {
         id: 'modal-close',
-        description: 'Dialog schliessen',
+        description: 'Dialog schließen',
         keys: 'escape',
         category: 'help',
         scope: 'global',
@@ -301,7 +301,7 @@ function GlobalShortcutsInner({ children }: { children: ReactNode }) {
     const undoRedoShortcuts: KeyboardShortcut[] = [
       {
         id: 'undo-action',
-        description: 'Letzte Aktion rueckgaengig',
+        description: 'Letzte Aktion rückgängig',
         keys: 'ctrl+z',
         category: 'actions',
         handler: () => canUndo && undo(),

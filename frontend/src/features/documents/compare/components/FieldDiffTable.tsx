@@ -39,7 +39,7 @@ const diffTypeConfig: Record<
   },
   changed: {
     icon: Edit2,
-    label: 'Geaendert',
+    label: 'Geändert',
     className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
   },
   unchanged: {
@@ -95,7 +95,7 @@ export function FieldDiffTable({ fieldChanges, showUnchanged = false }: FieldDif
             <TableHead className="w-[80px]">Typ</TableHead>
             <TableHead>Dokument 1</TableHead>
             <TableHead>Dokument 2</TableHead>
-            <TableHead className="w-[100px]">Prioritaet</TableHead>
+            <TableHead className="w-[100px]">Priorität</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

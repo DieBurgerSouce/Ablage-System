@@ -1,7 +1,7 @@
 /**
- * TransactionsView - Vorgaenge-Uebersicht
+ * TransactionsView - Vorgänge-Übersicht
  *
- * Zeigt alle Vorgaenge eines Kunden/Lieferanten als Liste.
+ * Zeigt alle Vorgänge eines Kunden/Lieferanten als Liste.
  * Jeder Vorgang wird mit horizontaler Timeline dargestellt.
  *
  * Features:
@@ -84,7 +84,7 @@ function TransactionsHeader({
         <div className="flex items-center gap-3">
           <FileStack className="w-8 h-8 text-blue-600" />
           <div>
-            <h1 className="text-2xl font-bold">Vorgaenge</h1>
+            <h1 className="text-2xl font-bold">Vorgänge</h1>
             <p className="text-sm text-muted-foreground">
               {totalCount} Vorgang{totalCount !== 1 ? 'e' : ''} gefunden
             </p>
@@ -155,7 +155,7 @@ function TransactionsFilterBar({
               <SelectValue placeholder="Sortieren nach" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="lastActivityAt">Letzte Aktivitaet</SelectItem>
+              <SelectItem value="lastActivityAt">Letzte Aktivität</SelectItem>
               <SelectItem value="createdAt">Erstellt am</SelectItem>
               <SelectItem value="totalAmount">Betrag</SelectItem>
               <SelectItem value="transactionNumber">Vorgangsnummer</SelectItem>
@@ -271,12 +271,12 @@ function TransactionsEmptyState({
         <div className="text-center">
           <FileStack className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">
-            {hasFilters ? 'Keine Vorgaenge gefunden' : 'Noch keine Vorgaenge'}
+            {hasFilters ? 'Keine Vorgänge gefunden' : 'Noch keine Vorgänge'}
           </h3>
           <p className="text-muted-foreground mb-4">
             {hasFilters
               ? 'Versuchen Sie andere Filterkriterien.'
-              : 'Erstellen Sie Ihren ersten Vorgang, um Dokumente zu verknuepfen.'}
+              : 'Erstellen Sie Ihren ersten Vorgang, um Dokumente zu verknüpfen.'}
           </p>
           {!hasFilters && (
             <Button className="gap-2">
@@ -433,7 +433,7 @@ export function TransactionsView({ entityType }: TransactionsViewProps) {
         <Card>
           <CardContent className="py-8">
             <p className="text-center text-muted-foreground">
-              Ungueltige Parameter. Bitte waehlen Sie einen Ordner aus.
+              Ungültige Parameter. Bitte wählen Sie einen Ordner aus.
             </p>
           </CardContent>
         </Card>
@@ -477,7 +477,7 @@ export function TransactionsView({ entityType }: TransactionsViewProps) {
           <CardContent className="py-12">
             <div className="flex flex-col items-center">
               <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-4" />
-              <p className="text-muted-foreground">Lade Vorgaenge...</p>
+              <p className="text-muted-foreground">Lade Vorgänge...</p>
             </div>
           </CardContent>
         </Card>
@@ -490,7 +490,7 @@ export function TransactionsView({ entityType }: TransactionsViewProps) {
             <div className="flex flex-col items-center text-destructive">
               <AlertCircle className="w-8 h-8 mb-2" />
               <p>
-                Fehler beim Laden der Vorgaenge:{' '}
+                Fehler beim Laden der Vorgänge:{' '}
                 {error instanceof Error ? error.message : 'Unbekannter Fehler'}
               </p>
             </div>

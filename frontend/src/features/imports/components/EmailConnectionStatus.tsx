@@ -1,8 +1,8 @@
 /**
  * EmailConnectionStatus Component
  *
- * Zeigt detaillierten Verbindungsstatus fuer eine Email-Konfiguration.
- * Ermoeglicht Verbindungstest und zeigt Fehlermeldungen an.
+ * Zeigt detaillierten Verbindungsstatus für eine Email-Konfiguration.
+ * Ermöglicht Verbindungstest und zeigt Fehlermeldungen an.
  */
 
 import { useState } from 'react';
@@ -94,7 +94,7 @@ const STATUS_CONFIG: Record<
   },
   unknown: {
     label: 'Unbekannt',
-    description: 'Status noch nicht geprueft',
+    description: 'Status noch nicht geprüft',
     icon: AlertTriangle,
     color: 'text-yellow-600',
     bgColor: 'bg-yellow-50 dark:bg-yellow-950/30',
@@ -249,7 +249,7 @@ function FullStatusCard({
       await triggerSync.mutateAsync(configId);
       toast({
         title: 'Synchronisierung gestartet',
-        description: `Email-Sync fuer "${config.name}" wurde gestartet.`,
+        description: `Email-Sync für "${config.name}" wurde gestartet.`,
       });
     } catch (err) {
       toast({
@@ -293,7 +293,7 @@ function FullStatusCard({
         {/* Health Score */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Verbindungsqualitaet</span>
+            <span className="text-sm font-medium">Verbindungsqualität</span>
             <span className={cn('text-sm font-bold', status.color)}>{healthScore}%</span>
           </div>
           <Progress value={healthScore} className="h-2" />

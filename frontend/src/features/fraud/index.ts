@@ -1,7 +1,7 @@
 /**
  * Fraud Detection Feature Module
  *
- * KI-gestuetzte Betrugserkennung und Risikoanalyse.
+ * KI-gestützte Betrugserkennung und Risikoanalyse.
  */
 
 // Main Dashboard

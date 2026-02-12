@@ -1,7 +1,7 @@
 /**
  * Risk Scoring API Layer
  *
- * API-Funktionen fuer das Risk Scoring System.
+ * API-Funktionen für das Risk Scoring System.
  */
 
 import { apiClient } from '@/lib/api/client';

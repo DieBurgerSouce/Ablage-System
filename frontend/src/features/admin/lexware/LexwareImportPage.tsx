@@ -1,12 +1,12 @@
 /**
- * LexwareImportPage - Hauptseite fuer Lexware Excel-Import
+ * LexwareImportPage - Hauptseite für Lexware Excel-Import
  *
  * WICHTIG: Backend erwartet ZWEI Dateien gleichzeitig (Folie + Messer)!
  *
  * Multi-Step Wizard:
  * 1. Beide Dateien hochladen (Folie + Messer)
- * 2. Konflikte pruefen (falls vorhanden)
- * 3. Import durchfuehren
+ * 2. Konflikte prüfen (falls vorhanden)
+ * 3. Import durchführen
  * 4. Ergebnis anzeigen
  */
 
@@ -53,7 +53,7 @@ export function LexwareImportPage({ entityType }: LexwareImportPageProps) {
   const importMutation = useMutation({
     mutationFn: async () => {
       if (!folieFile || !messerFile) {
-        throw new Error('Beide Dateien (Folie + Messer) muessen ausgewaehlt sein')
+        throw new Error('Beide Dateien (Folie + Messer) müssen ausgewählt sein')
       }
 
       const importFn = entityType === 'customer' ? importCustomers : importSuppliers
@@ -79,7 +79,7 @@ export function LexwareImportPage({ entityType }: LexwareImportPageProps) {
       if (dryRun) {
         toast({
           title: 'Testlauf abgeschlossen',
-          description: 'Keine Aenderungen wurden gespeichert. Deaktivieren Sie den Testmodus fuer den echten Import.',
+          description: 'Keine Änderungen wurden gespeichert. Deaktivieren Sie den Testmodus für den echten Import.',
         })
       }
     },
@@ -113,9 +113,9 @@ export function LexwareImportPage({ entityType }: LexwareImportPageProps) {
     <div className="space-y-6">
       {/* Step Indicator */}
       <div className="flex items-center gap-2 text-sm">
-        <StepIndicator step={1} label="Dateien waehlen" active={step === 'upload'} />
+        <StepIndicator step={1} label="Dateien wählen" active={step === 'upload'} />
         <ArrowRight className="h-4 w-4 text-muted-foreground" />
-        <StepIndicator step={2} label="Konflikte pruefen" active={step === 'conflicts'} />
+        <StepIndicator step={2} label="Konflikte prüfen" active={step === 'conflicts'} />
         <ArrowRight className="h-4 w-4 text-muted-foreground" />
         <StepIndicator step={3} label="Ergebnis" active={step === 'result' || step === 'importing'} />
       </div>
@@ -141,16 +141,16 @@ export function LexwareImportPage({ entityType }: LexwareImportPageProps) {
                 Import-Einstellungen
               </CardTitle>
               <CardDescription>
-                Optionen fuer den {entityLabel}-Import
+                Optionen für den {entityLabel}-Import
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Skip Conflicts Toggle */}
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="skip-conflicts">Konflikte ueberspringen</Label>
+                  <Label htmlFor="skip-conflicts">Konflikte überspringen</Label>
                   <p className="text-sm text-muted-foreground">
-                    Datensaetze mit kritischen Konflikten werden uebersprungen
+                    Datensätze mit kritischen Konflikten werden übersprungen
                   </p>
                 </div>
                 <Switch
@@ -165,7 +165,7 @@ export function LexwareImportPage({ entityType }: LexwareImportPageProps) {
                 <div className="space-y-0.5">
                   <Label htmlFor="dry-run">Testmodus (Dry Run)</Label>
                   <p className="text-sm text-muted-foreground">
-                    Prueft den Import ohne Aenderungen zu speichern
+                    Prüft den Import ohne Änderungen zu speichern
                   </p>
                 </div>
                 <Switch
@@ -198,14 +198,14 @@ export function LexwareImportPage({ entityType }: LexwareImportPageProps) {
 
           <div className="flex justify-between">
             <Button variant="outline" onClick={() => setStep('upload')}>
-              Zurueck
+              Zurück
             </Button>
             <Button onClick={() => {
               setSkipConflicts(true)
               setStep('importing')
               importMutation.mutate()
             }}>
-              Konflikte ueberspringen und fortfahren
+              Konflikte überspringen und fortfahren
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
@@ -237,7 +237,7 @@ export function LexwareImportPage({ entityType }: LexwareImportPageProps) {
           {step === 'result' && (
             <div className="flex justify-center">
               <Button onClick={handleReset}>
-                Weiteren Import durchfuehren
+                Weiteren Import durchführen
               </Button>
             </div>
           )}

@@ -1,7 +1,7 @@
 /**
  * Payment Automation Page
  *
- * Dashboard fuer automatisierte Zahlungsvorschlaege und -batches.
+ * Dashboard für automatisierte Zahlungsvorschläge und -batches.
  */
 
 import { useState } from 'react';
@@ -26,7 +26,7 @@ export function PaymentAutomationPage() {
           <CreditCard className="h-8 w-8 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">Auto-Zahlungsvorschlaege</h1>
+          <h1 className="text-2xl font-bold">Auto-Zahlungsvorschläge</h1>
           <p className="text-muted-foreground">
             Intelligente Zahlungsplanung mit Skonto-Optimierung
           </p>
@@ -41,7 +41,7 @@ export function PaymentAutomationPage() {
         <TabsList>
           <TabsTrigger value="suggestions" className="gap-2">
             <CreditCard className="h-4 w-4" />
-            Vorschlaege
+            Vorschläge
           </TabsTrigger>
           <TabsTrigger value="schedule" className="gap-2">
             <Calendar className="h-4 w-4" />

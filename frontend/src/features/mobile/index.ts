@@ -1,10 +1,10 @@
 /**
  * Mobile Feature - Exports
  *
- * PWA-optimierte Features fuer mobile Geraete:
- * - Kamera-Scan fuer Dokumentenerfassung
+ * PWA-optimierte Features für mobile Geräte:
+ * - Kamera-Scan für Dokumentenerfassung
  * - OCR-Ergebnis und Zuordnung nach Scan
- * - Offline-Unterstuetzung
+ * - Offline-Unterstützung
  * - Touch-optimierte Gesten
  *
  * Phase 3.1 + 3.2 der Feature-Roadmap (Januar-Februar 2026)

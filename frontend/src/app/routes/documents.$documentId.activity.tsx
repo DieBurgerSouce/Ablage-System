@@ -1,7 +1,7 @@
 /**
  * Document Activity Route
  *
- * Route fuer die Aktivitaetshistorie eines Dokuments.
+ * Route für die Aktivitätshistorie eines Dokuments.
  */
 
 import { useState, useCallback, useMemo } from 'react';
@@ -127,7 +127,7 @@ function DocumentActivityPage() {
         <Link to="/documents/$documentId" params={{ documentId }}>
           <Button variant="ghost" size="sm" className="mb-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Zurueck zum Dokument
+            Zurück zum Dokument
           </Button>
         </Link>
 
@@ -136,7 +136,7 @@ function DocumentActivityPage() {
             <History className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Aktivitaetshistorie</h1>
+            <h1 className="text-2xl font-bold">Aktivitätshistorie</h1>
             <p className="text-muted-foreground truncate max-w-md">
               {document.title || document.original_filename}
             </p>
@@ -169,8 +169,8 @@ function DocumentActivityPage() {
         onLoadMore={handleLoadMore}
         isLoadingMore={isFetchingNextPage}
         showTarget={false}
-        title={`Aktivitaeten (${filteredActivities.length})`}
-        emptyMessage="Keine Aktivitaeten fuer dieses Dokument gefunden"
+        title={`Aktivitäten (${filteredActivities.length})`}
+        emptyMessage="Keine Aktivitäten für dieses Dokument gefunden"
       />
     </div>
   );

@@ -1,7 +1,7 @@
 /**
  * MFA Status Component
  *
- * Zeigt den aktuellen 2FA-Status und ermoeglicht Verwaltungsaktionen:
+ * Zeigt den aktuellen 2FA-Status und ermöglicht Verwaltungsaktionen:
  * - Status-Anzeige (aktiviert/deaktiviert)
  * - Backup-Codes regenerieren
  * - 2FA deaktivieren
@@ -69,8 +69,8 @@ export function MFAStatus({ onSetupClick }: MFAStatusProps) {
       setConfirmCode('');
     },
     onError: () => {
-      toast.error('Ungueltiger Code', {
-        description: 'Bitte pruefen Sie den Code und versuchen Sie es erneut.',
+      toast.error('Ungültiger Code', {
+        description: 'Bitte prüfen Sie den Code und versuchen Sie es erneut.',
       });
       setConfirmCode('');
     },
@@ -85,8 +85,8 @@ export function MFAStatus({ onSetupClick }: MFAStatusProps) {
       setConfirmCode('');
     },
     onError: () => {
-      toast.error('Ungueltiger Code', {
-        description: 'Bitte pruefen Sie den Code und versuchen Sie es erneut.',
+      toast.error('Ungültiger Code', {
+        description: 'Bitte prüfen Sie den Code und versuchen Sie es erneut.',
       });
       setConfirmCode('');
     },
@@ -173,7 +173,7 @@ Generiert am: ${new Date().toLocaleString('de-DE')}
             </Badge>
           </div>
           <CardDescription>
-            Schuetzen Sie Ihr Konto mit einem zusaetzlichen Sicherheitsfaktor
+            Schützen Sie Ihr Konto mit einem zusätzlichen Sicherheitsfaktor
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -241,8 +241,8 @@ Generiert am: ${new Date().toLocaleString('de-DE')}
           ) : (
             <>
               <p className="text-sm text-muted-foreground">
-                Zwei-Faktor-Authentifizierung (2FA) fuegt Ihrem Konto eine zusaetzliche Sicherheitsebene hinzu.
-                Bei der Anmeldung benoetigen Sie neben Ihrem Passwort einen Code aus Ihrer Authenticator-App.
+                Zwei-Faktor-Authentifizierung (2FA) fügt Ihrem Konto eine zusätzliche Sicherheitsebene hinzu.
+                Bei der Anmeldung benötigen Sie neben Ihrem Passwort einen Code aus Ihrer Authenticator-App.
               </p>
               <Button onClick={onSetupClick}>
                 <Shield className="mr-2 h-4 w-4" />
@@ -322,7 +322,7 @@ Generiert am: ${new Date().toLocaleString('de-DE')}
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Wichtig!</AlertTitle>
                 <AlertDescription>
-                  Die alten Backup-Codes sind nicht mehr gueltig. Speichern Sie die neuen Codes sicher ab.
+                  Die alten Backup-Codes sind nicht mehr gültig. Speichern Sie die neuen Codes sicher ab.
                 </AlertDescription>
               </Alert>
               <div className="grid grid-cols-2 gap-2 p-4 bg-muted/50 rounded-lg font-mono text-sm">
@@ -352,7 +352,7 @@ Generiert am: ${new Date().toLocaleString('de-DE')}
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Hinweis</AlertTitle>
                 <AlertDescription>
-                  Nach der Generierung werden alle bestehenden Backup-Codes ungueltig.
+                  Nach der Generierung werden alle bestehenden Backup-Codes ungültig.
                 </AlertDescription>
               </Alert>
               <Input
@@ -375,7 +375,7 @@ Generiert am: ${new Date().toLocaleString('de-DE')}
               setNewBackupCodes(null);
               setConfirmCode('');
             }}>
-              {newBackupCodes ? 'Schliessen' : 'Abbrechen'}
+              {newBackupCodes ? 'Schließen' : 'Abbrechen'}
             </Button>
             {!newBackupCodes && (
               <Button

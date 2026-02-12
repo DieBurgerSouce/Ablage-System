@@ -1,8 +1,8 @@
 /**
  * Margin Analyzer Hook
  *
- * React Query Hook fuer Margenanalyse-Daten.
- * Nutzt den globalen DateRange-Filter fuer zeitraumbasierte Abfragen.
+ * React Query Hook für Margenanalyse-Daten.
+ * Nutzt den globalen DateRange-Filter für zeitraumbasierte Abfragen.
  *
  * Phase C: Business KPIs
  */

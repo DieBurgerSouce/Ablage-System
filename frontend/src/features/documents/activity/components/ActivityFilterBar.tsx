@@ -1,7 +1,7 @@
 /**
  * ActivityFilterBar Component
  *
- * Filterleiste fuer die Activity Timeline.
+ * Filterleiste für die Activity Timeline.
  */
 
 import { useState } from 'react';
@@ -83,7 +83,7 @@ export function ActivityFilterBar({
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Aktivitaeten durchsuchen..."
+            placeholder="Aktivitäten durchsuchen..."
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             className="pl-9"
@@ -137,7 +137,7 @@ export function ActivityFilterBar({
         {hasFilters && (
           <Button variant="ghost" size="sm" onClick={onClearFilters}>
             <X className="h-4 w-4 mr-1" />
-            Zuruecksetzen
+            Zurücksetzen
           </Button>
         )}
       </div>
@@ -147,7 +147,7 @@ export function ActivityFilterBar({
         <div className="flex flex-wrap gap-3 p-4 bg-muted/50 rounded-lg">
           {/* Activity Type */}
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-muted-foreground">Aktivitaetstyp</label>
+            <label className="text-xs text-muted-foreground">Aktivitätstyp</label>
             <Select value={activityType} onValueChange={onActivityTypeChange}>
               <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="Alle Typen" />

@@ -11,7 +11,9 @@ Ermoeglicht:
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+from app.core.types import JSONDict, JSONValue
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -64,8 +66,8 @@ class FieldChangeResponse(BaseModel):
 
     field_name: str
     category: str
-    old_value: Optional[Any]
-    new_value: Optional[Any]
+    old_value: Optional[JSONValue]
+    new_value: Optional[JSONValue]
     change_type: str
     significance: str
 
@@ -99,10 +101,10 @@ class SimilarDocumentResponse(BaseModel):
 class DiffReportResponse(BaseModel):
     """Diff-Report."""
 
-    document_1_info: Dict[str, Any]
-    document_2_info: Dict[str, Any]
+    document_1_info: JSONDict
+    document_2_info: JSONDict
     comparison_result: ComparisonResultResponse
-    detailed_changes: List[Dict[str, Any]]
+    detailed_changes: List[JSONDict]
     visual_diff_available: bool
     recommendations: List[str]
     generated_at: str
@@ -488,7 +490,7 @@ async def batch_compare_documents(
 
 @router.get(
     "/duplicates",
-    response_model=List[Dict[str, Any]],
+    response_model=List[JSONDict],
     summary="Finde potenzielle Duplikate",
     description="Sucht nach potenziellen Duplikaten in der Dokumentenbasis.",
 )
@@ -513,7 +515,7 @@ async def find_potential_duplicates(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[Dict[str, Any]]:
+) -> List[JSONDict]:
     """
     Identifiziert potenzielle Duplikate basierend auf hoher Aehnlichkeit.
 

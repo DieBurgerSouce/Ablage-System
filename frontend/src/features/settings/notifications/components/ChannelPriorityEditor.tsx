@@ -1,8 +1,8 @@
 /**
  * ChannelPriorityEditor Component
  *
- * Ermoeglicht die Konfiguration der Kanal-Prioritaet fuer Benachrichtigungen.
- * Kanaele koennen per Drag-and-Drop neu angeordnet werden.
+ * Ermöglicht die Konfiguration der Kanal-Priorität für Benachrichtigungen.
+ * Kanäle können per Drag-and-Drop neu angeordnet werden.
  */
 
 import { useState, useCallback } from 'react';
@@ -186,10 +186,10 @@ export function ChannelPriorityEditor({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Kanal-Prioritaet</CardTitle>
+        <CardTitle className="text-lg">Kanal-Priorität</CardTitle>
         <CardDescription>
-          Ordnen Sie die Kanaele nach Prioritaet. Bei Eskalation werden Kanaele von oben nach unten durchlaufen.
-          Ziehen Sie Kanaele, um die Reihenfolge zu aendern.
+          Ordnen Sie die Kanäle nach Priorität. Bei Eskalation werden Kanäle von oben nach unten durchlaufen.
+          Ziehen Sie Kanäle, um die Reihenfolge zu ändern.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -218,7 +218,7 @@ export function ChannelPriorityEditor({
 
         <div className="mt-4 pt-4 border-t">
           <p className="text-sm text-muted-foreground">
-            <strong>Hinweis:</strong> Nur aktivierte und konfigurierte Kanaele werden fuer
+            <strong>Hinweis:</strong> Nur aktivierte und konfigurierte Kanäle werden für
             Benachrichtigungen verwendet. Die Reihenfolge bestimmt die Eskalationskette.
           </p>
         </div>

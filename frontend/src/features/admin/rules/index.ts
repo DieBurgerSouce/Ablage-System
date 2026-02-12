@@ -1,7 +1,7 @@
 /**
  * Business Rules Feature
  *
- * Admin-Modul fuer die Verwaltung von Business Rules.
+ * Admin-Modul für die Verwaltung von Business Rules.
  */
 
 export { RulesAdminPage } from './RulesAdminPage'

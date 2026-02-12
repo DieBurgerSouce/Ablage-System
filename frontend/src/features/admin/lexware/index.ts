@@ -1,10 +1,10 @@
 /**
  * Lexware Admin Feature - Exports
  *
- * WICHTIG: Alle Komponenten verwenden Types die EXAKT mit Backend uebereinstimmen!
+ * WICHTIG: Alle Komponenten verwenden Types die EXAKT mit Backend übereinstimmen!
  * Backend: app/api/v1/lexware.py
- * - snake_case fuer alle Response-Felder
- * - Zwei Dateien (folie_file + messer_file) fuer Import
+ * - snake_case für alle Response-Felder
+ * - Zwei Dateien (folie_file + messer_file) für Import
  * - ConflictInfo mit conflict_type: 'critical' | 'harmless' | 'duplicate'
  */
 

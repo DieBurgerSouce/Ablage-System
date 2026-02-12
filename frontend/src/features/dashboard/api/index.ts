@@ -1,7 +1,7 @@
 /**
  * Dashboard API Client
  *
- * API-Funktionen fuer Dashboard-Management, Widget-CRUD und Layout-Persistenz.
+ * API-Funktionen für Dashboard-Management, Widget-CRUD und Layout-Persistenz.
  */
 
 import { apiClient as api } from '@/lib/api/client';

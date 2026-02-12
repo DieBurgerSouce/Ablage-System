@@ -902,6 +902,11 @@ from app.api.v1.credit import router as credit_router  # Vision 2.0: Creditrefor
 from app.api.v1.datev_booking import router as datev_booking_router  # Vision 2.0: DATEV Buchungsvorschlaege
 from app.api.v1.datev_connect import router as datev_connect_router  # DATEV Connect Integration (Migration 145)
 from app.api.v1.classification import router as classification_router  # Vision 2.0 Phase 3: Multi-Label Classification
+from app.api.v1.document_context import router as document_context_router  # Phase 2: Document Context Aggregation
+from app.api.v1.calendar_sync import router as calendar_sync_router  # Phase 5: Calendar Sync
+from app.api.v1.scanner import router as scanner_router  # Phase 5: Scanner Integration
+from app.api.v1.admin.integration_sync import router as integration_sync_router  # Phase 5: DATEV/Lexware Sync
+from app.api.v1.email_file_import import router as email_file_import_router  # Phase 6D: E-Mail-Datei-Import
 
 # Vision 2.0 Phase 5: Privacy & Predictive Maintenance
 from app.api.v1.privacy_analytics import router as privacy_analytics_router  # Vision 2.0 Phase 5: Differential Privacy
@@ -1089,6 +1094,10 @@ app.include_router(steuerberater_packages_router, prefix="/api/v1")  # Vision 20
 app.include_router(enhanced_banking_router, prefix="/api/v1")  # Vision 2026 Q4: Enhanced Banking
 app.include_router(handelsregister_monitoring_router, prefix="/api/v1")  # Vision 2026 Q4: Handelsregister Monitoring
 app.include_router(smart_tagging_router, prefix="/api/v1")  # Vision 2026+ Q1: Smart Auto-Tagging
+app.include_router(calendar_sync_router, prefix="/api/v1")  # Phase 5: Calendar iCal/CalDAV Sync
+app.include_router(email_file_import_router, prefix="/api/v1", tags=["E-Mail-Import"])  # Phase 6D: E-Mail-Datei-Import
+app.include_router(scanner_router, prefix="/api/v1")  # Phase 5: Scanner Device Integration
+app.include_router(integration_sync_router, prefix="/api/v1")  # Phase 5: DATEV/Lexware Bidirectional Sync
 app.include_router(audit_trail_visualization_router, prefix="/api/v1")  # Vision 2026+ Q1: Audit Trail Visualization
 app.include_router(communication_hub_router, prefix="/api/v1")  # Vision 2026+ Q1: Kommunikations-Hub
 app.include_router(supplier_ocr_templates_router, prefix="/api/v1")  # Vision 2026+ Q1: Lieferanten OCR-Templates
@@ -1143,6 +1152,7 @@ app.include_router(cross_tenant_reports_router, prefix="/api/v1")  # Multi-Firma
 app.include_router(notification_preferences_router, prefix="/api/v1")  # Notification Preferences
 app.include_router(feature_flags_admin_router, prefix="/api/v1")  # Feature Flag Admin CRUD
 app.include_router(feature_flags_router, prefix="/api/v1")  # Feature Flag Evaluation
+app.include_router(document_context_router, prefix="/api/v1")  # Phase 2: Document Context Aggregation
 
 
 # ==================== Health & Status Endpoints ====================

@@ -1,7 +1,7 @@
 /**
  * ESG (Environmental, Social, Governance) Types
  *
- * TypeScript-Typen fuer das Nachhaltigkeitsberichterstattungs-Modul.
+ * TypeScript-Typen für das Nachhaltigkeitsberichterstattungs-Modul.
  */
 
 // ==================== Enums ====================

@@ -254,7 +254,7 @@ export function useUpcomingSkontoDeadlines(
   return useQuery({
     queryKey: invoiceQueryKeys.upcomingSkonto(daysAhead),
     queryFn: () => invoiceService.getUpcomingSkontoDeadlines(daysAhead),
-    staleTime: STALE_TIMES.statistics, // Wie Statistiken - aendert sich nicht so oft
+    staleTime: STALE_TIMES.statistics, // Wie Statistiken - ändert sich nicht so oft
     gcTime: GC_TIMES.statistics,
     enabled: options?.enabled !== false,
     ...RETRY_CONFIG,
@@ -324,7 +324,7 @@ export function usePayments(invoiceId: string, options?: { enabled?: boolean }) 
   return useQuery({
     queryKey: invoiceQueryKeys.payments(invoiceId),
     queryFn: () => invoiceService.listPayments(invoiceId),
-    staleTime: STALE_TIMES.invoices, // Zahlungen koennen sich schnell aendern
+    staleTime: STALE_TIMES.invoices, // Zahlungen können sich schnell ändern
     gcTime: GC_TIMES.invoices,
     enabled: options?.enabled !== false && !!invoiceId,
     ...RETRY_CONFIG,
@@ -359,7 +359,7 @@ export function useAddPayment() {
 }
 
 /**
- * Teilzahlung loeschen
+ * Teilzahlung löschen
  */
 export function useDeletePayment() {
   const queryClient = useQueryClient();

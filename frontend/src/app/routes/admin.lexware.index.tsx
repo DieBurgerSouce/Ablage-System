@@ -1,7 +1,7 @@
 /**
  * Lexware Kunden-Import Page
  *
- * Index-Route fuer /admin/lexware - Kunden importieren
+ * Index-Route für /admin/lexware - Kunden importieren
  */
 
 import { createFileRoute } from '@tanstack/react-router'

@@ -1,7 +1,7 @@
 /**
  * Predictive Intelligence Components.
  *
- * Exportiert alle KI-basierten Komponenten fuer
+ * Exportiert alle KI-basierten Komponenten für
  * Vorhersagen, Anomalie-Erkennung und semantische Suche.
  */
 

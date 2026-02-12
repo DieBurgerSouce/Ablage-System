@@ -283,7 +283,7 @@ export function ProcedureDocViewer() {
                 <ChevronRight className="h-4 w-4 text-green-500" />
               </div>
               <div>
-                <h4 className="font-medium">Vollstaendigkeit</h4>
+                <h4 className="font-medium">Vollständigkeit</h4>
                 <p className="text-sm text-muted-foreground">
                   Alle steuerrelevanten Daten sind erfasst
                 </p>
@@ -307,7 +307,7 @@ export function ProcedureDocViewer() {
               <div>
                 <h4 className="font-medium">Zeitgerechtheit</h4>
                 <p className="text-sm text-muted-foreground">
-                  Vorgaenge werden zeitnah erfasst
+                  Vorgänge werden zeitnah erfasst
                 </p>
               </div>
             </div>
@@ -327,9 +327,9 @@ export function ProcedureDocViewer() {
                 <ChevronRight className="h-4 w-4 text-green-500" />
               </div>
               <div>
-                <h4 className="font-medium">Unveraenderbarkeit</h4>
+                <h4 className="font-medium">Unveränderbarkeit</h4>
                 <p className="text-sm text-muted-foreground">
-                  Schutz vor nachtraeglicher Manipulation
+                  Schutz vor nachträglicher Manipulation
                 </p>
               </div>
             </div>

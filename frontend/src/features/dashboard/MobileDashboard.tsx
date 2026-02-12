@@ -379,7 +379,7 @@ function RecentDocumentsSection({ documents, isLoading }: RecentDocumentsSection
                 <button className="flex items-center justify-between w-full px-4 py-2 text-left">
                     <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-semibold">Zuletzt hinzugefuegt</span>
+                        <span className="font-semibold">Zuletzt hinzugefügt</span>
                     </div>
                     {isOpen ? (
                         <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -485,7 +485,7 @@ export function MobileDashboard() {
             dashboardData?.criticalItems || [
                 {
                     id: '1',
-                    title: 'Skonto laeuft ab',
+                    title: 'Skonto läuft ab',
                     message: 'Rechnung #INV-2024-0123 - Skonto bis morgen',
                     type: 'warning',
                     value: '54 EUR',
@@ -493,7 +493,7 @@ export function MobileDashboard() {
                 },
                 {
                     id: '2',
-                    title: 'Mahnung faellig',
+                    title: 'Mahnung fällig',
                     message: 'Kunde Meier GmbH - Stufe 2',
                     type: 'critical',
                     value: '1.250 EUR',
@@ -505,11 +505,11 @@ export function MobileDashboard() {
 
     // Swipe handlers
     const handleSwipeLeft = useCallback(() => {
-        toast.info('Wischen Sie nach rechts fuer weitere Optionen');
+        toast.info('Wischen Sie nach rechts für weitere Optionen');
     }, []);
 
     const handleSwipeRight = useCallback(() => {
-        toast.info('Wischen Sie nach links fuer weitere Optionen');
+        toast.info('Wischen Sie nach links für weitere Optionen');
     }, []);
 
     if (error) {
@@ -569,7 +569,7 @@ export function MobileDashboard() {
                 <div className="h-2 bg-muted" />
 
                 {/* Recent Documents */}
-                <section aria-label="Zuletzt hinzugefuegt">
+                <section aria-label="Zuletzt hinzugefügt">
                     <RecentDocumentsSection
                         documents={recentDocs?.items}
                         isLoading={docsLoading}

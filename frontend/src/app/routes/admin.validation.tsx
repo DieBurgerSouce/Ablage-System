@@ -1,7 +1,7 @@
 /**
  * Validation Admin Route
  *
- * Route fuer das Validierungs-Dashboard im Admin-Bereich.
+ * Route für das Validierungs-Dashboard im Admin-Bereich.
  */
 
 import { createFileRoute } from '@tanstack/react-router';

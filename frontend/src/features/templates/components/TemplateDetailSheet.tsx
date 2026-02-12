@@ -2,9 +2,9 @@
  * TemplateDetailSheet - Detailansicht einer Vorlage als Sheet/Drawer
  *
  * Features:
- * - Vollstaendige Vorlageninformationen
+ * - Vollständige Vorlageninformationen
  * - Template-Code Ansicht
- * - Variablen-Uebersicht
+ * - Variablen-Übersicht
  * - Nutzungsstatistiken
  */
 
@@ -107,7 +107,7 @@ export function TemplateDetailSheet({
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="overview">
               <Settings className="h-4 w-4 mr-1" />
-              Uebersicht
+              Übersicht
             </TabsTrigger>
             <TabsTrigger value="content">
               <Code className="h-4 w-4 mr-1" />
@@ -148,7 +148,7 @@ export function TemplateDetailSheet({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <h4 className="text-sm font-medium text-muted-foreground">Seitengroesse</h4>
+                  <h4 className="text-sm font-medium text-muted-foreground">Seitengröße</h4>
                   <p className="mt-1">{template.page_size}</p>
                 </div>
                 <div>
@@ -160,7 +160,7 @@ export function TemplateDetailSheet({
               </div>
 
               <div>
-                <h4 className="text-sm font-medium text-muted-foreground">Seitenraender (mm)</h4>
+                <h4 className="text-sm font-medium text-muted-foreground">Seitenränder (mm)</h4>
                 <p className="mt-1 text-sm font-mono">
                   Oben: {template.margins.top}, Rechts: {template.margins.right}, Unten:{' '}
                   {template.margins.bottom}, Links: {template.margins.left}

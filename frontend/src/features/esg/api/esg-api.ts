@@ -1,7 +1,7 @@
 /**
  * ESG API Client
  *
- * API-Client fuer das Nachhaltigkeitsberichterstattungs-Modul.
+ * API-Client für das Nachhaltigkeitsberichterstattungs-Modul.
  * Alle Endpunkte unter /api/v1/esg/
  */
 
@@ -66,7 +66,7 @@ export async function getDashboard(params?: {
 // ==================== Carbon Footprint ====================
 
 /**
- * Hole verfuegbare Emissionsfaktoren
+ * Hole verfügbare Emissionsfaktoren
  */
 export async function getEmissionFactors(): Promise<{ factors: EmissionFactor[] }> {
   const response = await apiClient.get<{ factors: EmissionFactor[] }>(
@@ -156,7 +156,7 @@ export async function getCarbonTrend(
 // ==================== Supplier Ratings ====================
 
 /**
- * Hole Bewertungskriterien fuer Lieferanten
+ * Hole Bewertungskriterien für Lieferanten
  */
 export async function getRatingCriteria(): Promise<{ criteria: RatingCriterion[] }> {
   const response = await apiClient.get<{ criteria: RatingCriterion[] }>(
@@ -202,7 +202,7 @@ export async function getRiskSummary(): Promise<SupplierRiskSummary> {
 }
 
 /**
- * Hole neueste Bewertung fuer einen Lieferanten
+ * Hole neueste Bewertung für einen Lieferanten
  */
 export async function getLatestRating(
   entityId: string
@@ -302,7 +302,7 @@ export async function getCertificationDetail(
 // ==================== Reports ====================
 
 /**
- * Hole verfuegbare Berichtsvorlagen
+ * Hole verfügbare Berichtsvorlagen
  */
 export async function getTemplates(): Promise<{ templates: ReportTemplate[] }> {
   const response = await apiClient.get<{ templates: ReportTemplate[] }>(

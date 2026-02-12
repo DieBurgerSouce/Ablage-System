@@ -120,7 +120,7 @@ export function CertificationsPage() {
       {/* Certifications List */}
       <Card>
         <CardHeader>
-          <CardTitle>Zertifikats-Uebersicht</CardTitle>
+          <CardTitle>Zertifikats-Übersicht</CardTitle>
           <CardDescription>
             Alle ESG-relevanten Zertifizierungen
           </CardDescription>
@@ -155,7 +155,7 @@ export function CertificationsPage() {
                     <div className="flex items-center gap-4">
                       <div className="text-right">
                         <p className="text-sm text-muted-foreground">
-                          {cert.status === 'expired' ? 'Abgelaufen am' : 'Gueltig bis'}
+                          {cert.status === 'expired' ? 'Abgelaufen am' : 'Gültig bis'}
                         </p>
                         <p className={`font-medium ${statusStyle.dateClass}`}>
                           {formatDate(cert.expiry_date)}

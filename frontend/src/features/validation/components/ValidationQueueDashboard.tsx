@@ -564,7 +564,7 @@ function ValidationQueueDashboardInner() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Validierung</h1>
           <p className="text-muted-foreground">
-            OCR-Ergebnisse pruefen und Datenextraktion validieren
+            OCR-Ergebnisse prüfen und Datenextraktion validieren
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -598,14 +598,14 @@ function ValidationQueueDashboardInner() {
                   variant={showShortcutHelp ? 'secondary' : 'ghost'}
                   size="sm"
                   onClick={() => setShowShortcutHelp(!showShortcutHelp)}
-                  aria-label="Tastaturkuerzel anzeigen"
+                  aria-label="Tastaturkürzel anzeigen"
                   aria-pressed={showShortcutHelp}
                 >
                   <Keyboard className="w-4 h-4" aria-hidden="true" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Tastaturkuerzel {showShortcutHelp ? 'ausblenden' : 'anzeigen'}</p>
+                <p>Tastaturkürzel {showShortcutHelp ? 'ausblenden' : 'anzeigen'}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -625,13 +625,13 @@ function ValidationQueueDashboardInner() {
       {showShortcutHelp && (
         <div className="bg-muted/50 rounded-lg p-4 border">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-medium">Tastaturkuerzel</h2>
+            <h2 className="text-sm font-medium">Tastaturkürzel</h2>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setShowShortcutHelp(false)}
               className="h-6 w-6 p-0"
-              aria-label="Hilfe schliessen"
+              aria-label="Hilfe schließen"
             >
               &times;
             </Button>
@@ -1106,7 +1106,7 @@ function ValidationQueueDashboardInner() {
                                   variant="ghost"
                                   size="sm"
                                   className="h-8 w-8 p-0"
-                                  aria-label={`Weitere Aktionen fuer ${item.document_name || `Dokument ${item.document_id.slice(0, 8)}`}`}
+                                  aria-label={`Weitere Aktionen für ${item.document_name || `Dokument ${item.document_id.slice(0, 8)}`}`}
                                 >
                                   <MoreHorizontal className="w-4 h-4" aria-hidden="true" />
                                 </Button>
@@ -1130,7 +1130,7 @@ function ValidationQueueDashboardInner() {
                                       className="text-destructive"
                                     >
                                       <Trash2 className="w-4 h-4 mr-2" />
-                                      Loeschen
+                                      Löschen
                                     </DropdownMenuItem>
                                   </>
                                 )}
@@ -1424,21 +1424,21 @@ function ValidationQueueDashboardInner() {
               Warum diese Validierung?
             </DialogTitle>
             <DialogDescription>
-              KI-Erklaerung fuer "{explanationDocName}"
+              KI-Erklärung für "{explanationDocName}"
             </DialogDescription>
           </DialogHeader>
 
           {explanationLoading ? (
             <div className="flex items-center justify-center py-8">
               <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              <span className="ml-2 text-muted-foreground">Erklaerung wird geladen...</span>
+              <span className="ml-2 text-muted-foreground">Erklärung wird geladen...</span>
             </div>
           ) : explanationError ? (
             <div className="text-center py-8 text-red-600">
               <AlertTriangle className="w-8 h-8 mx-auto mb-2" />
-              <p>Erklaerung konnte nicht geladen werden</p>
+              <p>Erklärung konnte nicht geladen werden</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Moeglicherweise wurde keine KI-Entscheidung fuer dieses Dokument getroffen.
+                Möglicherweise wurde keine KI-Entscheidung für dieses Dokument getroffen.
               </p>
             </div>
           ) : explanation ? (
@@ -1450,7 +1450,7 @@ function ValidationQueueDashboardInner() {
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <HelpCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p>Keine KI-Erklaerung verfuegbar</p>
+              <p>Keine KI-Erklärung verfügbar</p>
               <p className="text-sm mt-1">
                 Dieses Dokument wurde noch nicht durch die KI bewertet.
               </p>
@@ -1459,7 +1459,7 @@ function ValidationQueueDashboardInner() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setExplanationDocId(null)}>
-              Schliessen
+              Schließen
             </Button>
           </DialogFooter>
         </DialogContent>

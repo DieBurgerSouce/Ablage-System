@@ -5,7 +5,7 @@
 import type { ExpenseReportStatus, ExpenseType } from '@/types/models/expense';
 
 /**
- * Formatiert einen Betrag als Waehrung (EUR)
+ * Formatiert einen Betrag als Währung (EUR)
  */
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('de-DE', {

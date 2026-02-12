@@ -161,7 +161,7 @@ function ExecutionRow({
           <div className="flex items-center gap-1">
             {execution.status === 'running' && (
               <>
-                {/* A11Y FIX: aria-label fuer Screen Reader */}
+                {/* A11Y FIX: aria-label für Screen Reader */}
                 <Button
                   variant="ghost"
                   size="icon"

@@ -8,8 +8,10 @@ Art. 32 DSGVO - Sicherheit der Verarbeitung:
 Überwachung der Geheimnismanagement-Infrastruktur.
 """
 
-from typing import Dict, Any, Optional
+from typing import Optional
 from datetime import datetime, timezone
+
+from app.core.types import JSONDict
 
 from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel
@@ -354,7 +356,7 @@ async def get_secret_metadata(
 )
 async def refresh_secrets(
     current_user: User = Depends(get_current_superuser),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Lädt Secrets aus Vault neu.
 

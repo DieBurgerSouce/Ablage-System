@@ -2,14 +2,14 @@
  * Budget API Service
  *
  * Kommuniziert mit den /api/v1/budgets Endpoints
- * fuer Budget-Verwaltung mit Kostenstellen
+ * für Budget-Verwaltung mit Kostenstellen
  *
  * Features:
  * - Kostenstellen-Verwaltung (hierarchisch)
  * - Budget-CRUD mit Perioden (Monat/Quartal/Jahr)
  * - Budget-Positionen und Zuweisungen
  * - Abweichungsberichte (Soll/Ist)
- * - Alert-System bei Ueberschreitung
+ * - Alert-System bei Überschreitung
  *
  * Phase 2.1 der Feature-Roadmap (Januar 2026)
  */
@@ -870,14 +870,14 @@ export const budgetService = {
   },
 
   /**
-   * Schliesst ein Budget
+   * Schließt ein Budget
    */
   closeBudget: async (budgetId: string): Promise<Budget> => {
     try {
       const response = await apiClient.post<BudgetBackend>(`/budgets/${budgetId}/close`);
       return transformBudget(response.data);
     } catch (error) {
-      handleApiError(error, 'Budget schliessen');
+      handleApiError(error, 'Budget schließen');
     }
   },
 
@@ -1006,7 +1006,7 @@ export const budgetService = {
   // ==================== Alerts ====================
 
   /**
-   * Listet unbestaetigte Alerts
+   * Listet unbestätigte Alerts
    */
   listAlerts: async (params?: {
     budgetId?: string;
@@ -1032,7 +1032,7 @@ export const budgetService = {
   },
 
   /**
-   * Bestaetigt einen Alert
+   * Bestätigt einen Alert
    */
   acknowledgeAlert: async (alertId: string): Promise<BudgetAlert> => {
     try {
@@ -1041,7 +1041,7 @@ export const budgetService = {
       );
       return transformAlert(response.data);
     } catch (error) {
-      handleApiError(error, 'Alert bestaetigen');
+      handleApiError(error, 'Alert bestätigen');
     }
   },
 };

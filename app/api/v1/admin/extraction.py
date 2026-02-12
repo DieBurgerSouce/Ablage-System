@@ -11,7 +11,9 @@ Nur fuer Administratoren.
 """
 
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 import structlog
@@ -64,8 +66,8 @@ class TaskStatusResponse(BaseModel):
 
     task_id: str
     status: str
-    progress: Optional[Dict[str, Any]] = None
-    result: Optional[Dict[str, Any]] = None
+    progress: Optional[JSONDict] = None
+    result: Optional[JSONDict] = None
     error: Optional[str] = None
 
 
@@ -79,7 +81,7 @@ class ExtractionStatsResponse(BaseModel):
     avg_confidence: float
     needs_review_count: int
     with_line_items: int
-    invoice_stats: Dict[str, Any]
+    invoice_stats: JSONDict
     generated_at: datetime
 
 
@@ -268,7 +270,7 @@ async def get_extraction_statistics(
 async def cancel_reprocessing_task(
     task_id: str,
     current_user: models.User = Depends(get_current_superuser),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Laufenden Batch-Reprocessing Task abbrechen.
 

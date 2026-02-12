@@ -1,7 +1,7 @@
 /**
  * Workflow React Query Hooks
  *
- * React Query Hooks fuer Workflow-Automation.
+ * React Query Hooks für Workflow-Automation.
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -57,7 +57,7 @@ export const workflowKeys = {
 // =============================================================================
 
 /**
- * Hook fuer Workflow-Liste.
+ * Hook für Workflow-Liste.
  */
 export function useWorkflows(params: WorkflowListParams = {}) {
   return useQuery({
@@ -67,7 +67,7 @@ export function useWorkflows(params: WorkflowListParams = {}) {
 }
 
 /**
- * Hook fuer einzelnen Workflow.
+ * Hook für einzelnen Workflow.
  */
 export function useWorkflow(workflowId: string, enabled = true) {
   return useQuery({
@@ -78,7 +78,7 @@ export function useWorkflow(workflowId: string, enabled = true) {
 }
 
 /**
- * Hook fuer Workflow-Steps.
+ * Hook für Workflow-Steps.
  */
 export function useWorkflowSteps(workflowId: string, enabled = true) {
   return useQuery({
@@ -89,7 +89,7 @@ export function useWorkflowSteps(workflowId: string, enabled = true) {
 }
 
 /**
- * Hook fuer Workflow-Statistiken.
+ * Hook für Workflow-Statistiken.
  */
 export function useWorkflowStats(workflowId: string, enabled = true) {
   return useQuery({
@@ -100,7 +100,7 @@ export function useWorkflowStats(workflowId: string, enabled = true) {
 }
 
 /**
- * Hook fuer Gesamt-Statistiken.
+ * Hook für Gesamt-Statistiken.
  */
 export function useOverviewStats() {
   return useQuery({
@@ -110,7 +110,7 @@ export function useOverviewStats() {
 }
 
 /**
- * Hook fuer Ausfuehrungs-Historie.
+ * Hook für Ausführungs-Historie.
  */
 export function useExecutionHistory(days = 30) {
   return useQuery({
@@ -120,7 +120,7 @@ export function useExecutionHistory(days = 30) {
 }
 
 /**
- * Hook fuer Templates.
+ * Hook für Templates.
  */
 export function useTemplates(category?: string) {
   return useQuery({
@@ -130,29 +130,29 @@ export function useTemplates(category?: string) {
 }
 
 /**
- * Hook fuer verfuegbare Operatoren.
+ * Hook für verfügbare Operatoren.
  */
 export function useOperators() {
   return useQuery({
     queryKey: workflowKeys.operators(),
     queryFn: () => workflowsApi.getAvailableOperators(),
-    staleTime: Infinity, // Operatoren aendern sich nicht
+    staleTime: Infinity, // Operatoren ändern sich nicht
   });
 }
 
 /**
- * Hook fuer verfuegbare Felder.
+ * Hook für verfügbare Felder.
  */
 export function useFields() {
   return useQuery({
     queryKey: workflowKeys.fields(),
     queryFn: () => workflowsApi.getAvailableFields(),
-    staleTime: Infinity, // Felder aendern sich nicht
+    staleTime: Infinity, // Felder ändern sich nicht
   });
 }
 
 /**
- * Hook fuer Webhook-Konfiguration.
+ * Hook für Webhook-Konfiguration.
  */
 export function useWebhookConfig(workflowId: string, enabled = true) {
   return useQuery({
@@ -167,7 +167,7 @@ export function useWebhookConfig(workflowId: string, enabled = true) {
 // =============================================================================
 
 /**
- * Hook fuer Workflow-Erstellung.
+ * Hook für Workflow-Erstellung.
  */
 export function useCreateWorkflow() {
   const queryClient = useQueryClient();
@@ -185,7 +185,7 @@ export function useCreateWorkflow() {
 }
 
 /**
- * Hook fuer Workflow-Update.
+ * Hook für Workflow-Update.
  */
 export function useUpdateWorkflow() {
   const queryClient = useQueryClient();
@@ -212,7 +212,7 @@ export function useUpdateWorkflow() {
 }
 
 /**
- * Hook fuer Workflow-Loeschung.
+ * Hook für Workflow-Löschung.
  */
 export function useDeleteWorkflow() {
   const queryClient = useQueryClient();
@@ -230,7 +230,7 @@ export function useDeleteWorkflow() {
 }
 
 /**
- * Hook fuer Workflow-Duplizierung.
+ * Hook für Workflow-Duplizierung.
  */
 export function useDuplicateWorkflow() {
   const queryClient = useQueryClient();
@@ -254,7 +254,7 @@ export function useDuplicateWorkflow() {
 }
 
 /**
- * Hook fuer Workflow-Toggle.
+ * Hook für Workflow-Toggle.
  */
 export function useToggleWorkflow() {
   const queryClient = useQueryClient();
@@ -279,7 +279,7 @@ export function useToggleWorkflow() {
 }
 
 /**
- * Hook fuer Workflow-Validierung.
+ * Hook für Workflow-Validierung.
  */
 export function useValidateWorkflow() {
   return useMutation({
@@ -293,7 +293,7 @@ export function useValidateWorkflow() {
 // =============================================================================
 
 /**
- * Hook fuer Step-Erstellung.
+ * Hook für Step-Erstellung.
  */
 export function useCreateStep() {
   const queryClient = useQueryClient();
@@ -318,7 +318,7 @@ export function useCreateStep() {
 }
 
 /**
- * Hook fuer Step-Update.
+ * Hook für Step-Update.
  */
 export function useUpdateStep() {
   const queryClient = useQueryClient();
@@ -345,7 +345,7 @@ export function useUpdateStep() {
 }
 
 /**
- * Hook fuer Step-Loeschung.
+ * Hook für Step-Löschung.
  */
 export function useDeleteStep() {
   const queryClient = useQueryClient();
@@ -395,7 +395,7 @@ export function useReorderSteps() {
 }
 
 /**
- * Hook fuer Batch Step-Update.
+ * Hook für Batch Step-Update.
  */
 export function useBatchUpdateSteps() {
   const queryClient = useQueryClient();
@@ -424,7 +424,7 @@ export function useBatchUpdateSteps() {
 // =============================================================================
 
 /**
- * Hook fuer Workflow-Ausfuehrungen.
+ * Hook für Workflow-Ausführungen.
  */
 export function useWorkflowExecutions(
   workflowId: string,
@@ -439,7 +439,7 @@ export function useWorkflowExecutions(
 }
 
 /**
- * Hook fuer einzelne Ausfuehrung.
+ * Hook für einzelne Ausführung.
  */
 export function useExecution(executionId: string, enabled = true) {
   return useQuery({
@@ -452,7 +452,7 @@ export function useExecution(executionId: string, enabled = true) {
 }
 
 /**
- * Hook fuer Step-Ausfuehrungen.
+ * Hook für Step-Ausführungen.
  */
 export function useStepExecutions(executionId: string, enabled = true) {
   return useQuery({
@@ -463,7 +463,7 @@ export function useStepExecutions(executionId: string, enabled = true) {
 }
 
 /**
- * Hook fuer Workflow-Ausfuehrung.
+ * Hook für Workflow-Ausführung.
  */
 export function useExecuteWorkflow() {
   const queryClient = useQueryClient();
@@ -492,7 +492,7 @@ export function useExecuteWorkflow() {
 }
 
 /**
- * Hook fuer Execution-Pause.
+ * Hook für Execution-Pause.
  */
 export function usePauseExecution() {
   const queryClient = useQueryClient();
@@ -513,7 +513,7 @@ export function usePauseExecution() {
 }
 
 /**
- * Hook fuer Execution-Resume.
+ * Hook für Execution-Resume.
  */
 export function useResumeExecution() {
   const queryClient = useQueryClient();
@@ -534,7 +534,7 @@ export function useResumeExecution() {
 }
 
 /**
- * Hook fuer Execution-Cancel.
+ * Hook für Execution-Cancel.
  */
 export function useCancelExecution() {
   const queryClient = useQueryClient();
@@ -555,7 +555,7 @@ export function useCancelExecution() {
 }
 
 /**
- * Hook fuer Execution-Retry.
+ * Hook für Execution-Retry.
  */
 export function useRetryExecution() {
   const queryClient = useQueryClient();
@@ -580,7 +580,7 @@ export function useRetryExecution() {
 // =============================================================================
 
 /**
- * Hook fuer Template-Instanziierung.
+ * Hook für Template-Instanziierung.
  */
 export function useInstantiateTemplate() {
   const queryClient = useQueryClient();
@@ -610,7 +610,7 @@ export function useInstantiateTemplate() {
 // =============================================================================
 
 /**
- * Hook fuer Webhook-Secret-Regenerierung.
+ * Hook für Webhook-Secret-Regenerierung.
  */
 export function useRegenerateWebhookSecret() {
   const queryClient = useQueryClient();

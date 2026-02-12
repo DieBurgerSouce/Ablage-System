@@ -2,12 +2,12 @@
  * PO-Matching API Service
  *
  * Kommuniziert mit den /api/v1/po-matching Endpoints
- * fuer 3-Way Purchase Order Matching.
+ * für 3-Way Purchase Order Matching.
  *
  * Features:
  * - Match-Liste mit Filtern und Paginierung
  * - Match-Detail mit Abweichungen
- * - Auto-Matching Ausloesung
+ * - Auto-Matching Auslösung
  * - Match-Freigabe und -Bewertung
  * - Statistiken
  */
@@ -77,7 +77,7 @@ export async function fetchUnmatchedDocuments(
 }
 
 /**
- * Fuehrt automatisches Matching aus.
+ * Führt automatisches Matching aus.
  */
 export async function triggerAutoMatch(): Promise<AutoMatchResponse> {
   const response = await apiClient.post<AutoMatchResponse>(
@@ -126,7 +126,7 @@ export async function evaluatePOMatch(
 }
 
 /**
- * Ruft Matching-Statistiken fuer einen Zeitraum ab.
+ * Ruft Matching-Statistiken für einen Zeitraum ab.
  */
 export async function fetchPOMatchStats(
   periodStart: string,

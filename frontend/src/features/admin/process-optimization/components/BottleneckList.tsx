@@ -1,7 +1,7 @@
 /**
  * Bottleneck List Component
  *
- * Zeigt erkannte Prozess-Engpaesse mit Details und Empfehlungen.
+ * Zeigt erkannte Prozess-Engpässe mit Details und Empfehlungen.
  */
 
 import {
@@ -31,7 +31,7 @@ const BOTTLENECK_TYPE_CONFIG: Record<
   duration: {
     label: 'Lange Dauer',
     icon: Clock,
-    description: 'Dieser Schritt dauert laenger als erwartet',
+    description: 'Dieser Schritt dauert länger als erwartet',
   },
   queue: {
     label: 'Warteschlange',
@@ -178,12 +178,12 @@ export function BottleneckList() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Erkannte Engpaesse</CardTitle>
+          <CardTitle>Erkannte Engpässe</CardTitle>
           <CardDescription>Fehler beim Laden der Daten</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8 text-muted-foreground">
-            Keine Daten verfuegbar
+            Keine Daten verfügbar
           </div>
         </CardContent>
       </Card>
@@ -197,10 +197,10 @@ export function BottleneckList() {
           <div>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5" />
-              Erkannte Engpaesse
+              Erkannte Engpässe
             </CardTitle>
             <CardDescription>
-              {data.bottleneck_count} Engpaesse in den letzten {data.period_days} Tagen
+              {data.bottleneck_count} Engpässe in den letzten {data.period_days} Tagen
             </CardDescription>
           </div>
           <div className="text-right">
@@ -231,9 +231,9 @@ export function BottleneckList() {
         ) : (
           <div className="text-center py-8 text-muted-foreground">
             <Activity className="h-12 w-12 mx-auto mb-4 opacity-20" />
-            <p>Keine Engpaesse erkannt</p>
+            <p>Keine Engpässe erkannt</p>
             <p className="text-sm mt-1">
-              Ihr Prozess laeuft optimal!
+              Ihr Prozess läuft optimal!
             </p>
           </div>
         )}

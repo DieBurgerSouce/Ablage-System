@@ -1,8 +1,8 @@
 /**
- * Contract Hooks - TanStack Query Hooks fuer Vertragsmanagement
+ * Contract Hooks - TanStack Query Hooks für Vertragsmanagement
  *
  * Features:
- * - Infinite Scroll fuer Vertragsliste
+ * - Infinite Scroll für Vertragsliste
  * - Optimistische Updates
  * - Cache-Invalidierung
  * - Prefetching
@@ -58,7 +58,7 @@ export const contractQueryKeys = {
 // =============================================================================
 
 /**
- * Hook fuer Vertraege mit Pagination
+ * Hook für Verträge mit Pagination
  */
 export function useContracts(
   params: ContractListParams = {},
@@ -72,7 +72,7 @@ export function useContracts(
 }
 
 /**
- * Hook fuer Vertraege mit Infinite Scroll
+ * Hook für Verträge mit Infinite Scroll
  */
 export function useContractsInfinite(
   params: Omit<ContractListParams, 'offset'> = {},
@@ -105,7 +105,7 @@ export function useContractsInfinite(
 // =============================================================================
 
 /**
- * Hook fuer einzelnen Vertrag
+ * Hook für einzelnen Vertrag
  */
 export function useContract(
   id: string,
@@ -120,7 +120,7 @@ export function useContract(
 }
 
 /**
- * Hook fuer Vertrags-Timeline
+ * Hook für Vertrags-Timeline
  */
 export function useContractTimeline(
   id: string,
@@ -139,7 +139,7 @@ export function useContractTimeline(
 // =============================================================================
 
 /**
- * Hook fuer Vertragsstatistiken
+ * Hook für Vertragsstatistiken
  */
 export function useContractSummary(options?: Omit<UseQueryOptions<ContractSummary>, 'queryKey' | 'queryFn'>) {
   return useQuery({
@@ -151,7 +151,7 @@ export function useContractSummary(options?: Omit<UseQueryOptions<ContractSummar
 }
 
 /**
- * Hook fuer anstehende Fristen
+ * Hook für anstehende Fristen
  */
 export function useUpcomingDeadlines(
   daysAhead: number = 90,
@@ -170,7 +170,7 @@ export function useUpcomingDeadlines(
 // =============================================================================
 
 /**
- * Hook fuer Verlaengerungsoptionen
+ * Hook für Verlängerungsoptionen
  */
 export function useRenewalOptions(
   contractId: string,
@@ -228,7 +228,7 @@ export function useUpdateContract() {
 }
 
 /**
- * Hook zum Loeschen eines Vertrags
+ * Hook zum Löschen eines Vertrags
  */
 export function useDeleteContract() {
   const queryClient = useQueryClient();
@@ -295,7 +295,7 @@ export function useUpdateMilestone() {
 }
 
 /**
- * Hook zum Abschliessen eines Meilensteins
+ * Hook zum Abschließen eines Meilensteins
  */
 export function useCompleteMilestone() {
   const queryClient = useQueryClient();
@@ -316,13 +316,13 @@ export function useCompleteMilestone() {
       toast.success('Meilenstein abgeschlossen');
     },
     onError: () => {
-      toast.error('Fehler beim Abschliessen des Meilensteins');
+      toast.error('Fehler beim Abschließen des Meilensteins');
     },
   });
 }
 
 /**
- * Hook zum Loeschen eines Meilensteins
+ * Hook zum Löschen eines Meilensteins
  */
 export function useDeleteMilestone() {
   const queryClient = useQueryClient();
@@ -345,7 +345,7 @@ export function useDeleteMilestone() {
 // =============================================================================
 
 /**
- * Hook fuer Verlaengerungsentscheidung
+ * Hook für Verlängerungsentscheidung
  */
 export function useRenewalDecision() {
   const queryClient = useQueryClient();
@@ -423,7 +423,7 @@ export function useUpdateAmendment() {
 }
 
 /**
- * Hook zum Loeschen eines Nachtrags
+ * Hook zum Löschen eines Nachtrags
  */
 export function useDeleteAmendment() {
   const queryClient = useQueryClient();
@@ -465,7 +465,7 @@ export function useApproveAmendment() {
 // =============================================================================
 
 /**
- * Hook fuer iCal-Export
+ * Hook für iCal-Export
  */
 export function useICalExport() {
   return useMutation({
@@ -495,7 +495,7 @@ export function useICalExport() {
 // =============================================================================
 
 /**
- * Hook fuer Bulk-Export
+ * Hook für Bulk-Export
  */
 export function useBulkExport() {
   return useMutation({
@@ -511,7 +511,7 @@ export function useBulkExport() {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `vertraege-export-${new Date().toISOString().split('T')[0]}.${format}`;
+      link.download = `verträge-export-${new Date().toISOString().split('T')[0]}.${format}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -527,7 +527,7 @@ export function useBulkExport() {
 }
 
 /**
- * Hook fuer Bulk-Erinnerungen
+ * Hook für Bulk-Erinnerungen
  */
 export function useBulkSendReminders() {
   return useMutation({
@@ -561,7 +561,7 @@ export function useInvalidateContractQueries() {
 }
 
 /**
- * Combined Hook fuer die Contracts Page
+ * Combined Hook für die Contracts Page
  */
 export function useContractsPage(params: ContractListParams = {}) {
   const contractsQuery = useContracts(params);
@@ -583,7 +583,7 @@ export function useContractsPage(params: ContractListParams = {}) {
 }
 
 /**
- * Combined Hook fuer Contract Detail Page
+ * Combined Hook für Contract Detail Page
  */
 export function useContractDetail(id: string) {
   const contractQuery = useContract(id);

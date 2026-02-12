@@ -1,7 +1,7 @@
 /**
  * Payment Schedule View
  *
- * Kalenderansicht fuer geplante Zahlungen.
+ * Kalenderansicht für geplante Zahlungen.
  */
 
 import { useState } from 'react';
@@ -93,7 +93,7 @@ export function PaymentScheduleView() {
             <SelectContent>
               <SelectItem value="skonto_optimized">Skonto-optimiert</SelectItem>
               <SelectItem value="cashflow_optimized">Cashflow-optimiert</SelectItem>
-              <SelectItem value="deadline_based">Nach Faelligkeit</SelectItem>
+              <SelectItem value="deadline_based">Nach Fälligkeit</SelectItem>
             </SelectContent>
           </Select>
         </div>

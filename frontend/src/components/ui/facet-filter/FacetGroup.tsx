@@ -3,9 +3,9 @@
  *
  * Features:
  * - Collapsible Header mit Chevron
- * - Badge fuer Anzahl ausgewaehlter Werte
+ * - Badge für Anzahl ausgewählter Werte
  * - Suche innerhalb der Gruppe (optional)
- * - Virtualisierung fuer grosse Listen (>50 Items)
+ * - Virtualisierung für grosse Listen (>50 Items)
  */
 
 import * as React from 'react';
@@ -31,21 +31,21 @@ export interface FacetValue {
 export interface FacetGroupProps {
   /** Titel der Gruppe */
   title: string;
-  /** Verfuegbare Werte */
+  /** Verfügbare Werte */
   values: FacetValue[];
-  /** Ausgewaehlte Werte */
+  /** Ausgewählte Werte */
   selectedValues: string[];
-  /** Callback bei Aenderung */
+  /** Callback bei Änderung */
   onSelectionChange: (values: string[]) => void;
-  /** Ob die Gruppe standardmaessig geoeffnet ist */
+  /** Ob die Gruppe standardmäßig geöffnet ist */
   defaultOpen?: boolean;
   /** Suche in der Gruppe aktivieren */
   enableSearch?: boolean;
-  /** Schwellwert fuer Suche (default: 5) */
+  /** Schwellwert für Suche (default: 5) */
   searchThreshold?: number;
-  /** Maximale Hoehe der Scroll-Area */
+  /** Maximale Höhe der Scroll-Area */
   maxHeight?: number;
-  /** Zusaetzliche CSS-Klassen */
+  /** Zusätzliche CSS-Klassen */
   className?: string;
 }
 
@@ -109,7 +109,7 @@ export function FacetGroup({
       <div className="flex items-center justify-between py-2">
         <CollapsibleTrigger
           className="flex items-center gap-2 text-sm font-medium hover:text-foreground/80 transition-colors"
-          aria-label={`${title} ${isOpen ? 'schliessen' : 'oeffnen'}`}
+          aria-label={`${title} ${isOpen ? 'schließen' : 'öffnen'}`}
         >
           {isOpen ? (
             <ChevronDown className="h-4 w-4" aria-hidden="true" />
@@ -191,7 +191,7 @@ export function FacetGroup({
             <p className="text-sm text-muted-foreground py-2 px-2">
               {searchQuery
                 ? 'Keine Treffer gefunden'
-                : 'Keine Werte verfuegbar'}
+                : 'Keine Werte verfügbar'}
             </p>
           )}
         </div>

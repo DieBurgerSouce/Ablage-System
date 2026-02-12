@@ -95,7 +95,7 @@ const STATUS_STYLES: Record<TransactionStepStatus, {
 };
 
 /**
- * Formatiert ein Datum fuer die Timeline-Anzeige (DD.MM.YY)
+ * Formatiert ein Datum für die Timeline-Anzeige (DD.MM.YY)
  */
 function formatShortDate(dateString: string | null): string {
   if (!dateString) return '—';
@@ -108,7 +108,7 @@ function formatShortDate(dateString: string | null): string {
 }
 
 /**
- * Formatiert einen Betrag als Waehrung
+ * Formatiert einen Betrag als Währung
  */
 function formatCurrency(amount: number | null, currency = 'EUR'): string {
   if (amount === null) return '—';
@@ -130,7 +130,7 @@ function calculateProgress(steps: TransactionStep[]): number {
 }
 
 /**
- * Ermittelt den aktuellen Status-Text fuer den Vorgang
+ * Ermittelt den aktuellen Status-Text für den Vorgang
  */
 function getStatusText(transaction: Transaction): string {
   const { status, steps } = transaction;
@@ -139,7 +139,7 @@ function getStatusText(transaction: Transaction): string {
   if (status === 'cancelled') return 'Abgebrochen';
   if (status === 'draft') return 'Entwurf';
 
-  // Finde den aktiven oder naechsten pending Schritt
+  // Finde den aktiven oder nächsten pending Schritt
   const activeStep = steps.find((s) => s.status === 'active');
   if (activeStep) {
     const config = TRANSACTION_STEPS.find((c) => c.type === activeStep.type);
@@ -149,7 +149,7 @@ function getStatusText(transaction: Transaction): string {
   const nextPending = steps.find((s) => s.status === 'pending');
   if (nextPending) {
     const config = TRANSACTION_STEPS.find((c) => c.type === nextPending.type);
-    return `Naechster Schritt: ${config?.label || nextPending.type}`;
+    return `Nächster Schritt: ${config?.label || nextPending.type}`;
   }
 
   return 'In Bearbeitung';
@@ -361,7 +361,7 @@ export function TransactionTimeline({
               Erstellt: {formatShortDate(transaction.createdAt)}
             </span>
             <span>
-              Letzte Aktivitaet: {formatShortDate(transaction.lastActivityAt)}
+              Letzte Aktivität: {formatShortDate(transaction.lastActivityAt)}
             </span>
           </div>
         )}

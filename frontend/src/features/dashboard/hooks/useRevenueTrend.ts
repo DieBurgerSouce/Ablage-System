@@ -1,8 +1,8 @@
 /**
  * Revenue Trend Hook
  *
- * React Query Hook fuer Umsatzentwicklungs-Daten.
- * Nutzt den globalen DateRange-Filter fuer zeitraumbasierte Abfragen.
+ * React Query Hook für Umsatzentwicklungs-Daten.
+ * Nutzt den globalen DateRange-Filter für zeitraumbasierte Abfragen.
  *
  * Phase C: Business KPIs
  */
@@ -39,7 +39,7 @@ export function useRevenueTrend() {
 }
 
 /**
- * Formatiere Waehrungsbetrag (EUR)
+ * Formatiere Währungsbetrag (EUR)
  */
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat('de-DE', {

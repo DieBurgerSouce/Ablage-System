@@ -226,11 +226,11 @@ export function TeamMemberList({ teamId, currentUserId, isTeamAdmin = false }: T
           <AlertDialogHeader>
             <AlertDialogTitle>Mitglied entfernen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Moechten Sie{' '}
+              Möchten Sie{' '}
               <strong>
                 {memberToRemove?.user?.full_name || memberToRemove?.user?.username}
               </strong>{' '}
-              wirklich aus dem Team entfernen? Diese Aktion kann nicht rueckgaengig gemacht werden.
+              wirklich aus dem Team entfernen? Diese Aktion kann nicht rückgängig gemacht werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

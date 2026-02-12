@@ -1,7 +1,7 @@
 /**
  * Import System TypeScript Types
  *
- * Type-Definitionen fuer E-Mail-Import, Ordner-Import und Import-Regeln.
+ * Type-Definitionen für E-Mail-Import, Ordner-Import und Import-Regeln.
  */
 
 // =============================================================================

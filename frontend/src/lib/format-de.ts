@@ -1,16 +1,16 @@
 /**
  * Deutsche Formatierungsbibliothek - Erweiterte Utilities
  *
- * Ergaenzt format.ts um:
+ * Ergänzt format.ts um:
  * - Datumsformatierung (kurz, lang, relativ)
  * - Zeitformatierung (12h/24h)
- * - Dateigroessen
+ * - Dateigrößen
  * - Prozentangaben
  * - Aufbewahrungsfristen
- * - Steuerzeitraeume
+ * - Steuerzeiträume
  *
- * WICHTIG: Diese Datei ergaenzt format.ts, dupliziert es nicht.
- * Funktionen aus format.ts werden wiederverwendet wo moeglich.
+ * WICHTIG: Diese Datei ergänzt format.ts, dupliziert es nicht.
+ * Funktionen aus format.ts werden wiederverwendet wo möglich.
  */
 
 // Re-export existing functions from format.ts
@@ -213,7 +213,7 @@ export function formatRelativeDE(date: Date | string | null | undefined): string
 // ==================== FILE SIZE FORMATTING ====================
 
 /**
- * Formatiert eine Dateigroesse (erweiterte Version mit mehr Einheiten)
+ * Formatiert eine Dateigröße (erweiterte Version mit mehr Einheiten)
  *
  * @example
  * formatFileSizeDE(500) // "500 Bytes"

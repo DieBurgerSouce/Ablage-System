@@ -20,6 +20,7 @@
 import { useState } from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, Wifi, WifiOff, Cloud, CloudOff } from 'lucide-react';
+import { AnimatedPage } from '@/components/animations';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -107,7 +108,7 @@ function ScanPage() {
     (phase === 'processing' || phase === 'result') && documentId !== null;
 
   return (
-    <div className={cn(
+    <AnimatedPage><div className={cn(
       'min-h-screen bg-background',
       isPWA && 'pt-safe-top pb-safe-bottom'
     )}>
@@ -171,7 +172,7 @@ function ScanPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Zielordner</CardTitle>
               <CardDescription>
-                Waehlen Sie einen Ordner fuer das Dokument
+                Wählen Sie einen Ordner für das Dokument
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -180,7 +181,7 @@ function ScanPage() {
                 onValueChange={(value) => setSelectedFolderId(value === 'none' ? undefined : value)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Ordner auswaehlen (optional)" />
+                  <SelectValue placeholder="Ordner auswählen (optional)" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Kein Ordner (Posteingang)</SelectItem>
@@ -227,7 +228,7 @@ function ScanPage() {
                 <div>
                   <p className="font-medium">Als App installieren</p>
                   <p className="text-sm text-muted-foreground">
-                    Installieren Sie die App fuer schnelleren Zugriff und Offline-Unterstuetzung.
+                    Installieren Sie die App für schnelleren Zugriff und Offline-Unterstützung.
                   </p>
                 </div>
               </div>
@@ -248,7 +249,7 @@ function ScanPage() {
         ocrResult={ocrResult}
         isAssigning={isAssigning}
       />
-    </div>
+    </div></AnimatedPage>
   );
 }
 

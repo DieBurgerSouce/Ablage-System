@@ -1,7 +1,7 @@
 /**
- * ChainListPage - Auftragsketten-Uebersichtsseite
+ * ChainListPage - Auftragsketten-Übersichtsseite
  *
- * Listet alle Auftragsketten mit Filtermoeglichkeiten.
+ * Listet alle Auftragsketten mit Filtermöglichkeiten.
  */
 
 import { useState } from 'react';
@@ -198,7 +198,7 @@ export function ChainListPage({ onChainClick, className }: ChainListPageProps) {
               <p className="text-sm">
                 {searchQuery
                   ? 'Versuchen Sie eine andere Suchanfrage.'
-                  : 'Erstellen Sie Ihre erste Auftragskette, um Dokumente zu verknuepfen.'}
+                  : 'Erstellen Sie Ihre erste Auftragskette, um Dokumente zu verknüpfen.'}
               </p>
               {!searchQuery && (
                 <Button className="mt-4" onClick={() => setIsCreateOpen(true)}>

@@ -1,7 +1,7 @@
 /**
- * Date Range Context fuer Dashboard Widgets
+ * Date Range Context für Dashboard Widgets
  *
- * Shared state fuer Datumsfilter auf allen Widgets.
+ * Shared state für Datumsfilter auf allen Widgets.
  * Stellt einen globalen Zeitraum-Filter bereit, der von
  * allen KPI-Widgets konsumiert werden kann.
  *
@@ -27,7 +27,7 @@ interface DateRangeContextValue {
 const defaultRange: DateRange = {
   from: undefined,
   to: undefined,
-  label: 'Alle Zeitraeume',
+  label: 'Alle Zeiträume',
 };
 
 const DateRangeContext = createContext<DateRangeContextValue>({
@@ -52,7 +52,7 @@ export function useDateRange() {
   return useContext(DateRangeContext);
 }
 
-// Vordefinierte Zeitraeume
+// Vordefinierte Zeiträume
 export const PREDEFINED_RANGES = [
   {
     label: 'Diesen Monat',

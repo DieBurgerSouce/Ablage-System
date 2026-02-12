@@ -2,7 +2,7 @@
  * TemplateCatalog Component
  *
  * Zeigt den Katalog vordefinierter Report-Templates.
- * Ermoeglicht Filtern nach Kategorie und Erstellen neuer Reports aus Templates.
+ * Ermöglicht Filtern nach Kategorie und Erstellen neuer Reports aus Templates.
  */
 
 import { useState, useMemo } from 'react';
@@ -57,7 +57,7 @@ interface TemplateCatalogProps {
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
     finanzen: Receipt,
     dokumente: FileText,
-    geschaeftspartner: Users,
+    geschäftspartner: Users,
     ocr: BarChart3,
 };
 
@@ -97,7 +97,7 @@ function CatalogEmpty({ searchQuery }: { searchQuery: string }) {
             <BookTemplate className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground">
                 {searchQuery
-                    ? `Keine Templates gefunden fuer "${searchQuery}"`
+                    ? `Keine Templates gefunden für "${searchQuery}"`
                     : 'Keine Templates im Katalog'}
             </p>
         </div>
@@ -150,13 +150,13 @@ function InstantiateDialog({
                                 autoFocus
                             />
                             <p className="text-xs text-muted-foreground">
-                                Leer lassen fuer Standardname
+                                Leer lassen für Standardname
                             </p>
                         </div>
 
                         {template && (
                             <div className="rounded-lg border bg-muted/50 p-3 space-y-2">
-                                <p className="text-sm font-medium">Vorlage enthaelt:</p>
+                                <p className="text-sm font-medium">Vorlage enthält:</p>
                                 <div className="flex flex-wrap gap-2 text-xs">
                                     <Badge variant="secondary">
                                         {template.default_columns.length} Spalten
@@ -311,7 +311,7 @@ export function TemplateCatalog({ onTemplateCreated, compact = false }: Template
                                     Vorlagen-Katalog
                                 </CardTitle>
                                 <CardDescription>
-                                    Waehle eine vordefinierte Vorlage, um schnell einen neuen Report zu erstellen.
+                                    Wähle eine vordefinierte Vorlage, um schnell einen neuen Report zu erstellen.
                                 </CardDescription>
                             </div>
                             <Button

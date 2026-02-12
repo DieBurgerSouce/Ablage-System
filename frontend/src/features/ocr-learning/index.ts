@@ -1,7 +1,7 @@
 /**
  * OCR Self-Learning Module
  *
- * Exports fuer das selbstlernende OCR-System.
+ * Exports für das selbstlernende OCR-System.
  */
 
 // Main Dashboard

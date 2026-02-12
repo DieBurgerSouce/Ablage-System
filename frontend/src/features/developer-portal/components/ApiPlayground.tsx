@@ -1,7 +1,7 @@
 /**
  * API Playground
  *
- * Interaktiver API-Tester fuer Developer Portal.
+ * Interaktiver API-Tester für Developer Portal.
  */
 
 import { useState, useMemo } from 'react';
@@ -155,7 +155,7 @@ export function ApiPlayground() {
             <Code2 className="h-5 w-5" />
             Endpoints
           </CardTitle>
-          <CardDescription>{endpoints.length} verfuegbare Endpoints</CardDescription>
+          <CardDescription>{endpoints.length} verfügbare Endpoints</CardDescription>
         </CardHeader>
         <CardContent className="max-h-[600px] overflow-y-auto">
           <div className="space-y-2">
@@ -205,7 +205,7 @@ export function ApiPlayground() {
           <CardDescription>
             {selectedEndpoint
               ? selectedEndpoint.summary
-              : 'Waehlen Sie einen Endpoint aus der Liste'}
+              : 'Wählen Sie einen Endpoint aus der Liste'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -286,7 +286,7 @@ export function ApiPlayground() {
                 {executeMutation.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Ausfuehren...
+                    Ausführen...
                   </>
                 ) : (
                   <>
@@ -326,9 +326,9 @@ export function ApiPlayground() {
           ) : (
             <div className="text-center py-12 text-muted-foreground">
               <Code2 className="h-12 w-12 mx-auto mb-4 opacity-20" />
-              <p>Waehlen Sie einen Endpoint aus der Liste</p>
+              <p>Wählen Sie einen Endpoint aus der Liste</p>
               <p className="text-sm mt-1">
-                um Anfragen zu testen und Responses zu pruefen
+                um Anfragen zu testen und Responses zu prüfen
               </p>
             </div>
           )}

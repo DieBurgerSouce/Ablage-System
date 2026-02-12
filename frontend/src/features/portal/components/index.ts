@@ -1,7 +1,7 @@
 /**
  * Portal Components Index
  *
- * Barrel export fuer alle Portal-Komponenten.
+ * Barrel export für alle Portal-Komponenten.
  */
 
 export { PortalLayout } from './PortalLayout';

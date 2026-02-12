@@ -175,7 +175,7 @@ export function CarbonFootprintPage() {
         <CardHeader>
           <CardTitle>Emissionstrend</CardTitle>
           <CardDescription>
-            Entwicklung der CO2-Emissionen ueber Zeit
+            Entwicklung der CO2-Emissionen über Zeit
           </CardDescription>
         </CardHeader>
         <CardContent>

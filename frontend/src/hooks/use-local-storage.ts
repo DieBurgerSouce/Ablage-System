@@ -2,7 +2,7 @@
  * useLocalStorage Hook
  *
  * Persistiert State in localStorage mit automatischer Serialisierung.
- * Unterstuetzt generische Typen und SSR-Sicherheit.
+ * Unterstützt generische Typen und SSR-Sicherheit.
  */
 
 import { useState, useCallback } from 'react'

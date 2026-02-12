@@ -1,8 +1,8 @@
 /**
  * FormRegistryContext - Global Form Dirty State Management
  *
- * Ermoeglicht globale Verfolgung von unsaved changes ueber mehrere Formulare.
- * Integration mit TanStack Router fuer Navigation Blocking.
+ * Ermöglicht globale Verfolgung von unsaved changes über mehrere Formulare.
+ * Integration mit TanStack Router für Navigation Blocking.
  *
  * @example
  * ```tsx
@@ -19,7 +19,7 @@
  *   return () => unregisterForm(formId);
  * }, []);
  *
- * // Bei Aenderungen
+ * // Bei Änderungen
  * setDirty(formId, true);
  * ```
  */
@@ -78,32 +78,32 @@ export function useFormRegistry(): FormRegistryContextValue {
 }
 
 /**
- * Hook fuer einzelne Formulare - vereinfachte API
+ * Hook für einzelne Formulare - vereinfachte API
  *
  * WICHTIG: Registriert das Formular bei Mount und entfernt es bei Unmount.
- * Verwendet useEffect fuer korrektes Cleanup (nicht useState!).
+ * Verwendet useEffect für korrektes Cleanup (nicht useState!).
  *
  * ENTERPRISE FIX: Verwendet Refs um Callback-Referenzen zu stabilisieren.
- * Dies verhindert Memory Leaks durch unnoetige Effect-Re-Runs wenn
- * registerForm/unregisterForm sich bei Parent-Renders aendern.
+ * Dies verhindert Memory Leaks durch unnötige Effect-Re-Runs wenn
+ * registerForm/unregisterForm sich bei Parent-Renders ändern.
  */
 export function useFormDirtyTracking(formName: string) {
     const { registerForm, unregisterForm, setDirty } = useFormRegistry();
     const formIdRef = useRef<string | null>(null);
 
     // ENTERPRISE FIX: Stabilisiere Callback-Referenzen mit Refs
-    // Dies verhindert dass der Effect bei jedem Parent-Render neu laeuft
+    // Dies verhindert dass der Effect bei jedem Parent-Render neu läuft
     const registerFormRef = useRef(registerForm);
     const unregisterFormRef = useRef(unregisterForm);
     const setDirtyRef = useRef(setDirty);
 
-    // Update refs bei jeder Aenderung (synchron, vor Effects)
+    // Update refs bei jeder Änderung (synchron, vor Effects)
     registerFormRef.current = registerForm;
     unregisterFormRef.current = unregisterForm;
     setDirtyRef.current = setDirty;
 
     // Register on mount, unregister on unmount
-    // NUR formName als Dependency - Refs aendern sich nicht
+    // NUR formName als Dependency - Refs ändern sich nicht
     useEffect(() => {
         const id = registerFormRef.current(formName);
         formIdRef.current = id;
@@ -167,14 +167,14 @@ export function FormRegistryProvider({
         condition: hasUnsavedChanges,
     });
 
-    // Register form mit Groessenlimit und Stale-Cleanup
+    // Register form mit Größenlimit und Stale-Cleanup
     const registerForm = useCallback((name: string): string => {
         const id = `form-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         setForms((prev) => {
             const next = new Map(prev);
             const now = Date.now();
 
-            // Cleanup: Entferne stale Eintraege (nicht-dirty und aelter als Threshold)
+            // Cleanup: Entferne stale Einträge (nicht-dirty und älter als Threshold)
             // Dies verhindert Memory Leaks wenn unregisterForm nicht aufgerufen wird
             for (const [key, form] of next) {
                 const age = now - form.registeredAt.getTime();
@@ -189,12 +189,12 @@ export function FormRegistryProvider({
                     `Maximales Formularlimit von ${MAX_FORMS} Formularen erreicht. ` +
                     `Älteste nicht-gespeicherte Einträge werden entfernt.`
                 );
-                // Entferne aelteste nicht-dirty Eintraege bis Platz ist
+                // Entferne älteste nicht-dirty Einträge bis Platz ist
                 const sortedEntries = Array.from(next.entries())
                     .filter(([, form]) => !form.isDirty)
                     .sort((a, b) => a[1].registeredAt.getTime() - b[1].registeredAt.getTime());
 
-                // Entferne bis zu 10 aelteste Eintraege oder bis genug Platz ist
+                // Entferne bis zu 10 älteste Einträge oder bis genug Platz ist
                 const toRemove = Math.min(10, sortedEntries.length);
                 for (let i = 0; i < toRemove && next.size >= MAX_FORMS; i++) {
                     next.delete(sortedEntries[i][0]);
@@ -271,10 +271,10 @@ export function FormRegistryProvider({
 // ==================== Global Navigation Guard ====================
 
 /**
- * Hook fuer globale Navigation Guard
+ * Hook für globale Navigation Guard
  * Zeigt automatisch Warning Dialog bei unsaved changes
  *
- * WICHTIG: Verwendet useEffect fuer korrektes Event-Listener-Cleanup.
+ * WICHTIG: Verwendet useEffect für korrektes Event-Listener-Cleanup.
  * Der hasUnsavedChanges-Wert wird via Ref aktualisiert, um stale closures zu vermeiden.
  */
 export function useGlobalUnsavedChangesGuard() {

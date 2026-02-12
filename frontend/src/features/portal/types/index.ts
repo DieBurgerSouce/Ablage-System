@@ -1,7 +1,7 @@
 /**
  * Portal Types
  *
- * TypeScript-Definitionen fuer das Kundenportal.
+ * TypeScript-Definitionen für das Kundenportal.
  */
 
 // ============================================================================

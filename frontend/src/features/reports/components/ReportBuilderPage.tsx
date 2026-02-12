@@ -1,12 +1,12 @@
 /**
  * ReportBuilderPage Component
  *
- * Volle Seite fuer den visuellen Report-Builder mit Multi-Step-Navigation:
+ * Volle Seite für den visuellen Report-Builder mit Multi-Step-Navigation:
  * 1. Datenquelle - Auswahl der Basis-Datenquelle
- * 2. Filter - Filter-Regeln hinzufuegen
+ * 2. Filter - Filter-Regeln hinzufügen
  * 3. Gruppierung & Aggregation - Felder gruppieren, Summen/Durchschnitte
- * 4. Darstellung - Diagramm-Typ waehlen
- * 5. Zeitplan (optional) - Automatische Ausfuehrung konfigurieren
+ * 4. Darstellung - Diagramm-Typ wählen
+ * 5. Zeitplan (optional) - Automatische Ausführung konfigurieren
  *
  * Rechts: Vorschau-Panel
  */
@@ -82,16 +82,16 @@ const STEPS: Step[] = [
 const dataSourceOptions: { value: DataSource; label: string; description: string }[] = [
   { value: 'documents', label: 'Dokumente', description: 'Alle erfassten Dokumente' },
   { value: 'invoices', label: 'Rechnungen', description: 'Rechnungen und Zahlungen' },
-  { value: 'entities', label: 'Geschaeftspartner', description: 'Kunden und Lieferanten' },
+  { value: 'entities', label: 'Geschäftspartner', description: 'Kunden und Lieferanten' },
   { value: 'ocr_results', label: 'OCR-Ergebnisse', description: 'OCR-Verarbeitungsergebnisse' },
 ];
 
 const chartTypeOptions: { value: ChartType | 'table'; label: string; description: string }[] = [
   { value: 'table', label: 'Tabelle', description: 'Klassische Tabellenansicht' },
   { value: 'bar', label: 'Balkendiagramm', description: 'Vergleich von Werten' },
-  { value: 'line', label: 'Liniendiagramm', description: 'Trends ueber Zeit' },
+  { value: 'line', label: 'Liniendiagramm', description: 'Trends über Zeit' },
   { value: 'pie', label: 'Kreisdiagramm', description: 'Anteile und Verteilungen' },
-  { value: 'area', label: 'Flaechendiagramm', description: 'Mengenentwicklungen' },
+  { value: 'area', label: 'Flächendiagramm', description: 'Mengenentwicklungen' },
   { value: 'stacked_bar', label: 'Gestapelt', description: 'Gestapelter Vergleich' },
 ];
 
@@ -106,8 +106,8 @@ const aggregationOptions: { value: AggregationType; label: string }[] = [
 const operatorOptions: { value: FilterOperator; label: string }[] = [
   { value: 'equals', label: 'Gleich' },
   { value: 'not_equals', label: 'Ungleich' },
-  { value: 'contains', label: 'Enthaelt' },
-  { value: 'greater_than', label: 'Groesser als' },
+  { value: 'contains', label: 'Enthält' },
+  { value: 'greater_than', label: 'Größer als' },
   { value: 'less_than', label: 'Kleiner als' },
   { value: 'between', label: 'Zwischen' },
   { value: 'is_null', label: 'Ist leer' },
@@ -116,8 +116,8 @@ const operatorOptions: { value: FilterOperator; label: string }[] = [
 
 const scheduleOptions = [
   { value: 'none', label: 'Kein Zeitplan' },
-  { value: 'daily', label: 'Taeglich', cron: '0 8 * * *' },
-  { value: 'weekly', label: 'Woechentlich (Montag)', cron: '0 8 * * 1' },
+  { value: 'daily', label: 'Täglich', cron: '0 8 * * *' },
+  { value: 'weekly', label: 'Wöchentlich (Montag)', cron: '0 8 * * 1' },
   { value: 'monthly', label: 'Monatlich (1.)', cron: '0 8 1 * *' },
 ];
 
@@ -286,7 +286,7 @@ export function ReportBuilderPage() {
             disabled={!name || isSaving}
           >
             <Play className="h-4 w-4 mr-2" />
-            Ausfuehren
+            Ausführen
           </Button>
         </div>
       </div>
@@ -337,9 +337,9 @@ export function ReportBuilderPage() {
           {currentStep === 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Datenquelle waehlen</CardTitle>
+                <CardTitle>Datenquelle wählen</CardTitle>
                 <CardDescription>
-                  Waehlen Sie die Basis-Datenquelle fuer Ihren Bericht.
+                  Wählen Sie die Basis-Datenquelle für Ihren Bericht.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -397,7 +397,7 @@ export function ReportBuilderPage() {
               <CardHeader>
                 <CardTitle>Filter konfigurieren</CardTitle>
                 <CardDescription>
-                  Fuegen Sie Filter hinzu, um die Daten einzuschraenken.
+                  Fügen Sie Filter hinzu, um die Daten einzuschränken.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -412,7 +412,7 @@ export function ReportBuilderPage() {
                         }
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Feld waehlen" />
+                          <SelectValue placeholder="Feld wählen" />
                         </SelectTrigger>
                         <SelectContent>
                           {fields?.map((f) => (
@@ -473,7 +473,7 @@ export function ReportBuilderPage() {
                   onClick={handleAddFilter}
                 >
                   <Filter className="h-4 w-4 mr-2" />
-                  Filter hinzufuegen
+                  Filter hinzufügen
                 </Button>
 
                 {filters.length === 0 && (
@@ -505,7 +505,7 @@ export function ReportBuilderPage() {
                     onValueChange={(v) => setGroupByField(v === 'none' ? '' : v)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Feld waehlen" />
+                      <SelectValue placeholder="Feld wählen" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Keine Gruppierung</SelectItem>
@@ -560,9 +560,9 @@ export function ReportBuilderPage() {
           {currentStep === 3 && (
             <Card>
               <CardHeader>
-                <CardTitle>Darstellung waehlen</CardTitle>
+                <CardTitle>Darstellung wählen</CardTitle>
                 <CardDescription>
-                  Waehlen Sie, wie die Ergebnisse dargestellt werden sollen.
+                  Wählen Sie, wie die Ergebnisse dargestellt werden sollen.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -594,12 +594,12 @@ export function ReportBuilderPage() {
               <CardHeader>
                 <CardTitle>Zeitplan (optional)</CardTitle>
                 <CardDescription>
-                  Konfigurieren Sie eine automatische Ausfuehrung.
+                  Konfigurieren Sie eine automatische Ausführung.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Automatische Ausfuehrung</Label>
+                  <Label>Automatische Ausführung</Label>
                   <Select
                     value={scheduleType}
                     onValueChange={setScheduleType}
@@ -639,7 +639,7 @@ export function ReportBuilderPage() {
                 {scheduleType !== 'none' && (
                   <div className="space-y-2">
                     <Label htmlFor="email-recipients">
-                      E-Mail-Empfaenger (optional)
+                      E-Mail-Empfänger (optional)
                     </Label>
                     <Input
                       id="email-recipients"
@@ -658,7 +658,7 @@ export function ReportBuilderPage() {
                     <Calendar className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                     <p className="text-sm text-muted-foreground">
                       Kein Zeitplan konfiguriert. Der Bericht kann manuell
-                      ausgefuehrt werden.
+                      ausgeführt werden.
                     </p>
                   </div>
                 )}
@@ -674,7 +674,7 @@ export function ReportBuilderPage() {
               disabled={currentStep === 0}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Zurueck
+              Zurück
             </Button>
 
             {currentStep < STEPS.length - 1 ? (

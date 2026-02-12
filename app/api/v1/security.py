@@ -10,7 +10,9 @@ Bietet Admin-Endpoints fuer:
 Alle Endpoints erfordern Superuser-Authentifizierung.
 """
 
-from typing import Any, Dict, List
+from typing import Dict, List
+
+from app.core.types import JSONDict
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -45,7 +47,7 @@ class AuditFindingResponse(BaseModel):
     recommendation: str
     affected_component: str
     passed: bool
-    details: Dict[str, Any]
+    details: JSONDict
 
 
 class AuditSummaryResponse(BaseModel):

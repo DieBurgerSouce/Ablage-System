@@ -1,7 +1,7 @@
 /**
  * Risk Dashboard Component
  *
- * Haupt-Dashboard fuer das Risk Scoring System.
+ * Haupt-Dashboard für das Risk Scoring System.
  */
 
 import { useState } from 'react';

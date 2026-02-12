@@ -1,7 +1,7 @@
 /**
  * Developer Portal Page
  *
- * Hauptseite fuer Entwickler-Ressourcen:
+ * Hauptseite für Entwickler-Ressourcen:
  * - API Playground
  * - Webhook-Verwaltung
  * - SDK-Downloads

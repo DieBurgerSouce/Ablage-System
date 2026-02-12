@@ -184,7 +184,7 @@ export function SupplierRatingsPage() {
       {/* Suppliers Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Lieferanten-Uebersicht</CardTitle>
+          <CardTitle>Lieferanten-Übersicht</CardTitle>
           <CardDescription>
             Alle Lieferanten mit ihren ESG-Bewertungen
           </CardDescription>

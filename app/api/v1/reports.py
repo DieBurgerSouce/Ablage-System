@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
 from app.core.safe_errors import safe_error_detail
+from app.core.types import JSONValue
 from app.db.models import User
 from app.services.reports import (
     ReportBuilderService,
@@ -27,6 +28,15 @@ from app.services.reports import (
     ReportSchedulerService,
     ReportTemplateService,
 )
+from app.services.reports.report_templates import (
+    CASHFLOW_FORECAST_TEMPLATE,
+    COST_ANALYSIS_TEMPLATE,
+    DOCUMENT_VOLUME_TEMPLATE,
+    ReportTemplate as PreBuiltTemplate,
+    get_all_templates,
+    get_template_by_id as get_prebuilt_template_by_id,
+)
+from app.services.reports.pdf_export_service import PdfExportService
 
 logger = structlog.get_logger(__name__)
 
@@ -91,6 +101,15 @@ class AggregationType(str, Enum):
 
 
 # =============================================================================
+# TYPED VALUE ALIASES (replaces Any)
+# =============================================================================
+
+FilterValue = Union[str, int, float, bool, List[str]]
+# JSONValue imported from app.core.types
+# Note: JSONValue removed - use JSONValue from core.types instead
+
+
+# =============================================================================
 # PYDANTIC SCHEMAS
 # =============================================================================
 
@@ -135,7 +154,7 @@ class ReportColumnResponse(BaseModel):
 class ReportFilterCreate(BaseModel):
     field_path: str = Field(..., description="Pfad zum Feld")
     operator: FilterOperator = Field(..., description="Filter-Operator")
-    value: Optional[Any] = Field(None, description="Wert fuer den Filter")
+    value: Optional[FilterValue] = Field(None, description="Wert fuer den Filter")
     logic_operator: str = Field("AND", description="Logische Verknuepfung: AND|OR")
     group_id: Optional[int] = Field(None, description="Gruppen-ID fuer verschachtelte Filter")
     sort_order: int = Field(0, description="Reihenfolge")
@@ -146,7 +165,7 @@ class ReportFilterCreate(BaseModel):
 class ReportFilterUpdate(BaseModel):
     field_path: Optional[str] = None
     operator: Optional[FilterOperator] = None
-    value: Optional[Any] = None
+    value: Optional[FilterValue] = None
     logic_operator: Optional[str] = None
     group_id: Optional[int] = None
     sort_order: Optional[int] = None
@@ -159,7 +178,7 @@ class ReportFilterResponse(BaseModel):
     template_id: uuid.UUID
     field_path: str
     operator: str
-    value: Optional[Any]
+    value: Optional[FilterValue]
     logic_operator: str
     group_id: Optional[int]
     sort_order: int
@@ -226,8 +245,8 @@ class ReportTemplateCreate(BaseModel):
     default_format: ExportFormat = Field(ExportFormat.EXCEL, description="Standard-Exportformat")
     company_id: Optional[uuid.UUID] = Field(None, description="Mandanten-ID (optional)")
     is_public: bool = Field(False, description="Oeffentlich sichtbar?")
-    layout_config: Optional[Dict[str, Any]] = Field(None, description="Layout-Konfiguration")
-    sort_config: Optional[List[Dict[str, Any]]] = Field(None, description="Sortierung")
+    layout_config: Optional[Dict[str, JSONValue]] = Field(None, description="Layout-Konfiguration")
+    sort_config: Optional[List[Dict[str, JSONValue]]] = Field(None, description="Sortierung")
     group_by_config: Optional[List[str]] = Field(None, description="Gruppierung")
 
 
@@ -238,8 +257,8 @@ class ReportTemplateUpdate(BaseModel):
     data_source: Optional[DataSource] = None
     default_format: Optional[ExportFormat] = None
     is_public: Optional[bool] = None
-    layout_config: Optional[Dict[str, Any]] = None
-    sort_config: Optional[List[Dict[str, Any]]] = None
+    layout_config: Optional[Dict[str, JSONValue]] = None
+    sort_config: Optional[List[Dict[str, JSONValue]]] = None
     group_by_config: Optional[List[str]] = None
 
 
@@ -254,9 +273,9 @@ class ReportTemplateResponse(BaseModel):
     default_format: str
     is_public: bool
     is_scheduled: bool
-    schedule_config: Optional[Dict[str, Any]]
-    layout_config: Optional[Dict[str, Any]]
-    sort_config: Optional[List[Dict[str, Any]]]
+    schedule_config: Optional[Dict[str, JSONValue]]
+    layout_config: Optional[Dict[str, JSONValue]]
+    sort_config: Optional[List[Dict[str, JSONValue]]]
     group_by_config: Optional[List[str]]
     created_at: datetime
     updated_at: datetime
@@ -319,14 +338,14 @@ class ReportExecutionResponse(BaseModel):
 
 class ReportPreviewResponse(BaseModel):
     template_id: uuid.UUID
-    columns: List[Dict[str, Any]]
-    sample_rows: List[Dict[str, Any]]
+    columns: List[Dict[str, JSONValue]]
+    sample_rows: List[Dict[str, JSONValue]]
     total_count: int
 
 
 class ReportExecuteRequest(BaseModel):
     format: ExportFormat = Field(ExportFormat.EXCEL, description="Export-Format")
-    runtime_filters: Optional[Dict[str, Any]] = Field(None, description="Laufzeit-Filter")
+    runtime_filters: Optional[Dict[str, FilterValue]] = Field(None, description="Laufzeit-Filter")
 
 
 class FieldDefinition(BaseModel):
@@ -384,9 +403,125 @@ def get_catalog_service() -> ReportCatalogService:
     return ReportCatalogService()
 
 
+def get_pdf_export_service() -> PdfExportService:
+    return PdfExportService()
+
+
+# =============================================================================
+# PRE-BUILT TEMPLATES SCHEMAS
+# =============================================================================
+
+
+class PreBuiltColumnResponse(BaseModel):
+    key: str
+    label: str
+    format_type: str
+
+
+class PreBuiltChartResponse(BaseModel):
+    chart_type: str
+    x_axis: str
+    y_axis: str
+    title: str
+
+
+class PreBuiltTemplateResponse(BaseModel):
+    template_id: str
+    name: str
+    description: str
+    category: str
+    columns: List[PreBuiltColumnResponse]
+    default_filters: Dict[str, str]
+    charts: List[PreBuiltChartResponse]
+    grouping: List[str]
+    supports_comparison: bool
+    supports_export: List[str]
+
+
 # =============================================================================
 # TEMPLATE ENDPOINTS
 # =============================================================================
+
+
+@router.get("/templates/prebuilt", response_model=List[PreBuiltTemplateResponse])
+async def get_prebuilt_templates() -> List[PreBuiltTemplateResponse]:
+    """
+    Gibt alle vorkonfigurierten Report-Templates zurück.
+
+    Enthält:
+    - Kostenauswertung (Cost Analysis)
+    - Cashflow-Prognose (Cashflow Forecast)
+    - Dokumenten-Volumen (Document Volume)
+    """
+    templates = get_all_templates()
+
+    return [
+        PreBuiltTemplateResponse(
+            template_id=t.template_id,
+            name=t.name,
+            description=t.description,
+            category=t.category,
+            columns=[
+                PreBuiltColumnResponse(
+                    key=col.key,
+                    label=col.label,
+                    format_type=col.format_type,
+                )
+                for col in t.columns
+            ],
+            default_filters=t.default_filters,
+            charts=[
+                PreBuiltChartResponse(
+                    chart_type=chart.chart_type,
+                    x_axis=chart.x_axis,
+                    y_axis=chart.y_axis,
+                    title=chart.title,
+                )
+                for chart in t.charts
+            ],
+            grouping=t.grouping,
+            supports_comparison=t.supports_comparison,
+            supports_export=t.supports_export,
+        )
+        for t in templates
+    ]
+
+
+@router.get("/templates/prebuilt/{template_id}", response_model=PreBuiltTemplateResponse)
+async def get_prebuilt_template(template_id: str) -> PreBuiltTemplateResponse:
+    """Holt ein spezifisches Pre-Built Template."""
+    template = get_prebuilt_template_by_id(template_id)
+
+    if not template:
+        raise HTTPException(status_code=404, detail="Pre-Built Template nicht gefunden")
+
+    return PreBuiltTemplateResponse(
+        template_id=template.template_id,
+        name=template.name,
+        description=template.description,
+        category=template.category,
+        columns=[
+            PreBuiltColumnResponse(
+                key=col.key,
+                label=col.label,
+                format_type=col.format_type,
+            )
+            for col in template.columns
+        ],
+        default_filters=template.default_filters,
+        charts=[
+            PreBuiltChartResponse(
+                chart_type=chart.chart_type,
+                x_axis=chart.x_axis,
+                y_axis=chart.y_axis,
+                title=chart.title,
+            )
+            for chart in template.charts
+        ],
+        grouping=template.grouping,
+        supports_comparison=template.supports_comparison,
+        supports_export=template.supports_export,
+    )
 
 
 @router.get("/templates", response_model=List[ReportTemplateResponse])
@@ -781,8 +916,13 @@ async def execute_report(
     template_service: ReportTemplateService = Depends(get_template_service),
     builder_service: ReportBuilderService = Depends(get_builder_service),
     scheduler_service: ReportSchedulerService = Depends(get_scheduler_service),
+    pdf_service: PdfExportService = Depends(get_pdf_export_service),
 ) -> ReportExecutionResponse:
-    """Fuehrt einen Report aus."""
+    """
+    Fuehrt einen Report aus und exportiert ihn im gewuenschten Format.
+
+    Unterstuetzt Excel, CSV, JSON und PDF (mit report_templates.py für PDF-Formatierung).
+    """
     template = await template_service.get_template(db, template_id, current_user.id, include_relations=True)
     if not template:
         raise HTTPException(status_code=404, detail="Template nicht gefunden")
@@ -809,12 +949,84 @@ async def execute_report(
             runtime_filters=data.runtime_filters,
         )
 
+        # Bei PDF: PDF generieren mit report_templates.py Strukturen
+        file_size_bytes: Optional[int] = None
+        if data.format == ExportFormat.PDF:
+            # Konvertiere ReportResult zu PDF
+            from app.services.reports.report_templates import ReportColumn as PdfColumn
+
+            pdf_columns = [
+                PdfColumn(
+                    key=col.get("field_path", col.get("key", f"col_{idx}")),
+                    label=col.get("display_name", col.get("label", f"Column {idx}")),
+                    format_type=col.get("data_type", col.get("format_type", "text")),
+                )
+                for idx, col in enumerate(result.columns)
+            ]
+
+            # Convert rows to dict format
+            pdf_data = [row.data for row in result.rows]
+
+            # Try to find pre-built template chart configs
+            chart_bytes: Optional[List[bytes]] = None
+            prebuilt_template: Optional[PreBuiltTemplate] = None
+
+            # Match by template name (since DB template_id may not match pre-built template_id)
+            template_name_lower = result.template_name.lower()
+            if "kosten" in template_name_lower or "cost" in template_name_lower:
+                prebuilt_template = COST_ANALYSIS_TEMPLATE
+            elif "cashflow" in template_name_lower:
+                prebuilt_template = CASHFLOW_FORECAST_TEMPLATE
+            elif "dokument" in template_name_lower or "volume" in template_name_lower:
+                prebuilt_template = DOCUMENT_VOLUME_TEMPLATE
+
+            # Generate charts if template has chart configs and data is available
+            if prebuilt_template and prebuilt_template.charts and pdf_data:
+                try:
+                    chart_bytes = pdf_service.generate_charts_from_config(
+                        chart_configs=prebuilt_template.charts,
+                        data=pdf_data,
+                    )
+                    if not chart_bytes:
+                        chart_bytes = None  # Empty list -> None
+                    logger.info(
+                        "charts_generated_for_pdf",
+                        template_name=result.template_name,
+                        chart_count=len(chart_bytes) if chart_bytes else 0,
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "chart_generation_failed",
+                        template_name=result.template_name,
+                        error=str(e),
+                    )
+                    chart_bytes = None
+
+            # Generate PDF
+            pdf_bytes = await pdf_service.generate_report_pdf(
+                title=result.template_name,
+                subtitle=f"Erstellt am {result.executed_at.strftime('%d.%m.%Y %H:%M')}",
+                columns=pdf_columns,
+                data=pdf_data,
+                charts=chart_bytes,
+                company_name="Ablage-System",
+            )
+
+            file_size_bytes = len(pdf_bytes)
+
+            logger.info(
+                "pdf_report_generated",
+                template_id=str(template_id),
+                size_bytes=file_size_bytes,
+            )
+
         # Execution aktualisieren (ohne Datei-Upload fuer jetzt)
         execution = await scheduler_service.update_execution_status(
             db=db,
             execution_id=execution.id,
             status="completed",
             row_count=result.total_count,
+            file_size_bytes=file_size_bytes,
         )
 
     except Exception as e:
@@ -972,10 +1184,10 @@ async def disable_schedule(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.get("/schedule-presets", response_model=List[Dict[str, Any]])
+@router.get("/schedule-presets", response_model=List[Dict[str, JSONValue]])
 async def get_schedule_presets(
     scheduler_service: ReportSchedulerService = Depends(get_scheduler_service),
-) -> List[Dict[str, Any]]:
+) -> List[Dict[str, JSONValue]]:
     """Gibt vordefinierte Zeitplan-Optionen zurueck."""
     return scheduler_service.get_schedule_presets()
 
@@ -1022,10 +1234,10 @@ async def get_aggregations(
     return [AggregationDefinition(**a) for a in aggs]
 
 
-@router.get("/formats", response_model=List[Dict[str, Any]])
+@router.get("/formats", response_model=List[Dict[str, JSONValue]])
 async def get_formats(
     renderer_service: ReportRendererService = Depends(get_renderer_service),
-) -> List[Dict[str, Any]]:
+) -> List[Dict[str, JSONValue]]:
     """Gibt unterstuetzte Export-Formate zurueck."""
     return renderer_service.get_supported_formats()
 
@@ -1057,7 +1269,7 @@ class CatalogTemplateResponse(BaseModel):
     data_source: str
     icon: str
     default_columns: List[CatalogColumnDefinition]
-    default_filters: Optional[List[Dict[str, Any]]] = None
+    default_filters: Optional[List[Dict[str, JSONValue]]] = None
     default_charts: Optional[List[CatalogChartDefinition]] = None
     tags: List[str]
 

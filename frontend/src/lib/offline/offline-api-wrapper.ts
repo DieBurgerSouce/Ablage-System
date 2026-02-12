@@ -166,7 +166,7 @@ export async function offlineRequest<T>(
       data: null,
       fromCache: false,
       queued: false,
-      error: 'Offline - keine gecachten Daten verfuegbar',
+      error: 'Offline - keine gecachten Daten verfügbar',
     };
   }
 
@@ -195,7 +195,7 @@ export async function offlineRequest<T>(
     data: null,
     fromCache: false,
     queued: false,
-    error: 'Offline - Aktion nicht moeglich',
+    error: 'Offline - Aktion nicht möglich',
   };
 }
 

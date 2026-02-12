@@ -1,7 +1,7 @@
 /**
  * VersionBadge Component
  *
- * Badge fuer Version-Status mit farblicher Kennzeichnung.
+ * Badge für Version-Status mit farblicher Kennzeichnung.
  */
 
 import { Badge } from '@/components/ui/badge';

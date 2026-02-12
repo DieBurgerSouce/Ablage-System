@@ -1,7 +1,7 @@
 /**
  * SkontoDetailPanel - Skonto-Verwaltungskomponente
  *
- * Zeigt Skonto-Details einer Rechnung und ermoeglicht:
+ * Zeigt Skonto-Details einer Rechnung und ermöglicht:
  * - Skonto-Bedingungen bearbeiten
  * - Skonto anwenden (mit Skonto bezahlen)
  * - Skonto-Frist und Ersparnis anzeigen
@@ -140,7 +140,7 @@ export function SkontoDetailPanel({ invoice, className }: SkontoDetailPanelProps
               <DialogHeader>
                 <DialogTitle>{UI_LABELS.skontoEdit}</DialogTitle>
                 <DialogDescription>
-                  Skonto-Bedingungen fuer diese Rechnung festlegen oder aendern.
+                  Skonto-Bedingungen für diese Rechnung festlegen oder ändern.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">

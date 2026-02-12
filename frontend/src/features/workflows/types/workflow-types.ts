@@ -1,7 +1,7 @@
 /**
  * Workflow Automation Types
  *
- * TypeScript-Definitionen fuer Workflow-Automation.
+ * TypeScript-Definitionen für Workflow-Automation.
  */
 
 // =============================================================================

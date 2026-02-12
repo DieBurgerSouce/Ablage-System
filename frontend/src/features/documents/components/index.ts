@@ -5,8 +5,8 @@
  * - DocumentCard - Einzelne Dokument-Karte
  * - DocumentGrid - Grid-Ansicht
  * - DocumentBadges - Status-Badges
- * - DraggableDocument - Drag-faehige Dokument-Karte
- * - DroppableFolder - Drop-faehiger Ordner
+ * - DraggableDocument - Drag-fähige Dokument-Karte
+ * - DroppableFolder - Drop-fähiger Ordner
  */
 
 export { DocumentCard } from "./DocumentCard"

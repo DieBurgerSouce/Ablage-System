@@ -68,7 +68,7 @@ const MODEL_TYPE_LABELS: Record<ModelType, string> = {
 };
 
 const STATUS_CONFIG: Record<ABTestStatus, { label: string; color: string }> = {
-  running: { label: 'Laeuft', color: 'bg-blue-100 text-blue-800' },
+  running: { label: 'Läuft', color: 'bg-blue-100 text-blue-800' },
   completed: { label: 'Abgeschlossen', color: 'bg-green-100 text-green-800' },
   cancelled: { label: 'Abgebrochen', color: 'bg-gray-100 text-gray-800' },
 };
@@ -295,7 +295,7 @@ function NewABTestDialog() {
                 disabled={versionsLoading}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Version waehlen" />
+                  <SelectValue placeholder="Version wählen" />
                 </SelectTrigger>
                 <SelectContent>
                   {versions?.map((v) => (
@@ -314,7 +314,7 @@ function NewABTestDialog() {
                 disabled={versionsLoading}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Version waehlen" />
+                  <SelectValue placeholder="Version wählen" />
                 </SelectTrigger>
                 <SelectContent>
                   {versions
@@ -329,7 +329,7 @@ function NewABTestDialog() {
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Traffic-Split (% fuer Variante B)</Label>
+            <Label>Traffic-Split (% für Variante B)</Label>
             <div className="flex items-center gap-4">
               <Slider
                 value={[trafficSplit]}
@@ -451,7 +451,7 @@ export function ABTestComparison() {
         ) : (
           <div className="text-center py-8 text-muted-foreground">
             <FlaskConical className="h-12 w-12 mx-auto mb-4 opacity-20" />
-            <p>Noch keine A/B Tests durchgefuehrt</p>
+            <p>Noch keine A/B Tests durchgeführt</p>
             <p className="text-sm mt-1">
               Starten Sie einen Test um Modellversionen zu vergleichen
             </p>

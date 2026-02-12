@@ -174,7 +174,7 @@ export function MerkleProofViewer({
             Merkle Proof
           </DialogTitle>
           <DialogDescription>
-            Kryptografischer Beweis der Eintrag-Integritaet
+            Kryptografischer Beweis der Eintrag-Integrität
           </DialogDescription>
         </DialogHeader>
 
@@ -194,7 +194,7 @@ export function MerkleProofViewer({
               Beweis konnte nicht geladen werden.
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Der Eintrag existiert moeglicherweise nicht in der Chain.
+              Der Eintrag existiert möglicherweise nicht in der Chain.
             </p>
           </div>
         )}
@@ -215,7 +215,7 @@ export function MerkleProofViewer({
                     <CheckCircle className="h-5 w-5 text-green-600" />
                     <div>
                       <p className="text-sm font-medium text-green-700 dark:text-green-300">
-                        Gueltig
+                        Gültig
                       </p>
                       <p className="text-xs text-green-600 dark:text-green-400">
                         Der Beweis ist kryptografisch verifiziert.
@@ -227,7 +227,7 @@ export function MerkleProofViewer({
                     <XCircle className="h-5 w-5 text-red-600" />
                     <div>
                       <p className="text-sm font-medium text-red-700 dark:text-red-300">
-                        Ungueltig
+                        Ungültig
                       </p>
                       <p className="text-xs text-red-600 dark:text-red-400">
                         Der Beweis konnte nicht verifiziert werden.

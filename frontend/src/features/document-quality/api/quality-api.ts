@@ -1,9 +1,9 @@
 /**
  * Document Quality API Service
  *
- * API-Funktionen fuer die Datenqualitaets-Ampel:
+ * API-Funktionen für die Datenqualitäts-Ampel:
  * - Einzeldokument-Score mit Ampel-Status
- * - Unternehmensweite Qualitaetsuebersicht
+ * - Unternehmensweite Qualitätsübersicht
  */
 
 import { apiClient } from '@/lib/api/client';
@@ -19,10 +19,10 @@ const BASE_URL = '/document-quality';
 // =============================================================================
 
 /**
- * Hole Qualitaets-Score fuer ein einzelnes Dokument
+ * Hole Qualitäts-Score für ein einzelnes Dokument
  *
  * @param documentId - Die UUID des Dokuments
- * @returns Qualitaetsbewertung mit Ampel-Status und Dimensionen
+ * @returns Qualitätsbewertung mit Ampel-Status und Dimensionen
  */
 export async function fetchDocumentQuality(
   documentId: string,
@@ -34,7 +34,7 @@ export async function fetchDocumentQuality(
 }
 
 /**
- * Hole unternehmensweite Qualitaetsuebersicht
+ * Hole unternehmensweite Qualitätsübersicht
  *
  * @returns Ampel-Verteilung und Durchschnittswerte
  */

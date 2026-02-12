@@ -1,7 +1,7 @@
 /**
- * ImportProgressMonitor - Fortschrittsanzeige fuer Lexware Import
+ * ImportProgressMonitor - Fortschrittsanzeige für Lexware Import
  *
- * WICHTIG: Types muessen EXAKT mit Backend uebereinstimmen!
+ * WICHTIG: Types müssen EXAKT mit Backend übereinstimmen!
  * Backend verwendet snake_case: imported_count, updated_count, etc.
  * @see app/api/v1/lexware.py:LexwareImportResponse
  *
@@ -72,7 +72,7 @@ export function ImportProgressMonitor({
           <div className="flex flex-col items-center gap-4">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
             <p className="text-lg font-medium">
-              {isDryRun ? 'Testlauf wird durchgefuehrt...' : 'Daten werden importiert...'}
+              {isDryRun ? 'Testlauf wird durchgeführt...' : 'Daten werden importiert...'}
             </p>
             <p className="text-muted-foreground">
               Bitte warten Sie, dies kann einen Moment dauern.
@@ -128,7 +128,7 @@ export function ImportProgressMonitor({
           )}
         </CardTitle>
         <CardDescription>
-          {stats.total} Datensaetze verarbeitet
+          {stats.total} Datensätze verarbeitet
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -138,8 +138,8 @@ export function ImportProgressMonitor({
             <FlaskConical className="h-4 w-4" />
             <AlertTitle>Testmodus</AlertTitle>
             <AlertDescription>
-              Dies war ein Testlauf. Es wurden keine Aenderungen in der Datenbank gespeichert.
-              Deaktivieren Sie den Testmodus, um den Import durchzufuehren.
+              Dies war ein Testlauf. Es wurden keine Änderungen in der Datenbank gespeichert.
+              Deaktivieren Sie den Testmodus, um den Import durchzuführen.
             </AlertDescription>
           </Alert>
         )}
@@ -163,7 +163,7 @@ export function ImportProgressMonitor({
           />
           <StatCard
             icon={SkipForward}
-            label="Uebersprungen"
+            label="Übersprungen"
             value={stats.skipped}
             variant="warning"
           />
@@ -192,7 +192,7 @@ export function ImportProgressMonitor({
               </span>
             </div>
             <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-1">
-              Kritische Konflikte wurden uebersprungen. Pruefen Sie die Lexware-Exporte auf Konsistenz.
+              Kritische Konflikte wurden übersprungen. Prüfen Sie die Lexware-Exporte auf Konsistenz.
             </p>
           </div>
         )}

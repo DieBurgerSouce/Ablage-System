@@ -1,11 +1,11 @@
 /**
- * DocumentOverlay - Bounding-Box Overlay fuer Dokument-Bild
+ * DocumentOverlay - Bounding-Box Overlay für Dokument-Bild
  *
- * Rendert semi-transparente farbige Rechtecke ueber dem Dokument-Bild.
+ * Rendert semi-transparente farbige Rechtecke über dem Dokument-Bild.
  * Jedes Rechteck entspricht einem WordConfidence-Eintrag mit Positionsdaten.
  * Farbe korrespondiert zum Confidence-Level.
  *
- * Verwendet normalisierte Koordinaten (0-1) die auf die tatsaechlichen
+ * Verwendet normalisierte Koordinaten (0-1) die auf die tatsächlichen
  * Bild-Dimensionen skaliert werden.
  */
 
@@ -17,9 +17,9 @@ interface DocumentOverlayProps {
     words: WordConfidence[]
     /** Breite des Bild-Containers in Pixeln */
     containerWidth: number
-    /** Hoehe des Bild-Containers in Pixeln */
+    /** Höhe des Bild-Containers in Pixeln */
     containerHeight: number
-    /** Confidence-Schwelle: nur Woerter <= threshold werden gezeichnet (0 = alle) */
+    /** Confidence-Schwelle: nur Wörter <= threshold werden gezeichnet (0 = alle) */
     threshold: number
     /** Aktuell hervorgehobenes Wort (Sync mit Text-Panel) */
     highlightedWordIndex: number | null

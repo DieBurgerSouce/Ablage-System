@@ -1,5 +1,5 @@
 /**
- * Split View Layout fuer OCR Review
+ * Split View Layout für OCR Review
  * Zeigt PDF-Vorschau links und Daten/OCR-Text rechts nebeneinander
  * mit verlinkter Hervorhebung.
  */
@@ -116,7 +116,7 @@ export function SplitViewLayout({
                                 className="h-7 w-7"
                                 onClick={onZoomIn}
                                 disabled={zoomLevel >= 300}
-                                title="Vergroessern"
+                                title="Vergrößern"
                             >
                                 <ZoomIn className="h-3.5 w-3.5" />
                             </Button>
@@ -126,7 +126,7 @@ export function SplitViewLayout({
                                     size="icon"
                                     className="h-7 w-7"
                                     onClick={onZoomReset}
-                                    title="Zuruecksetzen"
+                                    title="Zurücksetzen"
                                 >
                                     <RotateCcw className="h-3.5 w-3.5" />
                                 </Button>
@@ -160,7 +160,7 @@ export function SplitViewLayout({
                                 <div className="text-center text-muted-foreground">
                                     <FileText className="h-12 w-12 mx-auto mb-2 opacity-40" />
                                     <p className="text-sm">
-                                        {previewError ? 'Vorschau nicht verfuegbar' : 'Kein Dokument'}
+                                        {previewError ? 'Vorschau nicht verfügbar' : 'Kein Dokument'}
                                     </p>
                                 </div>
                             </div>

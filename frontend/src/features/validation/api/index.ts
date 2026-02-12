@@ -2,7 +2,7 @@
  * Validation API Exports
  */
 
-// Legacy Training API (fuer Rueckwaertskompatibilitaet)
+// Legacy Training API (für Rückwärtskompatibilität)
 export * from './validation-api';
 export { default as validationApi } from './validation-api';
 

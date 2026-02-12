@@ -1,12 +1,12 @@
 /**
  * Recurring Invoice Query Hooks
  *
- * TanStack Query Hooks fuer Abo-Rechnungen.
+ * TanStack Query Hooks für Abo-Rechnungen.
  * Konsistente Query-Keys und wiederverwendbare Hooks.
  *
  * Features:
  * - Differenzierte Stale-Times
- * - Optimistic Updates fuer bessere UX
+ * - Optimistic Updates für bessere UX
  * - Error Retry mit Backoff
  */
 
@@ -116,7 +116,7 @@ export function useMissingInvoices(options?: { enabled?: boolean }) {
 }
 
 /**
- * Preisaenderungen abrufen
+ * Preisänderungen abrufen
  */
 export function usePriceChanges(options?: { enabled?: boolean }) {
   return useQuery({

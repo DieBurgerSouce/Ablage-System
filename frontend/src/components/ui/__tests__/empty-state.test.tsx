@@ -103,13 +103,13 @@ describe('EmptyState Component', () => {
                 <EmptyState
                     title="Test"
                     action={{
-                        label: 'Aktion ausfuehren',
+                        label: 'Aktion ausführen',
                         onClick: handleClick,
                     }}
                 />
             )
 
-            const button = screen.getByText('Aktion ausfuehren')
+            const button = screen.getByText('Aktion ausführen')
             expect(button).toBeInTheDocument()
 
             fireEvent.click(button)

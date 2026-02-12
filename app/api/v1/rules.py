@@ -13,7 +13,9 @@ Phase 4 der Strategischen Roadmap (Januar 2026).
 
 import logging
 from datetime import datetime
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, Dict, Union
+
+from app.core.types import JSONDict, RuleConditionDict, RuleActionDict, RuleContextDict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
@@ -76,7 +78,7 @@ ConditionOrComposite = ConditionSchema | CompositeConditionSchema
 class ActionSchema(BaseModel):
     """Schema fuer eine Regel-Aktion."""
     type: ActionType = Field(..., description="Aktions-Typ")
-    params: Dict[str, Any] = Field(default_factory=dict, description="Parameter")
+    params: JSONDict = Field(default_factory=dict, description="Parameter")
 
 
 class RuleCreateRequest(BaseModel):
@@ -86,7 +88,7 @@ class RuleCreateRequest(BaseModel):
     code: Optional[str] = Field(default=None, max_length=50, description="Kurzer Code")
 
     # Bedingung (einfach oder komplex als JSON)
-    condition: Dict[str, Any] = Field(..., description="Regel-Bedingung")
+    condition: RuleConditionDict = Field(..., description="Regel-Bedingung")
 
     # Aktionen
     actions: List[ActionSchema] = Field(..., min_length=1)
@@ -126,7 +128,7 @@ class RuleUpdateRequest(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=255)
     description: Optional[str] = Field(default=None, max_length=2000)
     code: Optional[str] = Field(default=None, max_length=50)
-    condition: Optional[Dict[str, Any]] = None
+    condition: Optional[RuleConditionDict] = None
     actions: Optional[List[ActionSchema]] = None
     else_actions: Optional[List[ActionSchema]] = None
     priority: Optional[int] = Field(default=None, ge=1, le=100)
@@ -160,9 +162,9 @@ class RuleResponse(BaseModel):
     name: str
     description: Optional[str] = None
     code: Optional[str] = None
-    condition: Dict[str, Any]
-    actions: List[Dict[str, Any]]
-    else_actions: Optional[List[Dict[str, Any]]] = None
+    condition: RuleConditionDict
+    actions: List[RuleActionDict]
+    else_actions: Optional[List[RuleActionDict]] = None
     priority: int
     category: str
     is_active: bool
@@ -193,18 +195,18 @@ class RuleListResponse(BaseModel):
 
 class RuleTestRequest(BaseModel):
     """Request zum Testen einer Regel."""
-    condition: Dict[str, Any] = Field(..., description="Regel-Bedingung")
+    condition: RuleConditionDict = Field(..., description="Regel-Bedingung")
     actions: List[ActionSchema] = Field(..., min_length=1)
     else_actions: Optional[List[ActionSchema]] = None
-    context: Dict[str, Any] = Field(..., description="Test-Kontext")
+    context: RuleContextDict = Field(..., description="Test-Kontext")
 
 
 class RuleTestResponse(BaseModel):
     """Response fuer Regel-Test."""
     matched: bool
-    condition_details: Dict[str, Any]
-    would_trigger_actions: List[Dict[str, Any]]
-    context_used: Dict[str, Any]
+    condition_details: JSONDict
+    would_trigger_actions: List[RuleActionDict]
+    context_used: RuleContextDict
 
 
 class DocumentEvaluationRequest(BaseModel):
@@ -213,7 +215,7 @@ class DocumentEvaluationRequest(BaseModel):
     rule_ids: Optional[List[UUID]] = Field(
         default=None, description="Spezifische Regeln (oder alle)"
     )
-    additional_context: Optional[Dict[str, Any]] = Field(default=None)
+    additional_context: Optional[RuleContextDict] = Field(default=None)
     dry_run: bool = Field(default=True, description="Aktionen nicht ausfuehren")
 
 
@@ -222,8 +224,8 @@ class EvaluationResultResponse(BaseModel):
     rule_id: UUID
     rule_name: str
     matched: bool
-    condition_details: Dict[str, Any]
-    triggered_actions: List[Dict[str, Any]]
+    condition_details: JSONDict
+    triggered_actions: List[RuleActionDict]
     execution_errors: List[str]
 
 
@@ -233,7 +235,7 @@ class DocumentEvaluationResponse(BaseModel):
     total_rules_evaluated: int
     rules_matched: int
     results: List[EvaluationResultResponse]
-    all_triggered_actions: List[Dict[str, Any]]
+    all_triggered_actions: List[RuleActionDict]
     evaluated_at: datetime
 
 
@@ -269,8 +271,8 @@ class ExecutionLogResponse(BaseModel):
     rule_id: UUID
     document_id: Optional[UUID] = None
     matched: bool
-    condition_details: Dict[str, Any]
-    triggered_actions: List[Dict[str, Any]]
+    condition_details: JSONDict
+    triggered_actions: List[RuleActionDict]
     execution_errors: List[str]
     dry_run: bool
     executed_at: datetime
@@ -299,9 +301,9 @@ class GenerateRuleResponse(BaseModel):
     code: Optional[str] = None
     category: str
     priority: int
-    condition: Dict[str, Any]
-    actions: List[Dict[str, Any]]
-    else_actions: Optional[List[Dict[str, Any]]] = None
+    condition: RuleConditionDict
+    actions: List[RuleActionDict]
+    else_actions: Optional[List[RuleActionDict]] = None
     confidence: float = Field(ge=0.0, le=1.0)
     explanation: str
 
@@ -632,7 +634,7 @@ async def test_rule(
 async def evaluate_document(
     document_id: UUID,
     rule_ids: Optional[List[UUID]] = Body(default=None, description="Spezifische Regeln"),
-    additional_context: Optional[Dict[str, Any]] = Body(default=None),
+    additional_context: Optional[RuleContextDict] = Body(default=None),
     dry_run: bool = Body(default=True),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

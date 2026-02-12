@@ -1,7 +1,7 @@
 /**
  * ELSTER Export API Service
  *
- * API-Aufrufe fuer USt-VA ELSTER XML Export.
+ * API-Aufrufe für USt-VA ELSTER XML Export.
  * Basiert auf dem Backend unter /api/v1/accounting/
  */
 
@@ -46,7 +46,7 @@ export interface VATReportResponse {
 // =============================================================================
 
 /**
- * USt-VA Report fuer einen Monat abrufen
+ * USt-VA Report für einen Monat abrufen
  */
 export async function getVatMonthlyReport(
     companyId: string,
@@ -61,7 +61,7 @@ export async function getVatMonthlyReport(
 }
 
 /**
- * USt-VA Report fuer ein Quartal abrufen
+ * USt-VA Report für ein Quartal abrufen
  */
 export async function getVatQuarterlyReport(
     companyId: string,
@@ -76,7 +76,7 @@ export async function getVatQuarterlyReport(
 }
 
 /**
- * ELSTER XML herunterladen (gibt Blob zurueck)
+ * ELSTER XML herunterladen (gibt Blob zurück)
  */
 export async function downloadElsterXml(
     companyId: string,

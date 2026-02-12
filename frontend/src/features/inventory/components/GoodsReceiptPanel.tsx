@@ -103,7 +103,7 @@ export function GoodsReceiptPanel() {
   const handleProcess = async (receiptId: string) => {
     try {
       const result = await processReceipt.mutateAsync(receiptId);
-      toast.success(`${result.booked} Positionen gebucht, ${result.skipped} uebersprungen`);
+      toast.success(`${result.booked} Positionen gebucht, ${result.skipped} übersprungen`);
       setSelectedReceipt(null);
     } catch (error) {
       toast.error('Fehler beim Verarbeiten des Wareneingangs');
@@ -144,7 +144,7 @@ export function GoodsReceiptPanel() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Offene Wareneingaenge</CardTitle>
+              <CardTitle>Offene Wareneingänge</CardTitle>
               <CardDescription>
                 Lieferscheine zur Bestandsbuchung
               </CardDescription>
@@ -157,11 +157,11 @@ export function GoodsReceiptPanel() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Lade Wareneingaenge...</div>
+            <div className="text-center py-8 text-muted-foreground">Lade Wareneingänge...</div>
           ) : receipts?.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <PackagePlus className="h-12 w-12 mx-auto mb-2 opacity-50" />
-              Keine offenen Wareneingaenge
+              Keine offenen Wareneingänge
             </div>
           ) : (
             <div className="space-y-2">
@@ -211,13 +211,13 @@ export function GoodsReceiptPanel() {
           <CardDescription>
             {selectedReceipt
               ? 'Ordnen Sie Positionen Artikeln zu und verarbeiten Sie den Wareneingang'
-              : 'Waehlen Sie einen Wareneingang aus'}
+              : 'Wählen Sie einen Wareneingang aus'}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {!selectedReceipt ? (
             <div className="text-center py-8 text-muted-foreground">
-              Kein Wareneingang ausgewaehlt
+              Kein Wareneingang ausgewählt
             </div>
           ) : (
             <div className="space-y-4">
@@ -293,7 +293,7 @@ export function GoodsReceiptPanel() {
                             onValueChange={(value) => handleMatchLine(line.id, value)}
                           >
                             <SelectTrigger className="w-[150px]">
-                              <SelectValue placeholder="Artikel waehlen" />
+                              <SelectValue placeholder="Artikel wählen" />
                             </SelectTrigger>
                             <SelectContent>
                               {itemsData?.items.map((item) => (
@@ -327,7 +327,7 @@ export function GoodsReceiptPanel() {
           <DialogHeader>
             <DialogTitle>Neuen Wareneingang erstellen</DialogTitle>
             <DialogDescription>
-              Waehlen Sie einen Lieferschein und das Ziellager aus.
+              Wählen Sie einen Lieferschein und das Ziellager aus.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -335,7 +335,7 @@ export function GoodsReceiptPanel() {
               <label className="text-sm font-medium">Lieferschein</label>
               <Select value={selectedDocument} onValueChange={setSelectedDocument}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Lieferschein waehlen..." />
+                  <SelectValue placeholder="Lieferschein wählen..." />
                 </SelectTrigger>
                 <SelectContent>
                   {unprocessedDocs?.map((doc) => (
@@ -355,7 +355,7 @@ export function GoodsReceiptPanel() {
               <label className="text-sm font-medium">Ziellager</label>
               <Select value={selectedWarehouse} onValueChange={setSelectedWarehouse}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Lager waehlen..." />
+                  <SelectValue placeholder="Lager wählen..." />
                 </SelectTrigger>
                 <SelectContent>
                   {warehouses?.map((wh) => (

@@ -1,10 +1,10 @@
 /**
- * Multi-File Upload Hook fuer Ablage
+ * Multi-File Upload Hook für Ablage
  *
  * Basiert auf dem Upload Wizard Pattern:
  * - Multiple Dateien gleichzeitig hochladen
- * - Quick Classification fuer jede Datei
- * - Polling fuer OCR-Status
+ * - Quick Classification für jede Datei
+ * - Polling für OCR-Status
  * - Review-Modal pro Datei oeffenbar
  */
 
@@ -24,10 +24,10 @@ import {
   extendTempFileTTL,
 } from '../api/ablage-api';
 
-// TTL-Verlaengerung alle 20 Minuten
+// TTL-Verlängerung alle 20 Minuten
 const TTL_EXTEND_INTERVAL_MS = 20 * 60 * 1000;
 
-// Polling-Interval fuer OCR-Status (nicht gebraucht wenn OCR synchron)
+// Polling-Interval für OCR-Status (nicht gebraucht wenn OCR synchron)
 // const OCR_POLL_INTERVAL_MS = 2000;
 
 interface UseAblageMultiUploadReturn {
@@ -318,7 +318,7 @@ export function useAblageMultiUpload(
     async (id: string, data: Partial<UploadCompleteRequest>) => {
       const file = files.find((f) => f.id === id);
       if (!file?.tempFileId) {
-        throw new Error('Keine temporaere Datei vorhanden');
+        throw new Error('Keine temporäre Datei vorhanden');
       }
 
       // Stop TTL extension

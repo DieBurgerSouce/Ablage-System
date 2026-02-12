@@ -89,7 +89,7 @@ export function ExportButtons({
           break;
       }
 
-      // Download ausloesen
+      // Download auslösen
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;

@@ -13,9 +13,10 @@ Vision 2026 Q2 - AI Decision Explorer UI API
 
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 from uuid import UUID
 
+from app.core.types import JSONDict
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -57,15 +58,15 @@ class AIDecisionSchema(BaseModel):
     id: UUID
     document_id: Optional[UUID]
     decision_type: str
-    decision_value: Dict[str, Any]
+    decision_value: JSONDict
     confidence: float
     confidence_level: str
-    explanation: Dict[str, Any]
+    explanation: JSONDict
     auto_applied: bool
     requires_review: bool
     is_final: bool
     user_feedback: Optional[str]
-    user_correction: Optional[Dict[str, Any]]
+    user_correction: Optional[JSONDict]
     created_at: datetime
     updated_at: Optional[datetime]
 
@@ -77,7 +78,7 @@ class AIDecisionDetailSchema(AIDecisionSchema):
     """Detailansicht einer AI-Entscheidung."""
     factors: List[ExplanationFactorSchema] = []
     alternatives: List[AlternativeSchema] = []
-    document_info: Optional[Dict[str, Any]] = None
+    document_info: Optional[JSONDict] = None
 
 
 class AIDecisionListResponse(BaseModel):
@@ -95,7 +96,7 @@ class FeedbackRequest(BaseModel):
         ...,
         description="Typ: 'correct', 'incorrect', 'helpful', 'not_helpful'"
     )
-    correction: Optional[Dict[str, Any]] = Field(
+    correction: Optional[JSONDict] = Field(
         None,
         description="Korrektur wenn 'incorrect'"
     )
@@ -117,7 +118,7 @@ class DecisionStatsSchema(BaseModel):
 class DecisionExplanationRequest(BaseModel):
     """Request für Entscheidungserklärung."""
     decision_type: str = Field(..., description="Typ der Entscheidung")
-    context: Dict[str, Any] = Field(
+    context: JSONDict = Field(
         default_factory=dict,
         description="Kontext-Daten für Erklärung"
     )
@@ -360,7 +361,7 @@ async def submit_feedback(
     feedback: FeedbackRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Übermittelt Benutzer-Feedback zu einer AI-Entscheidung.
 
@@ -421,7 +422,7 @@ async def accept_decision(
     decision_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Akzeptiert eine AI-Entscheidung (markiert als final).
 
@@ -469,10 +470,10 @@ async def accept_decision(
 @router.post("/{decision_id}/reject")
 async def reject_decision(
     decision_id: UUID,
-    correction: Optional[Dict[str, Any]] = None,
+    correction: Optional[JSONDict] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Lehnt eine AI-Entscheidung ab.
 

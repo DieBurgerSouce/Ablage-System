@@ -1,6 +1,6 @@
 /**
  * Dunning Templates Hooks
- * TanStack Query Hooks fuer Mahnbrief-Vorlagen
+ * TanStack Query Hooks für Mahnbrief-Vorlagen
  */
 
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -24,8 +24,8 @@ export const dunningTemplateKeys = {
 
 // Stale Times
 const STALE_TIMES = {
-  templates: 30 * 60 * 1000, // 30 Minuten (aendert sich selten)
-  interestRates: 60 * 60 * 1000, // 1 Stunde (halbjaehrliche Updates)
+  templates: 30 * 60 * 1000, // 30 Minuten (ändert sich selten)
+  interestRates: 60 * 60 * 1000, // 1 Stunde (halbjährliche Updates)
 };
 
 /**
@@ -40,7 +40,7 @@ export function useDunningTemplates() {
 }
 
 /**
- * Aktuelle Verzugszinssaetze abrufen
+ * Aktuelle Verzugszinssätze abrufen
  */
 export function useInterestRates() {
   return useQuery({

@@ -24,12 +24,12 @@ interface LanguageInfo {
 const LANGUAGE_MAP: Record<string, LanguageInfo> = {
   de: { code: 'DE', name: 'Deutsch', flag: '\uD83C\uDDE9\uD83C\uDDEA' },
   en: { code: 'EN', name: 'Englisch', flag: '\uD83C\uDDEC\uD83C\uDDE7' },
-  fr: { code: 'FR', name: 'Franzoesisch', flag: '\uD83C\uDDEB\uD83C\uDDF7' },
+  fr: { code: 'FR', name: 'Französisch', flag: '\uD83C\uDDEB\uD83C\uDDF7' },
   pl: { code: 'PL', name: 'Polnisch', flag: '\uD83C\uDDF5\uD83C\uDDF1' },
   ru: { code: 'RU', name: 'Russisch', flag: '\uD83C\uDDF7\uD83C\uDDFA' },
   it: { code: 'IT', name: 'Italienisch', flag: '\uD83C\uDDEE\uD83C\uDDF9' },
   es: { code: 'ES', name: 'Spanisch', flag: '\uD83C\uDDEA\uD83C\uDDF8' },
-  nl: { code: 'NL', name: 'Niederlaendisch', flag: '\uD83C\uDDF3\uD83C\uDDF1' },
+  nl: { code: 'NL', name: 'Niederländisch', flag: '\uD83C\uDDF3\uD83C\uDDF1' },
   pt: { code: 'PT', name: 'Portugiesisch', flag: '\uD83C\uDDF5\uD83C\uDDF9' },
   tr: { code: 'TR', name: 'Tuerkisch', flag: '\uD83C\uDDF9\uD83C\uDDF7' },
 };

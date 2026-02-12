@@ -1,8 +1,8 @@
 /**
  * Inventory Page - Lagerverwaltung und Wareneingang
  *
- * Hauptseite fuer:
- * - Uebersicht Lagerkennzahlen
+ * Hauptseite für:
+ * - Übersicht Lagerkennzahlen
  * - Lagerverwaltung
  * - Artikelstamm
  * - Wareneingang aus Lieferscheinen
@@ -33,7 +33,7 @@ export function InventoryPage() {
         <div>
           <h1 className="text-2xl font-bold">Lagerverwaltung</h1>
           <p className="text-muted-foreground">
-            Bestandsfuehrung, Wareneingang und Bewegungshistorie
+            Bestandsführung, Wareneingang und Bewegungshistorie
           </p>
         </div>
       </div>

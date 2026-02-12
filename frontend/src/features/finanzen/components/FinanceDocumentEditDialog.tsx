@@ -370,7 +370,7 @@ export function FinanceDocumentEditDialog({
                     <SelectContent>
                       <SelectItem value="none">Keine</SelectItem>
                       <SelectItem value="einkommensteuer">Einkommensteuer</SelectItem>
-                      <SelectItem value="koerperschaftsteuer">Koerperschaftsteuer</SelectItem>
+                      <SelectItem value="koerperschaftsteuer">Körperschaftsteuer</SelectItem>
                       <SelectItem value="gewerbesteuer">Gewerbesteuer</SelectItem>
                       <SelectItem value="umsatzsteuer">Umsatzsteuer</SelectItem>
                       <SelectItem value="lohnsteuer">Lohnsteuer</SelectItem>

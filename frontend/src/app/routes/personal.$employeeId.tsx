@@ -1,7 +1,7 @@
 /**
  * Personal Employee Detail Route Layout
  *
- * Layout fuer einzelne Mitarbeiter-Detailseiten.
+ * Layout für einzelne Mitarbeiter-Detailseiten.
  */
 
 import { createFileRoute, Outlet } from '@tanstack/react-router';

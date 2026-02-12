@@ -1,7 +1,7 @@
 /**
  * Admin/Prokurist Dashboard-Ansicht
  *
- * Vollstaendiges Dashboard mit:
+ * Vollständiges Dashboard mit:
  * - CSS Grid-Layout mit Resizable Widgets
  * - Widget-Registry System mit Presets
  * - Rolle-basierte Layout-Vorlagen
@@ -14,6 +14,8 @@ import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Calendar, Upload } from 'lucide-react'
 import { DashboardGridEnhanced } from '@/features/dashboard/components/DashboardGridEnhanced'
+import { ContinueWhereYouLeftOff } from '@/components/dashboard/ContinueWhereYouLeftOff'
+import { AnimatedButton } from '@/components/animations'
 
 interface AdminDashboardViewProps {
     userName?: string
@@ -45,11 +47,14 @@ export function AdminDashboardView({ userName }: AdminDashboardViewProps) {
                             {today}
                         </p>
                     </div>
-                    <Button onClick={() => navigate({ to: '/upload' })}>
+                    <AnimatedButton onClick={() => navigate({ to: '/upload' })}>
                         <Upload className="w-4 h-4 mr-2" />
                         Neuer Beleg
-                    </Button>
+                    </AnimatedButton>
                 </header>
+
+                {/* Phase 6: Weiter wo Sie aufgehört haben */}
+                <ContinueWhereYouLeftOff />
 
                 {/* Dynamic Content - Enhanced Grid with Presets */}
                 <DashboardGridEnhanced />

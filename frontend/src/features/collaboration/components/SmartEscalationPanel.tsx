@@ -1,9 +1,9 @@
 /**
  * Smart Escalation Panel Komponente
  *
- * KI-gestuetzte intelligente Aufgabenzuweisung:
+ * KI-gestützte intelligente Aufgabenzuweisung:
  * - Zuweisungsempfehlungen mit Score-Breakdown
- * - Team-Auslastungsuebersicht
+ * - Team-Auslastungsübersicht
  * - User-Score Debugging
  * - Faktor-Gewichtungen visualisieren
  *
@@ -111,14 +111,14 @@ const FACTOR_ICONS: Record<string, typeof Brain> = {
 const FACTOR_LABELS: Record<string, string> = {
   expertise: 'Expertise',
   workload: 'Auslastung',
-  availability: 'Verfuegbarkeit',
+  availability: 'Verfügbarkeit',
   relationship: 'Kundenbeziehung',
 };
 
 const FACTOR_DESCRIPTIONS: Record<string, string> = {
   expertise: 'Erfahrung mit diesem Dokumenttyp',
   workload: 'Aktuelle Arbeitsbelastung (invers)',
-  availability: 'Verfuegbarkeit basierend auf Aktivitaet',
+  availability: 'Verfügbarkeit basierend auf Aktivität',
   relationship: 'Vorherige Zusammenarbeit mit dem Kunden',
 };
 
@@ -189,7 +189,7 @@ function CandidateCard({ candidate, rank, isRecommended, showDetails = false }: 
               )}
               {!candidate.isAvailable && (
                 <Badge variant="secondary" className="text-xs">
-                  Nicht verfuegbar
+                  Nicht verfügbar
                 </Badge>
               )}
             </div>
@@ -231,7 +231,7 @@ function CandidateCard({ candidate, rank, isRecommended, showDetails = false }: 
             {!candidate.isAvailable && candidate.unavailabilityReason && (
               <Alert className="mt-3" variant="default">
                 <AlertTriangle className="h-4 w-4" />
-                <AlertTitle className="text-xs">Nicht verfuegbar</AlertTitle>
+                <AlertTitle className="text-xs">Nicht verfügbar</AlertTitle>
                 <AlertDescription className="text-xs">
                   {candidate.unavailabilityReason}
                 </AlertDescription>
@@ -317,7 +317,7 @@ function TeamMemberRow({ member }: { member: TeamMemberWorkload }) {
         <div className={`text-lg font-bold ${getScoreColor(member.workloadScore)}`}>
           {member.workloadScore.toFixed(0)}
         </div>
-        <div className="text-xs text-muted-foreground">Verfuegbarkeit</div>
+        <div className="text-xs text-muted-foreground">Verfügbarkeit</div>
       </div>
     </div>
   );
@@ -559,7 +559,7 @@ function TeamWorkloadPanel() {
           <CardContent className="pt-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-muted-foreground">Verfuegbar</p>
+                <p className="text-xs text-muted-foreground">Verfügbar</p>
                 <p className="text-2xl font-bold text-green-600">{data.availableMembers}</p>
               </div>
               <CheckCircle2 className="h-8 w-8 text-green-500" />
@@ -595,7 +595,7 @@ function TeamWorkloadPanel() {
         <CardHeader>
           <CardTitle className="text-base">Team-Mitglieder</CardTitle>
           <CardDescription>
-            Sortiert nach Verfuegbarkeit
+            Sortiert nach Verfügbarkeit
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -615,11 +615,11 @@ function TeamWorkloadPanel() {
 // ==================== Main Panel Component ====================
 
 export interface SmartEscalationPanelProps {
-  /** Optional: Dokument-ID fuer Kontext */
+  /** Optional: Dokument-ID für Kontext */
   documentId?: string;
-  /** Optional: Dokumenttyp fuer Expertise-Matching */
+  /** Optional: Dokumenttyp für Expertise-Matching */
   documentType?: string;
-  /** Optional: Entity-ID fuer Relationship-Matching */
+  /** Optional: Entity-ID für Relationship-Matching */
   entityId?: string;
   /** Optional: Aufgabentyp */
   taskType?: string;
@@ -666,7 +666,7 @@ export function SmartEscalationPanel({
             <CardTitle className="text-base">Intelligente Zuweisung</CardTitle>
           </div>
           <CardDescription>
-            KI-Empfehlung fuer optimale Bearbeiterzuweisung
+            KI-Empfehlung für optimale Bearbeiterzuweisung
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -686,7 +686,7 @@ export function SmartEscalationPanel({
           Intelligente Aufgabenzuweisung
         </h2>
         <p className="text-muted-foreground">
-          KI-gestuetzte Empfehlungen basierend auf Expertise, Auslastung und Verfuegbarkeit
+          KI-gestützte Empfehlungen basierend auf Expertise, Auslastung und Verfügbarkeit
         </p>
       </div>
 

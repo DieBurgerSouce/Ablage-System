@@ -1,7 +1,7 @@
 /**
  * Viewer Components - Export Index
  *
- * Exportiert alle Viewer-Komponenten fuer die Dokumentenvorschau.
+ * Exportiert alle Viewer-Komponenten für die Dokumentenvorschau.
  */
 
 // Core viewers

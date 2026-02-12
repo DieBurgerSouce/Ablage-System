@@ -2,11 +2,11 @@
  * DocumentUploadDialog - Enterprise Multi-File Upload Workflow
  *
  * Flow:
- * 1. Dateien auswaehlen (Dropzone, Multi-File)
- * 2. OCR Backend waehlen
+ * 1. Dateien auswählen (Dropzone, Multi-File)
+ * 2. OCR Backend wählen
  * 3. Upload starten → OCR + Quick Classification pro Datei
  * 4. Dateiliste zeigt Badges (Direction, Entity, Rename)
- * 5. User kann pro Datei das OCRReviewModal oeffnen
+ * 5. User kann pro Datei das OCRReviewModal öffnen
  * 6. Speichern legt Dokumente in MinIO + DB ab
  */
 
@@ -250,7 +250,7 @@ export function DocumentUploadDialog({
                             {isDragActive
                                 ? 'Dateien hier ablegen'
                                 : files.length > 0
-                                  ? 'Weitere Dateien hinzufuegen'
+                                  ? 'Weitere Dateien hinzufügen'
                                   : 'Dateien hierher ziehen oder klicken'}
                         </p>
                         {files.length === 0 && (
@@ -284,7 +284,7 @@ export function DocumentUploadDialog({
                             {reviewCount > 0 && (
                                 <Badge variant="outline" className="gap-1 bg-amber-500/10 text-amber-600 border-amber-500/30">
                                     <AlertCircle className="h-3 w-3" />
-                                    {reviewCount} zur Pruefung
+                                    {reviewCount} zur Prüfung
                                 </Badge>
                             )}
                             {completedCount > 0 && (
@@ -364,7 +364,7 @@ export function DocumentUploadDialog({
                         disabled={isUploading || isSavingFile}
                     >
                         {files.length === 0 || completedCount === files.length
-                            ? 'Schliessen'
+                            ? 'Schließen'
                             : 'Abbrechen'}
                     </Button>
                     {hasReviewPending && (
@@ -377,7 +377,7 @@ export function DocumentUploadDialog({
                                 }
                             }}
                         >
-                            {reviewCount} Datei{reviewCount !== 1 ? 'en' : ''} pruefen
+                            {reviewCount} Datei{reviewCount !== 1 ? 'en' : ''} prüfen
                         </Button>
                     )}
                 </DialogFooter>

@@ -36,9 +36,10 @@ Feinpoliert und durchdacht - Deutsche Praezision.
 import re
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
 
+from app.core.types import JSONDict
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field, field_validator
@@ -120,7 +121,7 @@ class CreateConversationRequest(BaseModel):
         max_length=MAX_CONTEXT_PAGE_LENGTH,
         description="Seite auf der gestartet wurde"
     )
-    context_data: Optional[Dict[str, Any]] = Field(None, description="Zusaetzlicher Kontext")
+    context_data: Optional[JSONDict] = Field(None, description="Zusaetzlicher Kontext")
     language: str = Field("de", max_length=5, description="Sprache (de/en)")
 
     @field_validator("language")
@@ -167,12 +168,12 @@ class ConversationDetail(BaseModel):
     is_starred: bool
     is_active: bool
     context_page: Optional[str]
-    context_data: Optional[Dict[str, Any]]
-    preferences: Optional[Dict[str, Any]]
+    context_data: Optional[JSONDict]
+    preferences: Optional[JSONDict]
     language: str = "de"
     total_tokens: Optional[int]
-    messages: List[Dict[str, Any]]
-    actions: List[Dict[str, Any]]
+    messages: List[JSONDict]
+    actions: List[JSONDict]
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
     last_message_at: Optional[datetime]
@@ -210,7 +211,7 @@ class FeedbackRequest(BaseModel):
 
 class ActionConfirmRequest(BaseModel):
     """Request zum Bestaetigen einer Aktion."""
-    parameters: Optional[Dict[str, Any]] = Field(None, description="Angepasste Parameter")
+    parameters: Optional[JSONDict] = Field(None, description="Angepasste Parameter")
 
 
 class UpdateConversationRequest(BaseModel):
@@ -218,7 +219,7 @@ class UpdateConversationRequest(BaseModel):
     title: Optional[str] = Field(None, max_length=MAX_TITLE_LENGTH)
     is_starred: Optional[bool] = None
     is_active: Optional[bool] = None
-    preferences: Optional[Dict[str, Any]] = None
+    preferences: Optional[JSONDict] = None
 
     @field_validator("title")
     @classmethod
@@ -245,8 +246,8 @@ class ConversationStatsResponse(BaseModel):
     total_actions: int
     total_feedbacks: int
     actions_by_status: Dict[str, int]
-    conversations_by_day: List[Dict[str, Any]]
-    top_intents: List[Dict[str, Any]]
+    conversations_by_day: List[JSONDict]
+    top_intents: List[JSONDict]
     average_messages_per_conversation: float
     average_actions_per_conversation: float
 
@@ -263,8 +264,8 @@ class ActionResponse(BaseModel):
     action_type: str
     description: str
     status: str
-    parameters: Dict[str, Any]
-    result: Optional[Dict[str, Any]]
+    parameters: JSONDict
+    result: Optional[JSONDict]
     error_message: Optional[str]
     affected_count: Optional[int]
     success_count: Optional[int]
@@ -1526,7 +1527,7 @@ async def get_conversation_stats_legacy(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Hole Statistiken ueber Konversationen des Benutzers (Legacy-Endpoint).
 

@@ -1,7 +1,7 @@
 /**
  * Activity Timeline Types
  *
- * TypeScript-Typen fuer das Activity Timeline Feature.
+ * TypeScript-Typen für das Activity Timeline Feature.
  */
 
 // =============================================================================
@@ -153,7 +153,7 @@ export const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   document_viewed: 'Dokument angesehen',
   document_downloaded: 'Dokument heruntergeladen',
   document_edited: 'Dokument bearbeitet',
-  document_deleted: 'Dokument geloescht',
+  document_deleted: 'Dokument gelöscht',
   document_archived: 'Dokument archiviert',
   document_restored: 'Dokument wiederhergestellt',
   document_shared: 'Dokument geteilt',
@@ -170,16 +170,16 @@ export const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   approval_rejected: 'Genehmigung abgelehnt',
 
   // Comment Activities
-  comment_added: 'Kommentar hinzugefuegt',
+  comment_added: 'Kommentar hinzugefügt',
 
   // Tag Activities
-  tag_added: 'Tag hinzugefuegt',
+  tag_added: 'Tag hinzugefügt',
   tag_removed: 'Tag entfernt',
 
   // Team Activities
   member_joined: 'Mitglied beigetreten',
   member_left: 'Mitglied ausgetreten',
-  member_role_changed: 'Rolle geaendert',
+  member_role_changed: 'Rolle geändert',
   team_created: 'Team erstellt',
   team_updated: 'Team aktualisiert',
   team_archived: 'Team archiviert',

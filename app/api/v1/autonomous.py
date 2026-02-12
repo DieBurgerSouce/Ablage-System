@@ -13,8 +13,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
+from app.core.types import JSONDict
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -138,7 +139,7 @@ class TrustRecommendationResponse(BaseModel):
     reason: str
     confidence: float
     can_upgrade: bool
-    upgrade_requirements: Dict[str, Any]
+    upgrade_requirements: JSONDict
 
 
 class PendingApprovalResponse(BaseModel):
@@ -146,7 +147,7 @@ class PendingApprovalResponse(BaseModel):
     id: str
     proposal_type: str
     target_id: str
-    proposed_value: Dict[str, Any]
+    proposed_value: JSONDict
     confidence: float
     delay_hours: int
     status: str
@@ -166,7 +167,7 @@ class ProposalHistoryResponse(BaseModel):
     id: str
     proposal_type: str
     target_id: str
-    proposed_value: Dict[str, Any]
+    proposed_value: JSONDict
     confidence: float
     status: str
     created_at: datetime
@@ -249,12 +250,12 @@ async def get_trust_level(
     )
 
 
-@router.patch("/trust-level", response_model=Dict[str, Any])
+@router.patch("/trust-level", response_model=JSONDict)
 async def update_trust_level(
     request: TrustLevelUpdateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_permission("admin:full")),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Aktualisiert das Trust-Level fuer die Company.
 
@@ -462,13 +463,13 @@ async def get_pending_approvals(
     ]
 
 
-@router.post("/approve/{proposal_id}", response_model=Dict[str, Any])
+@router.post("/approve/{proposal_id}", response_model=JSONDict)
 async def approve_proposal(
     proposal_id: uuid.UUID,
     request: Optional[ApprovalActionRequest] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Genehmigt einen Vorschlag manuell.
 
@@ -503,13 +504,13 @@ async def approve_proposal(
     }
 
 
-@router.post("/reject/{proposal_id}", response_model=Dict[str, Any])
+@router.post("/reject/{proposal_id}", response_model=JSONDict)
 async def reject_proposal(
     proposal_id: uuid.UUID,
     request: Optional[ApprovalActionRequest] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Lehnt einen Vorschlag ab.
 
@@ -546,12 +547,12 @@ async def reject_proposal(
     }
 
 
-@router.post("/rollback/{proposal_id}", response_model=Dict[str, Any])
+@router.post("/rollback/{proposal_id}", response_model=JSONDict)
 async def rollback_proposal(
     proposal_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Macht einen ausgefuehrten Vorschlag rueckgaengig.
 
@@ -665,12 +666,12 @@ async def get_proposal_history(
     ]
 
 
-@router.get("/statistics", response_model=Dict[str, Any])
+@router.get("/statistics", response_model=JSONDict)
 async def get_proposal_statistics(
     days: int = Query(30, ge=1, le=365),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Holt Statistiken ueber Proposals.
 

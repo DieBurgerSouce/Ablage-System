@@ -1,8 +1,8 @@
 /**
  * Dashboard Date Range Picker
  *
- * Globaler Datumsfilter fuer alle Dashboard-Widgets.
- * Bietet vordefinierte Zeitraeume und einen optionalen
+ * Globaler Datumsfilter für alle Dashboard-Widgets.
+ * Bietet vordefinierte Zeiträume und einen optionalen
  * Vergleichszeitraum (Vorperiode / Vorjahr).
  *
  * Phase C: Business KPIs
@@ -39,7 +39,7 @@ export function DashboardDateRangePicker() {
   };
 
   const handleClearRange = () => {
-    setDateRange({ from: undefined, to: undefined, label: 'Alle Zeitraeume' });
+    setDateRange({ from: undefined, to: undefined, label: 'Alle Zeiträume' });
     setComparePeriod(undefined);
     setOpen(false);
   };
@@ -77,7 +77,7 @@ export function DashboardDateRangePicker() {
       </PopoverTrigger>
       <PopoverContent className="w-64 p-3" align="end">
         <div className="space-y-3">
-          {/* Vordefinierte Zeitraeume */}
+          {/* Vordefinierte Zeiträume */}
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-2">
               Zeitraum
@@ -119,7 +119,7 @@ export function DashboardDateRangePicker() {
             </div>
           )}
 
-          {/* Zuruecksetzen */}
+          {/* Zurücksetzen */}
           {hasActiveRange && (
             <Button
               variant="ghost"
@@ -128,7 +128,7 @@ export function DashboardDateRangePicker() {
               onClick={handleClearRange}
             >
               <X className="h-3 w-3" />
-              Zuruecksetzen
+              Zurücksetzen
             </Button>
           )}
         </div>

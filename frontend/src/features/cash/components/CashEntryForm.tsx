@@ -176,7 +176,7 @@ export function CashEntryForm({
     }
   }, [isEntertainment, form]);
 
-  // Formular zurücksetzen wenn Dialog oeffnet
+  // Formular zurücksetzen wenn Dialog öffnet
   React.useEffect(() => {
     if (open) {
       form.reset({
@@ -355,7 +355,7 @@ export function CashEntryForm({
                             <div className="space-y-1 text-sm">
                               <p><strong>19%</strong> - Standard für Waren und Dienstleistungen</p>
                               <p><strong>7%</strong> - Ermäßigt für Lebensmittel, Bücher, Zeitungen</p>
-                              <p><strong>0%</strong> - Steuerfreie Umsaetze</p>
+                              <p><strong>0%</strong> - Steuerfreie Umsätze</p>
                             </div>
                           </TooltipContent>
                         </Tooltip>

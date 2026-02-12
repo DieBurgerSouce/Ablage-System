@@ -1,7 +1,7 @@
 /**
  * ComparePage Component
  *
- * Hauptseite fuer den Dokumentenvergleich.
+ * Hauptseite für den Dokumentenvergleich.
  */
 
 import { useState, useEffect } from 'react';
@@ -33,7 +33,7 @@ interface DocumentListResponse {
 }
 
 export function ComparePage() {
-  // URL-Parameter fuer Deep-Linking
+  // URL-Parameter für Deep-Linking
   const searchParams = useSearch({ strict: false }) as { doc1?: string; doc2?: string };
   const initialDoc1 = searchParams.doc1;
   const initialDoc2 = searchParams.doc2;
@@ -49,7 +49,7 @@ export function ComparePage() {
       const response = await apiClient.get<DocumentListResponse>('/documents', {
         params: {
           page: 1,
-          per_page: 100, // Genug Dokumente fuer Vergleich
+          per_page: 100, // Genug Dokumente für Vergleich
         },
       });
       return response.data;
@@ -69,7 +69,7 @@ export function ComparePage() {
   const [comparisonType, setComparisonType] = useState<ComparisonType>('hybrid');
   const [shouldCompare, setShouldCompare] = useState(false);
 
-  // Initialisiere ausgewaehlte Dokumente basierend auf URL-Parametern
+  // Initialisiere ausgewählte Dokumente basierend auf URL-Parametern
   useEffect(() => {
     if (availableDocuments.length > 0) {
       if (initialDoc1 && !document1) {
@@ -145,7 +145,7 @@ export function ComparePage() {
         <Alert variant="destructive" className="mb-8">
           <AlertTitle>Fehler beim Laden der Dokumente</AlertTitle>
           <AlertDescription>
-            Die verfuegbaren Dokumente konnten nicht geladen werden. Bitte versuchen Sie es spaeter erneut.
+            Die verfügbaren Dokumente konnten nicht geladen werden. Bitte versuchen Sie es später erneut.
           </AlertDescription>
         </Alert>
       )}
@@ -200,7 +200,7 @@ export function ComparePage() {
       {!diffReport && !isLoading && !error && (
         <div className="text-center py-16 text-muted-foreground">
           <GitCompare className="h-12 w-12 mx-auto mb-4 opacity-30" />
-          <p className="text-lg">Waehlen Sie zwei Dokumente aus und starten Sie den Vergleich</p>
+          <p className="text-lg">Wählen Sie zwei Dokumente aus und starten Sie den Vergleich</p>
           <p className="text-sm mt-2">
             Der Vergleich zeigt Ihnen alle Unterschiede zwischen den Dokumenten
           </p>

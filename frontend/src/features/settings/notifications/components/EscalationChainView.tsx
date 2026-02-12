@@ -1,7 +1,7 @@
 /**
  * EscalationChainView Component
  *
- * Visualisiert die Eskalationskette fuer nicht-beantwortete Benachrichtigungen.
+ * Visualisiert die Eskalationskette für nicht-beantwortete Benachrichtigungen.
  */
 
 import {
@@ -69,7 +69,7 @@ export function EscalationChainView({
           <p>Eskalationskette ist deaktiviert.</p>
           <p className="text-sm mt-1">
             Aktivieren Sie die Eskalation in den Einstellungen, um bei ausbleibender
-            Reaktion automatisch ueber weitere Kanaele benachrichtigt zu werden.
+            Reaktion automatisch über weitere Kanäle benachrichtigt zu werden.
           </p>
         </CardContent>
       </Card>
@@ -81,7 +81,7 @@ export function EscalationChainView({
       <CardHeader>
         <CardTitle className="text-lg">Eskalationskette</CardTitle>
         <CardDescription>
-          Bei ausbleibender Reaktion werden Sie automatisch ueber weitere Kanaele
+          Bei ausbleibender Reaktion werden Sie automatisch über weitere Kanäle
           benachrichtigt. Die Eskalation stoppt, sobald Sie reagieren.
         </CardDescription>
       </CardHeader>
@@ -181,7 +181,7 @@ export function EscalationChainView({
           <p>
             <strong>Hinweis:</strong> Die Eskalation wird automatisch gestoppt,
             sobald Sie auf eine Benachrichtigung reagieren (z.B. als gelesen
-            markieren oder bestaetigen).
+            markieren oder bestätigen).
           </p>
         </div>
       </CardContent>

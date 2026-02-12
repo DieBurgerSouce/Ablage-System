@@ -104,7 +104,7 @@ export function AccessibleDialog({
   // Announce dialog state changes
   useEffect(() => {
     if (open && !previousOpenRef.current) {
-      announce(`Dialog geoeffnet: ${title}`, 'polite')
+      announce(`Dialog geöffnet: ${title}`, 'polite')
     } else if (!open && previousOpenRef.current) {
       announce('Dialog geschlossen', 'polite')
     }
@@ -253,7 +253,7 @@ interface LiveRegionProps {
 }
 
 /**
- * Live Region für Screen Reader Ankuendigungen
+ * Live Region für Screen Reader Ankündigungen
  */
 export function LiveRegion({ message, priority = 'polite' }: LiveRegionProps) {
   return (

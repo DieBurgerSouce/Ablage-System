@@ -120,7 +120,7 @@ export function ConsentScopeCard({
                 checked={scopeInfo.consent_given}
                 onCheckedChange={(checked) => onToggle(scopeInfo.scope as ConsentScope, checked)}
                 disabled={isLoading}
-                aria-label={`Einwilligung fuer ${label} ${scopeInfo.consent_given ? 'widerrufen' : 'erteilen'}`}
+                aria-label={`Einwilligung für ${label} ${scopeInfo.consent_given ? 'widerrufen' : 'erteilen'}`}
               />
             </div>
 
@@ -158,7 +158,7 @@ export function ConsentScopeCard({
                   {scopeInfo.valid_until && (
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Clock className="h-4 w-4" />
-                      <span>Gueltig bis: {formatDate(scopeInfo.valid_until)}</span>
+                      <span>Gültig bis: {formatDate(scopeInfo.valid_until)}</span>
                     </div>
                   )}
                   {scopeInfo.consent_version && (

@@ -1,11 +1,11 @@
 /**
  * RetirementPlanningPage - Altersvorsorge Dashboard
  *
- * Hauptseite fuer Altersvorsorge-Planung:
- * - Rentenluecken-Rechner
+ * Hauptseite für Altersvorsorge-Planung:
+ * - Rentenlücken-Rechner
  * - Monte-Carlo-Simulation
  * - Rentenpunkte-Tracking
- * - Riester/Ruerup Optimierung
+ * - Riester/Rürup Optimierung
  */
 
 import { useState } from 'react';
@@ -109,7 +109,7 @@ function StatsCards({
         <CardContent>
           <p className="text-2xl font-bold">{formatCurrency(totalPrivatePension)}</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Riester + Ruerup + bAV + Privat
+            Riester + Rürup + bAV + Privat
           </p>
         </CardContent>
       </Card>
@@ -117,7 +117,7 @@ function StatsCards({
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            Rentenluecken-Deckung
+            Rentenlücken-Deckung
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -136,7 +136,7 @@ function StatsCards({
   );
 }
 
-// Riester/Ruerup Card
+// Riester/Rürup Card
 interface SubsidyCardProps {
   type: 'riester' | 'ruerup';
   currentContribution: number;
@@ -156,7 +156,7 @@ function SubsidyCard({
   recommendations,
   isLoading,
 }: SubsidyCardProps) {
-  const title = type === 'riester' ? 'Riester-Rente' : 'Ruerup/Basisrente';
+  const title = type === 'riester' ? 'Riester-Rente' : 'Rürup/Basisrente';
   const subtitle = type === 'riester'
     ? 'Staatliche Zulagen und Steuervorteile'
     : 'Steuerlich absetzbare Basisversorgung';
@@ -192,7 +192,7 @@ function SubsidyCard({
         {/* Auslastung */}
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span>Ausschoepfung Hoechstbetrag</span>
+            <span>Ausschöpfung Höchstbetrag</span>
             <span className="font-medium">{utilizationPercent.toFixed(0)}%</span>
           </div>
           <Progress value={utilizationPercent} className="h-2" />
@@ -283,12 +283,12 @@ export function RetirementPlanningPage() {
     { enabled: !!spaceId }
   );
 
-  // Ruerup wird aus Summary oder Riester abgeleitet (vereinfacht)
+  // Rürup wird aus Summary oder Riester abgeleitet (vereinfacht)
   const ruerupOptimization = riesterOptimization ? {
     currentContribution: 0,
     maxContribution: 27565,
     taxSaving: 0,
-    recommendations: ['Pruefen Sie Ruerup als Ergaenzung zur gesetzlichen Rente'],
+    recommendations: ['Prüfen Sie Rürup als Ergänzung zur gesetzlichen Rente'],
   } : null;
   const ruerupLoading = riesterLoading;
 
@@ -357,7 +357,7 @@ export function RetirementPlanningPage() {
               Altersvorsorge
             </h1>
             <p className="text-muted-foreground mt-1">
-              Rentenluecke berechnen und Vorsorge optimieren
+              Rentenlücke berechnen und Vorsorge optimieren
             </p>
           </div>
 
@@ -387,7 +387,7 @@ export function RetirementPlanningPage() {
             <AlertDescription>
               Ihre prognostizierte Rentendeckung liegt bei nur{' '}
               <strong>{summaryData.pensionGapCoverage.toFixed(0)}%</strong>. Wir empfehlen,
-              Ihre Altersvorsorge zu ueberpruefen und zu optimieren.
+              Ihre Altersvorsorge zu überprüfen und zu optimieren.
             </AlertDescription>
           </Alert>
         )}
@@ -397,15 +397,15 @@ export function RetirementPlanningPage() {
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="rechner" className="flex items-center gap-2">
               <Calculator className="h-4 w-4" />
-              Rentenluecke
+              Rentenlücke
             </TabsTrigger>
             <TabsTrigger value="simulation" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Monte-Carlo
             </TabsTrigger>
-            <TabsTrigger value="foerderung" className="flex items-center gap-2">
+            <TabsTrigger value="förderung" className="flex items-center gap-2">
               <Coins className="h-4 w-4" />
-              Riester/Ruerup
+              Riester/Rürup
             </TabsTrigger>
             <TabsTrigger value="strategien" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
@@ -413,7 +413,7 @@ export function RetirementPlanningPage() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Rentenluecken-Rechner */}
+          {/* Rentenlücken-Rechner */}
           <TabsContent value="rechner">
             {spaceId && <PensionGapCalculator spaceId={spaceId} />}
           </TabsContent>
@@ -423,8 +423,8 @@ export function RetirementPlanningPage() {
             {spaceId && <MonteCarloSimulation spaceId={spaceId} />}
           </TabsContent>
 
-          {/* Riester/Ruerup */}
-          <TabsContent value="foerderung">
+          {/* Riester/Rürup */}
+          <TabsContent value="förderung">
             <div className="grid gap-6 md:grid-cols-2">
               <SubsidyCard
                 type="riester"
@@ -446,7 +446,7 @@ export function RetirementPlanningPage() {
               />
             </div>
 
-            {/* Zusaetzliche Infos */}
+            {/* Zusätzliche Infos */}
             <Card className="mt-6">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -462,16 +462,16 @@ export function RetirementPlanningPage() {
                       <li>• Grundzulage: 175 EUR/Jahr</li>
                       <li>• Kinderzulage: 300 EUR/Kind (ab 2008 geboren)</li>
                       <li>• Eigenbeitrag: 4% vom Vorjahres-Brutto</li>
-                      <li>• Hoechstbetrag: 2.100 EUR inkl. Zulagen</li>
+                      <li>• Höchstbetrag: 2.100 EUR inkl. Zulagen</li>
                     </ul>
                   </div>
                   <div className="space-y-2">
-                    <h4 className="font-medium">Ruerup/Basisrente (Stand 2026)</h4>
+                    <h4 className="font-medium">Rürup/Basisrente (Stand 2026)</h4>
                     <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• Hoechstbetrag: 27.565 EUR (Ledige)</li>
+                      <li>• Höchstbetrag: 27.565 EUR (Ledige)</li>
                       <li>• Absetzbar: 100% (seit 2025)</li>
                       <li>• Besteuerung: Nach Renteneintritt</li>
-                      <li>• Keine Kapitalisierung moeglich</li>
+                      <li>• Keine Kapitalisierung möglich</li>
                     </ul>
                   </div>
                 </div>
@@ -492,8 +492,8 @@ export function RetirementPlanningPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Entnehmen Sie jaehrlich 4% Ihres Anfangskapitals (inflationsangepasst).
-                    Historisch betrachtet haelt das Portfolio damit mindestens 30 Jahre.
+                    Entnehmen Sie jährlich 4% Ihres Anfangskapitals (inflationsangepasst).
+                    Historisch betrachtet hält das Portfolio damit mindestens 30 Jahre.
                   </p>
                   <div className="rounded-lg border p-4 bg-muted/50">
                     <p className="text-sm font-medium">Beispiel:</p>
@@ -531,7 +531,7 @@ export function RetirementPlanningPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className="bg-green-50">Erfolgsrate: ~98%</Badge>
-                    <Badge variant="outline">Variable Einkuenfte</Badge>
+                    <Badge variant="outline">Variable Einnahmen</Badge>
                   </div>
                 </CardContent>
               </Card>
@@ -541,12 +541,12 @@ export function RetirementPlanningPage() {
                 <CardHeader>
                   <CardTitle>Bucket-Strategie</CardTitle>
                   <CardDescription>
-                    Zeitbasierte Aufteilung des Vermoegens
+                    Zeitbasierte Aufteilung des Vermögens
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Vermoegen in Zeitabschnitte (Buckets) aufteilen.
+                    Vermögen in Zeitabschnitte (Buckets) aufteilen.
                     Kurzfristig sicher, langfristig in Aktien.
                   </p>
                   <div className="space-y-2">
@@ -592,7 +592,7 @@ export function RetirementPlanningPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className="bg-green-50">Kapitalaufbrauchend</Badge>
-                    <Badge variant="outline">Hoehere Entnahmen</Badge>
+                    <Badge variant="outline">Höhere Entnahmen</Badge>
                   </div>
                 </CardContent>
               </Card>

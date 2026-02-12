@@ -6,12 +6,12 @@
  *
  * Features:
  * - Resizable Split-Layout
- * - Confidence-Farbmarkierungen (Gruen/Gelb/Orange/Rot)
+ * - Confidence-Farbmarkierungen (Grün/Gelb/Orange/Rot)
  * - Seitenwechsel-Steuerung
  * - Confidence-Schwellwert-Slider (Filter)
  * - Bounding-Box Overlay auf dem Dokument
  * - Sync: Hover auf Text hebt Box hervor und umgekehrt
- * - Tastaturnavigation durch niedrig-confidence Woerter (Tab)
+ * - Tastaturnavigation durch niedrig-confidence Wörter (Tab)
  */
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
@@ -198,7 +198,7 @@ export function OCRDiffViewer({ documentId, pageNumber: initialPage }: OCRDiffVi
         return () => observer.disconnect()
     }, [])
 
-    // Drag-handle fuer Split
+    // Drag-handle für Split
     const handleMouseDown = useCallback(() => {
         setIsDragging(true)
     }, [])
@@ -304,7 +304,7 @@ export function OCRDiffViewer({ documentId, pageNumber: initialPage }: OCRDiffVi
                                 </div>
                             </TooltipTrigger>
                             <TooltipContent>
-                                Nur Woerter unter diesem Schwellwert hervorheben
+                                Nur Wörter unter diesem Schwellwert hervorheben
                             </TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
@@ -364,7 +364,7 @@ export function OCRDiffViewer({ documentId, pageNumber: initialPage }: OCRDiffVi
                                 <div className="text-center">
                                     <FileText className="h-12 w-12 mx-auto mb-2 opacity-40" />
                                     <p className="text-sm">
-                                        {previewError ? 'Vorschau nicht verfuegbar' : 'Lade...'}
+                                        {previewError ? 'Vorschau nicht verfügbar' : 'Lade...'}
                                     </p>
                                 </div>
                             </div>
@@ -421,7 +421,7 @@ export function OCRDiffViewer({ documentId, pageNumber: initialPage }: OCRDiffVi
                         {lowConfidenceIndices.length > 0 && (
                             <div className="px-4 py-1.5 bg-muted/30 border-b flex-shrink-0">
                                 <span className="text-[11px] text-muted-foreground">
-                                    Tab: naechstes unsicheres Wort ({lowConfidenceIndices.length} Treffer)
+                                    Tab: nächstes unsicheres Wort ({lowConfidenceIndices.length} Treffer)
                                 </span>
                             </div>
                         )}

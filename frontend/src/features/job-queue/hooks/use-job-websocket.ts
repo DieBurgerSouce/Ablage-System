@@ -36,7 +36,7 @@ interface UseJobWebSocketOptions {
   autoReconnect?: boolean;
   /** Maximale Reconnect-Versuche */
   maxRetries?: number;
-  /** Initiale Verzoegerung zwischen Reconnects (ms) */
+  /** Initiale Verzögerung zwischen Reconnects (ms) */
   retryDelay?: number;
   /** Fallback zu Polling wenn WebSocket nicht verfügbar */
   pollingFallback?: boolean;
@@ -63,7 +63,7 @@ interface UseJobWebSocketReturn {
   error: string | null;
   /** Letzte Aktualisierung */
   lastUpdate: Date | null;
-  /** Verbindung manuell schliessen */
+  /** Verbindung manuell schließen */
   disconnect: () => void;
   /** Verbindung neu aufbauen */
   reconnect: () => void;
@@ -240,7 +240,7 @@ export function useJobWebSocket(options: UseJobWebSocketOptions = {}): UseJobWeb
       return;
     }
 
-    // Token als Query-Parameter anhaengen (wie chat_ws.py erwartet)
+    // Token als Query-Parameter anhängen (wie chat_ws.py erwartet)
     const wsUrl = buildWebSocketUrl(`/api/v1/admin/jobs/ws?token=${encodeURIComponent(token)}`);
 
     try {

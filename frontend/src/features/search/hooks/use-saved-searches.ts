@@ -1,7 +1,7 @@
 /**
  * useSavedSearches - LocalStorage-basierte gespeicherte Suchen
  *
- * CRUD-Operationen fuer gespeicherte Suchen mit LocalStorage Persistenz.
+ * CRUD-Operationen für gespeicherte Suchen mit LocalStorage Persistenz.
  *
  * @example
  * ```tsx
@@ -13,7 +13,7 @@
  *   params: { q: 'rechnung', type: ['pdf'] }
  * });
  *
- * // Suche loeschen
+ * // Suche löschen
  * deleteSearch(searchId);
  * ```
  */
@@ -78,13 +78,13 @@ export interface UseSavedSearchesReturn {
   /** Alle gespeicherten Suchen */
   savedSearches: SavedSearch[];
 
-  /** Gepinnte Suchen (fuer Sidebar) */
+  /** Gepinnte Suchen (für Sidebar) */
   pinnedSearches: SavedSearch[];
 
   /** Neue Suche speichern */
   saveSearch: (input: CreateSavedSearchInput) => SavedSearch;
 
-  /** Suche loeschen */
+  /** Suche löschen */
   deleteSearch: (id: string) => void;
 
   /** Suche aktualisieren */
@@ -93,10 +93,10 @@ export interface UseSavedSearchesReturn {
   /** Suche pinnen/unpinnen */
   togglePin: (id: string) => void;
 
-  /** Zugriff auf Suche registrieren (fuer "zuletzt verwendet") */
+  /** Zugriff auf Suche registrieren (für "zuletzt verwendet") */
   recordAccess: (id: string) => void;
 
-  /** Alle Suchen loeschen */
+  /** Alle Suchen löschen */
   clearAll: () => void;
 
   /** Suche nach ID finden */
@@ -148,7 +148,7 @@ export function useSavedSearches(): UseSavedSearchesReturn {
     setSavedSearches((prev) => {
       if (prev.length >= MAX_SAVED_SEARCHES) {
         wasLimitReached = true;
-        return prev; // Keine Aenderung
+        return prev; // Keine Änderung
       }
       // Erstelle newSearch INNERHALB des Callbacks mit dem garantiert aktuellen State
       newSearch = createSavedSearch(input);
@@ -256,13 +256,13 @@ export function useSavedSearches(): UseSavedSearchesReturn {
       return [];
     });
 
-    // Toast NACH setState, backup ist jetzt gefuellt
+    // Toast NACH setState, backup ist jetzt gefüllt
     toast.success('Alle Suchen gelöscht', {
       description: `${backup.length} Suchen wurden entfernt.`,
       action: {
         label: 'Rückgängig',
         onClick: () => {
-          // backup ist in dieser Closure stabil - kein savedSearches Dependency noetig
+          // backup ist in dieser Closure stabil - kein savedSearches Dependency nötig
           setSavedSearches(backup);
         },
       },
@@ -298,15 +298,15 @@ export function useSavedSearches(): UseSavedSearchesReturn {
 // ==================== Standalone Functions ====================
 
 /**
- * Laedt gespeicherte Suchen direkt aus LocalStorage.
- * Nuetzlich ausserhalb von React-Komponenten.
+ * Lädt gespeicherte Suchen direkt aus LocalStorage.
+ * Nützlich außerhalb von React-Komponenten.
  */
 export function getSavedSearches(): SavedSearch[] {
   return loadFromStorage();
 }
 
 /**
- * Prueft ob eine Suche mit diesem Namen existiert.
+ * Prüft ob eine Suche mit diesem Namen existiert.
  */
 export function searchNameExists(name: string): boolean {
   const searches = loadFromStorage();

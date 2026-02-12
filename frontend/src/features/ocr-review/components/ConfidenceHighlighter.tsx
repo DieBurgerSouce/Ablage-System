@@ -2,13 +2,13 @@
  * ConfidenceHighlighter - OCR-Text mit farblicher Confidence-Markierung
  *
  * Rendert erkannten Text, wobei jedes Wort je nach Confidence eingefaerbt wird:
- * - Gruen (>=0.95): Sehr sicher
+ * - Grün (>=0.95): Sehr sicher
  * - Gelb (0.8-0.95): Unsicher
  * - Orange (0.6-0.8): Niedrig
  * - Rot (<0.6): Kritisch
  *
  * Hovering zeigt Tooltip mit exaktem Prozent-Wert.
- * Klick auf niedrig-confidence Woerter selektiert sie.
+ * Klick auf niedrig-confidence Wörter selektiert sie.
  */
 
 import { useCallback, useRef, useEffect } from 'react'
@@ -28,13 +28,13 @@ import {
 
 interface ConfidenceHighlighterProps {
     words: WordConfidence[]
-    /** Confidence-Schwelle: Woerter darunter werden unterstrichen */
+    /** Confidence-Schwelle: Wörter darunter werden unterstrichen */
     threshold: number
     /** Aktuell hervorgehobenes Wort (Sync mit Overlay) */
     highlightedWordIndex: number | null
     /** Callback wenn Wort angeklickt wird */
     onWordClick: (index: number) => void
-    /** Callback wenn Maus ueber Wort faehrt */
+    /** Callback wenn Maus über Wort faehrt */
     onWordHover: (index: number | null) => void
     className?: string
 }
@@ -74,7 +74,7 @@ export function ConfidenceHighlighter({
     if (words.length === 0) {
         return (
             <div className="p-6 text-center text-muted-foreground text-sm">
-                Keine Wort-Level Daten verfuegbar.
+                Keine Wort-Level Daten verfügbar.
             </div>
         )
     }

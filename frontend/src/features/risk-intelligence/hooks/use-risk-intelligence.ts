@@ -35,7 +35,7 @@ export const riskIntelligenceKeys = {
 // ==================== Hooks ====================
 
 /**
- * Hook fuer umfassendes Risikoprofil einer Entity
+ * Hook für umfassendes Risikoprofil einer Entity
  */
 export function useEntityRiskProfile(entityId: string | undefined) {
   return useQuery({
@@ -47,7 +47,7 @@ export function useEntityRiskProfile(entityId: string | undefined) {
 }
 
 /**
- * Hook fuer Trend-Analyse einer Entity
+ * Hook für Trend-Analyse einer Entity
  */
 export function useEntityTrend(entityId: string | undefined, quarters: number = 4) {
   return useQuery({
@@ -59,7 +59,7 @@ export function useEntityTrend(entityId: string | undefined, quarters: number = 
 }
 
 /**
- * Hook fuer Benchmark-Vergleich einer Entity
+ * Hook für Benchmark-Vergleich einer Entity
  */
 export function useEntityBenchmark(entityId: string | undefined, industry?: string) {
   return useQuery({
@@ -71,7 +71,7 @@ export function useEntityBenchmark(entityId: string | undefined, industry?: stri
 }
 
 /**
- * Hook fuer Netzwerk-Analyse einer Entity
+ * Hook für Netzwerk-Analyse einer Entity
  */
 export function useEntityNetwork(entityId: string | undefined) {
   return useQuery({
@@ -83,7 +83,7 @@ export function useEntityNetwork(entityId: string | undefined) {
 }
 
 /**
- * Hook fuer externe Quellenprüfung einer Entity
+ * Hook für externe Quellenprüfung einer Entity
  */
 export function useExternalSourceCheck(entityId: string | undefined) {
   return useQuery({
@@ -95,7 +95,7 @@ export function useExternalSourceCheck(entityId: string | undefined) {
 }
 
 /**
- * Hook fuer Portfolio-Risikouebersicht
+ * Hook für Portfolio-Risikoübersicht
  */
 export function usePortfolioRisk(entityType?: 'customer' | 'supplier') {
   return useQuery({
@@ -106,7 +106,7 @@ export function usePortfolioRisk(entityType?: 'customer' | 'supplier') {
 }
 
 /**
- * Hook fuer Branchen-Benchmarks
+ * Hook für Branchen-Benchmarks
  */
 export function useIndustryBenchmarks() {
   return useQuery({
@@ -117,7 +117,7 @@ export function useIndustryBenchmarks() {
 }
 
 /**
- * Hook fuer Trend-Richtungen
+ * Hook für Trend-Richtungen
  */
 export function useTrendDirections() {
   return useQuery({
@@ -128,7 +128,7 @@ export function useTrendDirections() {
 }
 
 /**
- * Hook fuer externe Datenquellen
+ * Hook für externe Datenquellen
  */
 export function useExternalSources() {
   return useQuery({

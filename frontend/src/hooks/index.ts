@@ -105,3 +105,13 @@ export {
   useOnlineStatus,
   type OnlineStatus,
 } from './use-online-status';
+
+// Smart Defaults (Phase 6 Feature B.1)
+export { useRecentItems } from './use-recent-items';
+export { useFormDefaults } from './use-form-defaults';
+export { useLastActiveView } from './use-last-active-view';
+export { useSessionResume } from './use-session-resume';
+
+// Animation hooks (Phase 6 Feature A)
+export { useAnimatedCounter } from './use-animated-counter';
+export { useReducedMotion } from './use-reduced-motion';

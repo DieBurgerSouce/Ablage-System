@@ -1,7 +1,7 @@
 /**
  * Document Chain React Query Hooks
  *
- * TanStack Query Hooks fuer Auftragsketten-Tracking.
+ * TanStack Query Hooks für Auftragsketten-Tracking.
  * Caching, Invalidierung und optimistic Updates.
  */
 
@@ -219,7 +219,7 @@ export function useResolveDiscrepancy() {
 // ==================== Combined Hooks ====================
 
 /**
- * Hook fuer Chain-Page mit allen noetigen Daten
+ * Hook für Chain-Page mit allen nötigen Daten
  */
 export function useChainPage(chainId: string) {
   const chainQuery = useChain(chainId);
@@ -241,7 +241,7 @@ export function useChainPage(chainId: string) {
 }
 
 /**
- * Hook fuer Chain-Mutations
+ * Hook für Chain-Mutations
  */
 export function useChainMutations() {
   const createChain = useCreateChain();
@@ -315,7 +315,7 @@ export const chainIntelligenceQueryKeys = {
 };
 
 /**
- * Hook fuer Ketten-Intelligenz-Bericht (Luecken + Statistiken)
+ * Hook für Ketten-Intelligenz-Bericht (Lücken + Statistiken)
  */
 export function useChainGaps(options?: { enabled?: boolean }) {
   return useQuery<ChainIntelligenceReport>({
@@ -327,7 +327,7 @@ export function useChainGaps(options?: { enabled?: boolean }) {
 }
 
 /**
- * Hook fuer verwaiste Dokumente
+ * Hook für verwaiste Dokumente
  */
 export function useOrphanDocuments(options?: { enabled?: boolean }) {
   return useQuery<OrphanDocument[]>({
@@ -339,7 +339,7 @@ export function useOrphanDocuments(options?: { enabled?: boolean }) {
 }
 
 /**
- * Hook fuer Vervollstaendigungs-Vorschlaege einer Kette
+ * Hook für Vervollständigungs-Vorschläge einer Kette
  */
 export function useChainSuggestions(
   chainId: string,

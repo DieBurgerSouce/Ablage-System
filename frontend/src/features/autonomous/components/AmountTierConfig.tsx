@@ -25,12 +25,12 @@ export interface AmountTiersResponse {
 }
 
 /**
- * AmountTierConfig - Konfigurationskomponente fuer betragsbasierte Freigabestufen.
+ * AmountTierConfig - Konfigurationskomponente für betragsbasierte Freigabestufen.
  *
- * Ermoeglicht die Verwaltung von bis zu 5 Betrags-Freigabestufen:
+ * Ermöglicht die Verwaltung von bis zu 5 Betrags-Freigabestufen:
  * - Automatisch: Automatische Freigabe (Standard: < 500 EUR)
- * - Ein-Klick: Ein-Klick-Bestaetigung (Standard: 500-5000 EUR)
- * - Explizit: Explizite Pruefung erforderlich (Standard: > 5000 EUR)
+ * - Ein-Klick: Ein-Klick-Bestätigung (Standard: 500-5000 EUR)
+ * - Explizit: Explizite Prüfung erforderlich (Standard: > 5000 EUR)
  */
 export function AmountTierConfig() {
   const { toast } = useToast();
@@ -85,7 +85,7 @@ export function AmountTierConfig() {
     if (tiers.length >= 5) {
       toast({
         title: 'Maximale Anzahl erreicht',
-        description: 'Es koennen maximal 5 Betrags-Freigabestufen erstellt werden',
+        description: 'Es können maximal 5 Betrags-Freigabestufen erstellt werden',
       });
       return;
     }
@@ -121,7 +121,7 @@ export function AmountTierConfig() {
         if (current >= next) {
           toast({
             title: 'Validierungsfehler',
-            description: 'Betrags-Obergrenzen muessen aufsteigend sortiert sein',
+            description: 'Betrags-Obergrenzen müssen aufsteigend sortiert sein',
             variant: 'destructive',
           });
           return;
@@ -190,7 +190,7 @@ export function AmountTierConfig() {
       <CardHeader>
         <CardTitle>Betrags-Freigabestufen</CardTitle>
         <p className="text-sm text-muted-foreground mt-2">
-          Konfigurieren Sie bis zu 5 Betrags-Freigabestufen fuer automatische
+          Konfigurieren Sie bis zu 5 Betrags-Freigabestufen für automatische
           und halb-automatische Genehmigungen.
         </p>
       </CardHeader>
@@ -300,7 +300,7 @@ export function AmountTierConfig() {
               className="w-full"
             >
               <Plus className="h-4 w-4 mr-2" />
-              Stufe hinzufuegen
+              Stufe hinzufügen
             </Button>
           )}
 
@@ -329,14 +329,14 @@ export function AmountTierConfig() {
             <p className="font-semibold mb-1">Informationen:</p>
             <ul className="list-disc list-inside space-y-1 text-xs">
               <li>
-                <strong>Automatisch:</strong> Betraege werden sofort freigegeben,
+                <strong>Automatisch:</strong> Beträge werden sofort freigegeben,
                 wenn das Trust-Level ausreicht
               </li>
               <li>
-                <strong>Ein-Klick:</strong> Ein-Klick-Bestaetigung durch den User
+                <strong>Ein-Klick:</strong> Ein-Klick-Bestätigung durch den User
               </li>
               <li>
-                <strong>Explizit:</strong> Explizite manuelle Pruefung erforderlich
+                <strong>Explizit:</strong> Explizite manuelle Prüfung erforderlich
               </li>
             </ul>
           </div>

@@ -1,7 +1,7 @@
 /**
  * Portal Upload Page
  *
- * Ermoeglicht Lieferanten den direkten Upload von Rechnungen und Dokumenten.
+ * Ermöglicht Lieferanten den direkten Upload von Rechnungen und Dokumenten.
  * Drag & Drop, Dokumenttyp-Auswahl, Referenznummer und Fortschrittsanzeige.
  */
 
@@ -211,10 +211,10 @@ export function PortalUploadPage() {
       {!uploadResult && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Datei auswaehlen</CardTitle>
+            <CardTitle className="text-lg">Datei auswählen</CardTitle>
             <CardDescription>
               Erlaubte Dateitypen: PDF, JPG, PNG.
-              Maximale Groesse: {allowedTypes?.max_file_size_mb || 10} MB.
+              Maximale Größe: {allowedTypes?.max_file_size_mb || 10} MB.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -270,7 +270,7 @@ export function PortalUploadPage() {
                 <div className="text-center">
                   <Upload className="mx-auto h-10 w-10 text-muted-foreground/50" />
                   <p className="mt-3 text-sm font-medium">
-                    Datei hierher ziehen oder klicken zum Auswaehlen
+                    Datei hierher ziehen oder klicken zum Auswählen
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     PDF, JPG oder PNG bis {allowedTypes?.max_file_size_mb || 10} MB
@@ -284,7 +284,7 @@ export function PortalUploadPage() {
               <Label htmlFor="document-type">Dokumenttyp</Label>
               <Select value={documentType} onValueChange={setDocumentType}>
                 <SelectTrigger id="document-type">
-                  <SelectValue placeholder="Dokumenttyp waehlen" />
+                  <SelectValue placeholder="Dokumenttyp wählen" />
                 </SelectTrigger>
                 <SelectContent>
                   {DOCUMENT_TYPES.map((type) => (

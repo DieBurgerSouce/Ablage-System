@@ -1,8 +1,8 @@
 /**
  * useOnlineStatus - Network connectivity hook
  *
- * Ueberwacht den Online/Offline-Status des Browsers.
- * Nutzt navigator.onLine + Event-Listener fuer Echtzeit-Updates.
+ * Überwacht den Online/Offline-Status des Browsers.
+ * Nutzt navigator.onLine + Event-Listener für Echtzeit-Updates.
  */
 
 import { useState, useEffect, useCallback } from 'react';

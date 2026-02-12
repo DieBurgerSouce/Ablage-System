@@ -1,7 +1,7 @@
 /**
  * BPMN Task Inbox
  *
- * Aufgaben-Inbox fuer Benutzer-Tasks.
+ * Aufgaben-Inbox für Benutzer-Tasks.
  */
 
 import { createFileRoute } from '@tanstack/react-router';
@@ -70,7 +70,7 @@ function TaskInboxPage() {
             color="purple"
           />
           <StatCard
-            title="Ueberfaellig"
+            title="Überfällig"
             value={stats.overdue || 0}
             icon={AlertTriangle}
             color="amber"
@@ -131,7 +131,7 @@ function TaskInboxPage() {
               ))}
             </div>
           ) : (
-            <EmptyTaskList message="Keine Gruppen-Aufgaben verfuegbar" />
+            <EmptyTaskList message="Keine Gruppen-Aufgaben verfügbar" />
           )}
         </TabsContent>
       </Tabs>
@@ -182,9 +182,9 @@ function TaskCard({ task, showClaimButton }: TaskCardProps) {
   const handleClaim = async () => {
     try {
       await claimMutation.mutateAsync({ id: task.id });
-      toast.success('Aufgabe uebernommen');
+      toast.success('Aufgabe übernommen');
     } catch {
-      toast.error('Uebernahme fehlgeschlagen');
+      toast.error('Übernahme fehlgeschlagen');
     }
   };
 
@@ -226,7 +226,7 @@ function TaskCard({ task, showClaimButton }: TaskCardProps) {
             {isOverdue && (
               <Badge variant="outline" className="border-amber-500 text-amber-600">
                 <AlertTriangle className="mr-1 h-3 w-3" />
-                Ueberfaellig
+                Überfällig
               </Badge>
             )}
           </div>
@@ -235,7 +235,7 @@ function TaskCard({ task, showClaimButton }: TaskCardProps) {
             {task.due_date && (
               <span className="flex items-center gap-1">
                 <Clock className="h-4 w-4" />
-                Faellig: {new Date(task.due_date).toLocaleDateString('de-DE')}
+                Fällig: {new Date(task.due_date).toLocaleDateString('de-DE')}
               </span>
             )}
             {task.candidate_groups && task.candidate_groups.length > 0 && (
@@ -260,7 +260,7 @@ function TaskCard({ task, showClaimButton }: TaskCardProps) {
               ) : (
                 <Hand className="mr-2 h-4 w-4" />
               )}
-              Uebernehmen
+              Übernehmen
             </Button>
           )}
 
@@ -291,7 +291,7 @@ function TaskCard({ task, showClaimButton }: TaskCardProps) {
               ) : (
                 <Check className="mr-2 h-4 w-4" />
               )}
-              Abschliessen
+              Abschließen
             </Button>
           )}
 
@@ -312,7 +312,7 @@ function TaskStatusBadge({ status }: { status: TaskStatus }) {
     in_progress: { label: 'In Bearbeitung', variant: 'default' },
     completed: { label: 'Abgeschlossen', variant: 'secondary' },
     failed: { label: 'Fehlgeschlagen', variant: 'secondary' },
-    skipped: { label: 'Uebersprungen', variant: 'secondary' },
+    skipped: { label: 'Übersprungen', variant: 'secondary' },
   };
 
   const { label, variant } = config[status] || config.created;

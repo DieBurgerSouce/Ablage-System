@@ -1,7 +1,7 @@
 /**
  * DATEV Connect - Parent Layout
  *
- * Definiert das Layout und die Sub-Navigation fuer den DATEVconnect-Bereich.
+ * Definiert das Layout und die Sub-Navigation für den DATEVconnect-Bereich.
  */
 
 import { createFileRoute, Outlet, Link, useLocation } from '@tanstack/react-router';
@@ -31,7 +31,7 @@ function DATEVConnectLayout() {
             <div>
                 <h1 className="text-3xl font-bold tracking-tight font-display">DATEVconnect</h1>
                 <p className="text-muted-foreground mt-2">
-                    Vollstaendige Integration mit der DATEVconnect API.
+                    Vollständige Integration mit der DATEVconnect API.
                 </p>
             </div>
 
@@ -42,7 +42,7 @@ function DATEVConnectLayout() {
                         ? pathname === item.href
                         : pathname.startsWith(item.href) && pathname !== '/admin/datev-connect';
 
-                    // Fuer die Uebersicht: nur aktiv wenn exakt /admin/datev-connect
+                    // Für die Übersicht: nur aktiv wenn exakt /admin/datev-connect
                     const isOverviewActive = item.exact && pathname === item.href;
                     const finalIsActive = item.exact ? isOverviewActive : isActive;
 
@@ -64,7 +64,7 @@ function DATEVConnectLayout() {
                 })}
             </nav>
 
-            {/* Content - mit Error Boundary geschuetzt */}
+            {/* Content - mit Error Boundary geschützt */}
             <DATEVErrorBoundary>
                 <Outlet />
             </DATEVErrorBoundary>

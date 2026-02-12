@@ -1,11 +1,11 @@
 /**
  * Customer Lifetime Value Widget
  *
- * Dashboard-Widget fuer Kundenwert-Analyse.
+ * Dashboard-Widget für Kundenwert-Analyse.
  *
  * Features:
  * - Kumulativer Umsatz pro Kunde
- * - Trend-Analyse (wachsend/ruecklaeufig)
+ * - Trend-Analyse (wachsend/rückläufig)
  * - Churn-Risiko-Indikator
  * - Top-Kunden-Ranking
  *
@@ -64,7 +64,7 @@ import {
 } from '../../api/dashboard-widgets';
 
 /**
- * Formatiere Waehrung
+ * Formatiere Währung
  */
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('de-DE', {
@@ -426,5 +426,5 @@ export function CustomerLifetimeValueWidget() {
   );
 }
 
-// Fehlende Imports hinzufuegen
+// Fehlende Imports hinzufügen
 import { CheckCircle } from 'lucide-react';

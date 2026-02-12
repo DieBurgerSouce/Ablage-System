@@ -1,7 +1,7 @@
 /**
  * Dunning List Komponente (Aktualisiert)
  *
- * Vollstaendige Mahnungsverwaltung mit:
+ * Vollständige Mahnungsverwaltung mit:
  * - DunningTable mit TanStack Table
  * - BulkActionsBar für Massenaktionen
  * - MahnungDetailSheet für Details
@@ -100,7 +100,7 @@ function StatsCards({ stats, isLoading }: {
                     <div className="text-2xl font-bold text-green-600">
                         {formatCurrency(stats.total_fees)}
                     </div>
-                    <p className="text-sm text-muted-foreground">Mahngebuehren</p>
+                    <p className="text-sm text-muted-foreground">Mahngebühren</p>
                 </CardContent>
             </Card>
             <Card>

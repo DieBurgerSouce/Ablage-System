@@ -4,7 +4,7 @@
  * Phase 4.7: Real-time Widget Updates
  *
  * Diese Datei re-exportiert die Widget-Subscription Hooks aus websocket.ts
- * fuer einfacheren Import in Widget-Komponenten.
+ * für einfacheren Import in Widget-Komponenten.
  *
  * @example
  * import { useWidgetSubscription, useMultiWidgetSubscription } from '@/hooks/use-widget-subscription';
@@ -31,7 +31,7 @@ export {
   type WidgetUpdatePayload,
 } from "@/lib/websocket"
 
-// Widget Query Key Mapping fuer konsistente Verwendung
+// Widget Query Key Mapping für konsistente Verwendung
 export const WIDGET_QUERY_KEYS: Record<string, string[][]> = {
   cashflow: [["cashflow"], ["finance"], ["banking"]],
   recent_documents: [["documents"], ["recent-documents"]],
@@ -49,7 +49,7 @@ export const WIDGET_QUERY_KEYS: Record<string, string[][]> = {
 /**
  * Hook zum Abonnieren aller Dashboard-Widgets mit Standard-Query-Keys.
  *
- * Vereinfachte Nutzung fuer die Dashboard-Seite.
+ * Vereinfachte Nutzung für die Dashboard-Seite.
  *
  * @example
  * function DashboardPage() {

@@ -1,7 +1,7 @@
 /**
  * AuditTimeline - Chronologische Ereignisliste
  *
- * Zeigt Audit-Eintraege als Timeline mit Filter-Optionen,
+ * Zeigt Audit-Einträge als Timeline mit Filter-Optionen,
  * erweiterbaren Details und Merkle Proof Verifikation.
  */
 
@@ -63,7 +63,7 @@ const ACTION_MAP: Record<string, ActionConfig> = {
     icon: Pencil,
   },
   delete: {
-    label: "Geloescht",
+    label: "Gelöscht",
     variant: "destructive",
     icon: Trash2,
   },
@@ -198,7 +198,7 @@ function TimelineEntryRow({ entry, onVerifyProof }: TimelineEntryRowProps) {
               onClick={() => onVerifyProof(entry.integrity_hash!)}
             >
               <ShieldCheck className="mr-1 h-3 w-3" />
-              Beweis pruefen
+              Beweis prüfen
             </Button>
           )}
         </div>
@@ -216,7 +216,7 @@ function TimelineEntryRow({ entry, onVerifyProof }: TimelineEntryRowProps) {
               {entry.integrity_hash && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">
-                    Integritaets-Hash
+                    Integritäts-Hash
                   </span>
                   <span className="font-mono text-xs">
                     {entry.integrity_hash.substring(0, 16)}...
@@ -305,7 +305,7 @@ export function AuditTimeline() {
             <SelectItem value="all">Alle Aktionen</SelectItem>
             <SelectItem value="create">Erstellen</SelectItem>
             <SelectItem value="update">Bearbeiten</SelectItem>
-            <SelectItem value="delete">Loeschen</SelectItem>
+            <SelectItem value="delete">Löschen</SelectItem>
             <SelectItem value="export">Export</SelectItem>
             <SelectItem value="login">Anmeldung</SelectItem>
           </SelectContent>
@@ -321,15 +321,15 @@ export function AuditTimeline() {
         >
           <SelectTrigger
             className="w-[160px]"
-            aria-label="Nach Entitaetstyp filtern"
+            aria-label="Nach Entitätstyp filtern"
           >
-            <SelectValue placeholder="Entitaet" />
+            <SelectValue placeholder="Entität" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Alle Entitaeten</SelectItem>
+            <SelectItem value="all">Alle Entitäten</SelectItem>
             <SelectItem value="document">Dokument</SelectItem>
             <SelectItem value="user">Benutzer</SelectItem>
-            <SelectItem value="entity">Entitaet</SelectItem>
+            <SelectItem value="entity">Entität</SelectItem>
             <SelectItem value="invoice">Rechnung</SelectItem>
           </SelectContent>
         </Select>
@@ -381,10 +381,10 @@ export function AuditTimeline() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Activity className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold">
-              Keine Eintraege gefunden
+              Keine Einträge gefunden
             </h3>
             <p className="text-muted-foreground text-sm">
-              Es wurden keine Audit-Eintraege gefunden, die Ihren
+              Es wurden keine Audit-Einträge gefunden, die Ihren
               Filterkriterien entsprechen.
             </p>
           </CardContent>
@@ -405,7 +405,7 @@ export function AuditTimeline() {
       {total > (filters.per_page ?? 20) && (
         <div className="flex items-center justify-between pt-2">
           <p className="text-sm text-muted-foreground">
-            Seite {filters.page ?? 1} von {totalPages} ({total} Eintraege
+            Seite {filters.page ?? 1} von {totalPages} ({total} Einträge
             gesamt)
           </p>
           <div className="flex gap-2">
@@ -421,13 +421,13 @@ export function AuditTimeline() {
                 }))
               }
             >
-              Zurueck
+              Zurück
             </Button>
             <Button
               variant="outline"
               size="sm"
               disabled={(filters.page ?? 1) >= totalPages}
-              aria-label="Naechste Seite"
+              aria-label="Nächste Seite"
               onClick={() =>
                 setFilters((prev) => ({
                   ...prev,

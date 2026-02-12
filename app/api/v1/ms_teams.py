@@ -12,7 +12,9 @@ Feinpoliert und durchdacht - Enterprise Microsoft Teams-Integration.
 
 import structlog
 from datetime import datetime, timezone
-from typing import Optional, Any
+from typing import Optional
+
+from app.core.types import JSONValue
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from pydantic import BaseModel, Field, field_validator
@@ -176,7 +178,7 @@ class TeamsSendNotificationRequest(BaseModel):
     notification_type: str = Field(..., description="Notification-Typ")
     title: str = Field(..., min_length=1, max_length=200, description="Titel")
     message: str = Field(..., min_length=1, max_length=2000, description="Nachricht")
-    context: Optional[dict[str, Any]] = Field(default=None, description="Zusaetzlicher Kontext")
+    context: Optional[dict[str, JSONValue]] = Field(default=None, description="Zusaetzlicher Kontext")
     priority: str = Field(default="normal", description="Prioritaet")
     actions: Optional[list[dict[str, str]]] = Field(default=None, description="Aktions-Buttons")
 
@@ -561,7 +563,7 @@ async def get_notification_types(
     summary="Health Check",
     description="Prueft ob der Microsoft Teams-Service verfuegbar ist.",
 )
-async def health_check() -> dict[str, Any]:
+async def health_check() -> dict[str, JSONValue]:
     """Health Check fuer den Teams-Service."""
     service = get_teams_service()
 

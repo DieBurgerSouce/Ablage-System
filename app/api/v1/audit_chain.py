@@ -11,10 +11,11 @@ REST API fuer kryptografischen Audit-Trail mit Merkle Trees:
 Feinpoliert und durchdacht - Enterprise Audit Trail Security.
 """
 
-from typing import Dict, Any
+from typing import Dict
 from datetime import datetime, timezone, timedelta
 from uuid import UUID
 
+from app.core.types import JSONDict
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -51,7 +52,7 @@ class VerifyProofRequest(BaseModel):
 
 @router.get(
     "/status",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Audit-Chain Status",
     description="Allgemeine Statistiken zur Audit-Chain"
 )
@@ -59,7 +60,7 @@ async def get_status(
     current_user: User = Depends(get_current_active_user),
     company_id: UUID = Depends(get_current_company_id),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Holt Audit-Chain Status.
 
@@ -105,7 +106,7 @@ async def get_status(
 
 @router.get(
     "/merkle-proof/{entry_hash}",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Merkle Proof",
     description="Generiert Merkle Proof fuer einzelnen Eintrag"
 )
@@ -114,7 +115,7 @@ async def get_merkle_proof(
     current_user: User = Depends(get_current_active_user),
     company_id: UUID = Depends(get_current_company_id),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Generiert Merkle Proof.
 
@@ -169,7 +170,7 @@ async def get_merkle_proof(
 
 @router.post(
     "/verify",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Proof verifizieren",
     description="Verifiziert Merkle Proof"
 )
@@ -177,7 +178,7 @@ async def verify_proof(
     request: VerifyProofRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Verifiziert Merkle Proof.
 
@@ -239,7 +240,7 @@ async def verify_proof(
 
 @router.get(
     "/integrity-report",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Integritaets-Report",
     description="Detaillierter Integritaets-Report der Audit-Chain"
 )
@@ -247,7 +248,7 @@ async def get_integrity_report(
     current_user: User = Depends(get_current_active_user),
     company_id: UUID = Depends(get_current_company_id),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Holt Integritaets-Report.
 

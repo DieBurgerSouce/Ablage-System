@@ -12,8 +12,10 @@ Automatisierte OCR-Verarbeitung mit intelligentem Auto-Processing:
 Feinpoliert und durchdacht - Deutsche Geschaeftsdokumente.
 """
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 from uuid import UUID
+
+from app.core.types import JSONDict
 from datetime import datetime
 
 import structlog
@@ -106,7 +108,7 @@ class ZeroTouchBatchResponse(BaseModel):
     """Response fuer Batch-Verarbeitung."""
 
     queued: int = Field(..., description="Anzahl erfolgreich eingereihter Dokumente")
-    errors: List[Dict[str, Any]] = Field(
+    errors: List[JSONDict] = Field(
         default_factory=list,
         description="Fehler bei einzelnen Dokumenten"
     )
@@ -148,7 +150,7 @@ class ZeroTouchResultResponse(BaseModel):
     total_processing_ms: int = Field(..., description="Gesamte Verarbeitungszeit in ms")
 
     # Extrahierte Felder
-    extracted_fields: Dict[str, Any] = Field(
+    extracted_fields: JSONDict = Field(
         default_factory=dict,
         description="Extrahierte Felder (JSON)"
     )
@@ -194,7 +196,7 @@ class ZeroTouchReviewRequest(BaseModel):
     """Request fuer Review-Submission."""
 
     approved: bool = Field(..., description="Ergebnis genehmigt oder abgelehnt")
-    corrections: Optional[Dict[str, Any]] = Field(
+    corrections: Optional[JSONDict] = Field(
         None,
         description="Korrekturen an extrahierten Feldern"
     )

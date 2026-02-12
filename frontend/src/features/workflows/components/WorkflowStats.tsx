@@ -1,7 +1,7 @@
 /**
  * WorkflowStats Component
  *
- * Dashboard-Statistiken fuer Workflows.
+ * Dashboard-Statistiken für Workflows.
  */
 
 import { useMemo } from 'react';

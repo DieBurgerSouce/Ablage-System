@@ -85,14 +85,14 @@ export const CONTRACT_STATUS_LABELS: Record<ContractStatus, string> = {
   [ContractStatus.PENDING_SIGNATURE]: 'Unterschrift ausstehend',
   [ContractStatus.ACTIVE]: 'Aktiv',
   [ContractStatus.SUSPENDED]: 'Ausgesetzt',
-  [ContractStatus.EXPIRING_SOON]: 'Laeuft bald ab',
+  [ContractStatus.EXPIRING_SOON]: 'Läuft bald ab',
   [ContractStatus.EXPIRED]: 'Abgelaufen',
-  [ContractStatus.TERMINATED]: 'Gekuendigt',
-  [ContractStatus.RENEWED]: 'Verlaengert',
+  [ContractStatus.TERMINATED]: 'Gekündigt',
+  [ContractStatus.RENEWED]: 'Verlängert',
 };
 
 export const RENEWAL_STATUS_LABELS: Record<RenewalOptionStatus, string> = {
-  [RenewalOptionStatus.AVAILABLE]: 'Verfuegbar',
+  [RenewalOptionStatus.AVAILABLE]: 'Verfügbar',
   [RenewalOptionStatus.PENDING]: 'Entscheidung ausstehend',
   [RenewalOptionStatus.EXERCISED]: 'Ausgeubt',
   [RenewalOptionStatus.DECLINED]: 'Abgelehnt',
@@ -102,13 +102,13 @@ export const RENEWAL_STATUS_LABELS: Record<RenewalOptionStatus, string> = {
 export const MILESTONE_TYPE_LABELS: Record<MilestoneType, string> = {
   [MilestoneType.CONTRACT_START]: 'Vertragsbeginn',
   [MilestoneType.CONTRACT_END]: 'Vertragsende',
-  [MilestoneType.RENEWAL_OPTION]: 'Verlaengerungsoption',
-  [MilestoneType.NOTICE_DEADLINE]: 'Kuendigungsfrist',
+  [MilestoneType.RENEWAL_OPTION]: 'Verlängerungsoption',
+  [MilestoneType.NOTICE_DEADLINE]: 'Kündigungsfrist',
   [MilestoneType.PRICE_ADJUSTMENT]: 'Preisanpassung',
   [MilestoneType.SERVICE_LEVEL_REVIEW]: 'Service Level Review',
   [MilestoneType.DELIVERABLE_DUE]: 'Liefertermin',
   [MilestoneType.PAYMENT_DUE]: 'Zahlungstermin',
-  [MilestoneType.AUDIT]: 'Pruefung',
+  [MilestoneType.AUDIT]: 'Prüfung',
   [MilestoneType.CUSTOM]: 'Benutzerdefiniert',
 };
 

@@ -1,6 +1,6 @@
 /**
  * Missed Skonto API
- * API-Funktionen fuer verpasste Skonto-Daten
+ * API-Funktionen für verpasste Skonto-Daten
  */
 
 import { api } from '@/lib/api';
@@ -14,7 +14,7 @@ import type {
 const API_BASE = '/api/v1/invoices';
 
 /**
- * Verpasste Skonto-Moeglichkeiten abrufen
+ * Verpasste Skonto-Möglichkeiten abrufen
  */
 export async function getMissedSkonto(
   filters: MissedSkontoFilters = {}
@@ -53,7 +53,7 @@ export async function getMissedSkonto(
 }
 
 /**
- * Skonto-Statistiken fuer einen Zeitraum abrufen
+ * Skonto-Statistiken für einen Zeitraum abrufen
  */
 export async function getSkontoStatistics(
   startDate: string,

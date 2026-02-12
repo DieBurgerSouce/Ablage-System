@@ -70,8 +70,8 @@ export function BackupStatusCard({ status, isLoading }: BackupStatusCardProps) {
   }
 
   const isHealthy = status.service_aktiv && status.encryption_aktiv;
-  const storageUsagePercent = status.verfuegbarer_speicherplatz_gb && status.gesamt_backup_groesse_gb
-    ? (status.gesamt_backup_groesse_gb / (status.verfuegbarer_speicherplatz_gb + status.gesamt_backup_groesse_gb)) * 100
+  const storageUsagePercent = status.verfügbarer_speicherplatz_gb && status.gesamt_backup_größe_gb
+    ? (status.gesamt_backup_größe_gb / (status.verfügbarer_speicherplatz_gb + status.gesamt_backup_größe_gb)) * 100
     : 0;
   const isStorageCritical = storageUsagePercent > 80;
 
@@ -153,14 +153,14 @@ export function BackupStatusCard({ status, isLoading }: BackupStatusCardProps) {
             </span>
           </div>
 
-          {status.naechste_geplante_sicherung && (
+          {status.nächste_geplante_sicherung && (
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm">Nächste geplante Sicherung</span>
               </div>
               <span className="font-mono text-sm">
-                {formatDate(status.naechste_geplante_sicherung)}
+                {formatDate(status.nächste_geplante_sicherung)}
               </span>
             </div>
           )}
@@ -174,10 +174,10 @@ export function BackupStatusCard({ status, isLoading }: BackupStatusCardProps) {
               <span>Speichernutzung</span>
             </div>
             <span className="font-mono">
-              {formatSize(status.gesamt_backup_groesse_gb)} von{' '}
+              {formatSize(status.gesamt_backup_größe_gb)} von{' '}
               {formatSize(
-                (status.verfuegbarer_speicherplatz_gb ?? 0) +
-                  (status.gesamt_backup_groesse_gb ?? 0)
+                (status.verfügbarer_speicherplatz_gb ?? 0) +
+                  (status.gesamt_backup_größe_gb ?? 0)
               )}
             </span>
           </div>

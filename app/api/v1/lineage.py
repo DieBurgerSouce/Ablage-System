@@ -12,7 +12,9 @@ Feinpoliert und durchdacht - Enterprise-grade Document Lineage.
 
 import json
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -46,7 +48,7 @@ class TimelineEntryResponse(BaseModel):
 
     id: str
     event_type: str
-    event_data: Dict[str, Any]
+    event_data: JSONDict
     timestamp: str
     duration_ms: Optional[int] = None
     confidence: Optional[float] = None
@@ -72,13 +74,13 @@ class LineageStatsResponse(BaseModel):
     document_id: str
     total_events: int
     total_processing_duration_ms: int
-    ocr: Dict[str, Any]
-    classification: Dict[str, Any]
-    entity_linking: Dict[str, Any]
-    modifications: Dict[str, Any]
-    exports: Dict[str, Any]
-    workflow: Dict[str, Any]
-    import_info: Dict[str, Any]
+    ocr: JSONDict
+    classification: JSONDict
+    entity_linking: JSONDict
+    modifications: JSONDict
+    exports: JSONDict
+    workflow: JSONDict
+    import_info: JSONDict
 
 
 class LineageSummaryResponse(BaseModel):
@@ -86,12 +88,12 @@ class LineageSummaryResponse(BaseModel):
 
     id: str
     document_id: str
-    import_info: Dict[str, Any]
-    ocr: Dict[str, Any]
-    classification: Dict[str, Any]
-    entity_linking: Dict[str, Any]
-    modifications: Dict[str, Any]
-    statistics: Dict[str, Any]
+    import_info: JSONDict
+    ocr: JSONDict
+    classification: JSONDict
+    entity_linking: JSONDict
+    modifications: JSONDict
+    statistics: JSONDict
     last_exported_at: Optional[str] = None
     company_id: str
     created_at: str

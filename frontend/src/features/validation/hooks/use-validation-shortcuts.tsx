@@ -1,13 +1,13 @@
 /**
  * Validation Queue Keyboard Shortcuts Hook
  *
- * Stellt Keyboard-Shortcuts fuer die Validierungs-Queue bereit.
+ * Stellt Keyboard-Shortcuts für die Validierungs-Queue bereit.
  * Shortcuts:
  * - A: Genehmigen (Approve)
  * - R: Ablehnen (Reject)
- * - J: Naechstes Item
+ * - J: Nächstes Item
  * - K: Vorheriges Item
- * - Enter/Space: Item oeffnen
+ * - Enter/Space: Item öffnen
  * - Escape: Auswahl aufheben
  */
 
@@ -16,15 +16,15 @@ import { useCallback, useRef } from 'react';
 import type { Options as HotkeysOptions } from 'react-hotkeys-hook';
 
 export interface ValidationShortcutHandlers {
-  /** Genehmigt das aktuell ausgewaehlte Item */
+  /** Genehmigt das aktuell ausgewählte Item */
   onApprove?: () => void;
-  /** Lehnt das aktuell ausgewaehlte Item ab */
+  /** Lehnt das aktuell ausgewählte Item ab */
   onReject?: () => void;
-  /** Geht zum naechsten Item */
+  /** Geht zum nächsten Item */
   onNext?: () => void;
   /** Geht zum vorherigen Item */
   onPrev?: () => void;
-  /** Oeffnet das aktuelle Item */
+  /** Öffnet das aktuelle Item */
   onOpen?: () => void;
   /** Hebt die Auswahl auf */
   onClear?: () => void;
@@ -35,12 +35,12 @@ export interface ValidationShortcutHandlers {
 export interface UseValidationShortcutsOptions {
   /** Ob Shortcuts aktiviert sind (z.B. deaktivieren wenn Dialog offen) */
   enabled?: boolean;
-  /** Scope fuer die Shortcuts (default: 'validation-queue') */
+  /** Scope für die Shortcuts (default: 'validation-queue') */
   scope?: string;
 }
 
 /**
- * Hook fuer Validation Queue Keyboard Shortcuts.
+ * Hook für Validation Queue Keyboard Shortcuts.
  *
  * @example
  * ```tsx
@@ -58,7 +58,7 @@ export function useValidationShortcuts(
 ) {
   const { enabled = true, scope = 'validation-queue' } = options;
 
-  // Refs fuer Handler um unnoetige Re-registrierungen zu vermeiden
+  // Refs für Handler um unnötige Re-registrierungen zu vermeiden
   const handlersRef = useRef(handlers);
   handlersRef.current = handlers;
 
@@ -88,13 +88,13 @@ export function useValidationShortcuts(
     { ...baseOptions, description: 'Item ablehnen' }
   );
 
-  // J - Next (Naechstes)
+  // J - Next (Nächstes)
   useHotkeys(
     'j',
     useCallback(() => {
       handlersRef.current.onNext?.();
     }, []),
-    { ...baseOptions, description: 'Naechstes Item' }
+    { ...baseOptions, description: 'Nächstes Item' }
   );
 
   // K - Previous (Vorheriges)
@@ -106,13 +106,13 @@ export function useValidationShortcuts(
     { ...baseOptions, description: 'Vorheriges Item' }
   );
 
-  // Enter/Space - Open (Oeffnen)
+  // Enter/Space - Open (Öffnen)
   useHotkeys(
     'enter, space',
     useCallback(() => {
       handlersRef.current.onOpen?.();
     }, []),
-    { ...baseOptions, description: 'Item oeffnen' }
+    { ...baseOptions, description: 'Item öffnen' }
   );
 
   // Escape - Clear selection (Auswahl aufheben)
@@ -124,25 +124,25 @@ export function useValidationShortcuts(
     { ...baseOptions, description: 'Auswahl aufheben' }
   );
 
-  // Ctrl/Cmd + A - Select all (Alle auswaehlen)
+  // Ctrl/Cmd + A - Select all (Alle auswählen)
   useHotkeys(
     'mod+a',
     useCallback(() => {
       handlersRef.current.onSelectAll?.();
     }, []),
-    { ...baseOptions, description: 'Alle auswaehlen' }
+    { ...baseOptions, description: 'Alle auswählen' }
   );
 }
 
 /**
- * Konstanten fuer Shortcut-Labels in der UI
+ * Konstanten für Shortcut-Labels in der UI
  */
 export const VALIDATION_SHORTCUTS = {
   approve: { key: 'A', label: 'Genehmigen' },
   reject: { key: 'R', label: 'Ablehnen' },
-  next: { key: 'J', label: 'Naechstes' },
+  next: { key: 'J', label: 'Nächstes' },
   prev: { key: 'K', label: 'Vorheriges' },
-  open: { key: 'Enter', label: 'Oeffnen' },
+  open: { key: 'Enter', label: 'Öffnen' },
   clear: { key: 'Esc', label: 'Abbrechen' },
   selectAll: { key: 'Ctrl+A', label: 'Alle' },
 } as const;

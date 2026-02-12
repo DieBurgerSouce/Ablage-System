@@ -1,14 +1,14 @@
 /**
- * LinkingStatisticsPage - Seite fuer Verknuepfungs-Statistiken
+ * LinkingStatisticsPage - Seite für Verknüpfungs-Statistiken
  *
- * WICHTIG: Types muessen EXAKT mit Backend uebereinstimmen!
+ * WICHTIG: Types müssen EXAKT mit Backend übereinstimmen!
  * Backend verwendet snake_case und Response hat task_id (nicht taskId)
  * @see app/api/v1/lexware.py:EntityLinkingResponse
  *
- * Zeigt Uebersicht ueber Dokument-Entity-Verknuepfungen:
- * - Verknuepfungsrate
+ * Zeigt Übersicht über Dokument-Entity-Verknüpfungen:
+ * - Verknüpfungsrate
  * - Matching-Strategien
- * - Manuelles Verknuepfen triggern
+ * - Manuelles Verknüpfen triggern
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -38,10 +38,10 @@ export function LinkingStatisticsPage() {
     onSuccess: (result) => {
       // Backend returns snake_case: task_id, linked_count, etc.
       toast({
-        title: 'Verknuepfung gestartet',
+        title: 'Verknüpfung gestartet',
         description: result.task_id
-          ? `Task ${result.task_id} wurde erstellt. Die Verknuepfung laeuft im Hintergrund.`
-          : `${result.linked_count} Dokumente wurden verknuepft.`,
+          ? `Task ${result.task_id} wurde erstellt. Die Verknüpfung läuft im Hintergrund.`
+          : `${result.linked_count} Dokumente wurden verknüpft.`,
       })
       // Refetch statistics after a delay
       setTimeout(() => {
@@ -50,7 +50,7 @@ export function LinkingStatisticsPage() {
     },
     onError: (error) => {
       toast({
-        title: 'Verknuepfung fehlgeschlagen',
+        title: 'Verknüpfung fehlgeschlagen',
         description: error instanceof Error ? error.message : 'Ein unbekannter Fehler ist aufgetreten',
         variant: 'destructive',
       })
@@ -62,9 +62,9 @@ export function LinkingStatisticsPage() {
       {/* Actions */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold">Verknuepfungs-Statistiken</h2>
+          <h2 className="text-xl font-semibold">Verknüpfungs-Statistiken</h2>
           <p className="text-sm text-muted-foreground">
-            Uebersicht ueber Dokument-Entity-Verknuepfungen
+            Übersicht über Dokument-Entity-Verknüpfungen
           </p>
         </div>
         <div className="flex gap-2">
@@ -92,7 +92,7 @@ export function LinkingStatisticsPage() {
             ) : (
               <>
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Alle Dokumente verknuepfen
+                Alle Dokumente verknüpfen
               </>
             )}
           </Button>

@@ -600,12 +600,12 @@ export function EnterpriseDataTable<TData, TValue>({
                     {enableRowSelection && (
                         <>
                             {table.getFilteredSelectedRowModel().rows.length} von{" "}
-                            {table.getFilteredRowModel().rows.length} Zeile(n) ausgewaehlt.
+                            {table.getFilteredRowModel().rows.length} Zeile(n) ausgewählt.
                         </>
                     )}
                     {!enableRowSelection && (
                         <>
-                            {table.getFilteredRowModel().rows.length} Eintraege
+                            {table.getFilteredRowModel().rows.length} Einträge
                         </>
                     )}
                 </div>

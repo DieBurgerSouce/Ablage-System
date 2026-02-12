@@ -1,9 +1,9 @@
 /**
- * SkeletonCard - Loading Skeleton fuer Karten
+ * SkeletonCard - Loading Skeleton für Karten
  *
  * Features:
  * - Verschiedene Varianten (default, stats, media, profile)
- * - Konfigurierbare Hoehe
+ * - Konfigurierbare Höhe
  * - Optionale Header, Footer, Actions
  * - Animierte Pulse-Animation
  */
@@ -22,7 +22,7 @@ export interface SkeletonCardProps {
   showHeader?: boolean;
   /** Footer anzeigen */
   showFooter?: boolean;
-  /** Zusaetzliche CSS-Klassen */
+  /** Zusätzliche CSS-Klassen */
   className?: string;
 }
 
@@ -137,7 +137,7 @@ export interface SkeletonCardGridProps {
   variant?: SkeletonCardVariant;
   /** Grid-Spalten */
   columns?: 1 | 2 | 3 | 4;
-  /** Zusaetzliche CSS-Klassen */
+  /** Zusätzliche CSS-Klassen */
   className?: string;
 }
 

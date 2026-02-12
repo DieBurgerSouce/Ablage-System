@@ -1,7 +1,7 @@
 /**
  * Automation Config Panel
  *
- * Konfigurationsformular fuer Zahlungsautomatisierung.
+ * Konfigurationsformular für Zahlungsautomatisierung.
  */
 
 import { useState } from 'react';
@@ -105,7 +105,7 @@ export function AutomationConfigPanel() {
             Automatisierungs-Konfiguration
           </CardTitle>
           <CardDescription>
-            Einstellungen fuer automatische Zahlungsvorschlaege
+            Einstellungen für automatische Zahlungsvorschläge
           </CardDescription>
         </div>
         {hasChanges && (
@@ -138,8 +138,8 @@ export function AutomationConfigPanel() {
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Label htmlFor="auto_execute">Automatisch ausfuehren</Label>
-              <InfoTooltip text="Fuehrt genehmigte Batches automatisch aus (nur mit Bank-Integration)" />
+              <Label htmlFor="auto_execute">Automatisch ausführen</Label>
+              <InfoTooltip text="Führt genehmigte Batches automatisch aus (nur mit Bank-Integration)" />
             </div>
             <Switch
               id="auto_execute"
@@ -169,7 +169,7 @@ export function AutomationConfigPanel() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Label htmlFor="prioritize_skonto">Skonto priorisieren</Label>
-              <InfoTooltip text="Rechnungen mit Skonto werden hoeher priorisiert" />
+              <InfoTooltip text="Rechnungen mit Skonto werden höher priorisiert" />
             </div>
             <Switch
               id="prioritize_skonto"
@@ -181,7 +181,7 @@ export function AutomationConfigPanel() {
           <div className="grid gap-2">
             <div className="flex items-center gap-2">
               <Label htmlFor="skonto_alert_days">Skonto-Alert Tage</Label>
-              <InfoTooltip text="Tage vor Ablauf fuer kritische Warnung" />
+              <InfoTooltip text="Tage vor Ablauf für kritische Warnung" />
             </div>
             <Input
               id="skonto_alert_days"
@@ -216,7 +216,7 @@ export function AutomationConfigPanel() {
           <div className="grid gap-2">
             <div className="flex items-center gap-2">
               <Label htmlFor="advance_days">Vorlauf-Tage</Label>
-              <InfoTooltip text="Tage vor Faelligkeit fuer Zahlungsvorschlag" />
+              <InfoTooltip text="Tage vor Fälligkeit für Zahlungsvorschlag" />
             </div>
             <Input
               id="advance_days"
@@ -231,7 +231,7 @@ export function AutomationConfigPanel() {
           <div className="grid gap-2">
             <div className="flex items-center gap-2">
               <Label htmlFor="batch_window_days">Batch-Fenster (Tage)</Label>
-              <InfoTooltip text="Rechnungen der naechsten X Tage in Batch einbeziehen" />
+              <InfoTooltip text="Rechnungen der nächsten X Tage in Batch einbeziehen" />
             </div>
             <Input
               id="batch_window_days"
@@ -266,7 +266,7 @@ export function AutomationConfigPanel() {
           <div className="grid gap-2">
             <div className="flex items-center gap-2">
               <Label htmlFor="max_single_payment">Max. Einzelzahlung (EUR)</Label>
-              <InfoTooltip text="Einzelne Zahlungen ueber diesem Betrag werden ausgeschlossen" />
+              <InfoTooltip text="Einzelne Zahlungen über diesem Betrag werden ausgeschlossen" />
             </div>
             <Input
               id="max_single_payment"

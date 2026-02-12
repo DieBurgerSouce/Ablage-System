@@ -33,7 +33,7 @@ export enum DelegationReason {
 
 // German labels
 export const DELEGATION_TYPE_LABELS: Record<DelegationType, string> = {
-  [DelegationType.FULL]: 'Vollstaendige Vertretung',
+  [DelegationType.FULL]: 'Vollständige Vertretung',
   [DelegationType.PARTIAL]: 'Teilvertretung',
   [DelegationType.APPROVAL]: 'Nur Genehmigungen',
   [DelegationType.READ_ONLY]: 'Nur Lesezugriff',
@@ -41,11 +41,11 @@ export const DELEGATION_TYPE_LABELS: Record<DelegationType, string> = {
 };
 
 export const DELEGATION_TYPE_DESCRIPTIONS: Record<DelegationType, string> = {
-  [DelegationType.FULL]: 'Vertreter erhaelt alle Berechtigungen',
-  [DelegationType.PARTIAL]: 'Vertreter erhaelt ausgewaehlte Berechtigungen',
+  [DelegationType.FULL]: 'Vertreter erhält alle Berechtigungen',
+  [DelegationType.PARTIAL]: 'Vertreter erhält ausgewählte Berechtigungen',
   [DelegationType.APPROVAL]: 'Vertreter kann Dokumente genehmigen',
   [DelegationType.READ_ONLY]: 'Vertreter kann nur Dokumente einsehen',
-  [DelegationType.EMERGENCY]: 'Sofort aktiv, ohne Bestaetigung',
+  [DelegationType.EMERGENCY]: 'Sofort aktiv, ohne Bestätigung',
 };
 
 export const DELEGATION_STATUS_LABELS: Record<DelegationStatus, string> = {

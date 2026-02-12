@@ -7,7 +7,7 @@ Mitarbeiterverwaltung, Abteilungen und Positionen.
 from datetime import date, datetime
 from app.core.datetime_utils import utc_now
 from decimal import Decimal
-from typing import Optional, List, Any
+from typing import Optional, List
 from uuid import UUID
 import structlog
 

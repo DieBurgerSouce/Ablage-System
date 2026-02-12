@@ -13,7 +13,9 @@ Feinpoliert und durchdacht - Enterprise-grade Dashboard-Management.
 """
 
 import structlog
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -60,7 +62,7 @@ class WidgetCreate(BaseModel):
         description="Widget-Typ (z.B. document_count, invoice_summary)",
     )
     position: Optional[LayoutItem] = Field(None, description="Initiale Position (optional)")
-    config: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Widget-Konfiguration")
+    config: Optional[JSONDict] = Field(default_factory=dict, description="Widget-Konfiguration")
     title_override: Optional[str] = Field(None, max_length=100, description="Benutzerdefinierter Titel")
 
     @field_validator("widget_type")
@@ -94,7 +96,7 @@ class WidgetUpdate(BaseModel):
     """Schema für Widget-Update."""
 
     position: Optional[LayoutItem] = None
-    config: Optional[Dict[str, Any]] = None
+    config: Optional[JSONDict] = None
     title_override: Optional[str] = Field(None, max_length=100)
     is_visible: Optional[bool] = None
     is_collapsed: Optional[bool] = None
@@ -113,9 +115,9 @@ class WidgetResponse(BaseModel):
     minH: Optional[int] = None
     maxW: Optional[int] = None
     maxH: Optional[int] = None
-    config: Optional[Dict[str, Any]] = None
+    config: Optional[JSONDict] = None
     title_override: Optional[str] = None
-    filter_overrides: Optional[Dict[str, Any]] = None
+    filter_overrides: Optional[JSONDict] = None
     is_visible: bool = True
     is_collapsed: bool = False
     sort_order: int = 0
@@ -134,7 +136,7 @@ class DashboardCreate(BaseModel):
         pattern="^(vertical|horizontal)$",
         description="Kompaktierungs-Modus",
     )
-    widgets: Optional[List[Dict[str, Any]]] = Field(
+    widgets: Optional[List[JSONDict]] = Field(
         default_factory=list,
         description="Initiale Widgets",
     )
@@ -679,7 +681,7 @@ async def update_layout(
     data: LayoutUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Aktualisiert das komplette Layout (alle Widget-Positionen).
 

@@ -121,7 +121,7 @@ export function PresetSelector({
 
                 <DropdownMenuSeparator />
                 <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                    {DASHBOARD_PRESETS.length} Vorlagen verfuegbar
+                    {DASHBOARD_PRESETS.length} Vorlagen verfügbar
                 </div>
             </DropdownMenuContent>
         </DropdownMenu>

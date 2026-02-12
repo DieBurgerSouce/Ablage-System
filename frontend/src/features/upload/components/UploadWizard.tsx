@@ -21,6 +21,8 @@ import { toast } from '@/components/ui/use-toast';
 import { FileText, Layers } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { AnimatePresence } from 'framer-motion';
+import { useRecentItems } from '@/hooks';
+import { RecentlyUsedSection } from '@/components/shared/RecentlyUsedSection';
 import type { UploadingFile, TransactionGroup } from '../types';
 import {
     ContextMenu,
@@ -70,6 +72,12 @@ export function UploadWizard() {
     const [dragActiveId, setDragActiveId] = useState<string | null>(null);
     const [dragOverId, setDragOverId] = useState<string | null>(null);
 
+    // Smart Defaults: Zuletzt verknüpfte Entitäten tracken
+    const { items: recentEntities, addItem: addRecentEntity, clear: clearRecentEntities } = useRecentItems<{id: string; label: string}>({
+        storageKey: 'ablage-upload-recent-entities',
+        maxItems: 5,
+    });
+
     // DnD Sensor mit Aktivierungsschwelle
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -84,7 +92,7 @@ export function UploadWizard() {
     const uploadFile = useCallback(async (uploadingFile: UploadingFile) => {
         // Guard: File-Objekt muss vorhanden sein (bei wiederhergestellten Dateien ist es null)
         if (!uploadingFile.file) {
-            logger.warn('uploadFile ohne File-Objekt aufgerufen, ueberspringe');
+            logger.warn('uploadFile ohne File-Objekt aufgerufen, überspringe');
             return;
         }
 
@@ -230,15 +238,22 @@ export function UploadWizard() {
                     variant: 'success'
                 });
             }
+
+            // Smart Defaults: Entität für "Zuletzt verwendet" tracken
+            const entityId = file.classification?.matchedEntityId;
+            const entityName = file.classification?.matchedEntityName;
+            if (entityId && entityName) {
+                addRecentEntity({ id: entityId, label: entityName });
+            }
         } catch (error) {
-            logger.error('Klassifizierungsaenderung fehlgeschlagen', error);
+            logger.error('Klassifizierungsänderung fehlgeschlagen', error);
             toast({
                 title: 'Fehler',
                 description: 'Klassifizierung konnte nicht geändert werden',
                 variant: 'destructive'
             });
         }
-    }, [files]);
+    }, [files, addRecentEntity]);
 
     const handleConfirmRename = useCallback(async (fileId: string) => {
         const file = files.find(f => f.id === fileId);
@@ -446,7 +461,7 @@ export function UploadWizard() {
             try {
                 await groupsService.addDocument(group.backendGroupId, file.documentId);
             } catch (error) {
-                logger.error('Dokument zur Gruppe hinzufuegen fehlgeschlagen', error);
+                logger.error('Dokument zur Gruppe hinzufügen fehlgeschlagen', error);
             }
         }
     }, [transactionGroups, files]);
@@ -514,7 +529,7 @@ export function UploadWizard() {
                     variant: 'default'
                 });
             } catch (error) {
-                logger.error('Gruppe loeschen fehlgeschlagen', error);
+                logger.error('Gruppe löschen fehlgeschlagen', error);
             }
         }
     }, [transactionGroups]);
@@ -918,6 +933,17 @@ export function UploadWizard() {
                         Laden Sie Ihre Dokumente hoch. Die OCR-Verarbeitung startet automatisch.
                     </p>
                 </div>
+
+                {recentEntities.length > 0 && (
+                    <RecentlyUsedSection
+                        items={recentEntities}
+                        onItemClick={() => {}}
+                        onClear={clearRecentEntities}
+                        title="Zuletzt verknüpfte Entitäten"
+                        maxDisplay={5}
+                        className="mb-4"
+                    />
+                )}
 
                 <div className="space-y-8">
                     {/* Upload Dropzone */}

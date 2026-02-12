@@ -1,6 +1,6 @@
 /**
  * Batch Correction Panel Component
- * Ermoeglicht die Korrektur mehrerer Felder auf einmal
+ * Ermöglicht die Korrektur mehrerer Felder auf einmal
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -159,8 +159,8 @@ export function BatchCorrectionPanel({
 
     if (modifiedCorrections.length === 0) {
       toast({
-        title: 'Keine Aenderungen',
-        description: 'Es wurden keine Felder geaendert.',
+        title: 'Keine Änderungen',
+        description: 'Es wurden keine Felder geändert.',
         variant: 'default',
       });
       return;
@@ -209,7 +209,7 @@ export function BatchCorrectionPanel({
       <Card className="h-full flex items-center justify-center">
         <div className="text-center p-8">
           <p className="text-sm text-muted-foreground">
-            Waehlen Sie ein Dokument aus der Queue aus.
+            Wählen Sie ein Dokument aus der Queue aus.
           </p>
         </div>
       </Card>
@@ -237,10 +237,10 @@ export function BatchCorrectionPanel({
               </TooltipTrigger>
               <TooltipContent side="left" className="max-w-xs">
                 <div className="space-y-1 text-xs">
-                  <p><kbd className="px-1 bg-muted rounded">Tab</kbd> Naechstes Feld</p>
+                  <p><kbd className="px-1 bg-muted rounded">Tab</kbd> Nächstes Feld</p>
                   <p><kbd className="px-1 bg-muted rounded">Shift+Tab</kbd> Vorheriges Feld</p>
                   <p><kbd className="px-1 bg-muted rounded">Ctrl+Enter</kbd> Speichern</p>
-                  <p><kbd className="px-1 bg-muted rounded">Ctrl+R</kbd> Zuruecksetzen</p>
+                  <p><kbd className="px-1 bg-muted rounded">Ctrl+R</kbd> Zurücksetzen</p>
                 </div>
               </TooltipContent>
             </Tooltip>
@@ -273,7 +273,7 @@ export function BatchCorrectionPanel({
                     </span>
                     {correction.isModified ? (
                       <Badge variant="default" className="text-xs">
-                        Geaendert
+                        Geändert
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="text-xs">
@@ -326,7 +326,7 @@ export function BatchCorrectionPanel({
               <Textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Zusaetzliche Hinweise zur Korrektur..."
+                placeholder="Zusätzliche Hinweise zur Korrektur..."
                 className="text-sm resize-none"
                 rows={2}
               />
@@ -341,12 +341,12 @@ export function BatchCorrectionPanel({
             {modifiedCount > 0 ? (
               <Badge variant="default" className="flex items-center gap-1">
                 <CheckCircle2 className="h-3 w-3" />
-                {modifiedCount} Aenderung{modifiedCount > 1 ? 'en' : ''}
+                {modifiedCount} Änderung{modifiedCount > 1 ? 'en' : ''}
               </Badge>
             ) : (
               <Badge variant="secondary" className="flex items-center gap-1">
                 <XCircle className="h-3 w-3" />
-                Keine Aenderungen
+                Keine Änderungen
               </Badge>
             )}
           </div>
@@ -359,7 +359,7 @@ export function BatchCorrectionPanel({
               disabled={submitMutation.isPending}
             >
               <RotateCcw className="h-4 w-4 mr-1" />
-              Zuruecksetzen
+              Zurücksetzen
             </Button>
             <Button
               size="sm"

@@ -112,7 +112,7 @@ async function compressImage(
           quality
         );
       } else {
-        reject(new Error('Canvas-Kontext nicht verfuegbar'));
+        reject(new Error('Canvas-Kontext nicht verfügbar'));
       }
     };
 
@@ -144,7 +144,7 @@ function rotateImage(dataUrl: string, degrees: number): Promise<string> {
         ctx.drawImage(img, -img.width / 2, -img.height / 2);
         resolve(canvas.toDataURL('image/jpeg', 0.9));
       } else {
-        reject(new Error('Canvas-Kontext nicht verfuegbar'));
+        reject(new Error('Canvas-Kontext nicht verfügbar'));
       }
     };
 
@@ -192,7 +192,7 @@ export function PhotoUpload({
 
         // Validate file size
         if (file.size > maxFileSize) {
-          setError(`Datei "${file.name}" ist zu gross (max. ${Math.round(maxFileSize / 1024 / 1024)}MB)`);
+          setError(`Datei "${file.name}" ist zu groß (max. ${Math.round(maxFileSize / 1024 / 1024)}MB)`);
           continue;
         }
 
@@ -415,7 +415,7 @@ export function PhotoUpload({
           className="flex-1"
         >
           <Upload className="mr-2 h-4 w-4" />
-          Datei waehlen
+          Datei wählen
         </Button>
       </div>
 
@@ -428,9 +428,9 @@ export function PhotoUpload({
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Fotos ueberpruefen</DialogTitle>
+            <DialogTitle>Fotos überprüfen</DialogTitle>
             <DialogDescription>
-              {previews.length} {previews.length === 1 ? 'Foto' : 'Fotos'} ausgewaehlt
+              {previews.length} {previews.length === 1 ? 'Foto' : 'Fotos'} ausgewählt
             </DialogDescription>
           </DialogHeader>
 

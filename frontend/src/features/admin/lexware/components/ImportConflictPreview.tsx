@@ -1,7 +1,7 @@
 /**
- * ImportConflictPreview - Konflikt-Anzeige fuer Lexware Import
+ * ImportConflictPreview - Konflikt-Anzeige für Lexware Import
  *
- * WICHTIG: Types muessen EXAKT mit Backend uebereinstimmen!
+ * WICHTIG: Types müssen EXAKT mit Backend übereinstimmen!
  * @see app/api/v1/lexware.py:ConflictInfo
  *
  * Zeigt Konflikte zwischen Folie- und Messer-Daten an:
@@ -69,7 +69,7 @@ export function ImportConflictPreview({ conflicts }: ImportConflictPreviewProps)
             <CheckCircle className="h-12 w-12 text-green-500" />
             <p className="font-medium text-lg">Keine Konflikte gefunden</p>
             <p className="text-muted-foreground">
-              Alle Datensaetze stimmen zwischen Folie und Messer ueberein.
+              Alle Datensätze stimmen zwischen Folie und Messer überein.
             </p>
           </div>
         </CardContent>

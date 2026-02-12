@@ -1,7 +1,7 @@
 /**
  * Document Comparison Hooks
  *
- * TanStack Query Hooks fuer Dokumentenvergleiche.
+ * TanStack Query Hooks für Dokumentenvergleiche.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -30,7 +30,7 @@ export const compareKeys = {
 };
 
 /**
- * Hook fuer den Vergleich zweier Dokumente.
+ * Hook für den Vergleich zweier Dokumente.
  */
 export function useCompareDocuments() {
   const queryClient = useQueryClient();
@@ -47,7 +47,7 @@ export function useCompareDocuments() {
 }
 
 /**
- * Hook fuer einen Diff-Report.
+ * Hook für einen Diff-Report.
  */
 export function useDiffReport(
   docId1: string,
@@ -64,7 +64,7 @@ export function useDiffReport(
 }
 
 /**
- * Hook fuer aehnliche Dokumente.
+ * Hook für ähnliche Dokumente.
  */
 export function useSimilarDocuments(
   docId: string,
@@ -82,7 +82,7 @@ export function useSimilarDocuments(
 }
 
 /**
- * Hook fuer potenzielle Duplikate.
+ * Hook für potenzielle Duplikate.
  */
 export function usePotentialDuplicates(
   threshold: number = 0.95,
@@ -118,7 +118,7 @@ interface UseCompareExportReturn {
 }
 
 /**
- * Hook fuer PDF-Export des Dokumentenvergleichs.
+ * Hook für PDF-Export des Dokumentenvergleichs.
  * Basiert auf dem useWidgetExport Pattern.
  */
 export function useCompareExport(
@@ -161,7 +161,7 @@ export function useCompareExport(
       const ratio = pdfWidth / imgWidth;
       const scaledHeight = imgHeight * ratio;
 
-      // Multi-page support fuer lange Vergleiche
+      // Multi-page support für lange Vergleiche
       let heightLeft = scaledHeight;
       let position = 0;
       let page = 0;
@@ -171,7 +171,7 @@ export function useCompareExport(
           pdf.addPage();
         }
 
-        // Berechne den vertikalen Offset fuer diese Seite
+        // Berechne den vertikalen Offset für diese Seite
         const yOffset = -(page * pdfHeight);
 
         pdf.addImage(imgData, 'PNG', 0, yOffset, pdfWidth, scaledHeight);

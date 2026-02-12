@@ -615,6 +615,9 @@ class AIActionType(str, Enum):
     ANALYZE_ENTITY = "analyze_entity"
     GENERATE_REPORT = "generate_report"
     EXPLAIN_DOCUMENT = "explain_document"
+    GET_DAILY_AGENDA = "get_daily_agenda"
+    COMPARE_EXPENSES = "compare_expenses"
+    GET_SKONTO = "get_skonto_opportunities"
 
     # Supervised Actions (Editor+)
     CATEGORIZE_DOCUMENT = "categorize_document"
@@ -627,6 +630,7 @@ class AIActionType(str, Enum):
     TRIGGER_OCR = "trigger_ocr"
     SEND_NOTIFICATION = "send_notification"
     BULK_CATEGORIZE = "bulk_categorize"
+    BOOK_INVOICE = "book_invoice"
 
 
 class AIActionAutonomyLevel(str, Enum):

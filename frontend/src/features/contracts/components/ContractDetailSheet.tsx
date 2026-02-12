@@ -1,5 +1,5 @@
 /**
- * ContractDetailSheet - Seitenleiste fuer Vertrags-Details
+ * ContractDetailSheet - Seitenleiste für Vertrags-Details
  *
  * Zeigt:
  * - Vertrags-Stammdaten
@@ -7,8 +7,8 @@
  * - Laufzeit und Fristen
  * - Finanzielle Details
  * - Meilensteine
- * - Verlaengerungsoptionen
- * - Nachtraege
+ * - Verlängerungsoptionen
+ * - Nachträge
  */
 
 import { format } from 'date-fns';
@@ -135,7 +135,7 @@ function MilestoneCard({ milestone }: { milestone: ContractMilestone }) {
               }`}
             >
               {milestone.days_until_due < 0
-                ? `${Math.abs(milestone.days_until_due)} Tage ueberfaellig`
+                ? `${Math.abs(milestone.days_until_due)} Tage überfällig`
                 : `in ${milestone.days_until_due} Tagen`}
             </p>
           )}
@@ -200,7 +200,7 @@ function RenewalOptionCard({
               onClick={() => onDecision(option.id, 'exercise')}
             >
               <RefreshCw className="h-4 w-4 mr-1" />
-              Ausueben
+              Ausüben
             </Button>
             <Button
               size="sm"
@@ -244,7 +244,7 @@ function AmendmentCard({ amendment }: { amendment: ContractAmendment }) {
         <DetailRow label="Wirksam ab" value={formatDate(amendment.effective_date)} />
         {amendment.value_change && (
           <DetailRow
-            label="Wertaenderung"
+            label="Wertänderung"
             value={
               <span className={amendment.value_change > 0 ? 'text-green-600' : 'text-red-600'}>
                 {amendment.value_change > 0 ? '+' : ''}
@@ -326,7 +326,7 @@ export function ContractDetailSheet({
                     Optionen ({contract.renewal_options?.length || 0})
                   </TabsTrigger>
                   <TabsTrigger value="amendments">
-                    Nachtraege ({contract.amendments?.length || 0})
+                    Nachträge ({contract.amendments?.length || 0})
                   </TabsTrigger>
                 </TabsList>
 
@@ -416,12 +416,12 @@ export function ContractDetailSheet({
                         />
                       )}
                       <DetailRow
-                        label="Kuendigungsfrist"
+                        label="Kündigungsfrist"
                         value={`${contract.notice_period_days} Tage`}
                       />
                       {contract.notice_deadline && (
                         <DetailRow
-                          label="Kuendigungstermin"
+                          label="Kündigungstermin"
                           value={
                             <span
                               className={contract.is_notice_deadline_critical ? 'text-red-600' : ''}
@@ -432,7 +432,7 @@ export function ContractDetailSheet({
                         />
                       )}
                       <DetailRow
-                        label="Auto-Verlaengerung"
+                        label="Auto-Verlängerung"
                         value={contract.auto_renewal ? 'Ja' : 'Nein'}
                       />
                     </div>
@@ -449,7 +449,7 @@ export function ContractDetailSheet({
                     <div className="space-y-1">
                       <DetailRow label="Gesamtwert" value={formatCurrency(contract.total_value)} />
                       <DetailRow label="Monatswert" value={formatCurrency(contract.monthly_value)} />
-                      <DetailRow label="Waehrung" value={contract.currency} />
+                      <DetailRow label="Währung" value={contract.currency} />
                       {contract.payment_terms && (
                         <DetailRow label="Zahlungsbedingungen" value={contract.payment_terms} />
                       )}
@@ -501,7 +501,7 @@ export function ContractDetailSheet({
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
                       <RefreshCw className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p>Keine Verlaengerungsoptionen</p>
+                      <p>Keine Verlängerungsoptionen</p>
                     </div>
                   )}
                 </TabsContent>
@@ -517,7 +517,7 @@ export function ContractDetailSheet({
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
                       <FileEdit className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p>Keine Nachtraege vorhanden</p>
+                      <p>Keine Nachträge vorhanden</p>
                     </div>
                   )}
                 </TabsContent>

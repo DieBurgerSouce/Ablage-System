@@ -1,7 +1,7 @@
 /**
  * Cash Entry List
  *
- * Liste der Kassenbucheintraege mit Filterung und Paginierung.
+ * Liste der Kassenbucheinträge mit Filterung und Paginierung.
  */
 
 import * as React from 'react';
@@ -106,7 +106,7 @@ export function CashEntryList({
         <CardHeader>
           <CardTitle>Kassenbuch</CardTitle>
           <CardDescription className="text-destructive">
-            Fehler beim Laden der Eintraege
+            Fehler beim Laden der Einträge
           </CardDescription>
         </CardHeader>
       </Card>
@@ -191,7 +191,7 @@ export function CashEntryList({
           </div>
         ) : entries.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            Keine Eintraege gefunden.
+            Keine Einträge gefunden.
           </div>
         ) : (
           <>

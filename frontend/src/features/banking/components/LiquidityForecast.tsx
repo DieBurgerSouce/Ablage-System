@@ -1,5 +1,5 @@
 /**
- * Liquiditaetsprognose Komponente
+ * Liquiditätsprognose Komponente
  * Zeigt Rolling-Window Prognosen (30/60/90 Tage), Wasserfall-Chart,
  * Engpass-Warnungen und Anomalie-Erkennung
  *
@@ -309,10 +309,10 @@ function BottleneckAlert({ bottleneck }: { bottleneck: LiquidityBottleneck }) {
 
 function AnomalyItem({ anomaly }: { anomaly: PaymentAnomaly }) {
     const anomalyTypeLabels: Record<string, string> = {
-        unusual_amount: 'Ungewoehnlicher Betrag',
+        unusual_amount: 'Ungewöhnlicher Betrag',
         unexpected_timing: 'Unerwarteter Zeitpunkt',
         missing_recurring: 'Fehlende Wiederkehrende',
-        duplicate_payment: 'Moegliche Duplikatzahlung',
+        duplicate_payment: 'Mögliche Duplikatzahlung',
         pattern_deviation: 'Musterabweichung',
     };
 
@@ -380,7 +380,7 @@ function WaterfallChartSection({ bankAccountId }: WaterfallChartSectionProps) {
         return (
             <Card>
                 <CardHeader>
-                    <CardTitle>Liquiditaets-Wasserfall</CardTitle>
+                    <CardTitle>Liquiditäts-Wasserfall</CardTitle>
                     <CardDescription className="text-destructive">
                         Fehler beim Laden der Daten
                     </CardDescription>
@@ -412,9 +412,9 @@ function WaterfallChartSection({ bankAccountId }: WaterfallChartSectionProps) {
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                 <div>
-                    <CardTitle>Liquiditaets-Wasserfall</CardTitle>
+                    <CardTitle>Liquiditäts-Wasserfall</CardTitle>
                     <CardDescription>
-                        Visualisierung der Geldstroeme ueber Zeit
+                        Visualisierung der Geldstroeme über Zeit
                     </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
@@ -423,8 +423,8 @@ function WaterfallChartSection({ bankAccountId }: WaterfallChartSectionProps) {
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="daily">Taeglich</SelectItem>
-                            <SelectItem value="weekly">Woechentlich</SelectItem>
+                            <SelectItem value="daily">Täglich</SelectItem>
+                            <SelectItem value="weekly">Wöchentlich</SelectItem>
                             <SelectItem value="monthly">Monatlich</SelectItem>
                         </SelectContent>
                     </Select>
@@ -470,7 +470,7 @@ function WaterfallChartSection({ bankAccountId }: WaterfallChartSectionProps) {
                 <div
                     className="h-[350px]"
                     role="img"
-                    aria-label={`Wasserfall-Diagramm der Liquiditaet fuer ${days} Tage`}
+                    aria-label={`Wasserfall-Diagramm der Liquidität für ${days} Tage`}
                 >
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
@@ -595,7 +595,7 @@ export function LiquidityForecast({
         return (
             <Card>
                 <CardHeader>
-                    <CardTitle>Liquiditaetsprognose</CardTitle>
+                    <CardTitle>Liquiditätsprognose</CardTitle>
                     <CardDescription className="text-destructive">
                         Fehler beim Laden der Prognose
                     </CardDescription>
@@ -624,10 +624,10 @@ export function LiquidityForecast({
             {hasCriticalBottleneck && (
                 <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>Kritischer Liquiditaetsengpass erkannt</AlertTitle>
+                    <AlertTitle>Kritischer Liquiditätsengpass erkannt</AlertTitle>
                     <AlertDescription>
                         Es wurde ein kritischer Engpass am {formatDate(bottleneckData?.earliest_bottleneck_date ?? null)} prognostiziert.
-                        Geschaetzter Fehlbetrag: {formatCurrency(bottleneckData?.total_shortfall ?? 0)}
+                        Geschätzter Fehlbetrag: {formatCurrency(bottleneckData?.total_shortfall ?? 0)}
                     </AlertDescription>
                 </Alert>
             )}
@@ -638,7 +638,7 @@ export function LiquidityForecast({
                     <div className="flex items-center justify-between">
                         <div>
                             <CardTitle className="flex items-center gap-2">
-                                Liquiditaetsprognose
+                                Liquiditätsprognose
                                 <RiskLevelBadge level={forecastData.current_risk_level} />
                             </CardTitle>
                             <CardDescription>
@@ -706,7 +706,7 @@ export function LiquidityForecast({
                         Wasserfall-Chart
                     </TabsTrigger>
                     <TabsTrigger value="bottlenecks" disabled={!showBottlenecks}>
-                        Engpaesse ({bottleneckCount})
+                        Engpässe ({bottleneckCount})
                     </TabsTrigger>
                     <TabsTrigger value="anomalies" disabled={!showAnomalies}>
                         Anomalien ({anomalyCount})
@@ -724,13 +724,13 @@ export function LiquidityForecast({
                         <Card>
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
-                                    Prognostizierte Engpaesse
+                                    Prognostizierte Engpässe
                                     {hasCriticalBottleneck && (
                                         <Badge variant="destructive">Kritisch</Badge>
                                     )}
                                 </CardTitle>
                                 <CardDescription>
-                                    Potenzielle Liquiditaetsengpaesse in den naechsten 90 Tagen
+                                    Potenzielle Liquiditätsengpässe in den nächsten 90 Tagen
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
@@ -748,8 +748,8 @@ export function LiquidityForecast({
                                 ) : (
                                     <div className="text-center py-8 text-muted-foreground">
                                         <Shield className="h-12 w-12 mx-auto mb-4 text-green-500" />
-                                        <p>Keine Engpaesse prognostiziert</p>
-                                        <p className="text-sm">Ihre Liquiditaet sieht fuer die naechsten 90 Tage stabil aus.</p>
+                                        <p>Keine Engpässe prognostiziert</p>
+                                        <p className="text-sm">Ihre Liquidität sieht für die nächsten 90 Tage stabil aus.</p>
                                     </div>
                                 )}
                             </CardContent>
@@ -770,7 +770,7 @@ export function LiquidityForecast({
                                     )}
                                 </CardTitle>
                                 <CardDescription>
-                                    Ungewoehnliche Zahlungsmuster der letzten 30 Tage
+                                    Ungewöhnliche Zahlungsmuster der letzten 30 Tage
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>

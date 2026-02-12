@@ -1,7 +1,7 @@
 /**
  * Lexware Admin API
  *
- * API-Funktionen fuer den Lexware Excel-Import
+ * API-Funktionen für den Lexware Excel-Import
  *
  * WICHTIG: Backend erwartet ZWEI Dateien gleichzeitig (Folie + Messer)
  * und verwendet snake_case in Response-Feldern.
@@ -147,7 +147,7 @@ export async function importSuppliers(
 }
 
 /**
- * Holt Verknuepfungs-Statistiken
+ * Holt Verknüpfungs-Statistiken
  *
  * ACHTUNG: Endpoint ist /linking-statistics, NICHT /statistics!
  * @see app/api/v1/lexware.py:get_linking_statistics
@@ -160,7 +160,7 @@ export async function fetchLinkingStatistics(): Promise<LinkingStatistics> {
 }
 
 /**
- * Startet das automatische Verknuepfen aller Dokumente
+ * Startet das automatische Verknüpfen aller Dokumente
  * @see app/api/v1/lexware.py:link_documents
  */
 export async function triggerDocumentLinking(

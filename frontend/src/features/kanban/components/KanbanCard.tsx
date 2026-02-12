@@ -1,6 +1,6 @@
 /**
  * KanbanCard - Einzelnes Dokument-Item im Kanban-Board.
- * Zeigt: Dokumentname, Entity, Betrag, Prioritaet, Zugewiesener Bearbeiter
+ * Zeigt: Dokumentname, Entity, Betrag, Priorität, Zugewiesener Bearbeiter
  */
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';

@@ -1,7 +1,7 @@
 /**
  * Import System Feature Exports
  *
- * Zentrale Exports fuer E-Mail-Import, Ordner-Import und Import-Regeln.
+ * Zentrale Exports für E-Mail-Import, Ordner-Import und Import-Regeln.
  */
 
 // Types

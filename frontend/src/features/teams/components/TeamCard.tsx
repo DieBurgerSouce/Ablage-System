@@ -61,7 +61,7 @@ const statusConfig: Record<TeamStatus, { label: string; variant: 'default' | 'se
 };
 
 const visibilityConfig: Record<TeamVisibility, { label: string; icon: React.ElementType }> = {
-  public: { label: 'Oeffentlich', icon: Eye },
+  public: { label: 'Öffentlich', icon: Eye },
   private: { label: 'Privat', icon: EyeOff },
   company: { label: 'Firma', icon: Building2 },
 };
@@ -112,7 +112,7 @@ export function TeamCard({ team, onView, onEdit, onArchive, onDelete }: TeamCard
                 className="text-destructive"
               >
                 <Trash2 className="h-4 w-4 mr-2" />
-                Loeschen
+                Löschen
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

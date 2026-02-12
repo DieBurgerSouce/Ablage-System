@@ -1,7 +1,7 @@
 /**
  * Admin Imports Index Route
  *
- * Haupt-Import-Verwaltungsseite mit Uebersicht ueber alle Konfigurationen.
+ * Haupt-Import-Verwaltungsseite mit Übersicht über alle Konfigurationen.
  */
 
 import { createFileRoute } from '@tanstack/react-router'

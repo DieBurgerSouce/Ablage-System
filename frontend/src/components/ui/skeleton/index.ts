@@ -22,5 +22,8 @@ export {
   type SkeletonFormProps,
 } from './SkeletonList';
 
+export { DashboardSkeleton, type DashboardSkeletonProps } from './DashboardSkeleton';
+export { ChatSkeleton, type ChatSkeletonProps } from './ChatSkeleton';
+
 // Re-export the base skeleton
 export { Skeleton } from '@/components/ui/skeleton';

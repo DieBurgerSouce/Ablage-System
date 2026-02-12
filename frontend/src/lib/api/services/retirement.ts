@@ -1,11 +1,11 @@
 /**
  * Retirement Planning API Service
  *
- * API-Service fuer Altersvorsorge-Planung:
- * - Rentenluecken-Berechnung
+ * API-Service für Altersvorsorge-Planung:
+ * - Rentenlücken-Berechnung
  * - Monte-Carlo-Simulation
  * - Entnahmestrategien
- * - Riester/Ruerup-Optimierung
+ * - Riester/Rürup-Optimierung
  * - bAV-Analyse
  */
 
@@ -489,7 +489,7 @@ function transformRetirementSummary(data: RetirementSummaryBackend): RetirementS
 
 export const retirementService = {
   /**
-   * Berechnet die Rentenluecke
+   * Berechnet die Rentenlücke
    */
   calculatePensionGap: async (
     spaceId: string,
@@ -520,12 +520,12 @@ export const retirementService = {
       );
       return transformPensionGap(response.data);
     } catch (error) {
-      handleApiError(error, 'Rentenluecke berechnen');
+      handleApiError(error, 'Rentenlücke berechnen');
     }
   },
 
   /**
-   * Fuehrt Monte-Carlo-Simulation durch
+   * Führt Monte-Carlo-Simulation durch
    */
   runMonteCarlo: async (
     spaceId: string,
@@ -577,7 +577,7 @@ export const retirementService = {
   },
 
   /**
-   * Optimiert Riester-Beitraege
+   * Optimiert Riester-Beiträge
    */
   optimizeRiester: async (
     spaceId: string,
@@ -626,7 +626,7 @@ export const retirementService = {
   },
 
   /**
-   * Generiert vollstaendige Altersvorsorge-Zusammenfassung
+   * Generiert vollständige Altersvorsorge-Zusammenfassung
    */
   getRetirementSummary: async (
     spaceId: string,
@@ -663,7 +663,7 @@ export const retirementService = {
   },
 
   /**
-   * Berechnet Rentenpunkte fuer ein Jahr
+   * Berechnet Rentenpunkte für ein Jahr
    */
   calculatePensionPoints: async (
     grossAnnualIncome: number,

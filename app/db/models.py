@@ -4358,6 +4358,11 @@ class CompanySettings(Base):
     commercial_register = Column(String(100), nullable=True, comment="Handelsregister-Nr.")
     court = Column(String(100), nullable=True, comment="Registergericht")
 
+    # Kalender-Sync (Phase 6D)
+    calendar_sync = Column(CrossDBJSON, nullable=True, comment="Sync-Konfiguration (Provider, URL, Kategorien)")
+    calendar_oauth_tokens = Column(CrossDBJSON, nullable=True, comment="Verschluesselte OAuth-Tokens nach Provider")
+    calendar_sync_state = Column(CrossDBJSON, nullable=True, comment="Sync-State Mapping {uid: external_event_id}")
+
     # Metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

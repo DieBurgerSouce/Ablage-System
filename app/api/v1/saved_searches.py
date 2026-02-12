@@ -8,9 +8,11 @@ Verwaltet gespeicherte Such-Konfigurationen fuer Benutzer:
 - Standard-Suche pro Benutzer
 """
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 from uuid import UUID
 from datetime import datetime
+
+from app.core.types import JSONDict
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -55,7 +57,7 @@ class SavedSearchCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=200, description="Name der gespeicherten Suche")
     query: str = Field(..., min_length=1, description="Suchbegriff")
     search_type: str = Field(default="hybrid", description="Suchtyp: fts, semantic, hybrid")
-    filters: Optional[Dict[str, Any]] = Field(default=None, description="Filter-Zustand")
+    filters: Optional[JSONDict] = Field(default=None, description="Filter-Zustand")
     sort_field: Optional[str] = Field(default=None, max_length=50, description="Sortierfeld")
     sort_order: Optional[str] = Field(default=None, pattern="^(asc|desc)$", description="Sortierreihenfolge")
     is_default: bool = Field(default=False, description="Als Standard-Suche markieren")
@@ -68,7 +70,7 @@ class SavedSearchUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=200)
     query: Optional[str] = Field(None, min_length=1)
     search_type: Optional[str] = None
-    filters: Optional[Dict[str, Any]] = None
+    filters: Optional[JSONDict] = None
     sort_field: Optional[str] = Field(None, max_length=50)
     sort_order: Optional[str] = Field(None, pattern="^(asc|desc)$")
     is_default: Optional[bool] = None
@@ -83,7 +85,7 @@ class SavedSearchResponse(BaseModel):
     name: str
     query: str
     search_type: str
-    filters: Optional[Dict[str, Any]] = None
+    filters: Optional[JSONDict] = None
     sort_field: Optional[str] = None
     sort_order: Optional[str] = None
     is_default: bool
@@ -368,7 +370,7 @@ async def delete_saved_search(
 
 @router.post(
     "/{search_id}/execute",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Gespeicherte Suche ausfuehren",
     description="Fuehrt eine gespeicherte Suche aus und aktualisiert Statistiken"
 )
@@ -379,7 +381,7 @@ async def execute_saved_search(
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
     service: UnifiedSearchService = Depends(get_unified_search_service),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Fuehrt eine gespeicherte Suche aus.
 

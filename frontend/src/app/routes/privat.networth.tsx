@@ -1,7 +1,7 @@
 /**
  * Privat Net Worth Route
  *
- * Nettovermoegen-Dashboard mit Vermoegensaufstellung,
+ * Nettovermögen-Dashboard mit Vermögensaufstellung,
  * Verbindlichkeiten und historischer Entwicklung.
  */
 

@@ -90,7 +90,7 @@ export function CreateChainDialog({
     if (selectedIds.length < 2) {
       toast({
         title: 'Fehler',
-        description: 'Bitte waehlen Sie mindestens 2 Dokumente aus',
+        description: 'Bitte wählen Sie mindestens 2 Dokumente aus',
         variant: 'destructive',
       });
       return;
@@ -139,7 +139,7 @@ export function CreateChainDialog({
             {CHAIN_UI_LABELS.actionCreateChain}
           </DialogTitle>
           <DialogDescription>
-            Erstellen Sie eine neue Auftragskette, um Dokumente zu verknuepfen.
+            Erstellen Sie eine neue Auftragskette, um Dokumente zu verknüpfen.
           </DialogDescription>
         </DialogHeader>
 
@@ -157,7 +157,7 @@ export function CreateChainDialog({
 
           {/* Document Selection */}
           <div className="space-y-2">
-            <Label>Dokumente auswaehlen</Label>
+            <Label>Dokumente auswählen</Label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
@@ -249,7 +249,7 @@ export function CreateChainDialog({
           </ScrollArea>
 
           <div className="text-xs text-muted-foreground">
-            {selectedIds.length} von mindestens 2 Dokumenten ausgewaehlt
+            {selectedIds.length} von mindestens 2 Dokumenten ausgewählt
           </div>
         </div>
 

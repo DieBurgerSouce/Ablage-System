@@ -14,9 +14,10 @@ Endpoints:
 Feinpoliert und durchdacht - Deutsche Praezision.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
 
+from app.core.types import JSONDict
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
@@ -67,7 +68,7 @@ class ContextData(BaseModel):
         max_length=100,
         description="Aktuelle Ansicht/Seite im Frontend"
     )
-    additional_data: Optional[Dict[str, Any]] = Field(
+    additional_data: Optional[JSONDict] = Field(
         default=None,
         description="Zusaetzliche Kontext-Daten"
     )
@@ -117,7 +118,7 @@ class SuggestedActionResponse(BaseModel):
 
     action_type: str
     description: str
-    parameters: Dict[str, Any] = Field(default_factory=dict)
+    parameters: JSONDict = Field(default_factory=dict)
     requires_confirmation: bool = True
     confidence: float = Field(ge=0.0, le=1.0)
 
@@ -595,7 +596,7 @@ async def toggle_star(
     starred: bool = Query(..., description="True zum Markieren, False zum Entmarkieren"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Markiert/entmarkiert eine Session."""
     stmt = select(AIConversation).where(
         and_(

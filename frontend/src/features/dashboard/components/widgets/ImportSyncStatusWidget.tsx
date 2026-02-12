@@ -1,5 +1,5 @@
 /**
- * Import Sync Status Widget fuer Dashboard
+ * Import Sync Status Widget für Dashboard
  *
  * Zeigt Status aller Import-Quellen:
  * - DATEV, Lexware, Email, Folder Import
@@ -8,7 +8,7 @@
  * - Sync-Queue Status
  *
  * Enterprise-Grade Features:
- * - ErrorBoundary fuer graceful degradation
+ * - ErrorBoundary für graceful degradation
  * - Konsistente Fehlerbehandlung
  * - Real-time Updates via WebSocket
  */
@@ -145,7 +145,7 @@ const getStatusColor = (status: string): string => {
 const getStatusLabel = (status: string): string => {
     const labels: Record<string, string> = {
         synced: 'Synchronisiert',
-        syncing: 'Sync laeuft...',
+        syncing: 'Sync läuft...',
         error: 'Fehler',
         stale: 'Veraltet',
         disabled: 'Deaktiviert',
@@ -226,7 +226,7 @@ function ImportSyncStatusWidgetContent() {
         return (
             <div className="text-center py-6 text-muted-foreground">
                 <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
-                <p className="text-sm">Sync-Status nicht verfuegbar</p>
+                <p className="text-sm">Sync-Status nicht verfügbar</p>
                 <Button
                     variant="ghost"
                     size="sm"
@@ -284,7 +284,7 @@ function ImportSyncStatusWidgetContent() {
             {summary.sync_in_progress && (
                 <div className="flex items-center gap-2 text-xs text-blue-600">
                     <Loader2 className="h-3 w-3 animate-spin" />
-                    Synchronisierung laeuft...
+                    Synchronisierung läuft...
                 </div>
             )}
 

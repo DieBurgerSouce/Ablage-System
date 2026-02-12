@@ -90,7 +90,7 @@ export function BenchmarkComparison({ benchmark, className }: BenchmarkCompariso
               <p className="font-medium">{benchmark.benchmark.avg_payment_delay} Tage</p>
             </div>
             <div className="text-center">
-              <p className="text-xs text-muted-foreground">Zahlungsverzoegerung</p>
+              <p className="text-xs text-muted-foreground">Zahlungsverzögerung</p>
               <div className="flex items-center justify-center gap-1">
                 {getDeviationIndicator(benchmark.delay_deviation, true)}
                 <span className={benchmark.delay_deviation > 0 ? 'text-red-500' : 'text-green-500'}>

@@ -6,7 +6,7 @@
  *
  * Features:
  * - Animierter Ein-/Ausblend-Effekt
- * - Kurze Verzoegerung nach Reconnect bevor Banner verschwindet
+ * - Kurze Verzögerung nach Reconnect bevor Banner verschwindet
  * - WCAG 2.1 AA konform (role="alert")
  * - Alle Texte auf Deutsch
  */

@@ -24,7 +24,9 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 import structlog
@@ -112,7 +114,7 @@ class ConnectionHealthResponse(BaseModel):
     degraded: int = Field(default=0, description="Eingeschränkt")
     unhealthy: int = Field(default=0, description="Fehlerhaft")
     expired: int = Field(default=0, description="Abgelaufen")
-    connections: List[Dict[str, Any]] = Field(default=[], description="Status pro Verbindung")
+    connections: List[JSONDict] = Field(default=[], description="Status pro Verbindung")
 
 
 class SyncResultResponse(BaseModel):
@@ -157,7 +159,7 @@ class PendingReconciliationResponse(BaseModel):
     total_pending: int = Field(..., description="Anzahl offene")
     total_amount: float = Field(default=0.0, description="Gesamtbetrag")
     by_bank: Dict[str, int] = Field(default_factory=dict, description="Nach Bank")
-    transactions: List[Dict[str, Any]] = Field(default=[], description="Transaktionen")
+    transactions: List[JSONDict] = Field(default=[], description="Transaktionen")
 
 
 class AutoReconciliationRequest(BaseModel):
@@ -180,7 +182,7 @@ class AutoReconciliationResponse(BaseModel):
     total_amount_matched: float = Field(default=0.0, description="Zugeordneter Betrag")
     duration_ms: int = Field(default=0, description="Dauer in ms")
     dry_run: bool = Field(default=False, description="Nur Simulation")
-    details: List[Dict[str, Any]] = Field(default=[], description="Details")
+    details: List[JSONDict] = Field(default=[], description="Details")
 
 
 class ManualReconciliationRequest(BaseModel):
@@ -198,13 +200,13 @@ class AggregatedBalanceResponse(BaseModel):
     total_available: float = Field(..., description="Gesamt verfügbar")
     currency: str = Field(default="EUR", description="Währung")
     connection_count: int = Field(..., description="Anzahl Konten")
-    by_bank: List[Dict[str, Any]] = Field(default=[], description="Nach Bank")
+    by_bank: List[JSONDict] = Field(default=[], description="Nach Bank")
     as_of: str = Field(..., description="Stand")
 
 
 class AggregatedTransactionsResponse(BaseModel):
     """Aggregierte Transaktionen."""
-    transactions: List[Dict[str, Any]] = Field(..., description="Transaktionen")
+    transactions: List[JSONDict] = Field(..., description="Transaktionen")
     total_count: int = Field(..., description="Gesamtanzahl")
     total_inflow: float = Field(default=0.0, description="Zuflüsse")
     total_outflow: float = Field(default=0.0, description="Abflüsse")

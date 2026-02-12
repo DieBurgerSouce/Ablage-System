@@ -1,7 +1,7 @@
 /**
  * Document Comparison Types
  *
- * TypeScript-Typen fuer die Dokumentenvergleich-Funktion.
+ * TypeScript-Typen für die Dokumentenvergleich-Funktion.
  */
 
 export type ComparisonType = 'text' | 'structured' | 'visual' | 'hybrid';
@@ -72,7 +72,7 @@ export interface CompareDocumentsRequest {
   comparisonType?: ComparisonType;
 }
 
-// Labels fuer UI
+// Labels für UI
 export const COMPARISON_TYPE_LABELS: Record<ComparisonType, string> = {
   text: 'Textvergleich',
   structured: 'Strukturvergleich',
@@ -81,10 +81,10 @@ export const COMPARISON_TYPE_LABELS: Record<ComparisonType, string> = {
 };
 
 export const DIFFERENCE_TYPE_LABELS: Record<DifferenceType, string> = {
-  added: 'Hinzugefuegt',
+  added: 'Hinzugefügt',
   removed: 'Entfernt',
-  changed: 'Geaendert',
-  unchanged: 'Unveraendert',
+  changed: 'Geändert',
+  unchanged: 'Unverändert',
 };
 
 export const FIELD_CATEGORY_LABELS: Record<FieldCategory, string> = {

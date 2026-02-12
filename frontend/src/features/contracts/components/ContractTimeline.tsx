@@ -1,12 +1,12 @@
 /**
- * ContractTimeline - Zeitstrahl fuer Vertragslaufzeit und Fristen
+ * ContractTimeline - Zeitstrahl für Vertragslaufzeit und Fristen
  *
  * Zeigt:
  * - Vertragsbeginn und -ende
- * - Kuendigungsfrist
+ * - Kündigungsfrist
  * - Meilensteine
- * - Verlaengerungsoptionen
- * - Countdown bis zur naechsten kritischen Frist
+ * - Verlängerungsoptionen
+ * - Countdown bis zur nächsten kritischen Frist
  */
 
 import { useMemo } from 'react';
@@ -98,7 +98,7 @@ export function ContractTimeline({
       });
     }
 
-    // Kuendigungsfrist
+    // Kündigungsfrist
     if (contract.notice_deadline) {
       const noticeDate = new Date(contract.notice_deadline);
       const daysUntil = differenceInDays(noticeDate, today);
@@ -106,7 +106,7 @@ export function ContractTimeline({
         id: 'notice',
         date: noticeDate,
         type: 'notice',
-        label: 'Kuendigungsfrist',
+        label: 'Kündigungsfrist',
         description: `${formatDate(noticeDate)} (${daysUntil} Tage)`,
         urgency: getUrgencyFromDays(daysUntil),
         icon: <Bell className="h-4 w-4" />,
@@ -185,7 +185,7 @@ export function ContractTimeline({
     };
   }, [contract.start_date, contract.end_date, today]);
 
-  // Naechste kritische Frist
+  // Nächste kritische Frist
   const nextCriticalEvent = useMemo(() => {
     return events.find(
       (e) =>
@@ -214,7 +214,7 @@ export function ContractTimeline({
           </div>
         )}
 
-        {/* Naechste kritische Frist */}
+        {/* Nächste kritische Frist */}
         {nextCriticalEvent && (
           <div
             className={`p-3 rounded-lg border ${
@@ -254,7 +254,7 @@ export function ContractTimeline({
         {contract.auto_renewal && (
           <CardDescription className="flex items-center gap-1">
             <RefreshCw className="h-3 w-3" />
-            Automatische Verlaengerung aktiv
+            Automatische Verlängerung aktiv
           </CardDescription>
         )}
       </CardHeader>
@@ -346,7 +346,7 @@ export function ContractTimeline({
 
         {/* Countdown-Karten */}
         <div className="grid grid-cols-2 gap-3 pt-4 border-t">
-          {/* Kuendigungsfrist Countdown */}
+          {/* Kündigungsfrist Countdown */}
           {contract.days_until_notice_deadline !== undefined && contract.days_until_notice_deadline >= 0 && (
             <div
               className={`p-3 rounded-lg ${
@@ -361,7 +361,7 @@ export function ContractTimeline({
                     contract.is_notice_deadline_critical ? 'text-red-600' : 'text-muted-foreground'
                   }`}
                 />
-                <span className="text-xs text-muted-foreground">Kuendigungsfrist</span>
+                <span className="text-xs text-muted-foreground">Kündigungsfrist</span>
               </div>
               <p
                 className={`text-2xl font-bold ${

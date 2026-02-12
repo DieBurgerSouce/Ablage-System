@@ -70,7 +70,7 @@ export function ConfidenceAdjustmentsChart({ stats }: ConfidenceAdjustmentsChart
           </ResponsiveContainer>
         )}
         <p className="text-xs text-muted-foreground mt-4">
-          Positive Werte = Backend liefert hoehere Qualitaet als erwartet.
+          Positive Werte = Backend liefert höhere Qualität als erwartet.
           Negative Werte = Confidence wird nach unten korrigiert.
         </p>
       </CardContent>

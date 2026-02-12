@@ -1,7 +1,7 @@
 /**
  * Supplier Ranking API Layer
  *
- * API-Funktionen fuer das Lieferanten-Ranking System.
+ * API-Funktionen für das Lieferanten-Ranking System.
  */
 
 import { apiClient } from '@/lib/api/client';

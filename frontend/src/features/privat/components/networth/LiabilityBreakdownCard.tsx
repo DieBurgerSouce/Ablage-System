@@ -1,7 +1,7 @@
 /**
  * LiabilityBreakdownCard - Verbindlichkeiten-Aufstellung
  *
- * Zeigt die Aufschluesselung der Verbindlichkeiten nach Kategorien:
+ * Zeigt die Aufschlüsselung der Verbindlichkeiten nach Kategorien:
  * - Hypotheken
  * - Kredite
  * - Kreditkarten

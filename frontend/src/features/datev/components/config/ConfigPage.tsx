@@ -50,7 +50,7 @@ export function ConfigPage() {
     const [editingConfig, setEditingConfig] = useState<DATEVConfigurationResponse | null>(null);
     const [deleteConfirm, setDeleteConfirm] = useState<DATEVConfigurationResponse | null>(null);
 
-    // Refs für Focus Management nach Dialog-Schliessung
+    // Refs für Focus Management nach Dialog-Schließung
     const createButtonRef = useRef<HTMLButtonElement>(null);
     const lastTriggerRef = useRef<'create' | 'edit'>('create');
 

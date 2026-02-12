@@ -1,9 +1,9 @@
 /**
- * MentionInput - Eingabefeld mit @mention Unterstuetzung
+ * MentionInput - Eingabefeld mit @mention Unterstützung
  *
  * Features:
  * - @user Autocomplete
- * - Inline-Vorschlaege beim Tippen
+ * - Inline-Vorschläge beim Tippen
  * - Keyboard-Navigation
  * - Formatierten Text mit Mentions
  */

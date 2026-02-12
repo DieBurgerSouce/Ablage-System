@@ -56,7 +56,7 @@ import {
 import type { ComplaintStatus, ComplaintType } from '@/features/portal';
 
 const complaintSchema = z.object({
-  complaint_type: z.string().min(1, 'Bitte waehlen Sie einen Typ'),
+  complaint_type: z.string().min(1, 'Bitte wählen Sie einen Typ'),
   subject: z.string().min(5, 'Betreff muss mindestens 5 Zeichen haben'),
   description: z.string().min(20, 'Beschreibung muss mindestens 20 Zeichen haben'),
   invoice_tracking_id: z.string().optional(),
@@ -76,7 +76,7 @@ const statusLabels: Record<ComplaintStatus, string> = {
   in_review: 'In Bearbeitung',
   accepted: 'Akzeptiert',
   rejected: 'Abgelehnt',
-  resolved: 'Geloest',
+  resolved: 'Gelöst',
   closed: 'Geschlossen',
 };
 
@@ -92,7 +92,7 @@ const statusColors: Record<ComplaintStatus, string> = {
 const typeLabels: Record<ComplaintType, string> = {
   invoice_error: 'Rechnungsfehler',
   delivery_issue: 'Lieferproblem',
-  quality_issue: 'Qualitaetsmangel',
+  quality_issue: 'Qualitätsmangel',
   payment_dispute: 'Zahlungsstreit',
   other: 'Sonstiges',
 };
@@ -153,7 +153,7 @@ function ComplaintsPage() {
             <DialogHeader>
               <DialogTitle>Neue Reklamation erstellen</DialogTitle>
               <DialogDescription>
-                Beschreiben Sie Ihr Anliegen. Wir werden uns schnellstmoeglich bei Ihnen melden.
+                Beschreiben Sie Ihr Anliegen. Wir werden uns schnellstmöglich bei Ihnen melden.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit(onSubmit)}>
@@ -165,7 +165,7 @@ function ComplaintsPage() {
                     defaultValue=""
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Bitte waehlen..." />
+                      <SelectValue placeholder="Bitte wählen..." />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(typeLabels).map(([value, label]) => (
@@ -207,7 +207,7 @@ function ComplaintsPage() {
 
                 {search.invoice_id && (
                   <div className="text-sm text-muted-foreground">
-                    Verknuepft mit Rechnung: {search.invoice_id}
+                    Verknüpft mit Rechnung: {search.invoice_id}
                   </div>
                 )}
               </div>

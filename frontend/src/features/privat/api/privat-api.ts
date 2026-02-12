@@ -1,7 +1,7 @@
 /**
  * Privat-Modul API Client
  *
- * API-Aufrufe für das persoenliche Dokumentenmanagement:
+ * API-Aufrufe für das persönliche Dokumentenmanagement:
  * - Spaces, Ordner, Dokumente
  * - Immobilien, Fahrzeuge, Versicherungen
  * - Kredite, Geldanlagen
@@ -266,7 +266,7 @@ export async function deleteDocument(documentId: string): Promise<void> {
 
 /**
  * Gibt die Download-URL ohne Passwort zurück.
- * WARNUNG: Fuer passwortgeschützte Dokumente sollte downloadDocument() verwendet werden!
+ * WARNUNG: Für passwortgeschützte Dokumente sollte downloadDocument() verwendet werden!
  */
 export function getDocumentDownloadUrl(documentId: string): string {
   // Muss volle URL inkl. /api/v1 sein für direkte Browser-Downloads
@@ -834,7 +834,7 @@ export async function updateGoalProgress(
 }
 
 /**
- * Loescht ein Ziel.
+ * Löscht ein Ziel.
  */
 export async function deleteFinancialGoal(
   spaceId: string,

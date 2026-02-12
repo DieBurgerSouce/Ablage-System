@@ -1,7 +1,7 @@
 /**
  * Workflow Node Components
  *
- * Export aller ReactFlow Knoten fuer den WorkflowBuilder.
+ * Export aller ReactFlow Knoten für den WorkflowBuilder.
  */
 
 import TriggerNodeComponent from './TriggerNode';
@@ -22,7 +22,7 @@ export const ParallelNode = ParallelNodeComponent;
 export const LoopNode = LoopNodeComponent;
 
 /**
- * Node Types Map fuer ReactFlow
+ * Node Types Map für ReactFlow
  */
 export const nodeTypes = {
   trigger: TriggerNodeComponent,

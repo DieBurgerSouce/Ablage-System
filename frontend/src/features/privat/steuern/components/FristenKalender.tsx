@@ -2,7 +2,7 @@
  * FristenKalender Component
  *
  * Zeigt Steuerfristen in einer Kalender-Ansicht.
- * Warnt bei ueberfaelligen und bevorstehenden Fristen.
+ * Warnt bei überfälligen und bevorstehenden Fristen.
  */
 
 import * as React from 'react';
@@ -59,8 +59,8 @@ const DEADLINE_TYPE_METADATA: Record<TaxDeadlineType, DeadlineTypeMetadata> = {
     color: 'text-green-700',
     bgColor: 'bg-green-100',
   },
-  umsatzsteuer_erklaerung: {
-    label: 'USt-Erklaerung',
+  umsatzsteuer_erklärung: {
+    label: 'USt-Erklärung',
     color: 'text-emerald-700',
     bgColor: 'bg-emerald-100',
   },
@@ -70,7 +70,7 @@ const DEADLINE_TYPE_METADATA: Record<TaxDeadlineType, DeadlineTypeMetadata> = {
     bgColor: 'bg-amber-100',
   },
   koerperschaftsteuer: {
-    label: 'Koerperschaftsteuer',
+    label: 'Körperschaftsteuer',
     color: 'text-indigo-700',
     bgColor: 'bg-indigo-100',
   },
@@ -80,7 +80,7 @@ const DEADLINE_TYPE_METADATA: Record<TaxDeadlineType, DeadlineTypeMetadata> = {
     bgColor: 'bg-cyan-100',
   },
   fristverlaengerung: {
-    label: 'Fristverlaengerung',
+    label: 'Fristverlängerung',
     color: 'text-slate-700',
     bgColor: 'bg-slate-100',
   },
@@ -200,7 +200,7 @@ export function FristenKalender({
               Steuerfristen-Kalender
             </CardTitle>
             <CardDescription>
-              Alle wichtigen Termine im Ueberblick
+              Alle wichtigen Termine im Überblick
             </CardDescription>
           </div>
           {onRefresh && (
@@ -212,18 +212,18 @@ export function FristenKalender({
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Ueberfaellige Fristen Warnung */}
+        {/* Überfällige Fristen Warnung */}
         {overdueDeadlines.length > 0 && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <div className="flex items-center gap-2 text-red-700 font-medium mb-2">
               <AlertTriangle className="h-5 w-5" />
-              {overdueDeadlines.length} ueberfaellige Frist{overdueDeadlines.length !== 1 ? 'en' : ''}
+              {overdueDeadlines.length} überfällige Frist{overdueDeadlines.length !== 1 ? 'en' : ''}
             </div>
             <ul className="space-y-1 text-sm text-red-600">
               {overdueDeadlines.slice(0, 3).map((deadline, idx) => (
                 <li key={idx} className="flex items-center gap-2">
                   <span className="font-medium">{deadline.title}</span>
-                  <span>- faellig am {formatDate(deadline.dueDate)}</span>
+                  <span>- fällig am {formatDate(deadline.dueDate)}</span>
                 </li>
               ))}
               {overdueDeadlines.length > 3 && (
@@ -322,17 +322,17 @@ export function FristenKalender({
                           {deadline.isOverdue ? (
                             <span className="flex items-center gap-1">
                               <AlertTriangle className="h-3 w-3" />
-                              {Math.abs(deadline.daysUntilDue)} Tage ueberfaellig
+                              {Math.abs(deadline.daysUntilDue)} Tage überfällig
                             </span>
                           ) : deadline.daysUntilDue === 0 ? (
                             <span className="flex items-center gap-1">
                               <Clock className="h-3 w-3" />
-                              Heute faellig
+                              Heute fällig
                             </span>
                           ) : deadline.daysUntilDue === 1 ? (
                             <span className="flex items-center gap-1">
                               <Clock className="h-3 w-3" />
-                              Morgen faellig
+                              Morgen fällig
                             </span>
                           ) : (
                             <span className="flex items-center gap-1">
@@ -368,7 +368,7 @@ export function FristenKalender({
         <div className="grid grid-cols-3 gap-4 pt-4 border-t">
           <div className="text-center">
             <div className="text-2xl font-bold text-red-600">{overdueDeadlines.length}</div>
-            <div className="text-xs text-muted-foreground">Ueberfaellig</div>
+            <div className="text-xs text-muted-foreground">Überfällig</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-amber-600">

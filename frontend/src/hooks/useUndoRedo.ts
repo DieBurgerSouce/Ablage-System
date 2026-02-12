@@ -17,7 +17,7 @@
  *
  * // Execute an undoable action
  * await executeAction({
- *   description: 'Dokument geloescht',
+ *   description: 'Dokument gelöscht',
  *   execute: () => api.deleteDocument(id),
  *   undo: () => api.restoreDocument(id),
  * });
@@ -205,21 +205,21 @@ export function useUndoRedo(options: UseUndoRedoOptions = {}): UseUndoRedoReturn
         if (shouldShowToast) {
           toast.success(actionDef.description, {
             action: {
-              label: 'Rueckgaengig',
+              label: 'Rückgängig',
               onClick: async () => {
                 // Check if stack was modified
                 if (capturedMutationId !== mutationIdRef.current) {
                   const stillExists = undoStackRef.current.find(a => a.id === id);
                   if (!stillExists) {
-                    toast.error('Aktion nicht mehr verfuegbar');
+                    toast.error('Aktion nicht mehr verfügbar');
                     return;
                   }
-                  logger.warn('[useUndoRedo] Stack wurde seit Toast-Erstellung geaendert');
+                  logger.warn('[useUndoRedo] Stack wurde seit Toast-Erstellung geändert');
                 }
 
                 const actionToUndo = undoStackRef.current.find(a => a.id === id);
                 if (!actionToUndo) {
-                  toast.error('Aktion nicht mehr verfuegbar');
+                  toast.error('Aktion nicht mehr verfügbar');
                   return;
                 }
 
@@ -227,9 +227,9 @@ export function useUndoRedo(options: UseUndoRedoOptions = {}): UseUndoRedoReturn
                   await actionToUndo.undo();
                   mutationIdRef.current++;
                   setUndoStack(prev => prev.filter(a => a.id !== id));
-                  toast.success('Rueckgaengig gemacht');
+                  toast.success('Rückgängig gemacht');
                 } catch (err) {
-                  toast.error('Rueckgaengig machen fehlgeschlagen', {
+                  toast.error('Rückgängig machen fehlgeschlagen', {
                     description: err instanceof Error ? err.message : 'Unbekannter Fehler',
                   });
                 }
@@ -295,13 +295,13 @@ export function useUndoRedo(options: UseUndoRedoOptions = {}): UseUndoRedoReturn
         const count = actionsToUndo.length;
         toast.success(
           count > 1
-            ? `${count} Aktionen rueckgaengig gemacht`
-            : 'Rueckgaengig gemacht',
+            ? `${count} Aktionen rückgängig gemacht`
+            : 'Rückgängig gemacht',
           { description: firstAction.description }
         );
       }
     } catch (error) {
-      toast.error('Rueckgaengig machen fehlgeschlagen', {
+      toast.error('Rückgängig machen fehlgeschlagen', {
         description: error instanceof Error ? error.message : 'Unbekannter Fehler',
       });
     } finally {
@@ -381,7 +381,7 @@ export function useUndoRedo(options: UseUndoRedoOptions = {}): UseUndoRedoReturn
     return [
       {
         id: 'undo',
-        description: 'Rueckgaengig machen',
+        description: 'Rückgängig machen',
         keys: 'ctrl+z',
         category: 'actions',
         handler: undo,
@@ -409,7 +409,7 @@ export function useUndoRedo(options: UseUndoRedoOptions = {}): UseUndoRedoReturn
   // Register keyboard shortcuts if enabled
   const undoShortcut: KeyboardShortcut | null = enableKeyboardShortcuts ? {
     id: 'undo-redo-undo',
-    description: 'Rueckgaengig machen',
+    description: 'Rückgängig machen',
     keys: 'ctrl+z',
     category: 'actions',
     handler: undo,

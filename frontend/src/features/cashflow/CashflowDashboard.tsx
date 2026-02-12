@@ -1,7 +1,7 @@
 /**
  * Predictive Cash-Flow Dashboard
  *
- * Hauptseite fuer Liquiditaetsprognose und Zahlungsempfehlungen.
+ * Hauptseite für Liquiditätsprognose und Zahlungsempfehlungen.
  */
 
 import { useState } from 'react';
@@ -77,7 +77,7 @@ export function CashflowDashboard() {
             Predictive Cash-Flow
           </h1>
           <p className="text-muted-foreground">
-            KI-gestuetzte Liquiditaetsprognose und Zahlungsoptimierung
+            KI-gestützte Liquiditätsprognose und Zahlungsoptimierung
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -192,7 +192,7 @@ export function CashflowDashboard() {
 
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardDescription>Erwartete Eingaenge</CardDescription>
+                    <CardDescription>Erwartete Eingänge</CardDescription>
                     <CardTitle className="text-green-600">
                       {new Intl.NumberFormat('de-DE', {
                         style: 'currency',
@@ -202,14 +202,14 @@ export function CashflowDashboard() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-xs text-muted-foreground">
-                      in den naechsten {forecast.forecast_days} Tagen
+                      in den nächsten {forecast.forecast_days} Tagen
                     </p>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardDescription>Erwartete Ausgaenge</CardDescription>
+                    <CardDescription>Erwartete Ausgänge</CardDescription>
                     <CardTitle className="text-orange-600">
                       {new Intl.NumberFormat('de-DE', {
                         style: 'currency',
@@ -219,7 +219,7 @@ export function CashflowDashboard() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-xs text-muted-foreground">
-                      in den naechsten {forecast.forecast_days} Tagen
+                      in den nächsten {forecast.forecast_days} Tagen
                     </p>
                   </CardContent>
                 </Card>
@@ -228,7 +228,7 @@ export function CashflowDashboard() {
           ) : (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
-                Keine Prognosedaten verfuegbar
+                Keine Prognosedaten verfügbar
               </CardContent>
             </Card>
           )}
@@ -252,7 +252,7 @@ export function CashflowDashboard() {
             <CardHeader>
               <CardTitle>What-If Szenarien</CardTitle>
               <CardDescription>
-                Simulieren Sie verschiedene Szenarien und deren Auswirkungen auf Ihre Liquiditaet
+                Simulieren Sie verschiedene Szenarien und deren Auswirkungen auf Ihre Liquidität
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -264,9 +264,9 @@ export function CashflowDashboard() {
                   onClick={() => handleRunScenario('delayed_payments')}
                 >
                   <CardHeader>
-                    <CardTitle className="text-base">Zahlungsverzoegerung</CardTitle>
+                    <CardTitle className="text-base">Zahlungsverzögerung</CardTitle>
                     <CardDescription>
-                      30% der Kunden zahlen 14 Tage spaeter
+                      30% der Kunden zahlen 14 Tage später
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -314,7 +314,7 @@ export function CashflowDashboard() {
                   onClick={() => handleRunScenario('revenue_drop')}
                 >
                   <CardHeader>
-                    <CardTitle className="text-base">Umsatzrueckgang</CardTitle>
+                    <CardTitle className="text-base">Umsatzrückgang</CardTitle>
                     <CardDescription>
                       20% weniger Einnahmen als erwartet
                     </CardDescription>

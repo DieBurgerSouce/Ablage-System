@@ -1,5 +1,5 @@
 /**
- * POMatchStats - Statistik-Dashboard fuer PO-Matching
+ * POMatchStats - Statistik-Dashboard für PO-Matching
  *
  * Zeigt:
  * - 4 KPI-Karten: Gesamte Matches, Erfolgsquote, Offene Abweichungen, Auto-Match Quote
@@ -81,7 +81,7 @@ export function POMatchStats() {
           className: 'bg-yellow-100 text-yellow-800 border-yellow-200',
         },
         {
-          label: 'Vollstaendig',
+          label: 'Vollständig',
           count: stats.full_matches,
           className: 'bg-green-100 text-green-800 border-green-200',
         },
@@ -181,7 +181,7 @@ export function POMatchStats() {
                   {formatPercent(successRate)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {stats.full_matches} von {stats.total_matches} vollstaendig
+                  {stats.full_matches} von {stats.total_matches} vollständig
                 </p>
               </CardContent>
             </Card>
@@ -264,7 +264,7 @@ export function POMatchStats() {
                       style={{
                         width: `${(stats.full_matches / stats.total_matches) * 100}%`,
                       }}
-                      title={`Vollstaendig: ${stats.full_matches}`}
+                      title={`Vollständig: ${stats.full_matches}`}
                     />
                   )}
                   {stats.approved_matches > 0 && (
@@ -319,9 +319,9 @@ export function POMatchStats() {
         </>
       ) : (
         <div className="text-center py-12 text-muted-foreground">
-          <p>Keine Statistiken verfuegbar.</p>
+          <p>Keine Statistiken verfügbar.</p>
           <p className="text-sm mt-1">
-            Bitte waehlen Sie einen Zeitraum und klicken Sie auf Aktualisieren.
+            Bitte wählen Sie einen Zeitraum und klicken Sie auf Aktualisieren.
           </p>
         </div>
       )}

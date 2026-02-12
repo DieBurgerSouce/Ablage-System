@@ -15,7 +15,9 @@ SECURITY: NIEMALS persoenliche Finanzdaten loggen!
 
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
@@ -224,10 +226,10 @@ class ElsterExportResponse(BaseModel):
     missing_fields: List[str]
     validation_warnings: List[str]
     anlagen: Dict[str, bool]
-    anlage_n_fields: Dict[str, Any]
-    anlage_v_fields: Dict[str, Any]
-    anlage_vorsorge_fields: Dict[str, Any]
-    anlage_haushaltsnahe_fields: Dict[str, Any]
+    anlage_n_fields: JSONDict
+    anlage_v_fields: JSONDict
+    anlage_vorsorge_fields: JSONDict
+    anlage_haushaltsnahe_fields: JSONDict
     export_format: str
     generated_at: datetime
 

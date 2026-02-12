@@ -1,6 +1,6 @@
 /**
  * Missed Skonto Dashboard
- * Hauptseite fuer verpasste Skonto-Uebersicht
+ * Hauptseite für verpasste Skonto-Übersicht
  */
 
 import { useState, useMemo } from 'react';
@@ -23,7 +23,7 @@ import { MissedSkontoTable } from './MissedSkontoTable';
 import { MissedSkontoChart } from './MissedSkontoChart';
 import type { StatsPeriod } from '../types';
 
-// Hilfsfunktionen fuer Datumsbereiche
+// Hilfsfunktionen für Datumsbereiche
 function getDateRange(period: StatsPeriod): { startDate: string; endDate: string } {
   const now = new Date();
   const endDate = now.toISOString().slice(0, 10);
@@ -94,9 +94,9 @@ export function MissedSkontoDashboard() {
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Verpasste Skonto-Moeglichkeiten</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Verpasste Skonto-Möglichkeiten</h1>
           <p className="text-muted-foreground">
-            Analyse verpasster Fruehzahlerrabatte und Optimierungspotenzial.
+            Analyse verpasster Frühzahlerrabatte und Optimierungspotenzial.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -127,11 +127,11 @@ export function MissedSkontoDashboard() {
           <Calendar className="h-4 w-4" />
           <AlertTitle>Hohe verpasste Ersparnis</AlertTitle>
           <AlertDescription>
-            Im ausgewaehlten Zeitraum wurden{' '}
+            Im ausgewählten Zeitraum wurden{' '}
             {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(
               statistics.missedSavings
             )}{' '}
-            an Skonto-Ersparnissen verpasst. Pruefen Sie die Zahlungsprozesse.
+            an Skonto-Ersparnissen verpasst. Prüfen Sie die Zahlungsprozesse.
           </AlertDescription>
         </Alert>
       )}

@@ -3,12 +3,12 @@
  *
  * B2B-Vertragsverwaltung mit:
  * - Vertragslaufzeiten
- * - Kuendigungsfristen
- * - Verlaengerungsoptionen
+ * - Kündigungsfristen
+ * - Verlängerungsoptionen
  * - Meilensteine
- * - Nachtraege
+ * - Nachträge
  * - iCal Kalender-Export
- * - Kalenderansicht fuer Fristen
+ * - Kalenderansicht für Fristen
  * - Schnellaktionen
  */
 

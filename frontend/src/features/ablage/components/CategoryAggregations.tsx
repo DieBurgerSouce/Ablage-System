@@ -4,7 +4,7 @@
  * Zeigt aggregierte Daten wie:
  * - Gesamtanzahl Dokumente
  * - Gesamtbetrag (bei Rechnungen)
- * - Offene Betraege
+ * - Offene Beträge
  * - Überfällige Dokumente
  */
 

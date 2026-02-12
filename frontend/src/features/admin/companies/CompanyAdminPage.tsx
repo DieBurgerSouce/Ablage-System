@@ -1,11 +1,11 @@
 /**
- * CompanyAdminPage - Firmenverwaltung fuer Administratoren
+ * CompanyAdminPage - Firmenverwaltung für Administratoren
  *
  * Features:
- * - Firmen-Uebersicht mit Tabelle
+ * - Firmen-Übersicht mit Tabelle
  * - CRUD-Operationen
  * - Benutzer-Verwaltung pro Firma
- * - Multi-Mandanten-Management fuer 20+ Firmen
+ * - Multi-Mandanten-Management für 20+ Firmen
  */
 
 import { useState, useCallback } from 'react';
@@ -97,7 +97,7 @@ export function CompanyAdminPage() {
       } catch (error) {
         toast({
           title: 'Fehler',
-          description: 'Der Status konnte nicht geaendert werden.',
+          description: 'Der Status konnte nicht geändert werden.',
           variant: 'destructive',
         });
       }
@@ -121,7 +121,7 @@ export function CompanyAdminPage() {
       } catch (error) {
         toast({
           title: 'Fehler',
-          description: 'Der Status konnte nicht geaendert werden.',
+          description: 'Der Status konnte nicht geändert werden.',
           variant: 'destructive',
         });
       }
@@ -136,7 +136,7 @@ export function CompanyAdminPage() {
           await updateCompany.mutateAsync({ id: selectedCompany.id, data });
           toast({
             title: 'Firma aktualisiert',
-            description: 'Die Aenderungen wurden gespeichert.',
+            description: 'Die Änderungen wurden gespeichert.',
           });
         } else {
           await createCompany.mutateAsync(data as CompanyCreate);
@@ -164,15 +164,15 @@ export function CompanyAdminPage() {
     try {
       await deleteCompanyMut.mutateAsync(selectedCompany.id);
       toast({
-        title: 'Firma geloescht',
-        description: 'Die Firma wurde erfolgreich geloescht.',
+        title: 'Firma gelöscht',
+        description: 'Die Firma wurde erfolgreich gelöscht.',
       });
       setDeleteDialogOpen(false);
       setSelectedCompany(null);
     } catch (error) {
       toast({
         title: 'Fehler',
-        description: 'Die Firma konnte nicht geloescht werden.',
+        description: 'Die Firma konnte nicht gelöscht werden.',
         variant: 'destructive',
       });
     }
@@ -190,7 +190,7 @@ export function CompanyAdminPage() {
             Firmenverwaltung
           </h1>
           <p className="text-muted-foreground mt-1">
-            Multi-Mandanten-Verwaltung fuer Ihr Ablage-System
+            Multi-Mandanten-Verwaltung für Ihr Ablage-System
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -275,10 +275,10 @@ export function CompanyAdminPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Firma loeschen?</AlertDialogTitle>
+            <AlertDialogTitle>Firma löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Moechten Sie die Firma &quot;{selectedCompany?.name}&quot; wirklich loeschen?
-              Diese Aktion kann nicht rueckgaengig gemacht werden.
+              Möchten Sie die Firma &quot;{selectedCompany?.name}&quot; wirklich löschen?
+              Diese Aktion kann nicht rückgängig gemacht werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -287,7 +287,7 @@ export function CompanyAdminPage() {
               onClick={handleConfirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Loeschen
+              Löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

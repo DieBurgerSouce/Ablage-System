@@ -130,7 +130,7 @@ export function AccountSettingsTab({ onClose }: AccountSettingsTabProps) {
             setDeleteConfirmText('');
             onClose();
         } catch (error) {
-            logger.error('Kontoloeschung fehlgeschlagen', error);
+            logger.error('Kontolöschung fehlgeschlagen', error);
             toast({
                 title: 'Fehler',
                 description: 'Löschantrag konnte nicht gesendet werden.',

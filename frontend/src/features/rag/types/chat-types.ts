@@ -24,6 +24,54 @@ export type ChatActionStatus =
     | 'rejected'
     | 'failed';
 
+// Daily agenda item from get_daily_agenda tool
+export interface DailyAgendaItem {
+    id: string;
+    title: string;
+    type: 'deadline' | 'approval' | 'skonto' | 'overdue' | 'reminder';
+    due_date: string;
+    entity_name?: string;
+    amount?: number;
+    currency?: string;
+    priority: 'critical' | 'high' | 'medium' | 'low';
+    document_id?: string;
+    days_remaining?: number;
+}
+
+// Comparison data for expense charts
+export interface ComparisonCategory {
+    name: string;
+    period_1_value: number;
+    period_2_value: number;
+    difference: number;
+    change_percent: number;
+}
+
+export interface ComparisonData {
+    period_1_label: string;
+    period_2_label: string;
+    categories: ComparisonCategory[];
+    total_period_1: number;
+    total_period_2: number;
+    total_difference: number;
+    total_change_percent: number;
+}
+
+// Extended tool result types
+export type ToolResultType = 'agenda' | 'comparison' | 'search_results' | 'action' | 'skonto' | 'text';
+
+// Skonto opportunity
+export interface SkontoOpportunity {
+    document_id: string;
+    entity_name: string;
+    invoice_number: string;
+    total_amount: number;
+    skonto_percent: number;
+    skonto_amount: number;
+    deadline: string;
+    days_remaining: number;
+}
+
 export interface ChatToolAction {
     action_id: string;
     tool_name: string;
@@ -33,6 +81,10 @@ export interface ChatToolAction {
     result?: Record<string, unknown>;
     error_message?: string;
     description?: string;
+    result_type?: ToolResultType;
+    agenda_items?: DailyAgendaItem[];
+    comparison_data?: ComparisonData;
+    skonto_items?: SkontoOpportunity[];
 }
 
 export interface ChatMessage {
@@ -150,6 +202,7 @@ export interface SendMessageResponse {
     session_id: string;
     content: string;
     sources: ChatMessageSource[];
+    tool_actions: ChatToolAction[];
     timestamp: string;
 }
 

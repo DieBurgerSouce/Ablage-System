@@ -110,7 +110,7 @@ export function AlertCard({
             <Checkbox
               checked={isSelected}
               onCheckedChange={onToggleSelect}
-              aria-label={`Alert ${alert.title} auswaehlen`}
+              aria-label={`Alert ${alert.title} auswählen`}
             />
           </div>
 
@@ -194,12 +194,12 @@ export function AlertCard({
                     {alert.status === "new" && (
                       <DropdownMenuItem onClick={onAcknowledge}>
                         <CheckCircle className="mr-2 h-4 w-4" />
-                        Bestaetigen
+                        Bestätigen
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuItem onClick={onResolve}>
                       <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
-                      Als geloest markieren
+                      Als gelöst markieren
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={onDismiss}>
                       <XCircle className="mr-2 h-4 w-4" />
@@ -213,7 +213,7 @@ export function AlertCard({
                           rel="noopener noreferrer"
                         >
                           <ExternalLink className="mr-2 h-4 w-4" />
-                          Dokument oeffnen
+                          Dokument öffnen
                         </a>
                       </DropdownMenuItem>
                     )}

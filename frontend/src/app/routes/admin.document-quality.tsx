@@ -1,7 +1,7 @@
 /**
  * Document Quality Admin Route
  *
- * Route fuer das Datenqualitaets-Dashboard im Admin-Bereich.
+ * Route für das Datenqualitäts-Dashboard im Admin-Bereich.
  */
 
 import { createFileRoute } from '@tanstack/react-router';
@@ -15,9 +15,9 @@ function DocumentQualityPage() {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Datenqualitaet</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Datenqualität</h1>
         <p className="text-muted-foreground">
-          Qualitaets-Ampel und Uebersicht aller bewerteten Dokumente
+          Qualitäts-Ampel und Übersicht aller bewerteten Dokumente
         </p>
       </div>
       <QualityDashboard />

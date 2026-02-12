@@ -1,8 +1,8 @@
 /**
  * CrossCompanyPage Component
  *
- * Hauptseite fuer die Cross-Company Uebersicht.
- * Zeigt Entities mit Praesenz in beiden Firmen (Folie & Messer).
+ * Hauptseite für die Cross-Company Übersicht.
+ * Zeigt Entities mit Präsenz in beiden Firmen (Folie & Messer).
  */
 
 import { useState, useCallback, useEffect, memo } from 'react';
@@ -55,7 +55,7 @@ const SearchInput = memo(function SearchInput({
 });
 
 /**
- * CrossCompanyPage - Uebersicht der Geschaeftspartner in mehreren Firmen.
+ * CrossCompanyPage - Übersicht der Geschäftspartner in mehreren Firmen.
  */
 export function CrossCompanyPage() {
     // Filter State
@@ -128,10 +128,10 @@ export function CrossCompanyPage() {
             <div>
                 <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
                     <Layers className="h-8 w-8 text-emerald-500" />
-                    Cross-Company Uebersicht
+                    Cross-Company Übersicht
                 </h1>
                 <p className="text-muted-foreground mt-2">
-                    Vergleichen Sie Geschaeftspartner zwischen Spargelfolie und Spargelmesser
+                    Vergleichen Sie Geschäftspartner zwischen Spargelfolie und Spargelmesser
                 </p>
             </div>
 
@@ -198,7 +198,7 @@ export function CrossCompanyPage() {
                         <span className="animate-pulse">Aktualisiere...</span>
                     ) : (
                         <>
-                            {data?.total ?? 0} Geschaeftspartner gefunden
+                            {data?.total ?? 0} Geschäftspartner gefunden
                         </>
                     )}
                 </p>

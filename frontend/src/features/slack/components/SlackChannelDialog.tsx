@@ -1,7 +1,7 @@
 /**
  * Slack Channel Configuration Dialog.
  *
- * Dialog fuer das Erstellen und Bearbeiten von Slack-Kanaelen.
+ * Dialog für das Erstellen und Bearbeiten von Slack-Kanaelen.
  */
 
 import { useState, useEffect } from 'react';
@@ -65,7 +65,7 @@ export function SlackChannelDialog({ open, onOpenChange, channel }: SlackChannel
             setIsDefault(channel.is_default);
             setIncludeContext(channel.include_context);
         } else if (open && !channel) {
-            // Reset fuer neuen Kanal
+            // Reset für neuen Kanal
             setChannelId('');
             setChannelName('');
             setChannelType('public');
@@ -116,12 +116,12 @@ export function SlackChannelDialog({ open, onOpenChange, channel }: SlackChannel
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Hash className="h-5 w-5" />
-                        {isEditing ? 'Kanal bearbeiten' : 'Neuen Kanal hinzufuegen'}
+                        {isEditing ? 'Kanal bearbeiten' : 'Neuen Kanal hinzufügen'}
                     </DialogTitle>
                     <DialogDescription>
                         {isEditing
-                            ? 'Aendern Sie die Konfiguration des Slack-Kanals.'
-                            : 'Konfigurieren Sie einen Slack-Kanal fuer Benachrichtigungen.'}
+                            ? 'Ändern Sie die Konfiguration des Slack-Kanals.'
+                            : 'Konfigurieren Sie einen Slack-Kanal für Benachrichtigungen.'}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -169,7 +169,7 @@ export function SlackChannelDialog({ open, onOpenChange, channel }: SlackChannel
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="public">Oeffentlich</SelectItem>
+                                    <SelectItem value="public">Öffentlich</SelectItem>
                                     <SelectItem value="private">Privat</SelectItem>
                                     <SelectItem value="dm">Direktnachricht</SelectItem>
                                 </SelectContent>
@@ -179,7 +179,7 @@ export function SlackChannelDialog({ open, onOpenChange, channel }: SlackChannel
 
                     {/* Min Priority */}
                     <div className="space-y-2">
-                        <Label>Mindest-Prioritaet</Label>
+                        <Label>Mindest-Priorität</Label>
                         <Select
                             value={minPriority}
                             onValueChange={(v) => setMinPriority(v as typeof minPriority)}
@@ -195,7 +195,7 @@ export function SlackChannelDialog({ open, onOpenChange, channel }: SlackChannel
                             </SelectContent>
                         </Select>
                         <p className="text-xs text-muted-foreground">
-                            Nur Nachrichten ab dieser Prioritaet werden an diesen Kanal gesendet.
+                            Nur Nachrichten ab dieser Priorität werden an diesen Kanal gesendet.
                         </p>
                     </div>
 
@@ -245,10 +245,10 @@ export function SlackChannelDialog({ open, onOpenChange, channel }: SlackChannel
                             />
                             <div>
                                 <Label htmlFor="include-context" className="cursor-pointer">
-                                    Kontext einschliessen
+                                    Kontext einschließen
                                 </Label>
                                 <p className="text-xs text-muted-foreground">
-                                    Zusaetzliche Details wie Dokument-ID, Benutzer, etc.
+                                    Zusätzliche Details wie Dokument-ID, Benutzer, etc.
                                 </p>
                             </div>
                         </div>
@@ -261,7 +261,7 @@ export function SlackChannelDialog({ open, onOpenChange, channel }: SlackChannel
                     </Button>
                     <Button onClick={handleSubmit} disabled={!isValid || isLoading}>
                         {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                        {isEditing ? 'Speichern' : 'Hinzufuegen'}
+                        {isEditing ? 'Speichern' : 'Hinzufügen'}
                     </Button>
                 </DialogFooter>
             </DialogContent>

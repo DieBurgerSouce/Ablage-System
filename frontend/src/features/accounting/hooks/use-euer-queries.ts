@@ -1,7 +1,7 @@
 /**
  * Anlage EUeR Query Hooks
  *
- * TanStack Query Hooks fuer EUeR Report und Anlage EUeR Export.
+ * TanStack Query Hooks für EUeR Report und Anlage EUeR Export.
  */
 
 import { useQuery } from '@tanstack/react-query';

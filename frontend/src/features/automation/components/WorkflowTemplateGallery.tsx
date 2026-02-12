@@ -42,7 +42,7 @@ const TEMPLATES: WorkflowTemplate[] = [
     id: 'invoice-approval',
     title: 'Rechnungsgenehmigung',
     description:
-      'Automatischer Genehmigungsworkflow fuer eingehende Rechnungen mit mehrstufiger Freigabe und Eskalation.',
+      'Automatischer Genehmigungsworkflow für eingehende Rechnungen mit mehrstufiger Freigabe und Eskalation.',
     icon: FileCheck,
     iconColor: 'text-green-600',
     iconBg: 'bg-green-500/10',
@@ -73,20 +73,20 @@ const TEMPLATES: WorkflowTemplate[] = [
   },
   {
     id: 'contract-review',
-    title: 'Vertragspruefung',
+    title: 'Vertragsprüfung',
     description:
-      'Strukturierter Pruefprozess fuer Vertraege mit Checkliste, Kommentaren und Freigabe.',
+      'Strukturierter Prüfprozess für Verträge mit Checkliste, Kommentaren und Freigabe.',
     icon: ClipboardCheck,
     iconColor: 'text-purple-600',
     iconBg: 'bg-purple-500/10',
-    tags: ['Genehmigung', 'Vertraege'],
+    tags: ['Genehmigung', 'Verträge'],
     stepsCount: 7,
   },
   {
     id: 'supplier-onboarding',
     title: 'Onboarding Lieferant',
     description:
-      'Vollstaendiger Onboarding-Prozess fuer neue Lieferanten mit Dokumentenpruefung und Kontaktdatenerfassung.',
+      'Vollständiger Onboarding-Prozess für neue Lieferanten mit Dokumentenprüfung und Kontaktdatenerfassung.',
     icon: UserPlus,
     iconColor: 'text-cyan-600',
     iconBg: 'bg-cyan-500/10',

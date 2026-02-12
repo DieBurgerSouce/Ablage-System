@@ -1,7 +1,7 @@
 /**
  * Risk Entity Detail Route
  *
- * Detailansicht des Risiko-Scores fuer eine einzelne Entity.
+ * Detailansicht des Risiko-Scores für eine einzelne Entity.
  */
 
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
@@ -81,7 +81,7 @@ function RiskEntityDetailPage() {
               Erneut versuchen
             </Button>
             <Button variant="outline" onClick={() => navigate({ to: '/risk' })}>
-              Zurueck zum Dashboard
+              Zurück zum Dashboard
             </Button>
           </div>
         </div>
@@ -203,7 +203,7 @@ function RiskEntityDetailPage() {
           <CardHeader>
             <CardTitle>Risikofaktoren</CardTitle>
             <CardDescription>
-              Detaillierte Aufschluesselung der Risikobewertung
+              Detaillierte Aufschlüsselung der Risikobewertung
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -219,7 +219,7 @@ function RiskEntityDetailPage() {
           <CardHeader>
             <CardTitle>Risiko-Verlauf (30 Tage)</CardTitle>
             <CardDescription>
-              Entwicklung des Risiko-Scores ueber Zeit
+              Entwicklung des Risiko-Scores über Zeit
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -229,7 +229,7 @@ function RiskEntityDetailPage() {
               <EntityRiskMiniChart data={trendData} height={200} />
             ) : (
               <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-                Keine Verlaufsdaten verfuegbar
+                Keine Verlaufsdaten verfügbar
               </div>
             )}
           </CardContent>
@@ -238,7 +238,7 @@ function RiskEntityDetailPage() {
         {/* Additional Info */}
         <Card className="lg:col-span-3">
           <CardHeader>
-            <CardTitle>Zusaetzliche Informationen</CardTitle>
+            <CardTitle>Zusätzliche Informationen</CardTitle>
           </CardHeader>
           <CardContent>
             <dl className="grid grid-cols-2 md:grid-cols-4 gap-6">

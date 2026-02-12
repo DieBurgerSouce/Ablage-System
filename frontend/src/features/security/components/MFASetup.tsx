@@ -69,8 +69,8 @@ export function MFASetup({ onComplete, onCancel }: MFASetupProps) {
       setStep('backup');
     },
     onError: () => {
-      toast.error('Ungueltiger Code', {
-        description: 'Bitte pruefen Sie den Code und versuchen Sie es erneut.',
+      toast.error('Ungültiger Code', {
+        description: 'Bitte prüfen Sie den Code und versuchen Sie es erneut.',
       });
       setVerifyCode('');
     },
@@ -131,7 +131,7 @@ Generiert am: ${new Date().toLocaleString('de-DE')}
           <CardTitle>Zwei-Faktor-Authentifizierung einrichten</CardTitle>
         </div>
         <CardDescription>
-          Schuetzen Sie Ihr Konto mit einem zusaetzlichen Sicherheitsfaktor
+          Schützen Sie Ihr Konto mit einem zusätzlichen Sicherheitsfaktor
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -148,7 +148,7 @@ Generiert am: ${new Date().toLocaleString('de-DE')}
               <div className="flex items-start gap-3 p-4 bg-muted/50 rounded-lg">
                 <Smartphone className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
-                  <p className="font-medium">Was Sie benoetigen:</p>
+                  <p className="font-medium">Was Sie benötigen:</p>
                   <p className="text-sm text-muted-foreground">
                     Eine Authenticator-App wie Google Authenticator, Microsoft Authenticator oder Authy
                   </p>
@@ -284,7 +284,7 @@ Generiert am: ${new Date().toLocaleString('de-DE')}
 
               <div className="flex gap-2 pt-4">
                 <Button variant="outline" onClick={() => setStep('scan')}>
-                  Zurueck
+                  Zurück
                 </Button>
                 <Button
                   onClick={handleVerify}
@@ -346,7 +346,7 @@ Generiert am: ${new Date().toLocaleString('de-DE')}
                   {backupCodesCopied ? (
                     <>
                       <CheckCircle2 className="mr-2 h-4 w-4" />
-                      Einrichtung abschliessen
+                      Einrichtung abschließen
                     </>
                   ) : (
                     'Bitte Codes zuerst kopieren oder herunterladen'

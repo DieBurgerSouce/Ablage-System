@@ -6,8 +6,10 @@ Vision 2026+ Feature #5: Smart Auto-Tagging
 Analysiert Dokumente und schlaegt passende Tags vor oder wendet sie an.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
+
+from app.core.types import JSONDict
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -67,7 +69,7 @@ class SmartTaggingResultSchema(BaseModel):
     suggested_tags: List[SmartTagSchema] = Field(default_factory=list)
     applied_tags: List[str] = Field(default_factory=list)
     skipped_tags: List[str] = Field(default_factory=list)
-    analysis_metadata: Dict[str, Any] = Field(default_factory=dict)
+    analysis_metadata: JSONDict = Field(default_factory=dict)
 
 
 class SmartTagDefinitionSchema(BaseModel):

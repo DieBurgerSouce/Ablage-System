@@ -5,7 +5,9 @@ Rechnungsansicht fuer Kundenportal.
 """
 
 from datetime import date
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -24,7 +26,7 @@ router = APIRouter(prefix="/invoices", tags=["Portal-Rechnungen"])
 
 class PortalInvoiceListResponse(BaseModel):
     """Rechnungsliste-Antwort."""
-    items: List[Dict[str, Any]]
+    items: List[JSONDict]
     total: int
     limit: int
     offset: int
@@ -32,7 +34,7 @@ class PortalInvoiceListResponse(BaseModel):
 
 class PortalInvoiceItemsResponse(BaseModel):
     """Rechnungen-Items-Antwort."""
-    items: List[Dict[str, Any]]
+    items: List[JSONDict]
 
 
 class PortalInvoiceSummaryResponse(BaseModel):

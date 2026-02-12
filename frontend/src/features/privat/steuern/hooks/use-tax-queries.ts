@@ -1,11 +1,11 @@
 /**
- * React Query Hooks fuer Steueroptimierung
+ * React Query Hooks für Steueroptimierung
  *
  * Bietet:
- * - useTaxOptimization: Vollstaendige Steueranalyse
+ * - useTaxOptimization: Vollständige Steueranalyse
  * - useTaxDeductions: Abzuege nach Kategorie
  * - useTaxDeadlines: Steuerfristen
- * - useCheckDeductibility: Absetzbarkeitspruefung
+ * - useCheckDeductibility: Absetzbarkeitsprüfung
  * - useDATEVExport: DATEV-Export Mutation
  * - useYearComparison: Jahresvergleich
  */
@@ -40,7 +40,7 @@ export const taxQueryKeys = {
 // ==================== Steueroptimierung Hooks ====================
 
 /**
- * Hook fuer vollstaendige Steueroptimierungs-Analyse
+ * Hook für vollständige Steueroptimierungs-Analyse
  */
 export function useTaxOptimization(
   spaceId: string,
@@ -61,7 +61,7 @@ export function useTaxOptimization(
 }
 
 /**
- * Hook fuer Steuerabzuege nach Kategorie
+ * Hook für Steuerabzuege nach Kategorie
  */
 export function useTaxDeductions(
   spaceId: string,
@@ -79,7 +79,7 @@ export function useTaxDeductions(
 }
 
 /**
- * Hook fuer Steuerfristen
+ * Hook für Steuerfristen
  */
 export function useTaxDeadlines(
   spaceId: string,
@@ -90,13 +90,13 @@ export function useTaxDeadlines(
     queryKey: taxQueryKeys.deadlines(spaceId, taxYear),
     queryFn: () => taxOptimizationService.getTaxDeadlines(spaceId, taxYear),
     enabled: !!spaceId,
-    staleTime: 60 * 1000, // 1 Minute (Fristen aendern sich)
+    staleTime: 60 * 1000, // 1 Minute (Fristen ändern sich)
     ...queryOptions,
   });
 }
 
 /**
- * Hook fuer Jahresvergleich
+ * Hook für Jahresvergleich
  */
 export function useYearComparison(
   spaceId: string,
@@ -113,7 +113,7 @@ export function useYearComparison(
 }
 
 /**
- * Hook fuer Optimierungstipps
+ * Hook für Optimierungstipps
  */
 export function useTaxTips(
   spaceId: string,
@@ -132,7 +132,7 @@ export function useTaxTips(
 // ==================== Mutations ====================
 
 /**
- * Hook fuer Absetzbarkeitspruefung
+ * Hook für Absetzbarkeitsprüfung
  */
 export function useCheckDeductibility() {
   return useMutation({
@@ -151,7 +151,7 @@ export function useCheckDeductibility() {
 }
 
 /**
- * Hook fuer DATEV-Export Generierung
+ * Hook für DATEV-Export Generierung
  */
 export function useDATEVExport() {
   const queryClient = useQueryClient();
@@ -167,7 +167,7 @@ export function useDATEVExport() {
 }
 
 /**
- * Hook fuer DATEV-Export Download
+ * Hook für DATEV-Export Download
  */
 export function useDATEVExportDownload() {
   return useMutation({

@@ -1,13 +1,13 @@
 /**
  * VirtualizedDataTable
  *
- * Erweiterung von EnterpriseDataTable mit Virtualisierung fuer grosse Datensaetze.
- * Verwendet TanStack Virtual fuer effizientes Rendering von 1000+ Zeilen.
+ * Erweiterung von EnterpriseDataTable mit Virtualisierung für grosse Datensätze.
+ * Verwendet TanStack Virtual für effizientes Rendering von 1000+ Zeilen.
  *
  * Features:
  * - Row Virtualization (nur sichtbare Zeilen werden gerendert)
  * - Sticky Header
- * - Intersection Observer fuer Lazy Loading
+ * - Intersection Observer für Lazy Loading
  * - Smooth Scrolling
  * - Keyboard Navigation
  *

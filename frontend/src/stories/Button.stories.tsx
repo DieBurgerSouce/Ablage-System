@@ -1,7 +1,7 @@
 /**
  * Button Component Stories
  *
- * Alle Button-Varianten fuer Visual Regression Testing.
+ * Alle Button-Varianten für Visual Regression Testing.
  * Basiert auf shadcn/ui Button mit class-variance-authority.
  */
 
@@ -17,7 +17,7 @@ const meta: Meta<typeof Button> = {
         layout: 'centered',
         docs: {
             description: {
-                component: 'Button-Komponente mit verschiedenen Varianten und Groessen.',
+                component: 'Button-Komponente mit verschiedenen Varianten und Größen.',
             },
         },
     },
@@ -31,7 +31,7 @@ const meta: Meta<typeof Button> = {
         size: {
             control: 'select',
             options: ['default', 'sm', 'lg', 'icon'],
-            description: 'Die Groesse des Buttons',
+            description: 'Die Größe des Buttons',
         },
         disabled: {
             control: 'boolean',
@@ -39,7 +39,7 @@ const meta: Meta<typeof Button> = {
         },
         asChild: {
             control: 'boolean',
-            description: 'Render als Child-Element (fuer Link-Wrapper)',
+            description: 'Render als Child-Element (für Link-Wrapper)',
         },
     },
     args: {
@@ -61,7 +61,7 @@ export const Default: Story = {
 
 export const Destructive: Story = {
     args: {
-        children: 'Loeschen',
+        children: 'Löschen',
         variant: 'destructive',
     },
 };
@@ -94,7 +94,7 @@ export const Link: Story = {
     },
 };
 
-// ==================== Groessen ====================
+// ==================== Größen ====================
 
 export const Small: Story = {
     args: {
@@ -114,7 +114,7 @@ export const IconButton: Story = {
     args: {
         size: 'icon',
         children: <Plus className="h-4 w-4" />,
-        'aria-label': 'Hinzufuegen',
+        'aria-label': 'Hinzufügen',
     },
 };
 
@@ -151,7 +151,7 @@ export const IconOnly: Story = {
     },
 };
 
-// ==================== Zustaende ====================
+// ==================== Zustände ====================
 
 export const Disabled: Story = {
     args: {
@@ -180,7 +180,7 @@ export const DestructiveWithIcon: Story = {
         children: (
             <>
                 <Trash2 className="h-4 w-4" />
-                Loeschen
+                Löschen
             </>
         ),
     },

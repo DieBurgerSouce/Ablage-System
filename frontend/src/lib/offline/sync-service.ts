@@ -133,7 +133,7 @@ class OfflineSyncService {
       // Check if max retries reached
       if (mutation.retryCount >= mutation.maxRetries) {
         await updateMutationStatus(mutation.id, 'failed', errorMessage);
-        logger.error('[SyncService] Mutation endgueltig fehlgeschlagen', {
+        logger.error('[SyncService] Mutation endgültig fehlgeschlagen', {
           id: mutation.id,
           error: errorMessage,
         });
@@ -156,7 +156,7 @@ class OfflineSyncService {
    */
   async sync(): Promise<SyncResult> {
     if (this.isSyncing) {
-      logger.warn('[SyncService] Synchronisierung laeuft bereits');
+      logger.warn('[SyncService] Synchronisierung läuft bereits');
       return {
         success: false,
         total: 0,
@@ -266,7 +266,7 @@ class OfflineSyncService {
    */
   async registerBackgroundSync(): Promise<boolean> {
     if (!('serviceWorker' in navigator)) {
-      logger.warn('[SyncService] Service Worker nicht unterstuetzt');
+      logger.warn('[SyncService] Service Worker nicht unterstützt');
       return false;
     }
 
@@ -280,7 +280,7 @@ class OfflineSyncService {
         return true;
       }
 
-      logger.warn('[SyncService] Background Sync API nicht unterstuetzt');
+      logger.warn('[SyncService] Background Sync API nicht unterstützt');
       return false;
     } catch (error) {
       logger.error('[SyncService] Background Sync Registrierung fehlgeschlagen', {

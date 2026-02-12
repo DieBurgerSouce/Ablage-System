@@ -1,7 +1,7 @@
 /**
- * DATEV Connect - Kontierungsvorschlaege
+ * DATEV Connect - Kontierungsvorschläge
  *
- * ML-gestuetzte Kontierungsvorschlaege mit Lernfunktion.
+ * ML-gestützte Kontierungsvorschläge mit Lernfunktion.
  */
 
 import { useState } from 'react';
@@ -54,14 +54,14 @@ import {
 } from '@/features/datev/hooks/use-datev-connect-queries';
 import { formatConfidence } from '@/lib/api/services/datev-connect';
 
-// Mock-Daten fuer Vorschlaege (in Produktion von API)
+// Mock-Daten für Vorschläge (in Produktion von API)
 const mockVorschlaege = [
     {
         id: '1',
         document_id: 'doc-1',
         connection_id: 'conn-1',
         konto_soll: '4400',
-        konto_soll_bezeichnung: 'Aufwendungen fuer Waren',
+        konto_soll_bezeichnung: 'Aufwendungen für Waren',
         konto_haben: '70000',
         konto_haben_bezeichnung: 'Kreditor Allgemein',
         steuerschluessel: '19',
@@ -132,7 +132,7 @@ export function KontierungPage() {
 
     const { toast } = useToast();
 
-    // Kontenplan fuer Auswahl
+    // Kontenplan für Auswahl
     const { data: kontenplan } = useKontenplan(selectedConnectionId, undefined, !!selectedConnectionId);
 
     const acceptKontierung = useAcceptKontierung();
@@ -200,13 +200,13 @@ export function KontierungPage() {
             });
             setEditDialog(null);
             toast({
-                title: 'Kontierung uebernommen',
-                description: 'Die Buchung wurde mit Ihren Aenderungen erstellt.',
+                title: 'Kontierung übernommen',
+                description: 'Die Buchung wurde mit Ihren Änderungen erstellt.',
             });
         } catch {
             toast({
                 title: 'Fehler',
-                description: 'Die Kontierung konnte nicht uebernommen werden.',
+                description: 'Die Kontierung konnte nicht übernommen werden.',
                 variant: 'destructive',
             });
         }
@@ -265,10 +265,10 @@ export function KontierungPage() {
                 <div>
                     <h2 className="text-xl font-semibold flex items-center gap-2">
                         <Brain className="h-6 w-6 text-purple-600" />
-                        KI-Kontierungsvorschlaege
+                        KI-Kontierungsvorschläge
                     </h2>
                     <p className="text-sm text-muted-foreground">
-                        ML-gestuetzte Kontierungsvorschlaege mit automatischem Lernen.
+                        ML-gestützte Kontierungsvorschläge mit automatischem Lernen.
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -281,7 +281,7 @@ export function KontierungPage() {
                         }}
                     >
                         <SelectTrigger className="w-[250px]">
-                            <SelectValue placeholder="Verbindung waehlen..." />
+                            <SelectValue placeholder="Verbindung wählen..." />
                         </SelectTrigger>
                         <SelectContent>
                             {connectionsLoading ? (
@@ -318,7 +318,7 @@ export function KontierungPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{mockVorschlaege.length}</div>
-                        <p className="text-xs text-muted-foreground">Vorschlaege zur Pruefung</p>
+                        <p className="text-xs text-muted-foreground">Vorschläge zur Prüfung</p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -355,15 +355,15 @@ export function KontierungPage() {
                 </Card>
             </div>
 
-            {/* Vorschlaege-Tabelle */}
+            {/* Vorschläge-Tabelle */}
             <Card>
                 <CardHeader>
                     <CardTitle className="text-base flex items-center gap-2">
                         <Sparkles className="h-5 w-5 text-yellow-500" />
-                        Aktuelle Vorschlaege
+                        Aktuelle Vorschläge
                     </CardTitle>
                     <CardDescription>
-                        Pruefen und bestaetigen Sie die KI-generierten Kontierungen.
+                        Prüfen und bestätigen Sie die KI-generierten Kontierungen.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -371,7 +371,7 @@ export function KontierungPage() {
                         <div className="text-center py-10">
                             <Brain className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
                             <p className="text-muted-foreground">
-                                Waehlen Sie eine Verbindung aus, um Vorschlaege anzuzeigen.
+                                Wählen Sie eine Verbindung aus, um Vorschläge anzuzeigen.
                             </p>
                         </div>
                     ) : mockVorschlaege.length === 0 ? (
@@ -499,7 +499,7 @@ export function KontierungPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Steuerschluessel</Label>
+                                <Label>Steuerschlüssel</Label>
                                 <Input
                                     value={editDialog.steuerschluessel || ''}
                                     onChange={(e) =>
@@ -516,7 +516,7 @@ export function KontierungPage() {
                         </Button>
                         <Button onClick={handleAcceptWithChanges}>
                             <CheckCircle className="mr-2 h-4 w-4" />
-                            Uebernehmen
+                            Übernehmen
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -572,7 +572,7 @@ export function KontierungPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label>Steuerschluessel (optional)</Label>
+                            <Label>Steuerschlüssel (optional)</Label>
                             <Input
                                 value={learnData.steuerschluessel}
                                 onChange={(e) =>

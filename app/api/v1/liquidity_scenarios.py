@@ -15,7 +15,9 @@ Endpoints:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 import structlog
@@ -82,7 +84,7 @@ class ScenarioResponse(BaseModel):
     scenario_type: str
     name: str
     description: str
-    assumptions: List[Dict[str, Any]]
+    assumptions: List[JSONDict]
     forecast_days: int
     current_balance: float
     min_balance: float
@@ -146,7 +148,7 @@ class MonteCarloResponse(BaseModel):
     std_dev_min_balance: float
     probability_negative: float
     probability_critical: float
-    confidence_corridor: List[Dict[str, Any]]
+    confidence_corridor: List[JSONDict]
 
 
 class CompareRequest(BaseModel):
@@ -181,7 +183,7 @@ class StandardScenariosResponse(BaseModel):
 
     scenarios: List[ScenarioResponse]
     corridor: List[LiquidityCorridorPoint]
-    summary: Dict[str, Any]
+    summary: JSONDict
 
 
 # =============================================================================

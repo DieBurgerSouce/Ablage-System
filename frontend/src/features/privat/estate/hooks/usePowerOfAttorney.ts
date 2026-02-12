@@ -1,7 +1,7 @@
 /**
  * Power of Attorney Hook
  *
- * CRUD-Operationen fuer Vollmachten (Vorsorge-, General-, Bankvollmacht, etc.)
+ * CRUD-Operationen für Vollmachten (Vorsorge-, General-, Bankvollmacht, etc.)
  */
 
 import { useQuery, useMutation, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
@@ -25,9 +25,9 @@ export const POA_TYPE_LABELS: Record<PowerOfAttorneyType, string> = {
   vorsorgevollmacht: 'Vorsorgevollmacht',
   generalvollmacht: 'Generalvollmacht',
   bankvollmacht: 'Bankvollmacht',
-  patientenverfuegung: 'Patientenverfuegung',
-  betreuungsverfuegung: 'Betreuungsverfuegung',
-  sorgerechtsverfuegung: 'Sorgerechtsverfuegung',
+  patientenverfuegung: 'Patientenverfügung',
+  betreuungsverfuegung: 'Betreuungsverfügung',
+  sorgerechtsverfuegung: 'Sorgerechtsverfügung',
 };
 
 /**
@@ -35,17 +35,17 @@ export const POA_TYPE_LABELS: Record<PowerOfAttorneyType, string> = {
  */
 export const POA_TYPE_DESCRIPTIONS: Record<PowerOfAttorneyType, string> = {
   vorsorgevollmacht:
-    'Ermaechtigt eine Vertrauensperson, bei Geschaeftsunfaehigkeit alle oder bestimmte Angelegenheiten zu regeln.',
+    'Ermächtigt eine Vertrauensperson, bei Geschäftsunfähigkeit alle oder bestimmte Angelegenheiten zu regeln.',
   generalvollmacht:
-    'Umfassende Vertretungsbefugnis fuer alle Rechtsgeschaefte. Gilt auch bei Geschaeftsunfaehigkeit, wenn ausdruecklich geregelt.',
+    'Umfassende Vertretungsbefugnis für alle Rechtsgeschäfte. Gilt auch bei Geschäftsunfähigkeit, wenn ausdrücklich geregelt.',
   bankvollmacht:
-    'Ermaechtigt zur Fuehrung von Bankkonten und Durchfuehrung von Bankgeschaeften.',
+    'Ermächtigt zur Führung von Bankkonten und Durchführung von Bankgeschäften.',
   patientenverfuegung:
-    'Legt fest, welche medizinischen Massnahmen gewuenscht oder abgelehnt werden.',
+    'Legt fest, welche medizinischen Maßnahmen gewünscht oder abgelehnt werden.',
   betreuungsverfuegung:
     'Legt fest, wer als Betreuer eingesetzt werden soll, falls eine Betreuung notwendig wird.',
   sorgerechtsverfuegung:
-    'Bestimmt, wer sich um minderjaehrige Kinder kuemmern soll.',
+    'Bestimmt, wer sich um minderjährige Kinder kümmern soll.',
 };
 
 /**
@@ -133,7 +133,7 @@ export function useUpdatePowerOfAttorney() {
 }
 
 /**
- * Loescht eine Vollmacht
+ * Löscht eine Vollmacht
  */
 export function useDeletePowerOfAttorney() {
   const queryClient = useQueryClient();
@@ -165,7 +165,7 @@ export function useCreateHeirDocumentAccess() {
 }
 
 /**
- * Loescht einen zeitgesteuerten Erben-Zugriff
+ * Löscht einen zeitgesteuerten Erben-Zugriff
  */
 export function useDeleteHeirDocumentAccess() {
   const queryClient = useQueryClient();
@@ -183,7 +183,7 @@ export function useDeleteHeirDocumentAccess() {
 // ==================== Utility Functions ====================
 
 /**
- * Prueft, welche wichtigen Vollmachten fehlen
+ * Prüft, welche wichtigen Vollmachten fehlen
  */
 export function getMissingEssentialPoas(existingPoas: PowerOfAttorney[]): PowerOfAttorneyType[] {
   const activeTypes = new Set(

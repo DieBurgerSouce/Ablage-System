@@ -1,10 +1,10 @@
 /**
  * Portal TanStack Query Hooks
  *
- * Zentrale Query Hooks fuer das Kundenportal.
+ * Zentrale Query Hooks für das Kundenportal.
  * Konsistente Query-Keys und wiederverwendbare Hooks.
  *
- * Alle Mutations beinhalten deutsche Toast-Messages fuer User-Feedback.
+ * Alle Mutations beinhalten deutsche Toast-Messages für User-Feedback.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -40,7 +40,7 @@ const STALE_TIMES = {
   invoiceSummary: 2 * 60 * 1000, // 2 Minuten
   payments: 30 * 1000, // 30 Sekunden - Zahlungen können schnell kommen
   complaints: 60 * 1000, // 1 Minute
-  complaintTypes: 30 * 60 * 1000, // 30 Minuten - aendert sich selten
+  complaintTypes: 30 * 60 * 1000, // 30 Minuten - ändert sich selten
   documents: 60 * 1000, // 1 Minute
   documentTypes: 30 * 60 * 1000, // 30 Minuten
   messages: 30 * 1000, // 30 Sekunden - Nachrichten kommen schnell
@@ -114,25 +114,25 @@ export const PORTAL_TOAST_MESSAGES = {
     activateSuccess: 'Account erfolgreich aktiviert',
     activateError: 'Aktivierung fehlgeschlagen',
     passwordChangeSuccess: 'Passwort erfolgreich geändert',
-    passwordChangeError: 'Passwortaenderung fehlgeschlagen',
+    passwordChangeError: 'Passwortänderung fehlgeschlagen',
   },
   payments: {
-    confirmSuccess: 'Zahlungsbestaetigung erfolgreich eingereicht',
-    confirmError: 'Fehler beim Einreichen der Zahlungsbestaetigung',
-    cancelSuccess: 'Zahlungsbestaetigung storniert',
+    confirmSuccess: 'Zahlungsbestätigung erfolgreich eingereicht',
+    confirmError: 'Fehler beim Einreichen der Zahlungsbestätigung',
+    cancelSuccess: 'Zahlungsbestätigung storniert',
     cancelError: 'Fehler beim Stornieren',
   },
   complaints: {
     createSuccess: 'Reklamation erfolgreich eingereicht',
     createError: 'Fehler beim Einreichen der Reklamation',
-    addInfoSuccess: 'Information hinzugefuegt',
+    addInfoSuccess: 'Information hinzugefügt',
     addInfoError: 'Fehler beim Hinzufügen der Information',
   },
   documents: {
     uploadSuccess: 'Dokument erfolgreich hochgeladen',
     uploadError: 'Fehler beim Hochladen des Dokuments',
-    deleteSuccess: 'Dokument geloescht',
-    deleteError: 'Fehler beim Loeschen des Dokuments',
+    deleteSuccess: 'Dokument gelöscht',
+    deleteError: 'Fehler beim Löschen des Dokuments',
   },
   messages: {
     sendSuccess: 'Nachricht erfolgreich gesendet',

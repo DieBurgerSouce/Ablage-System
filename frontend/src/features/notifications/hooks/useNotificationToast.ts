@@ -26,13 +26,13 @@ export function useNotificationToast() {
   const handleNotification = useCallback((event: RealtimeEvent) => {
     const { title, message, priority } = event.payload as unknown as NotificationPayload;
 
-    // Nachricht kuerzen falls zu lang
+    // Nachricht kürzen falls zu lang
     const truncatedMessage =
       typeof message === 'string' && message.length > 150
         ? message.substring(0, 150) + '...'
         : message;
 
-    // Prioritaet auf sonner Toast-Variante mappen
+    // Priorität auf sonner Toast-Variante mappen
     switch (priority) {
       case 'critical':
         toast.error(title, { description: truncatedMessage, duration: 10000 });
@@ -45,7 +45,7 @@ export function useNotificationToast() {
         break;
     }
 
-    // Notification-Queries invalidieren fuer Badge-Update
+    // Notification-Queries invalidieren für Badge-Update
     queryClient.invalidateQueries({ queryKey: notificationKeys.unreadCount() });
     queryClient.invalidateQueries({ queryKey: notificationKeys.lists() });
   }, [queryClient]);

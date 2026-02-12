@@ -1,7 +1,7 @@
 /**
  * Portfolio Overview Component
  *
- * Zeigt Portfolio-Risikouebersicht mit Verteilung und High-Risk Entities.
+ * Zeigt Portfolio-Risikoübersicht mit Verteilung und High-Risk Entities.
  */
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -180,7 +180,7 @@ export function PortfolioOverview({ portfolio, className }: PortfolioOverviewPro
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">High-Risk Entities</CardTitle>
-            <CardDescription>Entities mit erhoehtem Risiko</CardDescription>
+            <CardDescription>Entities mit erhöhtem Risiko</CardDescription>
           </CardHeader>
           <CardContent>
             {portfolio.high_risk_entities.length === 0 ? (

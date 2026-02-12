@@ -2,7 +2,7 @@
  * Validation Components Exports
  */
 
-// Legacy Components (fuer Rueckwaertskompatibilitaet)
+// Legacy Components (für Rückwärtskompatibilität)
 export { ValidationDashboard } from './ValidationDashboard';
 export { ValidationEditor } from './ValidationEditor';
 export { ValidationCard } from './ValidationCard';

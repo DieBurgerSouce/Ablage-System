@@ -17,3 +17,4 @@ export { ChunkResultCard } from './ChunkResultCard';
 // Facetten-Filter
 export { FacetSidebar } from './FacetSidebar';
 export { FacetSection } from './FacetSection';
+export { FilterPresetsBar, FilterPresetsBarCompact, type FilterPreset, type FilterPresetsBarProps } from './FilterPresetsBar';

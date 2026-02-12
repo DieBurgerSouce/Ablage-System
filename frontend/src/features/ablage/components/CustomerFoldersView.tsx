@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { fetchEntityFolders, type EntityFolder } from '../api/ablage-api'
+import { EntityContextSidebar } from './EntityContextSidebar'
 
 /**
  * CustomerFoldersView - Zeigt die Ablage-Ordner eines Kunden:
@@ -113,7 +114,8 @@ export function CustomerFoldersView() {
   const totalOpen = folders.reduce((sum, f) => sum + (f.openInvoices || 0), 0)
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="flex">
+      <div className="flex-1 p-8 space-y-6">
       {/* Header with Breadcrumb */}
       <div className="flex items-center gap-4">
         <Link to="/kunden">
@@ -214,6 +216,8 @@ export function CustomerFoldersView() {
           })}
         </div>
       </div>
+      </div>
+      <EntityContextSidebar entityId={customerId!} entityType="customer" />
     </div>
   )
 }

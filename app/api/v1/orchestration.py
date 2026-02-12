@@ -16,7 +16,9 @@ Endpoints:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, status
@@ -117,7 +119,7 @@ class DecisionSummaryResponse(BaseModel):
     total_decisions: int = Field(..., description="Gesamtzahl Entscheidungen")
     status_distribution: Dict[str, int] = Field(..., description="Verteilung nach Status")
     module_distribution: Dict[str, int] = Field(..., description="Verteilung nach Modul")
-    top_decisions: List[Dict[str, Any]] = Field(..., description="Top-Entscheidungen nach Impact")
+    top_decisions: List[JSONDict] = Field(..., description="Top-Entscheidungen nach Impact")
     conflict_count: int = Field(..., description="Anzahl erkannter Konflikte")
     potential_financial_impact: float = Field(..., description="Potenzieller Gesamt-Impact in EUR")
     average_impact_score: float = Field(..., description="Durchschnittlicher Impact-Score")
@@ -255,7 +257,7 @@ async def get_decision(
 @limiter.limit("10/minute", key_func=get_user_identifier)
 @router.post(
     "/decisions/{decision_id}/approve",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Entscheidung genehmigen",
     description="Genehmigt eine Entscheidung zur Ausfuehrung.",
 )
@@ -263,7 +265,7 @@ async def approve_decision(
     request: Request,
     decision_id: UUID,
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Genehmigt eine Entscheidung."""
     engine = get_unified_decision_engine()
 
@@ -285,7 +287,7 @@ async def approve_decision(
 @limiter.limit("10/minute", key_func=get_user_identifier)
 @router.post(
     "/decisions/{decision_id}/reject",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Entscheidung ablehnen",
     description="Lehnt eine Entscheidung ab.",
 )
@@ -294,7 +296,7 @@ async def reject_decision(
     decision_id: UUID,
     request: RejectDecisionRequest,
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Lehnt eine Entscheidung ab."""
     engine = get_unified_decision_engine()
 
@@ -401,14 +403,14 @@ async def get_pending_actions(
 @limiter.limit("5/minute", key_func=get_user_identifier)
 @router.post(
     "/execute-approved",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Genehmigte Entscheidungen ausfuehren",
     description="Fuehrt alle genehmigten Entscheidungen aus. Normalerweise via Celery Beat.",
 )
 async def execute_approved_decisions(
     request: Request,
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Fuehrt genehmigte Entscheidungen aus."""
     engine = get_unified_decision_engine()
 
@@ -971,7 +973,7 @@ class ComparisonResultResponse(BaseModel):
     scenarios: List[ScenarioResultResponse] = Field(..., description="Alle Szenarien")
     best_scenario_id: str = Field(..., description="ID des besten Szenarios")
     best_scenario_reason: str = Field(..., description="Begruendung")
-    ranking: List[Dict[str, Any]] = Field(..., description="Ranking nach Net-Benefit")
+    ranking: List[JSONDict] = Field(..., description="Ranking nach Net-Benefit")
     recommendation: str = Field(..., description="Empfehlung")
 
 
@@ -1001,7 +1003,7 @@ class SimulateScenarioRequest(BaseModel):
         max_length=36,
         description="Ziel-Entity-ID (z.B. Kredit)"
     )
-    additional_params: Dict[str, Any] = Field(default={}, description="Zusaetzliche Parameter")
+    additional_params: JSONDict = Field(default={}, description="Zusaetzliche Parameter")
 
     @field_validator("scenario_type")
     @classmethod
@@ -1039,7 +1041,7 @@ class SimulateScenarioRequest(BaseModel):
 
     @field_validator("additional_params")
     @classmethod
-    def validate_additional_params(cls, v: Dict[str, Any]) -> Dict[str, Any]:
+    def validate_additional_params(cls, v: JSONDict) -> JSONDict:
         """Validiert und begrenzt additional_params."""
         if len(v) > 20:
             raise ValueError("additional_params darf maximal 20 Eintraege haben")
@@ -1342,7 +1344,7 @@ async def combine_scenarios(
 @limiter.limit("60/minute", key_func=get_user_identifier)
 @router.get(
     "/simulator/quick-scenarios",
-    response_model=List[Dict[str, Any]],
+    response_model=List[JSONDict],
     summary="Schnell-Szenarien abrufen",
     description="""
     Gibt vordefinierte Schnell-Szenarien zurueck, basierend auf aktuellen KPIs.
@@ -1362,7 +1364,7 @@ async def get_quick_scenarios(
     monthly_income: float = Query(default=5000.0, description="Monatseinkommen"),
     monthly_expenses: float = Query(default=3500.0, description="Monatliche Ausgaben"),
     current_user: User = Depends(get_current_active_user),
-) -> List[Dict[str, Any]]:
+) -> List[JSONDict]:
     """Gibt Schnell-Szenarien basierend auf aktuellen KPIs zurueck."""
     simulator = get_whatif_simulator()
 
@@ -1495,15 +1497,15 @@ class EnrichChatRequest(BaseModel):
     """Request zur Anreicherung einer Chat-Antwort."""
     user_question: str = Field(..., description="Frage des Benutzers")
     base_answer: str = Field(..., description="Basis-Antwort")
-    current_kpis: Optional[Dict[str, Any]] = Field(None, description="Aktuelle KPIs")
+    current_kpis: Optional[JSONDict] = Field(None, description="Aktuelle KPIs")
     max_insights: int = Field(5, ge=1, le=20, description="Maximale Anzahl Insights")
 
 
 class ContextualInsightRequest(BaseModel):
     """Request fuer kontextbezogene Insights."""
     context_source: str = Field(..., description="Kontext-Quelle (chat, document, dashboard)")
-    context_data: Dict[str, Any] = Field(..., description="Kontext-Daten")
-    current_kpis: Optional[Dict[str, Any]] = Field(None, description="Aktuelle KPIs")
+    context_data: JSONDict = Field(..., description="Kontext-Daten")
+    current_kpis: Optional[JSONDict] = Field(None, description="Aktuelle KPIs")
     max_insights: int = Field(10, ge=1, le=50, description="Maximale Anzahl Insights")
 
 
@@ -1840,7 +1842,7 @@ async def get_insight_rules(
 @limiter.limit("60/minute", key_func=get_user_identifier)
 @router.get(
     "/insights/stats",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Insight-Statistiken abrufen",
     description="""
     Ruft Statistiken zu Insights ab:
@@ -1853,7 +1855,7 @@ async def get_insight_rules(
 async def get_insight_stats(
     request: Request,
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Ruft Insight-Statistiken ab."""
     from app.services.orchestration import get_proactive_insights_service
 
@@ -2535,7 +2537,7 @@ async def reject_threshold_recommendation(
     recommendation_id: str,
     reason: Optional[str] = Query(None, max_length=500),
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Lehnt eine Empfehlung ab."""
     from app.services.orchestration import get_personalized_thresholds_service
 
@@ -2727,7 +2729,7 @@ class SeasonalForecastResponse(BaseModel):
 
 class DetectPatternsRequest(BaseModel):
     """Request fuer Pattern-Erkennung."""
-    historical_data: List[Dict[str, Any]]
+    historical_data: List[JSONDict]
     min_data_points: int = 12
 
 
@@ -3124,7 +3126,7 @@ async def get_events_for_month(
 @limiter.limit("60/minute", key_func=get_user_identifier)
 @router.get(
     "/seasonality/known-patterns",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Bekannte Saisonmuster abrufen",
     description="""
     Ruft alle bekannten deutschen Saisonmuster ab.
@@ -3143,7 +3145,7 @@ async def get_events_for_month(
 async def get_known_patterns(
     request: Request,
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Ruft bekannte Saisonmuster ab."""
     from app.services.orchestration import KNOWN_PATTERNS, KNOWN_EVENTS
 
@@ -3226,7 +3228,7 @@ class HealthActionResponse(BaseModel):
     description: str = Field(..., description="Beschreibung der Massnahme")
     reason: str = Field(..., description="Begruendung")
     impact_description: str = Field(..., description="Auswirkungsbeschreibung")
-    parameters: Dict[str, Any] = Field(default={}, description="Massnahmen-Parameter")
+    parameters: JSONDict = Field(default={}, description="Massnahmen-Parameter")
     created_at: str = Field(..., description="Erstellungszeitpunkt")
     applied_at: Optional[str] = Field(None, description="Anwendungszeitpunkt")
 
@@ -3272,7 +3274,7 @@ class ApplyHealthActionsResponse(BaseModel):
     """Response nach Anwendung von Gesundheits-Massnahmen."""
     applied_count: int = Field(..., description="Anzahl angewendeter Massnahmen")
     failed_count: int = Field(..., description="Anzahl fehlgeschlagener Massnahmen")
-    results: List[Dict[str, Any]] = Field(default=[], description="Ergebnisse pro Massnahme")
+    results: List[JSONDict] = Field(default=[], description="Ergebnisse pro Massnahme")
 
 
 class InvestigationReportResponse(BaseModel):

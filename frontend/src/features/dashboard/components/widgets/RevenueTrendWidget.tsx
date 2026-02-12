@@ -1,7 +1,7 @@
 /**
  * Revenue Trend Widget
  *
- * Dashboard-Widget fuer Umsatzentwicklung nach Kategorie und Monat.
+ * Dashboard-Widget für Umsatzentwicklung nach Kategorie und Monat.
  *
  * Features:
  * - Balkendiagramm Umsatz vs. Ausgaben
@@ -48,7 +48,7 @@ import { useTheme } from '@/lib/theme/ThemeContext';
 import { useRevenueTrend, formatCurrency, formatPercent } from '../../hooks/useRevenueTrend';
 
 /**
- * Hook fuer Chart-Farben basierend auf Theme
+ * Hook für Chart-Farben basierend auf Theme
  */
 function useChartColors() {
   const { displayMode } = useTheme();
@@ -298,7 +298,7 @@ export function RevenueTrendWidget() {
 
           {/* Screen Reader Tabelle */}
           <table className="sr-only" aria-label="Umsatzdaten als Tabelle">
-            <caption>Monatliche Umsaetze und Ausgaben</caption>
+            <caption>Monatliche Umsätze und Ausgaben</caption>
             <thead>
               <tr>
                 <th scope="col">Zeitraum</th>

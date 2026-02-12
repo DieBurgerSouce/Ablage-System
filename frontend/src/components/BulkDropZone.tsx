@@ -1,11 +1,11 @@
 /**
- * BulkDropZone - Drop-Zone fuer Bulk-Operationen
+ * BulkDropZone - Drop-Zone für Bulk-Operationen
  *
  * Phase 2.2/2.3: Drag & Drop + Bulk Actions
  *
  * Features:
  * - Akzeptiert mehrere gedropte Dokumente
- * - Zeigt verfuegbare Aktionen als Drop-Targets
+ * - Zeigt verfügbare Aktionen als Drop-Targets
  * - Visuelles Feedback bei Hover
  * - Integration mit BulkActionBar
  */
@@ -30,13 +30,13 @@ export interface BulkDropAction {
 }
 
 export interface BulkDropZoneProps {
-  /** Verfuegbare Aktionen */
+  /** Verfügbare Aktionen */
   actions?: BulkDropAction[]
   /** Callback bei Drop auf Aktion */
   onDropAction?: (action: BulkAction, documentIds: string[]) => void
   /** Drop-Zone deaktiviert */
   disabled?: boolean
-  /** Zusaetzliche CSS-Klassen */
+  /** Zusätzliche CSS-Klassen */
   className?: string
   /** Ist die Zone sichtbar */
   visible?: boolean
@@ -59,7 +59,7 @@ const DEFAULT_DROP_ACTIONS: BulkDropAction[] = [
     id: "tag",
     label: "Taggen",
     icon: <Tag className="h-6 w-6" />,
-    description: "Tags hinzufuegen",
+    description: "Tags hinzufügen",
   },
   {
     id: "export",
@@ -75,7 +75,7 @@ const DEFAULT_DROP_ACTIONS: BulkDropAction[] = [
   },
   {
     id: "delete",
-    label: "Loeschen",
+    label: "Löschen",
     icon: <Trash2 className="h-6 w-6" />,
     description: "In Papierkorb verschieben",
     variant: "destructive",
@@ -123,7 +123,7 @@ function ActionDropTarget({ action, onDrop, disabled }: ActionDropTargetProps) {
     onDrop(action.id, documentIds)
   }, [active, action.id, onDrop])
 
-  // Drop wurde ausgefuehrt (via DragEnd im Parent)
+  // Drop wurde ausgeführt (via DragEnd im Parent)
   // Hier nur visuelles Feedback
 
   const isDestructive = action.variant === "destructive"
@@ -260,7 +260,7 @@ export function BulkDropZone({
 }
 
 // =============================================================================
-// Compact BulkDropZone - Fuer Sidebar
+// Compact BulkDropZone - Für Sidebar
 // =============================================================================
 
 export interface CompactBulkDropZoneProps {
@@ -277,7 +277,7 @@ export function CompactBulkDropZone({
   const actions: BulkDropAction[] = [
     {
       id: "delete",
-      label: "Loeschen",
+      label: "Löschen",
       icon: <Trash2 className="h-5 w-5" />,
       description: "In Papierkorb",
       variant: "destructive",

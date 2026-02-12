@@ -119,7 +119,7 @@ export function useCameraScan(): UseCameraScanReturn {
       folderId,
     };
     setCapturedDocuments((prev) => [...prev, capture]);
-    logger.info('[useCameraScan] Bild hinzugefuegt', { id });
+    logger.info('[useCameraScan] Bild hinzugefügt', { id });
     return id;
   }, []);
 
@@ -130,7 +130,7 @@ export function useCameraScan(): UseCameraScanReturn {
 
   const clearCaptures = useCallback(() => {
     setCapturedDocuments([]);
-    logger.info('[useCameraScan] Alle Bilder geloescht');
+    logger.info('[useCameraScan] Alle Bilder gelöscht');
   }, []);
 
   // ==================== Upload ====================

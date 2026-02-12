@@ -4,9 +4,9 @@
  * Route: /contracts/dashboard
  *
  * Features:
- * - Vertragsueberblick mit erweiterten Statistiken
+ * - Vertragsüberblick mit erweiterten Statistiken
  * - Fristen-Kalenderansicht
- * - Schnellaktionen fuer kritische Vertraege
+ * - Schnellaktionen für kritische Verträge
  */
 
 import { useState, useCallback } from 'react';
@@ -80,10 +80,10 @@ function ContractDashboardPage() {
           status: 'renewed',
         },
       });
-      toast.success('Vertrag als verlaengert markiert');
+      toast.success('Vertrag als verlängert markiert');
       refetchSummary();
     } catch (error) {
-      toast.error('Fehler beim Verlaengern des Vertrags');
+      toast.error('Fehler beim Verlängern des Vertrags');
     }
   }, [updateMutation, refetchSummary]);
 
@@ -97,10 +97,10 @@ function ContractDashboardPage() {
           terminated_date: new Date().toISOString(),
         },
       });
-      toast.success('Vertrag gekuendigt');
+      toast.success('Vertrag gekündigt');
       refetchSummary();
     } catch (error) {
-      toast.error('Fehler beim Kuendigen des Vertrags');
+      toast.error('Fehler beim Kündigen des Vertrags');
     }
   }, [updateMutation, refetchSummary]);
 
@@ -147,7 +147,7 @@ function ContractDashboardPage() {
             Vertrags-Dashboard
           </h1>
           <p className="text-muted-foreground">
-            Ueberblick ueber alle Vertraege, Fristen und anstehende Aktionen
+            Überblick über alle Verträge, Fristen und anstehende Aktionen
           </p>
         </div>
         <Button
@@ -169,7 +169,7 @@ function ContractDashboardPage() {
         <TabsList>
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <LayoutGrid className="h-4 w-4" />
-            Ueberblick
+            Überblick
           </TabsTrigger>
           <TabsTrigger value="calendar" className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
@@ -261,10 +261,10 @@ function ContractDashboardPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-red-500" />
-                Kritische und bald ablaufende Vertraege
+                Kritische und bald ablaufende Verträge
               </CardTitle>
               <CardDescription>
-                Vertraege mit Fristen in den naechsten 30 Tagen
+                Verträge mit Fristen in den nächsten 30 Tagen
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -306,7 +306,7 @@ function ContractDashboardPage() {
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <AlertTriangle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Keine kritischen Fristen in den naechsten 30 Tagen</p>
+                  <p>Keine kritischen Fristen in den nächsten 30 Tagen</p>
                 </div>
               )}
             </CardContent>

@@ -37,6 +37,7 @@ import { motion } from 'framer-motion';
 import { motionTokens } from '@/lib/motion-tokens';
 import { useSavedSearches } from '../hooks/use-saved-searches';
 import { useRecentSearches } from '../hooks/use-recent-searches';
+import { useFormDefaults } from '@/hooks';
 import { generateSearchName, type SavedSearch } from '../types/saved-search';
 import type { SearchParams } from '../types/search-params';
 import {
@@ -49,6 +50,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { SearchAutocomplete } from './SearchAutocomplete';
+import { FilterPresetsBar } from './FilterPresetsBar';
 
 // ==================== Types ====================
 
@@ -111,6 +113,21 @@ export function SearchPanel({ value, onChange, onReset }: SearchPanelProps) {
     const [saveName, setSaveName] = useState('');
     const { saveSearch, isLimitReached } = useSavedSearches();
     const { addRecentSearch } = useRecentSearches();
+    const { getDefault: getSearchDefault, recordValues: recordSearchValues } = useFormDefaults('search-panel');
+
+    // Smart Defaults: Gespeicherten Suchmodus wiederherstellen
+    useEffect(() => {
+        const remembered = getSearchDefault('mode', 'hybrid');
+        if (typeof remembered === 'string' && remembered !== 'hybrid' && value.mode === 'hybrid') {
+            onChange({ mode: remembered });
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Smart Defaults: Suchmodus-Änderungen merken
+    useEffect(() => {
+        recordSearchValues({ mode: value.mode });
+    }, [value.mode, recordSearchValues]);
 
     // Handle search from autocomplete
     const handleSearch = useCallback(
@@ -156,6 +173,34 @@ export function SearchPanel({ value, onChange, onReset }: SearchPanelProps) {
 
     const canSaveSearch = value.query.trim() || hasActiveFilters;
 
+    // Convert filters to flat object for FilterPresetsBar
+    const flatFilters: Record<string, string | number | boolean | string[]> = {
+        documentType: value.filters.type.length === 1 ? value.filters.type[0] : value.filters.type,
+        status: value.filters.ocrStatus.length === 1 ? value.filters.ocrStatus[0] : value.filters.ocrStatus,
+        dateRange: value.filters.dateRange,
+    };
+
+    const handlePresetFilterChange = (filters: Record<string, string | number | boolean | string[]>) => {
+        // Convert flat filters back to structured format
+        const newFilters = { ...value.filters };
+
+        if ('documentType' in filters) {
+            const docType = filters.documentType;
+            newFilters.type = Array.isArray(docType) ? docType as string[] : [docType as string];
+        }
+
+        if ('status' in filters || 'ocrStatus' in filters) {
+            const status = filters.status || filters.ocrStatus;
+            newFilters.ocrStatus = Array.isArray(status) ? status as string[] : [status as string];
+        }
+
+        if ('dateRange' in filters) {
+            newFilters.dateRange = filters.dateRange as string;
+        }
+
+        onChange({ filters: newFilters });
+    };
+
     return (
         <div
             className="space-y-4 w-full max-w-4xl mx-auto"
@@ -163,6 +208,12 @@ export function SearchPanel({ value, onChange, onReset }: SearchPanelProps) {
             aria-label="Dokumentensuche"
             data-tour="search-input"
         >
+            {/* Filter Presets Bar */}
+            <FilterPresetsBar
+                activeFilters={flatFilters}
+                onFilterChange={handlePresetFilterChange}
+            />
+
             {/* Search Bar */}
             <div className="relative group">
                 <div
@@ -170,7 +221,7 @@ export function SearchPanel({ value, onChange, onReset }: SearchPanelProps) {
                     aria-hidden="true"
                 />
                 <div className="relative flex items-center bg-background/80 backdrop-blur-xl border rounded-xl shadow-sm focus-within:shadow-md focus-within:border-primary/50 transition-all overflow-hidden">
-                    {/* SearchAutocomplete mit Vorschlaegen und letzten Suchen */}
+                    {/* SearchAutocomplete mit Vorschlägen und letzten Suchen */}
                     <div className="flex-1">
                         <SearchAutocomplete
                             value={localQuery}

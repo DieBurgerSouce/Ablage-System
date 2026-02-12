@@ -175,6 +175,74 @@ ALL_TOOLS: List[ToolDefinition] = [
         requires_confirmation=True,
         permission_level="editor"
     ),
+
+    # Read-Only Tools (Viewer+) - Agenda & Analyse
+    ToolDefinition(
+        name="get_daily_agenda",
+        description="Zeigt was heute ansteht: Fristen, offene Freigaben, Skonto-Deadlines, ueberfaellige Rechnungen.",
+        parameters=[
+            ToolParameter("include_future_days", ToolParameterType.INTEGER, "Anzahl zukuenftiger Tage einbeziehen (Standard: 3)"),
+        ],
+        requires_confirmation=False,
+        permission_level="viewer"
+    ),
+
+    ToolDefinition(
+        name="compare_expenses",
+        description="Vergleicht Ausgaben zwischen zwei Zeitraeumen nach Kategorie oder Lieferant.",
+        parameters=[
+            ToolParameter("period_1", ToolParameterType.STRING, "Erster Zeitraum (z.B. 'Q3_2025', '2025-01', 'letzter_monat')", required=True),
+            ToolParameter("period_2", ToolParameterType.STRING, "Zweiter Zeitraum (z.B. 'Q4_2025', '2025-02', 'dieser_monat')", required=True),
+            ToolParameter("group_by", ToolParameterType.STRING, "Gruppierung: 'kategorie', 'lieferant', 'kostenstelle'"),
+        ],
+        requires_confirmation=False,
+        permission_level="viewer"
+    ),
+
+    ToolDefinition(
+        name="get_skonto_opportunities",
+        description="Zeigt aktuelle Skonto-Moeglichkeiten mit Fristen und Ersparnissen.",
+        parameters=[
+            ToolParameter("days_ahead", ToolParameterType.INTEGER, "Vorschau in Tagen (Standard: 14)"),
+        ],
+        requires_confirmation=False,
+        permission_level="viewer"
+    ),
+
+    ToolDefinition(
+        name="get_overdue_invoices",
+        description="Listet alle ueberfaelligen Rechnungen mit Betrag und Tagen Verzug.",
+        parameters=[
+            ToolParameter("min_days_overdue", ToolParameterType.INTEGER, "Mindest-Verzugstage (Standard: 1)"),
+            ToolParameter("entity_name", ToolParameterType.STRING, "Optional: Filter nach Geschaeftspartner"),
+        ],
+        requires_confirmation=False,
+        permission_level="viewer"
+    ),
+
+    # Write Tools (Admin mit Bestaetigung)
+    ToolDefinition(
+        name="book_invoice",
+        description="Bucht eine Rechnung auf ein bestimmtes Konto (Sachkonto/Kostenstelle).",
+        parameters=[
+            ToolParameter("document_id", ToolParameterType.STRING, "UUID der Rechnung", required=True),
+            ToolParameter("account_number", ToolParameterType.STRING, "Kontonummer (z.B. '4400')", required=True),
+            ToolParameter("cost_center", ToolParameterType.STRING, "Optional: Kostenstelle"),
+        ],
+        requires_confirmation=True,
+        permission_level="admin"
+    ),
+
+    ToolDefinition(
+        name="approve_document",
+        description="Genehmigt ein Dokument in der Validierungs-Queue.",
+        parameters=[
+            ToolParameter("document_id", ToolParameterType.STRING, "UUID des Dokuments", required=True),
+            ToolParameter("comment", ToolParameterType.STRING, "Optionaler Kommentar zur Genehmigung"),
+        ],
+        requires_confirmation=True,
+        permission_level="editor"
+    ),
 ]
 
 
@@ -298,8 +366,58 @@ class ToolRegistry:
                 logger.warning("tool_call_json_parse_failed", error=str(e), json_str=match.group(1))
                 continue
 
-        # Gib ersten Tool-Call zurueck (Multi-Call TODO)
+        # Gib ersten Tool-Call zurueck (Rueckwaertskompatibilitaet)
         return tool_calls[0] if tool_calls else None
+
+    def parse_tool_calls(self, llm_output: str) -> List['ToolCall']:
+        """Parst alle Tool-Calls aus LLM-Output.
+
+        Sucht nach allen <tool_call>...</tool_call> Bloecken.
+
+        Args:
+            llm_output: Vollstaendige LLM-Antwort
+
+        Returns:
+            Liste aller geparsten ToolCalls (leer wenn keine gefunden)
+        """
+        pattern = r'<tool_call>\s*(.*?)\s*</tool_call>'
+        matches = re.finditer(pattern, llm_output, re.DOTALL)
+
+        tool_calls: List[ToolCall] = []
+
+        for match in matches:
+            try:
+                json_str = match.group(1)
+                data = json.loads(json_str)
+
+                tool_name = data.get("tool")
+                params = data.get("params", {})
+
+                if not tool_name:
+                    logger.warning("tool_call_missing_name", json_data=data)
+                    continue
+
+                tool = self.get_tool(tool_name)
+                if not tool:
+                    logger.warning("tool_call_unknown_tool", tool_name=tool_name)
+                    continue
+
+                tool_calls.append(ToolCall(
+                    tool_name=tool_name,
+                    parameters=params
+                ))
+
+            except json.JSONDecodeError as e:
+                logger.warning("tool_call_json_parse_failed", error=str(e), json_str=match.group(1))
+                continue
+
+        logger.info(
+            "tool_calls_parsed",
+            count=len(tool_calls),
+            tool_names=[tc.tool_name for tc in tool_calls]
+        )
+
+        return tool_calls
 
 
 @dataclass

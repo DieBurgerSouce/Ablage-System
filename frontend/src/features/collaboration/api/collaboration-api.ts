@@ -1,9 +1,9 @@
 /**
- * Collaboration API Client - Praesenz und Aktivitaets-Feed
+ * Collaboration API Client - Präsenz und Aktivitäts-Feed
  *
- * API-Funktionen und TanStack Query Hooks fuer:
- * - Praesenz-Informationen (wer sieht ein Dokument)
- * - Aktivitaets-Feed (globaler Verlauf)
+ * API-Funktionen und TanStack Query Hooks für:
+ * - Präsenz-Informationen (wer sieht ein Dokument)
+ * - Aktivitäts-Feed (globaler Verlauf)
  *
  * Hinweis: Kommentar-CRUD liegt in hooks/use-comments.ts
  *
@@ -75,10 +75,10 @@ async function getActivityFeed(
 // ==================== TanStack Query Hooks ====================
 
 /**
- * Hook fuer Dokument-Praesenz (wer schaut gerade).
+ * Hook für Dokument-Präsenz (wer schaut gerade).
  *
- * Pollt alle 15 Sekunden und nutzt zusaetzlich WebSocket-Events
- * fuer sofortige Updates.
+ * Pollt alle 15 Sekunden und nutzt zusätzlich WebSocket-Events
+ * für sofortige Updates.
  *
  * @param documentId - Dokument-ID
  */
@@ -94,7 +94,7 @@ export function useDocumentPresence(documentId: string) {
 }
 
 /**
- * Hook fuer den globalen Aktivitaets-Feed.
+ * Hook für den globalen Aktivitäts-Feed.
  *
  * @param params - Filter-Parameter (limit, offset, type)
  */

@@ -5,7 +5,7 @@
  * - Dynamisches Formular basierend auf Template-Variablen
  * - Vorschau-Funktion
  * - Validierung
- * - Entity-Verknuepfung
+ * - Entity-Verknüpfung
  */
 
 import { useState, useEffect } from 'react';
@@ -204,7 +204,7 @@ export function GenerateDocumentDialog({
             value={value as string}
             onChange={(e) => handleVariableChange(variable.name, e.target.value)}
           >
-            <option value="">Bitte waehlen...</option>
+            <option value="">Bitte wählen...</option>
             {variable.options?.map((opt) => (
               <option key={opt} value={opt}>
                 {opt}
@@ -319,15 +319,15 @@ export function GenerateDocumentDialog({
             {/* Options Tab */}
             <TabsContent value="options" className="space-y-4 mt-4">
               <div className="space-y-2">
-                <Label htmlFor="linkedEntity">Verknuepfter Geschaeftspartner (optional)</Label>
+                <Label htmlFor="linkedEntity">Verknüpfter Geschäftspartner (optional)</Label>
                 <Input
                   id="linkedEntity"
                   value={linkedEntityId}
                   onChange={(e) => setLinkedEntityId(e.target.value)}
-                  placeholder="UUID des Geschaeftspartners"
+                  placeholder="UUID des Geschäftspartners"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Verknuepft das generierte Dokument mit einem Kunden oder Lieferanten
+                  Verknüpft das generierte Dokument mit einem Kunden oder Lieferanten
                 </p>
               </div>
 

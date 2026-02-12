@@ -1,7 +1,7 @@
 /**
  * Form Components Stories
  *
- * Formular-Komponenten fuer Visual Regression Testing.
+ * Formular-Komponenten für Visual Regression Testing.
  * Input, Select, Checkbox, Radio, Textarea, etc.
  */
 
@@ -81,7 +81,7 @@ export const InputWithError: Story = {
                 aria-invalid="true"
             />
             <p className="text-sm text-destructive">
-                Bitte geben Sie eine gueltige E-Mail-Adresse ein.
+                Bitte geben Sie eine gültige E-Mail-Adresse ein.
             </p>
         </div>
     ),
@@ -151,7 +151,7 @@ export const SelectDefault: Story = {
             <Label htmlFor="document-type">Dokumenttyp</Label>
             <Select>
                 <SelectTrigger id="document-type">
-                    <SelectValue placeholder="Typ auswaehlen" />
+                    <SelectValue placeholder="Typ auswählen" />
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="rechnung">Rechnung</SelectItem>
@@ -170,7 +170,7 @@ export const SelectDisabled: Story = {
             <Label htmlFor="disabled-select">Deaktiviert</Label>
             <Select disabled>
                 <SelectTrigger id="disabled-select">
-                    <SelectValue placeholder="Nicht verfuegbar" />
+                    <SelectValue placeholder="Nicht verfügbar" />
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="option">Option</SelectItem>
@@ -258,7 +258,7 @@ export const RadioGroupDefault: Story = {
                 </div>
                 <div className="flex items-center space-x-2">
                     <RadioGroupItem value="bank" id="bank" />
-                    <Label htmlFor="bank">Bankueberweisung</Label>
+                    <Label htmlFor="bank">Banküberweisung</Label>
                 </div>
             </RadioGroup>
         </div>
@@ -308,8 +308,8 @@ export const SwitchDisabled: Story = {
 
 const formSchema = z.object({
     name: z.string().min(2, 'Name muss mindestens 2 Zeichen haben'),
-    email: z.string().email('Ungueltige E-Mail-Adresse'),
-    documentType: z.string().min(1, 'Bitte waehlen Sie einen Dokumenttyp'),
+    email: z.string().email('Ungültige E-Mail-Adresse'),
+    documentType: z.string().min(1, 'Bitte wählen Sie einen Dokumenttyp'),
     description: z.string().optional(),
     notifications: z.boolean(),
 });
@@ -343,7 +343,7 @@ function CompleteFormExample() {
                                 <Input placeholder="Max Mustermann" {...field} />
                             </FormControl>
                             <FormDescription>
-                                Ihr vollstaendiger Name.
+                                Ihr vollständiger Name.
                             </FormDescription>
                             <FormMessage />
                         </FormItem>
@@ -380,7 +380,7 @@ function CompleteFormExample() {
                             >
                                 <FormControl>
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Typ auswaehlen" />
+                                        <SelectValue placeholder="Typ auswählen" />
                                     </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
@@ -459,7 +459,7 @@ export const DarkMode: Story = {
                 <Label htmlFor="dark-select">Auswahl</Label>
                 <Select>
                     <SelectTrigger id="dark-select">
-                        <SelectValue placeholder="Auswaehlen..." />
+                        <SelectValue placeholder="Auswählen..." />
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="1">Option 1</SelectItem>

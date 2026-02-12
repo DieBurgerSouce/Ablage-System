@@ -1,6 +1,6 @@
 /**
- * Skonto Widget fuer Dashboard
- * Zeigt Skonto-Moeglichkeiten mit KPIs und dringenden Fristen
+ * Skonto Widget für Dashboard
+ * Zeigt Skonto-Möglichkeiten mit KPIs und dringenden Fristen
  */
 
 import { useMemo } from 'react';
@@ -65,7 +65,7 @@ export function SkontoWidget() {
     }, [opportunities]);
 
     const getTrend = (value: number, threshold: number): 'positive' | 'warning' | 'neutral' => {
-        // Fuer Skonto ist es positiv, wenn es Moeglichkeiten gibt
+        // Für Skonto ist es positiv, wenn es Möglichkeiten gibt
         if (value > threshold) return 'positive';
         if (value > 0) return 'neutral';
         return 'neutral';
@@ -92,9 +92,9 @@ export function SkontoWidget() {
                     <Alert variant="destructive" className="border-orange-500 bg-orange-50 dark:bg-orange-950">
                         <AlertCircle className="h-4 w-4 text-orange-600" />
                         <AlertDescription className="text-orange-800 dark:text-orange-200">
-                            <strong>{stats.urgent} Skonto-Frist{stats.urgent > 1 ? 'en' : ''}</strong> lauf{stats.urgent > 1 ? 'en' : 't'} in den naechsten 3 Tagen ab!{' '}
+                            <strong>{stats.urgent} Skonto-Frist{stats.urgent > 1 ? 'en' : ''}</strong> lauf{stats.urgent > 1 ? 'en' : 't'} in den nächsten 3 Tagen ab!{' '}
                             <a href="/banking?tab=skonto" className="underline font-medium">
-                                Jetzt pruefen
+                                Jetzt prüfen
                             </a>
                         </AlertDescription>
                     </Alert>
@@ -102,7 +102,7 @@ export function SkontoWidget() {
 
                 {isError ? (
                     <QueryErrorAlert
-                        title="Skonto-Daten nicht verfuegbar"
+                        title="Skonto-Daten nicht verfügbar"
                         error={error as Error}
                         onRetry={() => refetch()}
                     />
@@ -119,12 +119,12 @@ export function SkontoWidget() {
                             value={stats.total}
                             icon={Percent}
                             trend={getTrend(stats.total, 3)}
-                            subtext={stats.total > 0 ? `${stats.avgPercent.toFixed(1)}% im Schnitt` : 'Keine Moeglichkeiten'}
+                            subtext={stats.total > 0 ? `${stats.avgPercent.toFixed(1)}% im Schnitt` : 'Keine Möglichkeiten'}
                             href="/banking?tab=skonto"
                             isCurrency={false}
                         />
                         <KPICard
-                            title="Moegliche Ersparnis"
+                            title="Mögliche Ersparnis"
                             value={stats.totalSavings}
                             icon={TrendingDown}
                             trend={getTrend(stats.totalSavings, 100)}

@@ -71,7 +71,7 @@ const categoryConfig: Record<ShortcutCategory, {
     label: SHORTCUT_CATEGORY_LABELS.actions,
     icon: Zap,
     color: 'text-green-500',
-    description: 'Aktionen fuer ausgewaehlte Dokumente',
+    description: 'Aktionen für ausgewählte Dokumente',
   },
   documents: {
     label: SHORTCUT_CATEGORY_LABELS.documents,
@@ -328,10 +328,10 @@ export function KeyboardShortcutsHelp({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Keyboard className="w-5 h-5" aria-hidden="true" />
-            Tastenkuerzel
+            Tastenkürzel
           </DialogTitle>
           <DialogDescription id="keyboard-shortcuts-description">
-            Nutzen Sie diese Tastenkuerzel fuer schnellere Navigation und Aktionen.
+            Nutzen Sie diese Tastenkürzel für schnellere Navigation und Aktionen.
           </DialogDescription>
         </DialogHeader>
 
@@ -344,11 +344,11 @@ export function KeyboardShortcutsHelp({
           <Input
             ref={searchInputRef}
             type="search"
-            placeholder="Tastenkuerzel suchen..."
+            placeholder="Tastenkürzel suchen..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             className="pl-9"
-            aria-label="Tastenkuerzel suchen"
+            aria-label="Tastenkürzel suchen"
           />
         </div>
 
@@ -403,7 +403,7 @@ export function KeyboardShortcutsHelp({
               <div className="py-8 text-center">
                 <Search className="w-10 h-10 mx-auto mb-3 text-muted-foreground/50" aria-hidden="true" />
                 <p className="text-sm text-muted-foreground">
-                  Keine Tastenkuerzel gefunden fuer "{searchQuery}"
+                  Keine Tastenkürzel gefunden für "{searchQuery}"
                 </p>
               </div>
             )}
@@ -420,10 +420,10 @@ export function KeyboardShortcutsHelp({
         {/* Footer */}
         <div className="pt-4 border-t border-border">
           <p className="text-xs text-muted-foreground text-center">
-            Druecken Sie <ShortcutBadge keys="?" className="mx-1 inline-flex" /> jederzeit, um diese Hilfe anzuzeigen.
+            Drücken Sie <ShortcutBadge keys="?" className="mx-1 inline-flex" /> jederzeit, um diese Hilfe anzuzeigen.
             <br />
             <span className="mt-1 block">
-              <ShortcutBadge keys="escape" className="mx-1 inline-flex" /> zum Schliessen
+              <ShortcutBadge keys="escape" className="mx-1 inline-flex" /> zum Schließen
             </span>
           </p>
         </div>

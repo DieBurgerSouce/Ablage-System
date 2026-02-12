@@ -12,7 +12,9 @@ Security Features:
 - Hierarchie-Validierung (keine Zyklen)
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -465,7 +467,7 @@ async def delete_department(
 
 # ==================== Helper Functions ====================
 
-def _dict_to_department_response(data: Dict[str, Any]) -> DepartmentResponse:
+def _dict_to_department_response(data: JSONDict) -> DepartmentResponse:
     """Konvertiert Service-Dict zu Response."""
     return DepartmentResponse(
         id=UUID(data['id']),
@@ -483,7 +485,7 @@ def _dict_to_department_response(data: Dict[str, Any]) -> DepartmentResponse:
     )
 
 
-def _dict_to_detail_response(data: Dict[str, Any]) -> DepartmentDetailResponse:
+def _dict_to_detail_response(data: JSONDict) -> DepartmentDetailResponse:
     """Konvertiert Service-Dict zu Detail-Response."""
     children = [
         DepartmentResponse(
@@ -521,7 +523,7 @@ def _dict_to_detail_response(data: Dict[str, Any]) -> DepartmentDetailResponse:
     )
 
 
-def _dict_to_tree_item(data: Dict[str, Any], level: int = 0) -> DepartmentTreeItem:
+def _dict_to_tree_item(data: JSONDict, level: int = 0) -> DepartmentTreeItem:
     """Konvertiert Service-Tree-Dict zu TreeItem."""
     return DepartmentTreeItem(
         id=UUID(data['id']),

@@ -1,8 +1,8 @@
 /**
  * EntityNode Component
  *
- * Custom React Flow Node fuer Geschaeftspartner im Entity-Graph.
- * Zeigt Name, Typ, Dokumentanzahl und Firmenzugehoerigkeit.
+ * Custom React Flow Node für Geschäftspartner im Entity-Graph.
+ * Zeigt Name, Typ, Dokumentanzahl und Firmenzugehörigkeit.
  */
 
 import { memo } from 'react';

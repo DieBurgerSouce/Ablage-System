@@ -1,7 +1,7 @@
 /**
  * ElsterExportPanel - USt-VA ELSTER XML Export
  *
- * Panel zum Anzeigen der berechneten USt-Betraege
+ * Panel zum Anzeigen der berechneten USt-Beträge
  * und Download als ELSTER-kompatibles XML.
  */
 
@@ -19,7 +19,7 @@ interface ElsterExportPanelProps {
 }
 
 const MONTHS = [
-    'Januar', 'Februar', 'Maerz', 'April', 'Mai', 'Juni',
+    'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
     'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
 ];
 
@@ -68,7 +68,7 @@ export function ElsterExportPanel({ companyId }: ElsterExportPanelProps) {
     // Download-Mutation
     const downloadMutation = useElsterXmlDownload();
 
-    // Fuer den XML-Download benoetigen wir den Monat:
+    // Für den XML-Download benötigen wir den Monat:
     // Bei Quartal: erster Monat des Quartals
     const downloadMonth = periodType === 'monthly' ? month : (quarter - 1) * 3 + 1;
 
@@ -106,7 +106,7 @@ export function ElsterExportPanel({ companyId }: ElsterExportPanelProps) {
                         Meldezeitraum
                     </CardTitle>
                     <CardDescription>
-                        Waehlen Sie den Zeitraum fuer die USt-Voranmeldung
+                        Wählen Sie den Zeitraum für die USt-Voranmeldung
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -210,7 +210,7 @@ export function ElsterExportPanel({ companyId }: ElsterExportPanelProps) {
                         <div>
                             <p className="font-medium text-destructive">Fehler beim Laden der USt-Daten</p>
                             <p className="text-sm text-muted-foreground">
-                                Bitte pruefen Sie, ob Buchungen fuer den gewaehlten Zeitraum vorhanden sind.
+                                Bitte prüfen Sie, ob Buchungen für den gewaehlten Zeitraum vorhanden sind.
                             </p>
                         </div>
                     </CardContent>
@@ -241,21 +241,21 @@ export function ElsterExportPanel({ companyId }: ElsterExportPanelProps) {
                         )}
                     </div>
 
-                    {/* Umsaetze */}
+                    {/* Umsätze */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>Umsaetze (Output VAT)</CardTitle>
+                            <CardTitle>Umsätze (Output VAT)</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-3">
                                 <ReportRow
-                                    label="Steuerpflichtige Umsaetze 19% (Kz 81)"
+                                    label="Steuerpflichtige Umsätze 19% (Kz 81)"
                                     net={reportData.output_vat_19.net_amount}
                                     vat={reportData.output_vat_19.vat_amount}
                                     count={reportData.output_vat_19.count}
                                 />
                                 <ReportRow
-                                    label="Steuerpflichtige Umsaetze 7% (Kz 86)"
+                                    label="Steuerpflichtige Umsätze 7% (Kz 86)"
                                     net={reportData.output_vat_7.net_amount}
                                     vat={reportData.output_vat_7.vat_amount}
                                     count={reportData.output_vat_7.count}

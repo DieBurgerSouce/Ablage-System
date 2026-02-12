@@ -4,9 +4,9 @@
  * Route: /recurring-invoices
  *
  * Features:
- * - Abo-Uebersicht mit Tabelle
+ * - Abo-Übersicht mit Tabelle
  * - Soll/Ist-Vergleich
- * - Fehlende Rechnungen und Preisaenderungen (Alerts)
+ * - Fehlende Rechnungen und Preisänderungen (Alerts)
  * - Detailansicht mit Occurrence-History
  */
 

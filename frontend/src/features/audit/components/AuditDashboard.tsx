@@ -2,7 +2,7 @@
  * Audit Dashboard - Audit-Protokoll Dashboard
  *
  * Features:
- * - Uebersicht ueber alle Audit-Logs
+ * - Übersicht über alle Audit-Logs
  * - Filterung nach Aktion, Ressource, Status, Datum
  * - Export als CSV/JSON
  * - Echtzeit-Updates
@@ -194,7 +194,7 @@ function FilterBar({
           <SelectItem value="logout">Logout</SelectItem>
           <SelectItem value="create">Erstellen</SelectItem>
           <SelectItem value="update">Aktualisieren</SelectItem>
-          <SelectItem value="delete">Loeschen</SelectItem>
+          <SelectItem value="delete">Löschen</SelectItem>
           <SelectItem value="export">Export</SelectItem>
         </SelectContent>
       </Select>
@@ -219,7 +219,7 @@ function FilterBar({
           <SelectItem value="all">Alle Ressourcen</SelectItem>
           <SelectItem value="document">Dokument</SelectItem>
           <SelectItem value="user">Benutzer</SelectItem>
-          <SelectItem value="entity">Entitaet</SelectItem>
+          <SelectItem value="entity">Entität</SelectItem>
           <SelectItem value="invoice">Rechnung</SelectItem>
         </SelectContent>
       </Select>
@@ -328,9 +328,9 @@ function AuditTable({ logs, isLoading }: AuditTableProps) {
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
           <Shield className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold">Keine Audit-Eintraege gefunden</h3>
+          <h3 className="text-lg font-semibold">Keine Audit-Einträge gefunden</h3>
           <p className="text-muted-foreground">
-            Es wurden keine Eintraege gefunden, die Ihren Filterkriterien
+            Es wurden keine Einträge gefunden, die Ihren Filterkriterien
             entsprechen.
           </p>
         </CardContent>
@@ -504,7 +504,7 @@ export function AuditDashboard() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Audit-Protokoll</h1>
           <p className="text-muted-foreground">
-            Vollstaendige Uebersicht aller Systemaktivitaeten und
+            Vollständige Übersicht aller Systemaktivitaeten und
             Benutzeraktionen
           </p>
         </div>
@@ -529,7 +529,7 @@ export function AuditDashboard() {
       {total > filters.per_page! && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Seite {filters.page} von {totalPages} ({total} Eintraege gesamt)
+            Seite {filters.page} von {totalPages} ({total} Einträge gesamt)
           </p>
           <div className="flex gap-2">
             <Button
@@ -544,13 +544,13 @@ export function AuditDashboard() {
                 })
               }
             >
-              Zurueck
+              Zurück
             </Button>
             <Button
               variant="outline"
               size="sm"
               disabled={filters.page === totalPages}
-              aria-label="Naechste Seite"
+              aria-label="Nächste Seite"
               onClick={() =>
                 handleFiltersChange({
                   ...filters,

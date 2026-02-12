@@ -316,7 +316,7 @@ export const documentsService = {
     /**
      * Aktualisiert extrahierte Daten eines Dokuments (JSONB).
      *
-     * Ermoeglicht die Korrektur von OCR-Ergebnissen.
+     * Ermöglicht die Korrektur von OCR-Ergebnissen.
      * Nur vordefinierte Feldpfade sind erlaubt (Backend-Whitelist).
      *
      * @param documentId - UUID des Dokuments

@@ -1,7 +1,7 @@
 /**
  * LineageEdge Component
  *
- * Custom Edge fuer React Flow mit Timing-Anzeige zwischen Events.
+ * Custom Edge für React Flow mit Timing-Anzeige zwischen Events.
  * Zeigt die Zeitdifferenz zwischen aufeinanderfolgenden Events.
  */
 
@@ -25,7 +25,7 @@ export interface LineageEdgeData {
   timeDeltaMs?: number;
   /** Zeige Timing-Label an */
   showTiming?: boolean;
-  /** Edge-Typ fuer unterschiedliches Styling */
+  /** Edge-Typ für unterschiedliches Styling */
   edgeType?: 'default' | 'success' | 'error' | 'warning';
 }
 

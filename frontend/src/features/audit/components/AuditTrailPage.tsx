@@ -1,8 +1,8 @@
 /**
  * AuditTrailPage - Hauptseite des Audit-Trail-Viewers
  *
- * Zeigt eine Tab-Navigation mit Protokoll, Integritaet und Export.
- * Enthalt Header mit Integritaets-Score Badge.
+ * Zeigt eine Tab-Navigation mit Protokoll, Integrität und Export.
+ * Enthält Header mit Integritäts-Score Badge.
  */
 
 import {
@@ -45,13 +45,13 @@ function IntegrityBadge() {
 
   if (score >= 95) {
     variant = "default";
-    label = `${score.toFixed(0)}% Integritaet`;
+    label = `${score.toFixed(0)}% Integrität`;
   } else if (score >= 80) {
     variant = "secondary";
-    label = `${score.toFixed(0)}% Integritaet`;
+    label = `${score.toFixed(0)}% Integrität`;
   } else {
     variant = "destructive";
-    label = `${score.toFixed(0)}% Integritaet`;
+    label = `${score.toFixed(0)}% Integrität`;
   }
 
   return (
@@ -94,11 +94,11 @@ export function AuditTrailPage() {
             Protokoll
           </TabsTrigger>
           <TabsTrigger
-            value="integritaet"
+            value="integrität"
             className="flex items-center gap-1.5"
           >
             <ShieldCheck className="h-4 w-4" />
-            Integritaet
+            Integrität
           </TabsTrigger>
           <TabsTrigger value="export" className="flex items-center gap-1.5">
             <Download className="h-4 w-4" />
@@ -110,7 +110,7 @@ export function AuditTrailPage() {
           <AuditTimeline />
         </TabsContent>
 
-        <TabsContent value="integritaet">
+        <TabsContent value="integrität">
           <IntegrityReportPanel />
         </TabsContent>
 

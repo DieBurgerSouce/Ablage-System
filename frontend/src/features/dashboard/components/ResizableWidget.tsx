@@ -279,13 +279,13 @@ export function ResizableWidget({
                                             className="h-6 w-6 bg-background"
                                             onClick={handleExpand}
                                             disabled={widget.w >= MAX_WIDGET_WIDTH && widget.h >= MAX_WIDGET_HEIGHT}
-                                            aria-label="Widget vergroessern"
+                                            aria-label="Widget vergrößern"
                                         >
                                             <Maximize2 className="h-3 w-3" />
                                         </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                        <p>Vergroessern</p>
+                                        <p>Vergrößern</p>
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
@@ -339,7 +339,7 @@ export function ResizableWidget({
                             )}
                             role="button"
                             tabIndex={0}
-                            aria-label="Groesse aendern"
+                            aria-label="Größe ändern"
                         />
 
                         {/* Size Indicator */}
@@ -369,8 +369,8 @@ export function ResizableWidget({
                     <AlertDialogHeader>
                         <AlertDialogTitle>Widget entfernen?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Moechten Sie das Widget &quot;{widgetLabel}&quot; wirklich vom Dashboard entfernen?
-                            Sie koennen es jederzeit ueber den Widget-Katalog wieder hinzufuegen.
+                            Möchten Sie das Widget &quot;{widgetLabel}&quot; wirklich vom Dashboard entfernen?
+                            Sie können es jederzeit über den Widget-Katalog wieder hinzufügen.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

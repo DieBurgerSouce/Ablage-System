@@ -1,7 +1,7 @@
 /**
  * ActivityTimeline Component
  *
- * Vertikale Timeline-Komponente fuer Aktivitaeten.
+ * Vertikale Timeline-Komponente für Aktivitäten.
  */
 
 import { useMemo } from 'react';
@@ -26,7 +26,7 @@ interface ActivityTimelineProps {
   className?: string;
 }
 
-// Gruppiert Aktivitaeten nach Datum
+// Gruppiert Aktivitäten nach Datum
 function groupActivitiesByDate(activities: Activity[]): Map<string, Activity[]> {
   const groups = new Map<string, Activity[]>();
 
@@ -68,8 +68,8 @@ export function ActivityTimeline({
   isLoadingMore = false,
   showTarget = true,
   maxHeight,
-  title = 'Aktivitaeten',
-  emptyMessage = 'Keine Aktivitaeten vorhanden',
+  title = 'Aktivitäten',
+  emptyMessage = 'Keine Aktivitäten vorhanden',
   className,
 }: ActivityTimelineProps) {
   const groupedActivities = useMemo(

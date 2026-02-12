@@ -1,14 +1,14 @@
 /**
  * CompanySwitcher - Multi-Mandanten Firmenauswahl
  *
- * Ermoeglicht das Wechseln zwischen Firmen in einer Multi-Tenant-Umgebung.
- * Wird im Header angezeigt und zeigt die aktuelle Firma + Dropdown fuer Wechsel.
+ * Ermöglicht das Wechseln zwischen Firmen in einer Multi-Tenant-Umgebung.
+ * Wird im Header angezeigt und zeigt die aktuelle Firma + Dropdown für Wechsel.
  *
  * Features:
  * - Zeigt aktuelle Firma mit Kurzname
- * - Dropdown mit allen verfuegbaren Firmen
- * - Ladeindikator waehrend Wechsel
- * - Unterstuetzt alle 4 Display-Modi (Dark, Light, Whitescreen, Blackscreen)
+ * - Dropdown mit allen verfügbaren Firmen
+ * - Ladeindikator während Wechsel
+ * - Unterstützt alle 4 Display-Modi (Dark, Light, Whitescreen, Blackscreen)
  */
 
 import { Building2, ChevronDown, Check, Loader2 } from 'lucide-react';
@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils';
 import { logger } from '@/lib/logger';
 
 interface CompanySwitcherProps {
-    /** Zusaetzliche CSS-Klassen */
+    /** Zusätzliche CSS-Klassen */
     className?: string;
     /** Kompakte Darstellung (nur Icon auf Mobile) */
     compact?: boolean;

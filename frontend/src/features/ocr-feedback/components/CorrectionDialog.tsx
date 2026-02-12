@@ -1,7 +1,7 @@
 /**
  * CorrectionDialog Component
  *
- * Dialog fuer Inline-Korrektur eines OCR-Feldes.
+ * Dialog für Inline-Korrektur eines OCR-Feldes.
  * Zeigt Original-Wert und erlaubt Eingabe des korrigierten Werts.
  */
 
@@ -74,7 +74,7 @@ export function CorrectionDialog({ open, onOpenChange, item, onSuccess }: Correc
 
   const { mutate: submitCorrection, isPending, error, reset } = useSubmitCorrection();
 
-  // Reset beim Oeffnen
+  // Reset beim Öffnen
   useEffect(() => {
     if (open && item) {
       setCorrectedValue(item.suggested_value || item.ocr_value || '');
@@ -105,7 +105,7 @@ export function CorrectionDialog({ open, onOpenChange, item, onSuccess }: Correc
         setShowSuccess(true);
         toast.success(result.feedback_message);
 
-        // Nach kurzer Verzoegerung schliessen
+        // Nach kurzer Verzögerung schließen
         setTimeout(() => {
           onSuccess?.(result);
         }, 1500);
@@ -169,7 +169,7 @@ export function CorrectionDialog({ open, onOpenChange, item, onSuccess }: Correc
             <DialogHeader>
               <DialogTitle>OCR-Korrektur</DialogTitle>
               <DialogDescription>
-                Korrigieren Sie den erkannten Wert fuer das Feld "{item.field_name}".
+                Korrigieren Sie den erkannten Wert für das Feld "{item.field_name}".
               </DialogDescription>
             </DialogHeader>
 
@@ -252,7 +252,7 @@ export function CorrectionDialog({ open, onOpenChange, item, onSuccess }: Correc
                     className="h-auto p-0"
                     onClick={() => setCorrectedValue(item.suggested_value!)}
                   >
-                    Uebernehmen
+                    Übernehmen
                   </Button>
                 </div>
               )}

@@ -19,7 +19,9 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 import structlog
@@ -570,7 +572,7 @@ async def dismiss_fraud_alert(
     reason: str = Query(..., min_length=5, max_length=500, description="Begründung"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Verwirft eine Betrugs-Warnung mit Begründung.
 
@@ -752,7 +754,7 @@ async def get_financial_insights_summary(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Gibt eine Zusammenfassung aller Financial Insights zurück.
 

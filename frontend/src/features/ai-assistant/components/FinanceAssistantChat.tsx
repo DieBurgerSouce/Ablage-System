@@ -470,7 +470,7 @@ function WelcomeScreen({ suggestions, capabilities, onSuggestionClick }: Welcome
       <h3 className="text-lg font-semibold mb-2">Finanz-Assistent</h3>
       <p className="text-sm text-muted-foreground mb-6 max-w-sm">
         Ich helfe Ihnen bei der Buchhaltung, Dokumentensuche und Finanzanalyse.
-        Stellen Sie mir eine Frage oder waehlen Sie einen Vorschlag.
+        Stellen Sie mir eine Frage oder wählen Sie einen Vorschlag.
       </p>
 
       {/* Capability Cards */}

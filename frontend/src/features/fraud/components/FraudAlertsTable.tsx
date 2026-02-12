@@ -51,7 +51,7 @@ const fraudTypeLabels: Record<string, string> = {
   expense_fraud: 'Spesen-Betrug',
   kickback: 'Kickback',
   shell_company: 'Shell-Company',
-  round_amount: 'Runde Betraege',
+  round_amount: 'Runde Beträge',
   split_invoice: 'Invoice-Splitting',
   weekend_invoice: 'Wochenend-Rechnung',
 };
@@ -91,8 +91,8 @@ export function FraudAlertsTable({
         <CardContent>
           <div className="text-center py-8 text-muted-foreground">
             <ShieldAlert className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Keine verdaechtigen Aktivitaeten erkannt</p>
-            <p className="text-sm">Alle Transaktionen sind unauffaellig</p>
+            <p>Keine verdächtigen Aktivitäten erkannt</p>
+            <p className="text-sm">Alle Transaktionen sind unauffällig</p>
           </div>
         </CardContent>
       </Card>

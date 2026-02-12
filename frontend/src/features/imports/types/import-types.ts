@@ -1,7 +1,7 @@
 /**
  * Import Types
  *
- * TypeScript Typen fuer Email- und Folder-Import-Feature.
+ * TypeScript Typen für Email- und Folder-Import-Feature.
  */
 
 // ==================== Enums ====================
@@ -436,7 +436,7 @@ export interface ImportLogFilter {
   perPage?: number;
 }
 
-// ==================== Schema Types (fuer Rule Builder) ====================
+// ==================== Schema Types (für Rule Builder) ====================
 
 export interface RuleFieldSchema {
   name: string;

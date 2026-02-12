@@ -163,7 +163,7 @@ export function ConfigDialog({ open, onOpenChange, config }: ConfigDialogProps) 
                         {isEdit ? 'Konfiguration bearbeiten' : 'Neue DATEV-Konfiguration'}
                     </DialogTitle>
                     <DialogDescription>
-                        Geben Sie die Daten Ihres Steuerberaters und die gewuenschten
+                        Geben Sie die Daten Ihres Steuerberaters und die gewünschten
                         Kontenrahmen-Einstellungen ein.
                     </DialogDescription>
                 </DialogHeader>

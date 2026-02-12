@@ -1,7 +1,7 @@
 /**
  * Smart OCR Queue Route
  *
- * Admin-Bereich fuer intelligente Warteschlangen-Verwaltung.
+ * Admin-Bereich für intelligente Warteschlangen-Verwaltung.
  */
 
 import { createFileRoute } from '@tanstack/react-router';

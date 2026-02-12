@@ -339,7 +339,7 @@ export function SampleDetailModal({ sample, benchmarks: propBenchmarks, open, on
                                     {sample.umlaut_words && sample.umlaut_words.length > 0 && (
                                         <div className="mt-4">
                                             <h4 className="text-sm font-medium mb-2">
-                                                Erkannte Umlaut-Woerter
+                                                Erkannte Umlaut-Wörter
                                             </h4>
                                             <div className="flex flex-wrap gap-2">
                                                 {sample.umlaut_words.map((word, i) => (

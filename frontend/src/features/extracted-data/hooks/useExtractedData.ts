@@ -32,7 +32,7 @@ export const extractedDataKeys = {
 
 /**
  * Hook zum Abrufen der extrahierten Daten eines Dokuments.
- * 404 ist erwartet fuer neue Dokumente ohne extrahierte Daten.
+ * 404 ist erwartet für neue Dokumente ohne extrahierte Daten.
  * Kein Retry, da 404 der Normalfall ist.
  */
 export function useExtractedData(documentId: string | undefined) {
@@ -41,7 +41,7 @@ export function useExtractedData(documentId: string | undefined) {
         queryFn: () => extractedDataApi.getByDocumentId(documentId!),
         enabled: !!documentId,
         staleTime: 5 * 60 * 1000, // 5 Minuten
-        // KEIN Retry - 404 ist erwartet fuer Dokumente ohne extrahierte Daten
+        // KEIN Retry - 404 ist erwartet für Dokumente ohne extrahierte Daten
         retry: false,
     });
 }

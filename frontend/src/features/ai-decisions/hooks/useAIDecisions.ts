@@ -1,8 +1,8 @@
 /**
  * AI Decision Review - React Query Hooks
  *
- * Hooks fuer ML/AI Entscheidungen, Drift Detection,
- * SHAP Erklaerungen und A/B Testing.
+ * Hooks für ML/AI Entscheidungen, Drift Detection,
+ * SHAP Erklärungen und A/B Testing.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -108,10 +108,10 @@ export function useGlobalFeatureImportance() {
 // =============================================================================
 
 /**
- * Hook fuer KI-Entscheidungserklaerung
+ * Hook für KI-Entscheidungserklärung
  *
  * @param decisionId - ID der Entscheidung
- * @param enabled - Optional: Nur laden wenn true (fuer Lazy Loading)
+ * @param enabled - Optional: Nur laden wenn true (für Lazy Loading)
  *
  * @example
  * const { data: explanation, isLoading } = useDecisionExplanation(decisionId);
@@ -121,12 +121,12 @@ export function useDecisionExplanation(decisionId: string, enabled = true) {
     queryKey: aiKeys.decisionExplanation(decisionId),
     queryFn: () => aiApi.getDecisionExplanation(decisionId),
     enabled: enabled && !!decisionId,
-    staleTime: 300000, // 5 Minuten - Erklaerungen aendern sich selten
+    staleTime: 300000, // 5 Minuten - Erklärungen ändern sich selten
   });
 }
 
 /**
- * Hook fuer Dokumenten-Erklaerung (letzte Entscheidung zum Dokument)
+ * Hook für Dokumenten-Erklärung (letzte Entscheidung zum Dokument)
  *
  * @param documentId - ID des Dokuments
  * @param enabled - Optional: Nur laden wenn true
@@ -161,7 +161,7 @@ export function useExperiment(experimentId: string, enabled = true) {
     queryFn: () => aiApi.getExperiment(experimentId),
     enabled: enabled && !!experimentId,
     staleTime: 30000,
-    refetchInterval: 30000, // Live-Updates fuer laufende Experimente
+    refetchInterval: 30000, // Live-Updates für laufende Experimente
   });
 }
 

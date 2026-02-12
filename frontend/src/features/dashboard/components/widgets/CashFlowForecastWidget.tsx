@@ -1,7 +1,7 @@
 /**
  * Cash-Flow Forecast Widget
  *
- * Dashboard-Widget fuer 30/60/90 Tage Liquiditaetsprognose.
+ * Dashboard-Widget für 30/60/90 Tage Liquiditätsprognose.
  *
  * Features:
  * - Einnahmen vs Ausgaben Chart
@@ -62,7 +62,7 @@ import {
 } from '../../api/dashboard-widgets';
 
 /**
- * Hook fuer Chart-Farben basierend auf Theme
+ * Hook für Chart-Farben basierend auf Theme
  */
 function useChartColors() {
   const { displayMode } = useTheme();
@@ -83,7 +83,7 @@ function useChartColors() {
 }
 
 /**
- * Formatiere Waehrung kompakt
+ * Formatiere Währung kompakt
  */
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('de-DE', {
@@ -233,7 +233,7 @@ export function CashFlowForecastWidget() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Wallet className="w-5 h-5" />
-            Liquiditaetsprognose
+            Liquiditätsprognose
           </CardTitle>
           <CardDescription className="text-destructive">
             Fehler beim Laden der Prognose
@@ -255,7 +255,7 @@ export function CashFlowForecastWidget() {
     );
   }
 
-  // Chart-Daten basierend auf ausgewaehlter Periode
+  // Chart-Daten basierend auf ausgewählter Periode
   const chartData = data.dailyData.slice(0, selectedPeriod).map((point) => ({
     date: point.date,
     Einnahmen: point.income,
@@ -272,9 +272,9 @@ export function CashFlowForecastWidget() {
 
   return (
     <ErrorBoundary
-      fallback={<DashboardSectionError section="Liquiditaetsprognose" />}
+      fallback={<DashboardSectionError section="Liquiditätsprognose" />}
       errorTitle="Prognose Fehler"
-      errorDescription="Die Liquiditaetsprognose konnte nicht geladen werden."
+      errorDescription="Die Liquiditätsprognose konnte nicht geladen werden."
     >
       <Card>
         <CardHeader className="pb-2">
@@ -282,7 +282,7 @@ export function CashFlowForecastWidget() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Wallet className="w-5 h-5" />
-                Liquiditaetsprognose
+                Liquiditätsprognose
               </CardTitle>
               <CardDescription>
                 Aktueller Saldo: {formatCurrency(data.currentBalance)}
@@ -337,7 +337,7 @@ export function CashFlowForecastWidget() {
           <div
             className="h-[250px]"
             role="img"
-            aria-label={`Liquiditaetsprognose fuer ${selectedPeriod} Tage`}
+            aria-label={`Liquiditätsprognose für ${selectedPeriod} Tage`}
           >
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>

@@ -8,35 +8,35 @@
     "technicalDetails": "Technische Details"
   },
   "http": {
-    "400": "Ungueltige Anfrage",
+    "400": "Ungültige Anfrage",
     "401": "Nicht autorisiert",
     "403": "Zugriff verweigert",
     "404": "Nicht gefunden",
     "405": "Methode nicht erlaubt",
-    "408": "Zeituberschreitung",
+    "408": "Zeitüberschreitung",
     "409": "Konflikt",
-    "413": "Datei zu gross",
-    "415": "Nicht unterstuetztes Format",
+    "413": "Datei zu groß",
+    "415": "Nicht unterstütztes Format",
     "422": "Validierungsfehler",
     "429": "Zu viele Anfragen",
     "500": "Interner Serverfehler",
     "502": "Bad Gateway",
-    "503": "Dienst nicht verfuegbar",
-    "504": "Gateway-Zeituberschreitung"
+    "503": "Dienst nicht verfügbar",
+    "504": "Gateway-Zeitüberschreitung"
   },
   "network": {
     "offline": "Keine Internetverbindung",
-    "timeout": "Die Anfrage hat das Zeitlimit ueberschritten",
+    "timeout": "Die Anfrage hat das Zeitlimit überschritten",
     "connectionFailed": "Verbindung zum Server fehlgeschlagen",
     "connectionLost": "Verbindung zum Server verloren",
     "retrying": "Verbindung wird wiederhergestellt...",
     "reconnected": "Verbindung wiederhergestellt"
   },
   "auth": {
-    "invalidCredentials": "Ungueltige Anmeldedaten",
+    "invalidCredentials": "Ungültige Anmeldedaten",
     "sessionExpired": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
     "tokenExpired": "Sitzung abgelaufen. Bitte erneut anmelden.",
-    "tokenInvalid": "Ungueltiger Authentifizierungstoken",
+    "tokenInvalid": "Ungültiger Authentifizierungstoken",
     "notAuthenticated": "Authentifizierung erforderlich",
     "permissionDenied": "Zugriff verweigert",
     "insufficientPermissions": "Unzureichende Berechtigungen",
@@ -46,43 +46,43 @@
   },
   "validation": {
     "required": "Dieses Feld ist erforderlich",
-    "email": "Bitte geben Sie eine gueltige E-Mail-Adresse ein",
+    "email": "Bitte geben Sie eine gültige E-Mail-Adresse ein",
     "minLength": "Mindestens {{min}} Zeichen erforderlich",
     "maxLength": "Maximal {{max}} Zeichen erlaubt",
-    "pattern": "Ungueltiges Format",
+    "pattern": "Ungültiges Format",
     "numeric": "Bitte geben Sie eine Zahl ein",
     "integer": "Bitte geben Sie eine ganze Zahl ein",
     "positive": "Der Wert muss positiv sein",
-    "date": "Ungueltiges Datumsformat",
+    "date": "Ungültiges Datumsformat",
     "dateRange": "Enddatum muss nach Startdatum liegen",
-    "url": "Bitte geben Sie eine gueltige URL ein",
-    "phone": "Bitte geben Sie eine gueltige Telefonnummer ein",
-    "iban": "Ungueltige IBAN",
-    "bic": "Ungueltiger BIC",
-    "vatId": "Ungueltige USt-IdNr.",
-    "passwordMismatch": "Passwoerter stimmen nicht ueberein",
+    "url": "Bitte geben Sie eine gültige URL ein",
+    "phone": "Bitte geben Sie eine gültige Telefonnummer ein",
+    "iban": "Ungültige IBAN",
+    "bic": "Ungültiger BIC",
+    "vatId": "Ungültige USt-IdNr.",
+    "passwordMismatch": "Passwörter stimmen nicht überein",
     "passwordTooWeak": "Passwort ist zu schwach",
-    "fileType": "Ungueltiger Dateityp",
-    "fileSize": "Datei ist zu gross (max. {{max}})"
+    "fileType": "Ungültiger Dateityp",
+    "fileSize": "Datei ist zu groß (max. {{max}})"
   },
   "file": {
     "uploadFailed": "Fehler beim Hochladen der Datei",
     "downloadFailed": "Fehler beim Herunterladen der Datei",
-    "invalidType": "Ungueltiger Dateityp. Erlaubt: {{types}}",
-    "tooLarge": "Datei zu gross: {{size}} (max: {{max}})",
-    "corrupted": "Datei beschaedigt oder nicht lesbar",
+    "invalidType": "Ungültiger Dateityp. Erlaubt: {{types}}",
+    "tooLarge": "Datei zu groß: {{size}} (max: {{max}})",
+    "corrupted": "Datei beschädigt oder nicht lesbar",
     "virusDetected": "Malware erkannt. Datei wurde blockiert."
   },
   "document": {
     "notFound": "Dokument nicht gefunden",
     "uploadFailed": "Fehler beim Hochladen des Dokuments",
     "processingFailed": "Dokumentverarbeitung fehlgeschlagen",
-    "deleteFailed": "Fehler beim Loeschen des Dokuments",
+    "deleteFailed": "Fehler beim Löschen des Dokuments",
     "accessDenied": "Kein Zugriff auf dieses Dokument"
   },
   "ocr": {
     "processingFailed": "OCR-Verarbeitung fehlgeschlagen",
-    "backendUnavailable": "OCR-Backend nicht verfuegbar",
+    "backendUnavailable": "OCR-Backend nicht verfügbar",
     "gpuOom": "GPU-Speicher voll. Fallback auf CPU wird verwendet.",
     "timeout": "OCR-Zeituberschreitung",
     "invalidDocument": "Dokument kann nicht verarbeitet werden",
@@ -92,30 +92,30 @@
     "connectionFailed": "Datenbankverbindung fehlgeschlagen",
     "queryFailed": "Datenbankabfrage fehlgeschlagen",
     "saveFailed": "Speichern fehlgeschlagen",
-    "deleteFailed": "Loeschen fehlgeschlagen",
+    "deleteFailed": "Löschen fehlgeschlagen",
     "duplicateEntry": "Eintrag existiert bereits"
   },
   "entity": {
-    "notFound": "Geschaeftspartner nicht gefunden",
-    "createFailed": "Geschaeftspartner konnte nicht erstellt werden",
-    "updateFailed": "Geschaeftspartner konnte nicht aktualisiert werden",
-    "deleteFailed": "Geschaeftspartner konnte nicht geloescht werden",
+    "notFound": "Geschäftspartner nicht gefunden",
+    "createFailed": "Geschäftspartner konnte nicht erstellt werden",
+    "updateFailed": "Geschäftspartner konnte nicht aktualisiert werden",
+    "deleteFailed": "Geschäftspartner konnte nicht gelöscht werden",
     "duplicateCustomerNumber": "Kundennummer bereits vergeben",
     "duplicateSupplierNumber": "Lieferantennummer bereits vergeben"
   },
   "payment": {
     "failed": "Zahlung fehlgeschlagen",
     "insufficientFunds": "Unzureichende Deckung",
-    "invalidAccount": "Ungueltiges Konto",
-    "executionFailed": "Zahlungsausfuehrung fehlgeschlagen"
+    "invalidAccount": "Ungültiges Konto",
+    "executionFailed": "Zahlungsausführung fehlgeschlagen"
   },
   "rateLimit": {
     "exceeded": "Zu viele Anfragen. Bitte warten Sie {{seconds}} Sekunden.",
     "quotaExceeded": "Tageskontingent erreicht. Bitte versuchen Sie es morgen erneut."
   },
   "service": {
-    "unavailable": "Dienst voruebergehend nicht verfuegbar",
-    "maintenance": "Wartungsarbeiten. Bitte versuchen Sie es spaeter.",
-    "overloaded": "System ueberlastet. Bitte versuchen Sie es spaeter."
+    "unavailable": "Dienst vorübergehend nicht verfügbar",
+    "maintenance": "Wartungsarbeiten. Bitte versuchen Sie es später.",
+    "overloaded": "System überlastet. Bitte versuchen Sie es später."
   }
 }

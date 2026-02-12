@@ -12,9 +12,10 @@ Feinpoliert und durchdacht - Enterprise Genehmigungsworkflows.
 
 import structlog
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
 
+from app.core.types import JSONDict
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -73,7 +74,7 @@ class ApprovalRuleCreateRequest(BaseModel):
         min_length=1,
         description="Entitaetstypen (z.B. invoice, expense, document)"
     )
-    conditions: Dict[str, Any] = Field(
+    conditions: JSONDict = Field(
         default_factory=dict,
         description="Bedingungen (JSON)"
     )
@@ -90,7 +91,7 @@ class ApprovalRuleCreateRequest(BaseModel):
 
     @field_validator("conditions")
     @classmethod
-    def validate_conditions(cls, v: Dict[str, Any]) -> Dict[str, Any]:
+    def validate_conditions(cls, v: JSONDict) -> JSONDict:
         """Validiert conditions gegen Whitelist."""
         if v:
             try:
@@ -117,7 +118,7 @@ class ApprovalRuleUpdateRequest(BaseModel):
     description: Optional[str] = None
     rule_type: Optional[ApprovalRuleType] = None
     entity_types: Optional[List[str]] = Field(None, min_length=1)
-    conditions: Optional[Dict[str, Any]] = None
+    conditions: Optional[JSONDict] = None
     approval_chain: Optional[List[ApprovalChainStepSchema]] = Field(None, min_length=1)
     escalation_after_hours: Optional[int] = Field(None, ge=1)
     escalation_to_role: Optional[str] = None
@@ -127,7 +128,7 @@ class ApprovalRuleUpdateRequest(BaseModel):
 
     @field_validator("conditions")
     @classmethod
-    def validate_conditions(cls, v: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    def validate_conditions(cls, v: Optional[JSONDict]) -> Optional[JSONDict]:
         """Validiert conditions gegen Whitelist."""
         if v is not None:
             try:
@@ -147,8 +148,8 @@ class ApprovalRuleResponse(BaseModel):
     description: Optional[str]
     rule_type: str
     entity_types: List[str]
-    conditions: Dict[str, Any]
-    approval_chain: List[Dict[str, Any]]
+    conditions: JSONDict
+    approval_chain: List[JSONDict]
     escalation_after_hours: Optional[int]
     escalation_to_role: Optional[str]
     sla_hours: Optional[int]
@@ -184,7 +185,7 @@ class ApprovalRequestCreateRequest(BaseModel):
         description="Genehmiger-Kette"
     )
     sla_hours: int = Field(48, ge=1, description="Max. Bearbeitungszeit")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Zusaetzliche Daten")
+    metadata: Optional[JSONDict] = Field(None, description="Zusaetzliche Daten")
 
 
 class ApprovalRequestResponse(BaseModel):
@@ -203,7 +204,7 @@ class ApprovalRequestResponse(BaseModel):
     priority: str
     current_step: int
     total_steps: int
-    approval_chain: List[Dict[str, Any]]
+    approval_chain: List[JSONDict]
     due_date: Optional[str]
     is_escalated: bool
     resolved_at: Optional[str]
@@ -507,10 +508,10 @@ async def delete_approval_rule(
 @router.post("/rules/{rule_id}/preview")
 async def preview_approval_rule(
     rule_id: UUID,
-    test_data: Dict[str, Any],
+    test_data: JSONDict,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Simuliert eine Regel gegen Testdaten (Preview/Dry-Run)."""
     service = ApprovalRuleService(db)
 
@@ -851,7 +852,7 @@ async def update_approval_step(
 async def get_approval_summary(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Holt Zusammenfassung fuer Dashboard."""
     service = ApprovalService(db)
 
@@ -1114,7 +1115,7 @@ async def update_auto_approval_rule(
     update: AutoApprovalRuleUpdateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Aktualisiert eine Auto-Approval-Regel."""
     service = get_auto_approval_service(db)
 
@@ -1199,7 +1200,7 @@ async def set_user_opt_out(
     request: AutoApprovalOptOutRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Setzt Opt-Out fuer den aktuellen User.
 
     Wenn opt_out=True, werden Dokumente des Users nicht automatisch genehmigt.
@@ -1232,7 +1233,7 @@ async def get_auto_approval_stats(
     days: int = Query(30, ge=1, le=365, description="Zeitraum in Tagen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Holt Statistiken zu Auto-Approvals."""
     from datetime import timedelta
     from app.core.datetime_utils import utc_now

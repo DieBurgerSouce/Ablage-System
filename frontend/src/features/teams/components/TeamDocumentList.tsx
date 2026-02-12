@@ -168,7 +168,7 @@ export function TeamDocumentList({ teamId, isTeamAdmin = false }: TeamDocumentLi
                         params={{ documentId: doc.document_id }}
                       >
                         <ExternalLink className="h-4 w-4 mr-2" />
-                        Dokument oeffnen
+                        Dokument öffnen
                       </Link>
                     </DropdownMenuItem>
 
@@ -220,7 +220,7 @@ export function TeamDocumentList({ teamId, isTeamAdmin = false }: TeamDocumentLi
           <AlertDialogHeader>
             <AlertDialogTitle>Freigabe aufheben?</AlertDialogTitle>
             <AlertDialogDescription>
-              Moechten Sie die Freigabe von{' '}
+              Möchten Sie die Freigabe von{' '}
               <strong>{documentToUnshare?.document?.title || 'diesem Dokument'}</strong> wirklich
               aufheben? Das Team hat dann keinen Zugriff mehr auf dieses Dokument.
             </AlertDialogDescription>

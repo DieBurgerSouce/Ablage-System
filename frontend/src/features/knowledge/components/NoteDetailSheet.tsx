@@ -1,5 +1,5 @@
 /**
- * NoteDetailSheet - Seitenpanel fuer Notiz-Details
+ * NoteDetailSheet - Seitenpanel für Notiz-Details
  */
 
 import DOMPurify from 'dompurify';
@@ -136,13 +136,13 @@ export function NoteDetailSheet({
 
           <Separator />
 
-          {/* Verknuepfungen */}
+          {/* Verknüpfungen */}
           {(note.linked_document_id || note.linked_entity_id || note.linked_company_id) && (
             <>
               <div>
                 <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
                   <Link2 className="h-4 w-4" />
-                  Verknuepfungen
+                  Verknüpfungen
                 </h4>
                 <div className="space-y-2 text-sm">
                   {note.linked_document_id && (
@@ -154,7 +154,7 @@ export function NoteDetailSheet({
                   {note.linked_entity_id && (
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4 text-muted-foreground" />
-                      <span>Geschaeftspartner: {note.linked_entity_id}</span>
+                      <span>Geschäftspartner: {note.linked_entity_id}</span>
                     </div>
                   )}
                   {note.linked_company_id && (
@@ -233,7 +233,7 @@ export function NoteDetailSheet({
               {note.parent_note && (
                 <div className="flex items-center gap-2">
                   <FileText className="h-4 w-4" />
-                  <span>Uebergeordnete Notiz: {note.parent_note.title}</span>
+                  <span>Übergeordnete Notiz: {note.parent_note.title}</span>
                 </div>
               )}
             </div>

@@ -1,6 +1,6 @@
 /**
  * Banking Missed Skonto Route
- * Route fuer verpasste Skonto-Uebersicht
+ * Route für verpasste Skonto-Übersicht
  */
 
 import { createFileRoute } from '@tanstack/react-router';

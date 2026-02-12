@@ -1,7 +1,7 @@
 /**
  * Company Selector Component
  *
- * Multi-Select fuer Firmenfilterung im Holding-Dashboard.
+ * Multi-Select für Firmenfilterung im Holding-Dashboard.
  */
 
 import { useState } from 'react';
@@ -95,7 +95,7 @@ export function CompanySelector({
                   onClick={selectAll}
                   disabled={allSelected}
                 >
-                  Alle auswaehlen
+                  Alle auswählen
                 </Button>
                 <Button
                   variant="ghost"
@@ -104,7 +104,7 @@ export function CompanySelector({
                   onClick={clearSelection}
                   disabled={selectedIds.length === 0}
                 >
-                  Auswahl loeschen
+                  Auswahl löschen
                 </Button>
               </div>
 

@@ -1,7 +1,7 @@
 /**
  * EntitySearchHint Component
  *
- * Zeigt an, wenn ein Dokument ueber eine Entity-Verknuepfung gefunden wurde.
+ * Zeigt an, wenn ein Dokument über eine Entity-Verknüpfung gefunden wurde.
  * "Gefunden als Kunde: Mueller GmbH (Kd-Nr. 12345)"
  */
 
@@ -42,7 +42,7 @@ const matchTypeIcons: Record<string, typeof Building2> = {
 };
 
 /**
- * Zeigt Entity-Match-Information fuer ein Suchergebnis.
+ * Zeigt Entity-Match-Information für ein Suchergebnis.
  */
 export function EntitySearchHint({ entity, className, compact = false }: EntitySearchHintProps) {
     const isCustomer = entity.entityType === 'customer';

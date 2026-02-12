@@ -5,7 +5,7 @@
  * - Firmen-CRUD
  * - Benutzer-Zuordnung
  * - Berechtigungsverwaltung
- * - Multi-Tenant Support fuer 20+ Mandanten
+ * - Multi-Tenant Support für 20+ Mandanten
  */
 
 // Pages

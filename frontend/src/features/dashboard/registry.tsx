@@ -124,7 +124,7 @@ const WIDGET_DEFINITIONS: WidgetRegistryEntry[] = [
         category: 'data',
         defaultSize: { w: 6, h: 4 },
     },
-    // Neue Widgets fuer Feature 05
+    // Neue Widgets für Feature 05
     {
         type: 'open-invoices',
         component: DunningWidget,
@@ -138,7 +138,7 @@ const WIDGET_DEFINITIONS: WidgetRegistryEntry[] = [
         type: 'skonto',
         component: SkontoWidget,
         label: 'Skonto-Chancen',
-        description: 'Zeigt Skonto-Moeglichkeiten mit Fristen und moeglicher Ersparnis.',
+        description: 'Zeigt Skonto-Möglichkeiten mit Fristen und möglicher Ersparnis.',
         icon: Percent,
         category: 'finance',
         defaultSize: { w: 6, h: 3 },
@@ -266,7 +266,7 @@ const WIDGET_DEFINITIONS: WidgetRegistryEntry[] = [
         type: 'cash-position',
         component: CashPositionWidget,
         label: 'Kassenstand',
-        description: 'Echtzeit Kontostand, Tagesbewegungen und Liquiditaetsprognose.',
+        description: 'Echtzeit Kontostand, Tagesbewegungen und Liquiditätsprognose.',
         icon: Banknote,
         category: 'finance',
         defaultSize: { w: 4, h: 5 },
@@ -276,7 +276,7 @@ const WIDGET_DEFINITIONS: WidgetRegistryEntry[] = [
     {
         type: 'cash-flow-forecast',
         component: CashFlowForecastWidget,
-        label: 'Liquiditaetsprognose',
+        label: 'Liquiditätsprognose',
         description: '30/60/90 Tage Cashflow-Prognose mit Einnahmen, Ausgaben und Skonto-Auswirkungen.',
         icon: LineChart,
         category: 'finance',
@@ -287,7 +287,7 @@ const WIDGET_DEFINITIONS: WidgetRegistryEntry[] = [
         type: 'supplier-performance',
         component: SupplierPerformanceWidget,
         label: 'Lieferanten-Performance',
-        description: 'Puenktlichkeit, Genauigkeit und Preistrend der Top-Lieferanten.',
+        description: 'Pünktlichkeit, Genauigkeit und Preistrend der Top-Lieferanten.',
         icon: Truck,
         category: 'data',
         defaultSize: { w: 6, h: 5 },

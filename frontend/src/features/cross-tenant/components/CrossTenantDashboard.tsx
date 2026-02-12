@@ -1,8 +1,8 @@
 /**
  * CrossTenantDashboard
  *
- * Hauptkomponente fuer das mandantenuebergreifende Admin-Dashboard.
- * Zeigt KPI-Karten, Dokumenten-Uebersicht und Finanz-Tabelle.
+ * Hauptkomponente für das mandantenübergreifende Admin-Dashboard.
+ * Zeigt KPI-Karten, Dokumenten-Übersicht und Finanz-Tabelle.
  */
 
 import { useMemo } from 'react';
@@ -150,7 +150,7 @@ export function CrossTenantDashboard() {
         <div>
           <h1 className="text-2xl font-bold">Cross-Tenant Berichte</h1>
           <p className="text-muted-foreground">
-            Mandantenuebergreifende Statistiken und Analysen
+            Mandantenübergreifende Statistiken und Analysen
           </p>
         </div>
         <DashboardError message={(error as Error).message} />
@@ -164,7 +164,7 @@ export function CrossTenantDashboard() {
       <div>
         <h1 className="text-2xl font-bold">Cross-Tenant Berichte</h1>
         <p className="text-muted-foreground">
-          Mandantenuebergreifende Statistiken und Analysen
+          Mandantenübergreifende Statistiken und Analysen
         </p>
       </div>
 
@@ -186,7 +186,7 @@ export function CrossTenantDashboard() {
           title="Gesamte Dokumente"
           value={formatNumber(totalDocuments)}
           icon={FileText}
-          description="Ueber alle Mandanten"
+          description="Über alle Mandanten"
         />
         <KpiCard
           title="Dokumente / Monat"

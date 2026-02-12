@@ -165,7 +165,7 @@ class PushNotificationService {
    */
   async requestPermission(): Promise<NotificationPermission> {
     if (!this.isSupported()) {
-      logger.warn('[PushNotifications] Nicht unterstuetzt');
+      logger.warn('[PushNotifications] Nicht unterstützt');
       return 'denied';
     }
 
@@ -236,7 +236,7 @@ class PushNotificationService {
     if (!this.isSupported()) {
       return {
         success: false,
-        message: 'Push-Benachrichtigungen werden nicht unterstuetzt',
+        message: 'Push-Benachrichtigungen werden nicht unterstützt',
       };
     }
 
@@ -245,7 +245,7 @@ class PushNotificationService {
     if (permission !== 'granted') {
       return {
         success: false,
-        message: 'Berechtigung fuer Benachrichtigungen wurde verweigert',
+        message: 'Berechtigung für Benachrichtigungen wurde verweigert',
       };
     }
 

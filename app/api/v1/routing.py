@@ -11,7 +11,9 @@ Ermoeglicht:
 """
 
 import structlog
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -478,7 +480,7 @@ async def get_model_info(
 
 @router.get(
     "/suggestions/{document_id}",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Schnelle Routing-Vorschlaege",
     description="Gibt schnelle Routing-Vorschlaege ohne volles ML-Modell.",
 )
@@ -486,7 +488,7 @@ async def get_quick_suggestions(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Gibt schnelle regelbasierte Routing-Vorschlaege zurueck.
 
@@ -597,7 +599,7 @@ async def get_quick_suggestions(
 
 @router.post(
     "/auto-route/{document_id}",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Automatisches Routing anwenden",
     description="Wendet die Routing-Vorhersage automatisch an.",
 )
@@ -611,7 +613,7 @@ async def auto_route_document(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Wendet Routing-Vorhersagen automatisch auf ein Dokument an.
 

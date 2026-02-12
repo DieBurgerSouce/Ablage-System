@@ -9,8 +9,10 @@ Feinpoliert und durchdacht - Enterprise Transaction Tracking.
 
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 from uuid import UUID
+
+from app.core.types import JSONDict
 import uuid
 
 import structlog
@@ -121,7 +123,7 @@ def generate_transaction_number() -> str:
     return f"VG-{year}-{random_part}"
 
 
-def determine_transaction_status(steps: List[Dict[str, Any]]) -> str:
+def determine_transaction_status(steps: List[JSONDict]) -> str:
     """Bestimmt den Status einer Transaktion basierend auf den Schritten."""
     if not steps:
         return "draft"

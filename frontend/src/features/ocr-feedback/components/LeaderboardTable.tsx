@@ -2,7 +2,7 @@
  * LeaderboardTable Component
  *
  * Zeigt das Top-10 Leaderboard mit Rang, Punkte, Streak und Achievements.
- * Unterstuetzt verschiedene Zeitraeume (Woche, Monat, Gesamt).
+ * Unterstützt verschiedene Zeiträume (Woche, Monat, Gesamt).
  */
 
 import { Trophy, Medal, Award, Star, Crown, User } from 'lucide-react';
@@ -158,7 +158,7 @@ function LeaderboardContent({ period }: { period: LeaderboardPeriod }) {
         <User className="w-12 h-12 mx-auto mb-3 opacity-50" />
         <p>Noch keine Korrekturen in diesem Zeitraum.</p>
         <p className="text-sm mt-1">
-          Mindestens 5 Korrekturen fuer Ranking erforderlich.
+          Mindestens 5 Korrekturen für Ranking erforderlich.
         </p>
       </div>
     );

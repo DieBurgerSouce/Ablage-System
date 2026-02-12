@@ -1,7 +1,7 @@
 /**
  * Admin Activity Route
  *
- * Company-weite Aktivitaetsansicht fuer Admins.
+ * Company-weite Aktivitätsansicht für Admins.
  */
 
 import { useState, useCallback, useMemo } from 'react';
@@ -79,9 +79,9 @@ function AdminActivityPage() {
           <History className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">Company-Aktivitaeten</h1>
+          <h1 className="text-2xl font-bold">Company-Aktivitäten</h1>
           <p className="text-muted-foreground">
-            Ueberblick ueber alle Aktivitaeten in Ihrer Organisation
+            Überblick über alle Aktivitäten in Ihrer Organisation
           </p>
         </div>
       </div>
@@ -91,7 +91,7 @@ function AdminActivityPage() {
         <Shield className="h-4 w-4" />
         <AlertTitle>Administrator-Ansicht</AlertTitle>
         <AlertDescription>
-          Sie sehen alle Aktivitaeten der gesamten Company. Diese Daten sind vertraulich.
+          Sie sehen alle Aktivitäten der gesamten Company. Diese Daten sind vertraulich.
         </AlertDescription>
       </Alert>
 
@@ -127,8 +127,8 @@ function AdminActivityPage() {
             onLoadMore={handleLoadMore}
             isLoadingMore={isFetchingNextPage}
             showTarget={true}
-            title={`Alle Aktivitaeten (${activities.length})`}
-            emptyMessage="Keine Aktivitaeten gefunden"
+            title={`Alle Aktivitäten (${activities.length})`}
+            emptyMessage="Keine Aktivitäten gefunden"
           />
         </TabsContent>
 
@@ -142,7 +142,7 @@ function AdminActivityPage() {
             <ActivityStats stats={stats} />
           ) : (
             <div className="text-center py-16 text-muted-foreground">
-              Keine Statistiken verfuegbar
+              Keine Statistiken verfügbar
             </div>
           )}
         </TabsContent>

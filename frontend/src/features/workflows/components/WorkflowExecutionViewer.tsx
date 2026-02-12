@@ -1,7 +1,7 @@
 /**
  * Workflow Execution Viewer
  *
- * Echtzeit-Visualisierung einer Workflow-Ausfuehrung.
+ * Echtzeit-Visualisierung einer Workflow-Ausführung.
  * Zeigt Knoten mit farbcodierten Status und animierten Kanten.
  */
 
@@ -162,7 +162,7 @@ export default function WorkflowExecutionViewer({
         <CardContent className="p-8 text-center">
           <AlertTriangle className="mx-auto h-12 w-12 text-destructive" />
           <p className="mt-4 text-lg font-medium">
-            Ausfuehrung nicht gefunden
+            Ausführung nicht gefunden
           </p>
         </CardContent>
       </Card>
@@ -188,7 +188,7 @@ export default function WorkflowExecutionViewer({
             <div>
               <CardTitle className="text-2xl">{executionState.workflow_name}</CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                Ausfuehrungs-ID: {executionState.instance_id}
+                Ausführungs-ID: {executionState.instance_id}
               </p>
             </div>
             <Badge variant={statusBadgeVariants[executionState.status] || 'secondary'}>
@@ -248,7 +248,7 @@ export default function WorkflowExecutionViewer({
           <SheetHeader>
             <SheetTitle>Schritt-Details</SheetTitle>
             <SheetDescription>
-              Informationen zur Ausfuehrung dieses Schritts
+              Informationen zur Ausführung dieses Schritts
             </SheetDescription>
           </SheetHeader>
           {selectedNode && (

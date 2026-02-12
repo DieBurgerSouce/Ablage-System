@@ -214,7 +214,7 @@ export function EmailConfigForm({
         await updateConfig.mutateAsync({ configId: configId!, data: updateData });
         toast({
           title: 'Konfiguration aktualisiert',
-          description: 'Die Aenderungen wurden gespeichert.',
+          description: 'Die Änderungen wurden gespeichert.',
         });
         onSuccess?.(configId!);
       } else {
@@ -303,7 +303,7 @@ export function EmailConfigForm({
           {isEditMode ? 'Email-Konfiguration bearbeiten' : 'Neue Email-Konfiguration'}
         </CardTitle>
         <CardDescription>
-          Konfigurieren Sie den automatischen Import von Email-Anhaengen.
+          Konfigurieren Sie den automatischen Import von Email-Anhängen.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -321,7 +321,7 @@ export function EmailConfigForm({
                       <Input placeholder="z.B. Rechnungs-Postfach" {...field} />
                     </FormControl>
                     <FormDescription>
-                      Ein eindeutiger Name fuer diese Konfiguration
+                      Ein eindeutiger Name für diese Konfiguration
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -569,9 +569,9 @@ export function EmailConfigForm({
                             <SelectItem value="5">Alle 5 Minuten</SelectItem>
                             <SelectItem value="15">Alle 15 Minuten</SelectItem>
                             <SelectItem value="30">Alle 30 Minuten</SelectItem>
-                            <SelectItem value="60">Stuendlich</SelectItem>
+                            <SelectItem value="60">Stündlich</SelectItem>
                             <SelectItem value="360">Alle 6 Stunden</SelectItem>
-                            <SelectItem value="1440">Taeglich</SelectItem>
+                            <SelectItem value="1440">Täglich</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -670,7 +670,7 @@ export function EmailConfigForm({
                       render={({ field }) => (
                         <div className="flex items-center justify-between rounded-lg border p-4">
                           <div className="space-y-0.5">
-                            <Label>Nur Anhaenge extrahieren</Label>
+                            <Label>Nur Anhänge extrahieren</Label>
                             <p className="text-sm text-muted-foreground">
                               Email-Text wird nicht als Dokument gespeichert
                             </p>

@@ -43,13 +43,13 @@ export interface SavedFilterDropdownProps {
   activeFilter?: SavedFilter | null
   /** Callback bei Filterauswahl */
   onSelectFilter: (filter: SavedFilter) => void
-  /** Callback beim Zuruecksetzen */
+  /** Callback beim Zurücksetzen */
   onClearFilter: () => void
   /** Callback zum Erstellen eines neuen Filters */
   onCreateFilter: () => void
   /** Callback zum Bearbeiten */
   onEditFilter: (filter: SavedFilter) => void
-  /** Callback zum Loeschen */
+  /** Callback zum Löschen */
   onDeleteFilter: (filter: SavedFilter) => void
   /** Callback zum Duplizieren */
   onDuplicateFilter: (filter: SavedFilter) => void
@@ -126,7 +126,7 @@ export function SavedFilterDropdown({
                 setOpen(false)
               }}
             >
-              Zuruecksetzen
+              Zurücksetzen
             </Button>
           )}
         </DropdownMenuLabel>
@@ -284,7 +284,7 @@ function FilterMenuItem({
                   className="gap-2 text-destructive focus:text-destructive"
                 >
                   <Trash2 className="h-4 w-4" />
-                  Loeschen
+                  Löschen
                 </DropdownMenuItem>
               </>
             )}

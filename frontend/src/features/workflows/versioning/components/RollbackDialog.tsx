@@ -1,7 +1,7 @@
 /**
  * RollbackDialog Component
  *
- * Bestaetigung fuer Rollback zu einer vorherigen Version.
+ * Bestätigung für Rollback zu einer vorherigen Version.
  */
 
 import { useState } from 'react';
@@ -68,13 +68,13 @@ export function RollbackDialog({
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <RotateCcw className="h-5 w-5 text-yellow-600" />
-            Rollback bestaetigen
+            Rollback bestätigen
           </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-4 text-left">
               <p>
                 Sie sind dabei, den Workflow auf eine vorherige Version
-                zurueckzusetzen. Diese Aktion aendert die aktive Version.
+                zurückzusetzen. Diese Aktion ändert die aktive Version.
               </p>
 
               <div className="bg-muted p-4 rounded-lg space-y-3">
@@ -108,8 +108,8 @@ export function RollbackDialog({
                   </p>
                   <p className="text-yellow-700 dark:text-yellow-300 mt-1">
                     Der Rollback erstellt eine neue Version basierend auf der
-                    ausgewaehlten Version und aktiviert diese sofort. Laufende
-                    Ausfuehrungen werden nicht beeinflusst.
+                    ausgewählten Version und aktiviert diese sofort. Laufende
+                    Ausführungen werden nicht beeinflusst.
                   </p>
                 </div>
               </div>
@@ -141,11 +141,11 @@ export function RollbackDialog({
             className="bg-yellow-600 hover:bg-yellow-700"
           >
             {rollbackMutation.isPending ? (
-              'Wird zurueckgesetzt...'
+              'Wird zurückgesetzt...'
             ) : (
               <>
                 <RotateCcw className="h-4 w-4 mr-2" />
-                Rollback durchfuehren
+                Rollback durchführen
               </>
             )}
           </AlertDialogAction>

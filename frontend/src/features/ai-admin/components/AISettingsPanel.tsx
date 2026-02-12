@@ -1,7 +1,7 @@
 /**
  * AI Settings Panel
  *
- * Konfigurations-Panel fuer KI-Schwellenwerte.
+ * Konfigurations-Panel für KI-Schwellenwerte.
  */
 
 import { useState } from 'react';

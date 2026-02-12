@@ -141,7 +141,7 @@ function ShareTargetPage() {
       savedAt: new Date().toISOString(),
     }
 
-    // Speichere im LocalStorage (FUTURE: Backend API fuer Bookmarks)
+    // Speichere im LocalStorage (FUTURE: Backend API für Bookmarks)
     try {
       const existingLinks = JSON.parse(localStorage.getItem('savedLinks') || '[]')
       existingLinks.unshift(linkData)
@@ -149,7 +149,7 @@ function ShareTargetPage() {
       localStorage.setItem('savedLinks', JSON.stringify(existingLinks.slice(0, 50)))
 
       toast.success('Link gespeichert', {
-        description: `"${linkData.title}" wurde zu Ihren Links hinzugefuegt`,
+        description: `"${linkData.title}" wurde zu Ihren Links hinzugefügt`,
       })
     } catch {
       toast.error('Speichern fehlgeschlagen')

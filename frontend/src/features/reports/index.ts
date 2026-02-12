@@ -1,7 +1,7 @@
 /**
  * Report-Builder Feature
  *
- * Exportiert alle API-Funktionen, Hooks, Types und Components fuer den Report-Builder.
+ * Exportiert alle API-Funktionen, Hooks, Types und Components für den Report-Builder.
  */
 
 // Types

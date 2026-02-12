@@ -1,7 +1,7 @@
 /**
  * DocumentCompareView Component
  *
- * Hauptkomponente fuer die Side-by-Side Dokumentenvergleichsansicht.
+ * Hauptkomponente für die Side-by-Side Dokumentenvergleichsansicht.
  */
 
 import { useState, useRef } from 'react';
@@ -158,28 +158,28 @@ export function DocumentCompareView({
             <div className="flex items-center gap-2 p-3 bg-red-100 dark:bg-red-900/20 rounded-lg mb-4 text-red-800 dark:text-red-300">
               <AlertTriangle className="h-5 w-5 flex-shrink-0" />
               <span className="text-sm font-medium">
-                Kritische Unterschiede erkannt! Bitte pruefen Sie die markierten Felder.
+                Kritische Unterschiede erkannt! Bitte prüfen Sie die markierten Felder.
               </span>
             </div>
           )}
 
-          {/* Aehnlichkeits-Metriken */}
+          {/* Ähnlichkeits-Metriken */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <SimilarityMeter
               value={comparisonResult.similarityScore}
-              label="Gesamt-Aehnlichkeit"
+              label="Gesamt-Ähnlichkeit"
             />
-            <SimilarityMeter value={comparisonResult.textSimilarity} label="Text-Aehnlichkeit" />
+            <SimilarityMeter value={comparisonResult.textSimilarity} label="Text-Ähnlichkeit" />
             <SimilarityMeter
               value={comparisonResult.structureSimilarity}
-              label="Struktur-Aehnlichkeit"
+              label="Struktur-Ähnlichkeit"
             />
           </div>
 
           {/* Statistiken */}
           <div className="flex flex-wrap gap-4 text-sm">
             <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">Aenderungen:</span>
+              <span className="text-muted-foreground">Änderungen:</span>
               <Badge variant="secondary">{totalChanges}</Badge>
             </div>
             <div className="flex items-center gap-2">
@@ -237,7 +237,7 @@ export function DocumentCompareView({
         </Collapsible>
       )}
 
-      {/* Tabs fuer Details */}
+      {/* Tabs für Details */}
       <Tabs defaultValue="fields" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="fields">

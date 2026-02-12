@@ -201,7 +201,7 @@ export function TransactionsPage() {
                             <ArrowLeftRight className="mx-auto h-12 w-12 text-muted-foreground/50" />
                             <h3 className="mt-4 text-lg font-semibold">Keine Transaktionen</h3>
                             <p className="text-muted-foreground">
-                                Importieren Sie Kontoauszuege, um Transaktionen anzuzeigen.
+                                Importieren Sie Kontoauszüge, um Transaktionen anzuzeigen.
                             </p>
                             <Button className="mt-4" asChild>
                                 <a href="/admin/banking">Zum Banking</a>
@@ -217,7 +217,7 @@ export function TransactionsPage() {
                                         <TableHead>Verwendungszweck</TableHead>
                                         <TableHead className="text-right">Betrag</TableHead>
                                         <TableHead>Status</TableHead>
-                                        <TableHead>Verknuepfung</TableHead>
+                                        <TableHead>Verknüpfung</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>

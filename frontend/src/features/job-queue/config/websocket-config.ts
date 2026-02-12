@@ -2,7 +2,7 @@
  * WebSocket Configuration
  *
  * Zentrale Konfiguration für WebSocket-Verbindungen.
- * Unterstuetzt Environment-Variablen für flexible Deployment-Szenarien.
+ * Unterstützt Environment-Variablen für flexible Deployment-Szenarien.
  */
 
 import { logger } from '@/lib/logger';
@@ -31,7 +31,7 @@ export const WS_HOST = window.location.hostname;
  * Erstellt die vollständige WebSocket-URL für einen Pfad
  *
  * @param path - Der WebSocket-Pfad (z.B. '/api/v1/admin/jobs/ws')
- * @returns Vollstaendige WebSocket-URL
+ * @returns Vollständige WebSocket-URL
  */
 export function buildWebSocketUrl(path: string): string {
   return `${WS_PROTOCOL}//${WS_HOST}:${API_PORT}${path}`;
@@ -41,7 +41,7 @@ export function buildWebSocketUrl(path: string): string {
  * Logging-Konfiguration für WebSocket-Debugging
  *
  * Im Development-Modus werden Debug-Meldungen ausgegeben,
- * in Production werden sie unterdrueckt.
+ * in Production werden sie unterdrückt.
  */
 export const WS_DEBUG_ENABLED = import.meta.env.DEV;
 

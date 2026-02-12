@@ -6,8 +6,10 @@ und Handlungsempfehlungen.
 """
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
+
+from app.core.types import JSONDict
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
@@ -39,8 +41,8 @@ class SmartInboxItemResponse(BaseModel):
     ml_priority: float
     status: str
     deadline: Optional[datetime]
-    recommended_actions: List[Dict[str, Any]]
-    context_data: Dict[str, Any]
+    recommended_actions: List[JSONDict]
+    context_data: JSONDict
     document_id: Optional[UUID]
     entity_id: Optional[UUID]
     created_at: datetime
@@ -64,7 +66,7 @@ class SmartInboxActionRequest(BaseModel):
     action: str = Field(
         ..., pattern="^(complete|approve|reject|escalate|review|pay)$"
     )
-    data: Optional[Dict[str, Any]] = None
+    data: Optional[JSONDict] = None
 
     model_config = ConfigDict(from_attributes=True)
 

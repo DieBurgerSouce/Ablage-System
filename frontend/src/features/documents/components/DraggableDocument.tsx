@@ -1,7 +1,7 @@
 /**
- * DraggableDocument - Draggable Wrapper fuer DocumentCard
+ * DraggableDocument - Draggable Wrapper für DocumentCard
  *
- * Phase 2.2: Drag & Drop ueberall
+ * Phase 2.2: Drag & Drop überall
  *
  * Features:
  * - Macht DocumentCard via @dnd-kit draggable
@@ -25,13 +25,13 @@ import type { DragItem, DocumentDragData } from "@/hooks/useDragAndDrop"
 export interface DraggableDocumentProps {
   /** Das Dokument */
   document: Document
-  /** Ist ausgewaehlt */
+  /** Ist ausgewählt */
   isSelected: boolean
   /** Ist fokussiert (Tastatur-Navigation) */
   isFocused?: boolean
-  /** Alle aktuell ausgewaehlten Dokument-IDs (fuer Multi-Drag) */
+  /** Alle aktuell ausgewählten Dokument-IDs (für Multi-Drag) */
   selectedIds?: string[]
-  /** Anzahl der ausgewaehlten Elemente (fuer Badge) */
+  /** Anzahl der ausgewählten Elemente (für Badge) */
   selectedCount?: number
   /** Drag deaktiviert */
   disabled?: boolean
@@ -71,7 +71,7 @@ export const DraggableDocument = forwardRef<HTMLDivElement, DraggableDocumentPro
     },
     ref
   ) {
-    // Drag-Daten fuer dieses Dokument
+    // Drag-Daten für dieses Dokument
     const dragData: DragItem<DocumentDragData> = useMemo(
       () => ({
         id: document.id,
@@ -82,7 +82,7 @@ export const DraggableDocument = forwardRef<HTMLDivElement, DraggableDocumentPro
           documentType: document.documentType,
           folderId: document.folderId,
         },
-        // Bei Multi-Select: Alle ausgewaehlten IDs
+        // Bei Multi-Select: Alle ausgewählten IDs
         selectedIds: isSelected && selectedIds.length > 1 ? selectedIds : undefined,
       }),
       [document, isSelected, selectedIds]
@@ -112,7 +112,7 @@ export const DraggableDocument = forwardRef<HTMLDivElement, DraggableDocumentPro
       [transform, isDragging, disabled]
     )
 
-    // Anzahl fuer Badge (nur wenn Multi-Drag)
+    // Anzahl für Badge (nur wenn Multi-Drag)
     const dragCount = isSelected && selectedCount > 1 ? selectedCount : 0
 
     return (
@@ -166,7 +166,7 @@ export const DraggableDocument = forwardRef<HTMLDivElement, DraggableDocumentPro
 )
 
 // =============================================================================
-// Drag Overlay Component (fuer DragOverlay in DndContext)
+// Drag Overlay Component (für DragOverlay in DndContext)
 // =============================================================================
 
 export interface DragOverlayDocumentProps {
@@ -222,7 +222,7 @@ export function DragOverlayDocument({
         </div>
       </div>
 
-      {/* Stack Effect fuer Multi-Drag */}
+      {/* Stack Effect für Multi-Drag */}
       {selectedCount > 1 && (
         <>
           <div

@@ -1,6 +1,6 @@
 /**
  * Letter Preview Dialog Component
- * Modal fuer Mahnbrief-Vorschau und PDF-Download
+ * Modal für Mahnbrief-Vorschau und PDF-Download
  */
 
 import { useState } from 'react';
@@ -92,7 +92,7 @@ export function LetterPreviewDialog({
                 onCheckedChange={setIsB2b}
               />
               <Label htmlFor="b2b-switch" className="text-sm">
-                {isB2b ? 'Geschaeftskunde (B2B)' : 'Privatkunde (B2C)'}
+                {isB2b ? 'Geschäftskunde (B2B)' : 'Privatkunde (B2C)'}
               </Label>
             </div>
             {template && (
@@ -148,7 +148,7 @@ export function LetterPreviewDialog({
             />
           ) : (
             <div className="flex items-center justify-center h-64 text-muted-foreground">
-              Keine Vorschau verfuegbar
+              Keine Vorschau verfügbar
             </div>
           )}
         </div>
@@ -158,7 +158,7 @@ export function LetterPreviewDialog({
           <div className="text-xs text-muted-foreground pt-2 border-t">
             <div className="flex items-center justify-between">
               <span>
-                Mahngebuehr: {template.fee > 0 ? `${template.fee.toFixed(2).replace('.', ',')} EUR` : 'Keine'}
+                Mahngebühr: {template.fee > 0 ? `${template.fee.toFixed(2).replace('.', ',')} EUR` : 'Keine'}
               </span>
               <span>Zahlungsfrist: {template.paymentDays} Tage</span>
               <span>Vorlage: {template.templateFile}</span>

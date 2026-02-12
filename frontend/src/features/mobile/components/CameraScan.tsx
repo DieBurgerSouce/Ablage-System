@@ -145,7 +145,7 @@ export function CameraScan({
       setError(
         err instanceof Error && err.name === 'NotAllowedError'
           ? 'Kamera-Zugriff verweigert. Bitte erlauben Sie den Zugriff in den Browser-Einstellungen.'
-          : 'Kamera konnte nicht gestartet werden. Bitte pruefen Sie die Geraete-Einstellungen.'
+          : 'Kamera konnte nicht gestartet werden. Bitte prüfen Sie die Geräte-Einstellungen.'
       );
       setCameraState('idle');
     }
@@ -334,11 +334,11 @@ export function CameraScan({
           <div className="text-center">
             <Camera className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">
-              Kamera-Zugriff wird von diesem Browser nicht unterstuetzt.
+              Kamera-Zugriff wird von diesem Browser nicht unterstützt.
             </p>
             <Button variant="outline" className="mt-4" onClick={openFilePicker}>
               <ImageIcon className="w-4 h-4 mr-2" />
-              Bild auswaehlen
+              Bild auswählen
             </Button>
           </div>
           <input
@@ -401,7 +401,7 @@ export function CameraScan({
             </Button>
             <Button variant="outline" onClick={openFilePicker} className="gap-2">
               <ImageIcon className="w-5 h-5" />
-              Aus Galerie waehlen
+              Aus Galerie wählen
             </Button>
             {onCancel && (
               <Button variant="ghost" onClick={onCancel}>

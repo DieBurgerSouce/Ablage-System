@@ -1,7 +1,7 @@
 /**
  * QualityDashboard Component
  *
- * Unternehmensweites Datenqualitaets-Dashboard:
+ * Unternehmensweites Datenqualitäts-Dashboard:
  * - KPI-Karten: Gesamte Dokumente, Durchschnitt, GRUEN-Anteil, ROT-Dokumente
  * - Ampel-Verteilung als farbige Balken
  */
@@ -82,7 +82,7 @@ function AmpelDistribution({ verteilung }: AmpelDistributionProps) {
   const categories = [
     {
       key: 'gruen' as const,
-      label: 'Gruen',
+      label: 'Grün',
       data: verteilung.gruen,
       bgClass: 'bg-green-500',
       textClass: 'text-green-700 dark:text-green-400',
@@ -108,7 +108,7 @@ function AmpelDistribution({ verteilung }: AmpelDistributionProps) {
       <CardHeader>
         <CardTitle>Ampel-Verteilung</CardTitle>
         <CardDescription>
-          Qualitaetsverteilung aller bewerteten Dokumente
+          Qualitätsverteilung aller bewerteten Dokumente
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -191,7 +191,7 @@ export function QualityDashboard() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            {error?.message || 'Qualitaetsuebersicht konnte nicht geladen werden.'}
+            {error?.message || 'Qualitätsübersicht konnte nicht geladen werden.'}
           </p>
         </CardContent>
       </Card>
@@ -214,9 +214,9 @@ export function QualityDashboard() {
           description="Bewertete Dokumente"
         />
         <KpiCard
-          title="Durchschnittliche Qualitaet"
+          title="Durchschnittliche Qualität"
           value={formatScorePercent(overview.average_score)}
-          description="Ueber alle Dokumente"
+          description="Über alle Dokumente"
         />
         <KpiCard
           title="GRUEN-Anteil"

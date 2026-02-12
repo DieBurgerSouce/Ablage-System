@@ -24,11 +24,11 @@ import {
 const QUERY_KEY = "saved-filters"
 
 export interface UseSavedFiltersOptions {
-  /** Feature fuer Filter (documents, invoices, etc.) */
+  /** Feature für Filter (documents, invoices, etc.) */
   feature: string
-  /** Geteilte Filter einschliessen (default: true) */
+  /** Geteilte Filter einschließen (default: true) */
   includeShared?: boolean
-  /** Filter automatisch bei Aenderungen neu laden */
+  /** Filter automatisch bei Änderungen neu laden */
   refetchOnWindowFocus?: boolean
 }
 
@@ -50,7 +50,7 @@ export interface UseSavedFiltersReturn {
   createFilter: (data: Omit<CreateSavedFilterRequest, "feature">) => Promise<SavedFilter>
   /** Filter aktualisieren */
   updateFilter: (id: string, data: UpdateSavedFilterRequest) => Promise<SavedFilter>
-  /** Filter loeschen */
+  /** Filter löschen */
   deleteFilter: (id: string, hardDelete?: boolean) => Promise<void>
   /** Nutzung aufzeichnen */
   recordUsage: (id: string) => Promise<void>
@@ -74,7 +74,7 @@ export function useSavedFilters(options: UseSavedFiltersOptions): UseSavedFilter
 
   const queryKey = [QUERY_KEY, feature, includeShared]
 
-  // Query fuer Filter-Liste
+  // Query für Filter-Liste
   const {
     data,
     isLoading,
@@ -140,14 +140,14 @@ export function useSavedFilters(options: UseSavedFiltersOptions): UseSavedFilter
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY, feature] })
       toast({
-        title: "Filter geloescht",
+        title: "Filter gelöscht",
         description: "Der Filter wurde entfernt.",
       })
     },
     onError: (err: Error) => {
       toast({
-        title: "Fehler beim Loeschen",
-        description: err.message || "Der Filter konnte nicht geloescht werden.",
+        title: "Fehler beim Löschen",
+        description: err.message || "Der Filter konnte nicht gelöscht werden.",
         variant: "destructive",
       })
     },

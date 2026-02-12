@@ -1,7 +1,7 @@
 /**
  * Performance History Chart
  *
- * Zeigt Accuracy-Verlauf ueber Zeit fuer verschiedene Modelltypen.
+ * Zeigt Accuracy-Verlauf über Zeit für verschiedene Modelltypen.
  */
 
 import { useState } from 'react';
@@ -74,7 +74,7 @@ export function PerformanceChart() {
             Performance-Verlauf
           </CardTitle>
           <CardDescription>
-            Accuracy-Entwicklung ueber Zeit
+            Accuracy-Entwicklung über Zeit
           </CardDescription>
         </div>
         <div className="flex items-center gap-2">
@@ -159,7 +159,7 @@ export function PerformanceChart() {
           <div className="h-[300px] flex items-center justify-center text-muted-foreground">
             <div className="text-center">
               <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-20" />
-              <p>Keine Daten fuer den gewaehlten Zeitraum</p>
+              <p>Keine Daten für den gewaehlten Zeitraum</p>
             </div>
           </div>
         )}

@@ -1,12 +1,12 @@
 /**
- * WebSocket Client fuer Echtzeit-Updates.
+ * WebSocket Client für Echtzeit-Updates.
  *
  * Features:
  * - Automatische Reconnection mit exponential backoff
  * - Event Subscriptions
  * - Heartbeat/Ping-Pong
  * - Event History bei Reconnection
- * - React Hooks fuer einfache Integration
+ * - React Hooks für einfache Integration
  */
 
 import { useEffect, useCallback, useRef, useState } from 'react';
@@ -71,7 +71,12 @@ export type RealtimeEventType =
   | 'widget.data_changed'
   | 'widget.refresh_required'
   // Notification Events (Phase C)
-  | 'notification.received';
+  | 'notification.received'
+  // Import Events (Email/Folder Import)
+  | 'import.started'
+  | 'import.progress'
+  | 'import.completed'
+  | 'import.error';
 
 export interface RealtimeEvent {
   event_type: RealtimeEventType;
@@ -396,7 +401,7 @@ export function getWebSocketClient(): RealtimeWebSocketClient {
 // ============================================================================
 
 /**
- * Hook fuer WebSocket-Verbindungsstatus.
+ * Hook für WebSocket-Verbindungsstatus.
  *
  * @example
  * const { state, connect, disconnect } = useWebSocket();
@@ -423,9 +428,9 @@ export function useWebSocket() {
 }
 
 /**
- * Hook fuer Event-Subscriptions.
+ * Hook für Event-Subscriptions.
  *
- * @param eventType - Event-Typ oder '*' fuer alle Events
+ * @param eventType - Event-Typ oder '*' für alle Events
  * @param handler - Event Handler Funktion
  *
  * @example
@@ -456,7 +461,7 @@ export function useRealtimeEvent(
 }
 
 /**
- * Hook fuer Event-Subscriptions mit Query Invalidation.
+ * Hook für Event-Subscriptions mit Query Invalidation.
  *
  * Invalidiert automatisch React Query Caches bei bestimmten Events.
  *
@@ -480,9 +485,9 @@ export function useRealtimeInvalidation(
 }
 
 /**
- * Hook fuer alle Events mit automatischer Cache-Invalidation.
+ * Hook für alle Events mit automatischer Cache-Invalidation.
  *
- * Optimiert fuer Dashboard-Nutzung mit intelligenter Query-Invalidation.
+ * Optimiert für Dashboard-Nutzung mit intelligenter Query-Invalidation.
  *
  * @example
  * useRealtimeDashboard();
@@ -510,6 +515,11 @@ export function useRealtimeDashboard(): void {
       'budget.alert': [['budgets'], ['finance']],
       // Notification Events
       'notification.received': [['notifications']],
+      // Import Events
+      'import.started': [['email-import'], ['email-history']],
+      'import.progress': [['email-import']],
+      'import.completed': [['email-import'], ['email-history'], ['email-stats'], ['documents']],
+      'import.error': [['email-import'], ['email-history'], ['email-stats']],
       // Comment Events
       'comment.created': [['comments'], ['documents']],
       'comment.updated': [['comments']],
@@ -529,7 +539,7 @@ export function useRealtimeDashboard(): void {
 }
 
 /**
- * Hook fuer Event-Stream (alle Events sammeln).
+ * Hook für Event-Stream (alle Events sammeln).
  *
  * @param maxEvents - Maximale Anzahl Events im Buffer
  * @returns Array von Events (neueste zuerst)
@@ -551,7 +561,7 @@ export function useEventStream(maxEvents = 50): RealtimeEvent[] {
 }
 
 /**
- * Hook fuer OCR Progress Tracking.
+ * Hook für OCR Progress Tracking.
  *
  * @param documentId - Document ID
  * @returns Progress (0-100) und Stage
@@ -583,13 +593,13 @@ export function useOCRProgress(
 }
 
 /**
- * Hook fuer Kommentar-Echtzeit-Updates auf einer Dokument-Seite.
+ * Hook für Kommentar-Echtzeit-Updates auf einer Dokument-Seite.
  *
- * Abonniert alle Comment-Events fuer ein bestimmtes Dokument und
+ * Abonniert alle Comment-Events für ein bestimmtes Dokument und
  * invalidiert automatisch die relevanten Query-Caches.
  *
- * @param documentId - Document ID fuer das Kommentare ueberwacht werden
- * @param onNewComment - Optional: Callback bei neuen Kommentaren (z.B. fuer Toast)
+ * @param documentId - Document ID für das Kommentare überwacht werden
+ * @param onNewComment - Optional: Callback bei neuen Kommentaren (z.B. für Toast)
  * @param onReply - Optional: Callback bei Antworten auf Threads
  *
  * @example
@@ -671,16 +681,16 @@ export function useCommentRealtime(
 }
 
 /**
- * Hook fuer User-Mentions Benachrichtigungen.
+ * Hook für User-Mentions Benachrichtigungen.
  *
- * Wird ausgeloest wenn der aktuelle User in einem Kommentar erwaehnt wird.
+ * Wird ausgelöst wenn der aktuelle User in einem Kommentar erwähnt wird.
  *
  * @param userId - User ID des aktuellen Benutzers
- * @param onMention - Callback bei Erwaehnung
+ * @param onMention - Callback bei Erwähnung
  *
  * @example
  * useMentionNotifications(currentUser.id, (event) => {
- *   toast.info(`${event.payload.mentioned_by_name} hat Sie erwaehnt`);
+ *   toast.info(`${event.payload.mentioned_by_name} hat Sie erwähnt`);
  * });
  */
 export function useMentionNotifications(
@@ -705,7 +715,7 @@ export function useMentionNotifications(
 // ============================================================================
 
 /**
- * Widget-Typen fuer Echtzeit-Subscriptions.
+ * Widget-Typen für Echtzeit-Subscriptions.
  */
 export type WidgetType =
   | 'cashflow'
@@ -743,11 +753,11 @@ interface UseWidgetSubscriptionOptions {
 }
 
 /**
- * Hook fuer Widget-spezifische Echtzeit-Updates mit Debouncing.
+ * Hook für Widget-spezifische Echtzeit-Updates mit Debouncing.
  *
  * Bietet:
  * - Automatische Query-Invalidation bei Updates
- * - Debouncing fuer haeufige Updates (konfigurierbar)
+ * - Debouncing für häufige Updates (konfigurierbar)
  * - Widget-spezifische Event-Filterung
  *
  * @param widgetType - Widget-Typ
@@ -873,9 +883,9 @@ export function useWidgetSubscription(
 }
 
 /**
- * Hook fuer mehrere Widget-Subscriptions gleichzeitig.
+ * Hook für mehrere Widget-Subscriptions gleichzeitig.
  *
- * Optimiert fuer Dashboard-Nutzung mit intelligenter Query-Invalidation.
+ * Optimiert für Dashboard-Nutzung mit intelligenter Query-Invalidation.
  *
  * @param widgetConfigs - Map von Widget-Typ zu Query-Keys
  *

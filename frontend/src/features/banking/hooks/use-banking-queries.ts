@@ -828,7 +828,7 @@ export function useRejectMatch() {
 }
 
 /**
- * Nicht-verknuepfte Dokumente abrufen
+ * Nicht-verknüpfte Dokumente abrufen
  */
 export function useUnmatchedDocuments() {
     return useQuery({
@@ -852,7 +852,7 @@ export function useUnmatchedDocuments() {
 // ==================== Enhanced Reconciliation Hooks (New API) ====================
 
 /**
- * Query Keys fuer erweiterte Reconciliation API
+ * Query Keys für erweiterte Reconciliation API
  */
 export const enhancedReconciliationQueryKeys = {
     stats: (bankAccountId?: string) =>
@@ -895,7 +895,7 @@ export function useUnmatchedTransactionsEnhanced(params?: {
 }
 
 /**
- * Erweiterte Match-Vorschlaege fuer eine Transaktion
+ * Erweiterte Match-Vorschläge für eine Transaktion
  */
 export function useMatchSuggestionsEnhanced(
     transactionId: string,
@@ -911,7 +911,7 @@ export function useMatchSuggestionsEnhanced(
 }
 
 /**
- * Bulk Auto-Match durchfuehren
+ * Bulk Auto-Match durchführen
  */
 export function useAutoMatchTransactions() {
     const queryClient = useQueryClient();

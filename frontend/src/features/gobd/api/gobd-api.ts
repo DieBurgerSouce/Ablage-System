@@ -1,7 +1,7 @@
 /**
  * GoBD API Client
  *
- * API-Funktionen fuer GoBD-konforme Archivierung, Verfahrensdokumentation
+ * API-Funktionen für GoBD-konforme Archivierung, Verfahrensdokumentation
  * und Steuerberater-Zugang.
  */
 
@@ -132,7 +132,7 @@ export async function updateRetentionSetting(
 }
 
 /**
- * Aufbewahrungseinstellung auf Standard zuruecksetzen
+ * Aufbewahrungseinstellung auf Standard zurücksetzen
  */
 export async function resetRetentionSetting(category: string): Promise<RetentionSetting> {
   const response = await apiClient.post<RetentionSetting>(
@@ -254,7 +254,7 @@ export async function revokeTaxAdvisorInvite(inviteId: string): Promise<void> {
 }
 
 /**
- * Steuerberater-Zugang verlaengern
+ * Steuerberater-Zugang verlängern
  */
 export async function extendTaxAdvisorAccess(
   inviteId: string,

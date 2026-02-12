@@ -11,9 +11,10 @@ Feinpoliert und durchdacht - Enterprise AI Ethics.
 """
 
 from datetime import datetime, timezone
-from typing import Dict, Any, List
+from typing import Dict, List
 from uuid import UUID
 
+from app.core.types import JSONDict
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,7 +41,7 @@ class GuardrailCheckRequest(BaseModel):
     """Request-Schema fuer Guardrail-Check."""
 
     action_type: str = Field(..., min_length=3, max_length=100, description="Aktionstyp")
-    parameters: Dict[str, Any] = Field(..., description="Aktionsparameter")
+    parameters: JSONDict = Field(..., description="Aktionsparameter")
 
 
 # =============================================================================
@@ -50,7 +51,7 @@ class GuardrailCheckRequest(BaseModel):
 
 @router.get(
     "/dashboard",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="AI Ethics Dashboard",
     description="Uebersicht ueber AI Ethics Metriken"
 )
@@ -58,7 +59,7 @@ async def get_dashboard(
     current_user: User = Depends(get_current_active_user),
     company_id: UUID = Depends(get_current_company_id),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Holt AI Ethics Dashboard.
 
@@ -108,7 +109,7 @@ async def get_dashboard(
 
 @router.get(
     "/bias-report",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Bias-Report",
     description="Vollstaendiger Bias-Report fuer Unternehmen"
 )
@@ -116,7 +117,7 @@ async def get_bias_report(
     current_user: User = Depends(get_current_active_user),
     company_id: UUID = Depends(get_current_company_id),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Holt Bias-Report.
 
@@ -159,7 +160,7 @@ async def get_bias_report(
 
 @router.get(
     "/explain/{decision_type}/{decision_id}",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Erklaerung",
     description="Erklaert KI-Entscheidung"
 )
@@ -168,7 +169,7 @@ async def explain_decision(
     decision_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Erklaert KI-Entscheidung.
 
@@ -230,7 +231,7 @@ async def explain_decision(
 
 @router.get(
     "/fairness-metrics",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Fairness-Metriken",
     description="Allgemeine Fairness-Metriken fuer AI-Systeme"
 )
@@ -238,7 +239,7 @@ async def get_fairness_metrics(
     current_user: User = Depends(get_current_active_user),
     company_id: UUID = Depends(get_current_company_id),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Holt Fairness-Metriken.
 
@@ -327,7 +328,7 @@ async def get_fairness_metrics(
 
 @router.post(
     "/guardrail-check",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Guardrail-Check",
     description="Prueft ob Aktion ethisch vertretbar ist"
 )
@@ -336,7 +337,7 @@ async def guardrail_check(
     current_user: User = Depends(get_current_active_user),
     company_id: UUID = Depends(get_current_company_id),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Prueft Aktion mit Ethical Guardrails.
 

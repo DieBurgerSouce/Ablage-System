@@ -6,7 +6,7 @@
  * Features:
  * - Versionsliste mit Details (Backend, Konfidenz, Wortanzahl)
  * - Versions-Vergleich mit Text-Diff (unified format)
- * - Rollback zu frueheren Versionen
+ * - Rollback zu früheren Versionen
  * - Accessibility-konform (WCAG 2.1 AA)
  */
 
@@ -178,7 +178,7 @@ const VersionItem = memo(function VersionItem({
             {version.wordCount !== undefined && (
               <span className="flex items-center gap-1">
                 <FileText className="h-3 w-3" aria-hidden="true" />
-                {formatWordCount(version.wordCount)} Woerter
+                {formatWordCount(version.wordCount)} Wörter
               </span>
             )}
 
@@ -276,7 +276,7 @@ const DiffView = memo(function DiffView({ compareResult }: DiffViewProps) {
           {/* Summary stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center p-2 bg-muted/30 rounded">
-              <p className="text-xs text-muted-foreground">Woerter</p>
+              <p className="text-xs text-muted-foreground">Wörter</p>
               <p className={cn(
                 'font-medium',
                 wordCountDelta && wordCountDelta > 0 && 'text-green-600',

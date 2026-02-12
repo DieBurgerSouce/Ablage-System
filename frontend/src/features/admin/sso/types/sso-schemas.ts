@@ -184,7 +184,7 @@ const boundedResponseRecordSchema = z.record(
   z.string().max(500)
 ).refine(
   (record) => Object.keys(record).length <= 100,
-  { message: 'Maximal 100 Eintraege erlaubt' }
+  { message: 'Maximal 100 Einträge erlaubt' }
 );
 
 /** Full SSO Provider schema (from API) */
@@ -231,7 +231,7 @@ const boundedRecordSchema = z.record(
   z.string().max(500)
 ).refine(
   (record) => Object.keys(record).length <= 100,
-  { message: 'Maximal 100 Eintraege erlaubt' }
+  { message: 'Maximal 100 Einträge erlaubt' }
 );
 
 /** SSO Provider Update schema */

@@ -1,7 +1,7 @@
 /**
  * TeamActivityFeed Component
  *
- * Zeigt die Aktivitaeten eines Teams als Timeline an.
+ * Zeigt die Aktivitäten eines Teams als Timeline an.
  */
 
 import { useRef, useCallback } from 'react';
@@ -42,7 +42,7 @@ const activityConfig: Record<
     getMessage: (a) =>
       `${a.actor?.full_name || a.actor?.username || 'Jemand'} hat ${
         a.target_user?.full_name || a.target_user?.username || 'ein Mitglied'
-      } zum Team hinzugefuegt`,
+      } zum Team hinzugefügt`,
   },
   member_removed: {
     icon: UserMinus,
@@ -57,7 +57,7 @@ const activityConfig: Record<
     color: 'text-blue-600 bg-blue-100 dark:bg-blue-900',
     getMessage: (a) => {
       const newRole = (a.details?.new_role as string) || 'unbekannt';
-      return `Rolle von ${a.target_user?.full_name || a.target_user?.username || 'Mitglied'} wurde zu "${newRole}" geaendert`;
+      return `Rolle von ${a.target_user?.full_name || a.target_user?.username || 'Mitglied'} wurde zu "${newRole}" geändert`;
     },
   },
   team_created: {
@@ -155,7 +155,7 @@ export function TeamActivityFeed({ teamId }: TeamActivityFeedProps) {
     return (
       <div className="text-center py-8 text-muted-foreground">
         <Activity className="h-12 w-12 mx-auto mb-2 opacity-50" />
-        <p>Keine Aktivitaeten</p>
+        <p>Keine Aktivitäten</p>
       </div>
     );
   }

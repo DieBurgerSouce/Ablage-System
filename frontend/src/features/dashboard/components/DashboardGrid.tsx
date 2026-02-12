@@ -67,7 +67,7 @@ export function DashboardGrid() {
 
     const handleConfigureWidget = useCallback((id: string) => {
         toast.info('Widget konfigurieren', {
-            description: `Konfiguration fuer Widget ${id} wird geoeffnet...`,
+            description: `Konfiguration für Widget ${id} wird geöffnet...`,
         })
         // TODO: Widget-spezifische Konfiguration implementieren
     }, [])
@@ -79,7 +79,7 @@ export function DashboardGrid() {
         // TODO: Widget-Maximierung implementieren
     }, [])
 
-    // Aktives Widget fuer Drag Overlay
+    // Aktives Widget für Drag Overlay
     const activeWidget = activeId ? widgets.find((w) => w.id === activeId) : null
 
     return (

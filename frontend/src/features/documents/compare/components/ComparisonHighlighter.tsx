@@ -83,7 +83,7 @@ export function ComparisonHighlighter({
   if (!text1 && !text2) {
     return (
       <div className="text-center py-8 text-muted-foreground">
-        <p>Kein Textinhalt zum Vergleichen verfuegbar</p>
+        <p>Kein Textinhalt zum Vergleichen verfügbar</p>
       </div>
     );
   }
@@ -174,7 +174,7 @@ export function ComparisonHighlighter({
       <div className="flex items-center gap-4 p-3 bg-muted/50 border-t text-xs">
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 bg-green-500 rounded-sm" />
-          Hinzugefuegt
+          Hinzugefügt
         </span>
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 bg-red-500 rounded-sm" />
@@ -182,7 +182,7 @@ export function ComparisonHighlighter({
         </span>
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 bg-yellow-500 rounded-sm" />
-          Geaendert
+          Geändert
         </span>
       </div>
     </div>

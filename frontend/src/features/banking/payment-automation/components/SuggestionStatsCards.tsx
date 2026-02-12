@@ -1,7 +1,7 @@
 /**
  * Suggestion Statistics Cards
  *
- * Uebersichtskarten fuer Zahlungsvorschlaege-Statistiken.
+ * Übersichtskarten für Zahlungsvorschläge-Statistiken.
  */
 
 import {
@@ -49,7 +49,7 @@ export function SuggestionStatsCards() {
           <div className="flex items-center gap-2 mt-2">
             {(stats?.overdue_invoices || 0) > 0 && (
               <Badge variant="destructive" className="text-xs">
-                {stats?.overdue_invoices} ueberfaellig
+                {stats?.overdue_invoices} überfällig
               </Badge>
             )}
           </div>
@@ -79,7 +79,7 @@ export function SuggestionStatsCards() {
             )}
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            {totalPotentialSavings.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })} moeglich
+            {totalPotentialSavings.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })} möglich
           </p>
         </CardContent>
       </Card>

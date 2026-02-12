@@ -1,8 +1,8 @@
 /**
  * ESG Query Hooks
  *
- * TanStack Query Hooks fuer das Nachhaltigkeitsberichterstattungs-Modul.
- * Alle Mutations beinhalten Toast-Messages fuer User-Feedback.
+ * TanStack Query Hooks für das Nachhaltigkeitsberichterstattungs-Modul.
+ * Alle Mutations beinhalten Toast-Messages für User-Feedback.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -26,14 +26,14 @@ import {
 // ==================== Stale Time Konfiguration ====================
 
 const STALE_TIMES = {
-  dashboard: 2 * 60 * 1000,       // 2 Minuten - Dashboard aendert sich moderat
+  dashboard: 2 * 60 * 1000,       // 2 Minuten - Dashboard ändert sich moderat
   emissions: 30 * 1000,           // 30 Sekunden - Emissionen können häufig kommen
-  emissionFactors: 60 * 60 * 1000, // 1 Stunde - Faktoren aendern sich selten
+  emissionFactors: 60 * 60 * 1000, // 1 Stunde - Faktoren ändern sich selten
   suppliers: 5 * 60 * 1000,       // 5 Minuten
-  certifications: 5 * 60 * 1000,  // 5 Minuten - Zertifizierungen aendern sich selten
+  certifications: 5 * 60 * 1000,  // 5 Minuten - Zertifizierungen ändern sich selten
   reports: 5 * 60 * 1000,         // 5 Minuten
   goals: 2 * 60 * 1000,           // 2 Minuten
-  sdg: 60 * 60 * 1000,            // 1 Stunde - SDG-Mapping aendert sich selten
+  sdg: 60 * 60 * 1000,            // 1 Stunde - SDG-Mapping ändert sich selten
 } as const;
 
 // ==================== Query Keys ====================
@@ -360,7 +360,7 @@ export function useAddCertification(options?: {
       queryClient.invalidateQueries({ queryKey: esgQueryKeys.dashboard() });
       toast({
         title: ESG_TOAST_MESSAGES.certification.success,
-        description: 'Zertifizierung wurde erfolgreich hinzugefuegt',
+        description: 'Zertifizierung wurde erfolgreich hinzugefügt',
         variant: 'success',
       });
       options?.onSuccess?.();
@@ -528,8 +528,8 @@ export function useSDGMapping() {
 // ==================== Toast Messages ====================
 
 /**
- * Standard-Toast-Nachrichten fuer ESG-Operationen.
- * Verwendung in Komponenten fuer konsistentes deutsches Feedback.
+ * Standard-Toast-Nachrichten für ESG-Operationen.
+ * Verwendung in Komponenten für konsistentes deutsches Feedback.
  */
 export const ESG_TOAST_MESSAGES = {
   emission: {
@@ -541,7 +541,7 @@ export const ESG_TOAST_MESSAGES = {
     error: 'Fehler beim Erstellen der Bewertung',
   },
   certification: {
-    success: 'Zertifizierung hinzugefuegt',
+    success: 'Zertifizierung hinzugefügt',
     error: 'Fehler beim Hinzufügen der Zertifizierung',
   },
   report: {
@@ -561,7 +561,7 @@ export const ESG_TOAST_MESSAGES = {
 // ==================== Helper Functions ====================
 
 /**
- * Gibt deutsches Label fuer Risiko-Level zurueck
+ * Gibt deutsches Label für Risiko-Level zurück
  */
 function getRiskLevelLabel(riskLevel: string): string {
   const labels: Record<string, string> = {
@@ -574,7 +574,7 @@ function getRiskLevelLabel(riskLevel: string): string {
 }
 
 /**
- * Gibt deutsches Label fuer ESG-Kategorie zurueck
+ * Gibt deutsches Label für ESG-Kategorie zurück
  */
 export function getCategoryLabel(category: ESGCategory): string {
   const labels: Record<ESGCategory, string> = {
@@ -586,7 +586,7 @@ export function getCategoryLabel(category: ESGCategory): string {
 }
 
 /**
- * Gibt deutsches Label fuer Scope zurueck
+ * Gibt deutsches Label für Scope zurück
  */
 export function getScopeLabel(scope: string): string {
   const labels: Record<string, string> = {
@@ -598,7 +598,7 @@ export function getScopeLabel(scope: string): string {
 }
 
 /**
- * Gibt deutsches Label fuer Zertifizierungsstatus zurueck
+ * Gibt deutsches Label für Zertifizierungsstatus zurück
  */
 export function getCertificationStatusLabel(status: CertificationStatus): string {
   const labels: Record<CertificationStatus, string> = {
@@ -611,14 +611,14 @@ export function getCertificationStatusLabel(status: CertificationStatus): string
 }
 
 /**
- * Gibt deutsches Label fuer Berichtsstatus zurueck
+ * Gibt deutsches Label für Berichtsstatus zurück
  */
 export function getReportStatusLabel(status: ReportStatus): string {
   const labels: Record<ReportStatus, string> = {
     draft: 'Entwurf',
-    in_review: 'In Pruefung',
+    in_review: 'In Prüfung',
     approved: 'Genehmigt',
-    published: 'Veroeffentlicht',
+    published: 'Veröffentlicht',
     archived: 'Archiviert',
   };
   return labels[status];

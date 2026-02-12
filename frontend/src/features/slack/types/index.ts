@@ -1,7 +1,7 @@
 /**
  * Slack Integration Types.
  *
- * TypeScript-Typen fuer die Slack-Integration.
+ * TypeScript-Typen für die Slack-Integration.
  */
 
 // =============================================================================

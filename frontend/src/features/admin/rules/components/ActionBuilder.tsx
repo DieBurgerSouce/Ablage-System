@@ -1,7 +1,7 @@
 /**
  * ActionBuilder Component
  *
- * Visueller Builder fuer Regel-Aktionen.
+ * Visueller Builder für Regel-Aktionen.
  */
 
 import { Button } from '@/components/ui/button'
@@ -63,12 +63,12 @@ const ACTION_OPTIONS: {
   },
   {
     value: 'set_priority',
-    label: 'Prioritaet setzen',
+    label: 'Priorität setzen',
     group: 'Status',
     params: [
       {
         key: 'priority',
-        label: 'Prioritaet',
+        label: 'Priorität',
         type: 'select',
         options: ['low', 'normal', 'high', 'urgent'],
       },
@@ -99,7 +99,7 @@ const ACTION_OPTIONS: {
     label: 'E-Mail senden',
     group: 'Benachrichtigung',
     params: [
-      { key: 'to', label: 'Empfaenger', type: 'text' },
+      { key: 'to', label: 'Empfänger', type: 'text' },
       { key: 'subject', label: 'Betreff', type: 'text' },
     ],
   },
@@ -143,7 +143,7 @@ const ACTION_OPTIONS: {
   },
   {
     value: 'add_tag',
-    label: 'Tag hinzufuegen',
+    label: 'Tag hinzufügen',
     group: 'Daten',
     params: [{ key: 'tag', label: 'Tag', type: 'text' }],
   },
@@ -155,14 +155,14 @@ const ACTION_OPTIONS: {
   },
   {
     value: 'add_comment',
-    label: 'Kommentar hinzufuegen',
+    label: 'Kommentar hinzufügen',
     group: 'Daten',
     params: [{ key: 'comment', label: 'Kommentar', type: 'text' }],
   },
   // Verarbeitung
   {
     value: 'trigger_ocr',
-    label: 'OCR ausloesen',
+    label: 'OCR auslösen',
     group: 'Verarbeitung',
     params: [
       {
@@ -173,14 +173,14 @@ const ACTION_OPTIONS: {
       },
     ],
   },
-  { value: 'flag_for_review', label: 'Zur Pruefung markieren', group: 'Verarbeitung' },
-  { value: 'manual_review_required', label: 'Manuelle Pruefung', group: 'Verarbeitung' },
+  { value: 'flag_for_review', label: 'Zur Prüfung markieren', group: 'Verarbeitung' },
+  { value: 'manual_review_required', label: 'Manuelle Prüfung', group: 'Verarbeitung' },
   { value: 'block_processing', label: 'Verarbeitung blockieren', group: 'Verarbeitung' },
   // Archivierung
   { value: 'flag_for_archive', label: 'Zur Archivierung markieren', group: 'Archivierung' },
   {
     value: 'flag_for_period_close',
-    label: 'Fuer Periodenabschluss',
+    label: 'Für Periodenabschluss',
     group: 'Archivierung',
   },
 ]
@@ -213,7 +213,7 @@ function ActionEditor({ action, onChange, onRemove }: ActionEditorProps) {
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Aktion waehlen" />
+                  <SelectValue placeholder="Aktion wählen" />
                 </SelectTrigger>
                 <SelectContent>
                   {ACTION_OPTIONS.map((opt) => (
@@ -247,7 +247,7 @@ function ActionEditor({ action, onChange, onRemove }: ActionEditorProps) {
                         }
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Waehlen..." />
+                          <SelectValue placeholder="Wählen..." />
                         </SelectTrigger>
                         <SelectContent>
                           {param.options?.map((opt) => (
@@ -295,7 +295,7 @@ export function ActionBuilder({
   actions,
   onChange,
   title = 'Aktionen',
-  description = 'Diese Aktionen werden ausgefuehrt, wenn die Bedingungen erfuellt sind.',
+  description = 'Diese Aktionen werden ausgeführt, wenn die Bedingungen erfüllt sind.',
 }: ActionBuilderProps) {
   const addAction = () => {
     const newAction: RuleAction = {
@@ -336,7 +336,7 @@ export function ActionBuilder({
 
       <Button variant="outline" onClick={addAction}>
         <Plus className="h-4 w-4 mr-2" />
-        Aktion hinzufuegen
+        Aktion hinzufügen
       </Button>
     </div>
   )

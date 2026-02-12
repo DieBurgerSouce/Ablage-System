@@ -2,7 +2,7 @@
  * RuleTestingPanel Component
  *
  * Interaktives Panel zum Testen von Import-Regeln mit Beispiel-Daten.
- * Ermoeglicht Simulation von Email- und Folder-Importen.
+ * Ermöglicht Simulation von Email- und Folder-Importen.
  */
 
 import { useState } from 'react';
@@ -101,18 +101,18 @@ interface TestResult {
 // ==================== Schema ====================
 
 const emailTestSchema = z.object({
-  senderEmail: z.string().email('Gueltige E-Mail-Adresse erforderlich'),
+  senderEmail: z.string().email('Gültige E-Mail-Adresse erforderlich'),
   senderName: z.string().optional(),
   subject: z.string().min(1, 'Betreff erforderlich'),
   filename: z.string().min(1, 'Dateiname erforderlich'),
-  fileSize: z.coerce.number().positive('Dateigroesse muss positiv sein'),
+  fileSize: z.coerce.number().positive('Dateigröße muss positiv sein'),
   hasAttachment: z.boolean(),
 });
 
 const folderTestSchema = z.object({
   filename: z.string().min(1, 'Dateiname erforderlich'),
   folderPath: z.string().min(1, 'Ordnerpfad erforderlich'),
-  fileSize: z.coerce.number().positive('Dateigroesse muss positiv sein'),
+  fileSize: z.coerce.number().positive('Dateigröße muss positiv sein'),
   fileExtension: z.string().min(1, 'Dateierweiterung erforderlich'),
 });
 
@@ -132,7 +132,7 @@ function TestResultDisplay({ results, testType }: TestResultDisplayProps) {
       <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
         <Sparkles className="h-12 w-12 mb-4" />
         <p className="text-center">
-          Fuehren Sie einen Test aus, um zu sehen, welche Regeln angewendet werden.
+          Führen Sie einen Test aus, um zu sehen, welche Regeln angewendet werden.
         </p>
       </div>
     );
@@ -205,7 +205,7 @@ function TestResultDisplay({ results, testType }: TestResultDisplayProps) {
 
                   {/* Actions */}
                   <div>
-                    <Label className="text-xs text-muted-foreground">Ausgefuehrte Aktionen</Label>
+                    <Label className="text-xs text-muted-foreground">Ausgeführte Aktionen</Label>
                     <div className="mt-1 flex flex-wrap gap-2">
                       {result.appliedActions.map((action, idx) => (
                         <Badge key={idx} variant="secondary" className="gap-1">
@@ -307,7 +307,7 @@ function EmailTestForm({ onTest, isPending, onReset }: EmailTestFormProps) {
       data: {
         senderEmail: 'newsletter@marketing.de',
         senderName: 'Marketing Team',
-        subject: 'Ihr woechentlicher Newsletter',
+        subject: 'Ihr wöchentlicher Newsletter',
         filename: 'newsletter.html',
         fileSize: 102400,
         hasAttachment: false,
@@ -319,7 +319,7 @@ function EmailTestForm({ onTest, isPending, onReset }: EmailTestFormProps) {
         senderEmail: 'bestellung@kunde.de',
         senderName: 'Max Mustermann',
         subject: 'Bestellung #12345',
-        filename: 'Bestellbestaetigung.pdf',
+        filename: 'Bestellbestätigung.pdf',
         fileSize: 256000,
         hasAttachment: true,
       },
@@ -417,7 +417,7 @@ function EmailTestForm({ onTest, isPending, onReset }: EmailTestFormProps) {
             name="fileSize"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Dateigroesse (Bytes)</FormLabel>
+                <FormLabel>Dateigröße (Bytes)</FormLabel>
                 <FormControl>
                   <Input type="number" {...field} />
                 </FormControl>
@@ -582,7 +582,7 @@ function FolderTestForm({ onTest, isPending, onReset }: FolderTestFormProps) {
           name="fileSize"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Dateigroesse (Bytes)</FormLabel>
+              <FormLabel>Dateigröße (Bytes)</FormLabel>
               <FormControl>
                 <Input type="number" {...field} />
               </FormControl>
@@ -807,8 +807,8 @@ export function RuleTestingPanel({ ruleId, className }: RuleTestingPanelProps) {
                 </AlertTitle>
                 <AlertDescription>
                   {ruleId
-                    ? 'Es wird nur die ausgewaehlte Regel getestet.'
-                    : 'Alle aktiven Regeln werden in der Prioritaetsreihenfolge getestet.'}
+                    ? 'Es wird nur die ausgewählte Regel getestet.'
+                    : 'Alle aktiven Regeln werden in der Prioritätsreihenfolge getestet.'}
                 </AlertDescription>
               </Alert>
             )}

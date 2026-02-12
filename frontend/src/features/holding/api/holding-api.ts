@@ -1,7 +1,7 @@
 /**
  * Holding Dashboard API Client
  *
- * API-Funktionen fuer Multi-Company Holding-Sicht.
+ * API-Funktionen für Multi-Company Holding-Sicht.
  */
 
 import { apiClient } from '@/lib/api/client';
@@ -98,7 +98,7 @@ export type CashFlowPeriod = 'daily' | 'weekly' | 'monthly';
 // ==================== API Functions ====================
 
 /**
- * Hole konsolidierte Holding-Uebersicht
+ * Hole konsolidierte Holding-Übersicht
  */
 export async function getHoldingOverview(
   companyIds?: string[]
@@ -156,7 +156,7 @@ export async function getIntercompanyMetrics(
 }
 
 /**
- * Hole Cashflow-Uebersicht
+ * Hole Cashflow-Übersicht
  */
 export async function getCashFlowOverview(
   period: CashFlowPeriod = 'monthly',

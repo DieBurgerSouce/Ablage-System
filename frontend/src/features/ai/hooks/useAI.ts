@@ -1,7 +1,7 @@
 /**
  * AI Autonomy React Query Hooks
  *
- * React Query Hooks fuer AI Autonomy Features.
+ * React Query Hooks für AI Autonomy Features.
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -141,7 +141,7 @@ export function useCategorizeDocument() {
     mutationFn: ({ documentId, autoApply = true }: { documentId: string; autoApply?: boolean }) =>
       categorizeDocument(documentId, autoApply),
     onSuccess: (_data, variables) => {
-      // Invalidiere Kategorie-Vorschlaege
+      // Invalidiere Kategorie-Vorschläge
       queryClient.invalidateQueries({
         queryKey: aiQueryKeys.categorySuggestions(variables.documentId),
       });

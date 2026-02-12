@@ -1,7 +1,7 @@
 /**
  * Lexware Lieferanten-Import Page
  *
- * Route fuer /admin/lexware/suppliers - Lieferanten importieren
+ * Route für /admin/lexware/suppliers - Lieferanten importieren
  */
 
 import { createFileRoute } from '@tanstack/react-router'

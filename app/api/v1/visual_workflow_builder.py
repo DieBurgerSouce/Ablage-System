@@ -14,8 +14,10 @@ Endpoints:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 from uuid import UUID
+
+from app.core.types import JSONDict, JSONValue
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -50,7 +52,7 @@ class BlockDefinitionResponse(BaseModel):
     description: str
     category: str
     icon: str
-    config_schema: Dict[str, Any]
+    config_schema: JSONDict
     inputs: List[str]
     outputs: List[str]
 
@@ -70,8 +72,8 @@ class TemplateResponse(BaseModel):
     name: str
     description: str
     category: str
-    blocks: List[Dict[str, Any]]
-    edges: List[Dict[str, Any]]
+    blocks: List[JSONDict]
+    edges: List[JSONDict]
 
 
 class VisualBlockCreate(BaseModel):
@@ -80,12 +82,12 @@ class VisualBlockCreate(BaseModel):
     id: str = Field(..., min_length=1, max_length=100)
     type: str = Field(..., min_length=1, max_length=100)
     label: Optional[str] = Field(None, max_length=255)
-    config: Dict[str, Any] = Field(default_factory=dict)
+    config: JSONDict = Field(default_factory=dict)
     position_x: float = 0.0
     position_y: float = 0.0
 
     @validator("config")
-    def validate_config(cls, v: Dict[str, Any]) -> Dict[str, Any]:
+    def validate_config(cls, v: JSONDict) -> JSONDict:
         """SECURITY: Validiere Block-Config gegen DoS und Injection (CWE-20)."""
         if not v:
             return v
@@ -102,7 +104,7 @@ class VisualBlockCreate(BaseModel):
             raise ValueError("config darf maximal 100 Keys haben")
 
         # Max Tiefe: 5 Ebenen (Workflows koennen komplex sein)
-        def check_depth(obj: Any, depth: int = 0) -> int:
+        def check_depth(obj: JSONValue, depth: int = 0) -> int:
             if depth > 5:
                 raise ValueError("config darf maximal 5 Ebenen tief sein")
             if isinstance(obj, dict):
@@ -114,7 +116,7 @@ class VisualBlockCreate(BaseModel):
         check_depth(v)
 
         # Nur erlaubte Datentypen
-        def check_types(obj: Any) -> None:
+        def check_types(obj: JSONValue) -> None:
             if obj is None:
                 return
             if isinstance(obj, (str, int, bool, float)):
@@ -157,7 +159,7 @@ class VisualWorkflowCreate(BaseModel):
     description: Optional[str] = None
     blocks: List[VisualBlockCreate]
     edges: List[VisualEdgeCreate]
-    variables: Optional[Dict[str, Any]] = None
+    variables: Optional[JSONDict] = None
 
     @model_validator(mode="after")
     def validate_blocks_and_edges(self) -> "VisualWorkflowCreate":
@@ -192,7 +194,7 @@ class SimulationRequest(BaseModel):
 
     blocks: List[VisualBlockCreate]
     edges: List[VisualEdgeCreate]
-    test_data: Dict[str, Any] = Field(default_factory=dict)
+    test_data: JSONDict = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def validate_test_data(self) -> "SimulationRequest":
@@ -207,7 +209,7 @@ class SimulationResponse(BaseModel):
 
     success: bool
     execution_path: List[str]
-    simulated_outputs: Dict[str, Any]
+    simulated_outputs: JSONDict
     warnings: List[str]
     errors: List[str]
     duration_estimate_seconds: int

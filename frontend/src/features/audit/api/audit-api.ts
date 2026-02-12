@@ -1,7 +1,7 @@
 /**
  * Audit Trail API Client
  *
- * API-Funktionen fuer das Audit-Protokoll.
+ * API-Funktionen für das Audit-Protokoll.
  */
 
 import { useQuery } from "@tanstack/react-query";

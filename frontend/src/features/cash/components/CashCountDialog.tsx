@@ -118,7 +118,7 @@ export function CashCountDialog({
     }
   }, [calculatedTotal, showDetailedCount, form]);
 
-  // Formular zurücksetzen wenn Dialog oeffnet
+  // Formular zurücksetzen wenn Dialog öffnet
   React.useEffect(() => {
     if (open) {
       form.reset({

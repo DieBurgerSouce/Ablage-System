@@ -35,7 +35,7 @@ import type { BankAccount } from '@/lib/api/services/banking';
 const ACCOUNT_TYPE_LABELS: Record<string, string> = {
     checking: 'Girokonto',
     savings: 'Sparkonto',
-    business: 'Geschaeftskonto',
+    business: 'Geschäftskonto',
     credit: 'Kreditkonto',
 };
 

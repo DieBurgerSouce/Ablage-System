@@ -3,7 +3,7 @@
  */
 
 /**
- * Formatiert einen Betrag als Waehrung (EUR)
+ * Formatiert einen Betrag als Währung (EUR)
  */
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('de-DE', {
@@ -51,7 +51,7 @@ export function formatEntryType(type: string): string {
     travel: 'Reisekosten',
     office: 'Buerobedarf',
     fuel: 'Kraftstoff',
-    parking: 'Parkgebuehren',
+    parking: 'Parkgebühren',
     postage: 'Porto',
     tips: 'Trinkgeld',
     gifts: 'Geschenke',

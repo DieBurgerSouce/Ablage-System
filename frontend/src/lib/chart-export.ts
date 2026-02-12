@@ -2,7 +2,7 @@
  * Chart Export Utilities
  *
  * Exportiert Charts und Visualisierungen als PNG, JPEG oder SVG.
- * Unterstuetzt Recharts, native SVG und Canvas-basierte Charts.
+ * Unterstützt Recharts, native SVG und Canvas-basierte Charts.
  */
 
 import { toPng, toJpeg, toSvg, toBlob } from 'html-to-image'

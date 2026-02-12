@@ -15,7 +15,7 @@ import { useWidgetSubscription } from '@/hooks/use-widget-subscription';
 
 export function CashFlowWidget() {
     // Real-time Widget Updates (Phase 4.7)
-    // Automatische Query-Invalidation bei Server-seitigen Aenderungen
+    // Automatische Query-Invalidation bei Server-seitigen Änderungen
     useWidgetSubscription('cashflow', {
         debounceMs: 500,
         autoInvalidate: true,

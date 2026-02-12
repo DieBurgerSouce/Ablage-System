@@ -1,5 +1,5 @@
 /**
- * ContractFormDialog - Dialog zum Erstellen/Bearbeiten von Vertraegen
+ * ContractFormDialog - Dialog zum Erstellen/Bearbeiten von Verträgen
  *
  * Features:
  * - Multi-Step Form
@@ -427,7 +427,7 @@ export function ContractFormDialog({
                         <DatePickerField
                           value={field.value}
                           onChange={field.onChange}
-                          label="Datum waehlen"
+                          label="Datum wählen"
                         />
                       </FormItem>
                     )}
@@ -441,7 +441,7 @@ export function ContractFormDialog({
                         <DatePickerField
                           value={field.value}
                           onChange={field.onChange}
-                          label="Beginn waehlen"
+                          label="Beginn wählen"
                         />
                       </FormItem>
                     )}
@@ -455,7 +455,7 @@ export function ContractFormDialog({
                         <DatePickerField
                           value={field.value}
                           onChange={field.onChange}
-                          label="Ende waehlen"
+                          label="Ende wählen"
                         />
                       </FormItem>
                     )}
@@ -468,7 +468,7 @@ export function ContractFormDialog({
                     name="notice_period_days"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Kuendigungsfrist (Tage)</FormLabel>
+                        <FormLabel>Kündigungsfrist (Tage)</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
@@ -487,9 +487,9 @@ export function ContractFormDialog({
                     render={({ field }) => (
                       <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
-                          <FormLabel className="text-base">Auto-Verlaengerung</FormLabel>
+                          <FormLabel className="text-base">Auto-Verlängerung</FormLabel>
                           <FormDescription>
-                            Vertrag verlaengert sich automatisch
+                            Vertrag verlängert sich automatisch
                           </FormDescription>
                         </div>
                         <FormControl>
@@ -509,7 +509,7 @@ export function ContractFormDialog({
                     name="renewal_period_months"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Verlaengerungszeitraum (Monate)</FormLabel>
+                        <FormLabel>Verlängerungszeitraum (Monate)</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
@@ -572,7 +572,7 @@ export function ContractFormDialog({
                     name="currency"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Waehrung</FormLabel>
+                        <FormLabel>Währung</FormLabel>
                         <Select
                           value={field.value}
                           onValueChange={field.onChange}
@@ -643,7 +643,7 @@ export function ContractFormDialog({
               <div>
                 {step > 1 && (
                   <Button type="button" variant="outline" onClick={prevStep}>
-                    Zurueck
+                    Zurück
                   </Button>
                 )}
               </div>

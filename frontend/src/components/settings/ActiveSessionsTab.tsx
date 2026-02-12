@@ -1,8 +1,8 @@
 /**
  * ActiveSessionsTab - Aktive Sitzungen Verwaltung
  *
- * Zeigt alle aktiven Sitzungen des Benutzers an und ermoeglicht:
- * - Uebersicht aller aktiven Sitzungen
+ * Zeigt alle aktiven Sitzungen des Benutzers an und ermöglicht:
+ * - Übersicht aller aktiven Sitzungen
  * - Einzelne Sitzung beenden
  * - Alle anderen Sitzungen beenden
  *
@@ -412,7 +412,7 @@ export function ActiveSessionsTab() {
       <AlertDialog
         open={!!sessionToTerminate}
         onOpenChange={(open) => {
-          // Nur schliessen wenn nicht gerade geladen wird
+          // Nur schließen wenn nicht gerade geladen wird
           if (!open && !terminateMutation.isPending) {
             setSessionToTerminate(null);
           }
@@ -451,7 +451,7 @@ export function ActiveSessionsTab() {
       <AlertDialog
         open={showTerminateAllDialog}
         onOpenChange={(open) => {
-          // Nur schliessen wenn nicht gerade geladen wird
+          // Nur schließen wenn nicht gerade geladen wird
           if (!open && !terminateAllMutation.isPending) {
             setShowTerminateAllDialog(false);
           }

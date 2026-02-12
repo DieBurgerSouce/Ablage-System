@@ -150,7 +150,7 @@ export function EmailConfigList({ onCreateNew, onEdit }: EmailConfigListProps) {
       await triggerSync.mutateAsync(configId);
       toast({
         title: 'Synchronisierung gestartet',
-        description: `Email-Sync fuer "${configName}" wurde gestartet.`,
+        description: `Email-Sync für "${configName}" wurde gestartet.`,
       });
     } catch (err) {
       toast({
@@ -165,13 +165,13 @@ export function EmailConfigList({ onCreateNew, onEdit }: EmailConfigListProps) {
     try {
       await deleteConfig.mutateAsync(configId);
       toast({
-        title: 'Konfiguration geloescht',
-        description: 'Die Email-Konfiguration wurde erfolgreich geloescht.',
+        title: 'Konfiguration gelöscht',
+        description: 'Die Email-Konfiguration wurde erfolgreich gelöscht.',
       });
       setDeleteConfirmId(null);
     } catch (err) {
       toast({
-        title: 'Fehler beim Loeschen',
+        title: 'Fehler beim Löschen',
         description: err instanceof Error ? err.message : 'Unbekannter Fehler',
         variant: 'destructive',
       });
@@ -360,7 +360,7 @@ export function EmailConfigList({ onCreateNew, onEdit }: EmailConfigListProps) {
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Loeschen</TooltipContent>
+                          <TooltipContent>Löschen</TooltipContent>
                         </Tooltip>
                       </div>
                     </TooltipProvider>
@@ -379,10 +379,10 @@ export function EmailConfigList({ onCreateNew, onEdit }: EmailConfigListProps) {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Konfiguration loeschen?</AlertDialogTitle>
+            <AlertDialogTitle>Konfiguration löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Diese Aktion kann nicht rueckgaengig gemacht werden. Die Konfiguration
-              und alle zugehoerigen Einstellungen werden dauerhaft geloescht.
+              Diese Aktion kann nicht rückgängig gemacht werden. Die Konfiguration
+              und alle zugehörigen Einstellungen werden dauerhaft gelöscht.
               Bereits importierte Dokumente bleiben erhalten.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -397,7 +397,7 @@ export function EmailConfigList({ onCreateNew, onEdit }: EmailConfigListProps) {
               ) : (
                 <Trash2 className="mr-2 h-4 w-4" />
               )}
-              Loeschen
+              Löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

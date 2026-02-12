@@ -57,7 +57,7 @@ export const DASHBOARD_PRESETS: DashboardPreset[] = [
     {
         id: 'default',
         name: 'Standard',
-        description: 'Ausgewogene Ansicht fuer alle Benutzer',
+        description: 'Ausgewogene Ansicht für alle Benutzer',
         role: 'user',
         widgets: [
             { id: 'today', type: 'today', x: 0, y: 0, w: 4, h: 3 },
@@ -85,7 +85,7 @@ export const DASHBOARD_PRESETS: DashboardPreset[] = [
     {
         id: 'manager-overview',
         name: 'Management',
-        description: 'KPIs und Ueberblick fuer Fuehrungskraefte',
+        description: 'KPIs und Überblick für Führungskräfte',
         role: 'manager',
         widgets: [
             { id: 'today', type: 'today', x: 0, y: 0, w: 4, h: 4 },
@@ -99,7 +99,7 @@ export const DASHBOARD_PRESETS: DashboardPreset[] = [
     {
         id: 'admin-full',
         name: 'Administration',
-        description: 'Vollstaendige Systemuebersicht fuer Admins',
+        description: 'Vollständige Systemübersicht für Admins',
         role: 'admin',
         widgets: [
             { id: 'system', type: 'system-status', x: 0, y: 0, w: 4, h: 3 },

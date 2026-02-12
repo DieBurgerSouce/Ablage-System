@@ -1,7 +1,7 @@
 /**
  * Beneficiaries Hook
  *
- * CRUD-Operationen fuer Beguenstigte/Erben
+ * CRUD-Operationen für Begünstigte/Erben
  */
 
 import { useQuery, useMutation, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
@@ -17,7 +17,7 @@ import { estateQueryKeys } from './useEstateOverview';
 // ==================== Query Hooks ====================
 
 /**
- * Listet alle Beguenstigten eines Space
+ * Listet alle Begünstigten eines Space
  */
 export function useBeneficiaries(
   spaceId: string,
@@ -33,7 +33,7 @@ export function useBeneficiaries(
 }
 
 /**
- * Holt den 10-Jahres-Schenkungsplan fuer einen Beguenstigten
+ * Holt den 10-Jahres-Schenkungsplan für einen Begünstigten
  */
 export function useGiftPlan(
   spaceId: string,
@@ -52,7 +52,7 @@ export function useGiftPlan(
 // ==================== Mutation Hooks ====================
 
 /**
- * Erstellt einen neuen Beguenstigten
+ * Erstellt einen neuen Begünstigten
  */
 export function useCreateBeneficiary() {
   const queryClient = useQueryClient();
@@ -69,7 +69,7 @@ export function useCreateBeneficiary() {
 }
 
 /**
- * Aktualisiert einen Beguenstigten
+ * Aktualisiert einen Begünstigten
  */
 export function useUpdateBeneficiary() {
   const queryClient = useQueryClient();
@@ -93,7 +93,7 @@ export function useUpdateBeneficiary() {
 }
 
 /**
- * Loescht einen Beguenstigten
+ * Löscht einen Begünstigten
  */
 export function useDeleteBeneficiary() {
   const queryClient = useQueryClient();

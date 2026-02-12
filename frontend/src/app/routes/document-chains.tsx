@@ -1,8 +1,8 @@
 /**
- * Document Chains Route - Auftragsketten Uebersicht
+ * Document Chains Route - Auftragsketten Übersicht
  *
  * Zeigt alle Auftragsketten (Angebot → Auftrag → Lieferschein → Rechnung)
- * mit Filter- und Suchmoeglichkeiten.
+ * mit Filter- und Suchmöglichkeiten.
  */
 
 import { createFileRoute, useNavigate } from '@tanstack/react-router';

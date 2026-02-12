@@ -1,13 +1,13 @@
 /**
  * Process Optimization Page
  *
- * Admin-Dashboard fuer Process Mining und System-Optimierung.
+ * Admin-Dashboard für Process Mining und System-Optimierung.
  * Vision 2.0 Phase 3: Process Mining & Autonome Automatisierung
  *
  * Features:
  * - Prozessgesundheits-Metriken
  * - Bottleneck-Erkennung und Heatmap
- * - Automatisierungsvorschlaege mit Ein-Klick-Aktivierung
+ * - Automatisierungsvorschläge mit Ein-Klick-Aktivierung
  * - ROI-Tracking und Impact-Metriken
  */
 
@@ -34,7 +34,7 @@ export function ProcessOptimizationPage() {
           <div>
             <h1 className="text-2xl font-bold">Prozess-Optimierung</h1>
             <p className="text-muted-foreground">
-              Process Mining und automatische Optimierungsvorschlaege
+              Process Mining und automatische Optimierungsvorschläge
             </p>
           </div>
         </div>
@@ -52,8 +52,8 @@ export function ProcessOptimizationPage() {
       {/* Main Content with Tabs */}
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="overview">Uebersicht</TabsTrigger>
-          <TabsTrigger value="bottlenecks">Engpaesse</TabsTrigger>
+          <TabsTrigger value="overview">Übersicht</TabsTrigger>
+          <TabsTrigger value="bottlenecks">Engpässe</TabsTrigger>
           <TabsTrigger value="automation">Automatisierung</TabsTrigger>
           <TabsTrigger value="impact">Auswirkungen</TabsTrigger>
         </TabsList>

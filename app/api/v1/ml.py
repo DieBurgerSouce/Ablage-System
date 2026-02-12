@@ -13,7 +13,9 @@ Feinpoliert und durchdacht - ML-Observability per API.
 
 import structlog
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
+
+from app.core.types import JSONDict
 
 from fastapi import APIRouter, HTTPException, Query, BackgroundTasks, Depends, Request
 from pydantic import BaseModel, Field, field_validator
@@ -41,7 +43,7 @@ class DriftStatusResponse(BaseModel):
     current_samples: int
     min_samples_required: int
     ready_for_detection: bool
-    last_report: Optional[Dict[str, Any]] = None
+    last_report: Optional[JSONDict] = None
     drift_threshold: float
 
 
@@ -52,7 +54,7 @@ class DriftReportResponse(BaseModel):
     overall_drift_score: float
     severity: str
     dataset_drift_detected: bool
-    feature_drifts: List[Dict[str, Any]]
+    feature_drifts: List[JSONDict]
     prediction_drift: Optional[float]
     samples_reference: int
     samples_current: int
@@ -135,7 +137,7 @@ class ExperimentResponse(BaseModel):
     experiment_id: str
     name: str
     status: str
-    variants: List[Dict[str, Any]]
+    variants: List[JSONDict]
     total_samples: int
     winner: Optional[str] = None
     significance_reached: bool
@@ -156,10 +158,10 @@ class GlobalImportanceResponse(BaseModel):
 
 class MetricsResponse(BaseModel):
     """Metriken Response."""
-    routing: Dict[str, Any]
-    backends: Dict[str, Any]
-    drift: Dict[str, Any]
-    experiments: Dict[str, Any]
+    routing: JSONDict
+    backends: JSONDict
+    drift: JSONDict
+    experiments: JSONDict
 
 
 # =============================================================================
@@ -602,7 +604,7 @@ async def start_experiment(
     request: Request,
     experiment_id: str,
     admin_user: User = Depends(get_current_superuser),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Starte ein Experiment.
 
@@ -811,7 +813,7 @@ async def conclude_experiment(
     request: Request,
     experiment_id: str,
     admin_user: User = Depends(get_current_superuser),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Schließe Experiment ab.
 

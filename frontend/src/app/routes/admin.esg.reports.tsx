@@ -1,7 +1,7 @@
 /**
  * ESG Berichte - Reports Page
  *
- * Generiert und verwaltet ESG-Berichte fuer Compliance und Stakeholder.
+ * Generiert und verwaltet ESG-Berichte für Compliance und Stakeholder.
  */
 
 import { createFileRoute } from '@tanstack/react-router';

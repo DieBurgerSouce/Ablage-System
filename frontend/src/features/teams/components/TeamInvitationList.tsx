@@ -1,7 +1,7 @@
 /**
  * TeamInvitationList Component
  *
- * Zeigt ausstehende Einladungen und ermoeglicht das Senden neuer Einladungen.
+ * Zeigt ausstehende Einladungen und ermöglicht das Senden neuer Einladungen.
  */
 
 import { useState } from 'react';
@@ -71,7 +71,7 @@ interface TeamInvitationListProps {
 }
 
 const invitationSchema = z.object({
-  email: z.string().email('Bitte geben Sie eine gueltige E-Mail-Adresse ein'),
+  email: z.string().email('Bitte geben Sie eine gültige E-Mail-Adresse ein'),
   role: z.enum(['member', 'lead', 'admin', 'deputy', 'observer']),
   message: z.string().max(500, 'Nachricht darf maximal 500 Zeichen haben').optional(),
 });
@@ -191,7 +191,7 @@ export function TeamInvitationList({ teamId, isTeamAdmin = false }: TeamInvitati
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Waehlen Sie eine Rolle" />
+                            <SelectValue placeholder="Wählen Sie eine Rolle" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -215,7 +215,7 @@ export function TeamInvitationList({ teamId, isTeamAdmin = false }: TeamInvitati
                       <FormLabel>Nachricht (optional)</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Persoenliche Nachricht zur Einladung..."
+                          placeholder="Persönliche Nachricht zur Einladung..."
                           className="resize-none"
                           rows={3}
                           {...field}
@@ -293,8 +293,8 @@ export function TeamInvitationList({ teamId, isTeamAdmin = false }: TeamInvitati
           <AlertDialogHeader>
             <AlertDialogTitle>Einladung widerrufen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Moechten Sie die Einladung an <strong>{invitationToRevoke?.email}</strong> wirklich
-              widerrufen? Der Link wird dadurch ungueltig.
+              Möchten Sie die Einladung an <strong>{invitationToRevoke?.email}</strong> wirklich
+              widerrufen? Der Link wird dadurch ungültig.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

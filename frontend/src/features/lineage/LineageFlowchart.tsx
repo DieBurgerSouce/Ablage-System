@@ -2,7 +2,7 @@
  * LineageFlowchart Component
  *
  * Interaktive Visualisierung der Dokumenten-Lineage mit React Flow.
- * Zeigt die vollstaendige Verarbeitungskette eines Dokuments.
+ * Zeigt die vollständige Verarbeitungskette eines Dokuments.
  *
  * Features:
  * - Horizontales/Vertikales Layout
@@ -58,9 +58,9 @@ import { lineageService } from '@/lib/api/services/lineage';
 // =============================================================================
 
 export interface LineageFlowchartProps {
-  /** Dokument-ID fuer den Lineage-Abruf */
+  /** Dokument-ID für den Lineage-Abruf */
   documentId: string;
-  /** Hoehe des Containers (Standard: 600px) */
+  /** Höhe des Containers (Standard: 600px) */
   height?: number | string;
   /** Breite des Containers (Standard: 100%) */
   width?: number | string;
@@ -74,7 +74,7 @@ export interface LineageFlowchartProps {
   onNavigateToEntity?: (entityId: string) => void;
   /** Callback bei Klick auf Dokument */
   onNavigateToDocument?: (documentId: string) => void;
-  /** Zusaetzliche CSS-Klassen */
+  /** Zusätzliche CSS-Klassen */
   className?: string;
 }
 
@@ -122,7 +122,7 @@ function calculateLayout(
   const nodes: Node<LineageNodeData>[] = [];
   const edges: Edge<LineageEdgeData>[] = [];
 
-  // Gruppiere Events nach Datum fuer besseres Layout
+  // Gruppiere Events nach Datum für besseres Layout
   const eventsByDate = new Map<string, TimelineEntry[]>();
   events.forEach((event) => {
     const date = event.timestamp.split('T')[0];
@@ -287,12 +287,12 @@ function LineageFlowchartInner({
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-  // Update Nodes/Edges wenn sich die Berechnung aendert
+  // Update Nodes/Edges wenn sich die Berechnung ändert
   useEffect(() => {
     setNodes(initialNodes);
     setEdges(initialEdges);
 
-    // Fit view nach Aenderung
+    // Fit view nach Änderung
     setTimeout(() => {
       fitView({ padding: 0.2, duration: 300 });
     }, 50);
@@ -337,7 +337,7 @@ function LineageFlowchartInner({
       className={cn('relative rounded-lg border overflow-hidden', className)}
       style={{ height, width }}
     >
-      {/* SVG Defs fuer Edge Markers */}
+      {/* SVG Defs für Edge Markers */}
       <LineageEdgeMarkerDefs />
 
       {/* Controls */}
@@ -397,7 +397,7 @@ function LineageFlowchartInner({
             <p className="text-sm text-muted-foreground">
               {filters.eventTypes.length > 0 || filters.dateRange.from
                 ? 'Versuchen Sie, die Filter anzupassen.'
-                : 'Fuer dieses Dokument sind noch keine Lineage-Events vorhanden.'}
+                : 'Für dieses Dokument sind noch keine Lineage-Events vorhanden.'}
             </p>
           </div>
         </div>
@@ -493,7 +493,7 @@ export function LineageFlowchart(props: LineageFlowchartProps) {
             <FileText className="h-12 w-12 text-muted-foreground mx-auto" />
             <p className="text-lg font-medium">Keine Lineage-Daten</p>
             <p className="text-sm text-muted-foreground">
-              Fuer dieses Dokument sind noch keine Lineage-Events vorhanden.
+              Für dieses Dokument sind noch keine Lineage-Events vorhanden.
             </p>
           </div>
         </div>

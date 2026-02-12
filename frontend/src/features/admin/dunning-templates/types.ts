@@ -1,6 +1,6 @@
 /**
  * Dunning Templates Types
- * Typen fuer Mahnbrief-Vorlagen und PDF-Generierung
+ * Typen für Mahnbrief-Vorlagen und PDF-Generierung
  */
 
 export interface DunningTemplate {

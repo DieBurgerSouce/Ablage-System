@@ -1,7 +1,7 @@
 /**
- * CommentsPanel - Kommentar-Bereich fuer Dokumente
+ * CommentsPanel - Kommentar-Bereich für Dokumente
  *
- * Zeigt alle Kommentare zu einem Dokument und ermoeglicht
+ * Zeigt alle Kommentare zu einem Dokument und ermöglicht
  * das Erstellen neuer Kommentare mit @mentions.
  */
 
@@ -50,7 +50,7 @@ export function CommentsPanel({ documentId, className }: CommentsPanelProps) {
       }
     },
     onDelete: () => {
-      // Cache wird automatisch invalidiert, keine Aktion noetig
+      // Cache wird automatisch invalidiert, keine Aktion nötig
     },
   });
 

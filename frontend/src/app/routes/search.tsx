@@ -4,13 +4,14 @@
  * Features:
  * - URL Search Params mit TanStack Router
  * - Deep-Linking (URL teilen)
- * - Browser-History (Zurueck/Vor)
+ * - Browser-History (Zurück/Vor)
  * - Gespeicherte Suchen
  * - Relevanz-Score Visualisierung
  */
 
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
+import { AnimatedPage } from '@/components/animations'
 import { SearchPanel } from '@/features/search/components/SearchPanel'
 import { SavedSearches } from '@/features/search/components/SavedSearches'
 import { SearchResultCard } from '@/features/search/components/SearchResultCard'
@@ -86,7 +87,7 @@ function SearchPage() {
     const results = searchResponse?.results ?? []
 
     return (
-        <div className="p-8 space-y-8">
+        <AnimatedPage><div className="p-8 space-y-8">
             {/* Header */}
             <div className="text-center space-y-4 mb-12">
                 <h1 className="text-3xl font-bold tracking-tight flex items-center justify-center gap-3">
@@ -209,6 +210,6 @@ function SearchPage() {
                     )}
                 </div>
             </div>
-        </div>
+        </div></AnimatedPage>
     )
 }

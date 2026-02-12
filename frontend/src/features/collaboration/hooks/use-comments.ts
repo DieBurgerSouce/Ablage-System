@@ -1,7 +1,7 @@
 /**
- * useComments - Hook fuer Dokumenten-Kommentare
+ * useComments - Hook für Dokumenten-Kommentare
  *
- * Ermoeglicht das Laden, Erstellen, Bearbeiten und Loeschen von Kommentaren.
+ * Ermöglicht das Laden, Erstellen, Bearbeiten und Löschen von Kommentaren.
  * Integriert mit Backend API: /api/v1/documents/{documentId}/comments
  *
  * Enterprise Features:

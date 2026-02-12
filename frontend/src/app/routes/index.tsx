@@ -7,6 +7,7 @@ import {
     SimplifiedDashboardView
 } from '@/components/dashboard'
 import { CompanySetupWizard } from '@/components/onboarding/CompanySetupWizard'
+import { AnimatedPage } from '@/components/animations'
 
 export const Route = createFileRoute('/')({
     component: Index,
@@ -33,19 +34,19 @@ function Index() {
     // Admin/Prokurist: Vollständiges Management-Dashboard
     if (isAdmin) {
         return (
-            <>
+            <AnimatedPage>
                 {/* Company-Setup-Wizard für Admins ohne Firma */}
                 <CompanySetupWizard />
                 <AdminDashboardView userName={userName} />
-            </>
+            </AnimatedPage>
         )
     }
 
     // Editor: Workflow-fokussierte Ansicht
     if (isEditor) {
-        return <EditorDashboardView userName={userName} />
+        return <AnimatedPage><EditorDashboardView userName={userName} /></AnimatedPage>
     }
 
     // Viewer/Azubi: Vereinfachte Ansicht
-    return <SimplifiedDashboardView userName={userName} />
+    return <AnimatedPage><SimplifiedDashboardView userName={userName} /></AnimatedPage>
 }

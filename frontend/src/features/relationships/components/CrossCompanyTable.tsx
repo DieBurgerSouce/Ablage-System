@@ -85,7 +85,7 @@ function CompanyCell({ company, stats }: { company: 'folie' | 'messer'; stats: C
                         )}
                         {stats.lastActivity && (
                             <p>
-                                Letzte Aktivitaet:{' '}
+                                Letzte Aktivität:{' '}
                                 {new Date(stats.lastActivity).toLocaleDateString('de-DE')}
                             </p>
                         )}
@@ -157,7 +157,7 @@ function PresenceBadge({ presence }: { presence: string[] }) {
 
     return (
         <Badge variant="outline" className="text-muted-foreground">
-            Keine Praesenz
+            Keine Präsenz
         </Badge>
     );
 }
@@ -178,7 +178,7 @@ export function CrossCompanyTable({ entities, isLoading }: CrossCompanyTableProp
         return (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                 <Building2 className="h-12 w-12 mb-4 opacity-50" />
-                <p className="text-lg font-medium">Keine Geschaeftspartner gefunden</p>
+                <p className="text-lg font-medium">Keine Geschäftspartner gefunden</p>
                 <p className="text-sm">Passen Sie Ihre Filterkriterien an.</p>
             </div>
         );
@@ -191,7 +191,7 @@ export function CrossCompanyTable({ entities, isLoading }: CrossCompanyTableProp
                     <TableRow>
                         <TableHead className="w-8">Typ</TableHead>
                         <TableHead>Name</TableHead>
-                        <TableHead className="w-32">Praesenz</TableHead>
+                        <TableHead className="w-32">Präsenz</TableHead>
                         <TableHead>Spargelfolie</TableHead>
                         <TableHead>Spargelmesser</TableHead>
                         <TableHead className="text-right w-24">Dokumente</TableHead>

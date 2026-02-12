@@ -1,7 +1,7 @@
 /**
  * AI Admin Feature Module
  *
- * Exports fuer AI Autonomy Verwaltung.
+ * Exports für AI Autonomy Verwaltung.
  */
 
 // Pages

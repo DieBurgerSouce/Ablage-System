@@ -1,7 +1,7 @@
 /**
  * Retraining Configuration Panel
  *
- * Konfiguration fuer automatisches Retraining.
+ * Konfiguration für automatisches Retraining.
  */
 
 import { useState, useEffect } from 'react';
@@ -133,7 +133,7 @@ export function RetrainingConfigPanel() {
             Retraining-Konfiguration
           </CardTitle>
           <CardDescription>
-            Einstellungen fuer automatisches Modell-Retraining
+            Einstellungen für automatisches Modell-Retraining
           </CardDescription>
         </div>
         <div className="flex items-center gap-2">
@@ -141,7 +141,7 @@ export function RetrainingConfigPanel() {
             <>
               <Button variant="outline" size="sm" onClick={handleReset}>
                 <RotateCcw className="h-4 w-4 mr-2" />
-                Zuruecksetzen
+                Zurücksetzen
               </Button>
               <Button size="sm" onClick={handleSave} disabled={updateConfig.isPending}>
                 {updateConfig.isPending ? (
@@ -178,7 +178,7 @@ export function RetrainingConfigPanel() {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Label htmlFor="feedbackWindow">Feedback-Zeitfenster (Stunden)</Label>
-              <InfoTooltip text="Zeitraum, in dem Feedbacks fuer das Schwellenwert-Triggern gezaehlt werden" />
+              <InfoTooltip text="Zeitraum, in dem Feedbacks für das Schwellenwert-Triggern gezaehlt werden" />
             </div>
             <Input
               id="feedbackWindow"
@@ -197,7 +197,7 @@ export function RetrainingConfigPanel() {
         <div className="space-y-4 p-4 border rounded-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Label>Woechentliches Retraining</Label>
+              <Label>Wöchentliches Retraining</Label>
               <InfoTooltip text="Automatisches Retraining zu einem festen Zeitpunkt" />
             </div>
             <Switch
@@ -249,7 +249,7 @@ export function RetrainingConfigPanel() {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Label htmlFor="driftThreshold">Drift-Schwellenwert (%)</Label>
-              <InfoTooltip text="Prozentuale Accuracy-Verschlechterung, die ein Retraining ausloest" />
+              <InfoTooltip text="Prozentuale Accuracy-Verschlechterung, die ein Retraining auslöst" />
             </div>
             <Input
               id="driftThreshold"
@@ -266,8 +266,8 @@ export function RetrainingConfigPanel() {
 
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Label htmlFor="driftInterval">Drift-Pruefintervall (Stunden)</Label>
-              <InfoTooltip text="Wie oft die Modell-Performance auf Drift geprueft wird" />
+              <Label htmlFor="driftInterval">Drift-Prüfintervall (Stunden)</Label>
+              <InfoTooltip text="Wie oft die Modell-Performance auf Drift geprüft wird" />
             </div>
             <Input
               id="driftInterval"
@@ -287,7 +287,7 @@ export function RetrainingConfigPanel() {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Label htmlFor="minSamples">Min. Trainingssamples</Label>
-              <InfoTooltip text="Mindestanzahl Samples fuer ein Training" />
+              <InfoTooltip text="Mindestanzahl Samples für ein Training" />
             </div>
             <Input
               id="minSamples"

@@ -2,7 +2,7 @@
  * StreakBadge Component
  *
  * Zeigt den aktuellen Streak mit Flammen-Icon.
- * Verschiedene Farben je nach Streak-Laenge.
+ * Verschiedene Farben je nach Streak-Länge.
  */
 
 import { Flame } from 'lucide-react';
@@ -16,7 +16,7 @@ interface StreakBadgeProps {
 }
 
 export function StreakBadge({ streak, size = 'md', showLabel = true, className }: StreakBadgeProps) {
-  // Farbe basierend auf Streak-Laenge
+  // Farbe basierend auf Streak-Länge
   const getStreakColor = () => {
     if (streak >= 30) return 'text-purple-500';
     if (streak >= 14) return 'text-red-500';
@@ -25,7 +25,7 @@ export function StreakBadge({ streak, size = 'md', showLabel = true, className }
     return 'text-muted-foreground';
   };
 
-  // Hintergrund basierend auf Streak-Laenge
+  // Hintergrund basierend auf Streak-Länge
   const getStreakBg = () => {
     if (streak >= 30) return 'bg-purple-500/10';
     if (streak >= 14) return 'bg-red-500/10';
@@ -34,7 +34,7 @@ export function StreakBadge({ streak, size = 'md', showLabel = true, className }
     return 'bg-muted';
   };
 
-  // Groesse
+  // Größe
   const sizeClasses = {
     sm: 'text-xs px-1.5 py-0.5',
     md: 'text-sm px-2 py-1',
@@ -47,7 +47,7 @@ export function StreakBadge({ streak, size = 'md', showLabel = true, className }
     lg: 'w-5 h-5',
   };
 
-  // Animation fuer hohe Streaks
+  // Animation für hohe Streaks
   const isAnimated = streak >= 7;
 
   if (streak === 0) {

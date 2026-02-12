@@ -1,7 +1,7 @@
 /**
  * QuickValidationCard
  *
- * Kompakte Karte fuer schnelle Validierung mit:
+ * Kompakte Karte für schnelle Validierung mit:
  * - Inline Approve/Reject Buttons
  * - Mobile Swipe Support
  * - Keyboard Navigation Highlight
@@ -35,7 +35,7 @@ import type { ValidationQueueItem, ValidationStatus } from '../types/validation-
 export interface QuickValidationCardProps {
   /** Das zu validierende Item */
   item: ValidationQueueItem;
-  /** Ob die Karte ausgewaehlt/fokussiert ist */
+  /** Ob die Karte ausgewählt/fokussiert ist */
   isSelected?: boolean;
   /** Ob die Karte durch Keyboard fokussiert ist */
   isKeyboardFocused?: boolean;
@@ -43,20 +43,20 @@ export interface QuickValidationCardProps {
   onApprove: (itemId: string) => void;
   /** Callback wenn abgelehnt wird */
   onReject: (itemId: string) => void;
-  /** Callback wenn geoeffnet wird */
+  /** Callback wenn geöffnet wird */
   onOpen: (itemId: string) => void;
-  /** Callback wenn ausgewaehlt wird */
+  /** Callback wenn ausgewählt wird */
   onSelect?: (itemId: string) => void;
-  /** Ob Genehmigen gerade laeuft */
+  /** Ob Genehmigen gerade läuft */
   isApproving?: boolean;
-  /** Ob Ablehnen gerade laeuft */
+  /** Ob Ablehnen gerade läuft */
   isRejecting?: boolean;
-  /** Schwelle fuer Swipe-Trigger (px) */
+  /** Schwelle für Swipe-Trigger (px) */
   swipeThreshold?: number;
 }
 
 /**
- * QuickValidationCard mit Swipe-Unterstuetzung fuer schnelle Validierung.
+ * QuickValidationCard mit Swipe-Unterstützung für schnelle Validierung.
  */
 export function QuickValidationCard({
   item,
@@ -287,7 +287,7 @@ export function QuickValidationCard({
         </Card>
       </motion.div>
 
-      {/* Swipe-Indikator fuer Schwelle */}
+      {/* Swipe-Indikator für Schwelle */}
       {swipeOffset !== 0 && (
         <div
           className={cn(

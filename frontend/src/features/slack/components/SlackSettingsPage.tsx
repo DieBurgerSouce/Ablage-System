@@ -1,7 +1,7 @@
 /**
  * Slack Integration Settings Page.
  *
- * Admin-Seite fuer die Slack-Integration:
+ * Admin-Seite für die Slack-Integration:
  * - Verbindungs-Status
  * - Kanal-Konfiguration
  * - Nachrichten-Verlauf
@@ -133,7 +133,7 @@ export function SlackSettingsPage() {
                         Slack-Integration
                     </h1>
                     <p className="text-muted-foreground">
-                        Verwalten Sie Slack-Benachrichtigungen fuer Ihr Team.
+                        Verwalten Sie Slack-Benachrichtigungen für Ihr Team.
                     </p>
                 </div>
                 <div className="flex gap-2">
@@ -146,7 +146,7 @@ export function SlackSettingsPage() {
                         setChannelDialogOpen(true);
                     }}>
                         <Plus className="h-4 w-4 mr-2" />
-                        Kanal hinzufuegen
+                        Kanal hinzufügen
                     </Button>
                 </div>
             </div>
@@ -192,7 +192,7 @@ export function SlackSettingsPage() {
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium flex items-center gap-2">
                             <Hash className="h-4 w-4" />
-                            Kanaele
+                            Kanäle
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -268,11 +268,11 @@ export function SlackSettingsPage() {
                 <TabsList>
                     <TabsTrigger value="overview" className="gap-2">
                         <Settings className="h-4 w-4" />
-                        Uebersicht
+                        Übersicht
                     </TabsTrigger>
                     <TabsTrigger value="channels" className="gap-2">
                         <Hash className="h-4 w-4" />
-                        Kanaele
+                        Kanäle
                     </TabsTrigger>
                     <TabsTrigger value="messages" className="gap-2">
                         <MessageSquare className="h-4 w-4" />
@@ -373,7 +373,7 @@ export function SlackSettingsPage() {
                             <div className="space-y-2">
                                 <h4 className="font-medium">3. Bot-Token (optional)</h4>
                                 <p className="text-sm text-muted-foreground">
-                                    Fuer erweiterte Funktionen erstellen Sie unter "OAuth & Permissions"
+                                    Für erweiterte Funktionen erstellen Sie unter "OAuth & Permissions"
                                     einen Bot mit den Scopes: <code className="bg-muted px-1 rounded">chat:write</code>,{' '}
                                     <code className="bg-muted px-1 rounded">users:read</code>.
                                 </p>
@@ -392,9 +392,9 @@ export function SlackSettingsPage() {
                 <TabsContent value="channels">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Konfigurierte Kanaele</CardTitle>
+                            <CardTitle>Konfigurierte Kanäle</CardTitle>
                             <CardDescription>
-                                Slack-Kanaele fuer verschiedene Benachrichtigungstypen.
+                                Slack-Kanäle für verschiedene Benachrichtigungstypen.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -406,7 +406,7 @@ export function SlackSettingsPage() {
                             ) : channelsData?.items.length === 0 ? (
                                 <div className="text-center py-8 text-muted-foreground">
                                     <Hash className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                                    <p>Noch keine Kanaele konfiguriert.</p>
+                                    <p>Noch keine Kanäle konfiguriert.</p>
                                     <Button
                                         variant="outline"
                                         className="mt-4"
@@ -416,7 +416,7 @@ export function SlackSettingsPage() {
                                         }}
                                     >
                                         <Plus className="h-4 w-4 mr-2" />
-                                        Ersten Kanal hinzufuegen
+                                        Ersten Kanal hinzufügen
                                     </Button>
                                 </div>
                             ) : (
@@ -425,7 +425,7 @@ export function SlackSettingsPage() {
                                         <TableRow>
                                             <TableHead>Kanal</TableHead>
                                             <TableHead>Typen</TableHead>
-                                            <TableHead>Prioritaet</TableHead>
+                                            <TableHead>Priorität</TableHead>
                                             <TableHead>Status</TableHead>
                                             <TableHead>Nachrichten</TableHead>
                                             <TableHead className="text-right">Aktionen</TableHead>
@@ -483,7 +483,7 @@ export function SlackSettingsPage() {
                                                                 className="text-destructive"
                                                                 onClick={() => setDeleteChannelId(channel.id)}
                                                             >
-                                                                Loeschen
+                                                                Löschen
                                                             </DropdownMenuItem>
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
@@ -564,15 +564,15 @@ export function SlackSettingsPage() {
                 <TabsContent value="users">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Benutzer-Verknuepfungen</CardTitle>
+                            <CardTitle>Benutzer-Verknüpfungen</CardTitle>
                             <CardDescription>
-                                Verknuepfte Slack-Benutzer fuer Direktnachrichten und Erwaehnungen.
+                                Verknüpfte Slack-Benutzer für Direktnachrichten und Erwähnungen.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="text-center py-8 text-muted-foreground">
                                 <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                                <p>Benutzer koennen ihre Slack-Verknuepfung in den Einstellungen vornehmen.</p>
+                                <p>Benutzer können ihre Slack-Verknüpfung in den Einstellungen vornehmen.</p>
                             </div>
                         </CardContent>
                     </Card>
@@ -595,7 +595,7 @@ export function SlackSettingsPage() {
             <AlertDialog open={!!deleteChannelId} onOpenChange={() => setDeleteChannelId(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Kanal loeschen?</AlertDialogTitle>
+                        <AlertDialogTitle>Kanal löschen?</AlertDialogTitle>
                         <AlertDialogDescription>
                             Der Slack-Kanal wird aus der Konfiguration entfernt.
                             Bestehende Nachrichten-Logs bleiben erhalten.
@@ -605,7 +605,7 @@ export function SlackSettingsPage() {
                         <AlertDialogCancel>Abbrechen</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDeleteChannel}>
                             <Trash2 className="h-4 w-4 mr-2" />
-                            Loeschen
+                            Löschen
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

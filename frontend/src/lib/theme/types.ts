@@ -1,7 +1,7 @@
 /**
  * Theme Types and Configuration
  *
- * Definiert die Typen fuer das Theming System.
+ * Definiert die Typen für das Theming System.
  */
 
 import { z } from 'zod';
@@ -14,13 +14,13 @@ export type DisplayMode = z.infer<typeof displayModeSchema>;
 // ==================== Theme Customization ====================
 
 /**
- * Verfuegbare Radius-Werte fuer UI-Elemente
+ * Verfügbare Radius-Werte für UI-Elemente
  */
 export const radiusValues = ['0', '0.25', '0.5', '0.75', '1'] as const;
 export type RadiusValue = typeof radiusValues[number];
 
 /**
- * Verfuegbare Density-Werte fuer UI-Elemente
+ * Verfügbare Density-Werte für UI-Elemente
  * cozy: Standard-Abstände (default)
  * compact: Reduzierte Abstände für Power-User mit 4K-Monitoren
  */
@@ -47,21 +47,21 @@ export const themeConfigSchema = z.object({
   accentHue: z.number().min(0).max(360).default(85),
 
   /**
-   * Border Radius fuer UI-Elemente
+   * Border Radius für UI-Elemente
    * @default '0.5'
    */
   radius: z.enum(radiusValues).default('0.5'),
 
   /**
-   * Saettigung der Farben
+   * Sättigung der Farben
    * @default 'medium'
    */
   saturation: z.enum(['low', 'medium', 'high']).default('medium'),
 
   /**
    * UI Dichte / Spacing
-   * cozy: Standard-Abstaende
-   * compact: Reduzierte Abstaende fuer mehr Informationsdichte
+   * cozy: Standard-Abstände
+   * compact: Reduzierte Abstände für mehr Informationsdichte
    * @default 'cozy'
    */
   density: z.enum(densityValues).default('cozy'),

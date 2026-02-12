@@ -99,7 +99,7 @@ export const DOCUMENT_STATUS: Record<string, StatusConfig> = {
   processing: { label: 'Wird verarbeitet', variant: 'info', icon: Loader2 },
   completed: { label: 'Abgeschlossen', variant: 'success', icon: CheckCircle },
   failed: { label: 'Fehlgeschlagen', variant: 'error', icon: XCircle },
-  review_required: { label: 'Pruefung erforderlich', variant: 'warning', icon: AlertTriangle },
+  review_required: { label: 'Prüfung erforderlich', variant: 'warning', icon: AlertTriangle },
 };
 
 /**
@@ -110,7 +110,7 @@ export const INVOICE_STATUS: Record<string, StatusConfig> = {
   open: { label: 'Offen', variant: 'info', icon: Clock },
   partially_paid: { label: 'Teilweise bezahlt', variant: 'pending', icon: AlertCircle },
   paid: { label: 'Bezahlt', variant: 'success', icon: CheckCircle },
-  overdue: { label: 'Ueberfaellig', variant: 'error', icon: AlertTriangle },
+  overdue: { label: 'Überfällig', variant: 'error', icon: AlertTriangle },
   cancelled: { label: 'Storniert', variant: 'neutral', icon: Ban },
 };
 
@@ -140,9 +140,9 @@ export const APPROVAL_STATUS: Record<string, StatusConfig> = {
  */
 export const ALERT_STATUS: Record<string, StatusConfig> = {
   new: { label: 'Neu', variant: 'error', icon: AlertCircle },
-  acknowledged: { label: 'Bestaetigt', variant: 'info', icon: CheckCircle },
+  acknowledged: { label: 'Bestätigt', variant: 'info', icon: CheckCircle },
   in_progress: { label: 'In Bearbeitung', variant: 'pending', icon: Loader2 },
-  resolved: { label: 'Geloest', variant: 'success', icon: CheckCircle },
+  resolved: { label: 'Gelöst', variant: 'success', icon: CheckCircle },
   dismissed: { label: 'Verworfen', variant: 'neutral', icon: Ban },
   escalated: { label: 'Eskaliert', variant: 'warning', icon: AlertTriangle },
 };

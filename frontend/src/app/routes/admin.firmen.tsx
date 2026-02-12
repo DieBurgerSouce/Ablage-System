@@ -1,7 +1,7 @@
 /**
  * Firmen Admin Route
  *
- * Multi-Mandanten-Verwaltung fuer Administratoren.
+ * Multi-Mandanten-Verwaltung für Administratoren.
  */
 
 import { createFileRoute } from '@tanstack/react-router';

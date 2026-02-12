@@ -1,8 +1,8 @@
 /**
  * Report-Builder React Query Hooks
  *
- * React Query Hooks fuer Report-Templates, Spalten, Filter, Charts,
- * Ausfuehrungen, Sharing und Scheduling.
+ * React Query Hooks für Report-Templates, Spalten, Filter, Charts,
+ * Ausführungen, Sharing und Scheduling.
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -118,7 +118,7 @@ export function useUpdateTemplate() {
 }
 
 /**
- * Loesche ein Template.
+ * Lösche ein Template.
  */
 export function useDeleteTemplate() {
   const queryClient = useQueryClient();
@@ -346,7 +346,7 @@ export function usePreview(templateId: string | undefined, limit = 10) {
 }
 
 /**
- * Fuehre einen Report aus.
+ * Führe einen Report aus.
  */
 export function useExecuteReport() {
   const queryClient = useQueryClient();
@@ -369,7 +369,7 @@ export function useExecuteReport() {
 }
 
 /**
- * Liste Ausfuehrungen.
+ * Liste Ausführungen.
  */
 export function useExecutions(filters?: ExecutionFilters) {
   return useQuery({
@@ -379,7 +379,7 @@ export function useExecutions(filters?: ExecutionFilters) {
 }
 
 /**
- * Hole eine spezifische Ausfuehrung.
+ * Hole eine spezifische Ausführung.
  */
 export function useExecution(executionId: string | undefined) {
   return useQuery({
@@ -387,7 +387,7 @@ export function useExecution(executionId: string | undefined) {
     queryFn: () => getExecution(executionId!),
     enabled: !!executionId,
     refetchInterval: (data) => {
-      // Polling fuer laufende Ausfuehrungen
+      // Polling für laufende Ausführungen
       if (data?.state?.data?.status === 'pending' || data?.state?.data?.status === 'running') {
         return 2000; // 2 Sekunden
       }
@@ -397,7 +397,7 @@ export function useExecution(executionId: string | undefined) {
 }
 
 /**
- * Breche eine Ausfuehrung ab.
+ * Breche eine Ausführung ab.
  */
 export function useCancelExecution() {
   const queryClient = useQueryClient();
@@ -478,7 +478,7 @@ export function useSchedulePresets() {
   return useQuery({
     queryKey: reportKeys.schedulePresets(),
     queryFn: () => getSchedulePresets(),
-    staleTime: Infinity, // Aendert sich nicht
+    staleTime: Infinity, // Ändert sich nicht
   });
 }
 
@@ -526,7 +526,7 @@ export function useDisableSchedule() {
 // =============================================================================
 
 /**
- * Hole verfuegbare Datenquellen.
+ * Hole verfügbare Datenquellen.
  */
 export function useDataSources() {
   return useQuery({
@@ -537,7 +537,7 @@ export function useDataSources() {
 }
 
 /**
- * Hole verfuegbare Felder fuer eine Datenquelle.
+ * Hole verfügbare Felder für eine Datenquelle.
  */
 export function useFields(dataSource: string | undefined) {
   return useQuery({
@@ -549,7 +549,7 @@ export function useFields(dataSource: string | undefined) {
 }
 
 /**
- * Hole verfuegbare Filter-Operatoren.
+ * Hole verfügbare Filter-Operatoren.
  */
 export function useOperators() {
   return useQuery({
@@ -560,7 +560,7 @@ export function useOperators() {
 }
 
 /**
- * Hole verfuegbare Aggregationen.
+ * Hole verfügbare Aggregationen.
  */
 export function useAggregations() {
   return useQuery({
@@ -571,7 +571,7 @@ export function useAggregations() {
 }
 
 /**
- * Hole verfuegbare Export-Formate.
+ * Hole verfügbare Export-Formate.
  */
 export function useFormats() {
   return useQuery({

@@ -1,7 +1,7 @@
 /**
  * Liquidity Forecast Chart
  *
- * Zeigt die Liquiditaetsprognose als Area-Chart mit Warnzonen.
+ * Zeigt die Liquiditätsprognose als Area-Chart mit Warnzonen.
  */
 
 import { useMemo } from 'react';
@@ -70,9 +70,9 @@ export function LiquidityChart({ forecast, currency = 'EUR' }: LiquidityChartPro
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Liquiditaetsprognose</CardTitle>
+        <CardTitle>Liquiditätsprognose</CardTitle>
         <CardDescription>
-          Voraussichtlicher Kontostand fuer die naechsten {forecast.length} Tage
+          Voraussichtlicher Kontostand für die nächsten {forecast.length} Tage
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -106,8 +106,8 @@ export function LiquidityChart({ forecast, currency = 'EUR' }: LiquidityChartPro
                   name === 'balance'
                     ? 'Kontostand'
                     : name === 'inflows'
-                    ? 'Eingaenge'
-                    : 'Ausgaenge',
+                    ? 'Eingänge'
+                    : 'Ausgänge',
                 ]}
                 labelFormatter={(label) => new Date(label).toLocaleDateString('de-DE')}
               />

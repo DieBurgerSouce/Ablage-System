@@ -2,7 +2,7 @@
  * Tour Launcher Component
  *
  * Button/Widget zum Starten von Touren.
- * Gruppiert Touren nach Kategorie, zeigt Abzeichen und geschaetzte Dauer.
+ * Gruppiert Touren nach Kategorie, zeigt Abzeichen und geschätzte Dauer.
  */
 
 import * as React from 'react'
@@ -73,7 +73,7 @@ export function TourLauncher({ className, variant = 'icon' }: TourLauncherProps)
             size="icon"
             className={className}
             onClick={() => setIsOpen(true)}
-            aria-label="Touren und Hilfe oeffnen"
+            aria-label="Touren und Hilfe öffnen"
           >
             <HelpCircle className="h-5 w-5" />
           </Button>
@@ -88,7 +88,7 @@ export function TourLauncher({ className, variant = 'icon' }: TourLauncherProps)
               className
             )}
             onClick={() => setIsOpen(true)}
-            aria-label="Touren und Hilfe oeffnen"
+            aria-label="Touren und Hilfe öffnen"
           >
             <Sparkles className="h-6 w-6" />
           </Button>
@@ -240,7 +240,7 @@ export function TourLauncher({ className, variant = 'icon' }: TourLauncherProps)
           {/* Footer */}
           <div className="p-4 border-t bg-muted/30">
             <p className="text-xs text-muted-foreground text-center">
-              Tastenkuerzel: Pfeil rechts/links zum Navigieren, ESC zum Beenden
+              Tastenkürzel: Pfeil rechts/links zum Navigieren, ESC zum Beenden
             </p>
           </div>
         </DialogContent>

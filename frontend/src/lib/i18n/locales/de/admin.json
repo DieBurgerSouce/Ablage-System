@@ -5,9 +5,9 @@
     "title": "Benutzerverwaltung",
     "subtitle": "Benutzer und Berechtigungen verwalten",
     "list": "Benutzerliste",
-    "add": "Benutzer hinzufuegen",
+    "add": "Benutzer hinzufügen",
     "edit": "Benutzer bearbeiten",
-    "delete": "Benutzer loeschen",
+    "delete": "Benutzer löschen",
     "noUsers": "Keine Benutzer vorhanden",
     "fields": {
       "email": "E-Mail",
@@ -37,7 +37,7 @@
       "deactivate": "Deaktivieren",
       "block": "Sperren",
       "unblock": "Entsperren",
-      "resetPassword": "Passwort zuruecksetzen",
+      "resetPassword": "Passwort zurücksetzen",
       "impersonate": "Als Benutzer anmelden"
     }
   },
@@ -45,9 +45,9 @@
     "title": "Firmenverwaltung",
     "subtitle": "Mandanten verwalten",
     "list": "Firmenliste",
-    "add": "Firma hinzufuegen",
+    "add": "Firma hinzufügen",
     "edit": "Firma bearbeiten",
-    "delete": "Firma loeschen",
+    "delete": "Firma löschen",
     "fields": {
       "name": "Firmenname",
       "identifier": "Kennung",
@@ -65,8 +65,8 @@
       "title": "Systemstatus",
       "status": "Status",
       "healthy": "Gesund",
-      "degraded": "Eingeschraenkt",
-      "unhealthy": "Nicht verfuegbar",
+      "degraded": "Eingeschränkt",
+      "unhealthy": "Nicht verfügbar",
       "components": {
         "api": "API-Server",
         "database": "Datenbank",
@@ -114,13 +114,13 @@
     "noBackups": "Keine Backups vorhanden",
     "fields": {
       "name": "Name",
-      "size": "Groesse",
+      "size": "Größe",
       "date": "Datum",
       "type": "Typ",
       "status": "Status"
     },
     "types": {
-      "full": "Vollstaendig",
+      "full": "Vollständig",
       "database": "Datenbank",
       "documents": "Dokumente",
       "config": "Konfiguration"
@@ -160,7 +160,7 @@
   "settings": {
     "title": "Einstellungen",
     "save": "Einstellungen speichern",
-    "reset": "Auf Standard zuruecksetzen",
+    "reset": "Auf Standard zurücksetzen",
     "categories": {
       "general": "Allgemein",
       "security": "Sicherheit",
@@ -171,7 +171,7 @@
   },
   "audit": {
     "title": "Audit-Log",
-    "subtitle": "Systemaktivitaeten",
+    "subtitle": "Systemaktivitäten",
     "fields": {
       "action": "Aktion",
       "user": "Benutzer",
@@ -183,7 +183,7 @@
     "actions": {
       "create": "Erstellt",
       "update": "Aktualisiert",
-      "delete": "Geloescht",
+      "delete": "Gelöscht",
       "login": "Angemeldet",
       "logout": "Abgemeldet",
       "export": "Exportiert",

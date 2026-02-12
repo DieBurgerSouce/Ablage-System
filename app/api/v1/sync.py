@@ -1,8 +1,10 @@
 """Sync API - Offline-First Delta-Synchronisierung."""
 
 import structlog
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 from uuid import UUID
+
+from app.core.types import JSONDict
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -36,7 +38,7 @@ class SyncChangeRequest(BaseModel):
     entity_type: str
     entity_id: UUID
     operation: str = Field(..., description="create, update, delete")
-    data: Dict[str, Any]
+    data: JSONDict
     client_timestamp: datetime
     version: Optional[int] = None
 
@@ -62,7 +64,7 @@ class SyncChangeResponse(BaseModel):
     entity_type: str
     entity_id: str
     operation: str
-    data: Dict[str, Any]
+    data: JSONDict
     server_timestamp: str
 
 
@@ -81,9 +83,9 @@ class SyncConflictInfo(BaseModel):
     entity_type: str
     entity_id: str
     reason: str
-    server_version: Optional[Dict[str, Any]] = None
-    client_version: Optional[Dict[str, Any]] = None
-    resolved: Optional[Dict[str, Any]] = None
+    server_version: Optional[JSONDict] = None
+    client_version: Optional[JSONDict] = None
+    resolved: Optional[JSONDict] = None
 
 
 class SyncPushResponse(BaseModel):
@@ -234,18 +236,18 @@ async def push_changes(
 
 @router.post(
     "/resolve-conflict",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Konflikt lösen",
     description="Löst manuell einen Sync-Konflikt."
 )
 async def resolve_conflict(
     entity_type: str,
     entity_id: UUID,
-    server_version: Dict[str, Any],
-    client_version: Dict[str, Any],
+    server_version: JSONDict,
+    client_version: JSONDict,
     strategy: ConflictResolution = Query(ConflictResolution.LAST_WRITE_WINS),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Löst einen Konflikt manuell."""
     try:
         sync_service = DeltaSyncService()

@@ -28,7 +28,7 @@ const fraudTypeLabels: Record<string, string> = {
   expense_fraud: 'Spesen-Betrug',
   kickback: 'Kickback',
   shell_company: 'Shell-Company',
-  round_amount: 'Runde Betraege',
+  round_amount: 'Runde Beträge',
   split_invoice: 'Invoice-Split',
   weekend_invoice: 'Wochenend',
 };
@@ -53,7 +53,7 @@ export function FraudTypesChart({ data }: FraudTypesChartProps) {
         </CardHeader>
         <CardContent>
           <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-            Keine Daten verfuegbar
+            Keine Daten verfügbar
           </div>
         </CardContent>
       </Card>
@@ -74,7 +74,7 @@ export function FraudTypesChart({ data }: FraudTypesChartProps) {
           Fraud-Typen Verteilung
         </CardTitle>
         <CardDescription>
-          Haeufigkeit nach Betrugsart
+          Häufigkeit nach Betrugsart
         </CardDescription>
       </CardHeader>
       <CardContent>

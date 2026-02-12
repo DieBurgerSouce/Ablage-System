@@ -93,7 +93,7 @@ function StatusBadge({ status }: StatusBadgeProps) {
       className: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
     },
     skipped: {
-      label: 'Uebersprungen',
+      label: 'Übersprungen',
       icon: SkipForward,
       className: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
     },
@@ -239,7 +239,7 @@ function LogRow({ log, onRetry, isRetrying }: LogRowProps) {
                       </a>
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Dokument oeffnen</TooltipContent>
+                  <TooltipContent>Dokument öffnen</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             )}
@@ -264,7 +264,7 @@ function LogRow({ log, onRetry, isRetrying }: LogRowProps) {
                 )}
                 {log.fileSize && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Dateigroesse:</span>
+                    <span className="text-muted-foreground">Dateigröße:</span>
                     <span>{(log.fileSize / 1024).toFixed(1)} KB</span>
                   </div>
                 )}
@@ -407,7 +407,7 @@ export function ImportLogTable({
             Import-Protokoll
           </CardTitle>
           <CardDescription>
-            {logs?.length ?? 0} Eintraege
+            {logs?.length ?? 0} Einträge
           </CardDescription>
         </div>
         <div className="flex items-center gap-2">
@@ -438,7 +438,7 @@ export function ImportLogTable({
               <SelectItem value="failed">Fehlgeschlagen</SelectItem>
               <SelectItem value="pending">Ausstehend</SelectItem>
               <SelectItem value="processing">Verarbeitung</SelectItem>
-              <SelectItem value="skipped">Uebersprungen</SelectItem>
+              <SelectItem value="skipped">Übersprungen</SelectItem>
               <SelectItem value="duplicate">Duplikat</SelectItem>
             </SelectContent>
           </Select>
@@ -452,7 +452,7 @@ export function ImportLogTable({
         {!logs || logs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <FileText className="h-12 w-12 mb-4" />
-            <p>Keine Import-Eintraege gefunden</p>
+            <p>Keine Import-Einträge gefunden</p>
           </div>
         ) : (
           <Table>

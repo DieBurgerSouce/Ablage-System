@@ -335,7 +335,7 @@ export function useFinanceDocument(documentId: string | undefined) {
  * Hook: Dokument-History (Audit Trail) abrufen
  *
  * Zeigt alle Änderungen an einem Finanz-Dokument:
- * - Erstellung, Bearbeitung, Loeschung
+ * - Erstellung, Bearbeitung, Löschung
  * - Kategorie- und Jahr-Änderungen
  * - OCR-Verarbeitung
  * - Frist-Änderungen
@@ -429,7 +429,7 @@ export interface RollbackVersionParams {
 }
 
 /**
- * Hook: Rollback zu einer frueheren Version
+ * Hook: Rollback zu einer früheren Version
  */
 export function useRollbackToVersion() {
   const queryClient = useQueryClient()

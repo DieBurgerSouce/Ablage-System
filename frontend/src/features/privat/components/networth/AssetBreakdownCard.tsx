@@ -1,7 +1,7 @@
 /**
- * AssetBreakdownCard - Vermoegensaufstellung
+ * AssetBreakdownCard - Vermögensaufstellung
  *
- * Zeigt die Aufschluesselung des Vermoegens nach Kategorien:
+ * Zeigt die Aufschlüsselung des Vermögens nach Kategorien:
  * - Immobilien
  * - Fahrzeuge
  * - Anlagen
@@ -218,26 +218,26 @@ export function AssetBreakdownCard({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-green-500" />
-            Vermoegensaufstellung
+            Vermögensaufstellung
           </CardTitle>
-          <CardDescription>Keine Vermoegenswerte erfasst</CardDescription>
+          <CardDescription>Keine Vermögenswerte erfasst</CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-center text-muted-foreground py-6">
             Erfassen Sie Ihre Immobilien, Fahrzeuge und Anlagen, um Ihre
-            Vermoegensposition zu sehen.
+            Vermögensposition zu sehen.
           </p>
           <div className="flex gap-2 justify-center">
             <Link to="/privat/immobilien">
               <Button variant="outline" size="sm">
                 <Home className="h-4 w-4 mr-2" />
-                Immobilie hinzufuegen
+                Immobilie hinzufügen
               </Button>
             </Link>
             <Link to="/privat/finanzen">
               <Button variant="outline" size="sm">
                 <TrendingUp className="h-4 w-4 mr-2" />
-                Anlage hinzufuegen
+                Anlage hinzufügen
               </Button>
             </Link>
           </div>
@@ -253,7 +253,7 @@ export function AssetBreakdownCard({
           <div>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-green-500" />
-              Vermoegensaufstellung
+              Vermögensaufstellung
             </CardTitle>
             <CardDescription>
               Gesamt: {formatCurrencyDE(totalAssets)}

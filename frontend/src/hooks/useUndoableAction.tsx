@@ -1,19 +1,19 @@
 /**
  * useUndoableAction - Undo Stack Management Hook
  *
- * Verwaltet einen Stack von rueckgaengig machbaren Aktionen.
- * Nuetzlich fuer komplexe Szenarien mit mehreren Undo-Schritten.
+ * Verwaltet einen Stack von rückgängig machbaren Aktionen.
+ * Nützlich für komplexe Szenarien mit mehreren Undo-Schritten.
  *
  * @example
  * ```tsx
  * const { executeAction, undo, canUndo, undoStack } = useUndoableAction({
  *   maxStackSize: 10,
- *   onUndo: (action) => logger.debug('Rueckgaengig:', action.description),
+ *   onUndo: (action) => logger.debug('Rückgängig:', action.description),
  * });
  *
- * // Eine Aktion ausfuehren
+ * // Eine Aktion ausführen
  * await executeAction({
- *   description: 'Dokument geloescht',
+ *   description: 'Dokument gelöscht',
  *   execute: () => api.deleteDocument(id),
  *   undo: () => api.restoreDocument(id),
  * });
@@ -34,13 +34,13 @@ import { logger } from '@/lib/logger';
 export interface UndoableAction<T = unknown> {
   /** Eindeutige ID der Aktion */
   id: string;
-  /** Beschreibung fuer UI/Logs */
+  /** Beschreibung für UI/Logs */
   description: string;
-  /** Zeitstempel der Ausfuehrung */
+  /** Zeitstempel der Ausführung */
   timestamp: Date;
-  /** Die Funktion die die Aktion ausfuehrt */
+  /** Die Funktion die die Aktion ausführt */
   execute: () => Promise<T>;
-  /** Die Funktion die die Aktion rueckgaengig macht */
+  /** Die Funktion die die Aktion rückgängig macht */
   undo: () => Promise<void>;
   /** Optionale Daten die mit der Aktion gespeichert werden */
   data?: T;
@@ -48,18 +48,18 @@ export interface UndoableAction<T = unknown> {
 
 export interface UseUndoableActionOptions {
   /**
-   * Maximale Groesse des Undo-Stacks
+   * Maximale Größe des Undo-Stacks
    * @default 20
    */
   maxStackSize?: number;
 
   /**
-   * Callback wenn eine Aktion rueckgaengig gemacht wird
+   * Callback wenn eine Aktion rückgängig gemacht wird
    */
   onUndo?: (action: UndoableAction) => void;
 
   /**
-   * Callback wenn eine Aktion ausgefuehrt wird
+   * Callback wenn eine Aktion ausgeführt wird
    */
   onExecute?: (action: UndoableAction) => void;
 
@@ -77,13 +77,13 @@ export interface UseUndoableActionOptions {
 }
 
 export interface UseUndoableActionReturn {
-  /** Fuehrt eine Aktion aus und fuegt sie zum Undo-Stack hinzu */
+  /** Führt eine Aktion aus und fügt sie zum Undo-Stack hinzu */
   executeAction: <T>(
     action: Omit<UndoableAction<T>, 'id' | 'timestamp' | 'data'>
   ) => Promise<T>;
-  /** Macht die letzte Aktion rueckgaengig */
+  /** Macht die letzte Aktion rückgängig */
   undo: () => Promise<void>;
-  /** Wiederholt die letzte rueckgaengig gemachte Aktion */
+  /** Wiederholt die letzte rückgängig gemachte Aktion */
   redo: () => Promise<void>;
   /** Ob es Aktionen zum Rückgängig machen gibt */
   canUndo: boolean;
@@ -95,9 +95,9 @@ export interface UseUndoableActionReturn {
   redoStack: UndoableAction[];
   /** Leert den Undo- und Redo-Stack */
   clearStack: () => void;
-  /** Ob gerade eine Undo-Operation laeuft */
+  /** Ob gerade eine Undo-Operation läuft */
   isUndoing: boolean;
-  /** Ob gerade eine Redo-Operation laeuft */
+  /** Ob gerade eine Redo-Operation läuft */
   isRedoing: boolean;
 }
 
@@ -124,12 +124,12 @@ export function useUndoableAction(
   const isUndoingRef = useRef(false);
   const isRedoingRef = useRef(false);
 
-  // Ref fuer aktuellen Stack - verhindert stale closures in Toast-Callbacks
+  // Ref für aktuellen Stack - verhindert stale closures in Toast-Callbacks
   const undoStackRef = useRef<UndoableAction[]>(undoStack);
   undoStackRef.current = undoStack;
 
   // ENTERPRISE FIX: Mutation ID um veraltete Toast-Clicks zu erkennen
-  // Wenn der Stack durch andere Operationen geaendert wurde,
+  // Wenn der Stack durch andere Operationen geändert wurde,
   // kann der Toast-Click auf eine veraltete Action zeigen
   const mutationIdRef = useRef(0);
 
@@ -185,9 +185,9 @@ export function useUndoableAction(
                   logger.warn('[useUndoableAction] Stack wurde seit Toast-Erstellung geändert');
                 }
 
-                // KRITISCH: Finde Action BEVOR wir versuchen sie rueckgaengig zu machen
+                // KRITISCH: Finde Action BEVOR wir versuchen sie rückgängig zu machen
                 // und entferne sie NUR bei Erfolg aus dem Stack!
-                // Verwende Ref fuer AKTUELLEN Stack (keine stale closure)
+                // Verwende Ref für AKTUELLEN Stack (keine stale closure)
                 const actionToUndo = undoStackRef.current.find((a) => a.id === id);
 
                 if (!actionToUndo) {
@@ -196,7 +196,7 @@ export function useUndoableAction(
                 }
 
                 try {
-                  // Fuehre undo aus und WARTE auf Erfolg
+                  // Führe undo aus und WARTE auf Erfolg
                   await actionToUndo.undo();
 
                   // NUR bei Erfolg: Entferne aus Stack und inkrementiere mutation ID
@@ -204,12 +204,12 @@ export function useUndoableAction(
                   setUndoStack((prev) => prev.filter((a) => a.id !== id));
                   toast.success('Rückgängig gemacht');
                 } catch (err) {
-                  // Bei Fehler: Behalte im Stack fuer erneuten Versuch
+                  // Bei Fehler: Behalte im Stack für erneuten Versuch
                   toast.error('Rückgängig machen fehlgeschlagen - erneut versuchen möglich', {
                     description:
                       err instanceof Error ? err.message : 'Unbekannter Fehler',
                   });
-                  // Stack bleibt unveraendert - User kann es erneut versuchen
+                  // Stack bleibt unverändert - User kann es erneut versuchen
                 }
               },
             },

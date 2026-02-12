@@ -1,7 +1,7 @@
 /**
  * AI Admin API Client
  *
- * API-Funktionen fuer AI Autonomy Verwaltung.
+ * API-Funktionen für AI Autonomy Verwaltung.
  */
 
 import { apiClient as api } from '@/lib/api/client';

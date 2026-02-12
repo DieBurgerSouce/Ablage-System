@@ -1,7 +1,7 @@
 /**
  * OCR Self-Learning Dashboard
  *
- * Hauptansicht fuer das selbstlernende OCR-System.
+ * Hauptansicht für das selbstlernende OCR-System.
  * Zeigt Lernstatistiken, Confidence-Anpassungen, A/B Tests und Modell-Metriken.
  */
 
@@ -71,7 +71,7 @@ export function OCRLearningDashboard() {
         <div>
           <h1 className="text-2xl font-bold">OCR Self-Learning</h1>
           <p className="text-muted-foreground">
-            Automatisches Lernen aus User-Korrekturen fuer kontinuierliche Verbesserung.
+            Automatisches Lernen aus User-Korrekturen für kontinuierliche Verbesserung.
           </p>
         </div>
       </div>
@@ -84,7 +84,7 @@ export function OCRLearningDashboard() {
         <TabsList>
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <BarChart3 className="w-4 h-4" />
-            Uebersicht
+            Übersicht
           </TabsTrigger>
           <TabsTrigger value="ab-tests" className="flex items-center gap-2">
             <FlaskConical className="w-4 h-4" />
@@ -114,16 +114,16 @@ export function OCRLearningDashboard() {
                 <h3 className="font-medium mb-4">A/B Test Anleitung</h3>
                 <div className="space-y-3 text-sm text-muted-foreground">
                   <p>
-                    Mit A/B Tests koennen Sie neue Modell-Versionen gegen die aktuelle
+                    Mit A/B Tests können Sie neue Modell-Versionen gegen die aktuelle
                     Baseline testen, bevor Sie sie produktiv einsetzen.
                   </p>
                   <div className="space-y-2">
                     <p className="font-medium text-foreground">So funktioniert es:</p>
                     <ol className="list-decimal list-inside space-y-1">
-                      <li>Starten Sie einen Test mit gewuenschtem Traffic-Anteil</li>
-                      <li>Der Kandidat erhaelt den definierten Anteil der Dokumente</li>
-                      <li>Nach genuegend Samples wird die Qualitaet verglichen</li>
-                      <li>Bei Verbesserung: Kandidat zur neuen Baseline befoerdern</li>
+                      <li>Starten Sie einen Test mit gewünschtem Traffic-Anteil</li>
+                      <li>Der Kandidat erhält den definierten Anteil der Dokumente</li>
+                      <li>Nach genügend Samples wird die Qualität verglichen</li>
+                      <li>Bei Verbesserung: Kandidat zur neuen Baseline befördern</li>
                       <li>Bei Verschlechterung: Automatisches Rollback</li>
                     </ol>
                   </div>
@@ -146,35 +146,35 @@ export function OCRLearningDashboard() {
             <LearningModeSelector stats={stats} />
             <Card>
               <CardContent className="pt-6">
-                <h3 className="font-medium mb-4">Lernmodus-Erklaerung</h3>
+                <h3 className="font-medium mb-4">Lernmodus-Erklärung</h3>
                 <div className="space-y-4 text-sm text-muted-foreground">
                   <div>
                     <p className="font-medium text-foreground">Aggressiv</p>
                     <p>
-                      Jede User-Korrektur wird sofort in das System uebernommen. Dies
-                      fuehrt zu schnellem Lernen, kann aber bei fehlerhaften Korrekturen
-                      zu Problemen fuehren.
+                      Jede User-Korrektur wird sofort in das System übernommen. Dies
+                      führt zu schnellem Lernen, kann aber bei fehlerhaften Korrekturen
+                      zu Problemen führen.
                     </p>
                   </div>
                   <div>
                     <p className="font-medium text-foreground">Vorsichtig</p>
                     <p>
-                      Nur Korrekturen von verifizierten Benutzern werden uebernommen.
-                      Zusaetzlich wird eine Mindest-Confidence benoetigt.
+                      Nur Korrekturen von verifizierten Benutzern werden übernommen.
+                      Zusätzlich wird eine Mindest-Confidence benötigt.
                     </p>
                   </div>
                   <div>
                     <p className="font-medium text-foreground">Batch</p>
                     <p>
-                      Korrekturen werden gesammelt und taeglich im Batch verarbeitet.
-                      Dies erlaubt eine manuelle Pruefung vor der Uebernahme.
+                      Korrektionen werden gesammelt und täglich im Batch verarbeitet.
+                      Dies erlaubt eine manuelle Prüfung vor der Übernahme.
                     </p>
                   </div>
                   <Alert>
                     <Brain className="h-4 w-4" />
                     <AlertDescription>
                       Bei {stats.training_samples} Training Samples wird der aggressive
-                      Modus empfohlen, da genuegend Daten fuer stabiles Lernen
+                      Modus empfohlen, da genügend Daten für stabiles Lernen
                       vorhanden sind.
                     </AlertDescription>
                   </Alert>

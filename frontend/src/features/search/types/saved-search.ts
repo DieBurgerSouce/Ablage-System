@@ -1,7 +1,7 @@
 /**
  * Saved Search Types - Gespeicherte Suchen
  *
- * Typen und Utilities fuer gespeicherte Suchen.
+ * Typen und Utilities für gespeicherte Suchen.
  * Werden als "Smart Folders" in der Sidebar angezeigt.
  */
 

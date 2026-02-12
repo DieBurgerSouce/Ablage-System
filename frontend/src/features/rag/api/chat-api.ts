@@ -76,7 +76,23 @@ export async function sendMessage(
  */
 export async function* sendMessageStream(
     request: SendMessageRequest
-): AsyncGenerator<{ type: string; content?: string; count?: number; session_id?: string; message_id?: string }> {
+): AsyncGenerator<{
+    type: string;
+    content?: string;
+    count?: number;
+    session_id?: string;
+    message_id?: string;
+    message?: string;
+    tool_action_count?: number;
+    action_id?: string;
+    tool_name?: string;
+    parameters?: Record<string, unknown>;
+    action_type?: string;
+    status?: string;
+    data?: Record<string, unknown>;
+    requires_confirmation?: boolean;
+    execution_time_ms?: number;
+}> {
     const token = getAuthToken();
     if (!token) {
         throw new Error('Nicht authentifiziert');

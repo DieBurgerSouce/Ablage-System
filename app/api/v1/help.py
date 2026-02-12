@@ -9,7 +9,9 @@ Provides contextual help system for:
 - Full-text search in articles
 """
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
+
+from app.core.types import JSONDict
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -471,7 +473,7 @@ DEFAULT_VIDEO_TUTORIALS = [
 
 # ==================== Helper Functions ====================
 
-def get_user_help_preferences(user: User) -> Dict[str, Any]:
+def get_user_help_preferences(user: User) -> JSONDict:
     """Lädt Hilfe-Präferenzen aus User.preferences oder gibt Defaults zurück."""
     if user.preferences and "help" in user.preferences:
         help_prefs = user.preferences["help"]
@@ -496,7 +498,7 @@ def get_user_help_preferences(user: User) -> Dict[str, Any]:
 
 async def save_user_help_preferences(
     user: User,
-    preferences: Dict[str, Any],
+    preferences: JSONDict,
     db: AsyncSession
 ) -> None:
     """Speichert Hilfe-Präferenzen in User.preferences."""
@@ -510,7 +512,7 @@ async def save_user_help_preferences(
     await db.refresh(user)
 
 
-def search_articles(query: str, articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def search_articles(query: str, articles: List[JSONDict]) -> List[JSONDict]:
     """Führt Volltext-Suche in Artikeln durch."""
     query_lower = query.lower()
     results = []

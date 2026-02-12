@@ -1,6 +1,6 @@
 /**
  * Dunning Templates Page
- * Admin-Seite fuer Mahnbrief-Vorlagen und PDF-Generierung
+ * Admin-Seite für Mahnbrief-Vorlagen und PDF-Generierung
  */
 
 import { useState } from 'react';
@@ -91,10 +91,10 @@ export function DunningTemplatesPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
-                Verfuegbare Vorlagen
+                Verfügbare Vorlagen
               </CardTitle>
               <CardDescription>
-                Waehlen Sie eine Vorlage fuer die Mahnbrief-Generierung
+                Wählen Sie eine Vorlage für die Mahnbrief-Generierung
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -108,7 +108,7 @@ export function DunningTemplatesPage() {
                 <Alert variant="destructive">
                   <AlertTitle>Fehler</AlertTitle>
                   <AlertDescription>
-                    Vorlagen konnten nicht geladen werden. Bitte versuchen Sie es spaeter erneut.
+                    Vorlagen konnten nicht geladen werden. Bitte versuchen Sie es später erneut.
                   </AlertDescription>
                 </Alert>
               ) : templates && templates.length > 0 ? (
@@ -156,7 +156,7 @@ export function DunningTemplatesPage() {
                           style: 'currency',
                           currency: 'EUR',
                         })}{' '}
-                        &bull; {record.daysOverdue} Tage ueberfaellig
+                        &bull; {record.daysOverdue} Tage überfällig
                       </div>
                     </div>
                     <Button
@@ -203,7 +203,7 @@ export function DunningTemplatesPage() {
               <div>
                 <strong>Verzugspauschale:</strong>
                 <p className="text-muted-foreground mt-1">
-                  Bei Geschaeftskunden (B2B) kann eine Pauschale von 40,00 EUR
+                  Bei Geschäftskunden (B2B) kann eine Pauschale von 40,00 EUR
                   nach BGB §288 Abs. 5 berechnet werden.
                 </p>
               </div>

@@ -1,9 +1,9 @@
 /**
- * ContractStatsCards - KPI-Karten fuer Vertrags-Dashboard
+ * ContractStatsCards - KPI-Karten für Vertrags-Dashboard
  *
  * Zeigt:
- * - Gesamtzahl Vertraege
- * - Aktive Vertraege
+ * - Gesamtzahl Verträge
+ * - Aktive Verträge
  * - Bald ablaufend
  * - Kritische Fristen
  * - Gesamtwert
@@ -33,7 +33,7 @@ export function ContractStatsCards({ summary, isLoading }: ContractStatsCardsPro
       title: 'Gesamt',
       value: summary?.total_contracts ?? 0,
       icon: FileText,
-      description: 'Vertraege',
+      description: 'Verträge',
       color: 'text-blue-600',
       bgColor: 'bg-blue-100',
     },
@@ -41,7 +41,7 @@ export function ContractStatsCards({ summary, isLoading }: ContractStatsCardsPro
       title: 'Aktiv',
       value: summary?.active_contracts ?? 0,
       icon: CheckCircle,
-      description: 'Laufende Vertraege',
+      description: 'Laufende Verträge',
       color: 'text-green-600',
       bgColor: 'bg-green-100',
     },
@@ -65,7 +65,7 @@ export function ContractStatsCards({ summary, isLoading }: ContractStatsCardsPro
       title: 'Gesamtwert',
       value: summary?.total_value ?? 0,
       icon: Euro,
-      description: 'Alle Vertraege',
+      description: 'Alle Verträge',
       color: 'text-purple-600',
       bgColor: 'bg-purple-100',
       isCurrency: true,

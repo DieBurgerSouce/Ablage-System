@@ -1,7 +1,7 @@
 /**
  * OCR Self-Learning Admin Route
  *
- * Route fuer das selbstlernende OCR-System Dashboard.
+ * Route für das selbstlernende OCR-System Dashboard.
  */
 
 import { createFileRoute } from '@tanstack/react-router';

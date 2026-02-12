@@ -1,7 +1,7 @@
 /**
  * SearchModeToggle Component
  *
- * Ermoeglicht Umschaltung zwischen den Suchmodi:
+ * Ermöglicht Umschaltung zwischen den Suchmodi:
  * - Dokument-Suche
  * - Chunk-Suche (RAG)
  * - Kombinierte Suche
@@ -49,7 +49,7 @@ const MODES: Array<{
         label: 'Abschnitte',
         shortLabel: 'RAG',
         icon: Layers,
-        description: 'Durchsucht einzelne Dokumenten-Abschnitte fuer praezisere Treffer',
+        description: 'Durchsucht einzelne Dokumenten-Abschnitte für präzisere Treffer',
     },
     {
         id: 'combined',

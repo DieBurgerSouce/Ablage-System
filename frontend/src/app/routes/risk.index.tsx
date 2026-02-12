@@ -1,7 +1,7 @@
 /**
  * Risk Scoring Index Route
  *
- * Hauptseite fuer das Risiko-Scoring Dashboard.
+ * Hauptseite für das Risiko-Scoring Dashboard.
  */
 
 import { createFileRoute } from '@tanstack/react-router';

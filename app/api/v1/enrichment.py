@@ -5,7 +5,9 @@ Endpoints für Anreicherung von Geschäftspartnern mit externen Daten.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 import structlog
@@ -46,7 +48,7 @@ class EnrichmentResultResponse(BaseModel):
 
     entity_id: UUID
     sources_queried: List[str]
-    enriched_fields: Dict[str, Any]
+    enriched_fields: JSONDict
     confidence: float
     cached: bool
     timestamp: datetime

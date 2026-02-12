@@ -89,8 +89,8 @@ export function TestNotificationButton({
         <DialogHeader>
           <DialogTitle>Test-Benachrichtigung senden</DialogTitle>
           <DialogDescription>
-            Senden Sie eine Test-Benachrichtigung ueber {channelLabel}, um die
-            Konfiguration zu ueberpruefen.
+            Senden Sie eine Test-Benachrichtigung über {channelLabel}, um die
+            Konfiguration zu überprüfen.
           </DialogDescription>
         </DialogHeader>
 
@@ -106,7 +106,7 @@ export function TestNotificationButton({
               disabled={status === 'sending'}
             />
             <p className="text-sm text-muted-foreground">
-              Leer lassen fuer Standard-Testnachricht.
+              Leer lassen für Standard-Testnachricht.
             </p>
           </div>
 
@@ -131,7 +131,7 @@ export function TestNotificationButton({
           {channel === 'sms' && (
             <Alert>
               <AlertDescription>
-                <strong>Hinweis:</strong> SMS-Tests koennen Kosten verursachen.
+                <strong>Hinweis:</strong> SMS-Tests können Kosten verursachen.
                 Stellen Sie sicher, dass Ihre Telefonnummer korrekt hinterlegt ist.
               </AlertDescription>
             </Alert>
@@ -142,7 +142,7 @@ export function TestNotificationButton({
               <AlertDescription>
                 <strong>Hinweis:</strong> Push-Benachrichtigungen erfordern eine
                 Browser-Berechtigung. Falls keine Benachrichtigung erscheint,
-                pruefen Sie die Browser-Einstellungen.
+                prüfen Sie die Browser-Einstellungen.
               </AlertDescription>
             </Alert>
           )}

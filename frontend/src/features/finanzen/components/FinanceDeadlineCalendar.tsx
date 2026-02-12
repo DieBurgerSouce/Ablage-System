@@ -41,7 +41,7 @@ interface FinanceDeadlineCalendarProps {
 const MONTH_NAMES = [
   'Januar',
   'Februar',
-  'Maerz',
+  'März',
   'April',
   'Mai',
   'Juni',

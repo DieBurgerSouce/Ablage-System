@@ -1,7 +1,7 @@
 /**
  * Feedback Queue
  *
- * Review-Warteschlange fuer KI-Entscheidungen.
+ * Review-Warteschlange für KI-Entscheidungen.
  */
 
 import { useState } from 'react';

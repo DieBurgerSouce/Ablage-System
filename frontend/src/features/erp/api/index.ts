@@ -1,7 +1,7 @@
 /**
  * ERP Integration API Client
  *
- * API-Funktionen fuer ERP-Verbindungen, Sync und Konflikte.
+ * API-Funktionen für ERP-Verbindungen, Sync und Konflikte.
  */
 
 import { apiClient as api } from '@/lib/api/client';

@@ -1,8 +1,8 @@
 /**
  * Report-Builder API Client
  *
- * API-Funktionen fuer Report-Templates, Spalten, Filter, Charts,
- * Ausfuehrungen, Sharing und Scheduling.
+ * API-Funktionen für Report-Templates, Spalten, Filter, Charts,
+ * Ausführungen, Sharing und Scheduling.
  */
 
 import { apiClient as api } from '@/lib/api/client';
@@ -44,7 +44,7 @@ const BASE_URL = '/reports';
 // =============================================================================
 
 /**
- * Liste alle Report-Templates (eigene + oeffentliche + geteilte).
+ * Liste alle Report-Templates (eigene + öffentliche + geteilte).
  */
 export async function listTemplates(
   includePublic = true,
@@ -233,7 +233,7 @@ export async function previewReport(
 }
 
 /**
- * Fuehre einen Report aus.
+ * Führe einen Report aus.
  */
 export async function executeReport(
   templateId: string,
@@ -247,7 +247,7 @@ export async function executeReport(
 }
 
 /**
- * Liste alle Ausfuehrungen.
+ * Liste alle Ausführungen.
  */
 export async function listExecutions(
   filters?: ExecutionFilters
@@ -259,7 +259,7 @@ export async function listExecutions(
 }
 
 /**
- * Hole eine spezifische Ausfuehrung.
+ * Hole eine spezifische Ausführung.
  */
 export async function getExecution(executionId: string): Promise<ReportExecution> {
   const response = await api.get<ReportExecution>(`${BASE_URL}/executions/${executionId}`);
@@ -274,7 +274,7 @@ export function getDownloadUrl(executionId: string): string {
 }
 
 /**
- * Breche eine laufende Ausfuehrung ab.
+ * Breche eine laufende Ausführung ab.
  */
 export async function cancelExecution(executionId: string): Promise<SuccessResponse> {
   const response = await api.post<SuccessResponse>(
@@ -321,7 +321,7 @@ export async function listSharedWithMe(): Promise<ReportShare[]> {
 // =============================================================================
 
 /**
- * Aktiviere einen Zeitplan fuer ein Template.
+ * Aktiviere einen Zeitplan für ein Template.
  */
 export async function enableSchedule(
   templateId: string,
@@ -357,7 +357,7 @@ export async function getSchedulePresets(): Promise<SchedulePreset[]> {
 // =============================================================================
 
 /**
- * Hole verfuegbare Datenquellen.
+ * Hole verfügbare Datenquellen.
  */
 export async function getDataSources(): Promise<DataSourceInfo[]> {
   const response = await api.get<DataSourceInfo[]>(`${BASE_URL}/data-sources`);
@@ -365,7 +365,7 @@ export async function getDataSources(): Promise<DataSourceInfo[]> {
 }
 
 /**
- * Hole verfuegbare Felder fuer eine Datenquelle.
+ * Hole verfügbare Felder für eine Datenquelle.
  */
 export async function getFields(dataSource: string): Promise<FieldDefinition[]> {
   const response = await api.get<FieldDefinition[]>(
@@ -375,7 +375,7 @@ export async function getFields(dataSource: string): Promise<FieldDefinition[]> 
 }
 
 /**
- * Hole verfuegbare Filter-Operatoren.
+ * Hole verfügbare Filter-Operatoren.
  */
 export async function getOperators(): Promise<OperatorInfo[]> {
   const response = await api.get<OperatorInfo[]>(`${BASE_URL}/operators`);
@@ -383,7 +383,7 @@ export async function getOperators(): Promise<OperatorInfo[]> {
 }
 
 /**
- * Hole verfuegbare Aggregationen.
+ * Hole verfügbare Aggregationen.
  */
 export async function getAggregations(): Promise<AggregationInfo[]> {
   const response = await api.get<AggregationInfo[]>(`${BASE_URL}/aggregations`);
@@ -391,7 +391,7 @@ export async function getAggregations(): Promise<AggregationInfo[]> {
 }
 
 /**
- * Hole verfuegbare Export-Formate.
+ * Hole verfügbare Export-Formate.
  */
 export async function getFormats(): Promise<FormatInfo[]> {
   const response = await api.get<FormatInfo[]>(`${BASE_URL}/formats`);

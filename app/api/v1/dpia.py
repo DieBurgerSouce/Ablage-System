@@ -15,7 +15,9 @@ Feinpoliert und durchdacht - DSGVO-konform.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 import structlog
@@ -215,7 +217,7 @@ async def create_dpia_from_template(
     request: CreateFromTemplateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Erstelle neue DPIA aus Template.
 
@@ -294,7 +296,7 @@ async def get_dpia(
     dpia_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Hole DPIA nach ID."""
     service = get_dpia_service()
     dpia = await service.get_by_id(db, dpia_id)
@@ -321,7 +323,7 @@ async def update_dpia_status(
     request: UpdateStatusRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Aktualisiere DPIA Status."""
     service = get_dpia_service()
 
@@ -364,7 +366,7 @@ async def add_dpo_consultation(
     request: DPOConsultationRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Fuege DPO-Konsultation hinzu.
 
@@ -424,7 +426,7 @@ async def get_audit_trail(
     dpia_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[Dict[str, Any]]:
+) -> List[JSONDict]:
     """Hole Audit-Trail der DPIA."""
     service = get_dpia_service()
     dpia = await service.get_by_id(db, dpia_id)

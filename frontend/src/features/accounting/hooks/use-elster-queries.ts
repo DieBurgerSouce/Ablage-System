@@ -1,7 +1,7 @@
 /**
  * ELSTER Export Query Hooks
  *
- * TanStack Query Hooks fuer USt-VA und ELSTER XML Export.
+ * TanStack Query Hooks für USt-VA und ELSTER XML Export.
  */
 
 import { useQuery, useMutation } from '@tanstack/react-query';

@@ -1,8 +1,8 @@
 /**
  * AI Actions Query Hooks
  *
- * TanStack Query Hooks fuer role-basierte AI-Aktionen.
- * Unterstuetzt alle drei Autonomie-Level: Viewer, Editor, Admin.
+ * TanStack Query Hooks für role-basierte AI-Aktionen.
+ * Unterstützt alle drei Autonomie-Level: Viewer, Editor, Admin.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -51,19 +51,19 @@ export const aiActionKeys = {
 // ==================== Queries ====================
 
 /**
- * Hook zum Abrufen verfuegbarer AI-Aktionen basierend auf User-Rolle.
+ * Hook zum Abrufen verfügbarer AI-Aktionen basierend auf User-Rolle.
  */
 export function useAvailableActions(contextType?: string, enabled = true) {
     return useQuery({
         queryKey: aiActionKeys.actionList(contextType),
         queryFn: () => aiActionsApi.getAvailableActions(contextType),
-        staleTime: 5 * 60 * 1000, // 5 Minuten - Rollen aendern sich selten
+        staleTime: 5 * 60 * 1000, // 5 Minuten - Rollen ändern sich selten
         enabled,
     });
 }
 
 /**
- * Hook zum Abrufen von Kontext-Informationen fuer die aktuelle Seite.
+ * Hook zum Abrufen von Kontext-Informationen für die aktuelle Seite.
  */
 export function useAIContextInfo(
     pageType: string,
@@ -74,7 +74,7 @@ export function useAIContextInfo(
     return useQuery({
         queryKey: aiActionKeys.contextInfo(pageType, documentId, entityId),
         queryFn: () => aiActionsApi.getContextInfo(pageType, documentId, entityId),
-        staleTime: 30 * 1000, // 30 Sekunden - Kontext kann sich aendern
+        staleTime: 30 * 1000, // 30 Sekunden - Kontext kann sich ändern
         enabled: enabled && !!pageType,
     });
 }
@@ -82,12 +82,12 @@ export function useAIContextInfo(
 // ==================== Mutations ====================
 
 /**
- * Hook zum Ausfuehren einer AI-Aktion.
+ * Hook zum Ausführen einer AI-Aktion.
  *
- * Verhaelt sich unterschiedlich je nach Autonomie-Level:
- * - Viewer: Nur read-only Aktionen, direkte Ausfuehrung
- * - Editor: Gibt Suggestion zurueck, erfordert Bestaetigung
- * - Admin: Kann mit auto_execute direkt ausfuehren
+ * Verhält sich unterschiedlich je nach Autonomie-Level:
+ * - Viewer: Nur read-only Aktionen, direkte Ausführung
+ * - Editor: Gibt Suggestion zurück, erfordert Bestätigung
+ * - Admin: Kann mit auto_execute direkt ausführen
  */
 export function useExecuteAction() {
     const queryClient = useQueryClient();
@@ -117,7 +117,7 @@ export function useExecuteAction() {
 }
 
 /**
- * Hook zum Bestaetigen oder Ablehnen einer vorgeschlagenen Aktion.
+ * Hook zum Bestätigen oder Ablehnen einer vorgeschlagenen Aktion.
  */
 export function useConfirmAction() {
     const queryClient = useQueryClient();
@@ -142,7 +142,7 @@ export function useConfirmAction() {
             }
         },
         onError: (error: Error) => {
-            toast.error(`Fehler bei Bestaetigung: ${error.message}`);
+            toast.error(`Fehler bei Bestätigung: ${error.message}`);
         },
     });
 }
@@ -150,7 +150,7 @@ export function useConfirmAction() {
 // ==================== Utility Hooks ====================
 
 /**
- * Hook zum Pruefen ob eine bestimmte Aktion verfuegbar ist.
+ * Hook zum Prüfen ob eine bestimmte Aktion verfügbar ist.
  */
 export function useCanExecuteAction(actionType: AIActionType): {
     canExecute: boolean;
@@ -190,7 +190,7 @@ export function useCanExecuteAction(actionType: AIActionType): {
 }
 
 /**
- * Hook fuer kontextbewusste Action-Execution.
+ * Hook für kontextbewusste Action-Execution.
  * Kombiniert Kontext-Detection mit Action-Execution.
  */
 export function useContextAwareAction(
@@ -256,8 +256,8 @@ export function useContextAwareAction(
 }
 
 /**
- * Hook fuer Action-Suggestions Queue (Editor-Level).
- * Verwaltet ausstehende Vorschlaege die auf Bestaetigung warten.
+ * Hook für Action-Suggestions Queue (Editor-Level).
+ * Verwaltet ausstehende Vorschläge die auf Bestätigung warten.
  */
 export function useActionSuggestions() {
     const queryClient = useQueryClient();

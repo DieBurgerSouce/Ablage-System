@@ -1,7 +1,7 @@
 /**
- * IntegrityReportPanel - Integritaetsbericht
+ * IntegrityReportPanel - Integritätsbericht
  *
- * Zeigt Integritaets-Score, Root Hash, Verletzungen
+ * Zeigt Integritäts-Score, Root Hash, Verletzungen
  * und Verifikations-Status der Audit-Chain.
  */
 
@@ -52,7 +52,7 @@ function IntegrityScore({ score }: { score: number }) {
       <Progress
         value={score}
         className="h-3"
-        aria-label={`Integritaets-Score: ${score.toFixed(1)} von 100`}
+        aria-label={`Integritäts-Score: ${score.toFixed(1)} von 100`}
       />
       <Badge
         variant={score >= 95 ? "default" : score >= 80 ? "secondary" : "destructive"}
@@ -95,10 +95,10 @@ export function IntegrityReportPanel() {
         <CardContent className="flex flex-col items-center justify-center py-12">
           <AlertCircle className="h-12 w-12 text-destructive mb-4" />
           <h3 className="text-lg font-semibold">
-            Bericht nicht verfuegbar
+            Bericht nicht verfügbar
           </h3>
           <p className="text-muted-foreground text-sm">
-            Der Integritaetsbericht konnte nicht geladen werden.
+            Der Integritätsbericht konnte nicht geladen werden.
           </p>
         </CardContent>
       </Card>
@@ -118,7 +118,7 @@ export function IntegrityReportPanel() {
             ) : (
               <ShieldAlert className="h-5 w-5 text-yellow-600" />
             )}
-            Integritaets-Score
+            Integritäts-Score
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -135,7 +135,7 @@ export function IntegrityReportPanel() {
           {/* Total Entries */}
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">
-              Gesamteintraege
+              Gesamteinträge
             </span>
             <span className="font-mono text-sm font-medium">
               {report.total_entries.toLocaleString("de-DE")}
@@ -145,7 +145,7 @@ export function IntegrityReportPanel() {
           {/* Verified Entries */}
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">
-              Verifizierte Eintraege
+              Verifizierte Einträge
             </span>
             <span className="font-mono text-sm font-medium">
               {report.verified_entries.toLocaleString("de-DE")}

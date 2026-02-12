@@ -14,8 +14,10 @@ Dokument-spezifische und Entity-spezifische Audit Trails.
 """
 
 from datetime import datetime, timezone, timedelta
-from typing import Any, Dict, List, Optional, Literal
+from typing import Dict, List, Optional, Literal
 from uuid import UUID
+
+from app.core.types import JSONDict
 import csv
 import io
 
@@ -69,8 +71,8 @@ class AuditTrailEventSchema(BaseModel):
     # Zusaetzliche Metadaten
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
-    changes: Optional[Dict[str, Any]] = Field(None, description="Delta bei Aenderungen")
+    metadata: JSONDict = Field(default_factory=dict)
+    changes: Optional[JSONDict] = Field(None, description="Delta bei Aenderungen")
 
     # Visualisierung
     icon: str = Field(default="Activity", description="Lucide Icon")
@@ -113,8 +115,8 @@ class AuditTrailStatsSchema(BaseModel):
     total_events: int
     unique_actors: int
     events_by_type: Dict[str, int]
-    events_by_day: List[Dict[str, Any]]
-    most_active_users: List[Dict[str, Any]]
+    events_by_day: List[JSONDict]
+    most_active_users: List[JSONDict]
     date_range: Dict[str, str]
 
 
@@ -122,7 +124,7 @@ class AuditTrailStatsSchema(BaseModel):
 # Event Type Mapping
 # =============================================================================
 
-EVENT_TYPE_CONFIG: Dict[str, Dict[str, Any]] = {
+EVENT_TYPE_CONFIG: Dict[str, JSONDict] = {
     # Document Events
     "document_created": {"title": "Dokument erstellt", "icon": "FilePlus", "color": "green", "important": True},
     "document_uploaded": {"title": "Dokument hochgeladen", "icon": "Upload", "color": "green", "important": True},
@@ -170,7 +172,7 @@ EVENT_TYPE_CONFIG: Dict[str, Dict[str, Any]] = {
 }
 
 
-def get_event_config(event_type: str) -> Dict[str, Any]:
+def get_event_config(event_type: str) -> JSONDict:
     """Gibt Konfiguration fuer einen Event-Typ zurueck."""
     return EVENT_TYPE_CONFIG.get(event_type, EVENT_TYPE_CONFIG["unknown"])
 
@@ -784,9 +786,9 @@ async def get_audit_trail_stats(
 
 @router.get(
     "/event-types",
-    response_model=Dict[str, Dict[str, Any]],
+    response_model=Dict[str, JSONDict],
     summary="Gibt alle verfuegbaren Event-Typen zurueck",
 )
-async def get_event_types() -> Dict[str, Dict[str, Any]]:
+async def get_event_types() -> Dict[str, JSONDict]:
     """Gibt alle verfuegbaren Event-Typen mit Konfiguration zurueck."""
     return EVENT_TYPE_CONFIG

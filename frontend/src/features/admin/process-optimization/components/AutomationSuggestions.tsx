@@ -1,7 +1,7 @@
 /**
  * Automation Suggestions Component
  *
- * Zeigt Automatisierungsvorschlaege mit Ein-Klick-Aktivierung.
+ * Zeigt Automatisierungsvorschläge mit Ein-Klick-Aktivierung.
  */
 
 import { useState } from 'react';
@@ -175,9 +175,9 @@ export function AutomationSuggestions() {
   const handleGenerate = async () => {
     try {
       await generateMutation.mutateAsync({ days: 30, save: true });
-      toast.success('Neue Vorschlaege wurden generiert');
+      toast.success('Neue Vorschläge wurden generiert');
     } catch {
-      toast.error('Fehler beim Generieren der Vorschlaege');
+      toast.error('Fehler beim Generieren der Vorschläge');
     }
   };
 
@@ -231,7 +231,7 @@ export function AutomationSuggestions() {
         <div>
           <CardTitle className="flex items-center gap-2">
             <Zap className="h-5 w-5" />
-            Automatisierungsvorschlaege
+            Automatisierungsvorschläge
           </CardTitle>
           <CardDescription>
             Erkannte Optimierungspotenziale basierend auf Ihren Prozessen
@@ -300,7 +300,7 @@ export function AutomationSuggestions() {
         ) : (
           <div className="text-center py-8 text-muted-foreground">
             <Zap className="h-12 w-12 mx-auto mb-4 opacity-20" />
-            <p>Keine offenen Vorschlaege</p>
+            <p>Keine offenen Vorschläge</p>
             <p className="text-sm mt-1">
               Klicken Sie auf &quot;Neue generieren&quot; um Optimierungspotenziale zu finden
             </p>

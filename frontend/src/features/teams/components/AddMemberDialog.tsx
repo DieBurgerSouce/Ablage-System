@@ -1,7 +1,7 @@
 /**
  * AddMemberDialog Component
  *
- * Dialog zum Hinzufuegen von neuen Mitgliedern zu einem Team.
+ * Dialog zum Hinzufügen von neuen Mitgliedern zu einem Team.
  */
 
 import { useState } from 'react';
@@ -68,7 +68,7 @@ interface User {
 }
 
 const addMemberSchema = z.object({
-  user_id: z.string().uuid('Bitte waehlen Sie einen Benutzer aus'),
+  user_id: z.string().uuid('Bitte wählen Sie einen Benutzer aus'),
   role: z.enum(['member', 'lead', 'admin', 'deputy', 'observer']),
 });
 
@@ -79,7 +79,7 @@ const roleOptions: { value: TeamMemberRole; label: string; description: string }
   { value: 'observer', label: 'Beobachter', description: 'Nur lesender Zugriff' },
   { value: 'deputy', label: 'Stellvertretung', description: 'Kann bei Abwesenheit vertreten' },
   { value: 'lead', label: 'Leitung', description: 'Teamleitung mit erweitertem Zugriff' },
-  { value: 'admin', label: 'Admin', description: 'Vollstaendige Verwaltungsrechte' },
+  { value: 'admin', label: 'Admin', description: 'Vollständige Verwaltungsrechte' },
 ];
 
 export function AddMemberDialog({ teamId, open, onOpenChange }: AddMemberDialogProps) {
@@ -138,10 +138,10 @@ export function AddMemberDialog({ teamId, open, onOpenChange }: AddMemberDialogP
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
-            Mitglied hinzufuegen
+            Mitglied hinzufügen
           </DialogTitle>
           <DialogDescription>
-            Fuegen Sie einen bestehenden Benutzer zum Team hinzu.
+            Fügen Sie einen bestehenden Benutzer zum Team hinzu.
           </DialogDescription>
         </DialogHeader>
 
@@ -254,7 +254,7 @@ export function AddMemberDialog({ teamId, open, onOpenChange }: AddMemberDialogP
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Waehlen Sie eine Rolle" />
+                        <SelectValue placeholder="Wählen Sie eine Rolle" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -281,7 +281,7 @@ export function AddMemberDialog({ teamId, open, onOpenChange }: AddMemberDialogP
               </Button>
               <Button type="submit" disabled={addMember.isPending || !selectedUserId}>
                 {addMember.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Hinzufuegen
+                Hinzufügen
               </Button>
             </DialogFooter>
           </form>

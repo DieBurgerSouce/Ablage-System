@@ -1,7 +1,7 @@
 /**
  * Document Comparison Route
  *
- * Route fuer den Dokumentenvergleich.
+ * Route für den Dokumentenvergleich.
  */
 
 import { createFileRoute } from '@tanstack/react-router';

@@ -1,14 +1,14 @@
 /**
  * German Formatting Utilities
  *
- * Zentrale Formatierungsfunktionen fuer deutsche Lokalisierung.
+ * Zentrale Formatierungsfunktionen für deutsche Lokalisierung.
  * Alle Funktionen folgen deutschen Konventionen (Komma als Dezimaltrennzeichen, etc.)
  */
 
 // ==================== CURRENCY FORMATTING ====================
 
 /**
- * Formatiert einen Betrag als deutsche Waehrung
+ * Formatiert einen Betrag als deutsche Währung
  *
  * @example
  * formatCurrencyDE(1234.56) // "1.234,56 EUR"
@@ -39,7 +39,7 @@ export function formatCurrencyDE(
 }
 
 /**
- * Formatiert einen Betrag kompakt (fuer Dashboards)
+ * Formatiert einen Betrag kompakt (für Dashboards)
  *
  * @example
  * formatCurrencyCompactDE(1234567.89) // "1,23 Mio. EUR"
@@ -245,7 +245,7 @@ export function formatPercentDE(
 }
 
 /**
- * Formatiert eine Dateigroesse
+ * Formatiert eine Dateigröße
  *
  * @example
  * formatFileSizeDE(1024) // "1,0 KB"
@@ -311,7 +311,7 @@ export function formatVATID(vatId: string | null | undefined): string {
     return `DE ${cleaned.slice(2, 5)} ${cleaned.slice(5, 8)} ${cleaned.slice(8)}`;
   }
 
-  // Andere: Laendercode + Rest
+  // Andere: Ländercode + Rest
   const countryCode = cleaned.slice(0, 2);
   const number = cleaned.slice(2);
   return `${countryCode} ${number}`;
@@ -320,7 +320,7 @@ export function formatVATID(vatId: string | null | undefined): string {
 // ==================== TEXT FORMATTING ====================
 
 /**
- * Kuerzt einen Text und fuegt Ellipsis hinzu
+ * Kürzt einen Text und fügt Ellipsis hinzu
  *
  * @example
  * truncateText('Ein sehr langer Text', 10) // "Ein sehr l..."

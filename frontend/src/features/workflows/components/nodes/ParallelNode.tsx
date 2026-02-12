@@ -1,8 +1,8 @@
 /**
  * ParallelNode Component
  *
- * ReactFlow Knoten fuer parallele Ausfuehrung.
- * Zeigt mehrere gleichzeitig ausgefuehrte Schritte an.
+ * ReactFlow Knoten für parallele Ausführung.
+ * Zeigt mehrere gleichzeitig ausgeführte Schritte an.
  */
 
 import { memo } from 'react';

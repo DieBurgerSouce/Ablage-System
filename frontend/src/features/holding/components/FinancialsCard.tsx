@@ -77,7 +77,7 @@ export function FinancialsCard({ financials }: FinancialsCardProps) {
             <div className="flex items-center gap-1 text-xs text-amber-600">
               <AlertTriangle className="h-3 w-3" />
               <span>
-                {formatCurrency(financials.overdue_receivables)} ueberfaellig (
+                {formatCurrency(financials.overdue_receivables)} überfällig (
                 {overdueReceivablesPercent.toFixed(0)}%)
               </span>
             </div>
@@ -95,7 +95,7 @@ export function FinancialsCard({ financials }: FinancialsCardProps) {
             <div className="flex items-center gap-1 text-xs text-red-600">
               <AlertTriangle className="h-3 w-3" />
               <span>
-                {formatCurrency(financials.overdue_payables)} ueberfaellig (
+                {formatCurrency(financials.overdue_payables)} überfällig (
                 {overduePayablesPercent.toFixed(0)}%)
               </span>
             </div>
@@ -105,13 +105,13 @@ export function FinancialsCard({ financials }: FinancialsCardProps) {
         {/* Summary Stats */}
         <div className="grid grid-cols-2 gap-4 pt-2 border-t">
           <div className="text-center">
-            <div className="text-xs text-muted-foreground">Ueberfaellig (Ein)</div>
+            <div className="text-xs text-muted-foreground">Überfällig (Ein)</div>
             <div className="text-lg font-medium text-amber-600">
               {formatCurrency(financials.overdue_receivables)}
             </div>
           </div>
           <div className="text-center">
-            <div className="text-xs text-muted-foreground">Ueberfaellig (Aus)</div>
+            <div className="text-xs text-muted-foreground">Überfällig (Aus)</div>
             <div className="text-lg font-medium text-red-600">
               {formatCurrency(financials.overdue_payables)}
             </div>

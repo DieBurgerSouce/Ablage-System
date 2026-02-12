@@ -1,7 +1,7 @@
 /**
  * Job Queue Query Keys
  *
- * Zentralisierte Query Key Verwaltung fuer TanStack Query.
+ * Zentralisierte Query Key Verwaltung für TanStack Query.
  */
 
 import type { JobListFilters, SortDirection } from '../types/job-types';

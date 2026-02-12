@@ -97,7 +97,7 @@ export function IntercompanyCard({ intercompany }: IntercompanyCardProps) {
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            Diese Betraege werden bei der Konsolidierung eliminiert.
+            Diese Beträge werden bei der Konsolidierung eliminiert.
           </p>
         </div>
       </CardContent>

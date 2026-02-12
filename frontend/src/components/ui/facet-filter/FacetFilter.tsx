@@ -1,12 +1,12 @@
 /**
- * FacetFilter - Hauptkomponente fuer Facetten-basierte Filterung
+ * FacetFilter - Hauptkomponente für Facetten-basierte Filterung
  *
  * Features:
  * - Sidebar-Layout mit mehreren Facetten-Gruppen
  * - Integration mit TanStack Table getFacetedUniqueValues()
  * - Aktive Filter anzeigen und entfernen
  * - Reset aller Filter
- * - Responsive: Collapsible auf mobilen Geraeten
+ * - Responsive: Collapsible auf mobilen Geräten
  */
 
 import * as React from 'react';
@@ -26,11 +26,11 @@ import { cn } from '@/lib/utils';
 import { FacetGroup, type FacetValue } from './FacetGroup';
 
 export interface FacetConfig {
-  /** Eindeutiger Schluessel fuer die Facette (z.B. Spalten-ID) */
+  /** Eindeutiger Schlüssel für die Facette (z.B. Spalten-ID) */
   id: string;
   /** Anzeige-Titel */
   title: string;
-  /** Verfuegbare Werte mit Zaehler */
+  /** Verfügbare Werte mit Zaehler */
   values: FacetValue[];
   /** Ausgewaehlte Werte */
   selectedValues: string[];
@@ -41,9 +41,9 @@ export interface FacetConfig {
 export interface FacetFilterProps {
   /** Konfiguration der Facetten-Gruppen */
   facets: FacetConfig[];
-  /** Callback bei Aenderung einer Facette */
+  /** Callback bei Änderung einer Facette */
   onFacetChange: (facetId: string, values: string[]) => void;
-  /** Callback zum Zuruecksetzen aller Filter */
+  /** Callback zum Zurücksetzen aller Filter */
   onResetAll?: () => void;
   /** Titel der Filter-Sidebar */
   title?: string;
@@ -51,7 +51,7 @@ export interface FacetFilterProps {
   isVisible?: boolean;
   /** Callback um Sichtbarkeit zu toggeln */
   onVisibilityChange?: (visible: boolean) => void;
-  /** Zusaetzliche CSS-Klassen fuer die Sidebar */
+  /** Zusätzliche CSS-Klassen für die Sidebar */
   className?: string;
   /** Breite der Sidebar in Pixeln */
   width?: number;
@@ -142,10 +142,10 @@ export function FacetFilter({
             size="sm"
             onClick={handleResetAll}
             className="h-8 text-xs"
-            aria-label="Alle Filter zuruecksetzen"
+            aria-label="Alle Filter zurücksetzen"
           >
             <RotateCcw className="h-3 w-3 mr-1" aria-hidden="true" />
-            Zuruecksetzen
+            Zurücksetzen
           </Button>
         )}
       </div>

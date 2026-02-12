@@ -1,8 +1,8 @@
 /**
  * Cash-Flow Forecast Hook
  *
- * React Query Hook fuer Cash-Flow Prognose-Daten.
- * Liefert 30/60/90 Tage Liquiditaetsprognose.
+ * React Query Hook für Cash-Flow Prognose-Daten.
+ * Liefert 30/60/90 Tage Liquiditätsprognose.
  *
  * Phase 7: Dashboard Widgets
  */
@@ -23,7 +23,7 @@ interface UseCashFlowForecastOptions {
 }
 
 /**
- * Hook fuer vollstaendige Cash-Flow Prognose
+ * Hook für vollständige Cash-Flow Prognose
  */
 export function useCashFlowForecast(options: UseCashFlowForecastOptions = {}) {
   const { startingBalance, enabled = true, staleTime = 5 * 60 * 1000 } = options;
@@ -45,7 +45,7 @@ interface UseCashFlowChartOptions {
 }
 
 /**
- * Hook fuer Cash-Flow Chart-Daten
+ * Hook für Cash-Flow Chart-Daten
  */
 export function useCashFlowChartData(options: UseCashFlowChartOptions = {}) {
   const { days = 30, enabled = true, staleTime = 5 * 60 * 1000 } = options;
@@ -61,7 +61,7 @@ export function useCashFlowChartData(options: UseCashFlowChartOptions = {}) {
 }
 
 /**
- * Formatiere Waehrungsbetrag (EUR)
+ * Formatiere Währungsbetrag (EUR)
  */
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat('de-DE', {

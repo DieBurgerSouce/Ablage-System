@@ -3,7 +3,7 @@
  *
  * Vision 2.0 - Phase 2 (Januar 2026)
  *
- * Generiert Business Rules aus natuerlichsprachlichen Beschreibungen
+ * Generiert Business Rules aus natürlichsprachlichen Beschreibungen
  * mittels lokalem LLM (Ollama).
  */
 
@@ -42,21 +42,21 @@ import { toast } from '@/components/ui/use-toast'
 import { useGenerateRule } from '../api'
 import type { RuleCreateRequest } from '../types'
 
-// Beispiel-Prompts fuer schnellen Einstieg
+// Beispiel-Prompts für schnellen Einstieg
 const EXAMPLE_PROMPTS = [
   {
     category: 'Genehmigung',
-    prompt: 'Rechnungen ueber 10.000 EUR benoetigen CFO-Genehmigung',
+    prompt: 'Rechnungen über 10.000 EUR benötigen CFO-Genehmigung',
     icon: '💰',
   },
   {
     category: 'Skonto',
-    prompt: 'Skonto-Fristen ueberwachen und bei ablaufenden Fristen warnen',
+    prompt: 'Skonto-Fristen überwachen und bei ablaufenden Fristen warnen',
     icon: '⏰',
   },
   {
     category: 'Betrug',
-    prompt: 'Neue Lieferanten mit hohen Betraegen zur manuellen Pruefung markieren',
+    prompt: 'Neue Lieferanten mit hohen Beträgen zur manuellen Prüfung markieren',
     icon: '🔍',
   },
   {
@@ -101,7 +101,7 @@ export function AIRuleGenerator({ open, onOpenChange, onRuleGenerated }: AIRuleG
     if (!prompt.trim()) {
       toast({
         title: 'Fehler',
-        description: 'Bitte beschreiben Sie die gewuenschte Regel.',
+        description: 'Bitte beschreiben Sie die gewünschte Regel.',
         variant: 'destructive',
       })
       return
@@ -139,7 +139,7 @@ export function AIRuleGenerator({ open, onOpenChange, onRuleGenerated }: AIRuleG
     onRuleGenerated(ruleRequest)
     setStep('success')
 
-    // Nach kurzer Anzeige schliessen
+    // Nach kurzer Anzeige schließen
     setTimeout(() => {
       handleClose()
     }, 1500)
@@ -169,8 +169,8 @@ export function AIRuleGenerator({ open, onOpenChange, onRuleGenerated }: AIRuleG
             KI-Regelgenerator
           </DialogTitle>
           <DialogDescription>
-            Beschreiben Sie die gewuenschte Regel in natuerlicher Sprache.
-            Die KI generiert automatisch eine strukturierte Geschaeftsregel.
+            Beschreiben Sie die gewünschte Regel in natürlicher Sprache.
+            Die KI generiert automatisch eine strukturierte Geschäftsregel.
           </DialogDescription>
         </DialogHeader>
 
@@ -188,12 +188,12 @@ export function AIRuleGenerator({ open, onOpenChange, onRuleGenerated }: AIRuleG
                 <Textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="z.B. 'Rechnungen ueber 10.000 EUR zur CFO-Genehmigung weiterleiten'"
+                  placeholder="z.B. 'Rechnungen über 10.000 EUR zur CFO-Genehmigung weiterleiten'"
                   rows={4}
                   className="resize-none"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Beschreiben Sie Bedingungen und Aktionen so konkret wie moeglich.
+                  Beschreiben Sie Bedingungen und Aktionen so konkret wie möglich.
                 </p>
               </div>
 
@@ -287,9 +287,9 @@ export function AIRuleGenerator({ open, onOpenChange, onRuleGenerated }: AIRuleG
                     </div>
                   </div>
 
-                  {/* Prioritaet */}
+                  {/* Priorität */}
                   <div className="flex items-center gap-4 text-sm">
-                    <span className="text-muted-foreground">Prioritaet:</span>
+                    <span className="text-muted-foreground">Priorität:</span>
                     <Badge variant="outline">{generatedRule.priority}</Badge>
                   </div>
                 </CardContent>
@@ -300,8 +300,8 @@ export function AIRuleGenerator({ open, onOpenChange, onRuleGenerated }: AIRuleG
                 <div className="flex items-start gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-sm">
                   <AlertCircle className="h-4 w-4 text-yellow-500 flex-shrink-0 mt-0.5" />
                   <span>
-                    Die Konfidenz ist niedrig. Bitte pruefen Sie die generierte Regel
-                    sorgfaeltig und passen Sie sie bei Bedarf an.
+                    Die Konfidenz ist niedrig. Bitte prüfen Sie die generierte Regel
+                    sorgfältig und passen Sie sie bei Bedarf an.
                   </span>
                 </div>
               )}
@@ -323,7 +323,7 @@ export function AIRuleGenerator({ open, onOpenChange, onRuleGenerated }: AIRuleG
               >
                 <Check className="h-8 w-8 text-green-500" />
               </motion.div>
-              <p className="text-lg font-medium">Regel uebernommen!</p>
+              <p className="text-lg font-medium">Regel übernommen!</p>
               <p className="text-sm text-muted-foreground">
                 Die Regel wurde in den Editor geladen.
               </p>
@@ -335,7 +335,7 @@ export function AIRuleGenerator({ open, onOpenChange, onRuleGenerated }: AIRuleG
           <DialogFooter>
             {step === 'preview' && (
               <Button variant="outline" onClick={handleBack}>
-                Zurueck
+                Zurück
               </Button>
             )}
             <Button variant="outline" onClick={handleClose}>
@@ -359,7 +359,7 @@ export function AIRuleGenerator({ open, onOpenChange, onRuleGenerated }: AIRuleG
             {step === 'preview' && (
               <Button onClick={handleAccept}>
                 <Check className="h-4 w-4 mr-2" />
-                Uebernehmen
+                Übernehmen
               </Button>
             )}
           </DialogFooter>

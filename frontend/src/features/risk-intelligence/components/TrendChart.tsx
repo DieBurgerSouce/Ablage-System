@@ -1,7 +1,7 @@
 /**
  * Trend Chart Component
  *
- * Visualisiert die Trend-Analyse ueber mehrere Quartale.
+ * Visualisiert die Trend-Analyse über mehrere Quartale.
  */
 
 import {
@@ -68,7 +68,7 @@ export function TrendChart({ trend, className }: TrendChartProps) {
           <div>
             <CardTitle className="text-lg">Trend-Analyse</CardTitle>
             <CardDescription>
-              Entwicklung ueber {trend.quarters.length} Quartale
+              Entwicklung über {trend.quarters.length} Quartale
             </CardDescription>
           </div>
           {getTrendBadge()}
@@ -77,7 +77,7 @@ export function TrendChart({ trend, className }: TrendChartProps) {
       <CardContent>
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div className="text-center p-3 bg-muted rounded-lg">
-            <p className="text-sm text-muted-foreground">Veraenderung</p>
+            <p className="text-sm text-muted-foreground">Veränderung</p>
             <p className={`text-xl font-bold ${trend.change_percentage > 0 ? 'text-red-500' : 'text-green-500'}`}>
               {trend.change_percentage > 0 ? '+' : ''}{trend.change_percentage.toFixed(1)}%
             </p>
@@ -142,7 +142,7 @@ export function TrendChart({ trend, className }: TrendChartProps) {
                 stroke="#3b82f6"
                 strokeWidth={2}
                 dot={{ fill: '#3b82f6' }}
-                name="Zahlungsverzoegerung (Tage)"
+                name="Zahlungsverzögerung (Tage)"
               />
               <Line
                 yAxisId="right"
@@ -160,7 +160,7 @@ export function TrendChart({ trend, className }: TrendChartProps) {
         <div className="flex justify-center gap-6 mt-2 text-xs">
           <div className="flex items-center gap-1">
             <div className="w-3 h-0.5 bg-blue-500" />
-            <span className="text-muted-foreground">Verzoegerung</span>
+            <span className="text-muted-foreground">Verzögerung</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-3 h-0.5 bg-red-500" />

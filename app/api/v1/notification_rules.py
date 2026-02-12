@@ -13,7 +13,9 @@ Feinpoliert und durchdacht - Benutzerdefinierte Benachrichtigungsregeln.
 """
 
 import structlog
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
+
+from app.core.types import JSONDict
 from uuid import UUID
 from datetime import time
 
@@ -63,7 +65,7 @@ class RuleActionSchema(BaseModel):
     subject: Optional[str] = Field(None, description="Email-Betreff")
     url: Optional[str] = Field(None, description="Webhook-URL")
     priority: str = Field("normal", description="Prioritaet: low, normal, high, urgent")
-    data: Optional[Dict[str, Any]] = Field(None, description="Zusaetzliche Daten")
+    data: Optional[JSONDict] = Field(None, description="Zusaetzliche Daten")
 
 
 class NotificationRuleCreateRequest(BaseModel):
@@ -78,7 +80,7 @@ class NotificationRuleCreateRequest(BaseModel):
         None,
         description="Optional: Quelle filtern (z.B. privat, business)"
     )
-    conditions: Optional[Dict[str, Any]] = Field(
+    conditions: Optional[JSONDict] = Field(
         default_factory=dict,
         description="Bedingungs-Definition (JSON)"
     )
@@ -118,7 +120,7 @@ class NotificationRuleUpdateRequest(BaseModel):
     description: Optional[str] = None
     event_type: Optional[str] = None
     event_source: Optional[str] = None
-    conditions: Optional[Dict[str, Any]] = None
+    conditions: Optional[JSONDict] = None
     actions: Optional[List[RuleActionSchema]] = None
     enabled: Optional[bool] = None
     quiet_hours_start: Optional[str] = Field(None, pattern=r"^\d{2}:\d{2}$")
@@ -138,8 +140,8 @@ class NotificationRuleResponse(BaseModel):
     description: Optional[str]
     event_type: str
     event_source: Optional[str]
-    conditions: Dict[str, Any]
-    actions: List[Dict[str, Any]]
+    conditions: JSONDict
+    actions: List[JSONDict]
     enabled: bool
     quiet_hours_start: Optional[str]
     quiet_hours_end: Optional[str]
@@ -461,7 +463,7 @@ async def get_rule_statistics(
     rule_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Ruft Statistiken fuer eine Regel ab."""
     rule = await db.get(NotificationRule, rule_id)
 
@@ -494,10 +496,10 @@ async def get_rule_statistics(
     description="Testet eine Regel gegen simulierte Event-Daten."
 )
 async def test_rule(
-    conditions: Dict[str, Any],
-    event_data: Dict[str, Any],
+    conditions: JSONDict,
+    event_data: JSONDict,
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """Testet Bedingungen gegen Event-Daten (ohne Ausfuehrung)."""
     from app.services.notification.rule_engine import RuleConditionMatcher
 

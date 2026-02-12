@@ -366,7 +366,7 @@ export function SkontoDeadlineCompact() {
         </TooltipTrigger>
         <TooltipContent>
           <p>
-            {data.total} Skonto-Fristen ({formattedSavings} Ersparnis moeglich)
+            {data.total} Skonto-Fristen ({formattedSavings} Ersparnis möglich)
           </p>
           {data.critical_count > 0 && (
             <p className="text-red-400">

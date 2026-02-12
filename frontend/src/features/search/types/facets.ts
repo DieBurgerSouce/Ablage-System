@@ -1,5 +1,5 @@
 /**
- * Facet Types - Typen fuer die Facetten-Suche
+ * Facet Types - Typen für die Facetten-Suche
  *
  * Abgestimmt auf das Backend-Schema:
  * - FacetValue (value, count, label?)

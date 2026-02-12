@@ -2,7 +2,7 @@
  * CompanyFinancialTable
  *
  * Tabelle mit Finanz-/Verarbeitungsstatistiken pro Firma.
- * Farblich markierte Zellen fuer Warteschlange und Fehler.
+ * Farblich markierte Zellen für Warteschlange und Fehler.
  */
 
 import { useState, useMemo } from 'react';

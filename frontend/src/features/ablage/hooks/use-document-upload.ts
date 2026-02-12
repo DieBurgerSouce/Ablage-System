@@ -25,7 +25,7 @@ import {
   extendTempFileTTL,
 } from '../api/ablage-api'
 
-// TTL-Verlaengerung alle 20 Minuten, wenn User im Review-Modal ist
+// TTL-Verlängerung alle 20 Minuten, wenn User im Review-Modal ist
 const TTL_EXTEND_INTERVAL_MS = 20 * 60 * 1000
 
 interface UseDocumentUploadReturn {
@@ -77,10 +77,10 @@ export function useDocumentUpload(
     }
   }, [])
 
-  // TTL-Verlaengerung starten wenn im Review-Status
+  // TTL-Verlängerung starten wenn im Review-Status
   useEffect(() => {
     if (state.status === 'review' && state.tempFileId) {
-      // Starte Interval fuer TTL-Verlaengerung
+      // Starte Interval für TTL-Verlängerung
       ttlExtendInterval.current = setInterval(async () => {
         if (state.tempFileId) {
           const success = await extendTempFileTTL(state.tempFileId)
@@ -190,13 +190,13 @@ export function useDocumentUpload(
   }, [state.fileUrl, options.ocrBackend])
 
   /**
-   * Speichert das Dokument endgueltig nach Review
+   * Speichert das Dokument endgültig nach Review
    */
   const saveDocument = useCallback(async (
     data: Partial<UploadCompleteRequest>
   ): Promise<UploadCompleteResponse> => {
     if (!state.tempFileId) {
-      throw new Error('Keine temporaere Datei vorhanden')
+      throw new Error('Keine temporäre Datei vorhanden')
     }
 
     setState(prev => ({ ...prev, status: 'saving' }))
@@ -293,7 +293,7 @@ export function useDocumentUpload(
   }, [state.fileUrl])
 
   /**
-   * Setzt den State zurueck
+   * Setzt den State zurück
    */
   const reset = useCallback(() => {
     if (state.fileUrl) {

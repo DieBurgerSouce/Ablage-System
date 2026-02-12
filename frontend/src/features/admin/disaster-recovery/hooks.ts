@@ -1,7 +1,7 @@
 /**
  * Disaster Recovery Hooks
  *
- * TanStack Query hooks fuer Disaster Recovery.
+ * TanStack Query hooks für Disaster Recovery.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -112,7 +112,7 @@ export function useValidateAllBackups() {
 }
 
 /**
- * Erstelle vollstaendiges Backup
+ * Erstelle vollständiges Backup
  */
 export function useCreateFullBackup() {
   const queryClient = useQueryClient();
@@ -127,7 +127,7 @@ export function useCreateFullBackup() {
 }
 
 /**
- * Fuehre Restore-Test durch
+ * Führe Restore-Test durch
  */
 export function useRunRestoreTest() {
   const queryClient = useQueryClient();

@@ -1,7 +1,7 @@
 /**
  * Report-Builder Components
  *
- * Exportiert alle React-Komponenten fuer den Report-Builder.
+ * Exportiert alle React-Komponenten für den Report-Builder.
  */
 
 export { ReportsDashboard } from './ReportsDashboard';

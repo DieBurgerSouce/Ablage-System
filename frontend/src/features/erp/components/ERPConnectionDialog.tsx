@@ -367,7 +367,7 @@ export function ERPConnectionDialog({
                 name="enabled_entities"
                 render={() => (
                   <FormItem>
-                    <FormLabel>Zu synchronisierende Entitaeten</FormLabel>
+                    <FormLabel>Zu synchronisierende Entitäten</FormLabel>
                     <div className="grid grid-cols-4 gap-2 pt-2">
                       {entityOptions.map((entity) => (
                         <FormField

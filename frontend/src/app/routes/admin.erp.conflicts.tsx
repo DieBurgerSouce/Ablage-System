@@ -1,7 +1,7 @@
 /**
  * ERP Conflict Resolver Route
  *
- * Konflikt-Aufloesung UI.
+ * Konflikt-Auflösung UI.
  */
 
 import { createFileRoute } from '@tanstack/react-router'

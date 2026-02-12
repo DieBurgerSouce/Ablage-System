@@ -1,8 +1,8 @@
 /**
  * Admin Audit Logs Route
  *
- * Enterprise Audit-Log Viewer fuer Administratoren.
- * Zeigt alle System-Aktivitaeten mit Filter- und Export-Funktionen.
+ * Enterprise Audit-Log Viewer für Administratoren.
+ * Zeigt alle System-Aktivitäten mit Filter- und Export-Funktionen.
  */
 
 import { createFileRoute } from '@tanstack/react-router';
@@ -110,7 +110,7 @@ function TopActions() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-sm font-medium">Haeufigste Aktionen</CardTitle>
+        <CardTitle className="text-sm font-medium">Häufigste Aktionen</CardTitle>
         <CardDescription>Top 5 in den letzten 30 Tagen</CardDescription>
       </CardHeader>
       <CardContent>
@@ -193,7 +193,7 @@ function AdminAuditLogsPage() {
         <div>
           <h1 className="text-3xl font-bold">Audit-Protokoll</h1>
           <p className="text-muted-foreground">
-            Vollstaendige Uebersicht aller System-Aktivitaeten mit Filter- und Export-Funktionen.
+            Vollständige Übersicht aller System-Aktivitäten mit Filter- und Export-Funktionen.
           </p>
         </div>
       </div>

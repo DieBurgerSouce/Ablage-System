@@ -1,7 +1,7 @@
 /**
  * Cross-Tenant Reports Hooks
  *
- * React Query Hooks fuer mandantenuebergreifende Berichte.
+ * React Query Hooks für mandantenübergreifende Berichte.
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -12,7 +12,7 @@ import {
 } from '../api/cross-tenant-api';
 
 /**
- * Hook fuer die mandantenuebergreifende Firmen-Uebersicht
+ * Hook für die mandantenübergreifende Firmen-Übersicht
  */
 export function useCompanyOverview() {
   return useQuery({
@@ -23,7 +23,7 @@ export function useCompanyOverview() {
 }
 
 /**
- * Hook fuer die mandantenuebergreifende Finanz-Zusammenfassung
+ * Hook für die mandantenübergreifende Finanz-Zusammenfassung
  */
 export function useCompanyFinancials() {
   return useQuery({

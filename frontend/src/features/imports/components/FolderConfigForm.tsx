@@ -209,7 +209,7 @@ export function FolderConfigForm({ configId, onSave, onCancel }: FolderConfigFor
               {isEditMode ? 'Ordner-Konfiguration bearbeiten' : 'Neue Ordner-Konfiguration'}
             </CardTitle>
             <CardDescription>
-              Konfigurieren Sie einen Ordner zur automatischen Dokumenten-Ueberwachung.
+              Konfigurieren Sie einen Ordner zur automatischen Dokumenten-Überwachung.
             </CardDescription>
           </CardHeader>
 
@@ -226,7 +226,7 @@ export function FolderConfigForm({ configId, onSave, onCancel }: FolderConfigFor
                       <Input {...field} placeholder="z.B. Rechnungs-Eingang" />
                     </FormControl>
                     <FormDescription>
-                      Eindeutiger Name fuer diese Konfiguration
+                      Eindeutiger Name für diese Konfiguration
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -241,7 +241,7 @@ export function FolderConfigForm({ configId, onSave, onCancel }: FolderConfigFor
                     <div className="space-y-0.5">
                       <FormLabel className="text-base">Aktiv</FormLabel>
                       <FormDescription>
-                        Ordner wird ueberwacht
+                        Ordner wird überwacht
                       </FormDescription>
                     </div>
                     <FormControl>
@@ -269,7 +269,7 @@ export function FolderConfigForm({ configId, onSave, onCancel }: FolderConfigFor
                     />
                   </FormControl>
                   <FormDescription>
-                    Absoluter Pfad zum zu ueberwachenden Ordner
+                    Absoluter Pfad zum zu überwachenden Ordner
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -334,7 +334,7 @@ export function FolderConfigForm({ configId, onSave, onCancel }: FolderConfigFor
                       name="processedFolder"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Ziel-Ordner fuer verarbeitete Dateien</FormLabel>
+                          <FormLabel>Ziel-Ordner für verarbeitete Dateien</FormLabel>
                           <FormControl>
                             <Input
                               {...field}
@@ -367,7 +367,7 @@ export function FolderConfigForm({ configId, onSave, onCancel }: FolderConfigFor
                     name="filePatterns"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Datei-Muster (einschliessen)</FormLabel>
+                        <FormLabel>Datei-Muster (einschließen)</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -376,7 +376,7 @@ export function FolderConfigForm({ configId, onSave, onCancel }: FolderConfigFor
                           />
                         </FormControl>
                         <FormDescription>
-                          Kommagetrennte Glob-Muster fuer einzuschliessende Dateien
+                          Kommagetrennte Glob-Muster für einzuschließende Dateien
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -388,7 +388,7 @@ export function FolderConfigForm({ configId, onSave, onCancel }: FolderConfigFor
                     name="excludePatterns"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Ausschliessen</FormLabel>
+                        <FormLabel>Ausschließen</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -397,7 +397,7 @@ export function FolderConfigForm({ configId, onSave, onCancel }: FolderConfigFor
                           />
                         </FormControl>
                         <FormDescription>
-                          Kommagetrennte Muster fuer auszuschliessende Dateien
+                          Kommagetrennte Muster für auszuschließende Dateien
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -408,8 +408,8 @@ export function FolderConfigForm({ configId, onSave, onCancel }: FolderConfigFor
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Muster-Syntax</AlertTitle>
                     <AlertDescription>
-                      Verwenden Sie Glob-Muster: <code className="font-mono">*</code> fuer beliebige Zeichen,{' '}
-                      <code className="font-mono">?</code> fuer einzelne Zeichen.
+                      Verwenden Sie Glob-Muster: <code className="font-mono">*</code> für beliebige Zeichen,{' '}
+                      <code className="font-mono">?</code> für einzelne Zeichen.
                       Beispiele: <code className="font-mono">*.pdf</code>,{' '}
                       <code className="font-mono">Rechnung_*.pdf</code>
                     </AlertDescription>
@@ -447,14 +447,14 @@ export function FolderConfigForm({ configId, onSave, onCancel }: FolderConfigFor
                             <SelectItem value="10">Alle 10 Minuten</SelectItem>
                             <SelectItem value="15">Alle 15 Minuten</SelectItem>
                             <SelectItem value="30">Alle 30 Minuten</SelectItem>
-                            <SelectItem value="60">Stuendlich</SelectItem>
+                            <SelectItem value="60">Stündlich</SelectItem>
                             <SelectItem value="360">Alle 6 Stunden</SelectItem>
                             <SelectItem value="720">Alle 12 Stunden</SelectItem>
-                            <SelectItem value="1440">Taeglich</SelectItem>
+                            <SelectItem value="1440">Täglich</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormDescription>
-                          Wie oft soll der Ordner auf neue Dateien geprueft werden?
+                          Wie oft soll der Ordner auf neue Dateien geprüft werden?
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

@@ -515,7 +515,7 @@ export const invoiceService = {
     try {
       await apiClient.delete(`/invoices/${invoiceId}/payments/${paymentId}`);
     } catch (error) {
-      handleApiError(error, 'Zahlung loeschen');
+      handleApiError(error, 'Zahlung löschen');
     }
   },
 };

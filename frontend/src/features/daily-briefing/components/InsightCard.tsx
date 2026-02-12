@@ -3,7 +3,7 @@
  *
  * Zeigt einen einzelnen Daily Insight mit:
  * - Schweregrad-Badge, Titel, Zusammenfassung
- * - Aufklappbare Details (Erklaerung + Empfehlung)
+ * - Aufklappbare Details (Erklärung + Empfehlung)
  * - Beitragende Faktoren als Badges
  * - Impact-Wert und Frist
  */
@@ -190,7 +190,7 @@ export function InsightCard({ insight }: InsightCardProps) {
             {insight.explanation && (
               <div>
                 <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                  Erklaerung
+                  Erklärung
                 </h4>
                 <p className="text-sm">{insight.explanation}</p>
               </div>

@@ -2,7 +2,7 @@
  * TopEntitiesCard Component
  *
  * Zeigt die Top-Kunden oder Top-Lieferanten mit Dokumentanzahl.
- * Klickbar fuer Navigation zur Entity-Detail-Seite.
+ * Klickbar für Navigation zur Entity-Detail-Seite.
  */
 
 import { useNavigate } from '@tanstack/react-router';

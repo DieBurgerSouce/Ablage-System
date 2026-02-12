@@ -1,6 +1,6 @@
 /**
  * Correction Workbench Feature
- * OCR-Korrektur-Workbench fuer Training-Daten-Sammlung
+ * OCR-Korrektur-Workbench für Training-Daten-Sammlung
  */
 
 export * from './types';

@@ -1,5 +1,5 @@
 /**
- * ContractCostBreakdown - Kostenaufschluesselung nach Kategorie/Lieferant
+ * ContractCostBreakdown - Kostenaufschlüsselung nach Kategorie/Lieferant
  *
  * Features:
  * - Umschalten zwischen Kategorie- und Lieferanten-Ansicht
@@ -89,7 +89,7 @@ export function ContractCostBreakdown({ costSummary, isLoading }: ContractCostBr
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-medium">Kostenaufschluesselung</CardTitle>
+          <CardTitle className="text-sm font-medium">Kostenaufschlüsselung</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -106,7 +106,7 @@ export function ContractCostBreakdown({ costSummary, isLoading }: ContractCostBr
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-medium">Kostenaufschluesselung</CardTitle>
+          <CardTitle className="text-sm font-medium">Kostenaufschlüsselung</CardTitle>
           <div className="flex gap-1">
             <Button
               variant={viewMode === 'category' ? 'default' : 'outline'}
@@ -130,7 +130,7 @@ export function ContractCostBreakdown({ costSummary, isLoading }: ContractCostBr
       <CardContent>
         {rows.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            Keine Kostendaten verfuegbar
+            Keine Kostendaten verfügbar
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -164,7 +164,7 @@ export function ContractCostBreakdown({ costSummary, isLoading }: ContractCostBr
                       onClick={() => handleSort('contract_count')}
                       className="flex items-center gap-1 font-medium hover:text-foreground ml-auto"
                     >
-                      Vertraege
+                      Verträge
                       <ArrowUpDown className="h-3 w-3" />
                     </button>
                   </th>

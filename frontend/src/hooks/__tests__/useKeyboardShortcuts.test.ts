@@ -194,9 +194,9 @@ describe('German labels', () => {
   });
 
   it('should have all shortcut labels in German', () => {
-    expect(SHORTCUT_LABELS.delete).toBe('Loeschen');
+    expect(SHORTCUT_LABELS.delete).toBe('Löschen');
     expect(SHORTCUT_LABELS.move).toBe('Verschieben');
-    expect(SHORTCUT_LABELS.undo).toBe('Rueckgaengig');
+    expect(SHORTCUT_LABELS.undo).toBe('Rückgängig');
     expect(SHORTCUT_LABELS.redo).toBe('Wiederholen');
     expect(SHORTCUT_LABELS.search).toBe('Suche');
     expect(SHORTCUT_LABELS.help).toBe('Hilfe');

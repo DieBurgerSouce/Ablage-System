@@ -132,7 +132,7 @@ export function ABTestCard({
             </h4>
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Ausfuehrungen</span>
+                <span className="text-muted-foreground">Ausführungen</span>
                 <span className="font-medium">{test.control_executions}</span>
               </div>
               <div className="flex justify-between">
@@ -166,7 +166,7 @@ export function ABTestCard({
             </h4>
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Ausfuehrungen</span>
+                <span className="text-muted-foreground">Ausführungen</span>
                 <span className="font-medium">{test.treatment_executions}</span>
               </div>
               <div className="flex justify-between">

@@ -1,7 +1,7 @@
 /**
  * Admin Import Logs Route
  *
- * Protokoll aller Import-Aktivitaeten.
+ * Protokoll aller Import-Aktivitäten.
  */
 
 import { createFileRoute } from '@tanstack/react-router'
@@ -20,7 +20,7 @@ function AdminImportLogsPage() {
         <div>
           <h1 className="text-3xl font-bold">Import-Protokoll</h1>
           <p className="text-muted-foreground">
-            Uebersicht ueber alle Import-Aktivitaeten mit Fehleranalyse und Retry-Funktionen.
+            Übersicht über alle Import-Aktivitäten mit Fehleranalyse und Retry-Funktionen.
           </p>
         </div>
       </div>

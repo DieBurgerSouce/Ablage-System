@@ -1,7 +1,7 @@
 /**
  * Document Comparison API Functions
  *
- * API-Funktionen fuer Dokumentenvergleiche.
+ * API-Funktionen für Dokumentenvergleiche.
  */
 
 import { apiClient } from '@/lib/api';
@@ -186,7 +186,7 @@ export async function getDiffReport(
 }
 
 /**
- * Findet aehnliche Dokumente.
+ * Findet ähnliche Dokumente.
  */
 export async function findSimilarDocuments(
   docId: string,

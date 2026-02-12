@@ -13,7 +13,6 @@ Stellt Hardware-Metriken und Health-Status bereit:
 """
 
 from datetime import datetime
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field

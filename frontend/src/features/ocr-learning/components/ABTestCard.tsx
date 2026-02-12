@@ -66,7 +66,7 @@ export function ABTestCard({ stats }: ABTestCardProps) {
         max_duration_days: 7,
       });
       toast.success('A/B Test erfolgreich gestartet', {
-        description: `Test "${newTestConfig.test_id}" laeuft jetzt.`,
+        description: `Test "${newTestConfig.test_id}" läuft jetzt.`,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unbekannter Fehler';
@@ -81,7 +81,7 @@ export function ABTestCard({ stats }: ABTestCardProps) {
       try {
         await endABTest.mutateAsync({ testId: selectedTestId, action });
         setShowEndDialog(false);
-        const actionText = action === 'promote' ? 'befoerdert' : 'zurueckgerollt';
+        const actionText = action === 'promote' ? 'befördert' : 'zurückgerollt';
         toast.success(`Test erfolgreich ${actionText}`, {
           description: `Test "${selectedTestId}" wurde ${actionText}.`,
         });
@@ -98,9 +98,9 @@ export function ABTestCard({ stats }: ABTestCardProps) {
   const getRecommendationBadge = (recommendation: string) => {
     switch (recommendation) {
       case 'promote':
-        return <Badge className="bg-green-500">Befoerdern</Badge>;
+        return <Badge className="bg-green-500">Befördern</Badge>;
       case 'rollback':
-        return <Badge variant="destructive">Zurueckrollen</Badge>;
+        return <Badge variant="destructive">Zurückrollen</Badge>;
       default:
         return <Badge variant="secondary">Fortsetzen</Badge>;
     }
@@ -282,7 +282,7 @@ export function ABTestCard({ stats }: ABTestCardProps) {
           <DialogHeader>
             <DialogTitle>A/B Test: {selectedTestId}</DialogTitle>
             <DialogDescription>
-              Ergebnis und Aktionen fuer den laufenden Test.
+              Ergebnis und Aktionen für den laufenden Test.
             </DialogDescription>
           </DialogHeader>
           {testResult && (
@@ -337,7 +337,7 @@ export function ABTestCard({ stats }: ABTestCardProps) {
           )}
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setShowEndDialog(false)}>
-              Schliessen
+              Schließen
             </Button>
             <Button
               variant="destructive"
@@ -349,7 +349,7 @@ export function ABTestCard({ stats }: ABTestCardProps) {
               ) : (
                 <XCircle className="w-4 h-4 mr-2" />
               )}
-              Zurueckrollen
+              Zurückrollen
             </Button>
             <Button
               onClick={() => handleEndTest('promote')}
@@ -360,7 +360,7 @@ export function ABTestCard({ stats }: ABTestCardProps) {
               ) : (
                 <CheckCircle className="w-4 h-4 mr-2" />
               )}
-              Befoerdern
+              Befördern
             </Button>
           </DialogFooter>
         </DialogContent>

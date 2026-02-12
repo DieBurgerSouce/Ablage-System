@@ -1,8 +1,8 @@
 /**
  * PO-Matching Route
  *
- * Hauptseite fuer 3-Way Purchase Order Matching.
- * Tabs: Uebersicht (POMatchList), Statistiken (POMatchStats)
+ * Hauptseite für 3-Way Purchase Order Matching.
+ * Tabs: Übersicht (POMatchList), Statistiken (POMatchStats)
  * Detail-Ansicht via Search-Parameter.
  */
 
@@ -46,12 +46,12 @@ function POMatchingPage() {
     );
   }
 
-  const activeTab = tab === 'statistiken' ? 'statistiken' : 'uebersicht';
+  const activeTab = tab === 'statistiken' ? 'statistiken' : 'übersicht';
 
   function handleTabChange(value: string) {
     navigate({
       search: {
-        tab: value === 'uebersicht' ? undefined : value,
+        tab: value === 'übersicht' ? undefined : value,
         matchId: undefined,
       },
     });
@@ -75,11 +75,11 @@ function POMatchingPage() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
-          <TabsTrigger value="uebersicht">Uebersicht</TabsTrigger>
+          <TabsTrigger value="übersicht">Übersicht</TabsTrigger>
           <TabsTrigger value="statistiken">Statistiken</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="uebersicht" className="mt-6">
+        <TabsContent value="übersicht" className="mt-6">
           <POMatchList />
         </TabsContent>
 

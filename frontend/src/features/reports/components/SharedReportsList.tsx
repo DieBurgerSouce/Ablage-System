@@ -72,9 +72,9 @@ interface PermissionBadgeProps {
 function PermissionBadges({ share }: PermissionBadgeProps) {
     const permissions = [
         { key: 'can_view', icon: Eye, label: 'Ansehen', active: share.can_view },
-        { key: 'can_execute', icon: Play, label: 'Ausfuehren', active: share.can_execute },
+        { key: 'can_execute', icon: Play, label: 'Ausführen', active: share.can_execute },
         { key: 'can_edit', icon: Edit, label: 'Bearbeiten', active: share.can_edit },
-        { key: 'can_delete', icon: Trash2, label: 'Loeschen', active: share.can_delete },
+        { key: 'can_delete', icon: Trash2, label: 'Löschen', active: share.can_delete },
     ];
 
     const activePermissions = permissions.filter((p) => p.active);

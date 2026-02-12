@@ -1,9 +1,9 @@
 /**
- * Strukturiertes Logging-Service fuer Frontend mit Grafana Loki Integration.
+ * Strukturiertes Logging-Service für Frontend mit Grafana Loki Integration.
  *
  * Features:
  * - Automatisches Senden an Loki (wenn VITE_LOKI_ENABLED=true)
- * - User-Kontext fuer bessere Log-Korrelation
+ * - User-Kontext für bessere Log-Korrelation
  * - Component-spezifische Labels via withLabels()
  * - Production-Safe: debug/info nur in Development
  *
@@ -17,7 +17,7 @@
  *   logger.error('Error message', error);
  *
  *   // Mit User-Kontext (nach Login setzen)
- *   // WICHTIG: Keine PII wie E-Mail uebergeben!
+ *   // WICHTIG: Keine PII wie E-Mail übergeben!
  *   logger.setUser({ id: 'user123' });
  *
  *   // Mit Component-Labels
@@ -50,7 +50,7 @@ interface BoundedError {
   name?: string;
   stack?: string;
   code?: string | number;
-  cause?: BoundedError;  // P1 Fix: Rekursiv fuer nested errors, bounded via depth limit
+  cause?: BoundedError;  // P1 Fix: Rekursiv für nested errors, bounded via depth limit
 }
 
 /**
@@ -76,7 +76,7 @@ interface LogContext {
 }
 
 /**
- * Formatiert Error-Objekte fuer bessere Lesbarkeit.
+ * Formatiert Error-Objekte für bessere Lesbarkeit.
  * Returns a bounded error object to prevent oversized payloads.
  *
  * P1 Fix (Iteration 13): Rekursive cause-Extraktion mit max 3 Ebenen Tiefe.
@@ -115,7 +115,7 @@ function formatError(error: unknown, depth = 0): BoundedError {
 }
 
 /**
- * Formatiert Log-Argumente fuer Console-Output.
+ * Formatiert Log-Argumente für Console-Output.
  */
 function formatLogArgs(level: LogLevel, message: string, ...args: unknown[]): unknown[] {
   const timestamp = new Date().toISOString();
@@ -132,9 +132,9 @@ function formatLogArgs(level: LogLevel, message: string, ...args: unknown[]): un
 }
 
 /**
- * Konvertiert Log-Args zu Context-Objekt fuer Loki.
+ * Konvertiert Log-Args zu Context-Objekt für Loki.
  *
- * P1 Fix (Iteration 13): DoS Protection fuer Object.assign.
+ * P1 Fix (Iteration 13): DoS Protection für Object.assign.
  * Verhindert Spreaden von riesigen Objekten wie `window` oder `process`.
  * - Max 10 Keys pro Objekt
  * - Nur primitive Values (string, number, boolean)
@@ -142,8 +142,8 @@ function formatLogArgs(level: LogLevel, message: string, ...args: unknown[]): un
  *
  * P1 Fix (Iteration 14): Key-Whitelist + PII-Blocklist.
  * - Nur alphanumerische Keys + underscore erlaubt (max 50 chars)
- * - Blocklist fuer Prototype pollution + sensitive Keys
- * - Case-insensitive Blocklist-Check fuer PII-Keys
+ * - Blocklist für Prototype pollution + sensitive Keys
+ * - Case-insensitive Blocklist-Check für PII-Keys
  */
 function argsToContext(...args: unknown[]): Record<string, unknown> | undefined {
   if (args.length === 0) return undefined;
@@ -244,7 +244,7 @@ class LoggerWithLabels {
  *
  * - debug/info: Nur in Development auf Console
  * - warn/error: Immer auf Console + Loki
- * - User-Kontext: Nach Login setzen fuer bessere Korrelation
+ * - User-Kontext: Nach Login setzen für bessere Korrelation
  */
 export const logger = {
   /**
@@ -286,7 +286,7 @@ export const logger = {
   },
 
   /**
-   * Gruppiertes Logging fuer komplexe Operationen.
+   * Gruppiertes Logging für komplexe Operationen.
    * Nur in Development aktiv.
    */
   group(label: string, fn: () => void): void {
@@ -318,7 +318,7 @@ export const logger = {
 
   /**
    * Strukturiertes Logging mit Context.
-   * Nuetzlich fuer komplexe Objekte.
+   * Nützlich für komplexe Objekte.
    */
   withContext(context: LogContext) {
     return {
@@ -330,8 +330,8 @@ export const logger = {
   },
 
   /**
-   * Erstellt einen Logger mit zusaetzlichen Labels.
-   * Nuetzlich fuer Component-spezifisches Logging.
+   * Erstellt einen Logger mit zusätzlichen Labels.
+   * Nützlich für Component-spezifisches Logging.
    *
    * @example
    * const log = logger.withLabels({ component: 'UploadWizard' });
@@ -342,10 +342,10 @@ export const logger = {
   },
 
   /**
-   * Setzt den User-Kontext fuer alle folgenden Logs.
+   * Setzt den User-Kontext für alle folgenden Logs.
    * Sollte nach erfolgreichem Login aufgerufen werden.
    *
-   * WICHTIG: Keine PII wie E-Mail uebergeben!
+   * WICHTIG: Keine PII wie E-Mail übergeben!
    *
    * @example
    * logger.setUser({ id: user.id });
@@ -355,8 +355,8 @@ export const logger = {
   },
 
   /**
-   * Setzt den Tenant-Kontext fuer Multi-Mandanten-Faehigkeit.
-   * Wichtig fuer RLS und Log-Filterung nach Mandant.
+   * Setzt den Tenant-Kontext für Multi-Mandanten-Fähigkeit.
+   * Wichtig für RLS und Log-Filterung nach Mandant.
    *
    * @example
    * logger.setTenant({ companyId: company.id, companyName: company.name });
@@ -367,7 +367,7 @@ export const logger = {
 
   /**
    * Sendet alle gepufferten Logs sofort an Loki.
-   * Nuetzlich vor Navigation oder Logout.
+   * Nützlich vor Navigation oder Logout.
    */
   flush(): Promise<void> {
     return lokiClient.flush();
@@ -381,5 +381,5 @@ export const logger = {
   },
 };
 
-// Default export fuer einfachere Imports
+// Default export für einfachere Imports
 export default logger;

@@ -15,13 +15,13 @@ import type { ReactNode } from 'react';
 // ==================== Types ====================
 
 interface MobileSidebarContextType {
-    /** Ob die Sidebar auf Mobile geoeffnet ist */
+    /** Ob die Sidebar auf Mobile geöffnet ist */
     isOpen: boolean;
-    /** Sidebar oeffnen/schliessen umschalten */
+    /** Sidebar öffnen/schließen umschalten */
     toggle: () => void;
-    /** Sidebar schliessen */
+    /** Sidebar schließen */
     close: () => void;
-    /** Sidebar oeffnen */
+    /** Sidebar öffnen */
     open: () => void;
 }
 
@@ -36,10 +36,10 @@ interface MobileSidebarProviderProps {
 export function MobileSidebarProvider({ children }: MobileSidebarProviderProps) {
     const [isOpen, setIsOpen] = useState(false);
 
-    // Schliesse Sidebar bei Resize auf Desktop
+    // Schließe Sidebar bei Resize auf Desktop
     useEffect(() => {
         const handleResize = () => {
-            // Schliesse Sidebar wenn Viewport > 768px (md breakpoint)
+            // Schließe Sidebar wenn Viewport > 768px (md breakpoint)
             if (window.innerWidth >= 768) {
                 setIsOpen(false);
             }

@@ -1,7 +1,7 @@
 /**
  * PO-Matching TypeScript Types
  *
- * Typdefinitionen fuer das 3-Way Purchase Order Matching:
+ * Typdefinitionen für das 3-Way Purchase Order Matching:
  * Bestellung <-> Lieferschein <-> Rechnung
  *
  * Alle Typen korrespondieren mit den Backend-Pydantic-Schemas

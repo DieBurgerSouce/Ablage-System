@@ -1,7 +1,7 @@
 /**
  * Risk Scoring Components
  *
- * Barrel export fuer alle Risk Scoring Komponenten.
+ * Barrel export für alle Risk Scoring Komponenten.
  */
 
 // Gauge Components

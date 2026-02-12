@@ -64,7 +64,7 @@ export function useFraudConfig() {
   return useQuery({
     queryKey: fraudKeys.config(),
     queryFn: getFraudConfig,
-    staleTime: 1000 * 60 * 30, // 30 Minuten - Konfiguration aendert sich selten
+    staleTime: 1000 * 60 * 30, // 30 Minuten - Konfiguration ändert sich selten
   });
 }
 

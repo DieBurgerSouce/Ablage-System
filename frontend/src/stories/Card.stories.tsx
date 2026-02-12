@@ -1,7 +1,7 @@
 /**
  * Card Component Stories
  *
- * Card-Komponenten fuer Visual Regression Testing.
+ * Card-Komponenten für Visual Regression Testing.
  * Basiert auf shadcn/ui Card.
  */
 
@@ -28,7 +28,7 @@ const meta: Meta<typeof Card> = {
         layout: 'centered',
         docs: {
             description: {
-                component: 'Container-Komponente fuer gruppierte Inhalte.',
+                component: 'Container-Komponente für gruppierte Inhalte.',
             },
         },
     },
@@ -185,7 +185,7 @@ export const WithBadge: Story = {
             <CardContent>
                 <ul className="space-y-2 text-sm">
                     <li>Unbegrenzte Dokumente</li>
-                    <li>Prioritaets-Support</li>
+                    <li>Prioritäts-Support</li>
                     <li>API-Zugang</li>
                 </ul>
             </CardContent>

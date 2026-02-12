@@ -82,7 +82,7 @@ const WIDGET_CONFIG_OPTIONS: Record<
     hasLegend: true,
   },
   'aging-report': {
-    label: 'Faelligkeitsanalyse',
+    label: 'Fälligkeitsanalyse',
     hasTimeRange: true,
     hasChartType: true,
   },
@@ -92,7 +92,7 @@ const WIDGET_CONFIG_OPTIONS: Record<
     hasFilterTags: true,
   },
   'activity-feed': {
-    label: 'Aktivitaeten',
+    label: 'Aktivitäten',
     hasMaxItems: true,
   },
   'documents-today': {
@@ -184,7 +184,7 @@ export function WidgetConfigModal({
             Widget konfigurieren
           </DialogTitle>
           <DialogDescription>
-            Einstellungen fuer &quot;{widgetMeta.label}&quot; anpassen
+            Einstellungen für &quot;{widgetMeta.label}&quot; anpassen
           </DialogDescription>
         </DialogHeader>
 
@@ -206,7 +206,7 @@ export function WidgetConfigModal({
                   }
                 >
                   <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Zeitraum waehlen" />
+                    <SelectValue placeholder="Zeitraum wählen" />
                   </SelectTrigger>
                   <SelectContent>
                     {TIME_RANGE_OPTIONS.map((opt) => (
@@ -235,7 +235,7 @@ export function WidgetConfigModal({
                   }
                 >
                   <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Diagrammtyp waehlen" />
+                    <SelectValue placeholder="Diagrammtyp wählen" />
                   </SelectTrigger>
                   <SelectContent>
                     {CHART_TYPE_OPTIONS.map((opt) => (
@@ -252,7 +252,7 @@ export function WidgetConfigModal({
             {widgetMeta.hasMaxItems && (
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="maxItems" className="text-right">
-                  Max. Eintraege
+                  Max. Einträge
                 </Label>
                 <Input
                   id="maxItems"

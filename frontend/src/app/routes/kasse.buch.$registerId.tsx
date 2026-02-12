@@ -1,7 +1,7 @@
 /**
  * Kassenbuch Detail Route
  *
- * Detailansicht eines Kassenbuchs mit allen Eintraegen.
+ * Detailansicht eines Kassenbuchs mit allen Einträgen.
  */
 
 import { createFileRoute } from '@tanstack/react-router';

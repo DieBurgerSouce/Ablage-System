@@ -1,8 +1,8 @@
 /**
- * TemplatesPage - Hauptseite fuer Dokumenten-Vorlagen
+ * TemplatesPage - Hauptseite für Dokumenten-Vorlagen
  *
  * Features:
- * - Vorlagen-Uebersicht mit Tabelle
+ * - Vorlagen-Übersicht mit Tabelle
  * - Kategorie-Statistiken
  * - Filter und Suche
  * - CRUD-Operationen
@@ -155,12 +155,12 @@ export function TemplatesPage() {
           title: template.is_default ? 'Standard entfernt' : 'Als Standard gesetzt',
           description: template.is_default
             ? 'Die Vorlage ist nicht mehr Standard.'
-            : 'Diese Vorlage ist jetzt die Standard-Vorlage fuer die Kategorie.',
+            : 'Diese Vorlage ist jetzt die Standard-Vorlage für die Kategorie.',
         });
       } catch (error) {
         toast({
           title: 'Fehler',
-          description: 'Der Status konnte nicht geaendert werden.',
+          description: 'Der Status konnte nicht geändert werden.',
           variant: 'destructive',
         });
       }
@@ -175,7 +175,7 @@ export function TemplatesPage() {
           await updateTemplate.mutateAsync({ id: selectedTemplate.id, data });
           toast({
             title: 'Vorlage aktualisiert',
-            description: 'Die Aenderungen wurden gespeichert.',
+            description: 'Die Änderungen wurden gespeichert.',
           });
         } else {
           await createTemplate.mutateAsync(data as TemplateCreateRequest);
@@ -203,15 +203,15 @@ export function TemplatesPage() {
     try {
       await deleteTemplate.mutateAsync(selectedTemplate.id);
       toast({
-        title: 'Vorlage geloescht',
-        description: 'Die Vorlage wurde erfolgreich geloescht.',
+        title: 'Vorlage gelöscht',
+        description: 'Die Vorlage wurde erfolgreich gelöscht.',
       });
       setDeleteDialogOpen(false);
       setSelectedTemplate(null);
     } catch (error) {
       toast({
         title: 'Fehler',
-        description: 'Die Vorlage konnte nicht geloescht werden.',
+        description: 'Die Vorlage konnte nicht gelöscht werden.',
         variant: 'destructive',
       });
     }
@@ -240,7 +240,7 @@ export function TemplatesPage() {
 
   const handlePreview = useCallback(
     async (variables: Record<string, unknown>) => {
-      if (!selectedTemplate) throw new Error('Keine Vorlage ausgewaehlt');
+      if (!selectedTemplate) throw new Error('Keine Vorlage ausgewählt');
       return previewTemplate.mutateAsync({ id: selectedTemplate.id, data: { variables } });
     },
     [selectedTemplate, previewTemplate]
@@ -318,7 +318,7 @@ export function TemplatesPage() {
                   }))
                 }
               >
-                Zurueck
+                Zurück
               </Button>
               <Button
                 variant="outline"
@@ -384,10 +384,10 @@ export function TemplatesPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Vorlage loeschen?</AlertDialogTitle>
+            <AlertDialogTitle>Vorlage löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Moechten Sie die Vorlage "{selectedTemplate?.name}" wirklich loeschen? Diese Aktion
-              kann nicht rueckgaengig gemacht werden.
+              Möchten Sie die Vorlage "{selectedTemplate?.name}" wirklich löschen? Diese Aktion
+              kann nicht rückgängig gemacht werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -396,7 +396,7 @@ export function TemplatesPage() {
               onClick={handleConfirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Loeschen
+              Löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

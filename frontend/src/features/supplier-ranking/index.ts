@@ -1,7 +1,7 @@
 /**
  * Supplier Ranking Feature Module
  *
- * Public exports fuer das Lieferanten-Ranking System.
+ * Public exports für das Lieferanten-Ranking System.
  */
 
 // Types

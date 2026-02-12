@@ -1,7 +1,7 @@
 /**
  * Payment Behavior Feature Module
  *
- * Public exports fuer Zahlungsverhaltens-Analyse.
+ * Public exports für Zahlungsverhaltens-Analyse.
  */
 
 // Types

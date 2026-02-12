@@ -104,7 +104,7 @@ function ActionBadge({ action }: ActionBadgeProps) {
       return { color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200', label: 'Bearbeiten' };
     }
     if (act.includes('delete') || act.includes('remove')) {
-      return { color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200', label: 'Loeschen' };
+      return { color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200', label: 'Löschen' };
     }
     if (act.includes('export') || act.includes('download')) {
       return { color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200', label: 'Export' };
@@ -468,7 +468,7 @@ function FilterPopover({ filters, onFiltersChange }: FilterPopoverProps) {
 
           <div className="flex justify-between pt-2">
             <Button variant="ghost" size="sm" onClick={handleReset}>
-              Zuruecksetzen
+              Zurücksetzen
             </Button>
             <Button size="sm" onClick={handleApply}>
               Anwenden
@@ -566,7 +566,7 @@ export function AuditLogTable({ userId, maxItems = 50 }: AuditLogTableProps) {
             Audit-Protokoll
           </CardTitle>
           <CardDescription>
-            {isLoading ? 'Laden...' : `${data?.total ?? 0} Eintraege`}
+            {isLoading ? 'Laden...' : `${data?.total ?? 0} Einträge`}
           </CardDescription>
         </div>
 
@@ -639,7 +639,7 @@ export function AuditLogTable({ userId, maxItems = 50 }: AuditLogTableProps) {
         ) : !data || data.logs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <FileText className="h-12 w-12 mb-4" />
-            <p>Keine Audit-Eintraege gefunden</p>
+            <p>Keine Audit-Einträge gefunden</p>
           </div>
         ) : (
           <>
@@ -675,7 +675,7 @@ export function AuditLogTable({ userId, maxItems = 50 }: AuditLogTableProps) {
                     onClick={() => handlePageChange(data.page - 1)}
                     disabled={data.page <= 1}
                   >
-                    Zurueck
+                    Zurück
                   </Button>
                   <Button
                     variant="outline"

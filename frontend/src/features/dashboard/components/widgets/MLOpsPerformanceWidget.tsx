@@ -1,5 +1,5 @@
 /**
- * MLOps Performance Widget fuer Dashboard
+ * MLOps Performance Widget für Dashboard
  *
  * Zeigt MLOps-Metriken und Modell-Performance:
  * - OCR Accuracy und Confidence
@@ -8,7 +8,7 @@
  * - Retraining Status
  *
  * Enterprise-Grade Features:
- * - ErrorBoundary fuer graceful degradation
+ * - ErrorBoundary für graceful degradation
  * - Konsistente Fehlerbehandlung
  * - Real-time Updates via WebSocket
  */
@@ -145,7 +145,7 @@ const getRetrainingStatusLabel = (status: string): string => {
     const labels: Record<string, string> = {
         idle: 'Bereit',
         scheduled: 'Geplant',
-        running: 'Laeuft',
+        running: 'Läuft',
         completed: 'Abgeschlossen',
         failed: 'Fehlgeschlagen',
     };
@@ -275,7 +275,7 @@ function MLOpsPerformanceWidgetContent() {
         return (
             <div className="text-center py-6 text-muted-foreground">
                 <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
-                <p className="text-sm">MLOps-Daten nicht verfuegbar</p>
+                <p className="text-sm">MLOps-Daten nicht verfügbar</p>
             </div>
         );
     }
@@ -364,7 +364,7 @@ function MLOpsPerformanceWidgetContent() {
                 <p className="text-xs text-muted-foreground mt-1">
                     Letztes Training: {formatRelativeTime(summary.retraining.last_completed)}
                     {summary.retraining.next_scheduled && (
-                        <> • Naechstes: {formatRelativeTime(summary.retraining.next_scheduled)}</>
+                        <> • Nächstes: {formatRelativeTime(summary.retraining.next_scheduled)}</>
                     )}
                 </p>
             </div>

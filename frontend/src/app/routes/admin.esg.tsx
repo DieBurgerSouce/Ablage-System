@@ -1,7 +1,7 @@
 /**
  * ESG (Environmental, Social, Governance) - Parent Layout
  *
- * Definiert das Layout und die Sub-Navigation fuer den ESG-Bereich.
+ * Definiert das Layout und die Sub-Navigation für den ESG-Bereich.
  */
 
 import { createFileRoute, Outlet, Link, useLocation } from '@tanstack/react-router';
@@ -50,7 +50,7 @@ function ESGLayout() {
                         ? pathname === item.href
                         : pathname.startsWith(item.href) && pathname !== '/admin/esg';
 
-                    // Fuer das Dashboard: nur aktiv wenn exakt /admin/esg
+                    // Für das Dashboard: nur aktiv wenn exakt /admin/esg
                     const isDashboardActive = item.exact && pathname === item.href;
                     const finalIsActive = item.exact ? isDashboardActive : isActive;
 

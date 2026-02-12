@@ -191,7 +191,7 @@ export function CompanyFormDialog({
           <DialogDescription>
             {isEditing
               ? 'Bearbeiten Sie die Firmendaten.'
-              : 'Erstellen Sie eine neue Firma fuer Ihr Multi-Mandanten-System.'}
+              : 'Erstellen Sie eine neue Firma für Ihr Multi-Mandanten-System.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -219,14 +219,14 @@ export function CompanyFormDialog({
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="short_name">Kurzname (fuer URLs)</Label>
+                  <Label htmlFor="short_name">Kurzname (für URLs)</Label>
                   <Input
                     id="short_name"
                     {...register('short_name')}
                     placeholder="muster"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Wird fuer Ordner-Namen und URLs verwendet
+                    Wird für Ordner-Namen und URLs verwendet
                   </p>
                 </div>
               </div>
@@ -250,7 +250,7 @@ export function CompanyFormDialog({
                     onValueChange={(value) => setValue('kontenrahmen', value)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Kontenrahmen waehlen" />
+                      <SelectValue placeholder="Kontenrahmen wählen" />
                     </SelectTrigger>
                     <SelectContent>
                       {KONTENRAHMEN_OPTIONS.map((opt) => (
@@ -262,17 +262,17 @@ export function CompanyFormDialog({
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="fiscal_year_start">Geschaeftsjahr beginnt</Label>
+                  <Label htmlFor="fiscal_year_start">Geschäftsjahr beginnt</Label>
                   <Select
                     value={watch('fiscal_year_start')}
                     onValueChange={(value) => setValue('fiscal_year_start', value)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Monat waehlen" />
+                      <SelectValue placeholder="Monat wählen" />
                     </SelectTrigger>
                     <SelectContent>
                       {[
-                        'Januar', 'Februar', 'Maerz', 'April', 'Mai', 'Juni',
+                        'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
                         'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
                       ].map((month, i) => (
                         <SelectItem key={i + 1} value={String(i + 1)}>
@@ -295,7 +295,7 @@ export function CompanyFormDialog({
                     onValueChange={(value) => setValue('legal_form', value)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Rechtsform waehlen" />
+                      <SelectValue placeholder="Rechtsform wählen" />
                     </SelectTrigger>
                     <SelectContent>
                       {LEGAL_FORM_OPTIONS.map((opt) => (
@@ -448,13 +448,13 @@ export function CompanyFormDialog({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="default_currency">Waehrung</Label>
+                <Label htmlFor="default_currency">Währung</Label>
                 <Select
                   value={watch('default_currency')}
                   onValueChange={(value) => setValue('default_currency', value)}
                 >
                   <SelectTrigger className="w-32">
-                    <SelectValue placeholder="Waehrung" />
+                    <SelectValue placeholder="Währung" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="EUR">EUR</SelectItem>

@@ -395,16 +395,16 @@ export function CommandPalette({
             </span>
             <span className="flex items-center gap-1">
               <Badge variant="outline" className="px-1 py-0 text-[10px] font-mono">\u21B5</Badge>
-              Ausfuehren
+              Ausführen
             </span>
             <span className="flex items-center gap-1">
               <Badge variant="outline" className="px-1 py-0 text-[10px] font-mono">Esc</Badge>
-              Schliessen
+              Schließen
             </span>
           </div>
           <span className="flex items-center gap-1">
             <Badge variant="outline" className="px-1 py-0 text-[10px] font-mono">?</Badge>
-            fuer Tastenkuerzel
+            für Tastenkürzel
           </span>
         </div>
       </Command>

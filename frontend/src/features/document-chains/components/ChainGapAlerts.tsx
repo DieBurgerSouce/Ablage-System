@@ -1,8 +1,8 @@
 /**
- * ChainGapAlerts - Luecken-Warnungen fuer Auftragsketten
+ * ChainGapAlerts - Lücken-Warnungen für Auftragsketten
  *
- * Zeigt erkannte Luecken in Dokumentenketten mit Severity-Badges
- * und Vorschlaegen zum Verknuepfen fehlender Dokumente.
+ * Zeigt erkannte Lücken in Dokumentenketten mit Severity-Badges
+ * und Vorschlägen zum Verknüpfen fehlender Dokumente.
  */
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -69,7 +69,7 @@ export function ChainGapAlerts({
         <CardContent className="py-8">
           <div className="flex items-center justify-center text-muted-foreground">
             <Loader2 className="w-5 h-5 animate-spin mr-2" />
-            <span>Kettenanalyse wird durchgefuehrt...</span>
+            <span>Kettenanalyse wird durchgeführt...</span>
           </div>
         </CardContent>
       </Card>
@@ -156,8 +156,8 @@ export function ChainGapAlerts({
         {gaps.length === 0 && (
           <div className="text-center py-6 text-muted-foreground">
             <Link2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm font-medium">Keine Luecken erkannt</p>
-            <p className="text-xs">Alle Auftragsketten sind vollstaendig.</p>
+            <p className="text-sm font-medium">Keine Lücken erkannt</p>
+            <p className="text-xs">Alle Auftragsketten sind vollständig.</p>
           </div>
         )}
 
@@ -173,7 +173,7 @@ export function ChainGapAlerts({
         {/* Show More */}
         {gaps.length > maxGaps && (
           <p className="text-xs text-center text-muted-foreground pt-2">
-            {gaps.length - maxGaps} weitere Luecken nicht angezeigt
+            {gaps.length - maxGaps} weitere Lücken nicht angezeigt
           </p>
         )}
       </CardContent>
@@ -215,14 +215,14 @@ function GapAlertItem({
         </p>
         {gap.daysOverdue > 0 && (
           <p className="text-xs text-muted-foreground mt-0.5">
-            {gap.daysOverdue} Tage ueberfaellig
+            {gap.daysOverdue} Tage überfällig
           </p>
         )}
         {gap.suggestedMatches.length > 0 && (
           <div className="mt-1">
             <Button variant="outline" size="sm" className="h-6 text-xs">
               <Link2 className="w-3 h-3 mr-1" />
-              {gap.suggestedMatches.length} Vorschlaege
+              {gap.suggestedMatches.length} Vorschläge
             </Button>
           </div>
         )}

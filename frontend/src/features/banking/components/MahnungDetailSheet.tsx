@@ -599,7 +599,7 @@ export function MahnungDetailSheet({
                                         label="Kundentyp"
                                         value={
                                             <Badge variant={dunning.is_b2b ? 'default' : 'outline'}>
-                                                {dunning.is_b2b ? 'Geschaeftskunde (B2B)' : 'Privatkunde (B2C)'}
+                                                {dunning.is_b2b ? 'Geschäftskunde (B2B)' : 'Privatkunde (B2C)'}
                                             </Badge>
                                         }
                                     />

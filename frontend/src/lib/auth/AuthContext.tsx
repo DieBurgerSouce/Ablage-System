@@ -20,13 +20,13 @@ interface AuthContextType {
     isAuthenticated: boolean;
     /** Session-Ablaufzeit als Unix Timestamp */
     sessionExpiresAt: number | null;
-    /** Verbleibende Zeit bis Session ablaeuft (in ms) */
+    /** Verbleibende Zeit bis Session abläuft (in ms) */
     sessionTimeRemaining: number | null;
-    /** Zeigt an ob Session bald ablaeuft (< 5 min) */
+    /** Zeigt an ob Session bald abläuft (< 5 min) */
     sessionExpiringSoon: boolean;
-    /** Session verlaengern (Token refresh) */
+    /** Session verlängern (Token refresh) */
     refreshSession: () => Promise<void>;
-    /** Letzte Aktivitaet aktualisieren */
+    /** Letzte Aktivität aktualisieren */
     recordActivity: () => void;
 }
 
@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null);
     const [sessionTimeRemaining, setSessionTimeRemaining] = useState<number | null>(null);
 
-    // Refs fuer Timer
+    // Refs für Timer
     const sessionTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const activityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSessionExpiresAt(now + SESSION_DURATION_MS);
     }, []);
 
-    // Timer fuer verbleibende Zeit
+    // Timer für verbleibende Zeit
     useEffect(() => {
         if (!sessionExpiresAt || !user) {
             setSessionTimeRemaining(null);
@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Session-Expiring-Soon berechnen
     const sessionExpiringSoon = sessionTimeRemaining !== null && sessionTimeRemaining <= SESSION_WARNING_THRESHOLD_MS && sessionTimeRemaining > 0;
 
-    // Session verlaengern
+    // Session verlängern
     const refreshSession = useCallback(async () => {
         try {
             await authService.refreshToken();
@@ -94,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }, [updateSessionExpiry]);
 
-    // Aktivitaet aufzeichnen (verlaengert implizit die Session)
+    // Aktivität aufzeichnen (verlängert implizit die Session)
     const recordActivity = useCallback(() => {
         // Debounce: Nur alle 30 Sekunden tatsaechlich refreshen
         if (activityTimeoutRef.current) return;
@@ -103,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             activityTimeoutRef.current = null;
         }, 30000);
 
-        // Session-Expiry aktualisieren bei Aktivitaet
+        // Session-Expiry aktualisieren bei Aktivität
         updateSessionExpiry();
     }, [updateSessionExpiry]);
 
@@ -122,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (currentUser) {
                     setUser(currentUser);
                     updateSessionExpiry();
-                    // Setze User-Kontext fuer Loki-Logging bei bestehendem Session
+                    // Setze User-Kontext für Loki-Logging bei bestehendem Session
                     // SECURITY: Keine PII (E-Mail) in Logs!
                     logger.setUser({ id: currentUser.id });
                 }
@@ -143,7 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!is2FARequired(response)) {
             setUser(response.user);
             updateSessionExpiry();
-            // Setze User-Kontext fuer Loki-Logging
+            // Setze User-Kontext für Loki-Logging
             // SECURITY: Keine PII (E-Mail) in Logs!
             logger.setUser({ id: response.user.id });
         }
@@ -154,7 +154,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const response = await authService.verify2FA(tempToken, code);
         setUser(response.user);
         updateSessionExpiry();
-        // Setze User-Kontext fuer Loki-Logging
+        // Setze User-Kontext für Loki-Logging
         // SECURITY: Keine PII (E-Mail) in Logs!
         logger.setUser({ id: response.user.id });
         return response;

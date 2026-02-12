@@ -2,7 +2,7 @@
  * POMatchList - Tabellenansicht aller PO-Matches
  *
  * Zeigt eine paginierte Tabelle mit:
- * - Bestellnummer, Lieferant, Status, Dokumente, Score, Betraege, Datum
+ * - Bestellnummer, Lieferant, Status, Dokumente, Score, Beträge, Datum
  * - Status-Badges mit Farbkodierung
  * - Auto-Matching Button
  * - Zeilen-Klick navigiert zur Detailansicht
@@ -42,7 +42,7 @@ const STATUS_CONFIG: Record<
     className: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   },
   full: {
-    label: 'Vollstaendig',
+    label: 'Vollständig',
     className: 'bg-green-100 text-green-800 border-green-200',
   },
   discrepancy: {
@@ -115,7 +115,7 @@ export function POMatchList() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <CardTitle className="text-xl font-semibold">
-          PO-Matching Uebersicht
+          PO-Matching Übersicht
         </CardTitle>
         <Button
           onClick={handleAutoMatch}
@@ -127,7 +127,7 @@ export function POMatchList() {
           ) : (
             <Zap className="mr-2 h-4 w-4" />
           )}
-          Auto-Matching ausfuehren
+          Auto-Matching ausführen
         </Button>
       </CardHeader>
 

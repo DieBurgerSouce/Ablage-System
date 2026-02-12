@@ -184,7 +184,7 @@ export function ConnectionDialog({ open, onOpenChange, connection }: ConnectionD
                                         <Input placeholder="Hauptverbindung" {...field} />
                                     </FormControl>
                                     <FormDescription>
-                                        Ein beschreibender Name fuer diese Verbindung.
+                                        Ein beschreibender Name für diese Verbindung.
                                     </FormDescription>
                                     <FormMessage />
                                 </FormItem>
@@ -244,7 +244,7 @@ export function ConnectionDialog({ open, onOpenChange, connection }: ConnectionD
                                         >
                                             <FormControl>
                                                 <SelectTrigger>
-                                                    <SelectValue placeholder="Waehlen..." />
+                                                    <SelectValue placeholder="Wählen..." />
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
@@ -295,7 +295,7 @@ export function ConnectionDialog({ open, onOpenChange, connection }: ConnectionD
                                         <div className="space-y-0.5">
                                             <FormLabel>Auto-Kontierung</FormLabel>
                                             <FormDescription>
-                                                Kontierungsvorschlaege automatisch anwenden bei hoher Konfidenz.
+                                                Kontierungsvorschläge automatisch anwenden bei hoher Konfidenz.
                                             </FormDescription>
                                         </div>
                                         <FormControl>

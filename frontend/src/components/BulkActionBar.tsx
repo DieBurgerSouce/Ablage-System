@@ -1,13 +1,13 @@
 /**
- * BulkActionBar - Aktionsleiste fuer Massenoperationen
+ * BulkActionBar - Aktionsleiste für Massenoperationen
  *
  * Phase 2.3: Bulk Actions konsistent
  *
  * Features:
- * - Zeigt Anzahl ausgewaehlter Elemente
- * - Aktionen: Verschieben, Taggen, Exportieren, Loeschen
+ * - Zeigt Anzahl ausgewählter Elemente
+ * - Aktionen: Verschieben, Taggen, Exportieren, Löschen
  * - Animierte Ein-/Ausblendung
- * - Keyboard Support (Escape zum Schliessen)
+ * - Keyboard Support (Escape zum Schließen)
  */
 
 import { useCallback, useEffect } from "react"
@@ -39,32 +39,32 @@ export interface BulkActionConfig {
   label: string
   icon: React.ReactNode
   variant?: "default" | "destructive" | "outline" | "secondary" | "ghost"
-  /** Aktion benoetigt Bestaetigung */
+  /** Aktion benötigt Bestätigung */
   requiresConfirmation?: boolean
   /** Aktion ist deaktiviert */
   disabled?: boolean
-  /** Tastenkuerzel */
+  /** Tastenkürzel */
   shortcut?: string
 }
 
 export interface BulkActionBarProps {
-  /** Anzahl ausgewaehlter Elemente */
+  /** Anzahl ausgewählter Elemente */
   selectedCount: number
   /** Gesamtanzahl der Elemente */
   totalCount?: number
-  /** Verfuegbare Aktionen */
+  /** Verfügbare Aktionen */
   actions?: BulkActionConfig[]
-  /** Callback bei Aktionsausfuehrung */
+  /** Callback bei Aktionsausführung */
   onAction?: (action: BulkAction) => void
-  /** Callback zum Schliessen/Abwaehlen */
+  /** Callback zum Schließen/Abwählen */
   onClear?: () => void
-  /** Alle auswaehlen */
+  /** Alle auswählen */
   onSelectAll?: () => void
-  /** Zusaetzliche CSS-Klassen */
+  /** Zusätzliche CSS-Klassen */
   className?: string
   /** Ist die Leiste sichtbar (animiert) */
   visible?: boolean
-  /** Loading-Zustand fuer bestimmte Aktion */
+  /** Loading-Zustand für bestimmte Aktion */
   loadingAction?: BulkAction | null
 }
 
@@ -93,7 +93,7 @@ const DEFAULT_ACTIONS: BulkActionConfig[] = [
   },
   {
     id: "delete",
-    label: "Loeschen",
+    label: "Löschen",
     icon: <Trash2 className="h-4 w-4" />,
     variant: "destructive",
     requiresConfirmation: true,
@@ -116,7 +116,7 @@ export function BulkActionBar({
   visible = true,
   loadingAction = null,
 }: BulkActionBarProps) {
-  // Escape-Taste zum Schliessen
+  // Escape-Taste zum Schließen
   useEffect(() => {
     if (!visible) return
 
@@ -131,7 +131,7 @@ export function BulkActionBar({
     return () => document.removeEventListener("keydown", handleKeyDown)
   }, [visible, onClear])
 
-  // Tastenkuerzel fuer Aktionen
+  // Tastenkürzel für Aktionen
   useEffect(() => {
     if (!visible || selectedCount === 0) return
 
@@ -191,11 +191,11 @@ export function BulkActionBar({
           <CheckSquare className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium">
             {selectedCount}
-            {totalCount && ` von ${totalCount}`} ausgewaehlt
+            {totalCount && ` von ${totalCount}`} ausgewählt
           </span>
         </div>
 
-        {/* Alle auswaehlen (wenn nicht alle ausgewaehlt) */}
+        {/* Alle auswählen (wenn nicht alle ausgewählt) */}
         {onSelectAll && totalCount && selectedCount < totalCount && (
           <Button
             variant="ghost"
@@ -203,7 +203,7 @@ export function BulkActionBar({
             onClick={onSelectAll}
             className="text-xs"
           >
-            Alle auswaehlen
+            Alle auswählen
           </Button>
         )}
 
@@ -269,7 +269,7 @@ export function BulkActionBar({
           </DropdownMenu>
         )}
 
-        {/* Schliessen-Button */}
+        {/* Schließen-Button */}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -291,11 +291,11 @@ export function BulkActionBar({
 }
 
 // =============================================================================
-// BulkActionProgress - Fortschrittsanzeige fuer laufende Aktionen
+// BulkActionProgress - Fortschrittsanzeige für laufende Aktionen
 // =============================================================================
 
 export interface BulkActionProgressProps {
-  /** Aktion die laeuft */
+  /** Aktion die läuft */
   action: BulkAction
   /** Aktueller Fortschritt (0-100) */
   progress: number

@@ -1,9 +1,9 @@
 /**
  * Payment Reconciliation Page
  *
- * Vollstaendige Reconciliation-UI mit:
+ * Vollständige Reconciliation-UI mit:
  * - Unabgeglichene Transaktionen Liste
- * - Match-Vorschlaege Panel
+ * - Match-Vorschläge Panel
  * - Manuelles Matching Dialog
  * - Statistiken Dashboard
  * - Bulk-Aktionen
@@ -140,15 +140,15 @@ export function ReconciliationPage() {
         try {
             await manualMatch.mutateAsync({ transactionId, documentId });
             toast({
-                title: 'Erfolgreich verknuepft',
-                description: 'Die Transaktion wurde mit dem Dokument verknuepft.',
+                title: 'Erfolgreich verknüpft',
+                description: 'Die Transaktion wurde mit dem Dokument verknüpft.',
             });
             refetch();
             setSelectedTransaction(null);
         } catch (err) {
             toast({
                 title: 'Fehler',
-                description: 'Verknuepfung fehlgeschlagen.',
+                description: 'Verknüpfung fehlgeschlagen.',
                 variant: 'destructive',
             });
             throw err;
@@ -177,7 +177,7 @@ export function ReconciliationPage() {
 
     const handleSelectTransaction = useCallback((tx: BankTransaction) => {
         setSelectedTransaction(tx);
-        // Bei Auswahl direkt zur Vorschlaege-Ansicht wechseln (auf Mobile)
+        // Bei Auswahl direkt zur Vorschläge-Ansicht wechseln (auf Mobile)
         if (window.innerWidth < 1024) {
             setActiveTab('suggestions');
         }
@@ -185,7 +185,7 @@ export function ReconciliationPage() {
 
     const handleMatchSuccess = useCallback(() => {
         toast({
-            title: 'Erfolgreich verknuepft',
+            title: 'Erfolgreich verknüpft',
             description: 'Die Transaktion wurde zugeordnet.',
         });
         setSelectedTransaction(null);
@@ -220,7 +220,7 @@ export function ReconciliationPage() {
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Zahlungsabgleich</h1>
                     <p className="text-muted-foreground">
-                        Transaktionen mit Rechnungen und Dokumenten verknuepfen
+                        Transaktionen mit Rechnungen und Dokumenten verknüpfen
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -271,7 +271,7 @@ export function ReconciliationPage() {
                 <StatCard
                     title="Ausstehend"
                     value={selectedTransactionIds.length}
-                    subtitle="Fuer Verarbeitung markiert"
+                    subtitle="Für Verarbeitung markiert"
                     icon={CheckCircle2}
                     color="default"
                 />
@@ -356,7 +356,7 @@ export function ReconciliationPage() {
                         </TabsTrigger>
                         <TabsTrigger value="suggestions" className="gap-2" disabled={!selectedTransaction}>
                             <Sparkles className="h-4 w-4" />
-                            Vorschlaege
+                            Vorschläge
                         </TabsTrigger>
                     </TabsList>
 
@@ -385,7 +385,7 @@ export function ReconciliationPage() {
                                 <CardContent className="py-12 text-center">
                                     <Sparkles className="mx-auto h-12 w-12 text-muted-foreground/50" />
                                     <p className="mt-4 text-muted-foreground">
-                                        Waehlen Sie eine Transaktion aus der Liste
+                                        Wählen Sie eine Transaktion aus der Liste
                                     </p>
                                 </CardContent>
                             </Card>
@@ -405,7 +405,7 @@ export function ReconciliationPage() {
                     onSelectionChange={setSelectedTransactionIds}
                 />
 
-                {/* Rechte Seite: Match-Vorschlaege */}
+                {/* Rechte Seite: Match-Vorschläge */}
                 {selectedTransaction ? (
                     <MatchSuggestions
                         transaction={selectedTransaction}
@@ -416,9 +416,9 @@ export function ReconciliationPage() {
                     <Card className="flex items-center justify-center min-h-[400px]">
                         <CardContent className="text-center">
                             <Sparkles className="mx-auto h-16 w-16 text-muted-foreground/30" />
-                            <h3 className="mt-4 text-lg font-medium">Keine Transaktion ausgewaehlt</h3>
+                            <h3 className="mt-4 text-lg font-medium">Keine Transaktion ausgewählt</h3>
                             <p className="text-muted-foreground mt-1">
-                                Klicken Sie auf eine Transaktion links, um Match-Vorschlaege zu sehen.
+                                Klicken Sie auf eine Transaktion links, um Match-Vorschläge zu sehen.
                             </p>
                             {unmatchedCount === 0 && (
                                 <div className="mt-6 p-4 bg-green-50 rounded-lg">

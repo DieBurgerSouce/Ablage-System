@@ -1,7 +1,7 @@
 /**
  * Anlage EUeR API Service
  *
- * API-Aufrufe fuer Einnahmen-Ueberschuss-Rechnung und Anlage EUeR Export.
+ * API-Aufrufe für Einnahmen-Überschuss-Rechnung und Anlage EUeR Export.
  * Basiert auf dem Backend unter /api/v1/accounting/eur/
  */
 
@@ -125,7 +125,7 @@ export async function getEurYtd(
 }
 
 /**
- * Anlage EUeR HTML Export URL generieren (fuer Browser-Druck)
+ * Anlage EUeR HTML Export URL generieren (für Browser-Druck)
  */
 export function getAnlageEuerHtmlUrl(
     companyId: string,

@@ -338,7 +338,7 @@ export function ReviewWorkspace({
         try {
             await verifyMutation.mutateAsync({
                 sampleId,
-                data: { approved: false, correction_notes: 'Vom Pruefer abgelehnt' },
+                data: { approved: false, correction_notes: 'Vom Prüfer abgelehnt' },
             })
             onComplete(false)
             corrections.reset()

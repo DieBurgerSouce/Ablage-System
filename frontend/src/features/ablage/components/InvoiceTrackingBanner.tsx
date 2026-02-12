@@ -1,12 +1,12 @@
 /**
- * InvoiceTrackingBanner - Zahlungsstatus-Uebersicht fuer Rechnungen
+ * InvoiceTrackingBanner - Zahlungsstatus-Übersicht für Rechnungen
  *
  * Zeigt eine Zusammenfassung des Zahlungsstatus:
  * - Offene Rechnungen (heute)
- * - Bald faellig (diese Woche)
- * - Ueberfaellig (kritisch)
+ * - Bald fällig (diese Woche)
+ * - Überfällig (kritisch)
  * - Gesamtbetrag und offener Betrag
- * - Skonto-Hinweis (falls verfuegbar)
+ * - Skonto-Hinweis (falls verfügbar)
  */
 
 import { useMemo } from 'react';
@@ -49,7 +49,7 @@ interface SkontoOpportunity {
 // ==================== Helper Functions ====================
 
 /**
- * Formatiert einen Betrag als Waehrung (EUR)
+ * Formatiert einen Betrag als Währung (EUR)
  */
 function formatCurrency(amount: number, currency = 'EUR'): string {
   return new Intl.NumberFormat('de-DE', {
@@ -60,7 +60,7 @@ function formatCurrency(amount: number, currency = 'EUR'): string {
 }
 
 /**
- * Berechnet Tage bis zum Faelligkeitsdatum
+ * Berechnet Tage bis zum Fälligkeitsdatum
  */
 function daysUntilDue(dueDate: string | null): number | null {
   if (!dueDate) return null;
@@ -72,7 +72,7 @@ function daysUntilDue(dueDate: string | null): number | null {
 }
 
 /**
- * Findet Skonto-Moeglichkeiten in den Dokumenten
+ * Findet Skonto-Möglichkeiten in den Dokumenten
  * Verwendet echte Skonto-Daten aus der OCR-Extraktion
  */
 function findSkontoOpportunities(documents: CategoryDocumentResponse[]): SkontoOpportunity[] {
@@ -81,11 +81,11 @@ function findSkontoOpportunities(documents: CategoryDocumentResponse[]): SkontoO
 
   return documents
     .filter((doc) => {
-      // Nur offene Rechnungen mit Skonto-Daten beruecksichtigen
+      // Nur offene Rechnungen mit Skonto-Daten berücksichtigen
       if (doc.paymentStatus !== 'offen') return false;
       if (!doc.skontoPercent || doc.skontoPercent <= 0) return false;
 
-      // Skonto-Deadline pruefen (falls vorhanden)
+      // Skonto-Deadline prüfen (falls vorhanden)
       if (doc.skontoDeadline) {
         const deadline = new Date(doc.skontoDeadline);
         deadline.setHours(0, 0, 0, 0);
@@ -259,7 +259,7 @@ export function InvoiceTrackingBanner({
       };
     }
 
-    // Zaehle "bald faellig" (naechste 7 Tage) aus Dokumenten
+    // Zaehle "bald fällig" (nächste 7 Tage) aus Dokumenten
     const dueSoonCount = documents.filter((doc) => {
       if (doc.paymentStatus !== 'offen') return false;
       const days = daysUntilDue(doc.dueDate);
@@ -276,7 +276,7 @@ export function InvoiceTrackingBanner({
     };
   }, [aggregations, documents]);
 
-  // Finde Skonto-Moeglichkeiten
+  // Finde Skonto-Möglichkeiten
   const skontoOpportunities = useMemo(() => findSkontoOpportunities(documents), [documents]);
   const totalSkontoSaving = skontoOpportunities.reduce((sum, o) => sum + o.skontoSaving, 0);
 
@@ -316,7 +316,7 @@ export function InvoiceTrackingBanner({
           />
           <StatCard
             icon={Calendar}
-            label="Bald faellig"
+            label="Bald fällig"
             value={stats.dueSoonCount}
             subLabel="diese Woche"
             variant={stats.dueSoonCount > 0 ? 'warning' : 'default'}
@@ -324,7 +324,7 @@ export function InvoiceTrackingBanner({
           />
           <StatCard
             icon={AlertTriangle}
-            label="Ueberfaellig"
+            label="Überfällig"
             value={stats.overdueCount}
             subLabel={stats.overdueCount > 0 ? 'KRITISCH' : '-'}
             variant={stats.overdueCount > 0 ? 'danger' : 'default'}

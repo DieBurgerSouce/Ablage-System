@@ -2,7 +2,7 @@
  * DocumentPresence - Zeigt aktive Betrachter eines Dokuments
  *
  * Features:
- * - Avatar-Stack der aktiven User (max 5, "+N" fuer Overflow)
+ * - Avatar-Stack der aktiven User (max 5, "+N" für Overflow)
  * - Username-Tooltip bei Hover
  * - "N Personen sehen dieses Dokument" Text
  * - WebSocket-basierte Echtzeit-Updates
@@ -78,7 +78,7 @@ function PresenceAvatar({ user }: PresenceAvatarProps) {
 // ==================== Main Component ====================
 
 interface DocumentPresenceProps {
-  /** Praesenz-User aus dem useRealtime Hook */
+  /** Präsenz-User aus dem useRealtime Hook */
   users: PresenceUser[];
   /** Eigene User-ID (wird ausgeblendet) */
   currentUserId?: string;

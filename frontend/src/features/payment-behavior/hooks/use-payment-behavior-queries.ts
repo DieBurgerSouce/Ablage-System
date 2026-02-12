@@ -1,7 +1,7 @@
 /**
  * Payment Behavior Query Hooks
  *
- * TanStack Query Hooks fuer Zahlungsverhaltens-Analyse.
+ * TanStack Query Hooks für Zahlungsverhaltens-Analyse.
  */
 
 import { useQuery } from '@tanstack/react-query';

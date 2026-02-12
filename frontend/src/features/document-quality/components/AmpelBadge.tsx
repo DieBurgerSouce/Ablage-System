@@ -1,7 +1,7 @@
 /**
  * AmpelBadge Component
  *
- * Wiederverwendbares Badge fuer den Ampel-Status (gruen/gelb/rot).
+ * Wiederverwendbares Badge für den Ampel-Status (gruen/gelb/rot).
  * Zeigt optional den Score als Prozent an.
  */
 
@@ -25,13 +25,13 @@ const AMPEL_CONFIG: Record<
 > = {
   gruen: {
     label: 'GRUEN',
-    description: 'Vollstaendig und vertrauenswuerdig',
+    description: 'Vollständig und vertrauenswuerdig',
     bgClass: 'bg-green-500',
     textClass: 'text-white',
   },
   gelb: {
     label: 'GELB',
-    description: 'Pruefung empfohlen',
+    description: 'Prüfung empfohlen',
     bgClass: 'bg-yellow-500',
     textClass: 'text-gray-900',
   },
@@ -62,9 +62,9 @@ interface AmpelBadgeProps {
   color: AmpelColor;
   /** Optionaler Score (0.0 - 1.0) - wird als Prozent angezeigt */
   score?: number;
-  /** Badge-Groesse */
+  /** Badge-Größe */
   size?: 'sm' | 'md' | 'lg';
-  /** Zusaetzliche CSS-Klassen */
+  /** Zusätzliche CSS-Klassen */
   className?: string;
 }
 

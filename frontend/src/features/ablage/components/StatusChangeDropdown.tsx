@@ -1,11 +1,11 @@
 /**
- * StatusChangeDropdown - Dropdown zum Aendern des Status fuer mehrere Dokumente
+ * StatusChangeDropdown - Dropdown zum Ändern des Status für mehrere Dokumente
  *
  * Features:
- * - Zahlungsstatus aendern (Bezahlt, Offen, etc.)
+ * - Zahlungsstatus ändern (Bezahlt, Offen, etc.)
  * - Archivieren
  * - WCAG 2.1 AA konform
- * - Loading-States waehrend der Operation
+ * - Loading-States während der Operation
  */
 
 import { useState } from 'react';
@@ -79,7 +79,7 @@ const STATUS_OPTIONS: StatusOption[] = [
     paymentStatus: 'offen',
   },
   {
-    id: 'ueberfaellig',
+    id: 'überfällig',
     label: 'Als überfällig markieren',
     icon: AlertTriangle,
     className: 'text-red-600',

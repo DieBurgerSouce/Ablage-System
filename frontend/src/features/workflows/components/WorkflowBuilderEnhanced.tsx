@@ -235,7 +235,7 @@ function WorkflowBuilderInner({
       setNodes((nds) => [...nds, newNode]);
       saveHistory();
 
-      toast.success('Knoten hinzugefuegt', {
+      toast.success('Knoten hinzugefügt', {
         description: template.label,
       });
     },
@@ -283,7 +283,7 @@ function WorkflowBuilderInner({
     );
     setSelectedNode(null);
     saveHistory();
-    toast.success('Knoten geloescht');
+    toast.success('Knoten gelöscht');
   }, [selectedNode, setNodes, setEdges, saveHistory]);
 
   const duplicateSelected = useCallback(() => {
@@ -316,7 +316,7 @@ function WorkflowBuilderInner({
     }
     setValidation(null);
     setSelectedNode(null);
-    toast.info('Workflow zurueckgesetzt');
+    toast.info('Workflow zurückgesetzt');
   }, [workflow, setNodes, setEdges]);
 
   // ==================== Save ====================
@@ -348,7 +348,7 @@ function WorkflowBuilderInner({
       const result = await onValidate();
       setValidation(result);
       if (result.valid) {
-        toast.success('Workflow ist gueltig');
+        toast.success('Workflow ist gültig');
       } else {
         toast.error('Validierungsfehler', {
           description: `${result.errors.length} Fehler gefunden`,
@@ -403,7 +403,7 @@ function WorkflowBuilderInner({
       const data = JSON.parse(importJson);
 
       if (!data.nodes || !Array.isArray(data.nodes)) {
-        throw new Error('Ungueltige Workflow-Daten: nodes fehlt');
+        throw new Error('Ungültige Workflow-Daten: nodes fehlt');
       }
 
       setNodes(data.nodes);
@@ -416,7 +416,7 @@ function WorkflowBuilderInner({
       });
     } catch (error) {
       toast.error('Import fehlgeschlagen', {
-        description: error instanceof Error ? error.message : 'Ungueltiges JSON',
+        description: error instanceof Error ? error.message : 'Ungültiges JSON',
       });
     }
   }, [importJson, setNodes, setEdges, saveHistory]);
@@ -547,12 +547,12 @@ function WorkflowBuilderInner({
                   size="icon"
                   onClick={undo}
                   disabled={historyIndex <= 0 || readOnly}
-                  aria-label="Rueckgaengig (Strg+Z)"
+                  aria-label="Rückgängig (Strg+Z)"
                 >
                   <Undo className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Rueckgaengig (Strg+Z)</TooltipContent>
+              <TooltipContent>Rückgängig (Strg+Z)</TooltipContent>
             </Tooltip>
 
             <Tooltip>
@@ -595,12 +595,12 @@ function WorkflowBuilderInner({
                   size="icon"
                   onClick={deleteSelected}
                   disabled={!selectedNode || readOnly}
-                  aria-label="Loeschen (Entf)"
+                  aria-label="Löschen (Entf)"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Loeschen (Entf)</TooltipContent>
+              <TooltipContent>Löschen (Entf)</TooltipContent>
             </Tooltip>
 
             <Separator orientation="vertical" className="h-6" />
@@ -612,12 +612,12 @@ function WorkflowBuilderInner({
                   variant="ghost"
                   size="icon"
                   onClick={handleReset}
-                  aria-label="Zuruecksetzen"
+                  aria-label="Zurücksetzen"
                 >
                   <RotateCcw className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Zuruecksetzen</TooltipContent>
+              <TooltipContent>Zurücksetzen</TooltipContent>
             </Tooltip>
 
             {/* Export/Import */}
@@ -650,7 +650,7 @@ function WorkflowBuilderInner({
                 {validation.valid ? (
                   <Badge variant="outline" className="gap-1 text-green-600">
                     <CheckCircle className="h-3 w-3" />
-                    Gueltig
+                    Gültig
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="gap-1 text-red-600">
@@ -679,7 +679,7 @@ function WorkflowBuilderInner({
               disabled={isLoading || readOnly}
             >
               <Play className="mr-2 h-4 w-4" />
-              Ausfuehren
+              Ausführen
             </Button>
 
             <Button
@@ -777,11 +777,11 @@ function WorkflowBuilderInner({
           <div className="flex items-center gap-4">
             <span>{nodes.length} Knoten</span>
             <span>{edges.length} Verbindungen</span>
-            {selectedNode && <span>1 ausgewaehlt</span>}
+            {selectedNode && <span>1 ausgewählt</span>}
           </div>
           {workflow && (
             <div className="flex items-center gap-4">
-              <span>Ausfuehrungen: {workflow.execution_count}</span>
+              <span>Ausführungen: {workflow.execution_count}</span>
               {workflow.last_executed_at && (
                 <span>
                   Letzte: {new Date(workflow.last_executed_at).toLocaleString('de-DE')}
@@ -837,7 +837,7 @@ function WorkflowBuilderInner({
           <DialogHeader>
             <DialogTitle>Workflow importieren</DialogTitle>
             <DialogDescription>
-              Fuegen Sie JSON-Daten ein oder laden Sie eine Datei
+              Fügen Sie JSON-Daten ein oder laden Sie eine Datei
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -855,7 +855,7 @@ function WorkflowBuilderInner({
                 className="w-full"
               >
                 <Upload className="mr-2 h-4 w-4" />
-                JSON-Datei waehlen
+                JSON-Datei wählen
               </Button>
             </div>
             <div className="relative">
@@ -868,7 +868,7 @@ function WorkflowBuilderInner({
             <Textarea
               value={importJson}
               onChange={(e) => setImportJson(e.target.value)}
-              placeholder="JSON hier einfuegen..."
+              placeholder="JSON hier einfügen..."
               rows={10}
               className="mt-4 font-mono text-xs"
             />

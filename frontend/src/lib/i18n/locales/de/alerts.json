@@ -3,10 +3,10 @@
   "subtitle": "Benachrichtigungen und Warnmeldungen",
   "center": {
     "title": "Alert-Center",
-    "subtitle": "Alle Warnungen im Ueberblick",
+    "subtitle": "Alle Warnungen im Überblick",
     "noAlerts": "Keine Warnungen vorhanden",
     "markAllRead": "Alle als gelesen markieren",
-    "clearAll": "Alle loeschen"
+    "clearAll": "Alle löschen"
   },
   "severity": {
     "info": "Information",
@@ -19,7 +19,7 @@
     "new": "Neu",
     "acknowledged": "Gesehen",
     "inProgress": "In Bearbeitung",
-    "resolved": "Geloest",
+    "resolved": "Gelöst",
     "dismissed": "Verworfen",
     "escalated": "Eskaliert"
   },
@@ -30,48 +30,48 @@
     "deadline": "Fristwarnung",
     "system": "System",
     "security": "Sicherheit",
-    "quality": "Qualitaet",
+    "quality": "Qualität",
     "workflow": "Workflow"
   },
   "actions": {
     "acknowledge": "Als gesehen markieren",
     "dismiss": "Verwerfen",
-    "resolve": "Als geloest markieren",
+    "resolve": "Als gelöst markieren",
     "escalate": "Eskalieren",
     "assign": "Zuweisen",
     "viewDetails": "Details anzeigen",
     "viewDocument": "Dokument anzeigen",
-    "viewEntity": "Geschaeftspartner anzeigen"
+    "viewEntity": "Geschäftspartner anzeigen"
   },
   "codes": {
-    "FRAUD_001": "Ungewoehnlich hoher Betrag",
+    "FRAUD_001": "Ungewöhnlich hoher Betrag",
     "FRAUD_002": "Doppelte Rechnung erkannt",
-    "FRAUD_003": "Verdaechtige Kontodaten",
-    "FRAUD_004": "Unbekannter Empfaenger",
+    "FRAUD_003": "Verdächtige Kontodaten",
+    "FRAUD_004": "Unbekannter Empfänger",
     "RISK_001": "Hohes Ausfallrisiko",
-    "RISK_002": "Zahlungsverzoegerung",
-    "RISK_003": "Kreditlimit ueberschritten",
-    "RISK_004": "Ungewoehnliches Muster",
+    "RISK_002": "Zahlungsverzögerung",
+    "RISK_003": "Kreditlimit überschritten",
+    "RISK_004": "Ungewöhnliches Muster",
     "COMP_001": "DSGVO-Verletzung",
     "COMP_002": "Fehlende Dokumente",
-    "COMP_003": "Ungueltige USt-IdNr.",
+    "COMP_003": "Ungültige USt-IdNr.",
     "COMP_004": "Aufbewahrungsfrist",
     "COMP_005": "GoBD-Verletzung",
-    "DEAD_001": "Rechnung ueberfaellig",
+    "DEAD_001": "Rechnung überfällig",
     "DEAD_002": "Skonto-Frist endet",
-    "DEAD_003": "Vertrag laeuft aus",
-    "DEAD_004": "Genehmigung ueberfaellig",
+    "DEAD_003": "Vertrag läuft aus",
+    "DEAD_004": "Genehmigung überfällig",
     "SYS_001": "Speicherplatz niedrig",
     "SYS_002": "Backup fehlgeschlagen",
     "SYS_003": "Dienst nicht erreichbar",
     "SYS_004": "Hohe Systemlast",
     "SYS_005": "Wartung erforderlich",
-    "SEC_001": "Verdaechtiger Login",
+    "SEC_001": "Verdächtiger Login",
     "SEC_002": "Zu viele Fehlversuche",
-    "SEC_003": "Ungewoehnliche Aktivitaet",
-    "SEC_004": "Zertifikat laeuft ab",
-    "QUAL_001": "Niedrige OCR-Qualitaet",
-    "QUAL_002": "Pruefung erforderlich",
+    "SEC_003": "Ungewöhnliche Aktivität",
+    "SEC_004": "Zertifikat läuft ab",
+    "QUAL_001": "Niedrige OCR-Qualität",
+    "QUAL_002": "Prüfung erforderlich",
     "QUAL_003": "Datenkonflikt",
     "WORK_001": "Genehmigung erforderlich",
     "WORK_002": "Workflow blockiert",
@@ -99,9 +99,9 @@
     "teams": "Teams-Benachrichtigung",
     "frequency": {
       "immediate": "Sofort",
-      "hourly": "Stuendlich",
-      "daily": "Taeglich",
-      "weekly": "Woechentlich"
+      "hourly": "Stündlich",
+      "daily": "Täglich",
+      "weekly": "Wöchentlich"
     }
   }
 }

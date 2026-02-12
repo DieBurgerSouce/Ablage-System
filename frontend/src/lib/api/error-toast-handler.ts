@@ -55,7 +55,7 @@ const ERROR_MESSAGES: Record<string, { title: string; description: string }> = {
     429: {
         title: 'Zu viele Anfragen',
         description: 'Sie haben zu viele Anfragen gesendet. Bitte warten Sie einen Moment.',
-        // Fix 7: Retry-After wird dynamisch hinzugefuegt in showApiErrorToast()
+        // Fix 7: Retry-After wird dynamisch hinzugefügt in showApiErrorToast()
     },
     500: {
         title: 'Server-Fehler',
@@ -196,7 +196,7 @@ export function showApiErrorToast(error: AxiosError): void {
         errorInfo = { ...ERROR_MESSAGES[status] };
 
         // Fix 7: Bei 429 Rate-Limit den Retry-After Header anzeigen
-        // P2 Fix (Iteration 14): Auch HTTP-Datum Format unterstuetzen (RFC 7231)
+        // P2 Fix (Iteration 14): Auch HTTP-Datum Format unterstützen (RFC 7231)
         if (status === 429) {
             const retryAfter = error.response?.headers?.['retry-after'];
             if (retryAfter) {
@@ -277,7 +277,7 @@ export function handleApiError(error: unknown): never {
         // KEIN Toast, da diese Fehler nicht vom API kommen
         console.error('[handleApiError] Non-Axios error:', error.message);
     } else {
-        // P0 Fix: Catch-all fuer null, undefined, primitive (string, number, etc.)
+        // P0 Fix: Catch-all für null, undefined, primitive (string, number, etc.)
         // Verhindert silent throws ohne jegliches Logging
         console.error(
             '[handleApiError] Unknown error type:',

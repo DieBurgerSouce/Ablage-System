@@ -52,7 +52,7 @@ export function ChecklistFormDialog({
   const [isTemplate, setIsTemplate] = useState(false);
   const [items, setItems] = useState<ItemInput[]>([]);
 
-  // Initialisiere Form bei Oeffnen
+  // Initialisiere Form bei Öffnen
   useEffect(() => {
     if (open) {
       if (checklist) {
@@ -125,7 +125,7 @@ export function ChecklistFormDialog({
             </DialogTitle>
             <DialogDescription>
               {isEdit
-                ? 'Bearbeiten Sie die Checkliste und speichern Sie die Aenderungen.'
+                ? 'Bearbeiten Sie die Checkliste und speichern Sie die Änderungen.'
                 : 'Erstellen Sie eine neue Checkliste mit Ihren Aufgaben.'}
             </DialogDescription>
           </DialogHeader>
@@ -164,7 +164,7 @@ export function ChecklistFormDialog({
             {/* Items (nur bei Erstellung) */}
             {!isEdit && (
               <div className="space-y-2">
-                <Label>Eintraege</Label>
+                <Label>Einträge</Label>
                 <div className="space-y-3">
                   {items.map((item, index) => (
                     <div key={item.id} className="flex items-start gap-2 p-3 border rounded">
@@ -209,14 +209,14 @@ export function ChecklistFormDialog({
                 </div>
                 <Button type="button" variant="outline" onClick={handleAddItem} className="w-full">
                   <Plus className="h-4 w-4 mr-2" />
-                  Eintrag hinzufuegen
+                  Eintrag hinzufügen
                 </Button>
               </div>
             )}
 
             {isEdit && (
               <p className="text-sm text-muted-foreground">
-                Eintraege koennen nach dem Speichern direkt in der Checkliste bearbeitet werden.
+                Einträge können nach dem Speichern direkt in der Checkliste bearbeitet werden.
               </p>
             )}
           </div>

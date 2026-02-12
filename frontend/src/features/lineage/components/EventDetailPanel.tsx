@@ -1,8 +1,8 @@
 /**
  * EventDetailPanel Component
  *
- * Seitenpanel mit detaillierten Informationen zu einem ausgewaehlten Lineage-Event.
- * Zeigt alle Event-Daten und ermoeglicht Interaktionen.
+ * Seitenpanel mit detaillierten Informationen zu einem ausgewählten Lineage-Event.
+ * Zeigt alle Event-Daten und ermöglicht Interaktionen.
  */
 
 import { memo, useMemo } from 'react';
@@ -369,7 +369,7 @@ function EventDataRenderer({
           {eventData.file_size && (
             <InfoRow
               icon={FileText}
-              label="Dateigroesse"
+              label="Dateigröße"
               value={formatFileSize(Number(eventData.file_size))}
             />
           )}
@@ -452,7 +452,7 @@ function EventDataRenderer({
           {eventData.entity_name && (
             <InfoRow
               icon={Link2}
-              label="Geschaeftspartner"
+              label="Geschäftspartner"
               value={
                 <div className="flex items-center gap-2">
                   <span>{String(eventData.entity_name)}</span>
@@ -462,7 +462,7 @@ function EventDataRenderer({
                       size="icon"
                       className="h-6 w-6"
                       onClick={() => onNavigateToEntity(String(eventData.entity_id))}
-                      title="Zum Geschaeftspartner"
+                      title="Zum Geschäftspartner"
                     >
                       <ExternalLink className="h-3 w-3" />
                     </Button>
@@ -485,7 +485,7 @@ function EventDataRenderer({
           {eventData.reason && (
             <InfoRow
               icon={FileText}
-              label="Begruendung"
+              label="Begründung"
               value={String(eventData.reason)}
             />
           )}
@@ -552,7 +552,7 @@ function EventDataRenderer({
           {eventData.reason && (
             <InfoRow
               icon={FileText}
-              label="Begruendung"
+              label="Begründung"
               value={String(eventData.reason)}
             />
           )}

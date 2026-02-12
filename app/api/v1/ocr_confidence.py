@@ -8,7 +8,7 @@ fuer Viewer-Heatmap-Visualisierung.
 Feinpoliert und durchdacht - Enterprise OCR Confidence API.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
 
 import structlog

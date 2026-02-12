@@ -1,8 +1,8 @@
 /**
  * DocumentLineagePage Component
  *
- * Vollstaendige Seite zur Anzeige der Dokumenten-Lineage.
- * Kann als eigenstaendige Route verwendet werden.
+ * Vollständige Seite zur Anzeige der Dokumenten-Lineage.
+ * Kann als eigenständige Route verwendet werden.
  */
 
 import { useMemo } from 'react';
@@ -39,15 +39,15 @@ import { lineageService } from '@/lib/api/services/lineage';
 export interface DocumentLineagePageProps {
   /** Dokument-ID */
   documentId: string;
-  /** Dokument-Name (optional, fuer Breadcrumb) */
+  /** Dokument-Name (optional, für Breadcrumb) */
   documentName?: string;
-  /** Callback fuer Zurueck-Navigation */
+  /** Callback für Zurück-Navigation */
   onBack?: () => void;
   /** Callback bei Klick auf Entity */
   onNavigateToEntity?: (entityId: string) => void;
   /** Callback bei Klick auf Dokument */
   onNavigateToDocument?: (documentId: string) => void;
-  /** Zusaetzliche CSS-Klassen */
+  /** Zusätzliche CSS-Klassen */
   className?: string;
 }
 
@@ -171,7 +171,7 @@ export function DocumentLineagePage({
                   )}
                 </>
               ) : (
-                'Vollstaendige Verarbeitungs-Timeline'
+                'Vollständige Verarbeitungs-Timeline'
               )}
             </p>
           </div>
@@ -203,7 +203,7 @@ export function DocumentLineagePage({
 }
 
 // =============================================================================
-// Standalone Wrapper (fuer Router)
+// Standalone Wrapper (für Router)
 // =============================================================================
 
 interface DocumentLineagePageWrapperProps {
@@ -213,7 +213,7 @@ interface DocumentLineagePageWrapperProps {
 }
 
 /**
- * Wrapper-Komponente fuer die Router-Integration.
+ * Wrapper-Komponente für die Router-Integration.
  * Extrahiert die documentId aus den Route-Params.
  */
 export function DocumentLineagePageWrapper({
@@ -221,7 +221,7 @@ export function DocumentLineagePageWrapper({
 }: DocumentLineagePageWrapperProps) {
   const { documentId } = params;
 
-  // Hier koennen zusaetzliche Daten geladen werden (z.B. Dokument-Name)
+  // Hier können zusätzliche Daten geladen werden (z.B. Dokument-Name)
 
   return (
     <DocumentLineagePage

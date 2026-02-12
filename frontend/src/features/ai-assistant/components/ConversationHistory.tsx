@@ -252,10 +252,10 @@ export function ConversationHistory({
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Konversation loeschen?</AlertDialogTitle>
+            <AlertDialogTitle>Konversation löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Diese Aktion kann nicht rueckgaengig gemacht werden. Die Konversation
-              und alle zugehoerigen Nachrichten werden dauerhaft geloescht.
+              Diese Aktion kann nicht rückgängig gemacht werden. Die Konversation
+              und alle zugehörigen Nachrichten werden dauerhaft gelöscht.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -269,7 +269,7 @@ export function ConversationHistory({
               ) : (
                 <Trash2 className="h-4 w-4 mr-2" />
               )}
-              Loeschen
+              Löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -352,7 +352,7 @@ function ConversationItem({
               </button>
             </TooltipTrigger>
             <TooltipContent>
-              {conversation.is_starred ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufuegen'}
+              {conversation.is_starred ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -415,7 +415,7 @@ function ConversationItem({
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onDelete} className="text-destructive">
                 <Trash2 className="h-4 w-4 mr-2" />
-                Loeschen
+                Löschen
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

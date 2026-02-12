@@ -10,7 +10,9 @@ Alle Endpunkte erfordern Authentifizierung und Multi-Tenant Isolation.
 """
 
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
+
+from app.core.types import JSONDict, JSONValue
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
@@ -49,7 +51,7 @@ class ProcessDefinitionCreate(BaseModel):
     category: Optional[str] = Field(None, max_length=100)
     tags: Optional[List[str]] = None
     bpmn_xml: Optional[str] = Field(None, description="BPMN 2.0 XML")
-    process_json: Optional[Dict[str, Any]] = Field(
+    process_json: Optional[JSONDict] = Field(
         None, description="Frontend JSON (React Flow Format)"
     )
 
@@ -74,7 +76,7 @@ class ProcessDefinitionResponse(BaseModel):
 class ProcessInstanceStart(BaseModel):
     """Schema zum Starten einer Prozess-Instanz."""
     definition_key: str = Field(..., description="Key der Prozess-Definition")
-    variables: Optional[Dict[str, Any]] = Field(
+    variables: Optional[JSONDict] = Field(
         default_factory=dict, description="Initiale Prozess-Variablen"
     )
     business_key: Optional[str] = Field(
@@ -93,7 +95,7 @@ class ProcessInstanceResponse(BaseModel):
     definition_name: Optional[str] = None
     business_key: Optional[str]
     status: str
-    variables: Dict[str, Any]
+    variables: JSONDict
     current_elements: List[str]
     document_id: Optional[UUID]
     started_at: Optional[datetime]
@@ -116,7 +118,7 @@ class ProcessTaskResponse(BaseModel):
     priority: int
     due_date: Optional[datetime]
     form_key: Optional[str]
-    task_variables: Dict[str, Any]
+    task_variables: JSONDict
     created_at: datetime
     claimed_at: Optional[datetime]
     completed_at: Optional[datetime]
@@ -130,7 +132,7 @@ class ProcessTaskResponse(BaseModel):
 
 class TaskCompleteRequest(BaseModel):
     """Request zum Abschliessen eines Tasks."""
-    variables: Optional[Dict[str, Any]] = Field(
+    variables: Optional[JSONDict] = Field(
         default_factory=dict, description="Output-Variablen"
     )
 
@@ -150,8 +152,8 @@ class ProcessHistoryResponse(BaseModel):
     message: Optional[str]
     actor_id: Optional[UUID]
     actor_type: str
-    old_value: Optional[Dict[str, Any]]
-    new_value: Optional[Dict[str, Any]]
+    old_value: Optional[JSONDict]
+    new_value: Optional[JSONDict]
     timestamp: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -159,7 +161,7 @@ class ProcessHistoryResponse(BaseModel):
 
 class PaginatedResponse(BaseModel):
     """Generische paginierte Response."""
-    items: List[Any]
+    items: List[JSONValue]
     total: int
     page: int
     per_page: int
@@ -512,7 +514,7 @@ async def terminate_process_instance(
 async def send_signal_to_instance(
     instance_id: UUID,
     signal_name: str = Body(..., embed=True),
-    variables: Optional[Dict[str, Any]] = Body(None, embed=True),
+    variables: Optional[JSONDict] = Body(None, embed=True),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):

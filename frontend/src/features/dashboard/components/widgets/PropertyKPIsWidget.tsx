@@ -1,5 +1,5 @@
 /**
- * Property KPIs Widget fuer Dashboard
+ * Property KPIs Widget für Dashboard
  *
  * Zeigt Immobilien-Kennzahlen:
  * - Mietrendite
@@ -8,7 +8,7 @@
  * - Leerstandsquote
  *
  * Enterprise-Grade Features:
- * - ErrorBoundary fuer graceful degradation
+ * - ErrorBoundary für graceful degradation
  * - Konsistente Fehlerbehandlung
  * - Real-time Updates via WebSocket
  */
@@ -111,7 +111,7 @@ const getPropertyTypeLabel = (type: string): string => {
         residential: 'Wohnimmobilie',
         commercial: 'Gewerbe',
         mixed: 'Gemischt',
-        land: 'Grundstueck',
+        land: 'Grundstück',
     };
     return labels[type] || type;
 };
@@ -223,7 +223,7 @@ function PropertyKPIsWidgetContent() {
         return (
             <div className="text-center py-6 text-muted-foreground">
                 <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
-                <p className="text-sm">Immobilien-Daten nicht verfuegbar</p>
+                <p className="text-sm">Immobilien-Daten nicht verfügbar</p>
             </div>
         );
     }

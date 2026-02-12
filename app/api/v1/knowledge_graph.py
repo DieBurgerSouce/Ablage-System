@@ -10,7 +10,9 @@ REST API fuer Entity-Relationship Explorer:
 Feinpoliert und durchdacht - Enterprise Knowledge Graph.
 """
 
-from typing import Dict, List, Any, Optional
+from typing import List, Optional
+
+from app.core.types import JSONDict
 from uuid import UUID
 
 import structlog
@@ -34,7 +36,7 @@ router = APIRouter(prefix="/knowledge-graph", tags=["Knowledge Graph"])
 
 @router.get(
     "/entity/{entity_id}",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Entity-Graph",
     description="Holt Graph um Entity herum mit konfigurierbarer Tiefe"
 )
@@ -44,7 +46,7 @@ async def get_entity_graph(
     current_user: User = Depends(get_current_active_user),
     company_id: UUID = Depends(get_current_company_id),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Holt Graph um Entity.
 
@@ -93,7 +95,7 @@ async def get_entity_graph(
 
 @router.get(
     "/explore",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Graph-Exploration",
     description="Durchsucht Graph nach Entities und Beziehungen"
 )
@@ -102,7 +104,7 @@ async def explore_graph(
     current_user: User = Depends(get_current_active_user),
     company_id: UUID = Depends(get_current_company_id),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Explore Graph.
 
@@ -142,7 +144,7 @@ async def explore_graph(
 
 @router.get(
     "/shortest-path",
-    response_model=Dict[str, Any],
+    response_model=JSONDict,
     summary="Kuerzester Pfad",
     description="Findet kuerzesten Pfad zwischen zwei Entities"
 )
@@ -152,7 +154,7 @@ async def get_shortest_path(
     current_user: User = Depends(get_current_active_user),
     company_id: UUID = Depends(get_current_company_id),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Findet kuerzesten Pfad.
 
@@ -203,7 +205,7 @@ async def get_shortest_path(
 
 @router.get(
     "/communities",
-    response_model=List[Dict[str, Any]],
+    response_model=List[JSONDict],
     summary="Community Detection",
     description="Findet Communities/Cluster von zusammenhaengenden Entities"
 )
@@ -211,7 +213,7 @@ async def get_communities(
     current_user: User = Depends(get_current_active_user),
     company_id: UUID = Depends(get_current_company_id),
     db: AsyncSession = Depends(get_db),
-) -> List[Dict[str, Any]]:
+) -> List[JSONDict]:
     """
     Findet Communities.
 
