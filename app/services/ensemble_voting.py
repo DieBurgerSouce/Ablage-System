@@ -243,11 +243,61 @@ class EnsembleVotingService:
             "surya_cpu": 0.7,  # Fallback, niedrigste Priorität
         }
 
+        # Field-type specific backend weight multipliers
+        self._field_type_weights: Dict[str, Dict[str, float]] = {
+            # DeepSeek excels at German text with umlauts
+            "umlaut_text": {"deepseek": 2.0, "got_ocr": 1.0, "surya": 0.8, "surya_gpu": 0.8},
+            # GOT-OCR excels at tables
+            "table_cell": {"deepseek": 1.0, "got_ocr": 2.0, "surya": 0.8, "surya_gpu": 0.8},
+            # GOT-OCR excels at numbers/amounts
+            "amount": {"deepseek": 1.2, "got_ocr": 1.5, "surya": 1.0, "surya_gpu": 1.0},
+            # Default: equal weights
+            "default": {"deepseek": 1.0, "got_ocr": 1.0, "surya": 1.0, "surya_gpu": 1.0},
+        }
+
         logger.info(
             "ensemble_voting_service_initialized",
             default_method=default_method,
             min_agreement=min_agreement_threshold
         )
+
+    def get_field_specific_weights(
+        self,
+        field_type: str,
+        document_type: str = "invoice",
+    ) -> Dict[str, float]:
+        """Feld-typ-spezifische Backend-Gewichtungen."""
+        # Check if text contains umlauts
+        weights = self._field_type_weights.get(field_type, self._field_type_weights["default"]).copy()
+
+        # Adjust for document type
+        if document_type == "invoice" and field_type in ("amount", "iban"):
+            # Boost GOT-OCR for financial fields
+            weights["got_ocr"] = weights.get("got_ocr", 1.0) * 1.3
+
+        return weights
+
+    def update_adaptive_weights(
+        self,
+        field_type: str,
+        winning_backend: str,
+        correction_was_needed: bool,
+    ) -> None:
+        """Adaptive Gewichtungs-Anpassung nach Korrekturen."""
+        if field_type not in self._field_type_weights:
+            self._field_type_weights[field_type] = {"deepseek": 1.0, "got_ocr": 1.0, "surya": 1.0, "surya_gpu": 1.0}
+
+        weights = self._field_type_weights[field_type]
+        adjustment = 0.05
+
+        if correction_was_needed:
+            # Reduce weight of backend that was wrong
+            current = weights.get(winning_backend, 1.0)
+            weights[winning_backend] = max(0.5, current - adjustment)
+        else:
+            # Increase weight of backend that was correct
+            current = weights.get(winning_backend, 1.0)
+            weights[winning_backend] = min(3.0, current + adjustment)
 
     def _get_weight(self, backend: str) -> BackendWeight:
         """Hole oder erstelle Backend-Gewicht.

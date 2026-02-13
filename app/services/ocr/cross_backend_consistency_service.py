@@ -162,9 +162,10 @@ class ConsistencyConfig:
     medium_agreement_threshold: float = 0.70
     low_agreement_threshold: float = 0.50
 
-    # Third-Backend Trigger
-    trigger_third_backend_threshold: float = 0.80
+    # Third-Backend Trigger (lowered from 0.80 to 0.75 for critical fields)
+    trigger_third_backend_threshold: float = 0.75
     trigger_third_backend_on_critical: bool = True
+    handwriting_confidence_threshold: float = 0.5
 
     # Review-Schwellenwerte
     immediate_review_threshold: float = 0.40
@@ -223,6 +224,52 @@ class CrossBackendConsistencyService:
             high_threshold=self.config.high_agreement_threshold,
             third_backend_threshold=self.config.trigger_third_backend_threshold,
         )
+
+    def detect_handwriting_regions(
+        self,
+        results: List[Dict[str, object]],
+    ) -> List[Dict[str, float]]:
+        """
+        Erkennung von handschriftlichen Regionen.
+
+        Wenn ein Backend Handschrift-Confidence > 0.5 meldet,
+        werden alle Backends fuer diese Region aktiviert.
+        """
+        handwriting_regions: List[Dict[str, float]] = []
+
+        for result in results:
+            if not isinstance(result, dict):
+                continue
+
+            pages = result.get("pages", [])
+            if not isinstance(pages, list):
+                continue
+
+            for page in pages:
+                if not isinstance(page, dict):
+                    continue
+
+                regions = page.get("regions", [])
+                if not isinstance(regions, list):
+                    continue
+
+                for region in regions:
+                    if not isinstance(region, dict):
+                        continue
+
+                    handwriting_conf = region.get("handwriting_confidence", 0.0)
+                    if isinstance(handwriting_conf, (int, float)) and handwriting_conf > self.config.handwriting_confidence_threshold:
+                        bbox = region.get("bounding_box", {})
+                        if isinstance(bbox, dict):
+                            handwriting_regions.append({
+                                "x": float(bbox.get("x", 0)),
+                                "y": float(bbox.get("y", 0)),
+                                "width": float(bbox.get("width", 0)),
+                                "height": float(bbox.get("height", 0)),
+                                "handwriting_confidence": float(handwriting_conf),
+                            })
+
+        return handwriting_regions
 
     async def analyze_consistency(
         self,

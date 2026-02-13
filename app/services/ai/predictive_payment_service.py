@@ -984,17 +984,21 @@ class PredictivePaymentService:
         self,
         db: AsyncSession,
         feedback: PredictionFeedback,
+        company_id: UUID,
     ) -> None:
         """
         Erfasse Feedback fuer kontinuierliches Lernen.
 
         Wird aufgerufen wenn tatsaechliche Zahlungen erfolgen,
-        um Vorhersage-Genauigkeit zu tracken.
+        um Vorhersage-Genauigkeit zu tracken und in DB zu persistieren.
 
         Args:
             db: Datenbank-Session
             feedback: Feedback-Objekt
+            company_id: Firmen-ID
         """
+        from app.db.models_prediction_feedback import PredictionFeedbackRecord
+
         # Genauigkeit pruefen
         if feedback.prediction_type == "delay":
             # Toleranz: +/- 3 Tage
@@ -1005,7 +1009,6 @@ class PredictivePaymentService:
             actual_default = feedback.actual_value > 0
             feedback.was_accurate = predicted_default == actual_default
 
-        # In Produktion: Speichern fuer Retraining
         logger.info(
             "prediction_feedback_recorded",
             entity_id=str(feedback.entity_id),
@@ -1015,8 +1018,18 @@ class PredictivePaymentService:
             was_accurate=feedback.was_accurate,
         )
 
-        # TODO: Speichern in DB fuer MLOps Retraining Pipeline
-        # Dies wuerde ueber OCRCorrectionFeedback-aehnliche Tabelle erfolgen
+        # Persistieren fuer MLOps Retraining Pipeline
+        feedback_record = PredictionFeedbackRecord(
+            entity_id=feedback.entity_id,
+            company_id=company_id,
+            prediction_id=feedback.prediction_id,
+            prediction_type=feedback.prediction_type,
+            predicted_value=feedback.predicted_value,
+            actual_value=feedback.actual_value,
+            was_accurate=feedback.was_accurate,
+        )
+        db.add(feedback_record)
+        await db.flush()
 
     def clear_feature_cache(self, entity_id: Optional[UUID] = None) -> None:
         """Loesche Feature-Cache (fuer Tests oder nach Updates)."""

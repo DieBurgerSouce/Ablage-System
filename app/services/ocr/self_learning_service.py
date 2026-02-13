@@ -46,6 +46,7 @@ class LearningMode(str, Enum):
     AGGRESSIVE = "aggressive"  # Jede Korrektur fliesst sofort ein
     CAUTIOUS = "cautious"      # Nur verifizierte Korrekturen
     BATCH = "batch"            # Batch-Learning (taeglich)
+    REALTIME = "realtime"      # Sofortige Verarbeitung ohne Batching
 
 
 class ModelVersion(str, Enum):
@@ -286,6 +287,68 @@ class SelfLearningOCRService:
 
         except Exception as e:
             logger.error("failed_to_persist_adjustments", **safe_error_log(e))
+
+    async def apply_immediate_correction(
+        self,
+        db: AsyncSession,
+        feedback: CorrectionFeedback,
+        entity_id: Optional[UUID] = None,
+    ) -> bool:
+        """
+        Sofortige Korrektur-Anwendung (REALTIME Modus).
+
+        Aktualisiert Confidence in Redis und speichert
+        lieferantenspezifische Korrektur-Hinweise.
+        """
+        try:
+            redis = RedisStateManager.get_instance()
+            await redis.connect()
+
+            # Update field confidence immediately
+            confidence_key = f"ocr:confidence:{feedback.ocr_backend}:{feedback.field_name}"
+            current = await redis._redis.get(confidence_key)
+            current_conf = float(current) if current else feedback.original_confidence
+
+            # Faster convergence: alpha 0.15 instead of 0.1
+            alpha = 0.15
+            if feedback.is_major_correction:
+                # Stronger adjustment for major corrections
+                new_confidence = current_conf * (1 - alpha * 2)
+            else:
+                new_confidence = current_conf * (1 - alpha) + alpha * 0.95
+
+            await redis._redis.setex(
+                confidence_key,
+                timedelta(days=7),
+                str(round(new_confidence, 4)),
+            )
+
+            # Store supplier-specific hint
+            if entity_id:
+                supplier_key = f"ocr:supplier:{entity_id}:field:{feedback.field_name}"
+                hint_data = {
+                    "corrected_value": feedback.corrected_value,
+                    "correction_type": feedback.correction_type,
+                    "confidence_adjustment": round(new_confidence, 4),
+                    "timestamp": feedback.timestamp.isoformat(),
+                }
+                await redis._redis.setex(
+                    supplier_key,
+                    timedelta(days=30),
+                    json.dumps(hint_data),
+                )
+
+            logger.info(
+                "Sofortige Korrektur angewendet",
+                field=feedback.field_name,
+                backend=feedback.ocr_backend,
+                old_conf=round(current_conf, 4),
+                new_conf=round(new_confidence, 4),
+            )
+            return True
+        except Exception as exc:
+            safe_error_log(logger, "Fehler bei sofortiger Korrektur", exc)
+            return False
 
     # =========================================================================
     # FEEDBACK INTEGRATION (Aggressive Learning)

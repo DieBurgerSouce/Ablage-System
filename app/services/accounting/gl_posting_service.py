@@ -23,8 +23,9 @@ import structlog
 from sqlalchemy import select, and_, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.datetime_utils import utc_now
-from app.db.models import Document, User, Company
+from app.db.models import Document, User, Company, DATEVConfiguration, DATEVVendorMapping
 from app.db.models_gl_posting import (
     JournalEntry,
     JournalEntryLine,
@@ -32,6 +33,10 @@ from app.db.models_gl_posting import (
     JournalEntrySource,
     GLAccount,
 )
+from app.services.datev.mapping.invoice_mapper import DATEVInvoiceMapper, MappingResult, DATEVBuchung
+from app.api.schemas.extracted_data import ExtractedInvoiceData
+from app.services.datev.kontenrahmen.skr03 import SKR03
+from app.services.datev.kontenrahmen.skr04 import SKR04
 
 logger = structlog.get_logger(__name__)
 
@@ -387,33 +392,17 @@ class GLPostingService:
         if not invoice_total:
             raise ValueError("Dokument hat keine extrahierte Rechnungssumme")
 
-        # Einfache Mapping-Logik (Expense-Rechnung)
-        # TODO: Integration mit DATEVInvoiceMapper für korrekte Accounts
-        lines = [
-            JournalEntryLineCreate(
-                account_number="4400",  # Wareneingang (SKR03)
-                account_name="Wareneingang",
-                debit_amount=Decimal(str(net_amount or invoice_total)),
-                credit_amount=Decimal("0"),
-                text=f"RE: {extracted.get('invoice_number', 'N/A')}",
-            ),
-            JournalEntryLineCreate(
-                account_number="1600",  # Vorsteuer 19%
-                account_name="Vorsteuer 19%",
-                debit_amount=Decimal(str(tax_amount or 0)),
-                credit_amount=Decimal("0"),
-                tax_code="40",  # DATEV BU-Schlüssel Vorsteuer 19%
-                tax_rate=Decimal("19.00"),
-                text="Vorsteuer",
-            ),
-            JournalEntryLineCreate(
-                account_number="1600",  # Kreditorenkonto (vereinfacht)
-                account_name="Verbindlichkeiten",
-                debit_amount=Decimal("0"),
-                credit_amount=Decimal(str(invoice_total)),
-                text=extracted.get("supplier_name", "Kreditor")[:60],
-            ),
-        ]
+        # Account-Mapping: DATEV-Mapper nutzen wenn konfiguriert, sonst Fallback
+        datev_config = await self._get_datev_config(company_id)
+
+        if datev_config:
+            lines = await self._map_via_datev(
+                datev_config, extracted, invoice_total, tax_amount, net_amount
+            )
+        else:
+            lines = self._simple_expense_lines(
+                extracted, invoice_total, tax_amount, net_amount
+            )
 
         entry = await self.create_journal_entry(
             company_id=company_id,
@@ -430,6 +419,193 @@ class GLPostingService:
         await self.post_journal_entry(entry.id, posted_by)
 
         return entry
+
+    def _simple_expense_lines(
+        self,
+        extracted: Dict[str, Any],
+        invoice_total: Any,
+        tax_amount: Any,
+        net_amount: Any,
+    ) -> List[JournalEntryLineCreate]:
+        """Einfache Expense-Buchung (Fallback ohne DATEV-Config)."""
+        return [
+            JournalEntryLineCreate(
+                account_number="4400",
+                account_name="Wareneingang",
+                debit_amount=Decimal(str(net_amount or invoice_total)),
+                credit_amount=Decimal("0"),
+                text=f"RE: {extracted.get('invoice_number', 'N/A')}",
+            ),
+            JournalEntryLineCreate(
+                account_number="1576",
+                account_name="Vorsteuer 19%",
+                debit_amount=Decimal(str(tax_amount or 0)),
+                credit_amount=Decimal("0"),
+                tax_code="40",
+                tax_rate=Decimal("19.00"),
+                text="Vorsteuer",
+            ),
+            JournalEntryLineCreate(
+                account_number="1600",
+                account_name="Verbindlichkeiten",
+                debit_amount=Decimal("0"),
+                credit_amount=Decimal(str(invoice_total)),
+                text=extracted.get("supplier_name", "Kreditor")[:60],
+            ),
+        ]
+
+    async def _get_datev_config(
+        self, company_id: UUID
+    ) -> Optional[DATEVConfiguration]:
+        """Lade aktive DATEV-Konfiguration fuer die Firma (via User)."""
+        from app.db.models import User as UserModel
+
+        stmt = (
+            select(DATEVConfiguration)
+            .join(UserModel, DATEVConfiguration.user_id == UserModel.id)
+            .where(
+                and_(
+                    UserModel.company_id == company_id,
+                    DATEVConfiguration.is_active == True,
+                    DATEVConfiguration.is_default == True,
+                )
+            )
+            .limit(1)
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def _get_vendor_mapping(
+        self,
+        config_id: UUID,
+        extracted: Dict[str, Any],
+    ) -> Optional[DATEVVendorMapping]:
+        """Lade optionales Vendor-Mapping anhand Lieferantenname oder USt-IdNr."""
+        supplier_name = extracted.get("supplier_name")
+        vat_id = extracted.get("vat_id")
+
+        if not supplier_name and not vat_id:
+            return None
+
+        conditions = [DATEVVendorMapping.config_id == config_id]
+        match_conditions = []
+        if supplier_name:
+            match_conditions.append(
+                DATEVVendorMapping.vendor_name == supplier_name
+            )
+        if vat_id:
+            match_conditions.append(
+                DATEVVendorMapping.vendor_vat_id == vat_id
+            )
+
+        if match_conditions:
+            conditions.append(or_(*match_conditions))
+
+        stmt = (
+            select(DATEVVendorMapping)
+            .where(and_(*conditions))
+            .limit(1)
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    def _buchung_to_journal_lines(
+        self,
+        buchung: DATEVBuchung,
+        extracted: Dict[str, Any],
+    ) -> List[JournalEntryLineCreate]:
+        """Konvertiert DATEVBuchung -> JournalEntryLineCreate-Liste."""
+        lines: List[JournalEntryLineCreate] = []
+
+        if buchung.soll_haben == "S":
+            # Soll-Buchung: Sachkonto im Soll, Gegenkonto im Haben
+            lines.append(JournalEntryLineCreate(
+                account_number=buchung.konto,
+                account_name=buchung.buchungstext or f"Konto {buchung.konto}",
+                debit_amount=buchung.umsatz,
+                credit_amount=Decimal("0"),
+                tax_code=buchung.bu_schluessel,
+                cost_center=buchung.kostenstelle_1,
+                text=buchung.buchungstext[:60] if buchung.buchungstext else "",
+            ))
+            lines.append(JournalEntryLineCreate(
+                account_number=buchung.gegenkonto,
+                account_name=extracted.get("supplier_name", f"Konto {buchung.gegenkonto}")[:60],
+                debit_amount=Decimal("0"),
+                credit_amount=buchung.umsatz,
+                text=buchung.belegfeld_1[:60] if buchung.belegfeld_1 else "",
+            ))
+        else:
+            # Haben-Buchung: Sachkonto im Haben, Gegenkonto im Soll
+            lines.append(JournalEntryLineCreate(
+                account_number=buchung.gegenkonto,
+                account_name=extracted.get("customer_name", f"Konto {buchung.gegenkonto}")[:60],
+                debit_amount=buchung.umsatz,
+                credit_amount=Decimal("0"),
+                text=buchung.belegfeld_1[:60] if buchung.belegfeld_1 else "",
+            ))
+            lines.append(JournalEntryLineCreate(
+                account_number=buchung.konto,
+                account_name=buchung.buchungstext or f"Konto {buchung.konto}",
+                debit_amount=Decimal("0"),
+                credit_amount=buchung.umsatz,
+                tax_code=buchung.bu_schluessel,
+                cost_center=buchung.kostenstelle_1,
+                text=buchung.buchungstext[:60] if buchung.buchungstext else "",
+            ))
+
+        return lines
+
+    async def _map_via_datev(
+        self,
+        datev_config: DATEVConfiguration,
+        extracted: Dict[str, Any],
+        invoice_total: Any,
+        tax_amount: Any,
+        net_amount: Any,
+    ) -> List[JournalEntryLineCreate]:
+        """Mappe Rechnung via DATEVInvoiceMapper, mit Fallback."""
+        try:
+            mapper = DATEVInvoiceMapper()
+            invoice_data = ExtractedInvoiceData(**extracted)
+
+            # Kontenrahmen dynamisch waehlen
+            kr_name = getattr(datev_config, "kontenrahmen", "SKR03")
+            kontenrahmen = SKR04() if kr_name == "SKR04" else SKR03()
+
+            vendor_mapping = await self._get_vendor_mapping(
+                datev_config.id, extracted
+            )
+
+            mapping_result = mapper.map_invoice(
+                invoice=invoice_data,
+                kontenrahmen=kontenrahmen,
+                config=datev_config,
+                vendor_mapping=vendor_mapping,
+            )
+
+            if mapping_result.success and mapping_result.buchung:
+                for w in mapping_result.warnings:
+                    logger.warning("datev_mapping_warning", warning=w)
+                return self._buchung_to_journal_lines(
+                    mapping_result.buchung, extracted
+                )
+            else:
+                logger.warning(
+                    "datev_mapping_fallback",
+                    error=mapping_result.error,
+                )
+                return self._simple_expense_lines(
+                    extracted, invoice_total, tax_amount, net_amount
+                )
+        except Exception as e:
+            logger.warning(
+                "datev_mapping_exception_fallback",
+                error=str(e),
+            )
+            return self._simple_expense_lines(
+                extracted, invoice_total, tax_amount, net_amount
+            )
 
     async def auto_post_from_pipeline(
         self,
@@ -459,8 +635,7 @@ class GLPostingService:
             return None
 
         # Nutze post_from_invoice (mit system user)
-        # TODO: Get system user ID from config
-        system_user_id = uuid.UUID('00000000-0000-0000-0000-000000000001')
+        system_user_id = uuid.UUID(settings.SYSTEM_USER_ID)
 
         try:
             entry = await self.post_from_invoice(

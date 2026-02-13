@@ -896,6 +896,71 @@ class EnhancedOCRFeedbackService:
         )
 
     # =========================================================================
+    # INSTANT FEEDBACK PATH
+    # =========================================================================
+
+    async def _try_instant_feedback(
+        self,
+        db: AsyncSession,
+        field_name: str,
+        original_value: str,
+        corrected_value: str,
+        ocr_backend: str,
+        entity_id: Optional[UUID] = None,
+    ) -> bool:
+        """
+        Schnelle Feedback-Verarbeitung fuer kleine Korrekturen.
+
+        Ueberspringt die Batch-Queue wenn edit_distance <= 2.
+        """
+        # Calculate edit distance
+        if len(original_value) == 0 or len(corrected_value) == 0:
+            return False
+
+        distance = self._simple_edit_distance(original_value, corrected_value)
+        if distance > 2:
+            return False
+
+        # Import here to avoid circular dependency
+        from app.services.ocr.self_learning_service import (
+            SelfLearningOCRService,
+            CorrectionFeedback as SLCorrectionFeedback,
+        )
+
+        feedback = SLCorrectionFeedback(
+            document_id=uuid4(),  # placeholder
+            field_name=field_name,
+            original_value=original_value,
+            corrected_value=corrected_value,
+            ocr_backend=ocr_backend,
+            original_confidence=0.8,
+        )
+
+        learning_service = SelfLearningOCRService(db)
+        return await learning_service.apply_immediate_correction(
+            db, feedback, entity_id
+        )
+
+    @staticmethod
+    def _simple_edit_distance(s1: str, s2: str) -> int:
+        """Einfache Levenshtein-Distanz Berechnung."""
+        if len(s1) < len(s2):
+            return EnhancedOCRFeedbackService._simple_edit_distance(s2, s1)
+        if len(s2) == 0:
+            return len(s1)
+        prev_row = list(range(len(s2) + 1))
+        for i, c1 in enumerate(s1):
+            curr_row = [i + 1]
+            for j, c2 in enumerate(s2):
+                curr_row.append(min(
+                    prev_row[j + 1] + 1,
+                    curr_row[j] + 1,
+                    prev_row[j] + (c1 != c2),
+                ))
+            prev_row = curr_row
+        return prev_row[-1]
+
+    # =========================================================================
     # HELPER METHODS
     # =========================================================================
 
