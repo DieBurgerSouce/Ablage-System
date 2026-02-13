@@ -170,13 +170,13 @@ class MerkleTreeNode(Base):
     )
 
     # Relationships
-    company = relationship("Company", backref="merkle_tree_nodes")
-    document_hash = relationship("DocumentHash", backref="merkle_nodes")
+    # Relationships defined in models.py main model
 
     __table_args__ = (
         Index("ix_merkle_tree_nodes_tree_date", "tree_date"),
         Index("ix_merkle_tree_nodes_company_date", "company_id", "tree_date"),
         Index("ix_merkle_tree_nodes_document_hash_id", "document_hash_id"),
+        {"extend_existing": True},
     )
 
     def to_dict(self) -> dict:

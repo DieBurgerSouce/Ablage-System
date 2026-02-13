@@ -487,65 +487,6 @@ class PrivatFolderService:
 
         return folder
 
-    async def move(
-        self,
-        db: AsyncSession,
-        folder_id: uuid.UUID,
-        new_parent_id: Optional[uuid.UUID],
-    ) -> Optional[PrivatFolder]:
-        """Verschiebt einen Ordner in einen anderen Parent.
-
-        DEPRECATED: Nutze move_with_access_check() fuer IDOR-sichere Operationen.
-
-        Args:
-            db: Datenbank-Session
-            folder_id: Ordner-ID
-            new_parent_id: Neuer Parent (None fuer Root)
-
-        Returns:
-            Aktualisierter Ordner oder None
-        """
-        folder = await self.get_by_id(db, folder_id)
-        if not folder:
-            return None
-
-        # Validiere: Nicht in sich selbst oder Unterordner verschieben
-        if new_parent_id:
-            new_parent = await self.get_by_id(db, new_parent_id)
-            if not new_parent:
-                raise ValueError("Zielordner nicht gefunden")
-
-            # Pruefe Zirkularitaet
-            if new_parent_id == folder_id:
-                raise ValueError("Ordner kann nicht in sich selbst verschoben werden")
-
-            if new_parent.path and str(folder_id) in new_parent.path:
-                raise ValueError("Ordner kann nicht in Unterordner verschoben werden")
-
-            folder.parent_id = new_parent_id
-            folder.path = f"{new_parent.path}/{new_parent_id}"
-            folder.level = new_parent.level + 1
-        else:
-            folder.parent_id = None
-            folder.path = ""
-            folder.level = 0
-
-        folder.updated_at = utc_now()
-
-        # Aktualisiere Pfade aller Unterordner
-        await self._update_children_paths(db, folder)
-
-        await db.commit()
-        await db.refresh(folder)
-
-        logger.info(
-            "privat_folder_moved",
-            folder_id=str(folder_id),
-            new_parent_id=str(new_parent_id) if new_parent_id else None,
-        )
-
-        return folder
-
     async def _update_children_paths(
         self,
         db: AsyncSession,

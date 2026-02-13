@@ -180,39 +180,6 @@ class GDPRComplianceManager:
             "retention_expires_at": retention_expires.isoformat()
         }
 
-    def register_processing_activity(
-        self,
-        document_id: str,
-        data_categories: List[DataCategory],
-        purpose: ProcessingPurpose,
-        subject_id: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """
-        Art. 30 DSGVO - Record of Processing Activities (Sync/In-Memory Fallback).
-
-        DEPRECATED: Verwende register_processing_activity_async für Persistenz.
-        Diese Methode existiert für Rückwärtskompatibilität.
-        """
-        now = datetime.now(timezone.utc)
-        activity = {
-            "id": hashlib.sha256(f"{document_id}{now.isoformat()}".encode()).hexdigest()[:16],
-            "document_id": document_id,
-            "timestamp": now.isoformat(),
-            "data_categories": [cat.value for cat in data_categories],
-            "purpose": purpose.value,
-            "subject_id": subject_id,
-            "legal_basis": self._determine_legal_basis(purpose),
-            "retention_period_days": self._get_retention_period(data_categories)
-        }
-
-        self._processing_activities_cache.append(activity)
-        logger.warning(
-            "processing_activity_registered_memory",
-            activity_id=activity['id'],
-            warning="In-Memory-Speicherung ist deprecated. Verwende register_processing_activity_async."
-        )
-
-        return activity
 
     def _determine_legal_basis(self, purpose: ProcessingPurpose) -> str:
         """Determine legal basis for processing - Art. 6 DSGVO"""
@@ -500,18 +467,31 @@ class GDPRComplianceManager:
 
         return breach
 
-    def generate_data_export(self, subject_id: str) -> Dict[str, Any]:
-        """Art. 20 DSGVO - Right to Data Portability"""
+    async def generate_data_export(
+        self,
+        db: "AsyncSession",
+        subject_id: str
+    ) -> Dict[str, Any]:
+        """
+        Art. 20 DSGVO - Right to Data Portability (Async).
 
-        # Get all processing activities for this subject
-        subject_activities = [
-            activity for activity in self.processing_activities
-            if activity.get("subject_id") == subject_id
-        ]
+        Args:
+            db: AsyncSession für Datenbankzugriff
+            subject_id: Subject-ID (wird gehasht für Abfrage)
+
+        Returns:
+            Dict mit exportierten Daten
+        """
+        # Get all processing activities for this subject from database
+        subject_activities = await self.get_processing_activities_async(
+            db,
+            subject_id=subject_id,
+            limit=10000  # High limit for complete export
+        )
 
         export = {
             "subject_id": subject_id,
-            "export_timestamp": datetime.now().isoformat(),
+            "export_timestamp": datetime.now(timezone.utc).isoformat(),
             "processing_activities": subject_activities,
             "format": "JSON",
             "notice": "This export contains all personal data we have processed for you"
@@ -578,34 +558,6 @@ class GDPRComplianceManager:
             "check_timestamp": now.isoformat()
         }
 
-    def check_retention_compliance(self) -> Dict[str, Any]:
-        """
-        Check which data should be deleted (In-Memory Fallback).
-
-        DEPRECATED: Verwende check_retention_compliance_async für DB-Zugriff.
-        """
-        now = datetime.now(timezone.utc)
-        expired_activities = []
-
-        for activity in self._processing_activities_cache:
-            retention_days = activity["retention_period_days"]
-            activity_date = datetime.fromisoformat(activity["timestamp"])
-            if activity_date.tzinfo is None:
-                activity_date = activity_date.replace(tzinfo=timezone.utc)
-            expiry_date = activity_date + timedelta(days=retention_days)
-
-            if now > expiry_date:
-                expired_activities.append({
-                    "activity_id": activity["id"],
-                    "document_id": activity["document_id"],
-                    "expired_since": (now - expiry_date).days
-                })
-
-        return {
-            "total_activities": len(self._processing_activities_cache),
-            "expired_activities": len(expired_activities),
-            "to_be_deleted": expired_activities
-        }
 
     async def get_compliance_report_async(
         self,
@@ -699,26 +651,6 @@ class GDPRComplianceManager:
             ]
         }
 
-    def get_compliance_report(self) -> Dict[str, Any]:
-        """
-        Generate GDPR compliance report (In-Memory Fallback).
-
-        DEPRECATED: Verwende get_compliance_report_async für DB-Zugriff.
-        """
-        retention_check = self.check_retention_compliance()
-
-        return {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "total_processing_activities": len(self._processing_activities_cache),
-            "total_data_subjects": len(self.data_subjects),
-            "total_data_breaches": len(self.data_breaches),
-            "retention_compliance": retention_check,
-            "pending_deletions": [
-                sub_id for sub_id, subject in self.data_subjects.items()
-                if subject.deletion_requested
-            ],
-            "warning": "In-Memory-Report - verwende get_compliance_report_async für vollständigen Report"
-        }
 
     async def get_processing_activities_async(
         self,
@@ -788,20 +720,6 @@ class GDPRComplianceManager:
             for a in activities
         ]
 
-    @property
-    def processing_activities(self) -> List[Dict]:
-        """
-        Property für Rückwärtskompatibilität.
-
-        DEPRECATED: Gibt nur in-memory Cache zurück.
-        Verwende get_processing_activities_async für DB-Zugriff.
-        """
-        logger.warning(
-            "deprecated_property_access",
-            property="processing_activities",
-            warning="Verwende get_processing_activities_async für DB-Zugriff"
-        )
-        return self._processing_activities_cache
 
 
 # Global singleton instance

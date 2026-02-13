@@ -31,6 +31,8 @@ from uuid import UUID, uuid4
 import structlog
 from prometheus_client import Counter, Histogram, Gauge
 
+from app.core.safe_errors import safe_error_log
+
 logger = structlog.get_logger(__name__)
 
 
@@ -235,7 +237,13 @@ class DataProvidersResult(TypedDict, total=False):
     risk_entities: List[Dict[str, Union[str, float, int]]]
 
     # Dunning
-    dunning_invoices: List[Dict[str, Union[str, float, int]]]
+    dunning_invoices: List[Dict[str, Union[str, int, float, bool]]]
+
+    # Bank reconciliation
+    unreconciled_transactions: List[Dict[str, Union[str, int, float]]]
+
+    # Document gaps
+    document_gaps: List[Dict[str, Union[str, int, float, List[str]]]]
 
 
 # =============================================================================
@@ -345,6 +353,20 @@ class InsightGeneratorConfig:
 
     # Compliance
     retention_warning_months: int = 3  # 3 Monate vor Ablauf warnen
+
+    # Dunning thresholds
+    dunning_critical_days_overdue: int = 60
+    dunning_warning_days_overdue: int = 30
+    dunning_reminder_days_overdue: int = 14
+
+    # Bank reconciliation
+    reconciliation_critical_days: int = 30
+    reconciliation_warning_days: int = 7
+    reconciliation_notice_days: int = 3
+
+    # Document gaps
+    document_gap_critical_count: int = 5
+    document_gap_warning_count: int = 2
 
 
 # =============================================================================
@@ -755,6 +777,235 @@ class OverdueInvoiceGenerator(BaseInsightGenerator):
         return insights
 
 
+class DunningRequiredGenerator(BaseInsightGenerator):
+    """Generiert Mahnungs-Empfehlungen fuer ueberfaellige Rechnungen."""
+
+    insight_type = DailyInsightType.DUNNING_REQUIRED
+
+    async def generate(
+        self,
+        company_id: UUID,
+        data: DataProvidersResult,
+    ) -> List[DailyInsight]:
+        insights = []
+
+        # Data: dunning_invoices: List[{dunning_record_id, invoice_number, days_overdue, outstanding_amount, dunning_level, customer_name, entity_id, is_b2b, mahnstopp}]
+        dunning_invoices = data.get("dunning_invoices", [])
+
+        for invoice in dunning_invoices:
+            # Skip wenn Mahnstopp gesetzt ist
+            if invoice.get("mahnstopp", False):
+                continue
+
+            days_overdue = invoice.get("days_overdue", 0)
+            dunning_level = invoice.get("dunning_level", 0)
+            outstanding_amount = Decimal(str(invoice.get("outstanding_amount", 0)))
+            is_b2b = invoice.get("is_b2b", False)
+
+            # Severity Logic
+            if days_overdue > self.config.dunning_critical_days_overdue and dunning_level < 3:
+                severity = InsightSeverity.CRITICAL
+                title = "Sofortige Mahnung erforderlich"
+            elif days_overdue > self.config.dunning_warning_days_overdue and dunning_level < 2:
+                severity = InsightSeverity.HIGH
+                title = "Mahnstufe erhoehen"
+            elif days_overdue > self.config.dunning_reminder_days_overdue and dunning_level == 0:
+                severity = InsightSeverity.MEDIUM
+                title = "Erste Zahlungserinnerung senden"
+            else:
+                continue
+
+            # Recommendation basierend auf Mahnstufe
+            if dunning_level == 0:
+                recommendation = "Zahlungserinnerung senden"
+            elif dunning_level == 1:
+                recommendation = "Zweite Mahnung mit Mahngebuehr senden"
+            elif dunning_level == 2:
+                recommendation = "Letzte Mahnung mit Inkasso-Androhung senden"
+            else:
+                recommendation = "Inkasso-Verfahren einleiten"
+
+            # Faktoren sammeln
+            factors: List[InsightFactorDict] = [
+                {"name": "Tage ueberfaellig", "value": str(days_overdue)},
+                {"name": "Aktuelle Mahnstufe", "value": str(dunning_level)},
+                {"name": "Ausstehender Betrag", "value": f"{outstanding_amount:,.2f} EUR"},
+            ]
+
+            # B2B Pauschale nach BGB 288
+            if is_b2b:
+                factors.append({"name": "B2B Pauschale", "value": "40 EUR nach BGB 288"})
+
+            insights.append(DailyInsight(
+                insight_type=self.insight_type,
+                severity=severity,
+                company_id=company_id,
+                title=f"{title}: {invoice.get('customer_name', 'Kunde')}",
+                summary=f"Rechnung {invoice.get('invoice_number')} seit {days_overdue} Tagen ueberfaellig (Mahnstufe {dunning_level}).",
+                detail=f"Ausstehend: {outstanding_amount:,.2f} EUR, Kunde: {invoice.get('customer_name')}.",
+                recommendation=recommendation,
+                related_invoice_id=UUID(invoice["dunning_record_id"]) if invoice.get("dunning_record_id") else None,
+                related_entity_id=UUID(invoice["entity_id"]) if invoice.get("entity_id") else None,
+                related_entity_name=invoice.get("customer_name"),
+                predicted_amount=outstanding_amount,
+                confidence=1.0,
+                available_actions=["send_reminder", "increase_dunning", "view_invoice", "set_mahnstopp"],
+                primary_action_url=f"/invoices/{invoice.get('dunning_record_id')}/dunning",
+                primary_action_label="Mahnung verwalten",
+                factors=factors,
+            ))
+
+        return insights
+
+
+class BankReconciliationGenerator(BaseInsightGenerator):
+    """Generiert Warnungen fuer nicht-zugeordnete Banktransaktionen."""
+
+    insight_type = DailyInsightType.BANK_RECONCILIATION
+
+    async def generate(
+        self,
+        company_id: UUID,
+        data: DataProvidersResult,
+    ) -> List[DailyInsight]:
+        insights = []
+
+        # Data: unreconciled_transactions: List[{transaction_id, amount, booking_date, counterparty_name, reference_text, days_pending, match_confidence}]
+        transactions = data.get("unreconciled_transactions", [])
+
+        for transaction in transactions:
+            days_pending = transaction.get("days_pending", 0)
+
+            # Severity Logic
+            if days_pending > self.config.reconciliation_critical_days:
+                severity = InsightSeverity.CRITICAL
+                title = "Kontobewegung seit ueber 30 Tagen offen"
+            elif days_pending > self.config.reconciliation_warning_days:
+                severity = InsightSeverity.HIGH
+                title = "Nicht-zugeordnete Kontobewegung"
+            elif days_pending > self.config.reconciliation_notice_days:
+                severity = InsightSeverity.MEDIUM
+                title = "Neue Kontobewegung zuordnen"
+            else:
+                continue
+
+            amount = Decimal(str(transaction.get("amount", 0)))
+            match_confidence = transaction.get("match_confidence", 0.0)
+
+            # Recommendation basierend auf match_confidence
+            if match_confidence > 0.8:
+                recommendation = "Auto-Matching pruefen"
+            else:
+                recommendation = "Kontobewegung einem Beleg zuordnen"
+
+            # Faktoren sammeln
+            factors: List[InsightFactorDict] = [
+                {"name": "Tage offen", "value": str(days_pending)},
+                {"name": "Betrag", "value": f"{amount:,.2f} EUR"},
+                {"name": "Gegenseite", "value": transaction.get("counterparty_name", "Unbekannt")},
+            ]
+
+            # Moegliche Zuordnung gefunden
+            if match_confidence > 0.8:
+                factors.append({
+                    "name": "Moegliche Zuordnung",
+                    "value": f"Konfidenz: {match_confidence * 100:.0f}%"
+                })
+
+            insights.append(DailyInsight(
+                insight_type=self.insight_type,
+                severity=severity,
+                company_id=company_id,
+                title=title,
+                summary=f"Kontobewegung von {transaction.get('counterparty_name', 'Unbekannt')} ueber {amount:,.2f} EUR seit {days_pending} Tagen offen.",
+                detail=f"Buchungsdatum: {transaction.get('booking_date')}, Verwendungszweck: {transaction.get('reference_text', 'N/A')}.",
+                recommendation=recommendation,
+                predicted_amount=amount,
+                confidence=1.0,
+                available_actions=["auto_match", "manual_match", "mark_private", "view_transaction"],
+                primary_action_url=f"/banking/reconciliation/{transaction.get('transaction_id')}",
+                primary_action_label="Zuordnung bearbeiten",
+                factors=factors,
+            ))
+
+        return insights
+
+
+class MissingDocumentGenerator(BaseInsightGenerator):
+    """Generiert Warnungen fuer fehlende Belege und Belegnummern-Luecken."""
+
+    insight_type = DailyInsightType.MISSING_DOCUMENT
+
+    async def generate(
+        self,
+        company_id: UUID,
+        data: DataProvidersResult,
+    ) -> List[DailyInsight]:
+        insights = []
+
+        # Data: document_gaps: List[{document_type, missing_numbers, gaps_count, period, total_documents, unmatched_transaction_count}]
+        document_gaps_list = data.get("document_gaps", [])
+
+        for gap_data in document_gaps_list:
+            gaps_count = gap_data.get("gaps_count", 0)
+            unmatched_count = gap_data.get("unmatched_transaction_count", 0)
+            document_type = gap_data.get("document_type", "Beleg")
+
+            # Severity Logic
+            if gaps_count >= self.config.document_gap_critical_count:
+                severity = InsightSeverity.CRITICAL
+                title = "Erhebliche Belegnummern-Luecken festgestellt"
+            elif gaps_count >= self.config.document_gap_warning_count:
+                severity = InsightSeverity.HIGH
+                title = "Belegnummern-Luecken gefunden"
+            elif unmatched_count > 10:
+                severity = InsightSeverity.HIGH
+                title = "Viele Transaktionen ohne Beleg"
+            elif unmatched_count > 0:
+                severity = InsightSeverity.MEDIUM
+                title = "Transaktionen ohne zugehoerigen Beleg"
+            else:
+                continue
+
+            # Faktoren sammeln
+            factors: List[InsightFactorDict] = [
+                {"name": "Belegtyp", "value": document_type},
+            ]
+
+            if gaps_count > 0:
+                factors.append({"name": "Anzahl Luecken", "value": str(gaps_count)})
+
+                # Fehlende Nummern (max 5)
+                missing_numbers = gap_data.get("missing_numbers", [])
+                if isinstance(missing_numbers, list) and missing_numbers:
+                    display_numbers = missing_numbers[:5]
+                    more_text = f" (+{len(missing_numbers) - 5} weitere)" if len(missing_numbers) > 5 else ""
+                    factors.append({
+                        "name": "Fehlende Nummern",
+                        "value": f"{', '.join(display_numbers)}{more_text}"
+                    })
+
+            if unmatched_count > 0:
+                factors.append({"name": "Nicht zugeordnete Transaktionen", "value": str(unmatched_count)})
+
+            insights.append(DailyInsight(
+                insight_type=self.insight_type,
+                severity=severity,
+                company_id=company_id,
+                title=f"{title}: {document_type}",
+                summary=f"{gaps_count} Belegnummern-Luecken, {unmatched_count} Transaktionen ohne Beleg (Zeitraum: {gap_data.get('period', 'N/A')}).",
+                detail=f"Gesamt {gap_data.get('total_documents', 0)} Belege im Zeitraum {gap_data.get('period', 'N/A')}.",
+                recommendation="Fehlende Belege nachscannen oder manuell erfassen",
+                confidence=1.0,
+                available_actions=["view_gaps", "upload_document", "scan_folder", "ignore_gap"],
+                primary_action_url=f"/documents/gaps/{document_type}",
+                primary_action_label="Luecken anzeigen",
+                factors=factors,
+            ))
+
+        return insights
+
+
 # =============================================================================
 # Daily Insights Engine
 # =============================================================================
@@ -792,6 +1043,9 @@ class DailyInsightsEngine:
             UnusualPatternGenerator(self.config),
             ComplianceReminderGenerator(self.config),
             OverdueInvoiceGenerator(self.config),
+            DunningRequiredGenerator(self.config),
+            BankReconciliationGenerator(self.config),
+            MissingDocumentGenerator(self.config),
         ]
 
     def register_generator(self, generator: BaseInsightGenerator) -> None:

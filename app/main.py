@@ -427,6 +427,10 @@ OPENAPI_TAGS = [
         "description": "Dokumentenfreigabe und Zugriffssteuerung für Collaboration.",
     },
     {
+        "name": "collaboration",
+        "description": "Echtzeit-Kollaboration: Document Locking, @Mentions, Activity Feed, Presence.",
+    },
+    {
         "name": "settings",
         "description": "Benutzer- und Systemeinstellungen. Präferenzen und Konfiguration.",
     },
@@ -807,6 +811,7 @@ from app.api.v1.orchestration import router as orchestration_router
 from app.api.v1.ai import router as ai_router
 from app.api.v1.lexware import router as lexware_router
 from app.api.v1.invoices import router as invoices_router
+from app.api.v1.invoice_pipeline import router as invoice_pipeline_router  # Feature #3: Vollautomatischer Rechnungsworkflow
 from app.api.v1.predictions import router as predictions_router  # Phase 3: Predictive Payment AI
 from app.api.v1.approvals import router as approvals_router
 from app.api.v1.oneclick import router as oneclick_router
@@ -871,6 +876,7 @@ from app.api.v1.finance_assistant import router as finance_assistant_router
 from app.api.v1.ai_conversations import router as ai_conversations_router
 from app.api.v1.zero_touch import router as zero_touch_router
 from app.api.v1.nlq import router as nlq_router
+from app.api.v1.smart_search import router as smart_search_router  # Feature #1: Smart Search / Natural Language Search
 from app.api.v1.smart_inbox import router as smart_inbox_router
 from app.api.v1.ceo_dashboard import router as ceo_dashboard_router
 from app.api.v1.knowledge_graph import router as knowledge_graph_router
@@ -934,11 +940,18 @@ from app.api.v1.retention_admin import router as retention_admin_router  # Phase
 from app.api.v1.cross_tenant_reports import router as cross_tenant_reports_router  # Phase 3: Cross-Tenant Reports
 from app.api.v1.notification_preferences import router as notification_preferences_router  # Phase 3: Notification Preferences
 from app.api.v1.feature_flags import admin_router as feature_flags_admin_router, user_router as feature_flags_router  # Feature Flag Service
+from app.api.v1.digital_twin import router as digital_twin_router  # Feature #6: Digitaler Zwilling
+from app.api.v1.data_quality import router as data_quality_router  # Feature #8: Datenqualitaets-Cockpit
 
 # Phase 1: Enterprise & Compliance (Dokument-Integritaet, Signaturen, Jahresabschluss)
 from app.api.v1.integrity import router as integrity_router  # Phase 1: Dokument-Integritaet (Hash-Chain)
 from app.api.v1.signatures import router as signatures_router  # Phase 1: QES/eIDAS Signaturen
 from app.api.v1.year_end import router as year_end_router  # Phase 1: Jahresabschluss-Assistent
+from app.api.v1.document_hints import router as document_hints_router  # Feature #5: Proaktive Dokument-Hinweise
+from app.api.v1.collaboration import router as collaboration_router  # Feature #4: Echtzeit-Kollaboration
+from app.api.v1.trust_dashboard import router as trust_dashboard_router  # Feature #7: Trust/Security Dashboard
+from app.api.v1.ml_dashboard import router as ml_dashboard_router  # Feature #10: ML Progress Dashboard
+from app.api.v1.document_timeline import router as document_timeline_router  # Feature #11: Document Timeline
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -1019,6 +1032,7 @@ app.include_router(orchestration_router, prefix="/api/v1")
 app.include_router(ai_router, prefix="/api/v1")
 app.include_router(lexware_router, prefix="/api/v1")
 app.include_router(invoices_router, prefix="/api/v1")
+app.include_router(invoice_pipeline_router, prefix="/api/v1")  # Feature #3: Vollautomatischer Rechnungsworkflow
 app.include_router(predictions_router, prefix="/api/v1")  # Phase 3: Predictive Payment AI
 app.include_router(approvals_router, prefix="/api/v1")
 app.include_router(oneclick_router, prefix="/api/v1")
@@ -1079,6 +1093,7 @@ app.include_router(ai_conversations_router, prefix="/api/v1")  # Vision 2.0: KI-
 app.include_router(assistant_router, prefix="/api/v1")  # Conversational Assistant mit Ollama
 app.include_router(zero_touch_router, prefix="/api/v1")  # Vision 2.0: Zero-Touch OCR
 app.include_router(nlq_router, prefix="/api/v1")  # Vision 2.0: NLQ 2.0
+app.include_router(smart_search_router, prefix="/api/v1")  # Feature #1: Smart Search / Natural Language Search
 app.include_router(smart_inbox_router, prefix="/api/v1")  # Vision 2.0: Smart Inbox
 app.include_router(ceo_dashboard_router, prefix="/api/v1")  # Vision 2.0: CEO Dashboard
 app.include_router(knowledge_graph_router, prefix="/api/v1")  # Vision 2.0: Knowledge Graph
@@ -1165,6 +1180,13 @@ app.include_router(document_context_router, prefix="/api/v1")  # Phase 2: Docume
 app.include_router(integrity_router, prefix="/api/v1")  # Dokument-Integritaet (Hash-Chain, Merkle-Tree)
 app.include_router(signatures_router, prefix="/api/v1")  # QES/eIDAS Elektronische Signaturen
 app.include_router(year_end_router, prefix="/api/v1")  # Jahresabschluss-Assistent
+app.include_router(document_hints_router, prefix="/api/v1")  # Feature #5: Proaktive Dokument-Hinweise
+app.include_router(collaboration_router, prefix="/api/v1")  # Feature #4: Echtzeit-Kollaboration
+app.include_router(digital_twin_router, prefix="/api/v1")  # Feature #6: Digitaler Zwilling
+app.include_router(data_quality_router, prefix="/api/v1")  # Feature #8: Datenqualitaets-Cockpit
+app.include_router(trust_dashboard_router, prefix="/api/v1")  # Feature #7: Trust/Security Dashboard
+app.include_router(ml_dashboard_router, prefix="/api/v1")  # Feature #10: ML Progress Dashboard
+app.include_router(document_timeline_router, prefix="/api/v1")  # Feature #11: Document Timeline
 
 
 # ==================== Health & Status Endpoints ====================

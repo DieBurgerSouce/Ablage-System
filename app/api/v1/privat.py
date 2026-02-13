@@ -3035,8 +3035,8 @@ async def get_portfolio_dashboard(
     current_user: User = Depends(get_current_active_user),
 ) -> PortfolioDashboardResponse:
     """Holt das vollstaendige Portfolio-Dashboard mit Snapshots und Zielen."""
-    from app.services.portfolio.portfolio_service import PortfolioService
-    from app.services.portfolio.financial_goals_service import FinancialGoalsService
+    from app.services.privat.portfolio_service import PortfolioService
+    from app.services.privat.financial_goals_service import FinancialGoalsService
 
     await get_user_space_or_403(db, space_id, current_user)
 
@@ -3167,7 +3167,7 @@ async def create_portfolio_snapshot(
     current_user: User = Depends(get_current_active_user),
 ) -> PortfolioSnapshotResponse:
     """Erstellt einen neuen Portfolio-Snapshot mit allen aktuellen Werten."""
-    from app.services.portfolio.portfolio_service import PortfolioService
+    from app.services.privat.portfolio_service import PortfolioService
 
     await get_user_space_or_403(db, space_id, current_user)
 
@@ -3221,7 +3221,7 @@ async def list_portfolio_snapshots(
     current_user: User = Depends(get_current_active_user),
 ) -> PortfolioSnapshotListResponse:
     """Listet alle Portfolio-Snapshots der letzten X Monate auf."""
-    from app.services.portfolio.portfolio_service import PortfolioService
+    from app.services.privat.portfolio_service import PortfolioService
 
     await get_user_space_or_403(db, space_id, current_user)
 
@@ -3342,7 +3342,7 @@ async def create_financial_goal(
     current_user: User = Depends(get_current_active_user),
 ) -> FinancialGoalResponse:
     """Erstellt ein neues finanzielles Ziel."""
-    from app.services.portfolio.financial_goals_service import FinancialGoalsService
+    from app.services.privat.financial_goals_service import FinancialGoalsService
 
     await get_user_space_or_403(db, space_id, current_user)
 
@@ -3446,7 +3446,7 @@ async def update_financial_goal(
 ) -> FinancialGoalResponse:
     """Aktualisiert ein finanzielles Ziel."""
     from app.db.models import FinancialGoal as FinancialGoalModel
-    from app.services.portfolio.financial_goals_service import FinancialGoalsService
+    from app.services.privat.financial_goals_service import FinancialGoalsService
     from sqlalchemy import select
 
     await get_user_space_or_403(db, space_id, current_user)
@@ -3518,7 +3518,7 @@ async def update_goal_progress(
     current_user: User = Depends(get_current_active_user),
 ) -> FinancialGoalResponse:
     """Aktualisiert den Fortschritt eines Ziels."""
-    from app.services.portfolio.financial_goals_service import FinancialGoalsService
+    from app.services.privat.financial_goals_service import FinancialGoalsService
     from app.db.models import FinancialGoal as FinancialGoalModel
     from sqlalchemy import select
 
@@ -3619,7 +3619,7 @@ async def get_goals_summary(
     current_user: User = Depends(get_current_active_user),
 ) -> FinancialGoalSummary:
     """Holt eine Zusammenfassung aller finanziellen Ziele."""
-    from app.services.portfolio.financial_goals_service import FinancialGoalsService
+    from app.services.privat.financial_goals_service import FinancialGoalsService
 
 
     await get_user_space_or_403(db, space_id, current_user)

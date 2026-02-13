@@ -26,7 +26,10 @@ from enum import Enum
 from typing import Optional, List, Dict, Any, Tuple
 from uuid import UUID
 
-import aiohttp
+try:
+    import aiohttp
+except ImportError:
+    aiohttp = None  # type: ignore[assignment]
 import structlog
 from lxml import etree
 from sqlalchemy import select

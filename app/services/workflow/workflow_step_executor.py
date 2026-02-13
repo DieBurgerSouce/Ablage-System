@@ -895,9 +895,9 @@ class WorkflowStepExecutor:
 
         try:
             # Celery Task starten
-            from app.workers.tasks.ocr_tasks import process_document_ocr
+            from app.workers.tasks.ocr_tasks import process_document_task
 
-            task = process_document_ocr.delay(
+            task = process_document_task.delay(
                 document_id=str(context.document_id),
                 backend=backend,
                 priority=priority,

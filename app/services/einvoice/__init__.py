@@ -68,12 +68,18 @@ from .zugferd_validator import (
     ZUGFeRDProfile,
 )
 
-from .peppol_sender_service import (
-    PeppolSenderService,
-    PeppolEndpoint,
-    TransmissionResult,
-    get_peppol_sender,
-)
+try:
+    from .peppol_sender_service import (
+        PeppolSenderService,
+        PeppolEndpoint,
+        TransmissionResult,
+        get_peppol_sender,
+    )
+except ImportError:
+    PeppolSenderService = None  # type: ignore[assignment,misc]
+    PeppolEndpoint = None  # type: ignore[assignment,misc]
+    TransmissionResult = None  # type: ignore[assignment,misc]
+    get_peppol_sender = None  # type: ignore[assignment]
 
 from .receiver_service import (
     EInvoiceReceiverService,

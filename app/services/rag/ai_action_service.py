@@ -731,7 +731,7 @@ class AIActionService:
                     await db.commit()
 
                     # Trigger Celery Task
-                    ocr_tasks.process_document_ocr.delay(str(doc_uuid))
+                    ocr_tasks.process_document_task.delay(str(doc_uuid))
                     affected_items.append(doc_uuid)
                     message = "OCR-Verarbeitung gestartet."
                     logger.info(

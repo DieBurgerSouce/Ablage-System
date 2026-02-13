@@ -34,6 +34,8 @@ from app.services.tax_advisor_package_service import (
     PackageStatus,
     MissingDocument,
     MissingDocumentType,
+    MissingItem,
+    CompletenessReport,
     get_tax_advisor_package_service,
 )
 
@@ -210,6 +212,49 @@ class MessageResponse(BaseModel):
 
     message: str
     details: Optional[dict] = None
+
+
+class MissingItemResponse(BaseModel):
+    """Schema fuer fehlendes Element."""
+
+    category: str
+    description: str
+    severity: str
+    suggestion: str
+
+
+class CompletenessReportResponse(BaseModel):
+    """Schema fuer Vollstaendigkeits-Bericht."""
+
+    period: str
+    period_start: str
+    period_end: str
+    completeness_score: float = Field(..., ge=0.0, le=100.0)
+    checks_passed: int
+    total_checks: int
+    missing_items: List[MissingItemResponse]
+    is_complete: bool
+
+    @classmethod
+    def from_report(cls, report: CompletenessReport) -> "CompletenessReportResponse":
+        return cls(
+            period=report.period,
+            period_start=report.period_start.isoformat(),
+            period_end=report.period_end.isoformat(),
+            completeness_score=report.completeness_score,
+            checks_passed=report.checks_passed,
+            total_checks=report.total_checks,
+            missing_items=[
+                MissingItemResponse(
+                    category=item.category,
+                    description=item.description,
+                    severity=item.severity,
+                    suggestion=item.suggestion,
+                )
+                for item in report.missing_items
+            ],
+            is_complete=report.is_complete,
+        )
 
 
 # ==================== In-Memory Storage (simplified for MVP) ====================
@@ -781,3 +826,73 @@ async def get_package_statistics(
         "packages_with_missing_documents": packages_with_missing,
         "completion_rate": round((total - packages_with_missing) / total * 100, 1) if total > 0 else 100,
     }
+
+
+# ==================== Completeness Check (Feature #9) ====================
+
+
+@router.post(
+    "/completeness-check",
+    response_model=CompletenessReportResponse,
+    summary="Vollstaendigkeits-Check",
+    description="Prueft die Vollstaendigkeit der Dokumente fuer einen Zeitraum"
+)
+async def check_completeness(
+    year: int = Query(..., ge=2020, le=2030, description="Jahr (z.B. 2026)"),
+    quarter: Optional[int] = Query(None, ge=1, le=4, description="Quartal (1-4), None = ganzes Jahr"),
+    company_id: UUID = Depends(require_company),
+    current_user: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> CompletenessReportResponse:
+    """
+    Prueft die Vollstaendigkeit der Dokumente fuer einen Zeitraum.
+
+    **Checks:**
+    - Alle Monate haben Kontoauszuege
+    - Rechnungen haben Zahlungen oder sind als offen markiert
+    - Pflichtdokumente sind vorhanden (Eingangs-/Ausgangsrechnungen)
+    - DATEV-Export ist validierungsbereit
+    - Keine Compliance-Issues
+
+    **Completeness-Score:**
+    - 100% = Alle Checks bestanden
+    - 80-99% = Kleine Maengel (recommended)
+    - <80% = Grosse Maengel (required)
+
+    **Parameter:**
+    - `year`: Jahr (2020-2030)
+    - `quarter`: Optional Quartal (1-4), None = ganzes Jahr
+
+    Nur fuer Administratoren zugaenglich.
+    """
+    try:
+        service = get_tax_advisor_package_service(db)
+        report = await service.check_completeness(
+            company_id=company_id,
+            year=year,
+            quarter=quarter,
+        )
+
+        logger.info(
+            "completeness_check_performed",
+            company_id=str(company_id),
+            year=year,
+            quarter=quarter,
+            score=report.completeness_score,
+            user_id=str(current_user.id),
+        )
+
+        return CompletenessReportResponse.from_report(report)
+
+    except Exception as e:
+        logger.error(
+            "completeness_check_api_error",
+            company_id=str(company_id),
+            year=year,
+            quarter=quarter,
+            **safe_error_log(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=safe_error_detail(e, "Vollstaendigkeits-Check"),
+        )

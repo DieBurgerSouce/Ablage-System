@@ -433,9 +433,7 @@ class SignatureRequest(Base):
     )
 
     # Relationships
-    document = relationship("Document", backref="signature_requests")
-    company = relationship("Company")
-    requester = relationship("User")
+    # Relationships defined in models_signature.py
 
     __table_args__ = (
         Index("ix_sig_requests_document_id", "document_id"),
@@ -444,6 +442,7 @@ class SignatureRequest(Base):
         Index("ix_sig_requests_status", "status"),
         Index("ix_sig_requests_deadline", "deadline"),
         Index("ix_sig_requests_token", "access_token"),
+        {"extend_existing": True},
     )
 
     @property

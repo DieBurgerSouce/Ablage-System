@@ -155,6 +155,7 @@ class SignatureRequest(Base):
         Index("ix_signature_requests_document_id", "document_id"),
         Index("ix_signature_requests_status", "status"),
         Index("ix_signature_requests_company_id", "company_id"),
+        {"extend_existing": True},
     )
 
     def __repr__(self) -> str:

@@ -613,22 +613,6 @@ class EntitySearchService:
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
-    # Legacy alias for backwards compatibility
-    async def find_in_both_companies(
-        self,
-        entity_type: Optional[EntityType] = None,
-        limit: int = 100,
-    ) -> list[BusinessEntity]:
-        """
-        Legacy-Methode: Findet Entities die in mehreren Firmen existieren.
-
-        DEPRECATED: Bitte find_in_multiple_companies verwenden.
-        """
-        return await self.find_in_multiple_companies(
-            entity_type=entity_type,
-            limit=limit,
-            min_companies=2,
-        )
 
 
 # ============================================================================

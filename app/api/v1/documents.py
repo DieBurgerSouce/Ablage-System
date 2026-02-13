@@ -9,6 +9,7 @@ Provides REST API endpoints for:
 
 from typing import Optional, List, Dict, Literal
 
+from app.core.priority import int_to_priority_str
 from app.core.types import JSONDict, OCRExtractedData
 from datetime import datetime, timezone
 from uuid import UUID
@@ -408,8 +409,9 @@ async def upload_document(
                     "document_id": str(doc_id),
                     "backend": ocr_backend,
                     "language": language,
+                    "priority": int_to_priority_str(priority),
                 },
-                priority=priority
+                priority=priority,
             )
             processing_job_id = task.id
             logger.info(

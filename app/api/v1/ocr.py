@@ -25,6 +25,7 @@ from app.services.ocr import quick_ocr_preview
 from app.core.file_validation import sanitize_filename, PathTraversalError
 from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.core.security_auth import build_content_disposition
+from app.core.priority import int_to_priority_str
 
 logger = structlog.get_logger(__name__)
 
@@ -565,10 +566,14 @@ async def start_ocr_processing(
 
         # Celery Task starten
         celery_app.send_task(
-            "app.workers.tasks.ocr_tasks.process_document_ocr",
-            args=[str(document_id), request.backend, request.priority],
+            "app.workers.tasks.ocr_tasks.process_document_task",
+            kwargs={
+                "document_id": str(document_id),
+                "backend": request.backend,
+                "priority": int_to_priority_str(request.priority),
+            },
             task_id=job_id,
-            priority=10 - request.priority  # Celery: niedrigere Zahl = höhere Priorität
+            priority=10 - request.priority,  # Celery: niedrigere Zahl = hoehere Prioritaet
         )
 
         logger.info(
@@ -1199,10 +1204,14 @@ async def batch_reprocess_ocr(
 
             # Celery Task starten
             celery_app.send_task(
-                "app.workers.tasks.ocr_tasks.process_document_ocr",
-                args=[str(doc_id), request.backend, request.priority],
+                "app.workers.tasks.ocr_tasks.process_document_task",
+                kwargs={
+                    "document_id": str(doc_id),
+                    "backend": request.backend,
+                    "priority": int_to_priority_str(request.priority),
+                },
                 task_id=job_id,
-                priority=10 - request.priority
+                priority=10 - request.priority,
             )
 
             job_ids.append(job_id)

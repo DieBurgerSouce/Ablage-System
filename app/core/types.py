@@ -18,9 +18,9 @@ from typing import (
     Mapping,
     Optional,
     Protocol,
-    TypedDict,
     Union,
 )
+from typing_extensions import TypedDict  # Required for Pydantic v2 on Python < 3.12
 from uuid import UUID
 
 # =============================================================================
@@ -397,7 +397,9 @@ class PaginatedResponseDict(TypedDict):
 # =============================================================================
 
 # JSON-serializable types
-JSONValue = Union[str, int, float, bool, None, List["JSONValue"], Dict[str, "JSONValue"]]
+# Note: Recursive type aliases cause RecursionError with Pydantic v2 + Python 3.12.
+# Use non-recursive definition for Pydantic compatibility.
+JSONValue = Union[str, int, float, bool, None, List[object], Dict[str, object]]
 JSONDict = Dict[str, JSONValue]
 
 # Callback types

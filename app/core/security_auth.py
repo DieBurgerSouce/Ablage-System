@@ -811,30 +811,6 @@ async def extract_user_id_from_token(token: str) -> str:
     return user_id
 
 
-def extract_user_id_from_token_sync(token: str) -> str:
-    """
-    Synchronous version - DEPRECATED.
-
-    Use async extract_user_id_from_token() for Redis blacklist support.
-    """
-    import warnings
-    warnings.warn(
-        "extract_user_id_from_token_sync ist deprecated. "
-        "Verwende async extract_user_id_from_token() für Redis-Blacklist-Unterstützung.",
-        DeprecationWarning,
-        stacklevel=2
-    )
-    payload = decode_token_sync(token)
-    user_id = payload.get("sub")
-
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Ungültiges Token-Format",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    return user_id
 
 
 # ==================== Password Validation ====================
@@ -1257,65 +1233,6 @@ async def check_and_mark_totp_used(user_id: str, code: str) -> bool:
         return False  # Erstmalige Verwendung
 
 
-# Legacy functions for backwards compatibility
-async def check_totp_replay(user_id: str, code: str) -> bool:
-    """
-    DEPRECATED: Nutze check_and_mark_totp_used() fuer atomare Operation.
-
-    Prueft ob ein TOTP-Code bereits verwendet wurde (Replay-Schutz).
-    WARNUNG: Diese Funktion allein ist NICHT race-condition-sicher!
-    """
-    code_hash = hashlib.sha256(f"{user_id}:{code}".encode()).hexdigest()[:32]
-    key = f"{TOTP_REPLAY_PREFIX}{code_hash}"
-
-    redis = await _get_redis_client()
-
-    if redis is not None:
-        try:
-            exists = await redis.exists(key)
-            return bool(exists)
-        except Exception as e:
-            logger.warning(
-                "totp_replay_check_redis_failed",
-                error_type=type(e).__name__,
-                user_id=user_id[:8] + "..." if len(user_id) > 8 else user_id
-            )
-
-    _cleanup_totp_fallback()
-    return key in _totp_used_fallback
-
-
-async def mark_totp_used(user_id: str, code: str) -> bool:
-    """
-    DEPRECATED: Nutze check_and_mark_totp_used() fuer atomare Operation.
-
-    Markiert einen TOTP-Code als verwendet.
-    WARNUNG: Diese Funktion allein ist NICHT race-condition-sicher!
-    """
-    code_hash = hashlib.sha256(f"{user_id}:{code}".encode()).hexdigest()[:32]
-    key = f"{TOTP_REPLAY_PREFIX}{code_hash}"
-
-    redis = await _get_redis_client()
-
-    if redis is not None:
-        try:
-            await redis.setex(key, TOTP_REPLAY_TTL_SECONDS, "1")
-            logger.debug(
-                "totp_code_marked_used",
-                user_id=user_id[:8] + "..." if len(user_id) > 8 else user_id,
-                ttl_seconds=TOTP_REPLAY_TTL_SECONDS
-            )
-            return True
-        except Exception as e:
-            logger.warning(
-                "totp_mark_used_redis_failed",
-                error_type=type(e).__name__,
-                user_id=user_id[:8] + "..." if len(user_id) > 8 else user_id
-            )
-
-    # Fallback: In-Memory
-    _totp_used_fallback[key] = datetime.now(tz=timezone.utc)
-    return True
 
 
 def _cleanup_totp_fallback() -> None:

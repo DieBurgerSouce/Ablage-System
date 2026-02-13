@@ -686,16 +686,32 @@ class RiskScoringService:
         """
         Bestimmt den Branchencode fuer eine Entity.
 
-        Aktuell basierend auf risk_factors JSONB oder Default.
-        In Zukunft: Erweiterbar durch Lexware-Import oder manuelle Eingabe.
+        Prueft in Reihenfolge:
+        1. risk_factors JSONB (direkt gesetzt)
+        2. custom_fields JSONB (manuell vom User gepflegt)
+        3. Lexware-Daten (branche Feld, falls vorhanden)
+        4. Default "unknown"
         """
+        # 1. risk_factors (hoechste Prioritaet - direkt gesetzt)
         if entity.risk_factors and isinstance(entity.risk_factors, dict):
             industry = entity.risk_factors.get("industry_code")
             if industry and industry in INDUSTRY_RISK_SCORES:
                 return str(industry)
 
-        # TODO: Erkennung aus Name/Branche/Lexware-Daten
-        # Vorerst: Default
+        # 2. custom_fields (manuell gepflegt)
+        if entity.custom_fields and isinstance(entity.custom_fields, dict):
+            industry = entity.custom_fields.get("industry_code") or entity.custom_fields.get("branche")
+            if industry and str(industry) in INDUSTRY_RISK_SCORES:
+                return str(industry)
+
+        # 3. Lexware-Daten (branche Feld aus Import)
+        if entity.lexware_ids and isinstance(entity.lexware_ids, dict):
+            for _company_key, lexware_data in entity.lexware_ids.items():
+                if isinstance(lexware_data, dict):
+                    industry = lexware_data.get("branche") or lexware_data.get("industry_code")
+                    if industry and str(industry) in INDUSTRY_RISK_SCORES:
+                        return str(industry)
+
         return "unknown"
 
     async def _collect_invoice_factors(

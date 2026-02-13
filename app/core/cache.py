@@ -1154,46 +1154,6 @@ async def invalidate_on_document_change(
     return result
 
 
-async def get_cache_stats() -> dict:
-    """
-    Hole Cache-Statistiken (L2 only, legacy).
-
-    DEPRECATED: Use get_cache_metrics() for multi-tier stats.
-
-    Returns:
-        Dict mit Cache-Metriken
-    """
-    try:
-        from app.core.redis_state import RedisStateManager
-
-        redis_manager = RedisStateManager.get_instance()
-        await redis_manager._ensure_connection()
-
-        # Zaehle Keys nach Prefix
-        prefix_counts = {}
-        prefixes = ["cache:stats", "cache:facets", "cache:search", "cache:doc", "cache:user"]
-
-        for prefix in prefixes:
-            count = 0
-            async for _ in redis_manager._redis.scan_iter(match=f"{prefix}:*"):
-                count += 1
-            prefix_counts[prefix] = count
-
-        # Redis Info
-        info = await redis_manager._redis.info("memory")
-
-        return {
-            "prefix_counts": prefix_counts,
-            "total_cached_keys": sum(prefix_counts.values()),
-            "used_memory_human": info.get("used_memory_human", "unknown"),
-            "used_memory_peak_human": info.get("used_memory_peak_human", "unknown"),
-        }
-
-    except Exception as e:
-        logger.warning("cache_stats_failed", **safe_error_log(e))
-        return {"error": safe_error_detail(e, "Vorgang")}
-
-
 async def get_cache_metrics() -> Dict[str, Dict[str, object]]:
     """Get comprehensive cache metrics for all tiers.
 

@@ -53,16 +53,12 @@ from app.core.security_auth import (
     create_2fa_temp_token,
     # Token verification
     decode_token,
-    decode_token_sync,
     verify_token_type,
     verify_2fa_temp_token,
     extract_user_id_from_token,
-    extract_user_id_from_token_sync,
     # Token blacklisting
     blacklist_token,
-    blacklist_token_sync,
     is_token_blacklisted,
-    is_token_blacklisted_sync,
     blacklist_token_redis,
     is_token_blacklisted_redis,
     get_blacklist_stats,
@@ -76,8 +72,6 @@ from app.core.security_auth import (
     sanitize_email_header,
     # TOTP replay protection
     check_and_mark_totp_used,
-    check_totp_replay,
-    mark_totp_used,
 )
 
 __all__ = [
@@ -117,15 +111,11 @@ __all__ = [
     "create_token_pair",
     "create_2fa_temp_token",
     "decode_token",
-    "decode_token_sync",
     "verify_token_type",
     "verify_2fa_temp_token",
     "extract_user_id_from_token",
-    "extract_user_id_from_token_sync",
     "blacklist_token",
-    "blacklist_token_sync",
     "is_token_blacklisted",
-    "is_token_blacklisted_sync",
     "blacklist_token_redis",
     "is_token_blacklisted_redis",
     "get_blacklist_stats",
@@ -136,6 +126,4 @@ __all__ = [
     "build_content_disposition",
     "sanitize_email_header",
     "check_and_mark_totp_used",
-    "check_totp_replay",
-    "mark_totp_used",
 ]

@@ -819,6 +819,383 @@ Bitte laden Sie die fehlenden Dokumente zeitnah hoch.
             )
             return False
 
+    # ========================================================================
+    # COMPLETENESS CHECK (Feature #9)
+    # ========================================================================
+
+    async def check_completeness(
+        self,
+        company_id: uuid.UUID,
+        year: int,
+        quarter: Optional[int] = None,
+    ) -> "CompletenessReport":
+        """
+        Prueft die Vollstaendigkeit der Dokumente fuer einen Zeitraum.
+
+        Prueft:
+        - Alle Monate haben Kontoauszuege
+        - Rechnungen haben Zahlungen oder sind als offen markiert
+        - Pflichtdokumente sind vorhanden
+        - DATEV-Export-Validierung
+        - Compliance-Issues
+
+        Args:
+            company_id: Firma
+            year: Jahr (z.B. 2026)
+            quarter: Optional Quartal (1-4), None = ganzes Jahr
+
+        Returns:
+            CompletenessReport mit Score und fehlenden Items
+        """
+        from decimal import Decimal
+
+        # Zeitraum berechnen
+        if quarter:
+            period_start, period_end = self._calculate_quarter_dates(year, quarter)
+            period_label = f"Q{quarter}/{year}"
+        else:
+            period_start = date(year, 1, 1)
+            period_end = date(year, 12, 31)
+            period_label = str(year)
+
+        missing_items: List[MissingItem] = []
+        checks_passed = 0
+        total_checks = 0
+
+        # Check 1: Kontoauszuege fuer alle Monate
+        total_checks += 1
+        bank_statements_check = await self._check_bank_statements(
+            company_id, period_start, period_end
+        )
+        if bank_statements_check["complete"]:
+            checks_passed += 1
+        else:
+            for month_label in bank_statements_check["missing_months"]:
+                missing_items.append(
+                    MissingItem(
+                        category="kontoauszug",
+                        description=f"Kontoauszug fehlt fuer {month_label}",
+                        severity="required",
+                        suggestion="Laden Sie alle monatlichen Kontoauszuege hoch",
+                    )
+                )
+
+        # Check 2: Rechnungen mit Zahlungen/Status
+        total_checks += 1
+        invoices_check = await self._check_invoices_status(
+            company_id, period_start, period_end
+        )
+        if invoices_check["complete"]:
+            checks_passed += 1
+        else:
+            if invoices_check["unmatched_invoices"] > 0:
+                missing_items.append(
+                    MissingItem(
+                        category="zahlung",
+                        description=f"{invoices_check['unmatched_invoices']} Rechnungen ohne Zahlungszuordnung",
+                        severity="required",
+                        suggestion="Ordnen Sie Zahlungen den Rechnungen zu oder markieren Sie sie als offen",
+                    )
+                )
+
+        # Check 3: Pflichtdokumenttypen vorhanden
+        total_checks += 1
+        required_docs_check = await self._check_required_documents(
+            company_id, period_start, period_end
+        )
+        if required_docs_check["complete"]:
+            checks_passed += 1
+        else:
+            for doc_type, info in required_docs_check["missing"].items():
+                missing_items.append(
+                    MissingItem(
+                        category=doc_type,
+                        description=info["description"],
+                        severity="recommended",
+                        suggestion=info["suggestion"],
+                    )
+                )
+
+        # Check 4: DATEV-Export-Validierung
+        total_checks += 1
+        datev_check = await self._validate_datev_export_readiness(
+            company_id, period_start, period_end
+        )
+        if datev_check["valid"]:
+            checks_passed += 1
+        else:
+            for error in datev_check["errors"]:
+                missing_items.append(
+                    MissingItem(
+                        category="datev",
+                        description=error,
+                        severity="required",
+                        suggestion="Beheben Sie die DATEV-Validierungsfehler",
+                    )
+                )
+
+        # Check 5: Compliance-Issues
+        total_checks += 1
+        compliance_check = await self._check_compliance_issues(
+            company_id, period_start, period_end
+        )
+        if compliance_check["clean"]:
+            checks_passed += 1
+        else:
+            for issue in compliance_check["issues"]:
+                missing_items.append(
+                    MissingItem(
+                        category="compliance",
+                        description=issue["description"],
+                        severity=issue["severity"],
+                        suggestion=issue["suggestion"],
+                    )
+                )
+
+        # Completeness-Score berechnen
+        completeness_score = (checks_passed / total_checks * 100) if total_checks > 0 else 0.0
+
+        logger.info(
+            "completeness_check_completed",
+            company_id=str(company_id),
+            period=period_label,
+            score=completeness_score,
+            missing_count=len(missing_items),
+        )
+
+        return CompletenessReport(
+            period=period_label,
+            period_start=period_start,
+            period_end=period_end,
+            completeness_score=completeness_score,
+            checks_passed=checks_passed,
+            total_checks=total_checks,
+            missing_items=missing_items,
+            is_complete=len(missing_items) == 0,
+        )
+
+    async def _check_bank_statements(
+        self,
+        company_id: uuid.UUID,
+        start: date,
+        end: date,
+    ) -> Dict[str, Any]:
+        """Prueft ob alle Monate Kontoauszuege haben."""
+        from calendar import monthrange
+
+        query = select(Document).where(
+            and_(
+                Document.company_id == company_id,
+                Document.category == "kontoauszug",
+                Document.document_date >= start,
+                Document.document_date <= end,
+            )
+        )
+        result = await self.db.execute(query)
+        statements = result.scalars().all()
+
+        # Monate mit Kontoauszuegen
+        months_with_statements = set()
+        for stmt in statements:
+            if stmt.document_date:
+                months_with_statements.add((stmt.document_date.year, stmt.document_date.month))
+
+        # Erwartete Monate
+        expected_months = []
+        current = start
+        while current <= end:
+            expected_months.append((current.year, current.month))
+            days_in_month = monthrange(current.year, current.month)[1]
+            current = date(current.year, current.month, days_in_month)
+            if current.month == 12:
+                current = date(current.year + 1, 1, 1)
+            else:
+                current = date(current.year, current.month + 1, 1)
+
+        missing_months = [
+            f"{year}-{month:02d}"
+            for year, month in expected_months
+            if (year, month) not in months_with_statements
+        ]
+
+        return {
+            "complete": len(missing_months) == 0,
+            "missing_months": missing_months,
+        }
+
+    async def _check_invoices_status(
+        self,
+        company_id: uuid.UUID,
+        start: date,
+        end: date,
+    ) -> Dict[str, Any]:
+        """Prueft ob Rechnungen Zahlungen oder Status haben."""
+        from app.db.models import InvoiceTracking
+
+        query = select(Document).where(
+            and_(
+                Document.company_id == company_id,
+                Document.category.in_(["eingangsrechnung", "ausgangsrechnung"]),
+                Document.document_date >= start,
+                Document.document_date <= end,
+            )
+        )
+        result = await self.db.execute(query)
+        invoices = result.scalars().all()
+
+        unmatched = 0
+        for inv in invoices:
+            # InvoiceTracking pruefen
+            tracking_query = select(InvoiceTracking).where(
+                InvoiceTracking.document_id == inv.id
+            )
+            tracking_result = await self.db.execute(tracking_query)
+            tracking = tracking_result.scalar_one_or_none()
+
+            # Unmatched wenn: Kein Tracking ODER (nicht bezahlt UND nicht als offen markiert)
+            if not tracking:
+                unmatched += 1
+            elif tracking.payment_status not in ["paid", "open", "ready"]:
+                unmatched += 1
+
+        return {
+            "complete": unmatched == 0,
+            "unmatched_invoices": unmatched,
+            "total_invoices": len(invoices),
+        }
+
+    async def _check_required_documents(
+        self,
+        company_id: uuid.UUID,
+        start: date,
+        end: date,
+    ) -> Dict[str, Any]:
+        """Prueft ob Pflichtdokumente vorhanden sind."""
+        query = select(Document.category, func.count(Document.id)).where(
+            and_(
+                Document.company_id == company_id,
+                Document.document_date >= start,
+                Document.document_date <= end,
+            )
+        ).group_by(Document.category)
+
+        result = await self.db.execute(query)
+        counts = dict(result.fetchall())
+
+        # Erwartete Dokumenttypen
+        required = {
+            "eingangsrechnung": {
+                "description": "Keine Eingangsrechnungen gefunden",
+                "suggestion": "Laden Sie alle Lieferantenrechnungen hoch",
+            },
+            "ausgangsrechnung": {
+                "description": "Keine Ausgangsrechnungen gefunden",
+                "suggestion": "Laden Sie alle Kundenrechnungen hoch",
+            },
+        }
+
+        missing = {}
+        for doc_type, info in required.items():
+            if counts.get(doc_type, 0) == 0:
+                missing[doc_type] = info
+
+        return {
+            "complete": len(missing) == 0,
+            "missing": missing,
+        }
+
+    async def _validate_datev_export_readiness(
+        self,
+        company_id: uuid.UUID,
+        start: date,
+        end: date,
+    ) -> Dict[str, Any]:
+        """Prueft DATEV-Export-Validierung."""
+        # Vereinfachte Validierung - in Praxis: DATEV-Service nutzen
+        errors: List[str] = []
+
+        # Firmen-Stammdaten pruefen
+        company_query = select(Company).where(Company.id == company_id)
+        company_result = await self.db.execute(company_query)
+        company = company_result.scalar_one_or_none()
+
+        if not company:
+            errors.append("Firma nicht gefunden")
+            return {"valid": False, "errors": errors}
+
+        # USt-IdNr pruefen
+        if not company.vat_id:
+            errors.append("Keine USt-IdNr hinterlegt")
+
+        # Steuerberater-Mandantennummer pruefen
+        if not company.tax_advisor_client_number:
+            errors.append("Keine Steuerberater-Mandantennummer hinterlegt")
+
+        return {
+            "valid": len(errors) == 0,
+            "errors": errors,
+        }
+
+    async def _check_compliance_issues(
+        self,
+        company_id: uuid.UUID,
+        start: date,
+        end: date,
+    ) -> Dict[str, Any]:
+        """Prueft auf Compliance-Issues."""
+        issues: List[Dict[str, str]] = []
+
+        # Dokumente ohne OCR-Text
+        query = select(func.count(Document.id)).where(
+            and_(
+                Document.company_id == company_id,
+                Document.document_date >= start,
+                Document.document_date <= end,
+                or_(
+                    Document.ocr_text.is_(None),
+                    Document.ocr_text == "",
+                )
+            )
+        )
+        result = await self.db.execute(query)
+        docs_without_ocr = result.scalar()
+
+        if docs_without_ocr and docs_without_ocr > 0:
+            issues.append({
+                "description": f"{docs_without_ocr} Dokumente ohne OCR-Text",
+                "severity": "recommended",
+                "suggestion": "Fuehren Sie OCR fuer alle Dokumente durch",
+            })
+
+        return {
+            "clean": len(issues) == 0,
+            "issues": issues,
+        }
+
+
+@dataclass
+class MissingItem:
+    """Ein fehlendes oder unvollstaendiges Element."""
+
+    category: str  # z.B. "kontoauszug", "rechnung", "datev"
+    description: str  # Deutsche Beschreibung
+    severity: str  # "required", "recommended", "optional"
+    suggestion: str  # Was tun?
+
+
+@dataclass
+class CompletenessReport:
+    """Vollstaendigkeits-Bericht."""
+
+    period: str  # z.B. "2026" oder "Q1/2026"
+    period_start: date
+    period_end: date
+    completeness_score: float  # 0-100
+    checks_passed: int
+    total_checks: int
+    missing_items: List[MissingItem]
+    is_complete: bool
+
 
 # ============================================================================
 # FACTORY FUNCTION
