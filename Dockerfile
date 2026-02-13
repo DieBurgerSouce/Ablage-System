@@ -30,6 +30,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr-deu \
     fonts-dejavu-core \
     libhunspell-dev \
+    libcairo2-dev \
+    pkg-config \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 

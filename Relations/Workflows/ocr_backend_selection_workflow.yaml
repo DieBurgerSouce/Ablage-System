@@ -346,7 +346,7 @@ workflow_steps:
               }
 
               task = await celery.send_task(
-                  'process_document_ocr',
+                  'app.workers.tasks.ocr_tasks.process_document_task',
                   args=[document_id],
                   kwargs={
                       'backend': backend,

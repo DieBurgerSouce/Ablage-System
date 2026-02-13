@@ -95,6 +95,7 @@ qrcode[pil]==7.4.2  # QR-Code generation for Authenticator Apps
 
 # Email Services
 aiosmtplib>=3.0.0  # Async SMTP client for email sending
+aiohttp>=3.9.0  # Async HTTP client for Peppol/external integrations
 
 # Utilities
 python-dotenv==1.0.0
@@ -105,7 +106,7 @@ orjson==3.10.12  # Fast JSON serialization (10-15% faster than stdlib json)
 isodate>=0.6.1  # ISO 8601 date/duration parsing for BPMN timers
 
 # PDF Export
-reportlab==4.0.9  # PDF generation for document export
+reportlab[rlPyCairo]==4.0.9  # PDF generation for document export (rlPyCairo fuer renderPM)
 
 # E-Invoicing (ZUGFeRD / XRechnung)
 factur-x>=3.0.0  # ZUGFeRD 2.x / Factur-X PDF generation and parsing
