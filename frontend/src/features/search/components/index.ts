@@ -14,6 +14,9 @@ export { ExpandedQueryDisplay } from './ExpandedQueryDisplay';
 export { SearchModeToggle } from './SearchModeToggle';
 export { ChunkResultCard } from './ChunkResultCard';
 
+// Smart Search (NLQ)
+export { SmartSearchBar } from './SmartSearchBar';
+
 // Facetten-Filter
 export { FacetSidebar } from './FacetSidebar';
 export { FacetSection } from './FacetSection';

@@ -1,33 +1,26 @@
-// Components
-export { HealthScoreGauge } from './components/HealthScoreGauge';
-export { KPICards } from './components/KPICards';
-export { TrendSparklines } from './components/TrendSparklines';
-export { AnomalyAlerts } from './components/AnomalyAlerts';
+/**
+ * CEO Dashboard Feature Module
+ *
+ * Re-exports all public-facing components, hooks, and types.
+ */
 
-// Pages
-export { CeoDashboardPage } from './pages/CeoDashboardPage';
-
-// Hooks
-export {
-  useCeoOverview,
-  useCeoHealthScore,
-  useCeoTrends,
-  useCeoAnomalies,
-} from './hooks/use-ceo-dashboard-queries';
-
-// API
-export { ceoDashboardApi } from './api';
-
-// Types
-export type {
-  OverviewData,
-  HealthScore,
-  HealthDimension,
-  DocumentStats,
-  InvoiceStats,
-  AlertStats,
-  TrendData,
-  TrendPoint,
-  Anomaly,
-  AnomalySeverity,
-} from './types';
+export * from './api';
+export * from './types';
+export * from './hooks/use-ceo-dashboard-queries';
+export * from './hooks/useDigitalTwin';
+export * from './hooks/useDataQuality';
+export * from './pages/CeoDashboardPage';
+export * from './components/HealthScoreGauge';
+export * from './components/KPICards';
+export * from './components/TrendSparklines';
+export * from './components/AnomalyAlerts';
+export * from './components/DigitalTwinDashboard';
+export * from './components/DataQualityCockpit';
+export * from './components/FinancialHealthCard';
+export * from './components/RiskOverviewCard';
+export * from './components/DocumentPipelineCard';
+export * from './components/ComplianceCard';
+export * from './components/KeyMetricsCard';
+export * from './components/QualityScoreGauge';
+export * from './components/QualityIssueCard';
+export * from './components/QualityTrendChart';

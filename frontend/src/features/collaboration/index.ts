@@ -122,3 +122,42 @@ export type {
   TaskListResponse,
   TaskStatistics,
 } from './api/document-tasks-api';
+
+// Document Lock (Feature 17 - Collaboration Locks)
+export {
+  useDocumentLock,
+  useDocumentLockStatus,
+  useLockDocument,
+  useUnlockDocument,
+  lockKeys,
+} from './hooks/useDocumentLock';
+export type { DocumentLock, DocumentLockResponse } from './hooks/useDocumentLock';
+
+// Presence (Feature 17 - Real-time Presence)
+export { usePresence, presenceKeys } from './hooks/usePresence';
+export type { PresenceUser as PresenceUserType, PresenceResponse } from './hooks/usePresence';
+
+// Activity Feed (Feature 17 - Activity Tracking)
+export {
+  useDocumentActivity,
+  useUserActivityFeed,
+  useDocumentActivityRealtime,
+  activityKeys,
+} from './hooks/useActivityFeed';
+export type { ActivityFeedParams } from './hooks/useActivityFeed';
+
+// Mentions (Feature 17 - User Mentions)
+export {
+  useMentions,
+  useUnreadMentionsCount,
+  useCreateMentions,
+  useMarkMentionAsRead,
+  mentionsKeys,
+} from './hooks/useMentions';
+export type { MentionItem, MentionsResponse, CreateMentionPayload } from './hooks/useMentions';
+
+// New Components (Feature 17)
+export { PresenceIndicator } from './components/PresenceIndicator';
+export { DocumentLockBanner } from './components/DocumentLockBanner';
+export { ActivityTimeline } from './components/ActivityTimeline';
+export { MentionsBadge } from './components/MentionsBadge';
