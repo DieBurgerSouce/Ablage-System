@@ -24,6 +24,31 @@ function getPageContextType(pathname: string): PageContextType {
     return 'dashboard';
   }
 
+  // CEO Dashboard
+  if (pathname.startsWith('/dashboard/ceo')) {
+    return 'ceo-dashboard';
+  }
+
+  // Smart Inbox
+  if (pathname.startsWith('/inbox')) {
+    return 'smart-inbox';
+  }
+
+  // Knowledge Graph
+  if (pathname.startsWith('/knowledge-graph')) {
+    return 'knowledge-graph';
+  }
+
+  // Compliance
+  if (pathname.startsWith('/compliance')) {
+    return 'compliance';
+  }
+
+  // OCR Suite
+  if (pathname.startsWith('/ocr-suite')) {
+    return 'ocr-suite';
+  }
+
   // Documents
   if (pathname.startsWith('/documents')) {
     if (pathname.match(/\/documents\/[a-f0-9-]+$/)) {
@@ -169,6 +194,46 @@ export function getContextSuggestions(context: PageContext): string[] {
         'Analysiere meine Finanzen diesen Monat',
       ];
 
+    case 'ceo-dashboard':
+      return [
+        'Erkläre den Gesundheitsscore',
+        'Welche Anomalien gibt es?',
+        'Vergleiche KPIs mit letztem Monat',
+        'Was braucht sofortige Aufmerksamkeit?',
+      ];
+
+    case 'smart-inbox':
+      return [
+        'Was hat die höchste Priorität?',
+        'Zeige überfällige Rechnungen',
+        'Welche Aktionen empfiehlst du?',
+        'Fasse die heutigen Eingänge zusammen',
+      ];
+
+    case 'knowledge-graph':
+      return [
+        'Erkläre die Beziehungen dieses Knotens',
+        'Finde verbundene Dokumente',
+        'Zeige die Dokumenten-Kette',
+        'Welche Entitäten sind am stärksten vernetzt?',
+      ];
+
+    case 'compliance':
+      return [
+        'Wie ist der aktuelle Compliance-Status?',
+        'Welche Aufbewahrungsfristen laufen ab?',
+        'Gibt es DSGVO-Probleme?',
+        'Bereite einen Audit-Bericht vor',
+      ];
+
+    case 'ocr-suite':
+      return [
+        'Welche Regionen haben niedrige Konfidenz?',
+        'Wie hat sich die OCR-Genauigkeit verbessert?',
+        'Vergleiche die beiden Versionen',
+        'Zeige häufige OCR-Fehler',
+      ];
+
     case 'documents':
       return [
         'Finde alle Rechnungen von letztem Monat',
@@ -266,6 +331,16 @@ export function getContextPlaceholder(context: PageContext): string {
   switch (context.type) {
     case 'dashboard':
       return 'Frage zu deinem Dashboard...';
+    case 'ceo-dashboard':
+      return 'Frage zum Unternehmens-Dashboard...';
+    case 'smart-inbox':
+      return 'Frage zu Inbox-Einträgen...';
+    case 'knowledge-graph':
+      return 'Frage zu Dokumenten-Beziehungen...';
+    case 'compliance':
+      return 'Frage zu Compliance und Aufbewahrung...';
+    case 'ocr-suite':
+      return 'Frage zu OCR und Erkennung...';
     case 'documents':
     case 'document-detail':
       return 'Frage zu deinen Dokumenten...';

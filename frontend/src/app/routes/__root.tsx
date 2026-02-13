@@ -19,6 +19,8 @@ import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { UndoProvider } from '@/hooks/useUndoableAction'
 // Phase C: Echtzeit-Benachrichtigungen via WebSocket
 import { NotificationToastProvider } from '@/features/notifications/components/NotificationToastProvider'
+// Feature 9: WebSocket-Verbindung automatisch bei Login herstellen
+import { useWebSocketInit } from '@/lib/hooks/use-websocket-init'
 // WCAG 2.1 AA: Skip Links for keyboard navigation
 import { SkipLinks } from '@/components/SkipLinks'
 // Phase 6: Session resume tracking + page transitions
@@ -33,6 +35,9 @@ function RootComponent() {
     const { isAuthenticated, isLoading } = useAuth()
     const location = useLocation()
     const { recordVisit } = useSessionResume()
+
+    // Feature 9: WebSocket-Verbindung automatisch bei Auth herstellen
+    useWebSocketInit()
 
     // Phase 6: Track route visits for session resume
     useEffect(() => {

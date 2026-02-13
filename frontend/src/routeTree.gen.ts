@@ -35,13 +35,16 @@ import { Route as PortalRouteImport } from './app/routes/portal'
 import { Route as PoMatchingRouteImport } from './app/routes/po-matching'
 import { Route as PersonalRouteImport } from './app/routes/personal'
 import { Route as OpenFileRouteImport } from './app/routes/open-file'
+import { Route as OcrSuiteRouteImport } from './app/routes/ocr-suite'
 import { Route as MonitoringRouteImport } from './app/routes/monitoring'
 import { Route as LoginRouteImport } from './app/routes/login'
 import { Route as LieferantenRouteImport } from './app/routes/lieferanten'
 import { Route as KundenRouteImport } from './app/routes/kunden'
+import { Route as KnowledgeGraphRouteImport } from './app/routes/knowledge-graph'
 import { Route as KasseRouteImport } from './app/routes/kasse'
 import { Route as JobsRouteImport } from './app/routes/jobs'
 import { Route as InventoryRouteImport } from './app/routes/inventory'
+import { Route as InboxRouteImport } from './app/routes/inbox'
 import { Route as HoldingRouteImport } from './app/routes/holding'
 import { Route as FraudRouteImport } from './app/routes/fraud'
 import { Route as ForgotPasswordRouteImport } from './app/routes/forgot-password'
@@ -52,6 +55,7 @@ import { Route as DocumentGroupsRouteImport } from './app/routes/document-groups
 import { Route as DocumentChainsRouteImport } from './app/routes/document-chains'
 import { Route as DeveloperRouteImport } from './app/routes/developer'
 import { Route as ContractsRouteImport } from './app/routes/contracts'
+import { Route as ComplianceRouteImport } from './app/routes/compliance'
 import { Route as ChatRouteImport } from './app/routes/chat'
 import { Route as CashflowRouteImport } from './app/routes/cashflow'
 import { Route as BerichteRouteImport } from './app/routes/berichte'
@@ -131,6 +135,7 @@ import { Route as DocumentsCompareRouteImport } from './app/routes/documents.com
 import { Route as DocumentsDocumentIdRouteImport } from './app/routes/documents.$documentId'
 import { Route as DocumentGroupsIdRouteImport } from './app/routes/document-groups.$id'
 import { Route as DocumentChainsChainIdRouteImport } from './app/routes/document-chains.$chainId'
+import { Route as DashboardCeoRouteImport } from './app/routes/dashboard.ceo'
 import { Route as ContractsDashboardRouteImport } from './app/routes/contracts.dashboard'
 import { Route as BerichteBuilderRouteImport } from './app/routes/berichte.builder'
 import { Route as BankingPaymentAutomationRouteImport } from './app/routes/banking.payment-automation'
@@ -397,6 +402,11 @@ const OpenFileRoute = OpenFileRouteImport.update({
   path: '/open-file',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OcrSuiteRoute = OcrSuiteRouteImport.update({
+  id: '/ocr-suite',
+  path: '/ocr-suite',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MonitoringRoute = MonitoringRouteImport.update({
   id: '/monitoring',
   path: '/monitoring',
@@ -417,6 +427,11 @@ const KundenRoute = KundenRouteImport.update({
   path: '/kunden',
   getParentRoute: () => rootRouteImport,
 } as any)
+const KnowledgeGraphRoute = KnowledgeGraphRouteImport.update({
+  id: '/knowledge-graph',
+  path: '/knowledge-graph',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const KasseRoute = KasseRouteImport.update({
   id: '/kasse',
   path: '/kasse',
@@ -430,6 +445,11 @@ const JobsRoute = JobsRouteImport.update({
 const InventoryRoute = InventoryRouteImport.update({
   id: '/inventory',
   path: '/inventory',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InboxRoute = InboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HoldingRoute = HoldingRouteImport.update({
@@ -480,6 +500,11 @@ const DeveloperRoute = DeveloperRouteImport.update({
 const ContractsRoute = ContractsRouteImport.update({
   id: '/contracts',
   path: '/contracts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComplianceRoute = ComplianceRouteImport.update({
+  id: '/compliance',
+  path: '/compliance',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatRoute = ChatRouteImport.update({
@@ -882,6 +907,11 @@ const DocumentChainsChainIdRoute = DocumentChainsChainIdRouteImport.update({
   id: '/$chainId',
   path: '/$chainId',
   getParentRoute: () => DocumentChainsRoute,
+} as any)
+const DashboardCeoRoute = DashboardCeoRouteImport.update({
+  id: '/dashboard/ceo',
+  path: '/dashboard/ceo',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ContractsDashboardRoute = ContractsDashboardRouteImport.update({
   id: '/dashboard',
@@ -1599,6 +1629,7 @@ export interface FileRoutesByFullPath {
   '/berichte': typeof BerichteRouteWithChildren
   '/cashflow': typeof CashflowRoute
   '/chat': typeof ChatRoute
+  '/compliance': typeof ComplianceRoute
   '/contracts': typeof ContractsRouteWithChildren
   '/developer': typeof DeveloperRoute
   '/document-chains': typeof DocumentChainsRouteWithChildren
@@ -1609,13 +1640,16 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/fraud': typeof FraudRoute
   '/holding': typeof HoldingRouteWithChildren
+  '/inbox': typeof InboxRoute
   '/inventory': typeof InventoryRoute
   '/jobs': typeof JobsRoute
   '/kasse': typeof KasseRouteWithChildren
+  '/knowledge-graph': typeof KnowledgeGraphRoute
   '/kunden': typeof KundenRouteWithChildren
   '/lieferanten': typeof LieferantenRouteWithChildren
   '/login': typeof LoginRoute
   '/monitoring': typeof MonitoringRoute
+  '/ocr-suite': typeof OcrSuiteRoute
   '/open-file': typeof OpenFileRoute
   '/personal': typeof PersonalRouteWithChildren
   '/po-matching': typeof PoMatchingRoute
@@ -1700,6 +1734,7 @@ export interface FileRoutesByFullPath {
   '/banking/payment-automation': typeof BankingPaymentAutomationRoute
   '/berichte/builder': typeof BerichteBuilderRoute
   '/contracts/dashboard': typeof ContractsDashboardRoute
+  '/dashboard/ceo': typeof DashboardCeoRoute
   '/document-chains/$chainId': typeof DocumentChainsChainIdRoute
   '/document-groups/$id': typeof DocumentGroupsIdRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
@@ -1856,6 +1891,7 @@ export interface FileRoutesByTo {
   '/automation': typeof AutomationRoute
   '/cashflow': typeof CashflowRoute
   '/chat': typeof ChatRoute
+  '/compliance': typeof ComplianceRoute
   '/contracts': typeof ContractsRouteWithChildren
   '/developer': typeof DeveloperRoute
   '/document-chains': typeof DocumentChainsRouteWithChildren
@@ -1865,10 +1901,13 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/fraud': typeof FraudRoute
   '/holding': typeof HoldingRouteWithChildren
+  '/inbox': typeof InboxRoute
   '/inventory': typeof InventoryRoute
   '/jobs': typeof JobsRoute
+  '/knowledge-graph': typeof KnowledgeGraphRoute
   '/login': typeof LoginRoute
   '/monitoring': typeof MonitoringRoute
+  '/ocr-suite': typeof OcrSuiteRoute
   '/open-file': typeof OpenFileRoute
   '/po-matching': typeof PoMatchingRoute
   '/recurring-invoices': typeof RecurringInvoicesRoute
@@ -1935,6 +1974,7 @@ export interface FileRoutesByTo {
   '/banking/payment-automation': typeof BankingPaymentAutomationRoute
   '/berichte/builder': typeof BerichteBuilderRoute
   '/contracts/dashboard': typeof ContractsDashboardRoute
+  '/dashboard/ceo': typeof DashboardCeoRoute
   '/document-chains/$chainId': typeof DocumentChainsChainIdRoute
   '/document-groups/$id': typeof DocumentGroupsIdRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
@@ -2088,6 +2128,7 @@ export interface FileRoutesById {
   '/berichte': typeof BerichteRouteWithChildren
   '/cashflow': typeof CashflowRoute
   '/chat': typeof ChatRoute
+  '/compliance': typeof ComplianceRoute
   '/contracts': typeof ContractsRouteWithChildren
   '/developer': typeof DeveloperRoute
   '/document-chains': typeof DocumentChainsRouteWithChildren
@@ -2098,13 +2139,16 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/fraud': typeof FraudRoute
   '/holding': typeof HoldingRouteWithChildren
+  '/inbox': typeof InboxRoute
   '/inventory': typeof InventoryRoute
   '/jobs': typeof JobsRoute
   '/kasse': typeof KasseRouteWithChildren
+  '/knowledge-graph': typeof KnowledgeGraphRoute
   '/kunden': typeof KundenRouteWithChildren
   '/lieferanten': typeof LieferantenRouteWithChildren
   '/login': typeof LoginRoute
   '/monitoring': typeof MonitoringRoute
+  '/ocr-suite': typeof OcrSuiteRoute
   '/open-file': typeof OpenFileRoute
   '/personal': typeof PersonalRouteWithChildren
   '/po-matching': typeof PoMatchingRoute
@@ -2189,6 +2233,7 @@ export interface FileRoutesById {
   '/banking/payment-automation': typeof BankingPaymentAutomationRoute
   '/berichte/builder': typeof BerichteBuilderRoute
   '/contracts/dashboard': typeof ContractsDashboardRoute
+  '/dashboard/ceo': typeof DashboardCeoRoute
   '/document-chains/$chainId': typeof DocumentChainsChainIdRoute
   '/document-groups/$id': typeof DocumentGroupsIdRoute
   '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
@@ -2349,6 +2394,7 @@ export interface FileRouteTypes {
     | '/berichte'
     | '/cashflow'
     | '/chat'
+    | '/compliance'
     | '/contracts'
     | '/developer'
     | '/document-chains'
@@ -2359,13 +2405,16 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/fraud'
     | '/holding'
+    | '/inbox'
     | '/inventory'
     | '/jobs'
     | '/kasse'
+    | '/knowledge-graph'
     | '/kunden'
     | '/lieferanten'
     | '/login'
     | '/monitoring'
+    | '/ocr-suite'
     | '/open-file'
     | '/personal'
     | '/po-matching'
@@ -2450,6 +2499,7 @@ export interface FileRouteTypes {
     | '/banking/payment-automation'
     | '/berichte/builder'
     | '/contracts/dashboard'
+    | '/dashboard/ceo'
     | '/document-chains/$chainId'
     | '/document-groups/$id'
     | '/documents/$documentId'
@@ -2606,6 +2656,7 @@ export interface FileRouteTypes {
     | '/automation'
     | '/cashflow'
     | '/chat'
+    | '/compliance'
     | '/contracts'
     | '/developer'
     | '/document-chains'
@@ -2615,10 +2666,13 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/fraud'
     | '/holding'
+    | '/inbox'
     | '/inventory'
     | '/jobs'
+    | '/knowledge-graph'
     | '/login'
     | '/monitoring'
+    | '/ocr-suite'
     | '/open-file'
     | '/po-matching'
     | '/recurring-invoices'
@@ -2685,6 +2739,7 @@ export interface FileRouteTypes {
     | '/banking/payment-automation'
     | '/berichte/builder'
     | '/contracts/dashboard'
+    | '/dashboard/ceo'
     | '/document-chains/$chainId'
     | '/document-groups/$id'
     | '/documents/$documentId'
@@ -2837,6 +2892,7 @@ export interface FileRouteTypes {
     | '/berichte'
     | '/cashflow'
     | '/chat'
+    | '/compliance'
     | '/contracts'
     | '/developer'
     | '/document-chains'
@@ -2847,13 +2903,16 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/fraud'
     | '/holding'
+    | '/inbox'
     | '/inventory'
     | '/jobs'
     | '/kasse'
+    | '/knowledge-graph'
     | '/kunden'
     | '/lieferanten'
     | '/login'
     | '/monitoring'
+    | '/ocr-suite'
     | '/open-file'
     | '/personal'
     | '/po-matching'
@@ -2938,6 +2997,7 @@ export interface FileRouteTypes {
     | '/banking/payment-automation'
     | '/berichte/builder'
     | '/contracts/dashboard'
+    | '/dashboard/ceo'
     | '/document-chains/$chainId'
     | '/document-groups/$id'
     | '/documents/$documentId'
@@ -3097,6 +3157,7 @@ export interface RootRouteChildren {
   BerichteRoute: typeof BerichteRouteWithChildren
   CashflowRoute: typeof CashflowRoute
   ChatRoute: typeof ChatRoute
+  ComplianceRoute: typeof ComplianceRoute
   ContractsRoute: typeof ContractsRouteWithChildren
   DeveloperRoute: typeof DeveloperRoute
   DocumentChainsRoute: typeof DocumentChainsRouteWithChildren
@@ -3107,13 +3168,16 @@ export interface RootRouteChildren {
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   FraudRoute: typeof FraudRoute
   HoldingRoute: typeof HoldingRouteWithChildren
+  InboxRoute: typeof InboxRoute
   InventoryRoute: typeof InventoryRoute
   JobsRoute: typeof JobsRoute
   KasseRoute: typeof KasseRouteWithChildren
+  KnowledgeGraphRoute: typeof KnowledgeGraphRoute
   KundenRoute: typeof KundenRouteWithChildren
   LieferantenRoute: typeof LieferantenRouteWithChildren
   LoginRoute: typeof LoginRoute
   MonitoringRoute: typeof MonitoringRoute
+  OcrSuiteRoute: typeof OcrSuiteRoute
   OpenFileRoute: typeof OpenFileRoute
   PersonalRoute: typeof PersonalRouteWithChildren
   PoMatchingRoute: typeof PoMatchingRoute
@@ -3143,6 +3207,7 @@ export interface RootRouteChildren {
   BankingAutoMahnlaufRoute: typeof BankingAutoMahnlaufRoute
   BankingMissedSkontoRoute: typeof BankingMissedSkontoRoute
   BankingPaymentAutomationRoute: typeof BankingPaymentAutomationRoute
+  DashboardCeoRoute: typeof DashboardCeoRoute
   DocumentsDocumentIdRoute: typeof DocumentsDocumentIdRouteWithChildren
   DocumentsCompareRoute: typeof DocumentsCompareRoute
   ReportsCashflowForecastRoute: typeof ReportsCashflowForecastRoute
@@ -3335,6 +3400,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OpenFileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ocr-suite': {
+      id: '/ocr-suite'
+      path: '/ocr-suite'
+      fullPath: '/ocr-suite'
+      preLoaderRoute: typeof OcrSuiteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/monitoring': {
       id: '/monitoring'
       path: '/monitoring'
@@ -3363,6 +3435,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KundenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/knowledge-graph': {
+      id: '/knowledge-graph'
+      path: '/knowledge-graph'
+      fullPath: '/knowledge-graph'
+      preLoaderRoute: typeof KnowledgeGraphRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/kasse': {
       id: '/kasse'
       path: '/kasse'
@@ -3382,6 +3461,13 @@ declare module '@tanstack/react-router' {
       path: '/inventory'
       fullPath: '/inventory'
       preLoaderRoute: typeof InventoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inbox': {
+      id: '/inbox'
+      path: '/inbox'
+      fullPath: '/inbox'
+      preLoaderRoute: typeof InboxRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/holding': {
@@ -3452,6 +3538,13 @@ declare module '@tanstack/react-router' {
       path: '/contracts'
       fullPath: '/contracts'
       preLoaderRoute: typeof ContractsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compliance': {
+      id: '/compliance'
+      path: '/compliance'
+      fullPath: '/compliance'
+      preLoaderRoute: typeof ComplianceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chat': {
@@ -4006,6 +4099,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/document-chains/$chainId'
       preLoaderRoute: typeof DocumentChainsChainIdRouteImport
       parentRoute: typeof DocumentChainsRoute
+    }
+    '/dashboard/ceo': {
+      id: '/dashboard/ceo'
+      path: '/dashboard/ceo'
+      fullPath: '/dashboard/ceo'
+      preLoaderRoute: typeof DashboardCeoRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/contracts/dashboard': {
       id: '/contracts/dashboard'
@@ -5819,6 +5919,7 @@ const rootRouteChildren: RootRouteChildren = {
   BerichteRoute: BerichteRouteWithChildren,
   CashflowRoute: CashflowRoute,
   ChatRoute: ChatRoute,
+  ComplianceRoute: ComplianceRoute,
   ContractsRoute: ContractsRouteWithChildren,
   DeveloperRoute: DeveloperRoute,
   DocumentChainsRoute: DocumentChainsRouteWithChildren,
@@ -5829,13 +5930,16 @@ const rootRouteChildren: RootRouteChildren = {
   ForgotPasswordRoute: ForgotPasswordRoute,
   FraudRoute: FraudRoute,
   HoldingRoute: HoldingRouteWithChildren,
+  InboxRoute: InboxRoute,
   InventoryRoute: InventoryRoute,
   JobsRoute: JobsRoute,
   KasseRoute: KasseRouteWithChildren,
+  KnowledgeGraphRoute: KnowledgeGraphRoute,
   KundenRoute: KundenRouteWithChildren,
   LieferantenRoute: LieferantenRouteWithChildren,
   LoginRoute: LoginRoute,
   MonitoringRoute: MonitoringRoute,
+  OcrSuiteRoute: OcrSuiteRoute,
   OpenFileRoute: OpenFileRoute,
   PersonalRoute: PersonalRouteWithChildren,
   PoMatchingRoute: PoMatchingRoute,
@@ -5865,6 +5969,7 @@ const rootRouteChildren: RootRouteChildren = {
   BankingAutoMahnlaufRoute: BankingAutoMahnlaufRoute,
   BankingMissedSkontoRoute: BankingMissedSkontoRoute,
   BankingPaymentAutomationRoute: BankingPaymentAutomationRoute,
+  DashboardCeoRoute: DashboardCeoRoute,
   DocumentsDocumentIdRoute: DocumentsDocumentIdRouteWithChildren,
   DocumentsCompareRoute: DocumentsCompareRoute,
   ReportsCashflowForecastRoute: ReportsCashflowForecastRoute,

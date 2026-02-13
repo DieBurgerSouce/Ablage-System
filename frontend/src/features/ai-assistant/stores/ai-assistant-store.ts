@@ -11,6 +11,11 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 export type AIAssistantView = 'minimized' | 'expanded' | 'fullscreen';
 export type PageContextType =
   | 'dashboard'
+  | 'ceo-dashboard'
+  | 'smart-inbox'
+  | 'knowledge-graph'
+  | 'compliance'
+  | 'ocr-suite'
   | 'documents'
   | 'document-detail'
   | 'entities'

@@ -86,6 +86,8 @@ export function Sidebar({ onNavigate }: SidebarProps) {
 
             <nav id="main-navigation" className="flex-1 px-4 space-y-2 overflow-y-auto" role="navigation" aria-label="Hauptmenü" tabIndex={-1}>
                 <SidebarLink to="/" icon={LayoutDashboard} label="Dashboard" onNavigate={onNavigate} />
+                <SidebarLink to="/inbox" icon={Sparkles} label="Smart Inbox" onNavigate={onNavigate} />
+                <SidebarLink to="/dashboard/ceo" icon={BarChart3} label="CEO Dashboard" onNavigate={onNavigate} />
                 <SidebarLink to="/chat" icon={MessageSquare} label="Chat" onNavigate={onNavigate} />
                 <SidebarLink to="/email-import" icon={Mail} label="E-Mail Import" onNavigate={onNavigate} />
                 <SidebarLink to="/upload" icon={Upload} label="Upload Wizard" onNavigate={onNavigate} />
@@ -95,6 +97,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                 )}
                 <SidebarLink to="/document-groups" icon={Layers} label="Dokumentgruppen" onNavigate={onNavigate} />
                 <SidebarLink to="/document-chains" icon={Link2} label="Auftragsketten" onNavigate={onNavigate} />
+                <SidebarLink to="/knowledge-graph" icon={GitBranch} label="Wissens-Graph" onNavigate={onNavigate} />
                 <SidebarLink to="/admin/datev" icon={FileSpreadsheet} label="DATEV Export" onNavigate={onNavigate} />
                 <SidebarLink to="/admin/datev-connect" icon={Link2} label="DATEVconnect" onNavigate={onNavigate} />
 
@@ -124,6 +127,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                 <SidebarLink to="/fraud" icon={ShieldAlert} label="Fraud Detection" onNavigate={onNavigate} />
                 <SidebarLink to="/alerts" icon={Bell} label="Alert Center" onNavigate={onNavigate} />
                 <SidebarLink to="/approvals" icon={CheckCircle} label="Freigaben" onNavigate={onNavigate} />
+                <SidebarLink to="/compliance" icon={Shield} label="Compliance" onNavigate={onNavigate} />
                 <SidebarLink to="/teams" icon={Users2} label="Teams" onNavigate={onNavigate} />
 
                 {/* Ablage-Struktur Section */}
@@ -287,6 +291,9 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                                 )}
                                 {permissions.isAdmin && (
                                     <SidebarLink to="/admin/ocr-learning" icon={Brain} label="OCR Learning" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/ocr-suite" icon={ScanLine} label="OCR Suite" onNavigate={onNavigate} />
                                 )}
                                 {permissions.isAdmin && (
                                     <SidebarLink to="/admin/mlops" icon={BrainCircuit} label="MLOps" onNavigate={onNavigate} />
