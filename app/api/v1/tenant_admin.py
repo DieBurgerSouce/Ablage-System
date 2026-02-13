@@ -5,18 +5,65 @@ Nur fuer System-Administratoren zugaenglich.
 """
 
 import structlog
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Optional
 from uuid import UUID
 
 from app.api.dependencies import get_current_superuser, get_db
-from app.db.models import User
+from app.db.models import Document, User, UserCompany
 from app.services.tenant import TenantConfigService, get_tenant_config_service
 from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
+
+
+# --- Quota Aggregation Helpers ---
+
+
+async def _get_document_count(db: AsyncSession, company_id: UUID) -> int:
+    """Zaehlt Dokumente des Mandanten im aktuellen Monat."""
+    month_start = datetime.now(timezone.utc).replace(
+        day=1, hour=0, minute=0, second=0, microsecond=0
+    )
+    return await db.scalar(
+        select(func.count(Document.id)).where(
+            Document.company_id == company_id,
+            Document.created_at >= month_start,
+            Document.deleted_at.is_(None),
+        )
+    ) or 0
+
+
+async def _get_storage_usage(db: AsyncSession, company_id: UUID) -> float:
+    """Berechnet genutzten Speicherplatz in GB."""
+    storage_bytes = await db.scalar(
+        select(func.coalesce(func.sum(Document.file_size), 0)).where(
+            Document.company_id == company_id,
+            Document.deleted_at.is_(None),
+        )
+    ) or 0
+    return round(storage_bytes / (1024 ** 3), 2)
+
+
+async def _get_user_count(db: AsyncSession, company_id: UUID) -> int:
+    """Zaehlt aktive Benutzer des Mandanten."""
+    return await db.scalar(
+        select(func.count(UserCompany.id)).where(
+            UserCompany.company_id == company_id,
+        )
+    ) or 0
+
+
+_QUOTA_AGGREGATORS = {
+    "max_documents_per_month": _get_document_count,
+    "max_storage_gb": _get_storage_usage,
+    "max_users": _get_user_count,
+}
+
 
 router = APIRouter(prefix="/admin/tenants", tags=["tenant-admin"])
 
@@ -281,19 +328,26 @@ async def get_tenant_usage(
 
         quotas = config.quotas or {}
 
-        # TODO: Hier koennte man echte Nutzungsdaten aus verschiedenen
-        # Services aggregieren (z.B. Dokumente, Speicherplatz, Benutzer)
-        # Fuer jetzt nur ein Platzhalter
         usage_summary: Dict[str, Dict[str, object]] = {}
 
         for resource, limit in quotas.items():
-            # Platzhalter: echte Nutzungsdaten wuerden hier geladen
-            usage_summary[resource] = {
-                "limit": limit,
-                "usage": 0,
-                "remaining": limit if isinstance(limit, int) else -1,
-                "within_quota": True,
-            }
+            aggregator = _QUOTA_AGGREGATORS.get(resource)
+            if aggregator:
+                usage = await aggregator(db, company_id)
+                int_limit = int(limit) if isinstance(limit, (int, float)) else 0
+                usage_summary[resource] = {
+                    "limit": int_limit,
+                    "usage": usage,
+                    "remaining": max(0, int_limit - usage) if int_limit > 0 else -1,
+                    "within_quota": usage <= int_limit if int_limit > 0 else True,
+                }
+            else:
+                usage_summary[resource] = {
+                    "limit": limit,
+                    "usage": 0,
+                    "remaining": limit if isinstance(limit, int) else -1,
+                    "within_quota": True,
+                }
 
         logger.info(
             "tenant_usage_retrieved",

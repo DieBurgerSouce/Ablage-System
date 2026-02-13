@@ -612,6 +612,13 @@ async def submit_prediction_feedback(
             detail=f"prediction_type muss einer von {valid_types} sein",
         )
 
+    company_id = current_user.company_id
+    if not company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Benutzer hat keine Firmenzuordnung",
+        )
+
     try:
         service = get_predictive_payment_service()
 
@@ -623,7 +630,7 @@ async def submit_prediction_feedback(
             actual_value=feedback.actual_value,
         )
 
-        await service.record_prediction_feedback(db, feedback_obj)
+        await service.record_prediction_feedback(db, feedback_obj, company_id)
 
         return PredictionFeedbackResponse(
             success=True,

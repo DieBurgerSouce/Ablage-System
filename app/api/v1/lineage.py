@@ -21,6 +21,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.services.reports.pdf_export_service import PdfExportService
+from app.services.reports.report_templates import ReportColumn
+
 from app.api.dependencies import (
     get_current_user,
     get_db,
@@ -400,7 +403,7 @@ async def export_document_lineage(
 
     Unterstuetzte Formate:
     - json: Vollstaendige Lineage als JSON
-    - pdf: Formatierter PDF-Report (TODO)
+    - pdf: Formatierter PDF-Report
     """
     service = get_lineage_service(session)
 
@@ -456,10 +459,57 @@ async def export_document_lineage(
         )
 
     elif format == "pdf":
-        # PDF-Export (Platzhalter - TODO implementieren)
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="PDF-Export wird in einer zukuenftigen Version verfuegbar sein",
+        # Statistik-Kopfzeile als Subtitle
+        stats_parts: List[str] = []
+        if stats:
+            stats_parts.append(f"{stats.total_events} Ereignisse")
+            if stats.ocr_confidence is not None:
+                stats_parts.append(f"OCR-Konfidenz: {stats.ocr_confidence:.0%}")
+            if stats.modification_count:
+                stats_parts.append(f"{stats.modification_count} Bearbeitungen")
+        subtitle = " | ".join(stats_parts) if stats_parts else ""
+
+        # Spalten-Definition
+        columns_def = [
+            ReportColumn(key="timestamp", label="Zeitpunkt", width=120, format_type="text"),
+            ReportColumn(key="event_type", label="Ereignis", width=150, format_type="text"),
+            ReportColumn(key="confidence", label="Konfidenz", width=70, format_type="text"),
+            ReportColumn(key="duration", label="Dauer", width=60, format_type="text"),
+            ReportColumn(key="source", label="Quelle", width=100, format_type="text"),
+        ]
+
+        # Events in Tabellenzeilen umwandeln
+        table_data: List[Dict[str, object]] = []
+        for event in events:
+            ts = event.timestamp.strftime("%d.%m.%Y %H:%M") if event.timestamp else "-"
+            label = EVENT_TYPE_LABELS.get(event.event_type, event.event_type)
+            conf = f"{event.confidence:.0%}" if event.confidence is not None else "-"
+            dur = f"{event.duration_ms} ms" if event.duration_ms is not None else "-"
+            src = event.source_service or "-"
+            table_data.append({
+                "timestamp": ts,
+                "event_type": label,
+                "confidence": conf,
+                "duration": dur,
+                "source": src,
+            })
+
+        pdf_service = PdfExportService()
+        pdf_bytes = await pdf_service.generate_report_pdf(
+            title="Dokument-Lineage",
+            subtitle=subtitle,
+            columns=columns_def,
+            data=table_data,
+        )
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": (
+                    f'attachment; filename="lineage_{document_id}.pdf"'
+                ),
+            },
         )
 
     else:
