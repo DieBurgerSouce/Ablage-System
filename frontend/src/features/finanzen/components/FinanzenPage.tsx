@@ -14,7 +14,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { useFinanceDashboard, useFinanceDeadlines } from '../hooks/use-finanzen-queries'
-import { formatCurrency, formatSaldo, formatDate } from '../mockData'
+import { formatCurrency, formatSaldo, formatDate } from '../utils/format'
 import { FinanceDeadlineAlert, type DeadlineItem } from './FinanceDeadlineAlert'
 import { FinanceDeadlineCalendar } from './FinanceDeadlineCalendar'
 

@@ -51,77 +51,38 @@ import {
     useAcceptKontierung,
     useRejectKontierung,
     useLearnKontierung,
+    useKontierungsvorschlaege,
 } from '@/features/datev/hooks/use-datev-connect-queries';
-import { formatConfidence } from '@/lib/api/services/datev-connect';
+import { formatConfidence, type DATEVKontierungStatus } from '@/lib/api/services/datev-connect';
 
-// Mock-Daten für Vorschläge (in Produktion von API)
-const mockVorschlaege = [
-    {
-        id: '1',
-        document_id: 'doc-1',
-        connection_id: 'conn-1',
-        konto_soll: '4400',
-        konto_soll_bezeichnung: 'Aufwendungen für Waren',
-        konto_haben: '70000',
-        konto_haben_bezeichnung: 'Kreditor Allgemein',
-        steuerschluessel: '19',
-        kostenstelle: null,
-        confidence: 0.92,
-        status: 'suggested' as const,
-        pattern_id: 'pattern-1',
-        created_at: '2026-01-30T10:00:00Z',
-        document_info: {
-            filename: 'Rechnung_Amazon_2026-01.pdf',
-            lieferant: 'Amazon EU S.a.r.l.',
-            betrag: 1249.99,
-        },
-    },
-    {
-        id: '2',
-        document_id: 'doc-2',
-        connection_id: 'conn-1',
-        konto_soll: '6800',
-        konto_soll_bezeichnung: 'Buerokosten',
-        konto_haben: '70001',
-        konto_haben_bezeichnung: 'Kreditor Staples',
-        steuerschluessel: '19',
-        kostenstelle: 'K100',
-        confidence: 0.78,
-        status: 'suggested' as const,
-        pattern_id: 'pattern-2',
-        created_at: '2026-01-29T15:30:00Z',
-        document_info: {
-            filename: 'Rechnung_Staples_Jan.pdf',
-            lieferant: 'Staples Deutschland GmbH',
-            betrag: 234.56,
-        },
-    },
-    {
-        id: '3',
-        document_id: 'doc-3',
-        connection_id: 'conn-1',
-        konto_soll: '4900',
-        konto_soll_bezeichnung: 'Sonstige betriebliche Aufwendungen',
-        konto_haben: '70002',
-        konto_haben_bezeichnung: 'Kreditor Telekom',
-        steuerschluessel: '19',
-        kostenstelle: null,
-        confidence: 0.65,
-        status: 'suggested' as const,
-        pattern_id: null,
-        created_at: '2026-01-28T09:15:00Z',
-        document_info: {
-            filename: 'Rechnung_Telekom_Dez.pdf',
-            lieferant: 'Deutsche Telekom AG',
-            betrag: 89.99,
-        },
-    },
-];
+/**
+ * Kontierungsvorschlag mit optionalen Dokumentinformationen
+ */
+interface KontierungVorschlag {
+    id: string;
+    document_id: string;
+    connection_id: string;
+    konto_soll: string;
+    konto_soll_bezeichnung: string;
+    konto_haben: string;
+    konto_haben_bezeichnung: string;
+    steuerschluessel: string | null;
+    kostenstelle: string | null;
+    confidence: number;
+    status: DATEVKontierungStatus;
+    pattern_id: string | null;
+    created_at: string;
+    document_info?: {
+        filename: string;
+        lieferant: string;
+        betrag: number;
+    };
+}
 
 export function KontierungPage() {
     const { data: connections, isLoading: connectionsLoading } = useConnections();
     const [selectedConnectionId, setSelectedConnectionId] = useState<string>('');
-    const [editDialog, setEditDialog] = useState<typeof mockVorschlaege[0] | null>(null);
+    const [editDialog, setEditDialog] = useState<KontierungVorschlag | null>(null);
     const [learnDialog, setLearnDialog] = useState(false);
     const [learnData, setLearnData] = useState({
         lieferant: '',
@@ -147,7 +108,13 @@ export function KontierungPage() {
         }
     }
 
-    const handleAccept = async (vorschlag: typeof mockVorschlaege[0]) => {
+    // Kontierungsvorschlaege von API laden
+    const { data: vorschlaege = [], isLoading: vorschlaegeLoading } = useKontierungsvorschlaege(
+        selectedConnectionId,
+        !!selectedConnectionId
+    );
+
+    const handleAccept = async (vorschlag: KontierungVorschlag) => {
         try {
             await acceptKontierung.mutateAsync({
                 connectionId: vorschlag.connection_id,
@@ -166,7 +133,7 @@ export function KontierungPage() {
         }
     };
 
-    const handleReject = async (vorschlag: typeof mockVorschlaege[0]) => {
+    const handleReject = async (vorschlag: KontierungVorschlag) => {
         try {
             await rejectKontierung.mutateAsync({
                 connectionId: vorschlag.connection_id,
@@ -317,7 +284,7 @@ export function KontierungPage() {
                         <CardTitle className="text-sm font-medium">Ausstehend</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{mockVorschlaege.length}</div>
+                        <div className="text-2xl font-bold">{vorschlaege.length}</div>
                         <p className="text-xs text-muted-foreground">Vorschläge zur Prüfung</p>
                     </CardContent>
                 </Card>
@@ -327,7 +294,7 @@ export function KontierungPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-green-600">
-                            {mockVorschlaege.filter((v) => v.confidence >= 0.9).length}
+                            {vorschlaege.filter((v) => v.confidence >= 0.9).length}
                         </div>
                         <p className="text-xs text-muted-foreground">{'>'} 90% Sicherheit</p>
                     </CardContent>
@@ -374,7 +341,13 @@ export function KontierungPage() {
                                 Wählen Sie eine Verbindung aus, um Vorschläge anzuzeigen.
                             </p>
                         </div>
-                    ) : mockVorschlaege.length === 0 ? (
+                    ) : vorschlaegeLoading ? (
+                        <div className="space-y-3 py-4">
+                            {[1, 2, 3].map((i) => (
+                                <Skeleton key={i} className="h-16 w-full" />
+                            ))}
+                        </div>
+                    ) : vorschlaege.length === 0 ? (
                         <div className="text-center py-10">
                             <CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-4" />
                             <p className="text-muted-foreground">
@@ -395,14 +368,16 @@ export function KontierungPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {mockVorschlaege.map((vorschlag) => (
+                                {vorschlaege.map((vorschlag) => (
                                     <TableRow key={vorschlag.id}>
                                         <TableCell className="font-medium max-w-[200px] truncate">
-                                            {vorschlag.document_info.filename}
+                                            {vorschlag.document_info?.filename ?? 'Unbekannt'}
                                         </TableCell>
-                                        <TableCell>{vorschlag.document_info.lieferant}</TableCell>
+                                        <TableCell>{vorschlag.document_info?.lieferant ?? '-'}</TableCell>
                                         <TableCell className="text-right font-mono">
-                                            {formatCurrency(vorschlag.document_info.betrag)}
+                                            {vorschlag.document_info?.betrag != null
+                                                ? formatCurrency(vorschlag.document_info.betrag)
+                                                : '-'}
                                         </TableCell>
                                         <TableCell>
                                             <div>
@@ -468,10 +443,14 @@ export function KontierungPage() {
                     {editDialog && (
                         <div className="space-y-4">
                             <div className="p-3 bg-muted rounded-md">
-                                <p className="text-sm font-medium">{editDialog.document_info.filename}</p>
+                                <p className="text-sm font-medium">
+                                    {editDialog.document_info?.filename ?? 'Unbekannt'}
+                                </p>
                                 <p className="text-sm text-muted-foreground">
-                                    {editDialog.document_info.lieferant} •{' '}
-                                    {formatCurrency(editDialog.document_info.betrag)}
+                                    {editDialog.document_info?.lieferant ?? '-'}
+                                    {editDialog.document_info?.betrag != null && (
+                                        <> • {formatCurrency(editDialog.document_info.betrag)}</>
+                                    )}
                                 </p>
                             </div>
 

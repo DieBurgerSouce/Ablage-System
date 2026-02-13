@@ -3,8 +3,8 @@
 // Types
 export * from './types'
 
-// Mock Data
-export * from './mockData'
+// Utils
+export * from './utils/format'
 
 // Hooks
 export * from './hooks/use-finanzen-queries'

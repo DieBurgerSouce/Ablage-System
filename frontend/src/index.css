@@ -372,6 +372,23 @@
     .swipe-right-indicator {
         background: linear-gradient(to right, transparent, hsl(var(--success) / 0.2));
     }
+
+    /* Paper Dimming Presets */
+    .paper-dimming-light {
+        filter: brightness(0.85) contrast(1.05);
+    }
+
+    .paper-dimming-medium {
+        filter: brightness(0.70) contrast(1.10);
+    }
+
+    .paper-dimming-strong {
+        filter: brightness(0.55) contrast(1.15);
+    }
+
+    .paper-dimming-sepia {
+        filter: brightness(0.80) contrast(1.05) sepia(0.3);
+    }
 }
 
 /* Mobile-specific overrides */
@@ -408,5 +425,37 @@
 @media (min-width: 768px) {
     .mobile-only {
         display: none !important;
+    }
+}
+
+@layer utilities {
+    /* Skeleton Shimmer Animation */
+    @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+    }
+
+    .skeleton-shimmer {
+        background: linear-gradient(
+            90deg,
+            transparent 25%,
+            rgba(255, 255, 255, 0.05) 50%,
+            transparent 75%
+        );
+        background-color: var(--muted);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s ease-in-out infinite;
+    }
+
+    .dark .skeleton-shimmer {
+        background: linear-gradient(
+            90deg,
+            transparent 25%,
+            rgba(255, 255, 255, 0.08) 50%,
+            transparent 75%
+        );
+        background-color: var(--muted);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s ease-in-out infinite;
     }
 }

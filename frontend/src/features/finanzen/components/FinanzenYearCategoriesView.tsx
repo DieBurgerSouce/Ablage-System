@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { FINANCE_PACKAGES, type FinanceCategoryInfo, type FinanceCategoryPackage } from '../types'
 import { useFinanceYearPage } from '../hooks/use-finanzen-queries'
-import { formatDate, formatCurrency } from '../mockData'
+import { formatDate, formatCurrency } from '../utils/format'
 
 /**
  * Icon-Komponente die dynamisch Lucide Icons rendert

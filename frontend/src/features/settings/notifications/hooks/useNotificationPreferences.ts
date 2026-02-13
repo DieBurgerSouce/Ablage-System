@@ -15,6 +15,7 @@ import {
   useUpdateQuietHours,
   useTestNotification,
   useToggleChannel,
+  useUpdateChannelPriority,
 } from '../hooks';
 import type {
   NotificationChannel,
@@ -94,6 +95,7 @@ export function useNotificationPreferencesHook(): UseNotificationPreferencesRetu
   const updateSeverity = useUpdateSeverityMatrix();
   const updateQuietHoursMutation = useUpdateQuietHours();
   const toggleChannelMutation = useToggleChannel();
+  const updateChannelPriorityMutation = useUpdateChannelPriority();
   const testNotificationMutation = useTestNotification();
 
   // Extract preferences from response
@@ -151,7 +153,8 @@ export function useNotificationPreferencesHook(): UseNotificationPreferencesRetu
     updatePreferences.isPending ||
     updateSeverity.isPending ||
     updateQuietHoursMutation.isPending ||
-    toggleChannelMutation.isPending;
+    toggleChannelMutation.isPending ||
+    updateChannelPriorityMutation.isPending;
 
   // Actions
   const toggleGlobal = (enabled: boolean) => {
@@ -162,10 +165,8 @@ export function useNotificationPreferencesHook(): UseNotificationPreferencesRetu
     toggleChannelMutation.mutate({ channel, enabled });
   };
 
-  const updateChannelPriority = (_channels: NotificationChannel[]) => {
-    // This would call a backend endpoint to update channel priority order
-    // For now, we'll just log it since the backend may not support this yet
-    console.log('Channel priority update:', _channels);
+  const updateChannelPriority = (channels: NotificationChannel[]) => {
+    updateChannelPriorityMutation.mutate(channels);
   };
 
   const updateNotificationType = (

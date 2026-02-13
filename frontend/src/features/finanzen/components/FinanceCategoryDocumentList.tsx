@@ -30,7 +30,7 @@ import {
   categoryHasAmounts,
 } from '../types'
 import { useFinanceCategoryPage, DEFAULT_FINANCE_CATEGORY_FILTER, useInvalidateFinanceQueries } from '../hooks/use-finanzen-queries'
-import { formatDate, formatCurrency } from '../mockData'
+import { formatDate, formatCurrency } from '../utils/format'
 import { FinanceDocumentUploadDialog } from './FinanceDocumentUploadDialog'
 import { FinanceDocumentEditDialog } from './FinanceDocumentEditDialog'
 import { FinanceFilterDialog, type FilterValues } from './FinanceFilterDialog'

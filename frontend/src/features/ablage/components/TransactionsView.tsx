@@ -21,7 +21,6 @@ import {
   SortAsc,
   SortDesc,
   Plus,
-  Loader2,
   AlertCircle,
   FileStack,
   ArrowLeft,
@@ -39,6 +38,7 @@ import {
 } from '@/components/ui/select';
 import { Breadcrumbs } from '@/components/ui/breadcrumb';
 import { cn } from '@/lib/utils';
+import { DocumentListSkeleton } from '@/components/ui/skeletons/DocumentListSkeleton';
 import { TransactionListItem } from './TransactionTimeline';
 import { transactionsService } from '@/lib/api/services/transactions';
 import type {
@@ -474,11 +474,8 @@ export function TransactionsView({ entityType }: TransactionsViewProps) {
       {/* Loading State */}
       {isLoading && (
         <Card>
-          <CardContent className="py-12">
-            <div className="flex flex-col items-center">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-4" />
-              <p className="text-muted-foreground">Lade Vorgänge...</p>
-            </div>
+          <CardContent className="py-4">
+            <DocumentListSkeleton variant="shimmer" />
           </CardContent>
         </Card>
       )}

@@ -8,3 +8,4 @@ export { AssetBreakdownCard } from './AssetBreakdownCard';
 export { LiabilityBreakdownCard } from './LiabilityBreakdownCard';
 export { NetWorthLineChartCard, NetWorthLineChartCard as NetWorthChart } from './NetWorthChart';
 export { AllocationPieChart } from './AllocationPieChart';
+export { ValuationUpdateDialog } from './ValuationUpdateDialog';

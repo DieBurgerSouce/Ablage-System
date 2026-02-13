@@ -13,6 +13,7 @@ import {
   updateQuietHours,
   sendTestNotification,
   toggleChannel,
+  updateChannelPriority,
   getChannelStatus,
   getEscalationChain,
 } from './api';
@@ -165,6 +166,34 @@ export function useTestNotification() {
       toast({
         title: 'Fehler',
         description: error.message || 'Test-Benachrichtigung fehlgeschlagen.',
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+/**
+ * Hook zum Aktivieren/Deaktivieren eines Kanals.
+ */
+/**
+ * Hook zum Aktualisieren der Kanal-Prioritaet.
+ */
+export function useUpdateChannelPriority() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (channels: NotificationChannel[]) => updateChannelPriority(channels),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: notificationPreferencesKeys.all });
+      toast({
+        title: 'Prioritaet aktualisiert',
+        description: 'Die Kanal-Reihenfolge wurde gespeichert.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Fehler',
+        description: error.message || 'Kanal-Prioritaet konnte nicht gespeichert werden.',
         variant: 'destructive',
       });
     },

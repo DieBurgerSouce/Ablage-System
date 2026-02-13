@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { FileText, Mail, Download, Loader2 } from 'lucide-react';
+import { FileText, Mail, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -16,38 +16,17 @@ import {
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { useDunningTemplates } from './hooks';
+import { useDunningTemplates, useDunningRecords } from './hooks';
 import { TemplateCard, InterestRatesCard, LetterPreviewDialog } from './components';
 import type { DunningTemplate, DunningRecord } from './types';
 
-// Mock dunning records for demo - in production this would come from a separate API
-const MOCK_DUNNING_RECORDS: DunningRecord[] = [
-  {
-    id: 'demo-1',
-    documentId: 'doc-1',
-    invoiceNumber: 'RE-2026-0001',
-    entityName: 'Mueller GmbH',
-    amount: 1500.0,
-    daysOverdue: 45,
-    currentLevel: 1,
-    status: 'pending',
-    lastActionAt: null,
-  },
-  {
-    id: 'demo-2',
-    documentId: 'doc-2',
-    invoiceNumber: 'RE-2026-0042',
-    entityName: 'Schmidt AG',
-    amount: 3200.5,
-    daysOverdue: 60,
-    currentLevel: 2,
-    status: 'pending',
-    lastActionAt: '2026-01-10T10:00:00Z',
-  },
-];
-
 export function DunningTemplatesPage() {
   const { data: templates, isLoading, error } = useDunningTemplates();
+  const {
+    data: dunningRecords,
+    isLoading: recordsLoading,
+    error: recordsError,
+  } = useDunningRecords({ status: 'active' });
   const [selectedTemplate, setSelectedTemplate] = useState<DunningTemplate | null>(null);
   const [previewRecord, setPreviewRecord] = useState<DunningRecord | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -139,37 +118,57 @@ export function DunningTemplatesPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {MOCK_DUNNING_RECORDS.map((record) => (
-                  <div
-                    key={record.id}
-                    className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{record.entityName}</span>
-                        <Badge variant="outline">Stufe {record.currentLevel}</Badge>
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {record.invoiceNumber} &bull;{' '}
-                        {record.amount.toLocaleString('de-DE', {
-                          style: 'currency',
-                          currency: 'EUR',
-                        })}{' '}
-                        &bull; {record.daysOverdue} Tage überfällig
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePreview(record)}
+              {recordsLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-[72px]" />
+                  ))}
+                </div>
+              ) : recordsError ? (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Fehler</AlertTitle>
+                  <AlertDescription>
+                    Mahnvorgaenge konnten nicht geladen werden. Bitte versuchen Sie es spaeter erneut.
+                  </AlertDescription>
+                </Alert>
+              ) : dunningRecords && dunningRecords.length > 0 ? (
+                <div className="space-y-3">
+                  {dunningRecords.map((record) => (
+                    <div
+                      key={record.id}
+                      className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors"
                     >
-                      <FileText className="h-4 w-4 mr-2" />
-                      Vorschau
-                    </Button>
-                  </div>
-                ))}
-              </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{record.entityName}</span>
+                          <Badge variant="outline">Stufe {record.currentLevel}</Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {record.invoiceNumber} &bull;{' '}
+                          {record.amount.toLocaleString('de-DE', {
+                            style: 'currency',
+                            currency: 'EUR',
+                          })}{' '}
+                          &bull; {record.daysOverdue} Tage ueberfaellig
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePreview(record)}
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Vorschau
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  Keine offenen Mahnungen vorhanden
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

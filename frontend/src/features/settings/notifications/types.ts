@@ -156,6 +156,7 @@ export interface UpdateNotificationPreferencesRequest {
   quietHours?: Partial<QuietHoursConfig>;
   escalationEnabled?: boolean;
   escalationPhone?: string | null;
+  channelPriority?: NotificationChannel[];
 }
 
 /**

@@ -262,6 +262,23 @@ export async function toggleChannel(
 }
 
 /**
+ * Aktualisiert die Kanal-Prioritaet (Reihenfolge).
+ */
+export async function updateChannelPriority(
+  channels: NotificationChannel[]
+): Promise<NotificationPreferencesResponse> {
+  try {
+    const response = await api.patch<NotificationPreferencesResponse>(
+      `${PREFERENCES_URL}/channel-priority`,
+      { channels }
+    );
+    return response.data;
+  } catch {
+    return updateNotificationPreferences({ channelPriority: channels });
+  }
+}
+
+/**
  * Ruft den Kanal-Status ab.
  */
 export async function getChannelStatus(): Promise<ChannelConfig[]> {

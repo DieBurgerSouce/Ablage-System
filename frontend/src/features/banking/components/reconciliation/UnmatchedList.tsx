@@ -51,7 +51,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { formatCurrency, formatDate } from '@/features/banking/utils/format';
-import { useUnmatchedTransactions, useAccounts } from '@/features/banking/hooks/use-banking-queries';
+import { useUnmatchedTransactionsEnhanced, useAccounts } from '@/features/banking/hooks/use-banking-queries';
 import type { BankTransaction } from '@/lib/api/services/banking';
 import { cn } from '@/lib/utils';
 
@@ -151,28 +151,27 @@ export function UnmatchedList({
         data: unmatchedTx,
         isLoading,
         refetch,
-    } = useUnmatchedTransactions(
-        selectedAccountId === 'all' ? undefined : selectedAccountId,
-        100
-    );
+    } = useUnmatchedTransactionsEnhanced({
+        bank_account_id: selectedAccountId === 'all' ? undefined : selectedAccountId,
+        limit: 100,
+    });
 
-    // Erweiterte Transaktionsdaten mit berechneten Feldern
+    // Erweiterte Transaktionsdaten mit Backend-Feldern
     const enrichedTransactions = useMemo(() => {
         if (!unmatchedTx) return [];
 
         const now = new Date();
         return unmatchedTx.map((tx) => {
             const bookingDate = new Date(tx.booking_date);
-            const daysSince = Math.floor(
+            const daysSince = tx.days_since_booking ?? Math.floor(
                 (now.getTime() - bookingDate.getTime()) / (1000 * 60 * 60 * 24)
             );
 
             return {
                 ...tx,
                 daysSince,
-                // TODO: Diese Werte sollten vom Backend kommen
-                suggestionCount: 0,
-                bestMatchConfidence: null as number | null,
+                suggestionCount: tx.suggestion_count ?? 0,
+                bestMatchConfidence: tx.best_match_confidence ?? null,
             };
         });
     }, [unmatchedTx]);

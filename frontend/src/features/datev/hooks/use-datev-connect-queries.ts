@@ -62,6 +62,8 @@ export const datevConnectQueryKeys = {
     kontierung: () => [...datevConnectQueryKeys.all, 'kontierung'] as const,
     kontierungVorschlag: (connectionId: string, documentId: string) =>
         [...datevConnectQueryKeys.kontierung(), 'vorschlag', connectionId, documentId] as const,
+    kontierungList: (connectionId: string) =>
+        [...datevConnectQueryKeys.kontierung(), 'list', connectionId] as const,
 
     // GoBD Compliance
     compliance: () => [...datevConnectQueryKeys.all, 'compliance'] as const,
@@ -429,6 +431,18 @@ export function useKontierungsvorschlag(
         queryFn: () => datevConnectService.getKontierungsvorschlag(connectionId, documentId),
         staleTime: STALE_TIMES.kontierung,
         enabled: enabled && !!connectionId && !!documentId,
+    });
+}
+
+/**
+ * Alle ausstehenden Kontierungsvorschlaege fuer eine Verbindung
+ */
+export function useKontierungsvorschlaege(connectionId: string, enabled = true) {
+    return useQuery({
+        queryKey: datevConnectQueryKeys.kontierungList(connectionId),
+        queryFn: () => datevConnectService.getKontierungsvorschlaege(connectionId),
+        staleTime: STALE_TIMES.kontierung,
+        enabled: enabled && !!connectionId,
     });
 }
 

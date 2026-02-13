@@ -59,6 +59,7 @@ import {
   LiabilityBreakdownCard,
   NetWorthLineChartCard as NetWorthChart,
   AllocationPieChart,
+  ValuationUpdateDialog,
 } from '../components/networth';
 
 // ==================== Types ====================
@@ -181,10 +182,12 @@ function QuickActions({
   spaceId,
   onRefresh,
   isRefreshing,
+  onValuationUpdate,
 }: {
   spaceId: string;
   onRefresh: () => void;
   isRefreshing: boolean;
+  onValuationUpdate: () => void;
 }) {
   return (
     <div className="flex flex-wrap gap-2">
@@ -250,18 +253,12 @@ function QuickActions({
               Finanzziel setzen
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => {
-            // TODO: Implement valuation update modal
-            console.log('Bewertung aktualisieren');
-          }}>
+          <DropdownMenuItem onClick={onValuationUpdate}>
             <RotateCcw className="h-4 w-4 mr-2" />
             Bewertung aktualisieren
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => {
-            // TODO: Implement PDF export
-            console.log('PDF Export');
-          }}>
+          <DropdownMenuItem onClick={() => window.print()}>
             <Download className="h-4 w-4 mr-2" />
             Als PDF exportieren
           </DropdownMenuItem>
@@ -367,6 +364,9 @@ export function NetWorthDashboard() {
     }
   }, []);
 
+  // Valuation dialog state
+  const [valuationDialogOpen, setValuationDialogOpen] = React.useState(false);
+
   // Loading state
   const isLoading = spacesLoading || dataLoading;
   const isRefreshing = isFetching || createSnapshotMutation.isPending;
@@ -458,6 +458,7 @@ export function NetWorthDashboard() {
           spaceId={selectedSpaceId!}
           onRefresh={handleRefresh}
           isRefreshing={isRefreshing}
+          onValuationUpdate={() => setValuationDialogOpen(true)}
         />
       </div>
 
@@ -518,6 +519,17 @@ export function NetWorthDashboard() {
           totalLiabilities={totalLiabilities}
         />
       </div>
+
+      {/* Valuation Update Dialog */}
+      {selectedSpaceId && (
+        <ValuationUpdateDialog
+          open={valuationDialogOpen}
+          onOpenChange={setValuationDialogOpen}
+          assets={assetBreakdown}
+          spaceId={selectedSpaceId}
+          onSuccess={handleRefresh}
+        />
+      )}
     </div>
   );
 }

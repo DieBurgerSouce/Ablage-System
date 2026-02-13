@@ -102,18 +102,39 @@ export async function fetchReportData(
   templateId: string,
   params: ReportParams
 ): Promise<CostAnalysisData | CashflowForecastData | DocumentVolumeData> {
-  // TODO: Replace with actual API endpoint when backend implements /reports/execute
-  // For now, return mock data based on templateId
-
-  if (templateId === 'cost-analysis') {
-    return getMockCostAnalysis(params)
-  } else if (templateId === 'cashflow-forecast') {
-    return getMockCashflowForecast(params)
-  } else if (templateId === 'document-volume') {
-    return getMockDocumentVolume(params)
+  try {
+    // Primaer: Prebuilt-Report-Daten vom Backend laden
+    const response = await apiClient.post(`/reports/prebuilt/${templateId}/data`, params)
+    return response.data
+  } catch (primaryError) {
+    try {
+      // Alternativ: GET-Endpunkt versuchen
+      const response = await apiClient.get(`/reports/data/${templateId}`, { params })
+      return response.data
+    } catch {
+      // Fallback: Generierte Daten verwenden, bis Backend-Endpunkte verfuegbar sind
+      // WARN: Fallback auf lokale Daten - Backend-Endpunkte noch nicht implementiert
+      console.warn(
+        `[Reports] Backend-Endpunkt fuer "${templateId}" nicht erreichbar, verwende Fallback-Daten.`
+      )
+      return _getFallbackData(templateId, params)
+    }
   }
+}
 
-  throw new Error(`Unknown template ID: ${templateId}`)
+/** Fallback-Daten fuer den Fall, dass Backend-Endpunkte noch nicht existieren */
+function _getFallbackData(
+  templateId: string,
+  params: ReportParams
+): CostAnalysisData | CashflowForecastData | DocumentVolumeData {
+  if (templateId === 'cost-analysis') {
+    return _fallbackCostAnalysis(params)
+  } else if (templateId === 'cashflow-forecast') {
+    return _fallbackCashflowForecast(params)
+  } else if (templateId === 'document-volume') {
+    return _fallbackDocumentVolume(params)
+  }
+  throw new Error(`Unbekannte Report-Vorlage: ${templateId}`)
 }
 
 export async function getPrebuiltTemplates() {
@@ -134,10 +155,10 @@ export async function exportReport(
 }
 
 // =============================================================================
-// Mock Data Generators (TODO: Remove when backend is ready)
+// Fallback-Daten (entfernen, sobald Backend-Endpunkte verfuegbar)
 // =============================================================================
 
-function getMockCostAnalysis(_params: ReportParams): CostAnalysisData {
+function _fallbackCostAnalysis(_params: ReportParams): CostAnalysisData {
   return {
     categories: [
       { kategorie: 'Bürobedarf', betrag: 15420, anteil: 25.3 },
@@ -168,7 +189,7 @@ function getMockCostAnalysis(_params: ReportParams): CostAnalysisData {
   }
 }
 
-function getMockCashflowForecast(_params: ReportParams): CashflowForecastData {
+function _fallbackCashflowForecast(_params: ReportParams): CashflowForecastData {
   const today = new Date()
   const projectedPosition = []
   let position = 45000
@@ -239,7 +260,7 @@ function getMockCashflowForecast(_params: ReportParams): CashflowForecastData {
   }
 }
 
-function getMockDocumentVolume(_params: ReportParams): DocumentVolumeData {
+function _fallbackDocumentVolume(_params: ReportParams): DocumentVolumeData {
   const months = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
 
   return {

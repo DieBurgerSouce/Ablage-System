@@ -514,6 +514,18 @@ export const datevConnectService = {
     },
 
     /**
+     * Alle ausstehenden Kontierungsvorschlaege fuer eine Verbindung abrufen
+     */
+    getKontierungsvorschlaege: async (
+        connectionId: string
+    ): Promise<DATEVKontierungsvorschlagResponse[]> => {
+        const response = await apiClient.get<DATEVKontierungsvorschlagResponse[]>(
+            `${BASE_URL}/kontierung/${connectionId}/suggestions`
+        );
+        return response.data;
+    },
+
+    /**
      * Kontierungsvorschlag akzeptieren
      */
     acceptKontierung: async (

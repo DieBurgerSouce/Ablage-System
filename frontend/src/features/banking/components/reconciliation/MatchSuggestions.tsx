@@ -47,7 +47,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatCurrency, formatDate } from '@/features/banking/utils/format';
-import { useMatchSuggestions, useManualMatch } from '@/features/banking/hooks/use-banking-queries';
+import { useMatchSuggestions, useManualMatch, useRejectMatchEnhanced } from '@/features/banking/hooks/use-banking-queries';
 import type { BankTransaction, MatchCandidate } from '@/lib/api/services/banking';
 import { cn } from '@/lib/utils';
 
@@ -335,6 +335,7 @@ export function MatchSuggestions({
 
     // Mutations
     const manualMatch = useManualMatch();
+    const rejectMatch = useRejectMatchEnhanced();
 
     const handleAccept = async (documentId: string) => {
         try {
@@ -356,13 +357,16 @@ export function MatchSuggestions({
     const handleRejectConfirm = async () => {
         if (!rejectingDocId) return;
 
-        // TODO: Backend-Call zum Speichern der Ablehnung
-        console.log('Rejecting match:', {
-            transactionId: transaction.id,
-            documentId: rejectingDocId,
-            reason: rejectReason,
-            neverSuggestAgain,
-        });
+        try {
+            await rejectMatch.mutateAsync({
+                transactionId: transaction.id,
+                documentId: rejectingDocId,
+                reason: rejectReason,
+                neverSuggestAgain,
+            });
+        } catch {
+            // Fehlerbehandlung erfolgt durch den Mutation-Hook
+        }
 
         setRejectDialogOpen(false);
         setRejectReason('');
@@ -546,9 +550,12 @@ export function MatchSuggestions({
                         </AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleRejectConfirm}
-                            disabled={rejectReason.trim().length < 3}
+                            disabled={rejectReason.trim().length < 3 || rejectMatch.isPending}
                             className="bg-red-600 hover:bg-red-700"
                         >
+                            {rejectMatch.isPending ? (
+                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            ) : null}
                             Ablehnen
                         </AlertDialogAction>
                     </AlertDialogFooter>

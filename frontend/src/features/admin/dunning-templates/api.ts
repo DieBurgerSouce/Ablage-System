@@ -6,12 +6,45 @@
 import { api } from '@/lib/api';
 import type {
   DunningTemplate,
+  DunningRecord,
   InterestRates,
   LetterPreviewParams,
   BatchGenerateParams,
 } from './types';
 
 const API_BASE = '/api/v1/banking/dunning';
+
+/**
+ * Offene Mahnvorgaenge abrufen
+ */
+export async function getDunningRecords(params?: {
+  status?: string;
+  level?: number;
+  limit?: number;
+}): Promise<DunningRecord[]> {
+  const response = await api.get(API_BASE, {
+    params: {
+      status: params?.status ?? 'active',
+      dunning_level: params?.level,
+      limit: params?.limit ?? 50,
+    },
+  });
+  const data = response.data;
+  const items = data.items || data.records || data || [];
+  return Array.isArray(items)
+    ? items.map((item: Record<string, unknown>) => ({
+        id: String(item.id ?? ''),
+        documentId: String(item.document_id ?? ''),
+        invoiceNumber: String(item.invoice_number ?? item.belegnummer ?? ''),
+        entityName: String(item.entity_name ?? item.counterparty_name ?? ''),
+        amount: Number(item.amount ?? item.total_amount ?? 0),
+        daysOverdue: Number(item.days_overdue ?? 0),
+        currentLevel: Number(item.current_level ?? item.level ?? 1),
+        status: String(item.status ?? 'pending'),
+        lastActionAt: item.last_action_at ? String(item.last_action_at) : null,
+      }))
+    : [];
+}
 
 /**
  * Verfügbare Mahnbrief-Vorlagen abrufen

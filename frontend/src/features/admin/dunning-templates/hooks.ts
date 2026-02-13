@@ -5,6 +5,7 @@
 
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
+  getDunningRecords,
   getLetterTemplates,
   getInterestRates,
   getLetterPreview,
@@ -16,6 +17,8 @@ import type { LetterPreviewParams, BatchGenerateParams } from './types';
 // Query Keys
 export const dunningTemplateKeys = {
   all: ['dunning-templates'] as const,
+  records: (params?: { status?: string; level?: number; limit?: number }) =>
+    [...dunningTemplateKeys.all, 'records', params] as const,
   templates: () => [...dunningTemplateKeys.all, 'templates'] as const,
   interestRates: () => [...dunningTemplateKeys.all, 'interest-rates'] as const,
   preview: (params: LetterPreviewParams) =>
@@ -24,9 +27,25 @@ export const dunningTemplateKeys = {
 
 // Stale Times
 const STALE_TIMES = {
+  records: 5 * 60 * 1000, // 5 Minuten
   templates: 30 * 60 * 1000, // 30 Minuten (ändert sich selten)
   interestRates: 60 * 60 * 1000, // 1 Stunde (halbjährliche Updates)
 };
+
+/**
+ * Offene Mahnvorgaenge abrufen
+ */
+export function useDunningRecords(params?: {
+  status?: string;
+  level?: number;
+  limit?: number;
+}) {
+  return useQuery({
+    queryKey: dunningTemplateKeys.records(params),
+    queryFn: () => getDunningRecords(params),
+    staleTime: STALE_TIMES.records,
+  });
+}
 
 /**
  * Mahnbrief-Vorlagen abrufen

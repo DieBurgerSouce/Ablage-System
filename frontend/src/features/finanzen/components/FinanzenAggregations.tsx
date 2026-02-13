@@ -2,7 +2,7 @@ import { FileText, TrendingUp, TrendingDown, AlertTriangle, Calendar, Clock } fr
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { FinanceAggregations } from '../types'
-import { formatCurrency } from '../mockData'
+import { formatCurrency } from '../utils/format'
 
 interface FinanzenAggregationsProps {
   aggregations: FinanceAggregations | null

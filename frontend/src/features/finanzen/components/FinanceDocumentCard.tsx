@@ -11,7 +11,7 @@ import { memo, useCallback } from 'react'
 import { FileText, Calendar, AlertTriangle, Clock, Euro, ShieldAlert } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { formatDate, formatCurrency } from '../mockData'
+import { formatDate, formatCurrency } from '../utils/format'
 import type { FinanceCategoryDocument } from '@/lib/api/services/finance'
 
 interface FinanceDocumentCardProps {

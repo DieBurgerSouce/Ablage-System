@@ -198,12 +198,24 @@ export function ReconciliationPage() {
         }
     };
 
-    const handleBulkMatch = async (transactionIds: string[]) => {
-        // TODO: Implementierung von Bulk-Match
-        toast({
-            title: 'Bulk-Abgleich',
-            description: `${transactionIds.length} Transaktionen werden verarbeitet...`,
-        });
+    const handleBulkMatch = async (_transactionIds: string[]) => {
+        try {
+            const result = await batchReconcile.mutateAsync(
+                selectedAccount !== 'all' ? { bank_account_id: selectedAccount } : undefined
+            );
+            toast({
+                title: 'Bulk-Abgleich abgeschlossen',
+                description: `${result.matched_count} von ${result.total_processed} Transaktionen wurden abgeglichen.`,
+            });
+            refetch();
+            setSelectedTransactionIds([]);
+        } catch {
+            toast({
+                title: 'Fehler',
+                description: 'Bulk-Abgleich konnte nicht durchgefuehrt werden.',
+                variant: 'destructive',
+            });
+        }
     };
 
     // Berechnete Werte
