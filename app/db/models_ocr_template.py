@@ -144,6 +144,11 @@ class SupplierOCRTemplate(Base):
     is_verified = Column(Boolean, nullable=False, default=False)  # Manuell geprueft
     auto_apply = Column(Boolean, nullable=False, default=True)  # Automatisch anwenden
 
+    # Auto-Generation
+    is_auto_generated = Column(Boolean, nullable=True, default=False)
+    source_document_ids = Column(CrossDBJSON, nullable=True)  # List of document UUIDs used for generation
+    auto_confidence = Column(Float, nullable=True)  # Confidence score of auto-generated template
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -200,6 +205,9 @@ class SupplierOCRTemplate(Base):
             "is_active": self.is_active,
             "is_verified": self.is_verified,
             "auto_apply": self.auto_apply,
+            "is_auto_generated": self.is_auto_generated,
+            "source_document_ids": self.source_document_ids or [],
+            "auto_confidence": self.auto_confidence,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
