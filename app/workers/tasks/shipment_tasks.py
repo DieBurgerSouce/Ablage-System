@@ -40,7 +40,7 @@ def run_async(coro):
 
 
 @shared_task(
-    name="shipment_tracking.refresh_active",
+    name="app.workers.tasks.shipment_tasks.refresh_active_shipments",
     bind=True,
     max_retries=3,
     default_retry_delay=60,
@@ -153,7 +153,7 @@ async def _refresh_active_shipments(company_id_str: Optional[str] = None) -> dic
 
 
 @shared_task(
-    name="shipment_tracking.refresh_single",
+    name="app.workers.tasks.shipment_tasks.refresh_single_shipment",
     bind=True,
     max_retries=3,
     default_retry_delay=30,
@@ -228,7 +228,7 @@ async def _refresh_single_shipment(shipment_id: str, company_id: str) -> dict:
 
 
 @shared_task(
-    name="shipment_tracking.check_delayed",
+    name="app.workers.tasks.shipment_tasks.check_delayed_shipments",
     bind=True,
     queue="maintenance",
 )
@@ -307,7 +307,7 @@ async def _check_delayed_shipments() -> dict:
 
 
 @shared_task(
-    name="shipment_tracking.generate_statistics",
+    name="app.workers.tasks.shipment_tasks.generate_shipment_statistics",
     bind=True,
     queue="maintenance",
 )

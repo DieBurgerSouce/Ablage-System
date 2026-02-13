@@ -29,7 +29,7 @@ TaskResult = Dict[str, Union[str, int, float, bool, None]]
 
 @celery_app.task(
     base=CPUTask,
-    name="cashflow_prediction.update_daily_forecast",
+    name="app.workers.tasks.cashflow_prediction_tasks.update_daily_forecast",
     queue="metadata",
     priority=2,
     ignore_result=True,
@@ -162,7 +162,7 @@ def update_daily_forecast(company_id: Optional[str] = None) -> TaskResult:
 
 @celery_app.task(
     base=CPUTask,
-    name="cashflow_prediction.evaluate_accuracy",
+    name="app.workers.tasks.cashflow_prediction_tasks.evaluate_prediction_accuracy",
     queue="maintenance",
     priority=3,
     ignore_result=True,
@@ -275,7 +275,7 @@ def evaluate_prediction_accuracy() -> TaskResult:
 
 @celery_app.task(
     base=CPUTask,
-    name="cashflow_prediction.generate_alerts",
+    name="app.workers.tasks.cashflow_prediction_tasks.generate_cashflow_alerts",
     queue="metadata",
     priority=1,
     ignore_result=True,
@@ -371,7 +371,7 @@ def generate_cashflow_alerts(company_id: str) -> TaskResult:
 
 @celery_app.task(
     base=CPUTask,
-    name="cashflow_prediction.warm_cache",
+    name="app.workers.tasks.cashflow_prediction_tasks.warm_forecast_cache",
     queue="maintenance",
     priority=3,
     ignore_result=True,
@@ -562,7 +562,7 @@ async def _create_cashflow_alert(
 
 @celery_app.task(
     base=CPUTask,
-    name="cashflow_prediction.update_entity_profiles",
+    name="app.workers.tasks.cashflow_prediction_tasks.update_entity_profiles",
     queue="maintenance",
     priority=3,
     ignore_result=True,
@@ -671,7 +671,7 @@ def update_entity_profiles(company_id: Optional[str] = None) -> TaskResult:
 
 @celery_app.task(
     base=CPUTask,
-    name="cashflow_prediction.check_liquidity_alerts",
+    name="app.workers.tasks.cashflow_prediction_tasks.check_liquidity_alerts",
     queue="metadata",
     priority=1,
     ignore_result=True,
@@ -833,7 +833,7 @@ def check_liquidity_alerts(company_id: Optional[str] = None) -> TaskResult:
 
 @celery_app.task(
     base=CPUTask,
-    name="cashflow_prediction.calculate_daily_forecast_v2",
+    name="app.workers.tasks.cashflow_prediction_tasks.calculate_daily_forecast_v2",
     queue="metadata",
     priority=2,
     ignore_result=True,

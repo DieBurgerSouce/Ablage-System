@@ -1396,50 +1396,6 @@ def daily_kpi_recalculation(self) -> Dict[str, Any]:
         raise self.retry(exc=e)
 
 
-# Celery Beat Schedule Konfiguration
-# Diese sollte in celery_app.py hinzugefuegt werden:
-#
-# CELERY_BEAT_SCHEDULE = {
-#     ...
-#     # Bestehende Privat-Tasks
-#     'privat-send-deadline-reminders': {
-#         'task': 'app.workers.tasks.privat_tasks.send_deadline_reminders',
-#         'schedule': crontab(hour=8, minute=0),
-#     },
-#     'privat-check-emergency-access': {
-#         'task': 'app.workers.tasks.privat_tasks.check_emergency_access_requests',
-#         'schedule': crontab(minute=0),  # Every hour
-#     },
-#     'privat-cleanup-expired-access': {
-#         'task': 'app.workers.tasks.privat_tasks.cleanup_expired_access',
-#         'schedule': crontab(hour=3, minute=0),
-#     },
-#     'privat-generate-deadline-report': {
-#         'task': 'app.workers.tasks.privat_tasks.generate_deadline_report',
-#         'schedule': crontab(hour=7, minute=0, day_of_week=1),  # Monday at 07:00
-#     },
-#     'privat-cleanup-orphaned-files': {
-#         'task': 'app.workers.tasks.privat_tasks.cleanup_orphaned_privat_files',
-#         'schedule': crontab(hour=4, minute=0),  # Daily at 04:00
-#     },
-#
-#     # ENTERPRISE: Taegliche KPI-Neuberechnung
-#     'privat-daily-kpi-recalculation': {
-#         'task': 'app.workers.tasks.privat_tasks.daily_kpi_recalculation',
-#         'schedule': crontab(hour=2, minute=0),  # Daily at 02:00
-#     },
-#
-#     # ENTERPRISE: Individuelle KPI-Tasks (optional, fuer manuelle Trigger)
-#     # Diese werden normalerweise durch daily_kpi_recalculation gestartet,
-#     # koennen aber auch einzeln getriggert werden:
-#     #
-#     # calculate_property_kpis(space_id=..., property_id=...)
-#     # calculate_vehicle_tco(space_id=..., vehicle_id=...)
-#     # analyze_insurance_coverage(space_id=...)
-#     # generate_loan_amortization(space_id=..., loan_id=...)
-#     # run_finance_analytics(space_id=...)
-# }
-
 
 # =============================================================================
 # ENTERPRISE INTELLIGENCE TASKS

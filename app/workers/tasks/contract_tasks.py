@@ -40,7 +40,7 @@ logger = structlog.get_logger(__name__)
 
 
 @celery_app.task(
-    name="contracts.send_deadline_reminders",
+    name="app.workers.tasks.contract_tasks.send_contract_deadline_reminders_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -458,7 +458,7 @@ def _get_urgency(days_remaining: int) -> str:
 
 
 @celery_app.task(
-    name="contracts.check_expiring",
+    name="app.workers.tasks.contract_tasks.check_expiring_contracts_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -577,7 +577,7 @@ def check_expiring_contracts_task(
 
 
 @celery_app.task(
-    name="contracts.auto_renew",
+    name="app.workers.tasks.contract_tasks.auto_renew_contracts_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -714,7 +714,7 @@ def _add_months(d: date, months: int) -> date:
 
 
 @celery_app.task(
-    name="contracts.generate_weekly_report",
+    name="app.workers.tasks.contract_tasks.generate_contract_report_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -861,7 +861,7 @@ def generate_contract_report_task(self) -> Dict[str, object]:
 
 
 @celery_app.task(
-    name="contracts.check_renewal_option_expiry",
+    name="app.workers.tasks.contract_tasks.check_renewal_option_expiry_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -940,7 +940,7 @@ def check_renewal_option_expiry_task(self) -> Dict[str, object]:
 
 
 @celery_app.task(
-    name="contracts.check_overdue_milestones",
+    name="app.workers.tasks.contract_tasks.check_overdue_milestones_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -1058,7 +1058,7 @@ def check_overdue_milestones_task(self) -> Dict[str, object]:
 
 
 @celery_app.task(
-    name="contracts.check_renewal_deadlines",
+    name="app.workers.tasks.contract_tasks.check_contract_renewal_deadlines_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -1109,7 +1109,7 @@ def check_contract_renewal_deadlines_task(
 
 
 @celery_app.task(
-    name="contracts.extract_dates_from_document",
+    name="app.workers.tasks.contract_tasks.extract_contract_dates_task",
     bind=True,
     max_retries=2,
     default_retry_delay=60,
@@ -1209,7 +1209,7 @@ def extract_contract_dates_task(
 
 
 @celery_app.task(
-    name="contracts.send_renewal_reminder",
+    name="app.workers.tasks.contract_tasks.send_contract_renewal_reminder_task",
     bind=True,
     max_retries=3,
     default_retry_delay=120,
@@ -1282,7 +1282,7 @@ def send_contract_renewal_reminder_task(
 
 
 @celery_app.task(
-    name="contracts.schedule_contract_reminders",
+    name="app.workers.tasks.contract_tasks.schedule_contract_reminders_task",
     bind=True,
     max_retries=2,
     default_retry_delay=60,

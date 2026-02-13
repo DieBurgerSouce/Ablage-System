@@ -22,7 +22,6 @@ from app.workers.tasks.training_tasks import (
     update_learned_weights,
     populate_training_batch,
     generate_training_report,
-    CELERY_BEAT_TRAINING_SCHEDULE,
 )
 from app.workers.tasks.notification_tasks import (
     send_daily_digest,
@@ -36,7 +35,6 @@ from app.workers.tasks.report_tasks import (
     cleanup_old_executions,
     cleanup_expired_downloads,
     cancel_execution,
-    REPORT_BEAT_SCHEDULE,
 )
 from app.workers.tasks.entity_linking_tasks import (
     link_all_documents_task,
@@ -46,7 +44,6 @@ from app.workers.tasks.entity_linking_tasks import (
     reprocess_low_confidence_documents_task,
     on_ocr_completed_link_entity,
     on_entity_imported_check_documents,
-    ENTITY_LINKING_BEAT_SCHEDULE,
 )
 from app.workers.tasks.risk_scoring_tasks import (
     calculate_all_risk_scores_task,
@@ -61,7 +58,6 @@ from app.workers.tasks.chain_tasks import (
     check_chain_discrepancies_task,
     on_ocr_completed_auto_link,
     generate_chain_statistics_task,
-    CHAIN_BEAT_SCHEDULE,
 )
 from app.workers.tasks.predictive_tasks import (
     collect_metrics_for_prediction,
@@ -87,7 +83,6 @@ from app.workers.tasks.fraud_detection_tasks import (
     check_expired_iban_requests_task,
     train_fraud_model_task,
     generate_fraud_statistics_task,
-    FRAUD_DETECTION_BEAT_SCHEDULE,
 )
 from app.workers.tasks.document_tasks import (
     document_bulk_export_task,
@@ -97,7 +92,6 @@ from app.workers.tasks.einvoice_tasks import (
     zugferd_batch_convert_task,
     zugferd_embed_task,
     einvoice_validate_task,
-    EINVOICE_BEAT_SCHEDULE,
 )
 from app.workers.tasks.banking_psd2_tasks import (
     sync_all_bank_accounts,
@@ -110,7 +104,6 @@ from app.workers.tasks.banking_psd2_tasks import (
     check_payment_status,
     update_connection_health,
     cleanup_old_sync_logs,
-    PSD2_BANKING_BEAT_SCHEDULE,
 )
 from app.workers.tasks.fx_rate_tasks import (
     fetch_ecb_rates_daily,
@@ -178,7 +171,6 @@ __all__ = [
     "update_learned_weights",
     "populate_training_batch",
     "generate_training_report",
-    "CELERY_BEAT_TRAINING_SCHEDULE",
     # Notification tasks
     "send_daily_digest",
     "send_weekly_digest",
@@ -190,7 +182,6 @@ __all__ = [
     "cleanup_old_executions",
     "cleanup_expired_downloads",
     "cancel_execution",
-    "REPORT_BEAT_SCHEDULE",
     # Entity Linking tasks
     "link_all_documents_task",
     "link_single_document_task",
@@ -199,7 +190,6 @@ __all__ = [
     "reprocess_low_confidence_documents_task",
     "on_ocr_completed_link_entity",
     "on_entity_imported_check_documents",
-    "ENTITY_LINKING_BEAT_SCHEDULE",
     # Risk Scoring tasks
     "calculate_all_risk_scores_task",
     "calculate_single_risk_score_task",
@@ -212,7 +202,6 @@ __all__ = [
     "check_chain_discrepancies_task",
     "on_ocr_completed_auto_link",
     "generate_chain_statistics_task",
-    "CHAIN_BEAT_SCHEDULE",
     # Predictive Maintenance tasks
     "collect_metrics_for_prediction",
     "run_predictions",
@@ -235,7 +224,6 @@ __all__ = [
     "check_expired_iban_requests_task",
     "train_fraud_model_task",
     "generate_fraud_statistics_task",
-    "FRAUD_DETECTION_BEAT_SCHEDULE",
     # Document tasks
     "document_bulk_export_task",
     "document_reprocess_task",
@@ -243,7 +231,6 @@ __all__ = [
     "zugferd_batch_convert_task",
     "zugferd_embed_task",
     "einvoice_validate_task",
-    "EINVOICE_BEAT_SCHEDULE",
     # PSD2/FinTS Banking tasks
     "sync_all_bank_accounts",
     "sync_single_connection",
@@ -255,7 +242,6 @@ __all__ = [
     "check_payment_status",
     "update_connection_health",
     "cleanup_old_sync_logs",
-    "PSD2_BANKING_BEAT_SCHEDULE",
     # FX Rate tasks
     "fetch_ecb_rates_daily",
     "fetch_ecb_rates_historical",

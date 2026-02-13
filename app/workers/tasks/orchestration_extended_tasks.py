@@ -67,7 +67,7 @@ def run_async(coro):
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="orchestration.check_entity_health_degradation",
+    name="app.workers.tasks.orchestration_extended_tasks.check_entity_health_degradation",
     max_retries=3,
     default_retry_delay=300,
     queue="orchestration",
@@ -161,7 +161,7 @@ def check_entity_health_degradation(
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="orchestration.apply_health_action",
+    name="app.workers.tasks.orchestration_extended_tasks.apply_health_action",
     max_retries=3,
     default_retry_delay=60,
     queue="orchestration",
@@ -253,7 +253,7 @@ def apply_health_action(
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="orchestration.detect_seasonal_patterns",
+    name="app.workers.tasks.orchestration_extended_tasks.detect_seasonal_patterns",
     max_retries=2,
     default_retry_delay=600,
     queue="maintenance",
@@ -382,7 +382,7 @@ def detect_seasonal_patterns(
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="orchestration.process_pending_investigations",
+    name="app.workers.tasks.orchestration_extended_tasks.process_pending_investigations",
     max_retries=3,
     default_retry_delay=120,
     queue="orchestration",
@@ -490,7 +490,7 @@ def process_pending_investigations(
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="orchestration.start_fraud_investigation",
+    name="app.workers.tasks.orchestration_extended_tasks.start_fraud_investigation",
     max_retries=3,
     default_retry_delay=60,
     queue="orchestration",
@@ -601,7 +601,7 @@ def start_fraud_investigation(
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="orchestration.escalate_overdue_approvals",
+    name="app.workers.tasks.orchestration_extended_tasks.escalate_overdue_approvals_extended",
     max_retries=3,
     default_retry_delay=60,
     queue="orchestration",
@@ -747,7 +747,7 @@ def escalate_overdue_approvals_extended(
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="orchestration.assign_deputy_approvers",
+    name="app.workers.tasks.orchestration_extended_tasks.assign_deputy_approvers",
     max_retries=2,
     default_retry_delay=120,
     queue="orchestration",

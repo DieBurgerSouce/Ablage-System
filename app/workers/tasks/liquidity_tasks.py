@@ -46,7 +46,7 @@ LIQUIDITY_ALERT_CODES = {
 
 
 @celery_app.task(
-    name="liquidity.check_daily",
+    name="app.workers.tasks.liquidity_tasks.check_liquidity_alerts_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -274,7 +274,7 @@ def _get_alert_title(warning_type: str, days_until: int) -> str:
 
 
 @celery_app.task(
-    name="liquidity.detect_large_outflows",
+    name="app.workers.tasks.liquidity_tasks.detect_large_outflows_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -405,7 +405,7 @@ def detect_large_outflows_task(
 
 
 @celery_app.task(
-    name="liquidity.generate_weekly_summary",
+    name="app.workers.tasks.liquidity_tasks.generate_liquidity_summary_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,

@@ -32,45 +32,12 @@ logger = structlog.get_logger(__name__)
 
 
 # =============================================================================
-# Celery Beat Schedule (zu celery_app.py hinzufuegen)
-# =============================================================================
-#
-# LEXWARE_BEAT_SCHEDULE = {
-#     "lexware.sync_customers": {
-#         "task": "lexware_sync.sync_customers",
-#         "schedule": crontab(minute="*/15"),  # Alle 15 Min
-#         "options": {"queue": "erp"},
-#     },
-#     "lexware.sync_suppliers": {
-#         "task": "lexware_sync.sync_suppliers",
-#         "schedule": crontab(minute="*/15"),  # Alle 15 Min
-#         "options": {"queue": "erp"},
-#     },
-#     "lexware.sync_invoices": {
-#         "task": "lexware_sync.sync_invoices",
-#         "schedule": crontab(minute="*/30"),  # Alle 30 Min
-#         "options": {"queue": "erp"},
-#     },
-#     "lexware.full_sync": {
-#         "task": "lexware_sync.full_sync",
-#         "schedule": crontab(hour=2, minute=0),  # Taeglich 02:00
-#         "options": {"queue": "erp"},
-#     },
-#     "lexware.process_offline_queue": {
-#         "task": "lexware_sync.process_offline_queue",
-#         "schedule": crontab(minute="*/5"),  # Alle 5 Min
-#         "options": {"queue": "erp"},
-#     },
-# }
-
-
-# =============================================================================
 # Delta-Sync Tasks
 # =============================================================================
 
 
 @shared_task(
-    name="lexware_sync.sync_customers",
+    name="app.workers.tasks.lexware_sync_tasks.sync_customers_task",
     bind=True,
     max_retries=3,
     default_retry_delay=60,
@@ -144,7 +111,7 @@ def sync_customers_task(
 
 
 @shared_task(
-    name="lexware_sync.sync_suppliers",
+    name="app.workers.tasks.lexware_sync_tasks.sync_suppliers_task",
     bind=True,
     max_retries=3,
     default_retry_delay=60,
@@ -217,7 +184,7 @@ def sync_suppliers_task(
 
 
 @shared_task(
-    name="lexware_sync.sync_invoices",
+    name="app.workers.tasks.lexware_sync_tasks.sync_invoices_task",
     bind=True,
     max_retries=3,
     default_retry_delay=60,
@@ -295,7 +262,7 @@ def sync_invoices_task(
 
 
 @shared_task(
-    name="lexware_sync.full_sync",
+    name="app.workers.tasks.lexware_sync_tasks.full_sync_task",
     bind=True,
     max_retries=1,
     default_retry_delay=300,
@@ -405,7 +372,7 @@ def full_sync_task(
 
 
 @shared_task(
-    name="lexware_sync.process_offline_queue",
+    name="app.workers.tasks.lexware_sync_tasks.process_offline_queue_task",
     bind=True,
     max_retries=1,
     queue="erp",
@@ -453,7 +420,7 @@ def process_offline_queue_task(self) -> Dict[str, Any]:
 
 
 @shared_task(
-    name="lexware_sync.handle_webhook",
+    name="app.workers.tasks.lexware_sync_tasks.handle_webhook_task",
     bind=True,
     max_retries=3,
     default_retry_delay=30,
@@ -549,7 +516,7 @@ def handle_webhook_task(
 
 
 @shared_task(
-    name="lexware_sync.sync_single_customer",
+    name="app.workers.tasks.lexware_sync_tasks.sync_single_customer_task",
     bind=True,
     max_retries=3,
     default_retry_delay=30,
@@ -605,7 +572,7 @@ def sync_single_customer_task(
 
 
 @shared_task(
-    name="lexware_sync.sync_single_supplier",
+    name="app.workers.tasks.lexware_sync_tasks.sync_single_supplier_task",
     bind=True,
     max_retries=3,
     default_retry_delay=30,
@@ -661,7 +628,7 @@ def sync_single_supplier_task(
 
 
 @shared_task(
-    name="lexware_sync.update_payment_status",
+    name="app.workers.tasks.lexware_sync_tasks.update_payment_status_task",
     bind=True,
     max_retries=3,
     default_retry_delay=30,
@@ -745,7 +712,7 @@ def update_payment_status_task(
 
 
 @shared_task(
-    name="lexware_sync.push_entity_to_lexware",
+    name="app.workers.tasks.lexware_sync_tasks.push_entity_to_lexware_task",
     bind=True,
     max_retries=3,
     default_retry_delay=60,
@@ -1007,7 +974,7 @@ def sync_all_entities(
 
 
 @shared_task(
-    name="lexware_sync.health_check",
+    name="app.workers.tasks.lexware_sync_tasks.health_check_task",
     bind=True,
     max_retries=1,
     queue="erp",

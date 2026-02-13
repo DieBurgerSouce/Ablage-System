@@ -43,7 +43,7 @@ logger = structlog.get_logger(__name__)
 
 
 @celery_app.task(
-    name="fraud.scan_new_documents",
+    name="app.workers.tasks.fraud_detection_tasks.scan_new_documents_task",
     bind=True,
     max_retries=3,
     default_retry_delay=60,
@@ -156,7 +156,7 @@ def scan_new_documents_task(
 
 
 @celery_app.task(
-    name="fraud.daily_anomaly_check",
+    name="app.workers.tasks.fraud_detection_tasks.daily_anomaly_check_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -289,7 +289,7 @@ def daily_anomaly_check_task(
 
 
 @celery_app.task(
-    name="fraud.iban_verification",
+    name="app.workers.tasks.fraud_detection_tasks.iban_verification_task",
     bind=True,
     max_retries=3,
     default_retry_delay=120,
@@ -359,7 +359,7 @@ def iban_verification_task(
 
 
 @celery_app.task(
-    name="fraud.check_expired_iban_requests",
+    name="app.workers.tasks.fraud_detection_tasks.check_expired_iban_requests_task",
     bind=True,
     max_retries=2,
     default_retry_delay=180,
@@ -436,7 +436,7 @@ def check_expired_iban_requests_task(self) -> Dict[str, Any]:
 
 
 @celery_app.task(
-    name="fraud.train_model",
+    name="app.workers.tasks.fraud_detection_tasks.train_fraud_model_task",
     bind=True,
     max_retries=2,
     default_retry_delay=600,
@@ -511,7 +511,7 @@ def train_fraud_model_task(self) -> Dict[str, Any]:
 
 
 @celery_app.task(
-    name="fraud.generate_statistics",
+    name="app.workers.tasks.fraud_detection_tasks.generate_fraud_statistics_task",
     bind=True,
     max_retries=2,
     default_retry_delay=180,
@@ -614,42 +614,3 @@ def generate_fraud_statistics_task(
         raise self.retry(exc=e)
 
 
-# =============================================================================
-# Celery Beat Schedule
-# =============================================================================
-
-FRAUD_DETECTION_BEAT_SCHEDULE = {
-    "fraud-scan-new-documents-hourly": {
-        "task": "fraud.scan_new_documents",
-        "schedule": 3600,  # Every hour
-        "kwargs": {"hours_back": 1},
-    },
-    "fraud-daily-anomaly-check": {
-        "task": "fraud.daily_anomaly_check",
-        "schedule": {
-            "hour": 3,
-            "minute": 0,
-        },  # Daily at 03:00
-        "kwargs": {"days_back": 1},
-    },
-    "fraud-check-expired-iban-requests": {
-        "task": "fraud.check_expired_iban_requests",
-        "schedule": 43200,  # Every 12 hours
-    },
-    "fraud-train-model-weekly": {
-        "task": "fraud.train_model",
-        "schedule": {
-            "day_of_week": 0,  # Sunday
-            "hour": 4,
-            "minute": 0,
-        },
-    },
-    "fraud-generate-statistics-daily": {
-        "task": "fraud.generate_statistics",
-        "schedule": {
-            "hour": 5,
-            "minute": 30,
-        },  # Daily at 05:30
-        "kwargs": {"days": 30},
-    },
-}

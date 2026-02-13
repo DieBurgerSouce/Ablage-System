@@ -708,9 +708,9 @@ async def _generate_compliance_report_async() -> Dict[str, Any]:
             )
             report["breaches"] = {"note": "Table not yet created"}
 
-    # GDPR Manager Status
+    # GDPR Manager Status (async)
     gdpr_manager = get_gdpr_manager()
-    report["retention"] = gdpr_manager.check_retention_compliance()
+    report["retention"] = await gdpr_manager.check_retention_compliance_async(db)
 
     logger.info("compliance_report_generated")
 

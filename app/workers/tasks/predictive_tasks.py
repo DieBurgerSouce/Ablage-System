@@ -486,7 +486,7 @@ def _collect_ocr_quality_metrics() -> Dict[str, Dict[str, Optional[float]]]:
 
 @celery_app.task(
     base=CPUTask,
-    name="predictive.train_payment_model",
+    name="app.workers.tasks.predictive_tasks.train_payment_model",
     queue="maintenance",
     priority=3,
     ignore_result=True,
@@ -587,7 +587,7 @@ def train_payment_model() -> MetricDict:
 
 @celery_app.task(
     base=CPUTask,
-    name="predictive.batch_predict_payments",
+    name="app.workers.tasks.predictive_tasks.batch_predict_payments",
     queue="metadata",
     priority=2,
     ignore_result=True,
@@ -712,7 +712,7 @@ def batch_predict_payments(company_id: Optional[str] = None) -> MetricDict:
 
 @celery_app.task(
     base=CPUTask,
-    name="predictive.update_cash_flow_forecast",
+    name="app.workers.tasks.predictive_tasks.update_cash_flow_forecast",
     queue="metadata",
     priority=2,
     ignore_result=True,
@@ -806,7 +806,7 @@ def update_cash_flow_forecast(company_id: str, days_ahead: int = 30) -> MetricDi
 
 @celery_app.task(
     base=CPUTask,
-    name="predictive.evaluate_payment_model",
+    name="app.workers.tasks.predictive_tasks.evaluate_payment_model",
     queue="maintenance",
     priority=3,
     ignore_result=True,
@@ -928,7 +928,7 @@ def evaluate_payment_model() -> MetricDict:
 
 @celery_app.task(
     base=CPUTask,
-    name="predictive.skonto_impact_analysis",
+    name="app.workers.tasks.predictive_tasks.skonto_impact_analysis",
     queue="metadata",
     priority=2,
     ignore_result=True,

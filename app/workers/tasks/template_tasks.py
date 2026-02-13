@@ -637,37 +637,3 @@ def collect_template_stats(self) -> Dict[str, Any]:
         raise self.retry(exc=e)
 
 
-# =============================================================================
-# Celery Beat Schedule (wird in celery_app.py registriert)
-# =============================================================================
-
-TEMPLATE_BEAT_SCHEDULE = {
-    # Temp-Files taeglich um 02:00 aufraumen
-    "cleanup-template-temp-files": {
-        "task": "app.workers.tasks.template_tasks.cleanup_temp_files",
-        "schedule": {
-            "hour": 2,
-            "minute": 0,
-        },
-        "options": {"queue": "maintenance"},
-    },
-    # Alte Versionen woechentlich aufraumen (Sonntag 03:00)
-    "cleanup-old-template-versions": {
-        "task": "app.workers.tasks.template_tasks.cleanup_old_template_versions",
-        "schedule": {
-            "day_of_week": 0,  # Sonntag
-            "hour": 3,
-            "minute": 0,
-        },
-        "options": {"queue": "maintenance"},
-    },
-    # Statistiken taeglich um 04:00 sammeln
-    "collect-template-stats": {
-        "task": "app.workers.tasks.template_tasks.collect_template_stats",
-        "schedule": {
-            "hour": 4,
-            "minute": 0,
-        },
-        "options": {"queue": "metadata"},
-    },
-}

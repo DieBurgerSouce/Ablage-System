@@ -34,7 +34,7 @@ logger = structlog.get_logger(__name__)
 
 
 @celery_app.task(
-    name="contracts_v2.extract_dates_from_document",
+    name="app.workers.tasks.contract_v2_tasks.extract_contract_dates_v2_task",
     bind=True,
     max_retries=3,
     default_retry_delay=60,
@@ -184,7 +184,7 @@ def extract_contract_dates_v2_task(
 
 
 @celery_app.task(
-    name="contracts_v2.check_upcoming_deadlines",
+    name="app.workers.tasks.contract_v2_tasks.check_upcoming_deadlines_v2_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -339,7 +339,7 @@ def check_upcoming_deadlines_v2_task(
 
 
 @celery_app.task(
-    name="contracts_v2.generate_ical_export",
+    name="app.workers.tasks.contract_v2_tasks.generate_ical_export_task",
     bind=True,
     max_retries=2,
     default_retry_delay=60,
@@ -416,7 +416,7 @@ def generate_ical_export_task(
 
 
 @celery_app.task(
-    name="contracts_v2.update_statistics",
+    name="app.workers.tasks.contract_v2_tasks.update_contract_statistics_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -512,7 +512,7 @@ def update_contract_statistics_task(
 
 
 @celery_app.task(
-    name="contracts_v2.check_expired_contracts",
+    name="app.workers.tasks.contract_v2_tasks.check_expired_contracts_v2_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -586,7 +586,7 @@ def check_expired_contracts_v2_task(self) -> Dict[str, Any]:
 
 
 @celery_app.task(
-    name="contracts_v2.complete_deadline",
+    name="app.workers.tasks.contract_v2_tasks.complete_contract_deadline_task",
     bind=True,
     max_retries=3,
     default_retry_delay=30,
@@ -668,7 +668,7 @@ def complete_contract_deadline_task(
 
 
 @celery_app.task(
-    name="contracts_v2.check_auto_renewals",
+    name="app.workers.tasks.contract_v2_tasks.check_auto_renewals_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -871,7 +871,7 @@ def check_auto_renewals_task(
 
 
 @celery_app.task(
-    name="contracts_v2.link_document",
+    name="app.workers.tasks.contract_v2_tasks.link_document_to_contract_task",
     bind=True,
     max_retries=2,
     default_retry_delay=30,
@@ -942,7 +942,7 @@ def link_document_to_contract_task(
 
 
 @celery_app.task(
-    name="contracts_v2.extract_clauses",
+    name="app.workers.tasks.contract_v2_tasks.extract_contract_clauses_task",
     bind=True,
     max_retries=3,
     default_retry_delay=60,
@@ -1042,7 +1042,7 @@ def extract_contract_clauses_task(
 
 
 @celery_app.task(
-    name="contracts_v2.extract_all_clauses",
+    name="app.workers.tasks.contract_v2_tasks.extract_all_contract_clauses_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -1121,7 +1121,7 @@ def extract_all_contract_clauses_task(
 
 
 @celery_app.task(
-    name="contracts_v2.compare_to_benchmark",
+    name="app.workers.tasks.contract_v2_tasks.compare_contract_to_benchmark_task",
     bind=True,
     max_retries=2,
     default_retry_delay=60,
@@ -1204,7 +1204,7 @@ def compare_contract_to_benchmark_task(
 
 
 @celery_app.task(
-    name="contracts_v2.update_benchmarks",
+    name="app.workers.tasks.contract_v2_tasks.update_contract_benchmarks_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -1260,7 +1260,7 @@ def update_contract_benchmarks_task(
 
 
 @celery_app.task(
-    name="contracts_v2.process_scheduled_cancellations",
+    name="app.workers.tasks.contract_v2_tasks.process_scheduled_cancellations_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -1340,7 +1340,7 @@ def process_scheduled_cancellations_task(self) -> Dict[str, Any]:
 
 
 @celery_app.task(
-    name="contracts_v2.check_cancellation_deadlines",
+    name="app.workers.tasks.contract_v2_tasks.check_cancellation_deadlines_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -1452,7 +1452,7 @@ def check_cancellation_deadlines_task(
 
 
 @celery_app.task(
-    name="contracts_v2.analyze_contract_costs",
+    name="app.workers.tasks.contract_v2_tasks.analyze_contract_costs_task",
     bind=True,
     max_retries=2,
     default_retry_delay=60,
@@ -1524,7 +1524,7 @@ def analyze_contract_costs_task(
 
 
 @celery_app.task(
-    name="contracts_v2.generate_cost_report",
+    name="app.workers.tasks.contract_v2_tasks.generate_contract_cost_report_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,

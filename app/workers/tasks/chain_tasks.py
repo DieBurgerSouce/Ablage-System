@@ -30,7 +30,7 @@ logger = structlog.get_logger(__name__)
 
 
 @celery_app.task(
-    name="chains.auto_link_document",
+    name="app.workers.tasks.chain_tasks.auto_link_document_task",
     bind=True,
     max_retries=3,
     default_retry_delay=30,
@@ -196,7 +196,7 @@ def auto_link_document_task(
 
 
 @celery_app.task(
-    name="chains.auto_link_all_documents",
+    name="app.workers.tasks.chain_tasks.auto_link_all_documents_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -338,7 +338,7 @@ def auto_link_all_documents_task(
 
 
 @celery_app.task(
-    name="chains.check_chain_discrepancies",
+    name="app.workers.tasks.chain_tasks.check_chain_discrepancies_task",
     bind=True,
     max_retries=2,
 )
@@ -411,7 +411,7 @@ def check_chain_discrepancies_task(
 # =============================================================================
 
 
-@celery_app.task(name="chains.on_ocr_completed")
+@celery_app.task(name="app.workers.tasks.chain_tasks.on_ocr_completed_auto_link")
 def on_ocr_completed_auto_link(document_id: str, company_id: str) -> Dict[str, Any]:
     """Handler fuer OCR-Completion Events.
 
@@ -438,7 +438,7 @@ def on_ocr_completed_auto_link(document_id: str, company_id: str) -> Dict[str, A
 # =============================================================================
 
 
-@celery_app.task(name="chains.generate_statistics")
+@celery_app.task(name="app.workers.tasks.chain_tasks.generate_chain_statistics_task")
 def generate_chain_statistics_task(company_id: Optional[str] = None) -> Dict[str, Any]:
     """Generiert Statistiken ueber Document Chains.
 
@@ -748,32 +748,3 @@ def validate_document_chains(
         raise self.retry(exc=e)
 
 
-# =============================================================================
-# Celery Beat Schedule
-# =============================================================================
-
-CHAIN_BEAT_SCHEDULE = {
-    # Batch Auto-Linking taeglich um 02:30
-    "auto-link-documents-to-chains": {
-        "task": "chains.auto_link_all_documents",
-        "schedule": {
-            "hour": 2,
-            "minute": 30,
-        },
-        "kwargs": {
-            "min_confidence": 0.85,
-            "batch_size": 200,
-        },
-        "options": {"queue": "default"},
-    },
-    # Chain-Statistiken woechentlich am Montag um 01:30
-    "generate-chain-statistics": {
-        "task": "chains.generate_statistics",
-        "schedule": {
-            "day_of_week": 1,  # Montag
-            "hour": 1,
-            "minute": 30,
-        },
-        "options": {"queue": "default"},
-    },
-}

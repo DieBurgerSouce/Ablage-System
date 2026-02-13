@@ -28,7 +28,7 @@ logger = structlog.get_logger(__name__)
 
 @shared_task(
     bind=True,
-    name="workflow.execute_async",
+    name="app.workers.tasks.workflow_tasks.execute_workflow_async",
     max_retries=3,
     default_retry_delay=60,
     autoretry_for=(Exception,),
@@ -97,7 +97,7 @@ def execute_workflow_async(
 
 @shared_task(
     bind=True,
-    name="workflow.execute_step",
+    name="app.workers.tasks.workflow_tasks.execute_workflow_step",
     max_retries=3,
     default_retry_delay=30,
     acks_late=True,
@@ -165,7 +165,7 @@ def execute_workflow_step(
 
 @shared_task(
     bind=True,
-    name="workflow.check_scheduled",
+    name="app.workers.tasks.workflow_tasks.check_scheduled_workflows",
     acks_late=True,
 )
 def check_scheduled_workflows(self) -> Dict[str, Any]:
@@ -219,7 +219,7 @@ def check_scheduled_workflows(self) -> Dict[str, Any]:
 
 @shared_task(
     bind=True,
-    name="workflow.cleanup_old_executions",
+    name="app.workers.tasks.workflow_tasks.cleanup_old_workflow_executions",
     acks_late=True,
 )
 def cleanup_old_workflow_executions(
@@ -301,7 +301,7 @@ def cleanup_old_workflow_executions(
 
 @shared_task(
     bind=True,
-    name="workflow.process_delayed_step",
+    name="app.workers.tasks.workflow_tasks.process_delayed_step",
     acks_late=True,
 )
 def process_delayed_step(
@@ -372,7 +372,7 @@ def process_delayed_step(
 
 @shared_task(
     bind=True,
-    name="workflow.generate_report",
+    name="app.workers.tasks.workflow_tasks.generate_workflow_report",
     acks_late=True,
 )
 def generate_workflow_report(self) -> Dict[str, Any]:
@@ -519,7 +519,7 @@ def generate_workflow_report(self) -> Dict[str, Any]:
 
 @shared_task(
     bind=True,
-    name="workflow.on_document_created",
+    name="app.workers.tasks.workflow_tasks.on_document_created",
     acks_late=True,
 )
 def on_document_created(
@@ -578,7 +578,7 @@ def on_document_created(
 
 @shared_task(
     bind=True,
-    name="workflow.on_document_processed",
+    name="app.workers.tasks.workflow_tasks.on_document_processed",
     acks_late=True,
 )
 def on_document_processed(
@@ -640,7 +640,7 @@ def on_document_processed(
 
 @shared_task(
     bind=True,
-    name="workflow.on_document_failed",
+    name="app.workers.tasks.workflow_tasks.on_document_failed",
     acks_late=True,
 )
 def on_document_failed(

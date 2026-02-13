@@ -38,7 +38,7 @@ logger = structlog.get_logger(__name__)
 
 
 @celery_app.task(
-    name="nlq.cleanup_old_logs",
+    name="app.workers.tasks.nlq_tasks.cleanup_old_logs",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -190,7 +190,7 @@ def cleanup_old_logs(
 
 
 @celery_app.task(
-    name="nlq.warm_cache",
+    name="app.workers.tasks.nlq_tasks.warm_cache",
     bind=True,
     max_retries=2,
     default_retry_delay=180,
@@ -320,7 +320,7 @@ def warm_cache(
 
 
 @celery_app.task(
-    name="nlq.analyze_patterns",
+    name="app.workers.tasks.nlq_tasks.analyze_query_patterns",
     bind=True,
     max_retries=2,
     default_retry_delay=180,
@@ -460,7 +460,7 @@ def analyze_query_patterns(
 
 
 @celery_app.task(
-    name="nlq.retry_failed_queries",
+    name="app.workers.tasks.nlq_tasks.retry_failed_queries",
     bind=True,
     max_retries=1,
     default_retry_delay=300,

@@ -23,7 +23,7 @@ logger = structlog.get_logger(__name__)
 
 
 @shared_task(
-    name="hygiene.run_full_scan",
+    name="app.workers.tasks.hygiene_tasks.run_full_hygiene_scan",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -131,7 +131,7 @@ async def _async_run_full_scan(
 
 
 @shared_task(
-    name="hygiene.check_entity_after_document",
+    name="app.workers.tasks.hygiene_tasks.check_entity_after_document",
     bind=True,
     max_retries=3,
     default_retry_delay=60,
@@ -233,7 +233,7 @@ async def _async_check_entity_document(
 
 
 @shared_task(
-    name="hygiene.auto_apply_corrections",
+    name="app.workers.tasks.hygiene_tasks.auto_apply_corrections",
     bind=True,
     max_retries=1,
     default_retry_delay=60,
@@ -358,7 +358,7 @@ async def _async_auto_apply_corrections(
 
 
 @shared_task(
-    name="hygiene.check_inactive_entities",
+    name="app.workers.tasks.hygiene_tasks.check_inactive_entities",
     bind=True,
     max_retries=2,
     default_retry_delay=300,

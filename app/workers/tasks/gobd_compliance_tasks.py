@@ -32,7 +32,7 @@ logger = structlog.get_logger(__name__)
 
 
 @celery_app.task(
-    name="gobd.verify_audit_chain",
+    name="app.workers.tasks.gobd_compliance_tasks.verify_audit_chain_task",
     bind=True,
     max_retries=3,
     default_retry_delay=300,
@@ -152,7 +152,7 @@ async def _verify_audit_chains(
 
 
 @celery_app.task(
-    name="gobd.batch_integrity_check",
+    name="app.workers.tasks.gobd_compliance_tasks.batch_integrity_check_task",
     bind=True,
     max_retries=3,
     default_retry_delay=600,
@@ -318,7 +318,7 @@ async def _batch_integrity_check(
 
 
 @celery_app.task(
-    name="gobd.generate_chain_statistics",
+    name="app.workers.tasks.gobd_compliance_tasks.generate_chain_statistics_task",
     bind=True,
     max_retries=2,
 )
@@ -358,7 +358,7 @@ def generate_chain_statistics_task(self, company_id: str) -> dict:
 
 
 @celery_app.task(
-    name="gobd.check_retention_warnings",
+    name="app.workers.tasks.gobd_compliance_tasks.check_retention_warnings_task",
     bind=True,
     max_retries=3,
 )
@@ -458,7 +458,7 @@ async def _check_retention_warnings(db) -> dict:
 
 
 @celery_app.task(
-    name="gdpr.check_breach_deadlines",
+    name="app.workers.tasks.gobd_compliance_tasks.check_breach_deadlines_task",
     bind=True,
     max_retries=3,
     default_retry_delay=60,
@@ -562,7 +562,7 @@ async def _send_breach_deadline_notification(db, alert: dict) -> None:
 
 
 @celery_app.task(
-    name="gdpr.daily_breach_report",
+    name="app.workers.tasks.gobd_compliance_tasks.daily_breach_report_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -642,35 +642,3 @@ async def _generate_daily_breach_report(db) -> dict:
 
     return report
 
-
-# =============================================================================
-# Celery Beat Schedule (zur Referenz)
-# =============================================================================
-# Diese Tasks sollten zum Beat-Schedule in celery_app.py hinzugefuegt werden:
-#
-# GOBD_BEAT_SCHEDULE = {
-#     'gobd-audit-chain-weekly': {
-#         'task': 'gobd.verify_audit_chain',
-#         'schedule': crontab(day_of_week=0, hour=4, minute=0),  # Sonntag 04:00
-#     },
-#     'gobd-batch-integrity-daily': {
-#         'task': 'gobd.batch_integrity_check',
-#         'schedule': crontab(hour=3, minute=30),  # Taeglich 03:30
-#         'kwargs': {'batch_size': 100},
-#     },
-#     'gobd-retention-warnings-daily': {
-#         'task': 'gobd.check_retention_warnings',
-#         'schedule': crontab(hour=9, minute=0),  # Taeglich 09:00
-#     },
-# }
-#
-# GDPR_BREACH_BEAT_SCHEDULE = {
-#     'gdpr-breach-deadlines-hourly': {
-#         'task': 'gdpr.check_breach_deadlines',
-#         'schedule': crontab(minute=0),  # Jede volle Stunde
-#     },
-#     'gdpr-breach-report-daily': {
-#         'task': 'gdpr.daily_breach_report',
-#         'schedule': crontab(hour=8, minute=0),  # Taeglich 08:00
-#     },
-# }

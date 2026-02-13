@@ -37,7 +37,7 @@ logger = structlog.get_logger(__name__)
 
 @shared_task(
     bind=True,
-    name="sla.check_all",
+    name="app.workers.tasks.sla_tasks.check_all_slas",
     max_retries=3,
     default_retry_delay=60,
     acks_late=True,
@@ -103,7 +103,7 @@ def check_all_slas(
 
 @shared_task(
     bind=True,
-    name="sla.send_warning",
+    name="app.workers.tasks.sla_tasks.send_sla_warning",
     max_retries=3,
     default_retry_delay=30,
     acks_late=True,
@@ -217,7 +217,7 @@ def send_sla_warning(
 
 @shared_task(
     bind=True,
-    name="sla.escalate",
+    name="app.workers.tasks.sla_tasks.escalate_overdue_workflows",
     max_retries=3,
     default_retry_delay=60,
     acks_late=True,
@@ -327,7 +327,7 @@ def escalate_overdue_workflows(
 
 @shared_task(
     bind=True,
-    name="sla.generate_report",
+    name="app.workers.tasks.sla_tasks.generate_sla_report",
     max_retries=3,
     default_retry_delay=300,
     acks_late=True,
@@ -516,22 +516,3 @@ Ablage-System SLA Monitoring
         )
 
 
-# =============================================================================
-# Celery Beat Schedule (wird in celery_config registriert)
-# =============================================================================
-
-SLA_BEAT_SCHEDULE = {
-    "sla-check-all-15min": {
-        "task": "sla.check_all",
-        "schedule": 900.0,  # Alle 15 Minuten
-        "options": {"queue": "metadata"},
-    },
-    "sla-generate-report-daily": {
-        "task": "sla.generate_report",
-        "schedule": {
-            "hour": 7,
-            "minute": 0,
-        },
-        "options": {"queue": "maintenance"},
-    },
-}

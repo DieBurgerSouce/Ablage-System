@@ -40,7 +40,7 @@ class OCRRouterTrainingTask(Task):
 
 
 @celery_app.task(
-    name="ocr_router.collect_and_train",
+    name="app.workers.tasks.ocr_router_training_tasks.collect_and_train_task",
     base=OCRRouterTrainingTask,
     bind=True,
     max_retries=3,
@@ -123,7 +123,7 @@ def collect_and_train_task(
 
 
 @celery_app.task(
-    name="ocr_router.evaluate_ab_test",
+    name="app.workers.tasks.ocr_router_training_tasks.evaluate_ab_test_task",
     base=OCRRouterTrainingTask,
     bind=True,
     max_retries=3,
@@ -197,7 +197,7 @@ def evaluate_ab_test_task(
         }
 
 
-@celery_app.task(name="ocr_router.check_all_ab_tests")
+@celery_app.task(name="app.workers.tasks.ocr_router_training_tasks.check_all_ab_tests_task")
 def check_all_ab_tests_task() -> Dict[str, Any]:
     """
     Prüft alle laufenden A/B-Tests und wendet Gewinner an.
@@ -242,7 +242,7 @@ def check_all_ab_tests_task() -> Dict[str, Any]:
         }
 
 
-@celery_app.task(name="ocr_router.generate_synthetic_data")
+@celery_app.task(name="app.workers.tasks.ocr_router_training_tasks.generate_synthetic_data_task")
 def generate_synthetic_data_task(num_samples: int = 1000) -> Dict[str, Any]:
     """
     Generiert synthetische Trainingsdaten für Bootstrapping.

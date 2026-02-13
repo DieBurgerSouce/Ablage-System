@@ -39,7 +39,7 @@ logger = structlog.get_logger(__name__)
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="documents.bulk_export",
+    name="app.workers.tasks.document_tasks.document_bulk_export_task",
     queue="default",
     max_retries=2,
     soft_time_limit=1800,  # 30 min
@@ -473,7 +473,7 @@ async def _export_as_merged_pdf(
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="documents.reprocess",
+    name="app.workers.tasks.document_tasks.document_reprocess_task",
     queue="default",
     max_retries=1,
 )
@@ -505,10 +505,7 @@ def document_reprocess_task(
     for doc_id in document_ids:
         try:
             if reprocess_ocr:
-                process_document_task.delay(
-                    document_id=doc_id,
-                    user_id=user_id,
-                )
+                process_document_task.delay(document_id=doc_id)
 
             if reprocess_embeddings:
                 generate_document_embedding.delay(

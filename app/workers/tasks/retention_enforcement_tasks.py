@@ -34,7 +34,7 @@ logger = structlog.get_logger(__name__)
 
 
 @celery_app.task(
-    name="retention_enforcement.enforce_retention_daily_scan",
+    name="app.workers.tasks.retention_enforcement_tasks.enforce_retention_daily_scan",
     bind=True,
     acks_late=True,
     max_retries=3,
@@ -152,7 +152,7 @@ async def _daily_enforcement_scan(db: AsyncSession) -> Dict[str, Any]:
 
 
 @celery_app.task(
-    name="retention_enforcement.process_post_retention_reviews",
+    name="app.workers.tasks.retention_enforcement_tasks.process_post_retention_reviews",
     bind=True,
     acks_late=True,
     max_retries=3,
@@ -276,7 +276,7 @@ async def _process_post_retention_reviews(db: AsyncSession) -> Dict[str, Any]:
 
 
 @celery_app.task(
-    name="retention_enforcement.generate_retention_compliance_report",
+    name="app.workers.tasks.retention_enforcement_tasks.generate_retention_compliance_report",
     bind=True,
     acks_late=True,
     max_retries=3,
@@ -392,23 +392,3 @@ async def _create_enforcement_audit_log(
     )
     db.add(audit_log)
 
-
-# =============================================================================
-# Celery Beat Schedule (zur Referenz)
-# =============================================================================
-# Diese Tasks werden in celery_app.py zum Beat-Schedule hinzugefuegt:
-#
-# CELERYBEAT_SCHEDULE = {
-#     'retention-enforcement-daily': {
-#         'task': 'retention_enforcement.enforce_retention_daily_scan',
-#         'schedule': crontab(hour=7, minute=0),  # Taeglich 07:00
-#     },
-#     'post-retention-reviews': {
-#         'task': 'retention_enforcement.process_post_retention_reviews',
-#         'schedule': crontab(hour=9, minute=0),  # Taeglich 09:00
-#     },
-#     'compliance-report-weekly': {
-#         'task': 'retention_enforcement.generate_retention_compliance_report',
-#         'schedule': crontab(day_of_week=1, hour=8, minute=0),  # Montag 08:00
-#     },
-# }

@@ -26,7 +26,7 @@ logger = structlog.get_logger(__name__)
 
 
 @celery_app.task(
-    name="calendar.sync_all",
+    name="app.workers.tasks.calendar_sync_task.sync_all_calendars",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -128,7 +128,7 @@ def sync_all_calendars(self) -> Dict[str, object]:
 
 
 @celery_app.task(
-    name="calendar.sync_single",
+    name="app.workers.tasks.calendar_sync_task.sync_single_calendar",
     bind=True,
     max_retries=2,
     default_retry_delay=60,
@@ -205,14 +205,3 @@ def sync_single_calendar(self, company_id: str) -> Dict[str, object]:
         raise self.retry(exc=e)
 
 
-# =============================================================================
-# Celery Beat Schedule
-# =============================================================================
-
-CALENDAR_SYNC_BEAT_SCHEDULE = {
-    "calendar-sync-all-hourly": {
-        "task": "calendar.sync_all",
-        "schedule": 3600.0,  # 60 Minuten
-        "options": {"queue": "default"},
-    },
-}

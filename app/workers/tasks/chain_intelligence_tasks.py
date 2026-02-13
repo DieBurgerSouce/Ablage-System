@@ -29,7 +29,7 @@ logger = structlog.get_logger(__name__)
 
 
 @celery_app.task(
-    name="chain_intelligence.scan_gaps",
+    name="app.workers.tasks.chain_intelligence_tasks.scan_chain_gaps_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -139,7 +139,7 @@ def scan_chain_gaps_task(
 
 
 @celery_app.task(
-    name="chain_intelligence.detect_orphans",
+    name="app.workers.tasks.chain_intelligence_tasks.detect_orphan_documents_task",
     bind=True,
     max_retries=2,
     default_retry_delay=600,
@@ -229,28 +229,3 @@ def detect_orphan_documents_task(
         raise self.retry(exc=e)
 
 
-# =============================================================================
-# Celery Beat Schedule
-# =============================================================================
-
-CHAIN_INTELLIGENCE_BEAT_SCHEDULE = {
-    # Naechtlicher Gap-Scan um 03:30
-    "chain-intelligence-gap-scan": {
-        "task": "chain_intelligence.scan_gaps",
-        "schedule": {
-            "hour": 3,
-            "minute": 30,
-        },
-        "options": {"queue": "default"},
-    },
-    # Woechentliche Orphan-Erkennung Sonntag 04:00
-    "chain-intelligence-orphan-detection": {
-        "task": "chain_intelligence.detect_orphans",
-        "schedule": {
-            "day_of_week": 0,  # Sonntag
-            "hour": 4,
-            "minute": 0,
-        },
-        "options": {"queue": "default"},
-    },
-}

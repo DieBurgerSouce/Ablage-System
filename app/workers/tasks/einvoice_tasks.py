@@ -36,7 +36,7 @@ logger = structlog.get_logger(__name__)
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="einvoice.batch_convert",
+    name="app.workers.tasks.einvoice_tasks.zugferd_batch_convert_task",
     queue="default",
     max_retries=2,
     soft_time_limit=1800,  # 30 min
@@ -424,7 +424,7 @@ def _generate_zugferd_xml(doc: Document, profile) -> Optional[str]:
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="einvoice.embed_xml",
+    name="app.workers.tasks.einvoice_tasks.zugferd_embed_task",
     queue="default",
     max_retries=2,
 )
@@ -537,7 +537,7 @@ def zugferd_embed_task(
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="einvoice.validate",
+    name="app.workers.tasks.einvoice_tasks.einvoice_validate_task",
     queue="default",
     max_retries=1,
 )
@@ -626,7 +626,7 @@ def einvoice_validate_task(
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="einvoice.send_peppol",
+    name="app.workers.tasks.einvoice_tasks.einvoice_send_peppol_task",
     queue="default",
     max_retries=3,
     soft_time_limit=120,
@@ -689,7 +689,7 @@ def einvoice_send_peppol_task(
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="einvoice.check_transmission_status",
+    name="app.workers.tasks.einvoice_tasks.einvoice_check_transmission_status_task",
     queue="default",
     max_retries=1,
 )
@@ -762,7 +762,7 @@ def einvoice_check_transmission_status_task(
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="einvoice.send_pending",
+    name="app.workers.tasks.einvoice_tasks.einvoice_send_pending_task",
     queue="default",
 )
 def einvoice_send_pending_task(self) -> dict:
@@ -828,7 +828,7 @@ def einvoice_send_pending_task(self) -> dict:
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="einvoice.validate_incoming",
+    name="app.workers.tasks.einvoice_tasks.einvoice_validate_incoming_task",
     queue="default",
 )
 def einvoice_validate_incoming_task(
@@ -909,30 +909,12 @@ def einvoice_validate_incoming_task(
         return {"success": False, "error": safe_error_detail(e, "Validierung")}
 
 
-# =============================================================================
-# BEAT SCHEDULE
-# =============================================================================
-
-EINVOICE_BEAT_SCHEDULE = {
-    # Ausstehende E-Rechnungen senden (alle 15 Minuten)
-    "einvoice-send-pending": {
-        "task": "einvoice.send_pending",
-        "schedule": 900,  # 15 Minuten
-        "options": {"queue": "default"},
-    },
-    # Transmission Status pruefen (stuendlich)
-    "einvoice-check-transmission-status": {
-        "task": "einvoice.check_all_transmissions",
-        "schedule": 3600,  # 1 Stunde
-        "options": {"queue": "default"},
-    },
-}
 
 
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="einvoice.check_all_transmissions",
+    name="app.workers.tasks.einvoice_tasks.einvoice_check_all_transmissions_task",
     queue="default",
 )
 def einvoice_check_all_transmissions_task(self) -> dict:

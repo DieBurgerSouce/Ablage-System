@@ -135,7 +135,7 @@ async def _complete_job(
 
 @celery_app.task(
     bind=True,
-    name="export.batch_export",
+    name="app.workers.tasks.export_tasks.batch_export_task",
     queue="default",
     max_retries=3,
     default_retry_delay=60,
@@ -364,7 +364,7 @@ def batch_export_task(
 
 
 @celery_app.task(
-    name="export.check_scheduled_exports",
+    name="app.workers.tasks.export_tasks.check_scheduled_exports",
     queue="default",
 )
 def check_scheduled_exports() -> Dict:
@@ -475,7 +475,7 @@ def check_scheduled_exports() -> Dict:
 
 @celery_app.task(
     bind=True,
-    name="export.run_scheduled_export",
+    name="app.workers.tasks.export_tasks.run_scheduled_export_task",
     queue="default",
     max_retries=2,
 )

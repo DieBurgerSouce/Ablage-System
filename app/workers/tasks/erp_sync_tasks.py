@@ -187,7 +187,7 @@ async def update_connection_sync_status(
 
 
 @celery_app.task(
-    name="erp.sync_connection",
+    name="app.workers.tasks.erp_sync_tasks.sync_connection",
     bind=True,
     max_retries=3,
     default_retry_delay=60,
@@ -314,7 +314,7 @@ def sync_connection(
 
 
 @celery_app.task(
-    name="erp.sync_entity",
+    name="app.workers.tasks.erp_sync_tasks.sync_entity",
     bind=True,
     max_retries=3,
     default_retry_delay=30,
@@ -380,7 +380,7 @@ def sync_entity(
     return asyncio.get_event_loop().run_until_complete(_sync())
 
 
-@celery_app.task(name="erp.scheduled_sync_all")
+@celery_app.task(name="app.workers.tasks.erp_sync_tasks.scheduled_sync_all")
 def scheduled_sync_all() -> Dict[str, Any]:
     """Periodischer Task: Synchronisiert alle faelligen Verbindungen.
 
@@ -429,7 +429,7 @@ def scheduled_sync_all() -> Dict[str, Any]:
     return asyncio.get_event_loop().run_until_complete(_sync_all())
 
 
-@celery_app.task(name="erp.test_connection")
+@celery_app.task(name="app.workers.tasks.erp_sync_tasks.test_connection")
 def test_connection(connection_id: str) -> Dict[str, Any]:
     """Testet eine ERP-Verbindung.
 
@@ -486,7 +486,7 @@ def test_connection(connection_id: str) -> Dict[str, Any]:
 # =============================================================================
 
 
-@celery_app.task(name="erp.notify_conflicts")
+@celery_app.task(name="app.workers.tasks.erp_sync_tasks.notify_conflicts")
 def notify_conflicts() -> Dict[str, Any]:
     """Benachrichtigt ueber offene Konflikte.
 
@@ -577,7 +577,7 @@ def notify_conflicts() -> Dict[str, Any]:
     return asyncio.get_event_loop().run_until_complete(_notify())
 
 
-@celery_app.task(name="erp.cleanup_old_history")
+@celery_app.task(name="app.workers.tasks.erp_sync_tasks.cleanup_old_history")
 def cleanup_old_history(days: int = 90) -> Dict[str, Any]:
     """Bereinigt alte Sync-Historie.
 
@@ -618,25 +618,3 @@ def cleanup_old_history(days: int = 90) -> Dict[str, Any]:
     return asyncio.get_event_loop().run_until_complete(_cleanup())
 
 
-# =============================================================================
-# Celery Beat Schedule (to be added to celery_app.py)
-# =============================================================================
-
-ERP_BEAT_SCHEDULE = {
-    "erp-scheduled-sync": {
-        "task": "erp.scheduled_sync_all",
-        "schedule": 900.0,  # Alle 15 Minuten
-        "options": {"queue": "erp"},
-    },
-    "erp-notify-conflicts": {
-        "task": "erp.notify_conflicts",
-        "schedule": 3600.0,  # Stuendlich
-        "options": {"queue": "erp"},
-    },
-    "erp-cleanup-history": {
-        "task": "erp.cleanup_old_history",
-        "schedule": 86400.0,  # Taeglich
-        "args": (90,),
-        "options": {"queue": "erp"},
-    },
-}

@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 @celery_app.task(
-    name="mlops.check_retraining_threshold",
+    name="app.workers.tasks.mlops_tasks.check_retraining_threshold",
     bind=True,
     max_retries=3,
     default_retry_delay=300,
@@ -118,7 +118,7 @@ def check_retraining_threshold(
 
 
 @celery_app.task(
-    name="mlops.run_retraining",
+    name="app.workers.tasks.mlops_tasks.run_retraining",
     bind=True,
     max_retries=2,
     default_retry_delay=600,
@@ -269,7 +269,7 @@ def run_retraining(
 
 
 @celery_app.task(
-    name="mlops.evaluate_model",
+    name="app.workers.tasks.mlops_tasks.evaluate_model",
     bind=True,
     max_retries=3,
     default_retry_delay=300,
@@ -377,7 +377,7 @@ def evaluate_model(
 
 
 @celery_app.task(
-    name="mlops.rollback_if_degraded",
+    name="app.workers.tasks.mlops_tasks.rollback_if_degraded",
     bind=True,
     max_retries=3,
     default_retry_delay=60,
@@ -455,7 +455,7 @@ def rollback_if_degraded(
 
 
 @celery_app.task(
-    name="mlops.cleanup_old_versions",
+    name="app.workers.tasks.mlops_tasks.cleanup_old_versions",
     bind=True,
     max_retries=3,
     default_retry_delay=300,
@@ -515,7 +515,7 @@ def cleanup_old_versions(
 
 
 @celery_app.task(
-    name="mlops.get_stats",
+    name="app.workers.tasks.mlops_tasks.get_stats",
     bind=True,
     queue="metadata",
 )

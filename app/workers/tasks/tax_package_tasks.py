@@ -23,7 +23,7 @@ logger = structlog.get_logger(__name__)
 
 
 @shared_task(
-    name="tax_packages.generate_monthly_packages",
+    name="app.workers.tasks.tax_package_tasks.generate_monthly_packages",
     bind=True,
     max_retries=2,
     default_retry_delay=3600,  # 1 Stunde
@@ -161,7 +161,7 @@ async def _async_generate_monthly_packages(
 
 
 @shared_task(
-    name="tax_packages.generate_quarterly_packages",
+    name="app.workers.tasks.tax_package_tasks.generate_quarterly_packages",
     bind=True,
     max_retries=2,
     default_retry_delay=3600,
@@ -298,7 +298,7 @@ async def _async_generate_quarterly_packages(
 
 
 @shared_task(
-    name="tax_packages.auto_send_ready_packages",
+    name="app.workers.tasks.tax_package_tasks.auto_send_ready_packages",
     bind=True,
     max_retries=3,
     default_retry_delay=300,
@@ -368,7 +368,7 @@ async def _async_auto_send_packages() -> Dict[str, Any]:
 
 
 @shared_task(
-    name="tax_packages.send_missing_documents_reminders",
+    name="app.workers.tasks.tax_package_tasks.send_missing_documents_reminders",
     bind=True,
     max_retries=2,
     default_retry_delay=600,
@@ -447,7 +447,7 @@ async def _async_send_reminders(days_before_deadline: int) -> Dict[str, Any]:
 
 
 @shared_task(
-    name="tax_packages.cleanup_expired_packages",
+    name="app.workers.tasks.tax_package_tasks.cleanup_expired_packages",
     bind=True,
     max_retries=1,
     default_retry_delay=3600,
@@ -522,7 +522,7 @@ async def _async_cleanup_packages(retention_days: int) -> Dict[str, Any]:
 
 
 @shared_task(
-    name="tax_packages.generate_datev_for_package",
+    name="app.workers.tasks.tax_package_tasks.generate_datev_for_package",
     bind=True,
     max_retries=3,
     default_retry_delay=120,

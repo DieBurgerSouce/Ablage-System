@@ -43,7 +43,7 @@ logger = structlog.get_logger(__name__)
 
 
 @celery_app.task(
-    name="bpmn.process_due_timers",
+    name="app.workers.bpmn_tasks.process_due_timers",
     bind=True,
     max_retries=3,
     default_retry_delay=30,
@@ -89,7 +89,7 @@ def process_due_timers(self, company_id: Optional[str] = None):
 
 
 @celery_app.task(
-    name="bpmn.escalate_overdue_tasks",
+    name="app.workers.bpmn_tasks.escalate_overdue_tasks",
     bind=True,
     max_retries=2,
     queue="maintenance"
@@ -163,7 +163,7 @@ def escalate_overdue_tasks(self, company_id: Optional[str] = None):
 
 
 @celery_app.task(
-    name="bpmn.cleanup_old_timers",
+    name="app.workers.bpmn_tasks.cleanup_old_timers",
     bind=True,
     queue="maintenance"
 )
@@ -201,7 +201,7 @@ def cleanup_old_timers(self, days_old: int = 30):
 
 
 @celery_app.task(
-    name="bpmn.execute_service_task",
+    name="app.workers.bpmn_tasks.execute_service_task",
     bind=True,
     max_retries=3,
     default_retry_delay=60,
@@ -316,7 +316,7 @@ def execute_service_task(
 
 
 @celery_app.task(
-    name="bpmn.check_process_timeouts",
+    name="app.workers.bpmn_tasks.check_process_timeouts",
     bind=True,
     queue="maintenance"
 )
@@ -374,7 +374,7 @@ def check_process_timeouts(self, timeout_hours: int = 24):
 
 
 @celery_app.task(
-    name="bpmn.send_task_reminder",
+    name="app.workers.bpmn_tasks.send_task_reminder",
     bind=True,
     queue="notification"
 )
@@ -448,29 +448,3 @@ def send_task_reminder(
         asyncio.run(_send())
 
 
-# =============================================================================
-# Beat Schedule Configuration
-# =============================================================================
-
-BPMN_BEAT_SCHEDULE = {
-    "bpmn.process_due_timers": {
-        "task": "bpmn.process_due_timers",
-        "schedule": 60.0,  # Jede Minute
-        "options": {"queue": "maintenance"}
-    },
-    "bpmn.escalate_overdue_tasks": {
-        "task": "bpmn.escalate_overdue_tasks",
-        "schedule": 900.0,  # Alle 15 Minuten
-        "options": {"queue": "maintenance"}
-    },
-    "bpmn.cleanup_old_timers": {
-        "task": "bpmn.cleanup_old_timers",
-        "schedule": 86400.0,  # Taeglich
-        "options": {"queue": "maintenance"}
-    },
-    "bpmn.check_process_timeouts": {
-        "task": "bpmn.check_process_timeouts",
-        "schedule": 3600.0,  # Stuendlich
-        "options": {"queue": "maintenance"}
-    },
-}

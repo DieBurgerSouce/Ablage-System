@@ -33,7 +33,7 @@ logger = structlog.get_logger(__name__)
 
 
 @celery_app.task(
-    name="extended_alerts.check_cashflow",
+    name="app.workers.tasks.extended_alerts_tasks.check_cashflow_alerts_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -130,7 +130,7 @@ def check_cashflow_alerts_task(
 
 
 @celery_app.task(
-    name="extended_alerts.check_contracts",
+    name="app.workers.tasks.extended_alerts_tasks.check_contract_alerts_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -243,7 +243,7 @@ def check_contract_alerts_task(
 
 
 @celery_app.task(
-    name="extended_alerts.check_compliance",
+    name="app.workers.tasks.extended_alerts_tasks.check_compliance_alerts_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -351,7 +351,7 @@ def check_compliance_alerts_task(
 
 
 @celery_app.task(
-    name="extended_alerts.create_supplier_insolvency_alert",
+    name="app.workers.tasks.extended_alerts_tasks.create_supplier_insolvency_alert_task",
     bind=True,
     max_retries=3,
     default_retry_delay=60,
@@ -429,7 +429,7 @@ def create_supplier_insolvency_alert_task(
 
 
 @celery_app.task(
-    name="extended_alerts.create_supplier_ownership_alert",
+    name="app.workers.tasks.extended_alerts_tasks.create_supplier_ownership_change_alert_task",
     bind=True,
     max_retries=3,
     default_retry_delay=60,
@@ -505,7 +505,7 @@ def create_supplier_ownership_change_alert_task(
 
 
 @celery_app.task(
-    name="extended_alerts.run_all_checks",
+    name="app.workers.tasks.extended_alerts_tasks.run_all_extended_alerts_checks_task",
     bind=True,
     max_retries=2,
     default_retry_delay=600,
@@ -612,7 +612,7 @@ def run_all_extended_alerts_checks_task(
 
 
 @celery_app.task(
-    name="extended_alerts.cleanup_old",
+    name="app.workers.tasks.extended_alerts_tasks.cleanup_old_extended_alerts_task",
     bind=True,
     max_retries=1,
     default_retry_delay=60,

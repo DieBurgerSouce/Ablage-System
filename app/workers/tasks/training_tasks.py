@@ -715,36 +715,6 @@ def generate_training_report(self) -> Dict[str, Any]:
         raise
 
 
-# ==================== Celery Beat Schedule ====================
-
-# Diese Tasks sollten in der Celery Beat Konfiguration hinzugefügt werden
-CELERY_BEAT_TRAINING_SCHEDULE = {
-    "training-daily-stats": {
-        "task": "app.workers.tasks.training_tasks.generate_daily_stats",
-        "schedule": 86400.0,  # Täglich
-        "options": {"queue": "default"},
-    },
-    "training-feedback-queue-hourly": {
-        "task": "app.workers.tasks.training_tasks.process_feedback_queue",
-        "schedule": 3600.0,  # Stündlich
-        "options": {"queue": "default"},
-    },
-    "training-learned-weights-daily": {
-        "task": "app.workers.tasks.training_tasks.update_learned_weights",
-        "schedule": 86400.0,  # Täglich
-        "options": {"queue": "default"},
-    },
-    "training-weekly-benchmarks": {
-        "task": "app.workers.tasks.training_tasks.run_scheduled_benchmarks",
-        "schedule": 604800.0,  # Wöchentlich (Sonntag 03:00)
-        "options": {"queue": "gpu"},
-    },
-    "training-report-weekly": {
-        "task": "app.workers.tasks.training_tasks.generate_training_report",
-        "schedule": 604800.0,  # Wöchentlich
-        "options": {"queue": "default"},
-    },
-}
 
 
 # ==================== Bulk OCR Processing Tasks ====================
@@ -2327,44 +2297,3 @@ def auto_promote_ab_test_winners(self) -> Dict[str, Any]:
         raise
 
 
-# Erweitere Beat Schedule mit Bulk Processing und Fine-Tuning Tasks
-CELERY_BEAT_TRAINING_SCHEDULE.update({
-    "quality-snapshot-hourly": {
-        "task": "app.workers.tasks.training_tasks.create_quality_snapshot",
-        "schedule": 3600.0,  # Stündlich
-        "options": {"queue": "default"},
-    },
-    "quality-monitoring-hourly": {
-        "task": "app.workers.tasks.training_tasks.run_quality_monitoring",
-        "schedule": 3600.0,  # Stündlich
-        "options": {"queue": "default"},
-    },
-    "check-retraining-conditions-daily": {
-        "task": "app.workers.tasks.training_tasks.check_retraining_conditions",
-        "schedule": 86400.0,  # Täglich um 02:00
-        "options": {"queue": "default"},
-    },
-    # Auto Ground-Truth Pipeline Tasks
-    "auto-ground-truth-batch": {
-        "task": "app.workers.tasks.training_tasks.process_auto_ground_truth_batch",
-        "schedule": 1800.0,  # Alle 30 Minuten
-        "options": {"queue": "default"},
-    },
-    "coverage-snapshot-daily": {
-        "task": "app.workers.tasks.training_tasks.generate_coverage_snapshot",
-        "schedule": 86400.0,  # Täglich um 01:00
-        "options": {"queue": "default"},
-    },
-    # LLM Review Pipeline Task (Phase 6)
-    "llm-review-batch": {
-        "task": "app.workers.tasks.training_tasks.llm_review_batch",
-        "schedule": 7200.0,  # Alle 2 Stunden
-        "options": {"queue": "default"},
-    },
-    # Active Learning Bridge: A/B-Test Gewinner taeglich befoerdern
-    "auto-promote-ab-test-winners-daily": {
-        "task": "app.workers.tasks.training_tasks.auto_promote_ab_test_winners",
-        "schedule": 86400.0,  # Taeglich um 04:00
-        "options": {"queue": "default"},
-    },
-})

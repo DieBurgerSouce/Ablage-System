@@ -46,7 +46,7 @@ NOTIFICATION_HISTORY_RETENTION_DAYS = 30
 
 
 @celery_app.task(
-    name="push.cleanup_expired_subscriptions",
+    name="app.workers.tasks.push_notification_tasks.cleanup_expired_push_subscriptions_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -195,7 +195,7 @@ def cleanup_expired_push_subscriptions_task(
 
 
 @celery_app.task(
-    name="push.health_check",
+    name="app.workers.tasks.push_notification_tasks.push_subscription_health_check_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -341,7 +341,7 @@ def push_subscription_health_check_task(self) -> Dict[str, Any]:
 
 
 @celery_app.task(
-    name="push.cleanup_notification_history",
+    name="app.workers.tasks.push_notification_tasks.cleanup_notification_history_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -436,7 +436,7 @@ def cleanup_notification_history_task(
 
 
 @celery_app.task(
-    name="push.generate_weekly_statistics",
+    name="app.workers.tasks.push_notification_tasks.generate_push_statistics_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,

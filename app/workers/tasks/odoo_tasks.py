@@ -33,7 +33,7 @@ logger = structlog.get_logger(__name__)
 
 
 @celery_app.task(
-    name="odoo.process_webhook",
+    name="app.workers.tasks.odoo_tasks.process_odoo_webhook",
     bind=True,
     max_retries=3,
     default_retry_delay=30,
@@ -328,7 +328,7 @@ async def _handle_product_event(
 
 
 @celery_app.task(
-    name="odoo.retry_failed_webhook",
+    name="app.workers.tasks.odoo_tasks.retry_failed_odoo_webhook",
     bind=True,
     max_retries=2,
 )
@@ -386,7 +386,7 @@ def retry_failed_odoo_webhook(self, event_db_id: str) -> Dict[str, Any]:
 
 
 @celery_app.task(
-    name="odoo.sync_extended_data",
+    name="app.workers.tasks.odoo_tasks.sync_extended_data",
     bind=True,
     max_retries=2,
     default_retry_delay=60,
@@ -567,7 +567,7 @@ async def _update_sync_status(
 
 
 @celery_app.task(
-    name="odoo.push_ai_feedback",
+    name="app.workers.tasks.odoo_tasks.push_ai_feedback",
     bind=True,
     max_retries=3,
     default_retry_delay=30,
@@ -646,7 +646,7 @@ def push_ai_feedback(
     return asyncio.get_event_loop().run_until_complete(_push())
 
 
-@celery_app.task(name="odoo.push_all_risk_scores")
+@celery_app.task(name="app.workers.tasks.odoo_tasks.push_all_risk_scores")
 def push_all_risk_scores(connection_id: str) -> Dict[str, Any]:
     """
     Pusht alle Risk Scores zu Odoo (Batch).
@@ -747,7 +747,7 @@ def push_all_risk_scores(connection_id: str) -> Dict[str, Any]:
 # =============================================================================
 
 
-@celery_app.task(name="odoo.retry_failed_syncs")
+@celery_app.task(name="app.workers.tasks.odoo_tasks.retry_failed_syncs")
 def retry_failed_syncs() -> Dict[str, Any]:
     """
     Wiederholt fehlgeschlagene Sync-Operationen.
@@ -825,14 +825,3 @@ def retry_failed_syncs() -> Dict[str, Any]:
     return asyncio.get_event_loop().run_until_complete(_retry())
 
 
-# =============================================================================
-# Celery Beat Schedule
-# =============================================================================
-
-ODOO_BEAT_SCHEDULE = {
-    "odoo-retry-failed-syncs": {
-        "task": "odoo.retry_failed_syncs",
-        "schedule": 1800.0,  # Alle 30 Minuten
-        "options": {"queue": "erp"},
-    },
-}

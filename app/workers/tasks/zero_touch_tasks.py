@@ -37,7 +37,7 @@ logger = structlog.get_logger(__name__)
 
 
 @celery_app.task(
-    name="zero_touch.process_document",
+    name="app.workers.tasks.zero_touch_tasks.process_document_zero_touch",
     bind=True,
     autoretry_for=(Exception,),
     retry_kwargs={"max_retries": 2},
@@ -160,7 +160,7 @@ def process_document_zero_touch(
 
 
 @celery_app.task(
-    name="zero_touch.process_pending",
+    name="app.workers.tasks.zero_touch_tasks.process_pending_documents",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -253,7 +253,7 @@ def process_pending_documents(
 
 
 @celery_app.task(
-    name="zero_touch.recalculate_thresholds",
+    name="app.workers.tasks.zero_touch_tasks.recalculate_thresholds",
     bind=True,
     max_retries=2,
     default_retry_delay=180,
@@ -426,7 +426,7 @@ def recalculate_thresholds(
 
 
 @celery_app.task(
-    name="zero_touch.generate_statistics",
+    name="app.workers.tasks.zero_touch_tasks.generate_zero_touch_statistics",
     bind=True,
     max_retries=2,
     default_retry_delay=180,

@@ -36,7 +36,7 @@ logger = structlog.get_logger(__name__)
 
 
 @celery_app.task(
-    name="reports.execute_scheduled_reports",
+    name="app.workers.tasks.report_tasks.execute_scheduled_reports",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -144,7 +144,7 @@ def execute_scheduled_reports(self) -> Dict[str, Any]:
 
 
 @celery_app.task(
-    name="reports.generate_async",
+    name="app.workers.tasks.report_tasks.generate_report_async",
     bind=True,
     max_retries=3,
     default_retry_delay=60,
@@ -322,7 +322,7 @@ def generate_report_async(
 
 
 @celery_app.task(
-    name="reports.send_email",
+    name="app.workers.tasks.report_tasks.send_report_email",
     bind=True,
     max_retries=3,
     default_retry_delay=120,
@@ -457,7 +457,7 @@ Ihr Ablage-System
 # =============================================================================
 
 
-@celery_app.task(name="reports.cleanup_old_executions")
+@celery_app.task(name="app.workers.tasks.report_tasks.cleanup_old_executions")
 def cleanup_old_executions(retention_days: int = 90) -> Dict[str, Any]:
     """Loescht alte Report-Executions und zugehoerige Dateien.
 
@@ -526,7 +526,7 @@ def cleanup_old_executions(retention_days: int = 90) -> Dict[str, Any]:
     return asyncio.get_event_loop().run_until_complete(_cleanup())
 
 
-@celery_app.task(name="reports.cleanup_expired_downloads")
+@celery_app.task(name="app.workers.tasks.report_tasks.cleanup_expired_downloads")
 def cleanup_expired_downloads() -> Dict[str, Any]:
     """Loescht abgelaufene Download-Links.
 
@@ -579,7 +579,7 @@ def cleanup_expired_downloads() -> Dict[str, Any]:
 # =============================================================================
 
 
-@celery_app.task(name="reports.cancel_execution")
+@celery_app.task(name="app.workers.tasks.report_tasks.cancel_execution")
 def cancel_execution(execution_id: str) -> Dict[str, Any]:
     """Bricht eine laufende Report-Ausfuehrung ab.
 
@@ -625,30 +625,3 @@ def cancel_execution(execution_id: str) -> Dict[str, Any]:
     return asyncio.get_event_loop().run_until_complete(_cancel())
 
 
-# =============================================================================
-# Celery Beat Schedule
-# =============================================================================
-
-REPORT_BEAT_SCHEDULE = {
-    # Scheduled Reports alle 15 Minuten pruefen
-    "execute-scheduled-reports": {
-        "task": "reports.execute_scheduled_reports",
-        "schedule": 900.0,  # 15 Minuten
-        "options": {"queue": "default"},
-    },
-    # Cleanup alte Executions taeglich um 03:00
-    "cleanup-old-report-executions": {
-        "task": "reports.cleanup_old_executions",
-        "schedule": {
-            "hour": 3,
-            "minute": 0,
-        },
-        "options": {"queue": "default"},
-    },
-    # Cleanup abgelaufene Downloads stuendlich
-    "cleanup-expired-downloads": {
-        "task": "reports.cleanup_expired_downloads",
-        "schedule": 3600.0,  # 1 Stunde
-        "options": {"queue": "default"},
-    },
-}

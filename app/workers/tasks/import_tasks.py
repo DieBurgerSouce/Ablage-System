@@ -38,7 +38,7 @@ logger = structlog.get_logger(__name__)
 
 
 @celery_app.task(
-    name="import.sync_all_email_configs",
+    name="app.workers.tasks.import_tasks.sync_all_email_configs",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -136,7 +136,7 @@ def sync_all_email_configs(self) -> Dict[str, Any]:
 
 
 @celery_app.task(
-    name="import.sync_email_config",
+    name="app.workers.tasks.import_tasks.sync_email_config",
     bind=True,
     max_retries=3,
     default_retry_delay=60,
@@ -189,7 +189,7 @@ def sync_email_config(self, config_id: str, user_id: str, max_emails: int = 100)
 
 
 @celery_app.task(
-    name="import.poll_all_folder_configs",
+    name="app.workers.tasks.import_tasks.poll_all_folder_configs",
     bind=True,
     max_retries=2,
     default_retry_delay=60,
@@ -289,7 +289,7 @@ def poll_all_folder_configs(self) -> Dict[str, Any]:
 
 
 @celery_app.task(
-    name="import.poll_folder_config",
+    name="app.workers.tasks.import_tasks.poll_folder_config",
     bind=True,
     max_retries=3,
     default_retry_delay=30,
@@ -338,7 +338,7 @@ def poll_folder_config(self, config_id: str, user_id: str) -> Dict[str, Any]:
 
 
 @celery_app.task(
-    name="import.retry_failed_imports",
+    name="app.workers.tasks.import_tasks.retry_failed_imports",
     bind=True,
     max_retries=1,
 )
@@ -389,7 +389,7 @@ def retry_failed_imports(self) -> Dict[str, Any]:
                         # Email-Import: Trigger Celery Task fuer einzelne Email
                         from app.workers.celery_app import celery_app as celery
                         celery.send_task(
-                            "import.retry_single_email",
+                            "app.workers.tasks.import_tasks.retry_single_email",
                             kwargs={
                                 "config_id": str(log.email_config_id),
                                 "email_uid": log.email_uid,
@@ -404,7 +404,7 @@ def retry_failed_imports(self) -> Dict[str, Any]:
                         # Folder-Import: Trigger Celery Task fuer einzelne Datei
                         from app.workers.celery_app import celery_app as celery
                         celery.send_task(
-                            "import.retry_single_file",
+                            "app.workers.tasks.import_tasks.retry_single_file",
                             kwargs={
                                 "config_id": str(log.folder_config_id) if log.folder_config_id else None,
                                 "file_path": log.original_path,
@@ -441,7 +441,7 @@ def retry_failed_imports(self) -> Dict[str, Any]:
         return {"error": safe_error_detail(e, "Vorgang")}
 
 
-@celery_app.task(name="import.retry_import")
+@celery_app.task(name="app.workers.tasks.import_tasks.retry_import_task")
 def retry_import_task(log_id: str) -> Dict[str, Any]:
     """Wiederholt einen einzelnen fehlgeschlagenen Import.
 
@@ -471,7 +471,7 @@ def retry_import_task(log_id: str) -> Dict[str, Any]:
             # Dispatch basierend auf source_type
             if log.source_type == "email" and log.email_config_id:
                 celery_app.send_task(
-                    "import.retry_single_email",
+                    "app.workers.tasks.import_tasks.retry_single_email",
                     kwargs={
                         "config_id": str(log.email_config_id),
                         "email_uid": log.email_uid,
@@ -485,7 +485,7 @@ def retry_import_task(log_id: str) -> Dict[str, Any]:
 
             elif log.source_type == "folder" and log.original_path:
                 celery_app.send_task(
-                    "import.retry_single_file",
+                    "app.workers.tasks.import_tasks.retry_single_file",
                     kwargs={
                         "config_id": str(log.folder_config_id) if log.folder_config_id else None,
                         "file_path": log.original_path,
@@ -504,7 +504,7 @@ def retry_import_task(log_id: str) -> Dict[str, Any]:
 
 
 @celery_app.task(
-    name="import.retry_single_email",
+    name="app.workers.tasks.import_tasks.retry_single_email",
     bind=True,
     max_retries=2,
     default_retry_delay=60,
@@ -665,7 +665,7 @@ def retry_single_email(
 
 
 @celery_app.task(
-    name="import.retry_single_file",
+    name="app.workers.tasks.import_tasks.retry_single_file",
     bind=True,
     max_retries=2,
     default_retry_delay=60,
@@ -819,7 +819,7 @@ def retry_single_file(
 # =============================================================================
 
 
-@celery_app.task(name="import.cleanup_old_logs")
+@celery_app.task(name="app.workers.tasks.import_tasks.cleanup_old_import_logs")
 def cleanup_old_import_logs(retention_days: int = 90) -> Dict[str, Any]:
     """Loescht alte Import-Logs.
 
@@ -871,7 +871,7 @@ def cleanup_old_import_logs(retention_days: int = 90) -> Dict[str, Any]:
     return asyncio.get_event_loop().run_until_complete(_cleanup())
 
 
-@celery_app.task(name="import.reset_daily_stats")
+@celery_app.task(name="app.workers.tasks.import_tasks.reset_daily_folder_stats")
 def reset_daily_folder_stats() -> Dict[str, Any]:
     """Setzt taegliche Folder-Statistiken zurueck.
 
@@ -908,7 +908,7 @@ def reset_daily_folder_stats() -> Dict[str, Any]:
 # =============================================================================
 
 
-@celery_app.task(name="import.check_connection_health")
+@celery_app.task(name="app.workers.tasks.import_tasks.check_email_connection_health")
 def check_email_connection_health() -> Dict[str, Any]:
     """Prueft Gesundheit aller Email-Verbindungen.
 
@@ -983,51 +983,3 @@ def check_email_connection_health() -> Dict[str, Any]:
     return result
 
 
-# =============================================================================
-# Celery Beat Schedule (wird in celery_app.py registriert)
-# =============================================================================
-
-IMPORT_BEAT_SCHEDULE = {
-    # Email-Sync alle 15 Minuten
-    "sync-all-email-configs": {
-        "task": "import.sync_all_email_configs",
-        "schedule": 900.0,  # 15 Minuten
-        "options": {"queue": "default"},
-    },
-    # Folder-Polling alle 5 Minuten
-    "poll-all-folder-configs": {
-        "task": "import.poll_all_folder_configs",
-        "schedule": 300.0,  # 5 Minuten
-        "options": {"queue": "default"},
-    },
-    # Retry fehlgeschlagene Imports alle 30 Minuten
-    "retry-failed-imports": {
-        "task": "import.retry_failed_imports",
-        "schedule": 1800.0,  # 30 Minuten
-        "options": {"queue": "default"},
-    },
-    # Cleanup alte Logs taeglich um 03:00
-    "cleanup-import-logs": {
-        "task": "import.cleanup_old_logs",
-        "schedule": {
-            "hour": 3,
-            "minute": 0,
-        },
-        "options": {"queue": "default"},
-    },
-    # Reset taegliche Stats um 00:00
-    "reset-daily-folder-stats": {
-        "task": "import.reset_daily_stats",
-        "schedule": {
-            "hour": 0,
-            "minute": 0,
-        },
-        "options": {"queue": "default"},
-    },
-    # Health-Check alle 30 Minuten
-    "check-email-health": {
-        "task": "import.check_connection_health",
-        "schedule": 1800.0,  # 30 Minuten
-        "options": {"queue": "default"},
-    },
-}

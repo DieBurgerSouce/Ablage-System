@@ -43,7 +43,7 @@ logger = structlog.get_logger(__name__)
 
 
 @celery_app.task(
-    name="smart_inbox.aggregate",
+    name="app.workers.tasks.smart_inbox_tasks.aggregate_inbox_items",
     bind=True,
     max_retries=2,
     default_retry_delay=120,
@@ -302,7 +302,7 @@ def aggregate_inbox_items(
 
 
 @celery_app.task(
-    name="smart_inbox.recalculate_priorities",
+    name="app.workers.tasks.smart_inbox_tasks.recalculate_priorities",
     bind=True,
     max_retries=2,
     default_retry_delay=90,
@@ -415,7 +415,7 @@ def recalculate_priorities(
 
 
 @celery_app.task(
-    name="smart_inbox.train_behavior_model",
+    name="app.workers.tasks.smart_inbox_tasks.train_behavior_model",
     bind=True,
     max_retries=1,
     default_retry_delay=600,
@@ -572,7 +572,7 @@ def train_behavior_model(
 
 
 @celery_app.task(
-    name="smart_inbox.cleanup_completed",
+    name="app.workers.tasks.smart_inbox_tasks.cleanup_completed_items",
     bind=True,
     max_retries=2,
     default_retry_delay=300,

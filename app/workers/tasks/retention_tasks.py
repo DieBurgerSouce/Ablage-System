@@ -41,7 +41,7 @@ logger = structlog.get_logger(__name__)
 
 
 @celery_app.task(
-    name="retention.check_expiring_archives",
+    name="app.workers.tasks.retention_tasks.check_expiring_archives_task",
     bind=True,
     acks_late=True,
     max_retries=3,
@@ -142,7 +142,7 @@ async def _check_expiring_archives(
 
 
 @celery_app.task(
-    name="retention.verify_archive_integrity",
+    name="app.workers.tasks.retention_tasks.verify_archive_integrity_task",
     bind=True,
     acks_late=True,
     max_retries=3,
@@ -251,7 +251,7 @@ async def _batch_verify_integrity(
 
 
 @celery_app.task(
-    name="retention.process_expired_archives",
+    name="app.workers.tasks.retention_tasks.process_expired_archives_task",
     bind=True,
     acks_late=True,
     max_retries=3,
@@ -387,7 +387,7 @@ async def _process_expired_archives(db: AsyncSession) -> Dict[str, Any]:
 
 
 @celery_app.task(
-    name="retention.generate_retention_report",
+    name="app.workers.tasks.retention_tasks.generate_retention_report_task",
     bind=True,
     acks_late=True,
     max_retries=3,
@@ -452,25 +452,3 @@ async def _create_retention_audit_log(
     )
     db.add(audit_log)
 
-
-# =============================================================================
-# Celery Beat Schedule (zur Referenz)
-# =============================================================================
-# Diese Tasks werden in celery_app.py zum Beat-Schedule hinzugefuegt:
-#
-# CELERYBEAT_SCHEDULE = {
-#     'retention-check-daily': {
-#         'task': 'retention.check_expiring_archives',
-#         'schedule': crontab(hour=8, minute=0),  # Taeglich 08:00
-#         'kwargs': {'days_ahead': 90},
-#     },
-#     'integrity-verify-weekly': {
-#         'task': 'retention.verify_archive_integrity',
-#         'schedule': crontab(day_of_week=0, hour=3, minute=0),  # Sonntag 03:00
-#         'kwargs': {'batch_size': 500},
-#     },
-#     'expired-archives-daily': {
-#         'task': 'retention.process_expired_archives',
-#         'schedule': crontab(hour=2, minute=0),  # Taeglich 02:00
-#     },
-# }

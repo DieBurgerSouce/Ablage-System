@@ -32,7 +32,7 @@ logger = structlog.get_logger(__name__)
 
 
 @celery_app.task(
-    name="entity_linking.link_all_documents",
+    name="app.workers.tasks.entity_linking_tasks.link_all_documents_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -92,7 +92,7 @@ def link_all_documents_task(
 
 
 @celery_app.task(
-    name="entity_linking.link_single_document",
+    name="app.workers.tasks.entity_linking_tasks.link_single_document_task",
     bind=True,
     max_retries=3,
     default_retry_delay=30,
@@ -174,7 +174,7 @@ def link_single_document_task(
 
 
 @celery_app.task(
-    name="entity_linking.post_lexware_import",
+    name="app.workers.tasks.entity_linking_tasks.post_lexware_import_linking_task",
     bind=True,
     max_retries=1,
 )
@@ -269,7 +269,7 @@ def post_lexware_import_linking_task(self) -> Dict[str, Any]:
 # =============================================================================
 
 
-@celery_app.task(name="entity_linking.generate_statistics")
+@celery_app.task(name="app.workers.tasks.entity_linking_tasks.generate_linking_statistics_task")
 def generate_linking_statistics_task() -> Dict[str, Any]:
     """Generiert Statistiken ueber Entity-Linking.
 
@@ -371,7 +371,7 @@ def generate_linking_statistics_task() -> Dict[str, Any]:
 
 
 @celery_app.task(
-    name="entity_linking.reprocess_low_confidence",
+    name="app.workers.tasks.entity_linking_tasks.reprocess_low_confidence_documents_task",
     bind=True,
     max_retries=1,
 )
@@ -439,7 +439,7 @@ def reprocess_low_confidence_documents_task(
 # =============================================================================
 
 
-@celery_app.task(name="entity_linking.on_ocr_completed")
+@celery_app.task(name="app.workers.tasks.entity_linking_tasks.on_ocr_completed_link_entity")
 def on_ocr_completed_link_entity(document_id: str) -> Dict[str, Any]:
     """Handler fuer OCR-Completion Events.
 
@@ -459,7 +459,7 @@ def on_ocr_completed_link_entity(document_id: str) -> Dict[str, Any]:
     ).get(timeout=60)
 
 
-@celery_app.task(name="entity_linking.on_entity_imported")
+@celery_app.task(name="app.workers.tasks.entity_linking_tasks.on_entity_imported_check_documents")
 def on_entity_imported_check_documents(entity_id: str) -> Dict[str, Any]:
     """Handler fuer Entity-Import Events.
 
@@ -560,28 +560,3 @@ def on_entity_imported_check_documents(entity_id: str) -> Dict[str, Any]:
     return result
 
 
-# =============================================================================
-# Celery Beat Schedule
-# =============================================================================
-
-ENTITY_LINKING_BEAT_SCHEDULE = {
-    # Statistiken taeglich um 01:00
-    "generate-linking-statistics": {
-        "task": "entity_linking.generate_statistics",
-        "schedule": {
-            "hour": 1,
-            "minute": 0,
-        },
-        "options": {"queue": "default"},
-    },
-    # Re-Processing woechentlich am Sonntag um 04:00
-    "reprocess-low-confidence": {
-        "task": "entity_linking.reprocess_low_confidence",
-        "schedule": {
-            "day_of_week": 0,  # Sonntag
-            "hour": 4,
-            "minute": 0,
-        },
-        "options": {"queue": "default"},
-    },
-}

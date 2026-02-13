@@ -45,7 +45,7 @@ async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="extraction.reprocess_all_structured_extraction",
+    name="app.workers.tasks.extraction_tasks.reprocess_all_documents_structured_extraction",
     # Z.2 FIX: max_retries von 0 auf 3 erhöht für bessere Fehlertoleranz
     max_retries=3,
     default_retry_delay=60,  # 1 Minute zwischen Retries
@@ -439,7 +439,7 @@ async def _async_reprocess_all(
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="extraction.reprocess_single_document",
+    name="app.workers.tasks.extraction_tasks.reprocess_single_document",
     max_retries=3,
     soft_time_limit=60,
     time_limit=90,
@@ -601,7 +601,7 @@ def _count_extracted_fields(extraction_result) -> int:
 
 
 @celery_app.task(
-    name="extraction.generate_extraction_stats",
+    name="app.workers.tasks.extraction_tasks.generate_extraction_stats",
     soft_time_limit=300,
     time_limit=360,
 )
@@ -727,7 +727,7 @@ async def _async_generate_stats() -> Dict[str, Any]:
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="extraction.quick_classify_document",
+    name="app.workers.tasks.extraction_tasks.quick_classify_document",
     max_retries=1,
     soft_time_limit=30,  # 30 Sekunden Soft-Limit
     time_limit=45,  # 45 Sekunden Hard-Limit
@@ -907,63 +907,6 @@ async def _async_quick_classify(task, document_id: str) -> Dict[str, Any]:
             }
 
 
-async def _run_quick_ocr(image: "Image.Image") -> str:
-    """
-    DEPRECATED: Diese Funktion wird nicht mehr verwendet.
-
-    Quick Classification nutzt jetzt den vorhandenen OCR-Text des Dokuments
-    statt eigenes OCR durchzufuehren. Siehe _async_quick_classify().
-
-    Grund: Surya auf CPU dauert 3+ Minuten, was Quick Classification nutzlos macht.
-    Loesung: Warten auf regulaeres OCR und dessen Text nutzen.
-
-    ---
-    Urspruengliche Dokumentation:
-    Fuehrt schnelles OCR auf einem einzelnen Bild aus.
-    Verwendet Surya OCR (CPU-basiert) fuer schnellen Start ohne GPU-Warmup.
-    Optimiert fuer Geschwindigkeit, nicht fuer maximale Genauigkeit.
-
-    Args:
-        image: PIL Image der ersten Seite
-
-    Returns:
-        Extrahierter Text
-    """
-    import asyncio
-    from PIL import Image
-
-    try:
-        # Surya OCR Agent verwenden
-        from app.agents.ocr.surya_docling_agent import SuryaDoclingAgent
-
-        agent = SuryaDoclingAgent()
-
-        loop = asyncio.get_running_loop()
-
-        # WICHTIG: Modelle muessen erst geladen werden!
-        await loop.run_in_executor(None, agent._load_models)
-
-        # OCR ausfuehren - _process_single_image ist sync, also in executor ausfuehren
-        result = await loop.run_in_executor(
-            None,
-            agent._process_single_image,
-            image,
-            "de"  # Deutsche Dokumente als Default
-        )
-
-        if result and result.get("full_text"):
-            return result["full_text"]
-
-        return ""
-
-    except ImportError:
-        logger.warning("surya_not_available_for_quick_ocr")
-        return ""
-    except Exception as e:
-        logger.error("quick_ocr_failed", **safe_error_log(e))
-        return ""
-
-
 def _sanitize_error_message(error: str) -> str:
     """
     Entfernt sensible Informationen aus Fehlermeldungen.
@@ -1003,7 +946,7 @@ def _sanitize_error_message(error: str) -> str:
 @celery_app.task(
     bind=True,
     base=CPUTask,
-    name="extraction.reprocess_quick_classification",
+    name="app.workers.tasks.extraction_tasks.reprocess_quick_classification",
     # Z.2 FIX: max_retries von 0 auf 3 erhöht für bessere Fehlertoleranz
     max_retries=3,
     default_retry_delay=60,  # 1 Minute zwischen Retries

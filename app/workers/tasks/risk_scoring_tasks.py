@@ -34,7 +34,7 @@ logger = structlog.get_logger(__name__)
 
 
 @celery_app.task(
-    name="risk_scoring.calculate_all",
+    name="app.workers.tasks.risk_scoring_tasks.calculate_all_risk_scores_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -154,7 +154,7 @@ def calculate_all_risk_scores_task(
 
 
 @celery_app.task(
-    name="risk_scoring.calculate_all_v2",
+    name="app.workers.tasks.risk_scoring_tasks.calculate_all_risk_scores_v2_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,
@@ -357,7 +357,7 @@ def calculate_all_risk_scores_v2_task(
 
 
 @celery_app.task(
-    name="risk_scoring.calculate_single",
+    name="app.workers.tasks.risk_scoring_tasks.calculate_single_risk_score_task",
     bind=True,
     max_retries=3,
     default_retry_delay=30,
@@ -435,7 +435,7 @@ def calculate_single_risk_score_task(
 
 
 @celery_app.task(
-    name="risk_scoring.calculate_single_detailed",
+    name="app.workers.tasks.risk_scoring_tasks.calculate_single_risk_score_detailed_task",
     bind=True,
     max_retries=3,
     default_retry_delay=30,
@@ -565,7 +565,7 @@ def calculate_single_risk_score_detailed_task(
 
 
 @celery_app.task(
-    name="risk_scoring.on_invoice_updated",
+    name="app.workers.tasks.risk_scoring_tasks.on_invoice_updated_recalculate",
     bind=True,
     max_retries=3,
     default_retry_delay=60,
@@ -654,7 +654,7 @@ def on_invoice_updated_recalculate(
 
 
 @celery_app.task(
-    name="risk_scoring.check_high_risk_entities",
+    name="app.workers.tasks.risk_scoring_tasks.check_high_risk_entities_task",
     bind=True,
     max_retries=2,
     default_retry_delay=120,
@@ -721,7 +721,7 @@ def check_high_risk_entities_task(
 
 
 @celery_app.task(
-    name="risk_scoring.check_worsening_trends",
+    name="app.workers.tasks.risk_scoring_tasks.check_worsening_trends_task",
     bind=True,
     max_retries=2,
     default_retry_delay=120,
@@ -806,7 +806,7 @@ def check_worsening_trends_task(
 
 
 @celery_app.task(
-    name="risk_scoring.generate_statistics",
+    name="app.workers.tasks.risk_scoring_tasks.generate_risk_statistics_task",
     bind=True,
     max_retries=2,
     default_retry_delay=180,
@@ -920,7 +920,7 @@ def generate_risk_statistics_task(self) -> Dict[str, Any]:
 
 
 @celery_app.task(
-    name="risk_scoring.update_industry_codes",
+    name="app.workers.tasks.risk_scoring_tasks.update_industry_codes_task",
     bind=True,
     max_retries=2,
     default_retry_delay=300,

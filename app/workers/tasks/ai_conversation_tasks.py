@@ -24,7 +24,7 @@ logger = structlog.get_logger(__name__)
 
 @celery_app.task(
     bind=True,
-    name="ai_conversations.process_message",
+    name="app.workers.tasks.ai_conversation_tasks.process_ai_message",
     queue="ai",
     max_retries=2,
     default_retry_delay=30,
@@ -166,7 +166,7 @@ def process_ai_message(
 
 @celery_app.task(
     bind=True,
-    name="ai_conversations.execute_action",
+    name="app.workers.tasks.ai_conversation_tasks.execute_ai_action",
     queue="ai",
     max_retries=1,
     default_retry_delay=60,

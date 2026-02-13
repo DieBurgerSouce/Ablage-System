@@ -16,7 +16,7 @@ logger = structlog.get_logger(__name__)
 
 
 @celery_app.task(
-    name="escalation.advance_pending_escalations",
+    name="app.workers.tasks.escalation_tasks.advance_pending_escalations_task",
     bind=True,
     acks_late=True,
     max_retries=3,

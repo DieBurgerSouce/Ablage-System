@@ -33,7 +33,7 @@ logger = structlog.get_logger(__name__)
 # =============================================================================
 
 @celery.task(
-    name="datev.refresh_all_tokens",
+    name="app.workers.tasks.datev_connect_tasks.refresh_all_datev_tokens",
     queue="datev",
     bind=True,
     max_retries=3,
@@ -118,7 +118,7 @@ def refresh_all_datev_tokens(self) -> Dict[str, Any]:
 # =============================================================================
 
 @celery.task(
-    name="datev.sync_stammdaten",
+    name="app.workers.tasks.datev_connect_tasks.sync_datev_stammdaten",
     queue="datev",
     bind=True,
     max_retries=3,
@@ -235,7 +235,7 @@ def sync_datev_stammdaten(
 
 
 @celery.task(
-    name="datev.sync_all_stammdaten",
+    name="app.workers.tasks.datev_connect_tasks.sync_all_datev_stammdaten",
     queue="datev",
 )
 def sync_all_datev_stammdaten() -> Dict[str, Any]:
@@ -282,7 +282,7 @@ def sync_all_datev_stammdaten() -> Dict[str, Any]:
 # =============================================================================
 
 @celery.task(
-    name="datev.push_buchungsstapel",
+    name="app.workers.tasks.datev_connect_tasks.push_datev_buchungsstapel",
     queue="datev",
     bind=True,
     max_retries=3,
@@ -419,7 +419,7 @@ def push_datev_buchungsstapel(
 # =============================================================================
 
 @celery.task(
-    name="datev.upload_pending_belege",
+    name="app.workers.tasks.datev_connect_tasks.upload_pending_datev_belege",
     queue="datev",
 )
 def upload_pending_datev_belege() -> Dict[str, Any]:
@@ -542,7 +542,7 @@ def upload_pending_datev_belege() -> Dict[str, Any]:
 # =============================================================================
 
 @celery.task(
-    name="datev.gobd_compliance_check",
+    name="app.workers.tasks.datev_connect_tasks.datev_gobd_compliance_check",
     queue="maintenance",
 )
 def datev_gobd_compliance_check() -> Dict[str, Any]:
@@ -629,7 +629,7 @@ def datev_gobd_compliance_check() -> Dict[str, Any]:
 
 
 @celery.task(
-    name="datev.auto_festschreibung",
+    name="app.workers.tasks.datev_connect_tasks.datev_auto_festschreibung",
     queue="maintenance",
 )
 def datev_auto_festschreibung() -> Dict[str, Any]:
@@ -695,7 +695,7 @@ def datev_auto_festschreibung() -> Dict[str, Any]:
 # =============================================================================
 
 @celery.task(
-    name="datev.sync_kontenplan",
+    name="app.workers.tasks.datev_connect_tasks.sync_datev_kontenplan",
     queue="datev",
     bind=True,
     max_retries=3,
@@ -805,56 +805,3 @@ def sync_datev_kontenplan(
         loop.close()
 
 
-# =============================================================================
-# Celery Beat Schedule
-# =============================================================================
-
-DATEV_BEAT_SCHEDULE = {
-    # Token Refresh: Alle 30 Minuten
-    "datev-refresh-tokens": {
-        "task": "datev.refresh_all_tokens",
-        "schedule": 1800.0,  # 30 Minuten
-        "options": {"queue": "datev"},
-    },
-
-    # Stammdaten Sync: Alle 4 Stunden
-    "datev-sync-stammdaten": {
-        "task": "datev.sync_all_stammdaten",
-        "schedule": 14400.0,  # 4 Stunden
-        "options": {"queue": "datev"},
-    },
-
-    # Kontenplan Sync: Woechentlich Sonntag 03:00
-    "datev-sync-kontenplan-weekly": {
-        "task": "datev.sync_kontenplan",
-        "schedule": {
-            "crontab": {"day_of_week": 0, "hour": 3, "minute": 0},
-        },
-        "options": {"queue": "datev"},
-    },
-
-    # Belegbilder Upload: Alle 15 Minuten
-    "datev-upload-belege": {
-        "task": "datev.upload_pending_belege",
-        "schedule": 900.0,  # 15 Minuten
-        "options": {"queue": "datev"},
-    },
-
-    # GoBD Compliance Check: Taeglich 05:00
-    "datev-gobd-check": {
-        "task": "datev.gobd_compliance_check",
-        "schedule": {
-            "crontab": {"hour": 5, "minute": 0},
-        },
-        "options": {"queue": "maintenance"},
-    },
-
-    # Auto-Festschreibung: 1. jeden Monats 02:00
-    "datev-auto-festschreibung": {
-        "task": "datev.auto_festschreibung",
-        "schedule": {
-            "crontab": {"day_of_month": 1, "hour": 2, "minute": 0},
-        },
-        "options": {"queue": "maintenance"},
-    },
-}
