@@ -3,10 +3,10 @@
 Tests fuer Banking Celery Tasks.
 
 Testet:
-- Beat Schedule Konfiguration
 - Task Registrierung
 - Task Optionen und Einstellungen
 - Helper Funktionen
+- Beat Schedule Integration in celery_app.py
 
 HINWEIS: Die Banking-Tasks importieren Services dynamisch INSIDE der Funktionen.
 Diese Tests fokussieren auf die statisch testbaren Aspekte (Konfiguration, Registrierung).
@@ -15,94 +15,6 @@ Diese Tests fokussieren auf die statisch testbaren Aspekte (Konfiguration, Regis
 import pytest
 from datetime import datetime, timezone
 from uuid import uuid4
-
-
-class TestBankingBeatSchedule:
-    """Tests fuer Banking Celery Beat Schedule Konfiguration."""
-
-    def test_beat_schedule_is_defined(self):
-        """Sollte Beat Schedule definiert haben."""
-        from app.workers.tasks.banking_tasks import BANKING_BEAT_SCHEDULE
-
-        assert BANKING_BEAT_SCHEDULE is not None
-        assert isinstance(BANKING_BEAT_SCHEDULE, dict)
-
-    def test_beat_schedule_contains_auto_reconcile(self):
-        """Sollte auto reconcile Task im Schedule haben."""
-        from app.workers.tasks.banking_tasks import BANKING_BEAT_SCHEDULE
-
-        assert "banking-auto-reconcile-hourly" in BANKING_BEAT_SCHEDULE
-
-        config = BANKING_BEAT_SCHEDULE["banking-auto-reconcile-hourly"]
-        assert "task" in config
-        assert "schedule" in config
-        assert config["task"] == "app.workers.tasks.banking_tasks.auto_reconcile"
-
-    def test_beat_schedule_contains_update_balances(self):
-        """Sollte update balances Task im Schedule haben."""
-        from app.workers.tasks.banking_tasks import BANKING_BEAT_SCHEDULE
-
-        assert "banking-update-balances-daily" in BANKING_BEAT_SCHEDULE
-
-        config = BANKING_BEAT_SCHEDULE["banking-update-balances-daily"]
-        assert config["task"] == "app.workers.tasks.banking_tasks.update_account_balances"
-
-    def test_beat_schedule_contains_check_overdue(self):
-        """Sollte check overdue Task im Schedule haben."""
-        from app.workers.tasks.banking_tasks import BANKING_BEAT_SCHEDULE
-
-        assert "banking-check-overdue-daily" in BANKING_BEAT_SCHEDULE
-
-        config = BANKING_BEAT_SCHEDULE["banking-check-overdue-daily"]
-        assert config["task"] == "app.workers.tasks.banking_tasks.check_overdue_payments"
-
-    def test_beat_schedule_contains_dunning(self):
-        """Sollte dunning Task im Schedule haben."""
-        from app.workers.tasks.banking_tasks import BANKING_BEAT_SCHEDULE
-
-        assert "banking-process-dunning-daily" in BANKING_BEAT_SCHEDULE
-
-        config = BANKING_BEAT_SCHEDULE["banking-process-dunning-daily"]
-        assert config["task"] == "app.workers.tasks.banking_tasks.process_automatic_dunning"
-
-    def test_beat_schedule_contains_cash_flow(self):
-        """Sollte cash flow Task im Schedule haben."""
-        from app.workers.tasks.banking_tasks import BANKING_BEAT_SCHEDULE
-
-        assert "banking-update-cash-flow-4h" in BANKING_BEAT_SCHEDULE
-
-        config = BANKING_BEAT_SCHEDULE["banking-update-cash-flow-4h"]
-        assert config["task"] == "app.workers.tasks.banking_tasks.update_cash_flow_forecasts"
-
-    def test_beat_schedule_contains_skonto_alerts(self):
-        """Sollte skonto alerts Task im Schedule haben."""
-        from app.workers.tasks.banking_tasks import BANKING_BEAT_SCHEDULE
-
-        assert "banking-skonto-alerts-morning" in BANKING_BEAT_SCHEDULE
-
-        config = BANKING_BEAT_SCHEDULE["banking-skonto-alerts-morning"]
-        assert config["task"] == "app.workers.tasks.banking_tasks.send_skonto_alerts"
-
-    def test_beat_schedule_contains_tan_cleanup(self):
-        """Sollte TAN cleanup Task im Schedule haben."""
-        from app.workers.tasks.banking_tasks import BANKING_BEAT_SCHEDULE
-
-        assert "banking-tan-cleanup-hourly" in BANKING_BEAT_SCHEDULE
-
-        config = BANKING_BEAT_SCHEDULE["banking-tan-cleanup-hourly"]
-        assert config["task"] == "app.workers.tasks.banking_tasks.cleanup_tan_challenges"
-
-    def test_beat_schedule_has_valid_configs(self):
-        """Sollte gueltige Konfigurationen haben."""
-        from app.workers.tasks.banking_tasks import BANKING_BEAT_SCHEDULE
-
-        for task_name, config in BANKING_BEAT_SCHEDULE.items():
-            assert "task" in config, f"Task {task_name} hat keine task-Definition"
-            assert "schedule" in config, f"Task {task_name} hat keine schedule-Definition"
-
-            # Validate queue option
-            options = config.get("options", {})
-            assert "queue" in options, f"Task {task_name} hat keine queue in options"
 
 
 class TestTaskRegistration:
@@ -335,17 +247,6 @@ class TestPreDueRemindersTask:
         assert hasattr(send_pre_due_reminders, 'max_retries')
         assert send_pre_due_reminders.max_retries >= 2
 
-    def test_beat_schedule_contains_pre_due_reminders(self):
-        """Sollte pre-due reminders Task im Beat Schedule haben."""
-        from app.workers.tasks.banking_tasks import BANKING_BEAT_SCHEDULE
-
-        assert "banking-pre-due-reminders-morning" in BANKING_BEAT_SCHEDULE
-
-        config = BANKING_BEAT_SCHEDULE["banking-pre-due-reminders-morning"]
-        assert config["task"] == "app.workers.tasks.banking_tasks.send_pre_due_reminders"
-        assert "kwargs" in config
-        assert config["kwargs"]["days_before"] == 3
-
 
 class TestDunningDailyReportTask:
     """Tests fuer generate_dunning_daily_report Task (Task 1.5)."""
@@ -372,64 +273,6 @@ class TestDunningDailyReportTask:
         assert hasattr(generate_dunning_daily_report, 'max_retries')
         assert generate_dunning_daily_report.max_retries >= 2
 
-    def test_beat_schedule_contains_dunning_daily_report(self):
-        """Sollte dunning daily report Task im Beat Schedule haben."""
-        from app.workers.tasks.banking_tasks import BANKING_BEAT_SCHEDULE
-
-        assert "banking-dunning-daily-report" in BANKING_BEAT_SCHEDULE
-
-        config = BANKING_BEAT_SCHEDULE["banking-dunning-daily-report"]
-        assert config["task"] == "app.workers.tasks.banking_tasks.generate_dunning_daily_report"
-
-
-class TestNewBeatScheduleEntries:
-    """Tests fuer alle neuen Beat Schedule Eintraege."""
-
-    def test_all_dunning_related_tasks_in_schedule(self):
-        """Sollte alle mahnungsbezogenen Tasks im Schedule haben."""
-        from app.workers.tasks.banking_tasks import BANKING_BEAT_SCHEDULE
-
-        required_dunning_tasks = [
-            "banking-process-dunning-daily",  # Bestehendes Mahnverfahren
-            "banking-pre-due-reminders-morning",  # Neu: Vorab-Erinnerungen
-            "banking-dunning-daily-report",  # Neu: Tagesbericht
-        ]
-
-        for task_name in required_dunning_tasks:
-            assert task_name in BANKING_BEAT_SCHEDULE, \
-                f"Task {task_name} fehlt im Beat Schedule"
-
-    def test_dunning_tasks_have_correct_queues(self):
-        """Sollte korrekte Queues fuer Dunning Tasks haben."""
-        from app.workers.tasks.banking_tasks import BANKING_BEAT_SCHEDULE
-
-        dunning_tasks = [
-            "banking-process-dunning-daily",
-            "banking-pre-due-reminders-morning",
-            "banking-dunning-daily-report",
-        ]
-
-        for task_name in dunning_tasks:
-            config = BANKING_BEAT_SCHEDULE[task_name]
-            options = config.get("options", {})
-            queue = options.get("queue")
-
-            # Dunning Tasks sollten in der banking oder notification Queue sein
-            assert queue is not None, f"Task {task_name} hat keine queue"
-
-    def test_dunning_tasks_have_appropriate_schedules(self):
-        """Sollte passende Zeitplaene fuer Dunning Tasks haben."""
-        from app.workers.tasks.banking_tasks import BANKING_BEAT_SCHEDULE
-        from celery.schedules import crontab
-
-        # Pre-Due Reminders sollten morgens laufen
-        pre_due_config = BANKING_BEAT_SCHEDULE["banking-pre-due-reminders-morning"]
-        assert "schedule" in pre_due_config
-
-        # Daily Report sollte abends laufen
-        report_config = BANKING_BEAT_SCHEDULE["banking-dunning-daily-report"]
-        assert "schedule" in report_config
-
 
 class TestDailyMahnlaufTask:
     """Tests fuer daily_mahnlauf Task (BGB §286 Compliance)."""
@@ -448,14 +291,6 @@ class TestDailyMahnlaufTask:
         from app.workers.celery_app import CPUTask
 
         assert isinstance(daily_mahnlauf, CPUTask)
-
-    def test_daily_mahnlauf_in_beat_schedule(self):
-        """Sollte daily_mahnlauf im Beat Schedule haben."""
-        from app.workers.tasks.banking_tasks import BANKING_BEAT_SCHEDULE
-
-        assert "banking-daily-mahnlauf" in BANKING_BEAT_SCHEDULE
-        config = BANKING_BEAT_SCHEDULE["banking-daily-mahnlauf"]
-        assert config["task"] == "app.workers.tasks.banking_tasks.daily_mahnlauf"
 
 
 class TestReactivateSnoozedTasksTask:
@@ -476,14 +311,6 @@ class TestReactivateSnoozedTasksTask:
 
         assert isinstance(reactivate_snoozed_tasks, CPUTask)
 
-    def test_reactivate_snoozed_tasks_in_beat_schedule(self):
-        """Sollte reactivate_snoozed_tasks im Beat Schedule haben."""
-        from app.workers.tasks.banking_tasks import BANKING_BEAT_SCHEDULE
-
-        assert "banking-reactivate-snoozed-tasks" in BANKING_BEAT_SCHEDULE
-        config = BANKING_BEAT_SCHEDULE["banking-reactivate-snoozed-tasks"]
-        assert config["task"] == "app.workers.tasks.banking_tasks.reactivate_snoozed_tasks"
-
 
 class TestCheckExpiredMahnstoppTask:
     """Tests fuer check_expired_mahnstopp Task."""
@@ -502,14 +329,6 @@ class TestCheckExpiredMahnstoppTask:
         from app.workers.celery_app import CPUTask
 
         assert isinstance(check_expired_mahnstopp, CPUTask)
-
-    def test_check_expired_mahnstopp_in_beat_schedule(self):
-        """Sollte check_expired_mahnstopp im Beat Schedule haben."""
-        from app.workers.tasks.banking_tasks import BANKING_BEAT_SCHEDULE
-
-        assert "banking-check-expired-mahnstopp" in BANKING_BEAT_SCHEDULE
-        config = BANKING_BEAT_SCHEDULE["banking-check-expired-mahnstopp"]
-        assert config["task"] == "app.workers.tasks.banking_tasks.check_expired_mahnstopp"
 
 
 class TestCeleryAppBeatScheduleIntegration:

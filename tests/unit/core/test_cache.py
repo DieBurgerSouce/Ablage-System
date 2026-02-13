@@ -24,7 +24,6 @@ from app.core.cache import (
     invalidate_cache,
     invalidate_user_cache,
     invalidate_document_cache,
-    get_cache_stats,
 )
 
 
@@ -379,27 +378,6 @@ class TestInvalidateCache:
         assert "facets" in result
         assert "stats" in result
         assert "total" in result
-
-
-class TestGetCacheStats:
-    """Tests fuer Cache-Statistiken."""
-
-    @pytest.mark.asyncio
-    async def test_get_cache_stats_returns_dict(self):
-        """get_cache_stats sollte Dictionary zurueckgeben."""
-        result = await get_cache_stats()
-
-        # Sollte dict zurueckgeben (auch bei Fehler)
-        assert isinstance(result, dict)
-
-    @pytest.mark.asyncio
-    async def test_get_cache_stats_handles_error(self):
-        """get_cache_stats sollte Fehler graceful behandeln."""
-        # Ohne Redis-Verbindung sollte error-dict zurueckgegeben werden
-        result = await get_cache_stats()
-
-        # Ohne Redis wird error im dict sein
-        assert isinstance(result, dict)
 
 
 class TestRoundTripSerialization:

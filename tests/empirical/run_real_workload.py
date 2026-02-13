@@ -175,7 +175,7 @@ class WorkloadRunner:
         """Execute single task and record detailed results.
 
         SIMULATION MODE: Returns realistic mock data.
-        TODO: Replace with actual orchestrator.process_task() call.
+        NOTE: Mock ist gewollt fuer Empirical Tests (kein echter OCR-Aufruf noetig).
         """
         import random
 

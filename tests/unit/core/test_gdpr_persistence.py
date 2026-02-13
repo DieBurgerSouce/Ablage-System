@@ -370,60 +370,118 @@ class TestBackwardCompatibility:
         from app.core.gdpr import GDPRComplianceManager
         return GDPRComplianceManager()
 
-    def test_sync_register_still_works(self, gdpr_manager):
-        """Test dass synchrone Registrierung noch funktioniert."""
+    @pytest.mark.asyncio
+    async def test_sync_register_migrated_to_async(self, gdpr_manager):
+        """Test dass synchrone Registrierung zu async migriert wurde."""
         from app.core.gdpr import DataCategory, ProcessingPurpose
 
-        result = gdpr_manager.register_processing_activity(
-            document_id=str(uuid4()),
-            data_categories=[DataCategory.DOCUMENT_CONTENT],
-            purpose=ProcessingPurpose.OCR_PROCESSING
-        )
+        mock_db = AsyncMock()
+        mock_db.add = MagicMock()
+        mock_db.commit = AsyncMock()
+        mock_db.refresh = AsyncMock()
+
+        with patch("app.db.models.GDPRProcessingActivity") as MockActivity:
+            mock_instance = MagicMock()
+            mock_instance.activity_id = "test_id"
+            MockActivity.return_value = mock_instance
+
+            result = await gdpr_manager.register_processing_activity_async(
+                db=mock_db,
+                document_id=str(uuid4()),
+                data_categories=[DataCategory.DOCUMENT_CONTENT],
+                purpose=ProcessingPurpose.OCR_PROCESSING
+            )
 
         assert "id" in result
         assert result["purpose"] == "ocr_processing"
 
-    def test_sync_register_adds_to_cache(self, gdpr_manager):
-        """Test dass synchrone Registrierung in Cache speichert."""
+    @pytest.mark.asyncio
+    async def test_async_register_saves_to_db(self, gdpr_manager):
+        """Test dass async Registrierung in DB speichert."""
         from app.core.gdpr import DataCategory, ProcessingPurpose
 
-        initial_count = len(gdpr_manager._processing_activities_cache)
+        mock_db = AsyncMock()
+        mock_db.add = MagicMock()
+        mock_db.commit = AsyncMock()
+        mock_db.refresh = AsyncMock()
 
-        gdpr_manager.register_processing_activity(
-            document_id=str(uuid4()),
-            data_categories=[DataCategory.METADATA],
-            purpose=ProcessingPurpose.QUALITY_IMPROVEMENT
-        )
+        with patch("app.db.models.GDPRProcessingActivity") as MockActivity:
+            mock_instance = MagicMock()
+            mock_instance.activity_id = "test_id"
+            MockActivity.return_value = mock_instance
 
-        assert len(gdpr_manager._processing_activities_cache) == initial_count + 1
+            await gdpr_manager.register_processing_activity_async(
+                db=mock_db,
+                document_id=str(uuid4()),
+                data_categories=[DataCategory.METADATA],
+                purpose=ProcessingPurpose.QUALITY_IMPROVEMENT
+            )
 
-    def test_sync_compliance_check_works(self, gdpr_manager):
-        """Test dass synchroner Compliance-Check funktioniert."""
-        result = gdpr_manager.check_retention_compliance()
+        mock_db.add.assert_called_once()
+        mock_db.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_async_compliance_check_works(self, gdpr_manager):
+        """Test dass async Compliance-Check funktioniert."""
+        mock_db = AsyncMock()
+
+        # Mock count query
+        mock_count_result = MagicMock()
+        mock_count_result.scalar.return_value = 0
+
+        # Mock expired activities query
+        mock_expired_result = MagicMock()
+        mock_expired_result.scalars.return_value.all.return_value = []
+
+        mock_db.execute = AsyncMock(side_effect=[mock_count_result, mock_expired_result])
+
+        result = await gdpr_manager.check_retention_compliance_async(mock_db)
 
         assert "total_activities" in result
         assert "expired_activities" in result
 
-    def test_sync_compliance_report_works(self, gdpr_manager):
-        """Test dass synchroner Report funktioniert."""
-        result = gdpr_manager.get_compliance_report()
+    @pytest.mark.asyncio
+    async def test_async_compliance_report_works(self, gdpr_manager):
+        """Test dass async Report funktioniert."""
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar.return_value = 0
+
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        with patch.object(
+            gdpr_manager,
+            'check_retention_compliance_async',
+            AsyncMock(return_value={"total_activities": 0, "expired_activities": 0, "to_be_deleted": []})
+        ):
+            result = await gdpr_manager.get_compliance_report_async(mock_db)
 
         assert "timestamp" in result
-        assert "warning" in result  # Should have deprecation warning
+        assert "total_processing_activities" in result
 
-    def test_processing_activities_property_returns_cache(self, gdpr_manager):
-        """Test dass Property Cache zurückgibt."""
-        from app.core.gdpr import DataCategory, ProcessingPurpose
+    @pytest.mark.asyncio
+    async def test_get_processing_activities_async_works(self, gdpr_manager):
+        """Test dass async get_processing_activities funktioniert."""
+        mock_db = AsyncMock()
 
-        # Add something to cache
-        gdpr_manager.register_processing_activity(
-            document_id=str(uuid4()),
-            data_categories=[DataCategory.DOCUMENT_CONTENT],
-            purpose=ProcessingPurpose.OCR_PROCESSING
-        )
+        mock_activity = MagicMock()
+        mock_activity.activity_id = "test_123"
+        mock_activity.document_id = uuid4()
+        mock_activity.subject_id = "hashed_id"
+        mock_activity.data_categories = ["document_content"]
+        mock_activity.processing_purpose = "ocr_processing"
+        mock_activity.legal_basis = "Art. 6(1)(b)"
+        mock_activity.retention_period_days = 365
+        mock_activity.retention_expires_at = datetime.now(timezone.utc) + timedelta(days=365)
+        mock_activity.processing_backend = "deepseek"
+        mock_activity.created_at = datetime.now(timezone.utc)
 
-        # Access via property
-        activities = gdpr_manager.processing_activities
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [mock_activity]
+
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        activities = await gdpr_manager.get_processing_activities_async(mock_db)
 
         assert isinstance(activities, list)
         assert len(activities) >= 1

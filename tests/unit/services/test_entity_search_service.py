@@ -381,8 +381,8 @@ class TestFindByCompany:
         assert len(result) == 1
 
     @pytest.mark.asyncio
-    async def test_find_in_both_companies(self, service):
-        """Sollte Entities in beiden Firmen finden."""
+    async def test_find_in_multiple_companies(self, service):
+        """Sollte Entities in mehreren Firmen finden."""
         entity = MagicMock(spec=BusinessEntity)
         entity.company_presence = ["folie", "messer"]
 
@@ -390,7 +390,7 @@ class TestFindByCompany:
         mock_result.scalars.return_value.all.return_value = [entity]
         service.db.execute = AsyncMock(return_value=mock_result)
 
-        result = await service.find_in_both_companies()
+        result = await service.find_in_multiple_companies(min_companies=2)
 
         assert len(result) == 1
 

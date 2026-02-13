@@ -29,6 +29,8 @@ from app.db.models_gl_posting import (
     JournalEntryLine,
     JournalEntryStatus,
 )
+from app.db.models import Document
+from app.db.models_datev import DATEVConfiguration
 
 
 @pytest.fixture
@@ -404,3 +406,383 @@ async def test_entry_number_sequence(gl_service, company_id, mock_db):
     entry_number = await gl_service._generate_entry_number(company_id, 2024)
 
     assert entry_number == "JE-2024-00043"
+
+
+# ============================================================================
+# TestGetAccountLedger
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_get_account_ledger_returns_entries(gl_service, company_id, mock_db):
+    """Test: get_account_ledger returns list of entries for account."""
+    # Mock DB result
+    mock_lines = [
+        MagicMock(
+            entry_number="JE-2024-00001",
+            posting_date=date(2024, 1, 15),
+            account_number="1200",
+            debit_amount=Decimal("1000.00"),
+            credit_amount=Decimal("0"),
+            text="Eingang",
+        ),
+        MagicMock(
+            entry_number="JE-2024-00002",
+            posting_date=date(2024, 1, 20),
+            account_number="1200",
+            debit_amount=Decimal("0"),
+            credit_amount=Decimal("500.00"),
+            text="Ausgang",
+        ),
+    ]
+
+    mock_result = MagicMock()
+    mock_result.all = MagicMock(return_value=mock_lines)
+    mock_db.execute = AsyncMock(return_value=mock_result)
+
+    entries = await gl_service.get_account_ledger(
+        company_id=company_id,
+        account_number="1200",
+        fiscal_year=2024,
+    )
+
+    assert len(entries) == 2
+    assert entries[0].account_number == "1200"
+    assert entries[0].debit_amount == Decimal("1000.00")
+    assert entries[1].credit_amount == Decimal("500.00")
+
+
+@pytest.mark.asyncio
+async def test_get_account_ledger_filters_by_period(gl_service, company_id, mock_db):
+    """Test: get_account_ledger respects fiscal_year filter."""
+    # Mock DB result (empty for different year)
+    mock_result = MagicMock()
+    mock_result.all = MagicMock(return_value=[])
+    mock_db.execute = AsyncMock(return_value=mock_result)
+
+    entries = await gl_service.get_account_ledger(
+        company_id=company_id,
+        account_number="1200",
+        fiscal_year=2023,  # Different year
+    )
+
+    assert len(entries) == 0
+
+
+@pytest.mark.asyncio
+async def test_get_account_ledger_empty(gl_service, company_id, mock_db):
+    """Test: get_account_ledger with no entries returns empty list."""
+    # Mock DB result
+    mock_result = MagicMock()
+    mock_result.all = MagicMock(return_value=[])
+    mock_db.execute = AsyncMock(return_value=mock_result)
+
+    entries = await gl_service.get_account_ledger(
+        company_id=company_id,
+        account_number="9999",
+        fiscal_year=2024,
+    )
+
+    assert entries == []
+
+
+# ============================================================================
+# TestPostFromInvoice
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_post_from_invoice_creates_entry(gl_service, company_id, user_id, mock_db):
+    """Test: post_from_invoice creates and posts entry from document."""
+    document_id = uuid4()
+
+    # Mock document
+    mock_doc = MagicMock(spec=Document)
+    mock_doc.id = document_id
+    mock_doc.extracted_entities = {
+        "total_amount": 119.00,
+        "net_amount": 100.00,
+        "tax_amount": 19.00,
+        "invoice_number": "RE-2024-001",
+        "supplier_name": "Test Lieferant GmbH",
+    }
+
+    # Mock DB queries
+    mock_doc_result = MagicMock()
+    mock_doc_result.scalar_one_or_none = MagicMock(return_value=mock_doc)
+
+    mock_datev_result = MagicMock()
+    mock_datev_result.scalar_one_or_none = MagicMock(return_value=None)
+
+    mock_entry = MagicMock(spec=JournalEntry)
+    mock_entry.id = uuid4()
+    mock_entry.status = JournalEntryStatus.DRAFT.value
+    mock_entry.entry_number = "JE-2024-00001"
+
+    mock_entry_result = MagicMock()
+    mock_entry_result.scalar_one_or_none = MagicMock(return_value=mock_entry)
+
+    mock_db.execute = AsyncMock(side_effect=[
+        mock_doc_result,
+        mock_datev_result,
+        mock_entry_result,
+    ])
+
+    gl_service._generate_entry_number = AsyncMock(return_value="JE-2024-00001")
+
+    entry = await gl_service.post_from_invoice(
+        company_id=company_id,
+        document_id=document_id,
+        created_by=user_id,
+    )
+
+    assert entry is not None
+    assert entry.entry_number == "JE-2024-00001"
+
+
+@pytest.mark.asyncio
+async def test_post_from_invoice_with_datev(gl_service, company_id, user_id, mock_db):
+    """Test: post_from_invoice uses DATEV mapper when config exists."""
+    document_id = uuid4()
+
+    # Mock document
+    mock_doc = MagicMock(spec=Document)
+    mock_doc.id = document_id
+    mock_doc.extracted_entities = {
+        "total_amount": 119.00,
+        "net_amount": 100.00,
+        "tax_amount": 19.00,
+        "invoice_number": "RE-2024-001",
+        "supplier_name": "Test Lieferant GmbH",
+    }
+
+    # Mock DATEV config
+    mock_datev_config = MagicMock(spec=DATEVConfiguration)
+    mock_datev_config.expense_account = "4400"
+    mock_datev_config.input_tax_account = "1576"
+    mock_datev_config.accounts_payable = "1600"
+
+    # Mock DB queries
+    mock_doc_result = MagicMock()
+    mock_doc_result.scalar_one_or_none = MagicMock(return_value=mock_doc)
+
+    mock_datev_result = MagicMock()
+    mock_datev_result.scalar_one_or_none = MagicMock(return_value=mock_datev_config)
+
+    mock_entry = MagicMock(spec=JournalEntry)
+    mock_entry.id = uuid4()
+    mock_entry.status = JournalEntryStatus.DRAFT.value
+    mock_entry.entry_number = "JE-2024-00001"
+
+    mock_entry_result = MagicMock()
+    mock_entry_result.scalar_one_or_none = MagicMock(return_value=mock_entry)
+
+    mock_db.execute = AsyncMock(side_effect=[
+        mock_doc_result,
+        mock_datev_result,
+        mock_entry_result,
+    ])
+
+    gl_service._generate_entry_number = AsyncMock(return_value="JE-2024-00001")
+
+    entry = await gl_service.post_from_invoice(
+        company_id=company_id,
+        document_id=document_id,
+        created_by=user_id,
+    )
+
+    assert entry is not None
+
+
+@pytest.mark.asyncio
+async def test_post_from_invoice_no_document_raises(gl_service, company_id, user_id, mock_db):
+    """Test: post_from_invoice raises ValueError when document not found."""
+    document_id = uuid4()
+
+    # Mock: document not found
+    mock_doc_result = MagicMock()
+    mock_doc_result.scalar_one_or_none = MagicMock(return_value=None)
+    mock_db.execute = AsyncMock(return_value=mock_doc_result)
+
+    with pytest.raises(ValueError, match="Dokument nicht gefunden"):
+        await gl_service.post_from_invoice(
+            company_id=company_id,
+            document_id=document_id,
+            created_by=user_id,
+        )
+
+
+@pytest.mark.asyncio
+async def test_post_from_invoice_no_amount_raises(gl_service, company_id, user_id, mock_db):
+    """Test: post_from_invoice raises ValueError when no total_amount."""
+    document_id = uuid4()
+
+    # Mock document without total_amount
+    mock_doc = MagicMock(spec=Document)
+    mock_doc.id = document_id
+    mock_doc.extracted_entities = {
+        "invoice_number": "RE-2024-001",
+        "supplier_name": "Test Lieferant GmbH",
+    }
+
+    mock_doc_result = MagicMock()
+    mock_doc_result.scalar_one_or_none = MagicMock(return_value=mock_doc)
+    mock_db.execute = AsyncMock(return_value=mock_doc_result)
+
+    with pytest.raises(ValueError, match="Kein Betrag im Dokument gefunden"):
+        await gl_service.post_from_invoice(
+            company_id=company_id,
+            document_id=document_id,
+            created_by=user_id,
+        )
+
+
+# ============================================================================
+# TestSimpleExpenseLines
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_simple_expense_lines_structure(gl_service):
+    """Test: _simple_expense_lines returns 3 lines (4400, 1576, 1600)."""
+    lines = gl_service._simple_expense_lines(
+        total_amount=Decimal("119.00"),
+        tax_amount=Decimal("19.00"),
+    )
+
+    assert len(lines) == 3
+    assert lines[0].account_number == "4400"  # Wareneingang
+    assert lines[1].account_number == "1576"  # Vorsteuer
+    assert lines[2].account_number == "1600"  # Verbindlichkeiten
+
+
+@pytest.mark.asyncio
+async def test_simple_expense_lines_balanced(gl_service):
+    """Test: _simple_expense_lines total debit equals total credit."""
+    lines = gl_service._simple_expense_lines(
+        total_amount=Decimal("119.00"),
+        tax_amount=Decimal("19.00"),
+    )
+
+    total_debit = sum(line.debit_amount for line in lines)
+    total_credit = sum(line.credit_amount for line in lines)
+
+    assert total_debit == total_credit == Decimal("119.00")
+
+
+@pytest.mark.asyncio
+async def test_simple_expense_lines_tax_handling(gl_service):
+    """Test: _simple_expense_lines handles tax_amount correctly."""
+    lines = gl_service._simple_expense_lines(
+        total_amount=Decimal("238.00"),
+        tax_amount=Decimal("38.00"),
+    )
+
+    # Wareneingang = total - tax = 200.00
+    assert lines[0].debit_amount == Decimal("200.00")
+    # Vorsteuer = tax = 38.00
+    assert lines[1].debit_amount == Decimal("38.00")
+    # Verbindlichkeiten = total = 238.00
+    assert lines[2].credit_amount == Decimal("238.00")
+
+
+# ============================================================================
+# TestEdgeCases
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_create_entry_with_cost_center(gl_service, company_id, user_id, mock_db):
+    """Test: create_journal_entry with cost_center works."""
+    lines = [
+        JournalEntryLineCreate(
+            account_number="4400",
+            account_name="Wareneingang",
+            debit_amount=Decimal("100.00"),
+            credit_amount=Decimal("0"),
+            cost_center="CC-01",
+        ),
+        JournalEntryLineCreate(
+            account_number="1600",
+            account_name="Verbindlichkeiten",
+            debit_amount=Decimal("0"),
+            credit_amount=Decimal("100.00"),
+        ),
+    ]
+
+    gl_service._generate_entry_number = AsyncMock(return_value="JE-2024-00001")
+
+    entry = await gl_service.create_journal_entry(
+        company_id=company_id,
+        lines=lines,
+        posting_date=date(2024, 1, 15),
+        created_by=user_id,
+    )
+
+    assert entry is not None
+    assert entry.lines[0].cost_center == "CC-01"
+
+
+@pytest.mark.asyncio
+async def test_create_entry_with_tax_code(gl_service, company_id, user_id, mock_db):
+    """Test: create_journal_entry with tax_code works."""
+    lines = [
+        JournalEntryLineCreate(
+            account_number="4400",
+            account_name="Wareneingang",
+            debit_amount=Decimal("100.00"),
+            credit_amount=Decimal("0"),
+            tax_code="VSt19",
+            tax_rate=Decimal("0.19"),
+        ),
+        JournalEntryLineCreate(
+            account_number="1600",
+            account_name="Verbindlichkeiten",
+            debit_amount=Decimal("0"),
+            credit_amount=Decimal("100.00"),
+        ),
+    ]
+
+    gl_service._generate_entry_number = AsyncMock(return_value="JE-2024-00001")
+
+    entry = await gl_service.create_journal_entry(
+        company_id=company_id,
+        lines=lines,
+        posting_date=date(2024, 1, 15),
+        created_by=user_id,
+    )
+
+    assert entry is not None
+    assert entry.lines[0].tax_code == "VSt19"
+    assert entry.lines[0].tax_rate == Decimal("0.19")
+
+
+@pytest.mark.asyncio
+async def test_reverse_draft_fails(gl_service, mock_db, user_id):
+    """Test: Cannot reverse a draft entry."""
+    entry_id = uuid4()
+
+    # Mock DB query: draft entry
+    mock_entry = MagicMock(spec=JournalEntry)
+    mock_entry.id = entry_id
+    mock_entry.status = JournalEntryStatus.DRAFT.value
+
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none = MagicMock(return_value=mock_entry)
+    mock_db.execute = AsyncMock(return_value=mock_result)
+
+    with pytest.raises(ValueError, match="Nur gebuchte Einträge können storniert werden"):
+        await gl_service.reverse_journal_entry(entry_id, user_id, "Test")
+
+
+@pytest.mark.asyncio
+async def test_entry_number_with_existing_max(gl_service, company_id, mock_db):
+    """Test: _generate_entry_number correctly increments from max."""
+    # Mock: max entry is JE-2024-00099
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none = MagicMock(return_value="JE-2024-00099")
+    mock_db.execute = AsyncMock(return_value=mock_result)
+
+    entry_number = await gl_service._generate_entry_number(company_id, 2024)
+
+    assert entry_number == "JE-2024-00100"
