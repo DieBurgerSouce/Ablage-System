@@ -846,6 +846,7 @@ from app.api.v1.cashflow import router as entity_cashflow_router  # Phase 2.2: E
 from app.api.v1.fraud_detection import router as fraud_detection_router
 from app.api.v1.risk_intelligence import router as risk_intelligence_router
 from app.api.v1.ocr_learning import router as ocr_learning_router
+from app.api.v1.ocr_templates import router as ocr_templates_router
 from app.api.v1.bpmn import router as bpmn_router
 from app.api.v1.compliance import router as compliance_router
 from app.api.v1.document_completeness import router as document_completeness_router
@@ -933,6 +934,11 @@ from app.api.v1.retention_admin import router as retention_admin_router  # Phase
 from app.api.v1.cross_tenant_reports import router as cross_tenant_reports_router  # Phase 3: Cross-Tenant Reports
 from app.api.v1.notification_preferences import router as notification_preferences_router  # Phase 3: Notification Preferences
 from app.api.v1.feature_flags import admin_router as feature_flags_admin_router, user_router as feature_flags_router  # Feature Flag Service
+
+# Phase 1: Enterprise & Compliance (Dokument-Integritaet, Signaturen, Jahresabschluss)
+from app.api.v1.integrity import router as integrity_router  # Phase 1: Dokument-Integritaet (Hash-Chain)
+from app.api.v1.signatures import router as signatures_router  # Phase 1: QES/eIDAS Signaturen
+from app.api.v1.year_end import router as year_end_router  # Phase 1: Jahresabschluss-Assistent
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -1044,6 +1050,7 @@ app.include_router(entity_cashflow_router, prefix="/api/v1")  # Phase 2.2: Entit
 app.include_router(fraud_detection_router, prefix="/api/v1")
 app.include_router(risk_intelligence_router, prefix="/api/v1")
 app.include_router(ocr_learning_router, prefix="/api/v1")
+app.include_router(ocr_templates_router, prefix="/api/v1")
 app.include_router(bpmn_router, prefix="/api/v1")
 app.include_router(compliance_router, prefix="/api/v1")
 app.include_router(document_completeness_router, prefix="/api/v1")  # Belegpruefung
@@ -1153,6 +1160,11 @@ app.include_router(notification_preferences_router, prefix="/api/v1")  # Notific
 app.include_router(feature_flags_admin_router, prefix="/api/v1")  # Feature Flag Admin CRUD
 app.include_router(feature_flags_router, prefix="/api/v1")  # Feature Flag Evaluation
 app.include_router(document_context_router, prefix="/api/v1")  # Phase 2: Document Context Aggregation
+
+# Phase 1: Enterprise & Compliance
+app.include_router(integrity_router, prefix="/api/v1")  # Dokument-Integritaet (Hash-Chain, Merkle-Tree)
+app.include_router(signatures_router, prefix="/api/v1")  # QES/eIDAS Elektronische Signaturen
+app.include_router(year_end_router, prefix="/api/v1")  # Jahresabschluss-Assistent
 
 
 # ==================== Health & Status Endpoints ====================

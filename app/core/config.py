@@ -62,6 +62,12 @@ class Settings(BaseSettings):
     API_PORT: int = 8000
     API_RELOAD: bool = False
     
+    # System User (fuer automatisierte Operationen wie Auto-Posting)
+    SYSTEM_USER_ID: str = Field(
+        default="00000000-0000-0000-0000-000000000001",
+        description="System-User UUID fuer automatisierte Operationen (Auto-Posting)"
+    )
+
     # Logging
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "json"  # json or text
