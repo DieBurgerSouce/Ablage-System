@@ -257,7 +257,7 @@ export function useChatWebSocket(
         }
 
         // Token holen
-        const token = localStorage.getItem('auth_token');
+        const token = sessionStorage.getItem('auth_token');
         if (!token) {
             callbacksRef.current.onError?.('Nicht authentifiziert');
             return;

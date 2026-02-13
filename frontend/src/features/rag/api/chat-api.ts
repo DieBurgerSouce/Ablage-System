@@ -19,7 +19,7 @@ const API_BASE = '/api/v1/rag/chat';
  * Get authentication token from storage.
  */
 function getAuthToken(): string | null {
-    return localStorage.getItem('access_token');
+    return sessionStorage.getItem('auth_token');
 }
 
 /**

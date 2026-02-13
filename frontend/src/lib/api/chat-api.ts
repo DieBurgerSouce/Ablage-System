@@ -316,7 +316,7 @@ export const chatApi = {
 
         try {
             // Hole Token aus apiClient Interceptor-Logik (konsistent mit anderen API-Calls)
-            const token = localStorage.getItem('auth_token');
+            const token = sessionStorage.getItem('auth_token');
             const headers: HeadersInit = {
                 'Content-Type': 'application/json',
                 Accept: 'text/event-stream',

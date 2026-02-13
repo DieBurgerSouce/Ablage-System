@@ -203,7 +203,7 @@ export function useChatWebSocket(
         (targetSessionId?: string) => {
             cleanup();
 
-            const token = localStorage.getItem('access_token');
+            const token = sessionStorage.getItem('auth_token');
             if (!token) {
                 setError('Nicht authentifiziert');
                 setStatus('error');

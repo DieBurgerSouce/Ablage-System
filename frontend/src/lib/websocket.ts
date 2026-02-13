@@ -133,6 +133,7 @@ class RealtimeWebSocketClient {
     }
 
     this.token = token;
+    this.reconnectAttempts = 0;
     this.setState('connecting');
     this.createConnection();
   }
@@ -188,6 +189,11 @@ class RealtimeWebSocketClient {
   // ---------------------------------------------------------------------------
 
   private createConnection(): void {
+    // Frischen Token aus sessionStorage holen (falls refreshed)
+    const freshToken = sessionStorage.getItem('auth_token');
+    if (freshToken) {
+      this.token = freshToken;
+    }
     const wsUrl = `${this.url}?token=${this.token}`;
 
     try {
