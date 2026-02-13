@@ -22,6 +22,13 @@ depends_on = None
 
 def upgrade() -> None:
     """Erstellt notification_templates Tabelle."""
+    conn = op.get_bind()
+    result = conn.execute(sa.text(
+        "SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='notification_message_templates'"
+    ))
+    if result.fetchone():
+        return  # Tabelle existiert bereits
+
     # Tabelle erstellen
     op.create_table(
         "notification_message_templates",
