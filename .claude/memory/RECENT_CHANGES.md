@@ -1,13 +1,14 @@
 # Recent Changes
 
 ## 2026-02-13
+- **fix(frontend)**: WebSocket Token-Storage auf sessionStorage migriert (5 Dateien)
+- **fix(frontend)**: WebSocket reconnectAttempts Reset + frischer Token aus sessionStorage
+- **feat(frontend)**: 5 neue Enterprise Features (CEO Dashboard, Smart Inbox, Knowledge Graph, Compliance, OCR Suite)
+- **feat(frontend)**: AI Assistant Context für neue Pages (Suggestions + Placeholders)
+- **chore(orchestration)**: Ralph Loop Notes Update
 - **feat(db)**: Migrationen 215-219 (Integrity, Signatures, YearEnd, OCR Templates, Prediction Feedback)
 - **feat(api)**: Enterprise Endpoints (integrity, signatures, year_end, ocr_templates)
-- **feat(api)**: Lineage PDF-Export implementiert (Platzhalter entfernt)
-- **feat(services)**: OCR Instant Feedback Path (edit_distance <= 2 direkter Self-Learning Service)
-- **feat(services)**: Enterprise Services (Integrity Hash-Chain, QES/eIDAS Signatures, YearEnd Assistant)
-- **feat(frontend)**: Document Tasks + Lifecycle Visualization + Paper Dimming
-- **feat(frontend)**: Finanzen Format Utils, Banking Reconciliation UI, Admin Dunning Templates
+- **feat(services)**: OCR Instant Feedback Path (edit_distance <= 2)
 - **test**: Unit Tests fuer Auto-Template, Integrity, Signature, YearEnd Services
 
 ## 2026-02-10
@@ -31,23 +32,12 @@
 - **feat(security)**: TenantContextMiddleware fuer Multi-Tenancy RLS propagation
 - **feat(security)**: Resilience Patterns (Circuit Breaker, Retry, Bulkhead) mit Prometheus Metrics
 
-## 2026-02-08 (Session Documentation)
-- **docs(session)**: Enterprise-Level Critical Review ABGESCHLOSSEN
-- **docs(session)**: SESSION_2026-02-08_Enterprise-Review.md erstellt (2,500+ words)
-- **docs(session)**: EXECUTIVE_SUMMARY_2026-02-08.md fuer Management erstellt
-- **docs(memory)**: TECHNICAL_DEBT.md erstellt mit vollstaendigem Tracking
-- **review(verdict)**: PRODUCTION-READY - Alle Enterprise-Standards erfuellt
-- **review(findings)**: 414 Tasks reviewed, 150+ Services validated, 208 Migrations analyzed
-- **review(security)**: PII-Filtering, GDPR-Compliance, SQL Injection Prevention
-- **review(architecture)**: Clean Architecture, Type Safety, German Compliance
-- **review(debt)**: LOW - No Critical Issues, 2-3 Sprints to Zero Debt
+## 2026-02-08
+- **docs(session)**: Enterprise-Level Critical Review ABGESCHLOSSEN - Production-Ready
 
 ## 2026-02-07
-- **feat(db)**: Enterprise-Modelle und Migrationen 148, 202-208 (Trust, Banking, ESG, Portal, FX, Kanban)
-- **feat(security)**: mTLS Service, Certificate Authority, Core-Module Type-Safety-Haertung
-- **feat(services)**: Enterprise Services fuer Trust, PSD2-Banking, ESG, Contracts, Portal, Accounting
-- **feat(ocr)**: A/B Testing fuer OCR Router, ML Router Trainer, Type-Safety-Verbesserungen
-- **feat(api)**: Enterprise API-Endpoints fuer Banking, Portal, ESG, Kanban, Executive Dashboard
-- **feat(workers)**: Celery Tasks fuer Banking, Trust, FX, GL Posting, mTLS, OCR Training
-- **feat(frontend)**: Portal, ESG, Kanban, Executive Dashboard, Mobile Features, A11y Tests
-- **test(enterprise)**: Tests fuer Accounting, ESG, Portal, Kanban, Trust, Integration Tests
+- **feat(db)**: Enterprise-Modelle und Migrationen 148, 202-208
+- **feat(security)**: mTLS Service, Certificate Authority
+- **feat(services)**: Enterprise Services (Trust, PSD2-Banking, ESG, Portal, Accounting)
+- **feat(api)**: Enterprise API-Endpoints (Banking, Portal, ESG, Kanban)
+- **feat(frontend)**: Portal, ESG, Kanban, Executive Dashboard

@@ -10,6 +10,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Frontend: 5 neue Enterprise Features (CEO Dashboard, Smart Inbox, Knowledge Graph, Compliance Center, OCR Suite)
+- Frontend: AI Assistant Context für alle neuen Pages mit spezifischen Suggestions und Placeholders
+- Frontend: WebSocket Init Hook für zentrale WebSocket-Initialisierung
+
+### Fixed
+- Frontend: WebSocket Token-Storage von localStorage auf sessionStorage migriert (5 Dateien)
+- Frontend: Chat WebSocket nutzte falschen Storage (localStorage → sessionStorage)
+- Frontend: RAG WebSocket nutzte falschen Key und Storage (access_token → auth_token, localStorage → sessionStorage)
+- Frontend: BI API nutzte falschen Key und Storage (access_token → auth_token)
+- Frontend: WebSocket reconnectAttempts werden jetzt bei connect() zurückgesetzt
+- Frontend: Frischer Token wird aus sessionStorage in createConnection() geholt
+
+### Changed
+
+## [Previous Releases]
+
+### Added
 - Migration 215: Document Integrity Tables (Hash-Chain, Merkle-Tree, Verification)
 - Migration 216: QES/eIDAS Electronic Signature Tables (Certificate, Signature, Verification)
 - Migration 217: Year-End Closing Assistant Tables (Period, Task, Template, Document Link)

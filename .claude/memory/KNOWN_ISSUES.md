@@ -14,6 +14,14 @@
 | **ValidationRule/ValidationSampleConfig** | Beide Models haben KEIN `company_id` - sind absichtlich System-wide Konfigurationen. Fuer echte Multi-Tenant Deployment waere Migration noetig. |
 | **CustomerDetection Celery Tasks** | `detect_contacts_task` laedt Document ohne `company_id` Filter - aber Tasks sind nur fuer Admin-Operationen, keine externe API. Service nutzt `document.company_id` Fallback. |
 
+### Out of Scope (Documented for Future Work)
+
+| Bereich | Task | Prioritaet |
+|---------|------|------------|
+| **Token-Storage Audit** | Pruefen ob `apiClient` Interceptor (`lib/api/client.ts:85`) konsistent mit direkten `fetch()`-Aufrufen ist - einige Features nutzen `fetchWithAuth()` statt `apiClient` | LOW |
+| **RAG Feature Token-Architektur** | RAG-Features (`features/rag/`) hatten `access_token` Key - pruefen ob Backend jemals diesen Key erwartet hat oder ob es immer ein Frontend-Bug war | LOW |
+| **Test Coverage fuer Token-Fixes** | Unit Tests fuer die 5 fixierten Dateien - sicherstellen dass `sessionStorage` korrekt gemockt wird | MEDIUM |
+
 ## Notes
 
 - **MultiStepForm SessionStorage**: Fix applied for QuotaExceededError in privacy mode/large forms
@@ -65,3 +73,8 @@
 | 2026-01-19 | **CRITICAL** CustomerDetectionService process_document IDOR | Service-Methode hatte KEINEN `company_id` Parameter - alle internen find_or_create_contact Aufrufe ohne Isolation | Fixed: company_id Parameter mit auto-Fallback auf document.company_id, alle internen Aufrufe aktualisiert |
 | 2026-01-19 | **MEDIUM** CustomerDetectionService merge_contacts Defense-in-Depth | Service-Methode hatte KEINEN `company_id` Parameter - API validierte bereits, aber Service selbst nicht (Ralph-Loop Self-Review) | Fixed: company_id Parameter mit Security-Logging bei Mismatch, API-Aufruf aktualisiert |
 | 2026-01-19 | **CRITICAL** CustomerDetectionService PII-Logging Violation | `find_or_create_contact()` loggte VAT-ID und Tax-ID in Lines 589, 604 - Verstoesst gegen CLAUDE.md Rule 8 (NEVER log PII) | Fixed: vat_id und tax_id aus Logger-Aufrufen entfernt, nur noch contact_id geloggt |
+| 2026-02-13 | **MEDIUM** Chat WebSocket falscher Token-Storage | `features/chat/hooks/use-chat-websocket.ts:260` nutzte `localStorage` statt `sessionStorage` | Fixed: `sessionStorage.getItem('auth_token')` |
+| 2026-02-13 | **HIGH** RAG WebSocket falscher Token-Key + Storage | `features/rag/hooks/use-chat-websocket.ts:206` nutzte `localStorage.getItem('access_token')` - falscher Key UND falscher Storage | Fixed: `sessionStorage.getItem('auth_token')` |
+| 2026-02-13 | **HIGH** BI API falscher Token-Key + Storage | `features/rag/api/bi-api.ts:157` nutzte `localStorage.getItem('access_token')` | Fixed: `sessionStorage.getItem('auth_token')` |
+| 2026-02-13 | **HIGH** RAG Chat API falscher Token-Key + Storage | `features/rag/api/chat-api.ts:22` nutzte `localStorage.getItem('access_token')` | Fixed: `sessionStorage.getItem('auth_token')` |
+| 2026-02-13 | **LOW** Lib Chat API falscher Token-Storage | `lib/api/chat-api.ts:319` nutzte `localStorage.getItem('auth_token')` - richtiger Key, falscher Storage | Fixed: `sessionStorage.getItem('auth_token')` |
