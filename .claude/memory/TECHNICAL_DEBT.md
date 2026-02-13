@@ -1,6 +1,6 @@
 # Technical Debt Tracking
 
-**Last Updated**: 2026-02-08
+**Last Updated**: 2026-02-13
 **Overall Debt Level**: 🟢 LOW
 
 ---
@@ -9,9 +9,9 @@
 
 | Category | Level | Priority | Estimated Effort |
 |----------|-------|----------|------------------|
-| Code Quality | Minimal | Low | 1-2 days |
+| Code Quality | None | - | 0 days |
 | Security | None | - | 0 days |
-| Architecture | Minimal | Low | 2-3 days |
+| Architecture | None | - | 0 days |
 | Testing | Low-Medium | Medium | 5-10 days |
 | Documentation | Minimal | Low | 1-2 days |
 
@@ -21,26 +21,44 @@
 
 ## Medium Priority Issues
 
-### M1: Celery Task Naming Convention
+### ✅ M1: Celery Task Naming Convention
 **Category**: Code Quality
 **Impact**: Monitoring & Debugging
 **Effort**: 2 days
-**Status**: 🟡 Open
+**Status**: ✅ ERLEDIGT (2026-02-13)
 
-**Issue**: Tasks nutzen verschiedene Naming-Patterns
-```python
-# Gemischt:
-"app.workers.tasks.fx_rate_tasks.fetch_ecb_rates_daily"  # Full path
-"retention_enforcement.enforce_retention_daily_scan"     # Short form
-```
+**Ergebnis**: Alle ~180+ Task-Dekoratoren und ~80+ Beat-Schedule-Eintraege auf Full Path
+Naming standardisiert (`app.workers.tasks.<module>.<function>`). Zusaetzlich ~125
+Task-Routes-Eintraege in `celery_app.py` aktualisiert. Keine Short-Form-Namen mehr vorhanden.
 
-**Recommendation**: Standardisiere auf Full Path Naming
+Senior Review (2026-02-13): 4 uebersehene `send_task()` Short-Form-Aufrufe in
+`import_tasks.py` korrigiert (`import.retry_single_email/file` -> Full Path).
+4 Referenzen auf nicht-existierendes `process_document_ocr` in `ocr.py`,
+`ai_action_service.py`, `workflow_step_executor.py` auf `process_document_task` korrigiert.
+`test_banking_tasks.py` bereinigt (TestBankingBeatSchedule Klasse entfernt, importierte
+geloeschte BANKING_BEAT_SCHEDULE Konstante).
 
-**Action Items**:
-- [ ] Audit alle 414 Task Namen
-- [ ] Standardisiere auf Full Path Pattern
-- [ ] Update Celery Beat Schedules
-- [ ] Update Monitoring Dashboards
+Ralph Loop Review (2026-02-13): KRITISCHEN Parameter-Mismatch in `ocr.py` gefunden und behoben.
+`send_task()` nutzte positionale `args=[]` - dabei wurde `request.priority` (int 1-10) als
+3. Argument an `language` statt `priority` uebergeben. Fix: `args` -> `kwargs` mit expliziten
+Schluesselwort-Argumenten + `_int_to_priority_str()` Konverter (int -> high/normal/low).
+Betrifft beide Stellen: Single-OCR (Zeile ~575) und Batch-OCR (Zeile ~1210).
+4 YAML Design-Dokumente mit veraltetem `process_document_ocr` auf Full Path korrigiert.
+
+- [x] Audit alle Task Namen (30+ Dateien geprueft)
+- [x] Standardisiere auf Full Path Pattern
+- [x] Update Celery Beat Schedules (81 Eintraege)
+- [x] Update Task Routes (125 Eintraege)
+- [x] Senior Review: 4 send_task() Short-Form-Aufrufe in import_tasks.py korrigiert
+- [x] Senior Review: 4 process_document_ocr Referenzen korrigiert
+- [x] Senior Review: test_banking_tasks.py BANKING_BEAT_SCHEDULE Tests entfernt
+- [x] Ralph Loop: ocr.py send_task() positional args -> kwargs (Parameter-Mismatch priority->language)
+- [x] Ralph Loop: _int_to_priority_str() Konverter (OCRStartRequest.priority int -> Task str)
+- [x] Ralph Loop: 4 YAML Design-Dokumente process_document_ocr -> Full Path korrigiert
+- [x] Ralph Loop Deep Review: _int_to_priority_str() nach app/core/priority.py extrahiert (shared utility)
+- [x] Ralph Loop BUG 6: document_tasks.py user_id=user_id entfernt (Parameter existiert nicht -> TypeError)
+- [x] Ralph Loop BUG 7: documents.py priority int -> int_to_priority_str() in task kwargs (war nur broker priority)
+- [ ] LOW: 3 Docs referenzieren noch process_document_ocr (API_Documentation, Background-Tasks, Testing-Guide)
 
 ---
 
@@ -66,78 +84,49 @@
 
 ---
 
-### M3: Celery Beat Schedule Consolidation
+### ✅ M3: Celery Beat Schedule Consolidation
 **Category**: Architecture
 **Impact**: Maintainability
 **Effort**: 2 days
-**Status**: 🟡 Open
+**Status**: ✅ ERLEDIGT (2026-02-13)
 
-**Issue**: Beat Schedules über 12+ Dateien verteilt
-```python
-# Current:
-CELERY_BEAT_TRAINING_SCHEDULE    # training_tasks.py
-REPORT_BEAT_SCHEDULE             # report_tasks.py
-ENTITY_LINKING_BEAT_SCHEDULE     # entity_linking_tasks.py
-CHAIN_BEAT_SCHEDULE              # chain_tasks.py
-FRAUD_DETECTION_BEAT_SCHEDULE    # fraud_detection_tasks.py
-PSD2_BANKING_BEAT_SCHEDULE       # banking_psd2_tasks.py
-EINVOICE_BEAT_SCHEDULE           # einvoice_tasks.py
-```
+**Ergebnis**: Alle 18 toten `*_BEAT_SCHEDULE`-Konstanten aus Task-Dateien entfernt.
+Diese waren Dead Code - definiert in Task-Dateien, exportiert via `__init__.py`,
+aber nie von `celery_app.py` importiert (welches seine eigene inline Beat-Schedule hat).
+`__init__.py` Imports und `__all__`-Eintraege ebenfalls bereinigt.
 
-**Recommendation**: Zentrale Beat-Konfiguration
-```python
-# Proposed:
-config/celery_beat.py  # Alle Schedules zentral
-```
+Entscheidung: Keine separate `config/celery_beat.py` noetig - `celery_app.py` ist bereits
+die zentrale Single Source of Truth fuer alle Beat Schedules.
 
-**Action Items**:
-- [ ] Create `config/celery_beat.py`
-- [ ] Migrate all Beat Schedules
-- [ ] Remove individual schedule constants
-- [ ] Update `celery_app.py` imports
+- [x] Dead Code BEAT_SCHEDULE Konstanten entfernt (18 Dateien)
+- [x] `__init__.py` Exports bereinigt (7 Imports + 7 `__all__` Eintraege)
+- [x] Zentrale Beat-Konfiguration bestaetigt (celery_app.py Lines 540-1964)
 
 ---
 
 ## Low Priority Optimizations
 
-### L1: Retention Task Batch Sizes
+### ✅ L1: Retention Task Batch Sizes
 **Category**: Configuration
 **Impact**: Performance Tuning
-**Effort**: 1 hour
-**Status**: 🟢 Open
+**Effort**: -
+**Status**: ✅ NICHT ZUTREFFEND (2026-02-13)
 
-**Current**: Hardcoded `batch_size=100`
-**Recommendation**: Environment Variable
-```python
-BATCH_SIZE = int(os.getenv("RETENTION_INTEGRITY_BATCH_SIZE", "100"))
-```
+**Ergebnis**: `retention_enforcement_tasks.py` enthaelt kein hardcoded `batch_size=100`.
+`gdpr_tasks.py` hat `RETENTION_CHECK_BATCH_SIZE = 500` (angemessen).
+TECHNICAL_DEBT.md war veraltet - Issue existiert nicht.
 
 ---
 
-### L2: FX Rate Service Enhancement
+### ✅ L2: FX Rate Service Enhancement
 **Category**: Business Logic
 **Impact**: Feature Completeness
 **Effort**: 3 days
-**Status**: 🟢 Open
+**Status**: ✅ ERLEDIGT (2026-02-13)
 
-**Current**: `month_end_revaluation` ist Stub
-```python
-# TODO: Implementation
-return {"entries_processed": 0}
-```
-
-**Required Implementation**:
-1. Query offener Fremdwährungspositionen
-2. Get aktueller ECB-Kurs für jede Währung
-3. Berechne unrealisierte Kursgewinne/-verluste
-4. Erstelle Journal Entries für materielle Differenzen
-
-**Action Items**:
-- [ ] Design FX Revaluation Algorithm
-- [ ] Implement Position Query
-- [ ] Implement G/L Calculation
-- [ ] Create Journal Entry Generation
-- [ ] Add Unit Tests (>80% coverage)
+**Ergebnis**: `month_end_revaluation()` ist VOLL IMPLEMENTIERT in `fx_rate_service.py`.
+Implementierung umfasst: Position Query, ECB-Kurse, unrealisierte Gewinne/Verluste,
+Journal Entry Generierung. TECHNICAL_DEBT.md war veraltet.
 
 ---
 
@@ -163,6 +152,23 @@ return {"entries_processed": 0}
 - [ ] Document Dashboard in Operations Runbooks
 
 ---
+
+## Completed Debt Items (2026-02-13)
+
+### ✅ M1: Celery Task Naming Convention
+**Completed**: 2026-02-13
+**Effort**: 1 day
+- [x] ~180+ Task-Dekoratoren auf Full Path standardisiert (30+ Dateien)
+- [x] 81 Beat-Schedule-Eintraege in celery_app.py aktualisiert
+- [x] ~125 Task-Routes-Eintraege in celery_app.py aktualisiert
+
+### ✅ M3: Celery Beat Schedule Consolidation
+**Completed**: 2026-02-13
+**Effort**: 1 day
+- [x] 18 tote BEAT_SCHEDULE-Konstanten aus Task-Dateien entfernt
+- [x] 5 kommentierte BEAT_SCHEDULE-Bloecke entfernt (gobd, lexware, privat, retention x2)
+- [x] 7 Imports + 7 __all__-Eintraege in __init__.py bereinigt
+- [x] celery_app.py als zentrale Single Source of Truth bestaetigt
 
 ## Completed Debt Items (2026-02-08)
 
@@ -193,6 +199,7 @@ return {"entries_processed": 0}
 
 | Date | Overall Level | Notes |
 |------|---------------|-------|
+| 2026-02-13 | 🟢 LOW | M1+M3 Celery Consolidation erledigt |
 | 2026-02-08 | 🟢 LOW | After Enterprise Review |
 | 2026-01-30 | 🟡 MEDIUM | Before PII/Type Safety Fixes |
 | 2026-01-25 | 🟡 MEDIUM | Vision 2.0 Implementation Phase |
