@@ -1,6 +1,21 @@
 # Recent Changes
 
 ## 2026-02-13
+- **refactor(workers)**: Celery Task Names - Full-Path Migration (87 Dateien)
+- **feat(api)**: 10 neue Enterprise Endpoints (collaboration, data_quality, digital_twin, document_hints, invoice_pipeline, ml_dashboard, smart_search, trust_dashboard)
+- **feat(services)**: 9 neue Enterprise Services (Collaboration, Data Quality, Digital Twin, Document Hints, Invoice Pipeline, ML Dashboard, Smart Search, Trust Dashboard)
+- **feat(frontend)**: CEO Dashboard Components (Data Quality, Digital Twin, KPIs, Compliance, Risk)
+- **feat(frontend)**: Collaboration Features (ActivityTimeline, DocumentLock, Mentions, Presence)
+- **feat(frontend)**: Smart Search mit Autocomplete
+- **feat(db)**: Migrationen 220-221 (Collaboration Tables, Merge Heads)
+- **refactor(services)**: Portfolio Services entfernt (financial_goals, portfolio)
+- **refactor(core)**: Cache cleanup - get_cache_stats deprecated
+- **fix(db)**: Alembic Migrations 208, 209, 215, 216 asyncpg-hardened
+- **chore(infra)**: requirements.txt updates (aiohttp, reportlab[rlPyCairo])
+- **test**: 6 neue Tests (psd2_banking_flow, autonomous_trust_upgrades, smart_search, retention_enforcement)
+- **docs**: 2 neue Feature-Docs (Auto-Invoice-Pipeline, Document-Hints)
+
+## 2026-02-13 (früher)
 - **fix(frontend)**: WebSocket Token-Storage auf sessionStorage migriert (5 Dateien)
 - **fix(frontend)**: WebSocket reconnectAttempts Reset + frischer Token aus sessionStorage
 - **feat(frontend)**: 5 neue Enterprise Features (CEO Dashboard, Smart Inbox, Knowledge Graph, Compliance, OCR Suite)

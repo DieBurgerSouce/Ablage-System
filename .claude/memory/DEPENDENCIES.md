@@ -12,6 +12,8 @@
 | alembic | 1.13+ | Database Migrations |
 | redis | 7.x | Cache/Queue |
 | postgresql | 16+ | Database |
+| aiohttp | 3.9.0+ | Async HTTP Client (Peppol/External) |
+| reportlab | 4.0.9 | PDF Generation (mit rlPyCairo) |
 
 ### Frontend
 | Package | Version | Purpose |

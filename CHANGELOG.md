@@ -10,11 +10,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- API: 10 neue Enterprise Endpoints (collaboration, data_quality, digital_twin, document_hints, invoice_pipeline, ml_dashboard, smart_search, trust_dashboard)
+- Services: 9 neue Enterprise Services für Data Quality, Digital Twin, Collaboration, Document Hints
+- Frontend: CEO Dashboard Components (DataQualityCockpit, DigitalTwinDashboard, ComplianceCard, RiskOverviewCard)
+- Frontend: Collaboration Features (ActivityTimeline, DocumentLockBanner, MentionsBadge, PresenceIndicator)
+- Frontend: Smart Search mit Autocomplete und Hooks
+- Database: Migration 220 Collaboration Tables, Migration 221 Merge Heads
+- Tests: 6 neue Tests (psd2_banking_flow, autonomous_trust_upgrades, smart_search_service, retention_enforcement)
+- Docs: Auto-Invoice-Pipeline Feature-Doc, Document-Hints Feature-Doc
 - Frontend: 5 neue Enterprise Features (CEO Dashboard, Smart Inbox, Knowledge Graph, Compliance Center, OCR Suite)
 - Frontend: AI Assistant Context für alle neuen Pages mit spezifischen Suggestions und Placeholders
 - Frontend: WebSocket Init Hook für zentrale WebSocket-Initialisierung
 
 ### Fixed
+- Workers: Celery Task Names auf Full-Path migriert (87 Dateien) - `risk_scoring.calculate_all` → `app.workers.tasks.risk_scoring_tasks.calculate_all_risk_scores_task`
+- Alembic: Migrationen 208, 209, 215, 216 asyncpg-hardened
 - Frontend: WebSocket Token-Storage von localStorage auf sessionStorage migriert (5 Dateien)
 - Frontend: Chat WebSocket nutzte falschen Storage (localStorage → sessionStorage)
 - Frontend: RAG WebSocket nutzte falschen Key und Storage (access_token → auth_token, localStorage → sessionStorage)
@@ -23,6 +33,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Frontend: Frischer Token wird aus sessionStorage in createConnection() geholt
 
 ### Changed
+- Dependencies: requirements.txt - aiohttp>=3.9.0, reportlab[rlPyCairo]
+- Core: cache.py - get_cache_stats() deprecated (use get_cache_metrics())
+
+### Removed
+- Services: portfolio/financial_goals_service.py, portfolio/portfolio_service.py (deprecated)
 
 ## [Previous Releases]
 
