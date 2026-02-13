@@ -10,6 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Migration 215: Document Integrity Tables (Hash-Chain, Merkle-Tree, Verification)
+- Migration 216: QES/eIDAS Electronic Signature Tables (Certificate, Signature, Verification)
+- Migration 217: Year-End Closing Assistant Tables (Period, Task, Template, Document Link)
+- Migration 218: OCR Template Auto-Generation (Pattern Learning, Entity Mapping)
+- Migration 219: Prediction Feedback Tracking (Corrections, Confidence, Self-Learning)
+- API Endpoints: integrity, signatures, year_end, ocr_templates
+- Lineage API: PDF-Export mit Report Templates (Platzhalter entfernt)
+- OCR Instant Feedback Path: edit_distance <= 2 direkter Self-Learning Service (keine Batch-Queue)
+- Enterprise Services: Document Integrity, QES/eIDAS Signatures, Year-End Assistant
+- Frontend: Document Tasks Panel, Lifecycle Visualization, Paper Dimming Popover
+- Frontend: Finanzen Format Utils, Banking Reconciliation Components
+- Frontend: Admin Dunning Templates Management, Notification Preferences
+- Frontend: Skeleton Components (CardGrid, DetailView, DocumentList, StatCard)
+- Unit Tests: auto_template_service, integrity_service, signature_service, year_end_service
 - Migration 212: ChatToolAction Tabelle für RAG Tool-Execution Tracking
 - Dashboard KPI Widgets: DSO Tracker, Margin Analyzer, Revenue Trend mit Prognosen
 - Workflow Execution Viewer: Real-time Timeline mit Step-Details und Multi-Tenant Security

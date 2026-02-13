@@ -7,7 +7,7 @@
 | Backend | ✅ OK | Running on :8000, 420+ Endpoints, Type-Safe |
 | Frontend | ✅ OK | Nginx :80, Accessibility E2E Tests OK |
 | Celery | ✅ OK | 414 Tasks, 12+ Beat Schedules, GPU for OCR |
-| PostgreSQL | ✅ OK | :5433, 212 Migrations asyncpg-hardened |
+| PostgreSQL | ✅ OK | :5433, 219 Migrations asyncpg-hardened |
 | Redis | ✅ OK | :6380, Rate Limiting, Blacklist, L1/L2 Cache |
 | GPU | ✅ OK | RTX 4080 (16GB), shared by backend + worker |
 | Jaeger | ✅ NEW | :16686 UI, :4317 OTLP gRPC, Distributed Tracing |
@@ -97,6 +97,13 @@ Final 3 TODOs resolved:
 
 | Migration | Description |
 |-----------|-------------|
+| 219 | Prediction Feedback Tracking |
+| 218 | OCR Template Auto-Generation |
+| 217 | Year-End Closing Assistant |
+| 216 | QES/eIDAS Electronic Signatures |
+| 215 | Document Integrity (Hash-Chain, Merkle-Tree) |
+| 212 | Chat Tool Actions + Dashboard KPIs |
+| 211 | RLS Policies (Row-Level Security V2) |
 | 210 | RLS Policies (Row-Level Security) |
 | 209 | Dashboard Shares (Cross-Tenant Sharing) |
 | 208 | Notification Templates |

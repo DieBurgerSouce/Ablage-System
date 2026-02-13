@@ -1,5 +1,15 @@
 # Recent Changes
 
+## 2026-02-13
+- **feat(db)**: Migrationen 215-219 (Integrity, Signatures, YearEnd, OCR Templates, Prediction Feedback)
+- **feat(api)**: Enterprise Endpoints (integrity, signatures, year_end, ocr_templates)
+- **feat(api)**: Lineage PDF-Export implementiert (Platzhalter entfernt)
+- **feat(services)**: OCR Instant Feedback Path (edit_distance <= 2 direkter Self-Learning Service)
+- **feat(services)**: Enterprise Services (Integrity Hash-Chain, QES/eIDAS Signatures, YearEnd Assistant)
+- **feat(frontend)**: Document Tasks + Lifecycle Visualization + Paper Dimming
+- **feat(frontend)**: Finanzen Format Utils, Banking Reconciliation UI, Admin Dunning Templates
+- **test**: Unit Tests fuer Auto-Template, Integrity, Signature, YearEnd Services
+
 ## 2026-02-10
 - **feat(db)**: Migration 212 Chat Tool Actions - ChatToolAction Tabelle für RAG Tool-Execution Tracking
 - **feat(api)**: Dashboard Widgets KPIs (DSO Tracker, Margin Analyzer, Revenue Trend)
