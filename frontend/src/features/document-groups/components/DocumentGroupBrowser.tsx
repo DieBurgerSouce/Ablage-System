@@ -4,14 +4,7 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSo
 import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { GripVertical, Plus } from "lucide-react";
-
-// Mock data
-const INITIAL_DOCS = [
-    { id: '1', title: 'Scan_001.pdf' },
-    { id: '2', title: 'Scan_002.pdf' },
-    { id: '3', title: 'Scan_003.pdf' },
-];
+import { GripVertical, Plus, Inbox } from "lucide-react";
 
 function SortableItem(props: { id: string; title: string }) {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: props.id });
@@ -30,7 +23,7 @@ function SortableItem(props: { id: string; title: string }) {
 }
 
 export function DocumentGroupBrowser() {
-    const [items, setItems] = useState(INITIAL_DOCS);
+    const [items, setItems] = useState<Array<{ id: string; title: string }>>([]);
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -58,13 +51,22 @@ export function DocumentGroupBrowser() {
                     <CardTitle>Ungruppierte Dokumente</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                        <SortableContext items={items} strategy={verticalListSortingStrategy}>
-                            {items.map((item) => (
-                                <SortableItem key={item.id} id={item.id} title={item.title} />
-                            ))}
-                        </SortableContext>
-                    </DndContext>
+                    {items.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                            <div className="p-3 bg-muted rounded-full mb-3">
+                                <Inbox className="w-5 h-5" />
+                            </div>
+                            <p className="text-sm">Keine ungruppierten Dokumente vorhanden</p>
+                        </div>
+                    ) : (
+                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                            <SortableContext items={items} strategy={verticalListSortingStrategy}>
+                                {items.map((item) => (
+                                    <SortableItem key={item.id} id={item.id} title={item.title} />
+                                ))}
+                            </SortableContext>
+                        </DndContext>
+                    )}
                 </CardContent>
             </Card>
 

@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, RotateCw, Download, Printer, Highlighter, MessageSquare, MousePointer2, FileSearch } from 'lucide-react';
+import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, RotateCw, Download, Printer, Highlighter, MessageSquare, MousePointer2, FileSearch, SunDim } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { motionTokens } from '@/lib/motion-tokens';
 import { useAnnotationStore } from '../store/useAnnotationStore';
 import { SimilarDocumentsDrawer } from './SimilarDocumentsDrawer';
+import { PaperDimmingPopover } from './PaperDimmingPopover';
 
 interface ViewerToolbarProps {
     documentId?: string;
@@ -63,6 +64,7 @@ export function ViewerToolbar({ documentId, currentPage, numPages, scale, onPage
                         <MessageSquare className="w-4 h-4 text-blue-500" />
                     </Button>
                 </div>
+                <PaperDimmingPopover />
                 <div className="w-px h-6 bg-border mx-2" />
                 <div className="flex items-center bg-muted/50 rounded-lg p-1 border">
                     <Button

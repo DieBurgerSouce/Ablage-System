@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { useAnnotationStore } from '@/features/viewer/store/useAnnotationStore'
+import { useAuth } from '@/lib/auth/AuthContext'
 import { cn } from '@/lib/utils'
 import { MessageSquare, Trash2, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -15,9 +16,18 @@ interface AnnotationLayerProps {
 
 export function AnnotationLayer({ pageNumber, scale, width, height }: AnnotationLayerProps) {
     const { annotations, mode, addAnnotation, removeAnnotation, updateAnnotation, selectAnnotation, selectedId } = useAnnotationStore()
+    const setAuthorName = useAnnotationStore((s) => s.setAuthorName)
+    const { user } = useAuth()
     const containerRef = useRef<HTMLDivElement>(null)
     const [isDrawing, setIsDrawing] = useState(false)
     const [startPoint, setStartPoint] = useState<{ x: number, y: number } | null>(null)
+
+    // Authentifizierten Benutzernamen in den Annotation-Store synchronisieren
+    useEffect(() => {
+        if (user?.full_name) {
+            setAuthorName(user.full_name)
+        }
+    }, [user?.full_name, setAuthorName])
 
     // Filter annotations for this page
     const pageAnnotations = annotations.filter(a => a.page === pageNumber)

@@ -2,7 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { ScrollSync, ScrollSyncPane } from 'react-scroll-sync';
 import SplitPane from 'react-split-pane';
-import { FileText, ScanLine, FileCode, Loader2, AlertTriangle, Edit, MessageSquare, Diff, Link2 } from 'lucide-react';
+import { FileText, ScanLine, FileCode, Loader2, AlertTriangle, Edit, MessageSquare, Diff, Link2, History, ClipboardList } from 'lucide-react';
 import { ViewerToolbar } from './ViewerToolbar';
 import { BoundingBoxOverlay, type BoundingBox } from './BoundingBoxOverlay';
 import { ImageViewer } from './ImageViewer';
@@ -12,13 +12,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ExtractedDataPanel } from '@/features/extracted-data';
 import { EInvoicePanel } from '@/features/einvoice';
 import { CommentsPanel, ActivityStream } from '@/features/collaboration';
+import { DocumentTasksPanel } from '@/features/collaboration/components/DocumentTasksPanel';
 import { OCRDiffViewer } from '@/features/ocr-review/components/OCRDiffViewer';
 import { DocumentContextPanel } from './DocumentContextPanel';
+import { DocumentLifecycleTab } from './DocumentLifecycleTab';
 import { apiClient } from '@/lib/api/client';
 import { AnnotationLayer } from './AnnotationLayer';
 import { ViewerErrorBoundary } from '@/components/errors';
 import { useViewerShortcuts } from '../hooks/useViewerShortcuts';
 import { logger } from '@/lib/logger';
+import { usePaperDimming } from '../hooks/usePaperDimming';
+import { useTheme } from '@/lib/theme/ThemeContext';
 
 // Lazy load Office/Email viewers
 const DocxViewer = lazy(() => import('./DocxViewer'));
@@ -148,6 +152,14 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
     const [pageDimensions, setPageDimensions] = useState<{ width: number; height: number } | null>(null);
     const [activeRightTab, setActiveRightTab] = useState('cockpit');
 
+    const { enabled, autoActivate, getFilterStyle } = usePaperDimming();
+    const { displayMode } = useTheme();
+
+    // Auto-activate paper dimming in dark modes
+    const isDarkMode = displayMode === 'dark' || displayMode === 'blackscreen';
+    const shouldDim = enabled || (autoActivate && isDarkMode);
+    const dimmingStyle = shouldDim ? getFilterStyle() : {};
+
     // Lade Preview mit Auth-Token
     const { blobUrl, isLoading: previewLoading, error: previewError } = useAuthenticatedPreview(documentId);
     const isImage = isImageMimeType(mimeType);
@@ -179,7 +191,7 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
             <div className="h-full flex flex-col">
                 <div className="px-4 pt-3 pb-2 border-b bg-background sticky top-0 z-10 flex items-center justify-between">
                     <Tabs value="ocr-diff" onValueChange={setActiveRightTab}>
-                        <TabsList className="grid grid-cols-7 max-w-3xl">
+                        <TabsList className="grid grid-cols-9 max-w-5xl">
                             <TabsTrigger value="cockpit" className="gap-2">
                                 <Edit className="h-4 w-4" />
                                 Cockpit
@@ -207,6 +219,14 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
                             <TabsTrigger value="context" className="gap-2">
                                 <Link2 className="h-4 w-4" />
                                 Kontext
+                            </TabsTrigger>
+                            <TabsTrigger value="lifecycle" className="gap-2">
+                                <History className="h-4 w-4" />
+                                Lebenszyklus
+                            </TabsTrigger>
+                            <TabsTrigger value="tasks" className="gap-2">
+                                <ClipboardList className="h-4 w-4" />
+                                Aufgaben
                             </TabsTrigger>
                         </TabsList>
                     </Tabs>
@@ -270,47 +290,51 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
                                 </ViewerErrorBoundary>
                             ) : blobUrl && isImage ? (
                                 <ViewerErrorBoundary fileType="image">
-                                    <ImageViewer
-                                        fileUrl={blobUrl}
-                                        scale={scale}
-                                        boxes={ocrResults?.pages?.[0]?.boxes || []}
-                                        selectedBox={selectedBox}
-                                        onBoxClick={setSelectedBox}
-                                    />
+                                    <div style={dimmingStyle}>
+                                        <ImageViewer
+                                            fileUrl={blobUrl}
+                                            scale={scale}
+                                            boxes={ocrResults?.pages?.[0]?.boxes || []}
+                                            selectedBox={selectedBox}
+                                            onBoxClick={setSelectedBox}
+                                        />
+                                    </div>
                                 </ViewerErrorBoundary>
                             ) : blobUrl ? (
                                 <ViewerErrorBoundary fileType="pdf">
                                     <div className="h-full overflow-auto bg-muted/30 flex justify-center p-4">
-                                        <Document
-                                            file={blobUrl}
-                                            onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-                                            onLoadError={(err) => logger.error('[PDF] Fehler beim Laden:', err)}
-                                            className="shadow-lg"
-                                        >
-                                            <div className="relative">
-                                                <Page
-                                                    pageNumber={currentPage}
-                                                    scale={scale}
-                                                    renderTextLayer={true}
-                                                    renderAnnotationLayer={true}
-                                                    onLoadSuccess={({ width, height }) => setPageDimensions({ width, height })}
-                                                />
-                                                <BoundingBoxOverlay
-                                                    boxes={ocrResults?.pages?.[currentPage - 1]?.boxes || []}
-                                                    scale={scale}
-                                                    selectedBox={selectedBox}
-                                                    onBoxClick={setSelectedBox}
-                                                />
-                                                {pageDimensions && (
-                                                    <AnnotationLayer
+                                        <div style={dimmingStyle}>
+                                            <Document
+                                                file={blobUrl}
+                                                onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+                                                onLoadError={(err) => logger.error('[PDF] Fehler beim Laden:', err)}
+                                                className="shadow-lg"
+                                            >
+                                                <div className="relative">
+                                                    <Page
                                                         pageNumber={currentPage}
                                                         scale={scale}
-                                                        width={pageDimensions.width}
-                                                        height={pageDimensions.height}
+                                                        renderTextLayer={true}
+                                                        renderAnnotationLayer={true}
+                                                        onLoadSuccess={({ width, height }) => setPageDimensions({ width, height })}
                                                     />
-                                                )}
-                                            </div>
-                                        </Document>
+                                                    <BoundingBoxOverlay
+                                                        boxes={ocrResults?.pages?.[currentPage - 1]?.boxes || []}
+                                                        scale={scale}
+                                                        selectedBox={selectedBox}
+                                                        onBoxClick={setSelectedBox}
+                                                    />
+                                                    {pageDimensions && (
+                                                        <AnnotationLayer
+                                                            pageNumber={currentPage}
+                                                            scale={scale}
+                                                            width={pageDimensions.width}
+                                                            height={pageDimensions.height}
+                                                        />
+                                                    )}
+                                                </div>
+                                            </Document>
+                                        </div>
                                     </div>
                                 </ViewerErrorBoundary>
                             ) : (
@@ -322,7 +346,7 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
                             <div className="h-full overflow-auto bg-background">
                                 <Tabs value={activeRightTab} onValueChange={setActiveRightTab} className="h-full flex flex-col">
                                     <div className="px-4 pt-4 pb-2 border-b bg-background sticky top-0 z-10">
-                                        <TabsList className="grid w-full grid-cols-7 max-w-3xl">
+                                        <TabsList className="grid w-full grid-cols-9 max-w-5xl">
                                             <TabsTrigger value="cockpit" className="gap-2">
                                                 <Edit className="h-4 w-4" />
                                                 Cockpit
@@ -351,6 +375,14 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
                                                 <Link2 className="h-4 w-4" />
                                                 Kontext
                                             </TabsTrigger>
+                                            <TabsTrigger value="lifecycle" className="gap-2">
+                                                <History className="h-4 w-4" />
+                                                Lebenszyklus
+                                            </TabsTrigger>
+                                            <TabsTrigger value="tasks" className="gap-2">
+                                                <ClipboardList className="h-4 w-4" />
+                                                Aufgaben
+                                            </TabsTrigger>
                                         </TabsList>
                                     </div>
                                     <TabsContent value="cockpit" className="flex-1 overflow-auto mt-0">
@@ -375,6 +407,12 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
                                     </TabsContent>
                                     <TabsContent value="context" className="flex-1 p-4 overflow-auto mt-0">
                                         <DocumentContextPanel documentId={documentId} />
+                                    </TabsContent>
+                                    <TabsContent value="lifecycle" className="flex-1 p-4 overflow-auto mt-0">
+                                        <DocumentLifecycleTab documentId={documentId} />
+                                    </TabsContent>
+                                    <TabsContent value="tasks" className="flex-1 p-4 overflow-auto mt-0">
+                                        <DocumentTasksPanel documentId={documentId} />
                                     </TabsContent>
                                     {/* ocr-diff tab triggers full-width mode via early return above */}
                                 </Tabs>

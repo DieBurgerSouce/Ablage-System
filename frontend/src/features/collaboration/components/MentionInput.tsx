@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import type { UserSuggestion } from '../types/collaboration.types';
+import { useUserSearch } from '../hooks/use-user-search';
 
 interface MentionInputProps {
   value: string;
@@ -26,15 +27,6 @@ interface MentionInputProps {
   mentions: { userId: string; userName: string }[];
   onMentionsChange: (mentions: { userId: string; userName: string }[]) => void;
 }
-
-// Mock user suggestions - replace with API call
-const MOCK_USERS: UserSuggestion[] = [
-  { id: 'user-1', name: 'Max Mustermann', email: 'max@example.com', department: 'Buchhaltung' },
-  { id: 'user-2', name: 'Anna Schmidt', email: 'anna@example.com', department: 'Einkauf' },
-  { id: 'user-3', name: 'Thomas Mueller', email: 'thomas@example.com', department: 'Vertrieb' },
-  { id: 'user-4', name: 'Lisa Weber', email: 'lisa@example.com', department: 'IT' },
-  { id: 'user-5', name: 'Peter Schneider', email: 'peter@example.com', department: 'Management' },
-];
 
 function getInitials(name: string): string {
   return name
@@ -61,12 +53,8 @@ export function MentionInput({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [cursorPosition, setCursorPosition] = useState(0);
 
-  // Filter suggestions based on query
-  const filteredSuggestions = MOCK_USERS.filter(
-    (user) =>
-      user.name.toLowerCase().includes(suggestionQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(suggestionQuery.toLowerCase())
-  );
+  // API-basierte Benutzersuche mit Debounce
+  const { users: filteredSuggestions, isLoading: isSearching } = useUserSearch(suggestionQuery);
 
   // Detect @ mentions
   const detectMentionTrigger = useCallback((text: string, cursorPos: number) => {
@@ -207,7 +195,7 @@ export function MentionInput({
       </div>
 
       {/* Mention Suggestions */}
-      {showSuggestions && filteredSuggestions.length > 0 && (
+      {showSuggestions && suggestionQuery.length >= 2 && (
         <div
           className="absolute left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg z-50 max-h-48 overflow-auto"
           onClick={(e) => e.stopPropagation()}
@@ -217,7 +205,18 @@ export function MentionInput({
               <AtSign className="h-3 w-3" />
               Benutzer erwähnen
             </div>
-            {filteredSuggestions.map((user, index) => (
+            {isSearching && (
+              <div className="flex items-center gap-2 px-2 py-3 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Suche...
+              </div>
+            )}
+            {!isSearching && filteredSuggestions.length === 0 && (
+              <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                Keine Benutzer gefunden
+              </div>
+            )}
+            {!isSearching && filteredSuggestions.map((user, index) => (
               <button
                 key={user.id}
                 type="button"

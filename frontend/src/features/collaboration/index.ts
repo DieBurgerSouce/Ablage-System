@@ -63,6 +63,9 @@ export type {
   AssignmentFactor,
 } from './hooks/use-smart-escalation';
 
+// User Search Hook (Feature 8)
+export { useUserSearch } from './hooks/use-user-search';
+
 // Realtime Hook (Feature 16)
 export { useRealtime } from './hooks/use-realtime';
 export type { ConnectionStatus, PresenceUser, RealtimeMessage } from './hooks/use-realtime';
@@ -88,3 +91,34 @@ export { CommentThread } from './components/CommentThread';
 export { DocumentPresence } from './components/DocumentPresence';
 export { ActivityFeed } from './components/ActivityFeed';
 export { CollabWebSocketStatusIndicator } from './components/WebSocketStatusIndicator';
+
+// Document Tasks (Feature 7 - Aufgaben-Zuweisung)
+export { DocumentTasksPanel } from './components/DocumentTasksPanel';
+export { CreateTaskDialog } from './components/CreateTaskDialog';
+export { TaskCard } from './components/TaskCard';
+export {
+  useDocumentTasks,
+  useMyTasks,
+  useOverdueTasks,
+  useTaskStatistics,
+  useCreateTask,
+  useUpdateTask,
+  useDeleteTask,
+  useStartTask,
+  useCompleteTask,
+  useCancelTask,
+  useBlockTask,
+  useUnblockTask,
+  useAssignTask,
+  useUnassignTask,
+  documentTaskKeys,
+} from './hooks/use-document-tasks';
+export type {
+  DocumentTask,
+  TaskCreate,
+  TaskUpdate,
+  TaskStatus,
+  TaskPriority,
+  TaskListResponse,
+  TaskStatistics,
+} from './api/document-tasks-api';

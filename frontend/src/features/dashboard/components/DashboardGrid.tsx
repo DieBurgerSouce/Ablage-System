@@ -21,6 +21,8 @@ import { useDashboardStore } from '../stores/useDashboardStore'
 import { getWidgetComponent, getWidgetLabel } from '../registry'
 import { DraggableWidget, WidgetDragOverlay } from './DraggableWidget'
 import { WidgetCatalogDrawer } from './WidgetCatalogDrawer'
+import { WidgetConfigDialog } from './WidgetConfigDialog'
+import { WidgetMaximizeDialog } from './WidgetMaximizeDialog'
 import { Button } from '@/components/ui/button'
 import { Settings2, RotateCcw, Plus } from 'lucide-react'
 import { toast } from 'sonner'
@@ -30,6 +32,8 @@ export function DashboardGrid() {
     const [isEditMode, setIsEditMode] = useState(false)
     const [showCatalog, setShowCatalog] = useState(false)
     const [activeId, setActiveId] = useState<string | null>(null)
+    const [configWidgetId, setConfigWidgetId] = useState<string | null>(null)
+    const [maximizeWidgetId, setMaximizeWidgetId] = useState<string | null>(null)
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -66,17 +70,11 @@ export function DashboardGrid() {
     }, [removeWidget])
 
     const handleConfigureWidget = useCallback((id: string) => {
-        toast.info('Widget konfigurieren', {
-            description: `Konfiguration für Widget ${id} wird geöffnet...`,
-        })
-        // TODO: Widget-spezifische Konfiguration implementieren
+        setConfigWidgetId(id)
     }, [])
 
     const handleMaximizeWidget = useCallback((id: string) => {
-        toast.info('Widget maximieren', {
-            description: `Widget ${id} wird maximiert...`,
-        })
-        // TODO: Widget-Maximierung implementieren
+        setMaximizeWidgetId(id)
     }, [])
 
     // Aktives Widget für Drag Overlay
@@ -172,6 +170,20 @@ export function DashboardGrid() {
 
             {/* Widget Catalog Drawer */}
             <WidgetCatalogDrawer open={showCatalog} onOpenChange={setShowCatalog} />
+
+            {/* Widget Konfiguration Dialog */}
+            <WidgetConfigDialog
+                open={configWidgetId !== null}
+                onOpenChange={(open) => { if (!open) setConfigWidgetId(null) }}
+                widgetId={configWidgetId}
+            />
+
+            {/* Widget Maximierung Dialog */}
+            <WidgetMaximizeDialog
+                open={maximizeWidgetId !== null}
+                onOpenChange={(open) => { if (!open) setMaximizeWidgetId(null) }}
+                widgetId={maximizeWidgetId}
+            />
         </div>
     )
 }
