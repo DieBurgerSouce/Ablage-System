@@ -1,6 +1,14 @@
 # Recent Changes
 
 ## 2026-02-14
+- **feat(frontend)**: Phase 1 - Spotlight Cmd+K Schnellsuche (parallele Dokument/Entity/Autocomplete-Suche)
+- **feat(api)**: Spotlight API Endpoint mit Rate Limiting und <200ms Ziel
+- **feat(frontend)**: Phase 1 - OCR Batch Correction Admin-Seite mit Inline-Editor
+- **feat(frontend)**: Phase 2 - Smart Upload Overlay (Drop & Forget mit Auto-Klassifizierung)
+- **feat(frontend)**: Phase 2 - Smart Tags System mit AI-Vorschlaegen
+- **feat(frontend)**: Phase 2 - Auto-Learning Dashboard (Daily Review, Stats, Recent Actions)
+- **fix(docs)**: 3 Docs von process_document_ocr auf process_document_task aktualisiert (M1-Rest)
+- **fix(frontend)**: OcrBatchCorrectionTable Fragment key + Dockerfile Typo
 - **feat(db)**: Migrationen 222-223 (Folder Hierarchy, Knowledge Graph Autonomy)
 - **feat(services)**: 5 neue Services (Folder, Booking Suggestions, Learning Autonomy, Summarization, Threat Detection)
 - **feat(api)**: 5 neue Endpoints (folders, booking_suggestions, comment_threads, learning_autonomy, summarization)

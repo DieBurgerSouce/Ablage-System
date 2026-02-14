@@ -29,6 +29,13 @@
 - **Feature Flags**: ✅ Gradual Rollout Support für neue Features
 - **Cross-Tenant Reports**: ✅ Company-übergreifende Reporting Views
 
+### OCR Performance Features (2026-02-14)
+- **Phase 1 - Spotlight Search**: ✅ COMMITTED - Cmd+K Dialog, Backend API, Parallel Search
+- **Phase 1 - OCR Batch Correction**: ✅ COMMITTED - Admin page, Inline editor, Confidence filtering
+- **Phase 2 - Drop & Forget Upload**: ✅ COMMITTED - Smart Upload Overlay, Auto-classification
+- **Phase 2 - Smart Tags**: ✅ COMMITTED - AI-powered tag suggestions, Tag management
+- **Phase 2 - Auto-Learning**: ✅ COMMITTED - Daily review batches, Learning stats dashboard
+
 ## Vision 2026+ Status
 
 | Phase | Features | Status |
@@ -80,6 +87,8 @@ Final 3 TODOs resolved:
 
 | Date | Component | Description |
 |------|-----------|-------------|
+| 2026-02-14 | Frontend | Phase 1+2: Spotlight, OCR Batch, Smart Upload, Tags, Auto-Learning |
+| 2026-02-14 | Backend | Spotlight API Endpoint (Rate Limited, <200ms) |
 | 2026-02-09 | Infrastructure | Jaeger distributed tracing mit OpenTelemetry (OTLP gRPC) |
 | 2026-02-09 | Database | Migrationen 207-210 (Saved Searches, Notifications, Dashboards, RLS) |
 | 2026-02-09 | Backend | Multi-Tenancy: Tenant Middleware, Resilience Patterns, L1/L2 Cache |
