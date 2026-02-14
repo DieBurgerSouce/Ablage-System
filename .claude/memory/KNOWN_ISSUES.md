@@ -20,7 +20,7 @@
 |---------|------|------------|
 | **Token-Storage Audit** | Pruefen ob `apiClient` Interceptor (`lib/api/client.ts:85`) konsistent mit direkten `fetch()`-Aufrufen ist - einige Features nutzen `fetchWithAuth()` statt `apiClient` | LOW |
 | **RAG Feature Token-Architektur** | RAG-Features (`features/rag/`) hatten `access_token` Key - pruefen ob Backend jemals diesen Key erwartet hat oder ob es immer ein Frontend-Bug war | LOW |
-| **Test Coverage fuer Token-Fixes** | Unit Tests fuer die 5 fixierten Dateien - sicherstellen dass `sessionStorage` korrekt gemockt wird | MEDIUM |
+| ~~**Test Coverage fuer Token-Fixes**~~ | ~~Unit Tests fuer die 5 fixierten Dateien~~ | DONE (2026-02-14) - 23 Integrationstests in 5 Dateien |
 
 ## Notes
 
@@ -78,3 +78,4 @@
 | 2026-02-13 | **HIGH** BI API falscher Token-Key + Storage | `features/rag/api/bi-api.ts:157` nutzte `localStorage.getItem('access_token')` | Fixed: `sessionStorage.getItem('auth_token')` |
 | 2026-02-13 | **HIGH** RAG Chat API falscher Token-Key + Storage | `features/rag/api/chat-api.ts:22` nutzte `localStorage.getItem('access_token')` | Fixed: `sessionStorage.getItem('auth_token')` |
 | 2026-02-13 | **LOW** Lib Chat API falscher Token-Storage | `lib/api/chat-api.ts:319` nutzte `localStorage.getItem('auth_token')` - richtiger Key, falscher Storage | Fixed: `sessionStorage.getItem('auth_token')` |
+| 2026-02-14 | **MEDIUM** Token-Storage Tests waren wertlos | 5 Test-Dateien testeten nur Browser-API (`sessionStorage.setItem/getItem`) ohne Source-Import - kein Regression Guard | Fixed: 23 echte Integrationstests mit Source-Imports, fetch/WebSocket-Mocks, Bearer-Header-Verifikation |
