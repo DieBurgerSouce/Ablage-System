@@ -3,7 +3,7 @@ active: true
 iteration: 1
 max_iterations: 0
 completion_promise: "complete"
-started_at: "2026-02-13T21:01:18Z"
+started_at: "2026-02-14T00:15:37Z"
 ---
 
-Guck dir bitte nochmal alles von vorne bis hinten an, was du in dieser Claude Code Instanz alles gemacht hast - ich würde sehr gerne das du kritisch, so als wärst du der beste Senior Developer der Welt und ein absoluter Experte in dem worum das Projekt geht, die Arbeit reviewst und dann klare Lücken und schlampige Vorgehensweise aufdeckst! Ist wirklich alles durch und durch auf absolutem Enterprise Level? Ist unser Ethos vollkommen erfüllt? Validiere alles 100% zuverlässig!
+Interviewe mich zu Sachen die noch nicht existieren, die du aber gerne drinnen hättest - das kann technisch backend wie auch Frontend Sinnhaftigkeit sein also auch was das System vergrössern würde oder nach Ethos weiter feinpoliert und mehr Tiefe verleiht. Utalize das Ask-User-Question Tool so gut wie du kannst! Nutze das Agent Team Feature! Spinne direkt 5 parallele Explore Agents für die Explore Stage up!
