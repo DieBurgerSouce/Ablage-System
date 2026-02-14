@@ -50,7 +50,7 @@ import type { TaxPackage, CompletenessReport } from '../api/tax-package-api';
 
 export function TaxPackagePage() {
   const [selectedPeriod, setSelectedPeriod] = useState('');
-  const [selectedConfig, setSelectedConfig] = useState('');
+  const [selectedConfig, setSelectedConfig] = useState('none');
   const [completenessYear, setCompletenessYear] = useState(new Date().getFullYear());
   const [completenessQuarter, setCompletenessQuarter] = useState<number | undefined>();
   const [completenessResult, setCompletenessResult] = useState<CompletenessReport | null>(null);
@@ -68,7 +68,7 @@ export function TaxPackagePage() {
 
     createMutation.mutate({
       period: selectedPeriod,
-      config_id: selectedConfig || undefined,
+      config_id: selectedConfig !== 'none' ? selectedConfig : undefined,
     });
   };
 
@@ -192,7 +192,7 @@ export function TaxPackagePage() {
                   <SelectValue placeholder="Konfiguration auswählen" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Keine Konfiguration</SelectItem>
+                  <SelectItem value="none">Keine Konfiguration</SelectItem>
                   {configs?.map((config) => (
                     <SelectItem key={config.id} value={config.id}>
                       {config.name} ({getFrequencyLabel(config.frequency)})

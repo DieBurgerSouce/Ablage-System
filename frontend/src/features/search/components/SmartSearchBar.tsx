@@ -18,6 +18,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import {
     Search,
     Sparkles,
@@ -493,7 +494,7 @@ export function SmartSearchBar({ onResultClick, initialFilters, className }: Sma
                                                     {result.highlight && (
                                                         <div
                                                             className="text-sm text-muted-foreground"
-                                                            dangerouslySetInnerHTML={{ __html: result.highlight }}
+                                                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(result.highlight, { ALLOWED_TAGS: ['mark'], ALLOWED_ATTR: [] }) }}
                                                         />
                                                     )}
                                                     {result.matched_text && (
