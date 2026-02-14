@@ -1,5 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package, Landmark, AlertTriangle, Wallet, Receipt, GitBranch, UserCircle, Shield, Lock, Bookmark, Search, Pin, Database, FileSignature, FilePlus, Building2, BookOpen, BarChart3, MessageCircle, FolderInput, Truck, Gauge, Award, CreditCard, TrendingUp, ShieldAlert, BrainCircuit, Brain, ScrollText, Link2, Trash2, Bell, Users2, HardDrive, Play, ListOrdered, Banknote, Code2, Warehouse, HeartPulse, Sparkles, FileOutput, Calculator, Heart, Sliders, Mail, DollarSign, Activity, ListChecks, Calendar, ScanLine, ArrowLeftRight } from 'lucide-react'
+import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package, Landmark, AlertTriangle, Wallet, Receipt, GitBranch, UserCircle, Shield, Lock, Bookmark, Search, Pin, Database, FileSignature, FilePlus, Building2, BookOpen, BarChart3, MessageCircle, FolderInput, Truck, Gauge, Award, CreditCard, TrendingUp, ShieldAlert, BrainCircuit, Brain, ScrollText, Link2, Trash2, Bell, Users2, HardDrive, Play, ListOrdered, Banknote, Code2, Warehouse, HeartPulse, Sparkles, FileOutput, Calculator, Heart, Sliders, Mail, DollarSign, Activity, ListChecks, Calendar, ScanLine, ArrowLeftRight, Fingerprint, LineChart, FileSearch, Globe } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { usePermissions } from '@/lib/auth/hooks/use-permissions'
@@ -85,12 +85,14 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             </div>
 
             <nav id="main-navigation" className="flex-1 px-4 space-y-2 overflow-y-auto" role="navigation" aria-label="Hauptmenü" tabIndex={-1}>
-                <SidebarLink to="/" icon={LayoutDashboard} label="Dashboard" onNavigate={onNavigate} />
+                <SidebarLink to="/" icon={LayoutDashboard} label="Dashboard" onNavigate={onNavigate} dataTour="nav-dashboard" />
                 <SidebarLink to="/inbox" icon={Sparkles} label="Smart Inbox" onNavigate={onNavigate} />
+                <SidebarLink to="/smart-search" icon={FileSearch} label="Smart Search" onNavigate={onNavigate} dataTour="nav-smart-search" />
                 <SidebarLink to="/dashboard/ceo" icon={BarChart3} label="CEO Dashboard" onNavigate={onNavigate} />
+                <SidebarLink to="/digital-twin" icon={Globe} label="Digitaler Zwilling" onNavigate={onNavigate} dataTour="nav-digital-twin" />
                 <SidebarLink to="/chat" icon={MessageSquare} label="Chat" onNavigate={onNavigate} />
                 <SidebarLink to="/email-import" icon={Mail} label="E-Mail Import" onNavigate={onNavigate} />
-                <SidebarLink to="/upload" icon={Upload} label="Upload Wizard" onNavigate={onNavigate} />
+                <SidebarLink to="/upload" icon={Upload} label="Upload Wizard" onNavigate={onNavigate} dataTour="nav-upload" />
                 <SidebarLink to="/jobs" icon={ListTodo} label="Job Queue" onNavigate={onNavigate} />
                 {permissions.canViewValidation && (
                     <SidebarLink to="/validation-queue" icon={CheckCircle} label="Validierung" onNavigate={onNavigate} />
@@ -126,13 +128,15 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                 <SidebarLink to="/cashflow" icon={TrendingUp} label="Cash-Flow" onNavigate={onNavigate} />
                 <SidebarLink to="/fraud" icon={ShieldAlert} label="Fraud Detection" onNavigate={onNavigate} />
                 <SidebarLink to="/alerts" icon={Bell} label="Alert Center" onNavigate={onNavigate} />
+                <SidebarLink to="/document-hints" icon={AlertTriangle} label="Dok-Hinweise" onNavigate={onNavigate} />
+                <SidebarLink to="/invoice-workflow" icon={Receipt} label="Rechnungsworkflow" onNavigate={onNavigate} dataTour="nav-invoice-workflow" />
                 <SidebarLink to="/approvals" icon={CheckCircle} label="Freigaben" onNavigate={onNavigate} />
                 <SidebarLink to="/compliance" icon={Shield} label="Compliance" onNavigate={onNavigate} />
                 <SidebarLink to="/teams" icon={Users2} label="Teams" onNavigate={onNavigate} />
 
                 {/* Ablage-Struktur Section */}
                 <div className="pt-4">
-                    <div className="px-3 mb-2">
+                    <div className="px-3 mb-2" data-tour="nav-ablage">
                         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                             Ablage
                         </span>
@@ -179,6 +183,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                         </span>
                     </div>
                     <SidebarLink to="/trash" icon={Trash2} label="Papierkorb" onNavigate={onNavigate} />
+                    <SidebarLink to="/visual-diff" icon={ArrowLeftRight} label="Dok-Vergleich" onNavigate={onNavigate} />
                     <SidebarLink to="/developer" icon={Code2} label="Developer Portal" onNavigate={onNavigate} />
                     <SidebarLink to="/scanner" icon={ScanLine} label="Scanner" onNavigate={onNavigate} />
                 </div>
@@ -265,6 +270,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                             className="w-full flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                             aria-expanded={showAdminMenu}
                             aria-label={showAdminMenu ? "Administration ausblenden" : "Administration anzeigen"}
+                            data-tour="nav-admin"
                         >
                             <span className="flex items-center gap-2">
                                 <Shield className="w-4 h-4" />
@@ -275,13 +281,13 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                         {showAdminMenu && (
                             <div className="mt-1 ml-2 space-y-1 border-l border-sidebar-border pl-2">
                                 {permissions.isAdmin && (
-                                    <SidebarLink to="/admin/workflows" icon={GitBranch} label="Workflow-Regeln" onNavigate={onNavigate} />
+                                    <SidebarLink to="/admin/workflows" icon={GitBranch} label="Workflow-Regeln" onNavigate={onNavigate} dataTour="nav-workflows" />
                                 )}
                                 {permissions.isAdmin && (
                                     <SidebarLink to="/admin/workflows/monitor" icon={Activity} label="Workflow-Monitor" onNavigate={onNavigate} />
                                 )}
                                 {permissions.canViewOCRTraining && (
-                                    <SidebarLink to="/admin/ocr-training" icon={GraduationCap} label="OCR Training" onNavigate={onNavigate} />
+                                    <SidebarLink to="/admin/ocr-training" icon={GraduationCap} label="OCR Training" onNavigate={onNavigate} dataTour="nav-ocr-training" />
                                 )}
                                 {permissions.canViewOCRReview && (
                                     <SidebarLink to="/admin/ocr-review" icon={ClipboardCheck} label="OCR Review" onNavigate={onNavigate} />
@@ -297,6 +303,9 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                                 )}
                                 {permissions.isAdmin && (
                                     <SidebarLink to="/admin/mlops" icon={BrainCircuit} label="MLOps" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/ml-dashboard" icon={LineChart} label="ML Dashboard" onNavigate={onNavigate} />
                                 )}
                                 {permissions.isAdmin && (
                                     <SidebarLink to="/admin/ai-admin" icon={Brain} label="KI-Autonomie" onNavigate={onNavigate} />
@@ -338,6 +347,9 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                                     <SidebarLink to="/admin/lexware" icon={Database} label="Lexware Import" onNavigate={onNavigate} />
                                 )}
                                 {permissions.isAdmin && (
+                                    <SidebarLink to="/tax-package" icon={FileOutput} label="Steuerberater-Paket" onNavigate={onNavigate} dataTour="nav-tax-package" />
+                                )}
+                                {permissions.isAdmin && (
                                     <SidebarLink to="/admin/elster-export" icon={FileOutput} label="ELSTER Export" onNavigate={onNavigate} />
                                 )}
                                 {permissions.isAdmin && (
@@ -356,7 +368,10 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                                     <SidebarLink to="/admin/imports" icon={FolderInput} label="Imports" onNavigate={onNavigate} />
                                 )}
                                 {permissions.isAdmin && (
-                                    <SidebarLink to="/admin/audit-logs" icon={ScrollText} label="Audit-Logs" onNavigate={onNavigate} />
+                                    <SidebarLink to="/admin/audit-logs" icon={ScrollText} label="Audit-Logs" onNavigate={onNavigate} dataTour="nav-audit-logs" />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/trust-dashboard" icon={Fingerprint} label="Trust Dashboard" onNavigate={onNavigate} dataTour="nav-trust-dashboard" />
                                 )}
                                 {permissions.isAdmin && (
                                     <SidebarLink to="/admin/disaster-recovery" icon={HardDrive} label="Disaster Recovery" onNavigate={onNavigate} />
@@ -368,7 +383,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                                     <SidebarLink to="/admin/cross-tenant" icon={Building2} label="Mandanten-Berichte" onNavigate={onNavigate} />
                                 )}
                                 {permissions.isAdmin && (
-                                    <SidebarLink to="/admin/document-quality" icon={Gauge} label="Datenqualität" onNavigate={onNavigate} />
+                                    <SidebarLink to="/data-quality" icon={Gauge} label="Datenqualität" onNavigate={onNavigate} />
                                 )}
                                 {permissions.isAdmin && (
                                     <SidebarLink to="/admin/calendar-sync" icon={Calendar} label="Kalender-Sync" onNavigate={onNavigate} />
@@ -422,15 +437,17 @@ interface SidebarLinkProps {
     icon: React.ElementType;
     label: string;
     onNavigate?: () => void;
+    dataTour?: string;
 }
 
-function SidebarLink({ to, icon: Icon, label, onNavigate }: SidebarLinkProps) {
+function SidebarLink({ to, icon: Icon, label, onNavigate, dataTour }: SidebarLinkProps) {
     return (
         <Link
             to={to}
             onClick={onNavigate}
             className="flex items-center gap-3 px-3 py-2 min-h-[44px] rounded-md text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground [&.active]:bg-sidebar-accent [&.active]:text-sidebar-accent-foreground"
             aria-label={label}
+            {...(dataTour ? { 'data-tour': dataTour } : {})}
         >
             <Icon className="w-4 h-4" aria-hidden="true" />
             {label}
