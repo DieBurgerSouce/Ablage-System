@@ -146,8 +146,8 @@ function createPortalClient(): AxiosInstance {
   client.interceptors.request.use(
     (config) => {
       const token = getPortalToken();
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+      if (token?.trim()) {
+        config.headers.Authorization = `Bearer ${token.trim()}`;
       }
       return config;
     },
@@ -178,7 +178,7 @@ function createPortalClient(): AxiosInstance {
             );
             // Retry original request
             if (originalRequest.headers) {
-              originalRequest.headers.Authorization = `Bearer ${response.access_token}`;
+              originalRequest.headers.Authorization = `Bearer ${response.access_token.trim()}`;
             }
             return client(originalRequest);
           } catch {

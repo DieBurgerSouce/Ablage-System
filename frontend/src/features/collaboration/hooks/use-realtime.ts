@@ -178,14 +178,14 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
     updateStatus('connecting');
 
     const token = sessionStorage.getItem('auth_token');
-    if (!token) {
+    if (!token?.trim()) {
       updateStatus('error');
       return;
     }
 
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
-    const wsUrl = `${wsProtocol}//${host}/api/v1/ws/realtime?token=${encodeURIComponent(token)}`;
+    const wsUrl = `${wsProtocol}//${host}/api/v1/ws/realtime?token=${encodeURIComponent(token.trim())}`;
 
     try {
       const ws = new WebSocket(wsUrl);

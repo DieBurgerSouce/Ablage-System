@@ -169,11 +169,13 @@ export async function uploadDocument(
             xhr.setRequestHeader('X-CSRF-Token', csrfToken);
         }
 
-        // JWT-Token aus sessionStorage lesen und im Header senden (wie apiClient)
+        // JWT-Token aus sessionStorage lesen - MANDATORY (wie apiClient)
         const authToken = sessionStorage.getItem('auth_token');
-        if (authToken) {
-            xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
+        if (!authToken?.trim()) {
+            reject(new Error('Nicht authentifiziert'));
+            return;
         }
+        xhr.setRequestHeader('Authorization', `Bearer ${authToken.trim()}`);
 
         xhr.send(formData);
     });
@@ -560,9 +562,11 @@ export async function processDocumentOCR(
         }
 
         const authToken = sessionStorage.getItem('auth_token');
-        if (authToken) {
-            xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
+        if (!authToken?.trim()) {
+            reject(new Error('Nicht authentifiziert'));
+            return;
         }
+        xhr.setRequestHeader('Authorization', `Bearer ${authToken.trim()}`);
 
         xhr.send(formData);
     });

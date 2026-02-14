@@ -230,7 +230,7 @@ export function useJobWebSocket(options: UseJobWebSocketOptions = {}): UseJobWeb
 
     // Build WebSocket URL mit Auth-Token
     const token = getAuthToken();
-    if (!token) {
+    if (!token?.trim()) {
       wsLogger.error('No auth token available for WebSocket');
       setIsConnecting(false);
       setError('Authentifizierung erforderlich');
@@ -241,7 +241,7 @@ export function useJobWebSocket(options: UseJobWebSocketOptions = {}): UseJobWeb
     }
 
     // Token als Query-Parameter anhängen (wie chat_ws.py erwartet)
-    const wsUrl = buildWebSocketUrl(`/api/v1/admin/jobs/ws?token=${encodeURIComponent(token)}`);
+    const wsUrl = buildWebSocketUrl(`/api/v1/admin/jobs/ws?token=${encodeURIComponent(token.trim())}`);
 
     try {
       const ws = new WebSocket(wsUrl);
@@ -402,12 +402,12 @@ export function useJobStatusWebSocket(
 
     // Auth-Token holen
     const token = getAuthToken();
-    if (!token) {
+    if (!token?.trim()) {
       setError('Authentifizierung erforderlich');
       return;
     }
 
-    const wsUrl = buildWebSocketUrl(`/api/v1/tasks/ws/${jobId}?token=${encodeURIComponent(token)}`);
+    const wsUrl = buildWebSocketUrl(`/api/v1/tasks/ws/${jobId}?token=${encodeURIComponent(token.trim())}`);
 
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;

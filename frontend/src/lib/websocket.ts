@@ -191,10 +191,15 @@ class RealtimeWebSocketClient {
   private createConnection(): void {
     // Frischen Token aus sessionStorage holen (falls refreshed)
     const freshToken = sessionStorage.getItem('auth_token');
-    if (freshToken) {
+    if (freshToken?.trim()) {
       this.token = freshToken;
     }
-    const wsUrl = `${this.url}?token=${encodeURIComponent(this.token || '')}`;
+    if (!this.token?.trim()) {
+      wsLogger.error('Keine Authentifizierung fuer WebSocket-Verbindung');
+      this.setState('disconnected');
+      return;
+    }
+    const wsUrl = `${this.url}?token=${encodeURIComponent(this.token.trim())}`;
 
     try {
       this.ws = new WebSocket(wsUrl);

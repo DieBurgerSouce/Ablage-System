@@ -204,14 +204,14 @@ export function useChatWebSocket(
             cleanup();
 
             const token = sessionStorage.getItem('auth_token');
-            if (!token) {
+            if (!token?.trim()) {
                 setError('Nicht authentifiziert');
                 setStatus('error');
                 return;
             }
 
             const sid = targetSessionId || initialSessionId || 'new';
-            const wsUrl = `${WS_BASE}/ws/chat/${sid}?token=${encodeURIComponent(token)}`;
+            const wsUrl = `${WS_BASE}/ws/chat/${sid}?token=${encodeURIComponent(token.trim())}`;
 
             setStatus('connecting');
             setError(null);

@@ -55,10 +55,11 @@ async function apiRequest<T>(
     ...(options.headers as Record<string, string>),
   };
 
-  // Add auth token
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  // Add auth token - MANDATORY
+  if (!token?.trim()) {
+    throw new Error('Nicht authentifiziert');
   }
+  headers['Authorization'] = `Bearer ${token.trim()}`;
 
   // Add company context
   if (companyId) {

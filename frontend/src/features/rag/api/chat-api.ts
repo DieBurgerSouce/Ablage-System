@@ -30,7 +30,7 @@ async function fetchWithAuth<T>(
     options: RequestInit = {}
 ): Promise<T> {
     const token = getAuthToken();
-    if (!token) {
+    if (!token?.trim()) {
         throw new Error('Nicht authentifiziert');
     }
 
@@ -38,7 +38,7 @@ async function fetchWithAuth<T>(
         ...options,
         headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${token.trim()}`,
             ...options.headers,
         },
     });
@@ -94,7 +94,7 @@ export async function* sendMessageStream(
     execution_time_ms?: number;
 }> {
     const token = getAuthToken();
-    if (!token) {
+    if (!token?.trim()) {
         throw new Error('Nicht authentifiziert');
     }
 
@@ -102,7 +102,7 @@ export async function* sendMessageStream(
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${token.trim()}`,
         },
         body: JSON.stringify(request),
     });

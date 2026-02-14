@@ -258,7 +258,7 @@ export function useChatWebSocket(
 
         // Token holen
         const token = sessionStorage.getItem('auth_token');
-        if (!token) {
+        if (!token?.trim()) {
             callbacksRef.current.onError?.('Nicht authentifiziert');
             return;
         }
@@ -266,7 +266,7 @@ export function useChatWebSocket(
         // WebSocket URL bauen
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = window.location.host;
-        const wsUrl = `${protocol}//${host}/api/v1/rag/ws/chat/${sessionId}?token=${encodeURIComponent(token)}`;
+        const wsUrl = `${protocol}//${host}/api/v1/rag/ws/chat/${sessionId}?token=${encodeURIComponent(token.trim())}`;
 
         let ws: WebSocket | null = null;
         let localPingInterval: ReturnType<typeof setInterval> | null = null;

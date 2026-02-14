@@ -83,8 +83,8 @@ apiClient.interceptors.request.use(
     (config) => {
         // Get token from sessionStorage (sicherer als localStorage)
         const token = sessionStorage.getItem('auth_token');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+        if (token?.trim()) {
+            config.headers.Authorization = `Bearer ${token.trim()}`;
         }
 
         // Multi-Company Support: X-Company-ID Header setzen
@@ -130,7 +130,7 @@ apiClient.interceptors.response.use(
                 const { authService } = await import('./services/auth');
                 const newToken = await authService.refreshToken();
 
-                originalRequest.headers.Authorization = `Bearer ${newToken}`;
+                originalRequest.headers.Authorization = `Bearer ${newToken.trim()}`;
                 return apiClient(originalRequest);
             } catch (refreshError) {
                 // Refresh failed - emit event for session expired modal

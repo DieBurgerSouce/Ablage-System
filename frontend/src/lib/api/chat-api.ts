@@ -317,14 +317,14 @@ export const chatApi = {
         try {
             // Hole Token aus apiClient Interceptor-Logik (konsistent mit anderen API-Calls)
             const token = sessionStorage.getItem('auth_token');
-            if (!token) {
+            if (!token?.trim()) {
                 callbacks?.onError?.('Nicht authentifiziert');
                 return;
             }
             const headers: HeadersInit = {
                 'Content-Type': 'application/json',
                 Accept: 'text/event-stream',
-                'Authorization': `Bearer ${token}`,
+                'Authorization': `Bearer ${token.trim()}`,
             };
 
             // Fetch with streaming (SSE)

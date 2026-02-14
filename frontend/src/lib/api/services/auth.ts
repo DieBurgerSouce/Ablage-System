@@ -82,7 +82,7 @@ export const authService = {
 
             // Fetch user info with the new token
             const userResponse = await apiClient.get<UserResponse>('/auth/me', {
-                headers: { Authorization: `Bearer ${loginResponse.data.access_token}` }
+                headers: { Authorization: `Bearer ${loginResponse.data.access_token.trim()}` }
             });
 
             const user: User = {
@@ -118,7 +118,7 @@ export const authService = {
 
             // Fetch user info
             const userResponse = await apiClient.get<UserResponse>('/auth/me', {
-                headers: { Authorization: `Bearer ${response.data.access_token}` }
+                headers: { Authorization: `Bearer ${response.data.access_token.trim()}` }
             });
 
             const user: User = {
