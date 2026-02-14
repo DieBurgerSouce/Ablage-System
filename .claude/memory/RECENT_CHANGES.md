@@ -1,13 +1,13 @@
 # Recent Changes
 
 ## 2026-02-14
-- **fix(db)**: Migration 210 - Idempotente RLS Policies (_table_exists, _column_exists)
-- **feat(services)**: Enterprise Services - Data Quality, Digital Twin erweitert (Schema-Migration)
-- **fix(api)**: API Schema-Fixes - category_id zu document_type Migration
-- **fix(workers)**: Celery Tasks - Schema-Anpassungen (4 Task-Dateien)
-- **feat(frontend)**: 8 neue Enterprise Features - Routes und Components (~195KB)
-- **test(services)**: Unit Tests fuer 8 neue Enterprise Services (~230KB)
-- **chore(orchestration)**: Ralph Loop Notes Update
+- **feat(db)**: Migrationen 222-223 (Folder Hierarchy, Knowledge Graph Autonomy)
+- **feat(services)**: 5 neue Services (Folder, Booking Suggestions, Learning Autonomy, Summarization, Threat Detection)
+- **feat(api)**: 5 neue Endpoints (folders, booking_suggestions, comment_threads, learning_autonomy, summarization)
+- **feat(frontend)**: Vitest Test-Setup mit Browser API Mocks
+- **test**: E2E (10), Integration + Unit Tests + Chaos Engineering Framework
+- **feat(infra)**: Compliance Infrastructure (GDPR, GoBD, ISO27001)
+- **chore(orchestration)**: Ralph Loop - Critical Review Task
 
 ## 2026-02-13
 - **refactor(workers)**: Celery Task Names - Full-Path Migration (87 Dateien)

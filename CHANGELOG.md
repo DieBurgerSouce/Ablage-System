@@ -10,6 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Database: Migration 222 Folder Hierarchy (folders, folder_permissions, folder_documents)
+- Database: Migration 223 Knowledge Graph Autonomy + Comment Threads
+- Services: FolderService - Hierarchische Ordnerverwaltung mit Materialized Path
+- Services: BookingSuggestionService - AI-gestützte Buchungsvorschläge
+- Services: LearningAutonomyService - Selbstlernende OCR-Optimierung
+- Services: SummarizationService - Dokument-Zusammenfassungen
+- Services: ThreatDetectionService - Bedrohungserkennung
+- API: 5 neue Endpoints (folders, booking_suggestions, comment_threads, learning_autonomy, summarization)
+- Frontend: Vitest Test-Setup mit Browser API Mocks (matchMedia, ResizeObserver, IntersectionObserver)
+- Tests: 10 E2E Tests (auth, banking, batch, chains, errors, folders, invoices, permissions, search, upload)
+- Tests: Chaos Engineering Framework für Fault Injection
+- Infrastructure: Compliance Package (GDPR, GoBD, ISO27001 Gap Analysis)
 - Frontend: 8 neue Enterprise Feature Routes (data-quality, digital-twin, document-hints, invoice-workflow, ml-dashboard, tax-package, trust-dashboard, visual-diff)
 - Frontend: 8 Feature-Directories mit Components, Hooks, API Layer (~195KB neuer UI-Code)
 - Frontend: Product Tour Data-Attributes für Onboarding (nav-dashboard, nav-upload, nav-admin, etc.)

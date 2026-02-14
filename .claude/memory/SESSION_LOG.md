@@ -2,6 +2,7 @@
 
 | Datum | Branch | Commits | Dateien | Buckets | Modus |
 |-------|--------|---------|---------|---------|-------|
+| 2026-02-14 | feature/ocr-performance | 7 | 46 | infra,db,services,api,frontend,tests,orchestration | session-documenter |
 | 2026-02-14 | feature/ocr-performance | 7 | 51 | db,services,api,workers,frontend,tests,orchestration | session-documenter |
 | 2026-02-13 | feature/ocr-performance | 7 | 174 | infra,db,workers,api,frontend,tests,docs | session-documenter |
 | 2026-02-13 | feature/ocr-performance | 3 | 20 | frontend,orchestration | session-documenter |
