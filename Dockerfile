@@ -9,12 +9,10 @@ ENV TORCH_CUDA_ARCH_LIST="8.6;8.9"
 ENV CUDA_VISIBLE_DEVICES=0
 
 # Install system dependencies
-# build-essential required for compiling tree-sitter-java-orchard (docling dependency)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.11 \
     python3.11-dev \
     python3-pip \
-    build-essential \
     git \
     wget \
     curl \
@@ -29,9 +27,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr \
     tesseract-ocr-deu \
     fonts-dejavu-core \
-    libhunspell-dev \
-    libcairo2-dev \
-    pkg-config \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -81,7 +76,7 @@ COPY --chown=ablage:ablage app/ ./app/
 COPY --chown=ablage:ablage test_documents/ ./test_documents/
 COPY --chown=ablage:ablage *.py ./
 
-# Set permissions (SECURITY FIX: 775 statt 777 fuer write-Verzeichnisse)
+# Set permissions (SECURITY FIX: 775 statt 777 für write-Verzeichnisse)
 # User ablage und Gruppe ablage haben Schreibrechte, andere nur lesen
 RUN chmod -R 755 /app && \
     chmod -R 775 /app/uploads /app/outputs /app/logs /app/cache

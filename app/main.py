@@ -877,6 +877,7 @@ from app.api.v1.ai_conversations import router as ai_conversations_router
 from app.api.v1.zero_touch import router as zero_touch_router
 from app.api.v1.nlq import router as nlq_router
 from app.api.v1.smart_search import router as smart_search_router  # Feature #1: Smart Search / Natural Language Search
+from app.api.v1.spotlight import router as spotlight_router  # Spotlight Cmd+K Schnellsuche
 from app.api.v1.smart_inbox import router as smart_inbox_router
 from app.api.v1.ceo_dashboard import router as ceo_dashboard_router
 from app.api.v1.knowledge_graph import router as knowledge_graph_router
@@ -1099,6 +1100,7 @@ app.include_router(assistant_router, prefix="/api/v1")  # Conversational Assista
 app.include_router(zero_touch_router, prefix="/api/v1")  # Vision 2.0: Zero-Touch OCR
 app.include_router(nlq_router, prefix="/api/v1")  # Vision 2.0: NLQ 2.0
 app.include_router(smart_search_router, prefix="/api/v1")  # Feature #1: Smart Search / Natural Language Search
+app.include_router(spotlight_router, prefix="/api/v1")  # Spotlight Cmd+K Schnellsuche
 app.include_router(smart_inbox_router, prefix="/api/v1")  # Vision 2.0: Smart Inbox
 app.include_router(ceo_dashboard_router, prefix="/api/v1")  # Vision 2.0: CEO Dashboard
 app.include_router(knowledge_graph_router, prefix="/api/v1")  # Vision 2.0: Knowledge Graph

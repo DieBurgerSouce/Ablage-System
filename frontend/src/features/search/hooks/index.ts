@@ -11,6 +11,7 @@ export { useSavedSearches } from './use-saved-searches';
 // Smart Search Hooks
 export { useSmartSearch, defaultSmartSearchOptions } from './useSmartSearch';
 export { useSmartAutocomplete } from './useSmartAutocomplete';
+export { useSpotlightSearch } from './use-spotlight-search';
 
 // Re-export types
 export type { UseSearchOptions, UseSmartSearchOptions, UseSmartAutocompleteOptions } from './useSmartSearch';
