@@ -14,13 +14,28 @@
 | **ValidationRule/ValidationSampleConfig** | Beide Models haben KEIN `company_id` - sind absichtlich System-wide Konfigurationen. Fuer echte Multi-Tenant Deployment waere Migration noetig. |
 | **CustomerDetection Celery Tasks** | `detect_contacts_task` laedt Document ohne `company_id` Filter - aber Tasks sind nur fuer Admin-Operationen, keine externe API. Service nutzt `document.company_id` Fallback. |
 
+### DEFERRED Items (Bearer-Token-Trim IT10/IT11)
+
+| ID | Finding | Schwere | Begruendung |
+|----|---------|---------|-------------|
+| N3 | 5 fehlende Test-Dateien (portal, realtime, job-ws, client, auth) | MITTEL | Separate PR; Code via Grep verifiziert |
+| N4 | Centralized Trim (setItem + getAuthToken) | NIEDRIG | Groesseres Refactoring, Defense-in-Depth funktioniert |
+| T1 | `refreshToken()` (auth.ts:185) Return `string \| undefined` vs `Promise<string>` - Return auf Z.194 liegt ausserhalb des if-Blocks | MITTEL | Type-Safety Fix, pre-existing, try-catch faengt Runtime-Fehler |
+| T2 | auth.ts:192 fehlender `\|\| ''` Fallback fuer `refresh_token` (inkonsistent mit Z.81 und Z.117) | NIEDRIG | sessionStorage Coercion, pre-existing |
+| F1-F3 | WebSocket-Auth Backend-Analyse | NIEDRIG | Backend-Scope |
+| R6 | Whitespace-Varianten (non-.trim()) | NIEDRIG | `.trim()` deckt Standard-Whitespace ab |
+| R7 | `isAuthenticated()` ohne trim | NIEDRIG | Nur UI-Logik |
+| S4+S5 | CWE-113 Bundle (privat-api + companyId CRLF) | MITTEL | Separates Security-Issue |
+| S2 | Raw Token in sessionStorage | NIEDRIG | Teil von N4 |
+| RC1 | Concurrent 401 Refresh Race Condition | MITTEL | Pre-existing, architekturell |
+
 ### Out of Scope (Documented for Future Work)
 
 | Bereich | Task | Prioritaet |
 |---------|------|------------|
-| **Token-Storage Audit** | Pruefen ob `apiClient` Interceptor (`lib/api/client.ts:85`) konsistent mit direkten `fetch()`-Aufrufen ist - einige Features nutzen `fetchWithAuth()` statt `apiClient` | LOW |
-| **RAG Feature Token-Architektur** | RAG-Features (`features/rag/`) hatten `access_token` Key - pruefen ob Backend jemals diesen Key erwartet hat oder ob es immer ein Frontend-Bug war | LOW |
-| ~~**Test Coverage fuer Token-Fixes**~~ | ~~Unit Tests fuer die 5 fixierten Dateien~~ | DONE (2026-02-14) - 23 Integrationstests in 5 Dateien |
+| ~~**Token-Storage Audit**~~ | ~~Pruefen ob `apiClient` Interceptor konsistent mit direkten `fetch()`-Aufrufen ist~~ | DONE (2026-02-14) - .trim() an allen Token-Stellen (13 Dateien) |
+| ~~**RAG Feature Token-Architektur**~~ | ~~RAG-Features hatten `access_token` Key~~ | DONE (2026-02-14) - sessionStorage + auth_token durchgehend gefixt |
+| ~~**Test Coverage fuer Token-Fixes**~~ | ~~Unit Tests fuer die 5 fixierten Dateien~~ | DONE (2026-02-14) - 23 Integrationstests in 6 Dateien |
 
 ## Notes
 

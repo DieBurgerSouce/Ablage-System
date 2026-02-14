@@ -1,6 +1,11 @@
 # Recent Changes
 
 ## 2026-02-14
+- **fix(frontend)**: Token trimming + mandatory WebSocket auth validation (13 Dateien, .trim() an allen Token-Stellen)
+- **test(frontend)**: 23 WebSocket URL-encoding und Auth-Validierung Tests (6 Dateien)
+- **fix(frontend)**: IT10 - 4x `.trim()` an backend-sourced Token-Stellen (auth.ts x2, client.ts x1, portal-api.ts x1) - Bearer-Token-Trim jetzt 19/19 (100%)
+- **audit**: IT11 - Senior Review: Null-Safety bewiesen (if-Guards + try-catch + TypeScript strict), 2 pre-existing DEFERRED (T1: refreshToken Return-Type, T2: fehlender || '' Fallback)
+- **audit**: IT12 - Meta-Review: 3 Agent-Findings cross-checked (1 False Alarm G1: Loop-Reset, 1 Zaehl-Fehler: 19 korrekt nicht 20), IT11-Implementierung KORREKT und VOLLSTAENDIG bestaetigt
 - **feat(frontend)**: Phase 1 - Spotlight Cmd+K Schnellsuche (parallele Dokument/Entity/Autocomplete-Suche)
 - **feat(api)**: Spotlight API Endpoint mit Rate Limiting und <200ms Ziel
 - **feat(frontend)**: Phase 1 - OCR Batch Correction Admin-Seite mit Inline-Editor

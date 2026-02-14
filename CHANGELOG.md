@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Frontend: Token trimming an allen 13 Stellen (lib/websocket, lib/api/client, lib/api/services/auth, features/*/api, features/*/hooks)
+- Frontend: Mandatory WebSocket auth validation (verhindert leere Token-Verbindungen)
+- Frontend: encodeURIComponent für WebSocket token in URL
+
+### Added
+- Tests: 23 WebSocket URL-encoding und Auth-Validierung Integrationstests (6 Dateien)
+
 ### Added
 - Database: Migration 222 Folder Hierarchy (folders, folder_permissions, folder_documents)
 - Database: Migration 223 Knowledge Graph Autonomy + Comment Threads
