@@ -1,5 +1,14 @@
 # Recent Changes
 
+## 2026-02-14
+- **fix(db)**: Migration 210 - Idempotente RLS Policies (_table_exists, _column_exists)
+- **feat(services)**: Enterprise Services - Data Quality, Digital Twin erweitert (Schema-Migration)
+- **fix(api)**: API Schema-Fixes - category_id zu document_type Migration
+- **fix(workers)**: Celery Tasks - Schema-Anpassungen (4 Task-Dateien)
+- **feat(frontend)**: 8 neue Enterprise Features - Routes und Components (~195KB)
+- **test(services)**: Unit Tests fuer 8 neue Enterprise Services (~230KB)
+- **chore(orchestration)**: Ralph Loop Notes Update
+
 ## 2026-02-13
 - **refactor(workers)**: Celery Task Names - Full-Path Migration (87 Dateien)
 - **feat(api)**: 10 neue Enterprise Endpoints (collaboration, data_quality, digital_twin, document_hints, invoice_pipeline, ml_dashboard, smart_search, trust_dashboard)

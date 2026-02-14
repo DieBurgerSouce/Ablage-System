@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Frontend: 8 neue Enterprise Feature Routes (data-quality, digital-twin, document-hints, invoice-workflow, ml-dashboard, tax-package, trust-dashboard, visual-diff)
+- Frontend: 8 Feature-Directories mit Components, Hooks, API Layer (~195KB neuer UI-Code)
+- Frontend: Product Tour Data-Attributes für Onboarding (nav-dashboard, nav-upload, nav-admin, etc.)
+- Tests: Unit Tests für 8 neue Enterprise Services (~230KB Test-Coverage)
 - API: 10 neue Enterprise Endpoints (collaboration, data_quality, digital_twin, document_hints, invoice_pipeline, ml_dashboard, smart_search, trust_dashboard)
 - Services: 9 neue Enterprise Services für Data Quality, Digital Twin, Collaboration, Document Hints
 - Frontend: CEO Dashboard Components (DataQualityCockpit, DigitalTwinDashboard, ComplianceCard, RiskOverviewCard)
@@ -23,6 +27,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Frontend: WebSocket Init Hook für zentrale WebSocket-Initialisierung
 
 ### Fixed
+- Database: Migration 210 - Idempotente RLS Policies mit _table_exists() und _column_exists() Helpers
+- Services: Enterprise Services Schema-Migration (category→document_type, file_hash→checksum, title→original_filename)
+- Services: Data Quality _fix_uncategorized() implementiert (setzt "unknown" type)
+- Services: Collaboration get_all_mentions() Methode implementiert
+- API: collaboration.py get_mentions() nutzt jetzt get_all_mentions() statt nur unread
+- API: entities.py category_id→document_type Migration für Cross-Company Queries
+- Workers: Celery Tasks Schema-Anpassungen (4 Task-Dateien)
 - Workers: Celery Task Names auf Full-Path migriert (87 Dateien) - `risk_scoring.calculate_all` → `app.workers.tasks.risk_scoring_tasks.calculate_all_risk_scores_task`
 - Alembic: Migrationen 208, 209, 215, 216 asyncpg-hardened
 - Frontend: WebSocket Token-Storage von localStorage auf sessionStorage migriert (5 Dateien)
