@@ -58,25 +58,12 @@ describe('Chat API (lib) - Token Storage Integration', () => {
     );
   });
 
-  it('sollte ohne Token keinen Authorization-Header setzen', async () => {
-    // lib/chat-api sendMessageStream setzt Token optional (kein throw)
-    const stream = new ReadableStream({
-      start(controller) {
-        controller.enqueue(new TextEncoder().encode('data: {"type":"done","session_id":"s1"}\n\n'));
-        controller.close();
-      },
-    });
+  it('sollte onError aufrufen wenn kein Token vorhanden', async () => {
+    const onError = vi.fn();
+    await chatApi.sendMessageStream('Hallo', undefined, { onError });
 
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      body: stream,
-    });
-
-    await chatApi.sendMessageStream('Hallo');
-
-    const [, options] = mockFetch.mock.calls[0];
-    expect(options.headers).not.toHaveProperty('Authorization');
+    expect(onError).toHaveBeenCalledWith('Nicht authentifiziert');
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it('sollte sessionStorage verwenden, nicht localStorage', async () => {

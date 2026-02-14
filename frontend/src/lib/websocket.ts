@@ -194,7 +194,7 @@ class RealtimeWebSocketClient {
     if (freshToken) {
       this.token = freshToken;
     }
-    const wsUrl = `${this.url}?token=${this.token}`;
+    const wsUrl = `${this.url}?token=${encodeURIComponent(this.token || '')}`;
 
     try {
       this.ws = new WebSocket(wsUrl);
