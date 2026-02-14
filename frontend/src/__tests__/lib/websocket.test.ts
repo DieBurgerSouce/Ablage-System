@@ -132,6 +132,35 @@ describe('RealtimeWebSocketClient - Token Handling', () => {
     expect(capturedUrls[0]).toContain(`token=${encodeURIComponent(connectToken)}`);
   });
 
+  it('sollte Verbindung ablehnen wenn kein Token vorhanden', () => {
+    // Kein Token in sessionStorage, connect mit leerem String
+    const client = new RealtimeWebSocketClient('localhost:8000');
+    client.connect('');
+
+    // Kein WebSocket sollte erstellt worden sein (Token-Guard)
+    expect(capturedUrls).toHaveLength(0);
+  });
+
+  it('sollte Whitespace-Token bei connect ablehnen', () => {
+    const client = new RealtimeWebSocketClient('localhost:8000');
+    client.connect('   ');
+
+    // Kein WebSocket sollte erstellt worden sein (Token-Guard faengt Whitespace ab)
+    expect(capturedUrls).toHaveLength(0);
+  });
+
+  it('sollte Whitespace-Token aus sessionStorage nicht uebernehmen (K2)', () => {
+    sessionStorage.setItem('auth_token', '  \t  ');
+
+    const client = new RealtimeWebSocketClient('localhost:8000');
+    client.connect('valid-connect-token');
+
+    // K2: freshToken?.trim() ist falsy → Whitespace wird NICHT uebernommen,
+    // connect-Token bleibt erhalten und wird verwendet
+    expect(capturedUrls).toHaveLength(1);
+    expect(capturedUrls[0]).toContain(`token=${encodeURIComponent('valid-connect-token')}`);
+  });
+
   it('sollte Unicode-Token korrekt kodieren', () => {
     const unicodeToken = 'tökén-with-ümlautß';
     sessionStorage.setItem('auth_token', unicodeToken);

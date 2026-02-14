@@ -73,6 +73,22 @@ describe('useChatWebSocket (features/chat) - Token Storage Integration', () => {
     expect(onError).toHaveBeenCalledWith('Nicht authentifiziert');
   });
 
+  it('sollte Whitespace-Token ablehnen', () => {
+    sessionStorage.setItem('auth_token', '   ');
+    const onError = vi.fn();
+
+    renderHook(() =>
+      useChatWebSocket({
+        sessionId: 'session-123',
+        enabled: true,
+        onError,
+      })
+    );
+
+    expect(wsConstructorCalls).toHaveLength(0);
+    expect(onError).toHaveBeenCalledWith('Nicht authentifiziert');
+  });
+
   it('sollte sessionStorage verwenden', () => {
     const sessionSpy = vi.spyOn(sessionStorage, 'getItem');
     const localSpy = vi.spyOn(localStorage, 'getItem');

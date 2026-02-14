@@ -119,6 +119,22 @@ describe('Chat API (lib) - Token Storage Integration', () => {
     sessionSpy.mockRestore();
   });
 
+  it('sollte Whitespace-Token als nicht authentifiziert behandeln', async () => {
+    sessionStorage.setItem('auth_token', '   ');
+
+    const onError = vi.fn();
+    await chatApi.sendMessageStream('Hallo', undefined, { onError });
+
+    expect(onError).toHaveBeenCalledWith('Nicht authentifiziert');
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('sollte nicht crashen wenn kein Token und keine Callbacks', async () => {
+    // Kein Token, keine Callbacks - darf nicht crashen und fetch nicht aufrufen
+    await chatApi.sendMessageStream('Hallo');
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
   it('sollte Fehlerresponse korrekt an onError weiterleiten', async () => {
     sessionStorage.setItem('auth_token', 'test-token');
 

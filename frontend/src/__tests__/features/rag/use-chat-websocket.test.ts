@@ -74,6 +74,22 @@ describe('useChatWebSocket (features/rag) - Token Storage Integration', () => {
     expect(result.current.status).toBe('error');
   });
 
+  it('sollte Whitespace-Token ablehnen', () => {
+    sessionStorage.setItem('auth_token', '   ');
+
+    const { result } = renderHook(() =>
+      useChatWebSocket({ autoConnect: false })
+    );
+
+    act(() => {
+      result.current.connect('session-456');
+    });
+
+    expect(wsConstructorCalls).toHaveLength(0);
+    expect(result.current.error).toBe('Nicht authentifiziert');
+    expect(result.current.status).toBe('error');
+  });
+
   it('sollte sessionStorage verwenden', () => {
     const sessionSpy = vi.spyOn(sessionStorage, 'getItem');
     const localSpy = vi.spyOn(localStorage, 'getItem');

@@ -42,6 +42,14 @@ describe('RAG Chat API - Token Storage Integration', () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
+  it('sollte Whitespace-Token als nicht authentifiziert behandeln', async () => {
+    sessionStorage.setItem('auth_token', '   ');
+    await expect(
+      sendMessage({ message: 'Hallo' } as Parameters<typeof sendMessage>[0])
+    ).rejects.toThrow('Nicht authentifiziert');
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
   it('sollte sessionStorage verwenden, nicht localStorage', async () => {
     const sessionSpy = vi.spyOn(sessionStorage, 'getItem');
     const localSpy = vi.spyOn(localStorage, 'getItem');
