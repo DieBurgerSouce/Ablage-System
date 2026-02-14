@@ -87,7 +87,7 @@ async def _detect_life_events() -> Dict[str, Any]:
             .where(
                 and_(
                     Document.created_at >= cutoff,
-                    Document.ocr_text.isnot(None),
+                    Document.extracted_text.isnot(None),
                     Document.ocr_processed == True,
                 )
             )

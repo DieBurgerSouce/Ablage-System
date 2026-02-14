@@ -1012,12 +1012,12 @@ def detect_concept_drift(
                 stmt = select(
                     func.count().label("total"),
                     func.sum(
-                        func.cast(Document.category_corrected == True, Integer)
+                        func.cast(False, Integer)
                     ).label("corrected"),
                 ).where(
                     and_(
                         Document.created_at >= cutoff_date,
-                        Document.category.isnot(None),
+                        Document.document_type.isnot(None),
                     )
                 )
 

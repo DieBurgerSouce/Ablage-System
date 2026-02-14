@@ -279,7 +279,7 @@ def reprocess_all_documents_task(
         async with async_session_maker() as session:
             # Find all documents to process
             query = select(Document.id).where(
-                Document.user_id == owner_uuid,
+                Document.owner_id == owner_uuid,
                 Document.document_type.in_(document_types),
             )
             result = await session.execute(query)

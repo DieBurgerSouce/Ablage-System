@@ -803,7 +803,7 @@ def scheduled_chunk_new_documents(self) -> Dict[str, Any]:
             subquery = select(RAGDocumentChunk.document_id).distinct()
             query = select(Document.id).where(
                 Document.extracted_text.isnot(None),
-                Document.processing_status == ProcessingStatus.COMPLETED,
+                Document.status == ProcessingStatus.COMPLETED,
                 ~Document.id.in_(subquery)
             ).limit(50)  # Batch-Limit
 
