@@ -293,6 +293,7 @@ markers = [
     "connectivity: Service connectivity tests",
     "prometheus: Prometheus target tests",
     "logs: Container log scanning tests",
+    "chaos: Chaos Engineering tests for fault injection",
 ]
 
 # Addopts - options to always use
