@@ -876,11 +876,11 @@ class DatabaseTask(Task):
 @celery_app.task(
     bind=True,
     base=DatabaseTask,
-    name="celery_app.tasks.ocr_tasks.process_document_ocr",
+    name="app.workers.tasks.ocr_tasks.process_document_task",
     max_retries=3,
     default_retry_delay=60  # 1 minute
 )
-def process_document_ocr(self, document_id: str, backend: str = "deepseek"):
+def process_document_task(self, document_id: str, backend: str = "deepseek"):
     """
     Process document with OCR.
     
@@ -961,7 +961,7 @@ def batch_process_documents(document_ids: list[str], backend: str = "deepseek"):
     
     for document_id in document_ids:
         # Queue individual task
-        result = process_document_ocr.delay(document_id, backend)
+        result = process_document_task.delay(document_id, backend)
         results.append({
             "document_id": document_id,
             "task_id": result.id

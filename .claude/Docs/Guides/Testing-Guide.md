@@ -2065,21 +2065,21 @@ from unittest.mock import MagicMock, patch
 class TestMockCeleryTasks:
     """Test mocking Celery tasks"""
     
-    @patch('tasks.ocr_tasks.process_document_ocr.delay')
+    @patch('app.workers.tasks.ocr_tasks.process_document_task.delay')
     def test_mock_celery_task_delay(self, mock_task):
         """Test mocking Celery task.delay()"""
         # Configure mock
         mock_task.return_value = MagicMock(id="task-123")
         
         # Trigger task
-        from tasks.ocr_tasks import process_document_ocr
-        result = process_document_ocr.delay("document-id")
+        from tasks.ocr_tasks import process_document_task
+        result = process_document_task.delay("document-id")
         
         # Assert
         assert result.id == "task-123"
         mock_task.assert_called_once_with("document-id")
     
-    @patch('tasks.ocr_tasks.process_document_ocr.apply_async')
+    @patch('app.workers.tasks.ocr_tasks.process_document_task.apply_async')
     def test_mock_celery_apply_async(self, mock_apply_async):
         """Test mocking apply_async with ETA"""
         from datetime import datetime, timedelta
@@ -2089,9 +2089,9 @@ class TestMockCeleryTasks:
         mock_apply_async.return_value = mock_result
         
         # Schedule task
-        from tasks.ocr_tasks import process_document_ocr
+        from tasks.ocr_tasks import process_document_task
         eta = datetime.utcnow() + timedelta(minutes=5)
-        result = process_document_ocr.apply_async(
+        result = process_document_task.apply_async(
             args=["document-id"],
             eta=eta
         )
@@ -2103,12 +2103,12 @@ class TestMockCeleryTasks:
     def test_mock_celery_task_execution(self, mocker):
         """Test mocking task execution directly"""
         # Mock the task function
-        mock_task = mocker.patch('tasks.ocr_tasks.process_document_ocr')
+        mock_task = mocker.patch('app.workers.tasks.ocr_tasks.process_document_task')
         mock_task.return_value = {"status": "completed"}
         
         # Execute task
-        from tasks.ocr_tasks import process_document_ocr
-        result = process_document_ocr("document-id")
+        from tasks.ocr_tasks import process_document_task
+        result = process_document_task("document-id")
         
         # Assert
         assert result["status"] == "completed"

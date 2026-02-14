@@ -58,7 +58,7 @@ Betrifft beide Stellen: Single-OCR (Zeile ~575) und Batch-OCR (Zeile ~1210).
 - [x] Ralph Loop Deep Review: _int_to_priority_str() nach app/core/priority.py extrahiert (shared utility)
 - [x] Ralph Loop BUG 6: document_tasks.py user_id=user_id entfernt (Parameter existiert nicht -> TypeError)
 - [x] Ralph Loop BUG 7: documents.py priority int -> int_to_priority_str() in task kwargs (war nur broker priority)
-- [ ] LOW: 3 Docs referenzieren noch process_document_ocr (API_Documentation, Background-Tasks, Testing-Guide)
+- [x] LOW: 3 Docs process_document_ocr -> process_document_task korrigiert (API_Documentation, Background-Tasks, Testing-Guide)
 
 ---
 
