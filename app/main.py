@@ -952,6 +952,11 @@ from app.api.v1.collaboration import router as collaboration_router  # Feature #
 from app.api.v1.trust_dashboard import router as trust_dashboard_router  # Feature #7: Trust/Security Dashboard
 from app.api.v1.ml_dashboard import router as ml_dashboard_router  # Feature #10: ML Progress Dashboard
 from app.api.v1.document_timeline import router as document_timeline_router  # Feature #11: Document Timeline
+from app.api.v1.folders import router as folders_router  # Phase 1.1: Geschaeftliche Ordnerhierarchie
+from app.api.v1.learning_autonomy import router as learning_autonomy_router  # Phase 2.2: Lernende Autonomie
+from app.api.v1.comment_threads import router as comment_threads_router  # Phase 3.1: Kommentar-Threads
+from app.api.v1.summarization import router as summarization_router  # Phase 4.1: AI-Zusammenfassungen
+from app.api.v1.booking_suggestions import router as booking_suggestions_router  # Phase 5.1: Buchungsvorschlaege
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -1187,6 +1192,11 @@ app.include_router(data_quality_router, prefix="/api/v1")  # Feature #8: Datenqu
 app.include_router(trust_dashboard_router, prefix="/api/v1")  # Feature #7: Trust/Security Dashboard
 app.include_router(ml_dashboard_router, prefix="/api/v1")  # Feature #10: ML Progress Dashboard
 app.include_router(document_timeline_router, prefix="/api/v1")  # Feature #11: Document Timeline
+app.include_router(folders_router, prefix="/api/v1")  # Phase 1.1: Geschaeftliche Ordnerhierarchie
+app.include_router(learning_autonomy_router, prefix="/api/v1")  # Phase 2.2: Lernende Autonomie
+app.include_router(comment_threads_router, prefix="/api/v1")  # Phase 3.1: Kommentar-Threads
+app.include_router(summarization_router, prefix="/api/v1")  # Phase 4.1: AI-Zusammenfassungen
+app.include_router(booking_suggestions_router, prefix="/api/v1")  # Phase 5.1: Buchungsvorschlaege
 
 
 # ==================== Health & Status Endpoints ====================
