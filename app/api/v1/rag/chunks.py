@@ -374,7 +374,7 @@ async def get_chunk_stats(
         # Dokumente mit OCR-Text
         docs_with_text = await db.scalar(
             select(func.count(Document.id)).where(
-                Document.ocr_text.isnot(None)
+                Document.extracted_text.isnot(None)
             )
         ) or 0
 

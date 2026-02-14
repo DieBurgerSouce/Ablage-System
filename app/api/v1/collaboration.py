@@ -290,8 +290,7 @@ async def get_mentions(
                 company_id=current_user.company_id,
             )
         else:
-            # TODO: Implementiere get_all_mentions wenn benötigt
-            mentions = await service.get_unread_mentions(
+            mentions = await service.get_all_mentions(
                 db=db,
                 user_id=current_user.id,
                 company_id=current_user.company_id,

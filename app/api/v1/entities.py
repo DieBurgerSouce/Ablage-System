@@ -540,33 +540,33 @@ async def get_cross_company_entities(
         # Dokument-Zaehlung pro Firma
         doc_count_query = (
             select(
-                Document.category_id,
+                Document.document_type,
                 func.count(Document.id).label("count")
             )
             .where(
                 Document.business_entity_id == entity.id,
                 Document.deleted_at.is_(None),
             )
-            .group_by(Document.category_id)
+            .group_by(Document.document_type)
         )
         doc_result = await db.execute(doc_count_query)
-        doc_counts = {str(row.category_id): row.count for row in doc_result}
+        doc_counts = {str(row.document_type): row.count for row in doc_result}
 
         # Letzte Aktivitaet pro Firma
         last_activity_query = (
             select(
-                Document.category_id,
+                Document.document_type,
                 func.max(Document.created_at).label("last_date")
             )
             .where(
                 Document.business_entity_id == entity.id,
                 Document.deleted_at.is_(None),
             )
-            .group_by(Document.category_id)
+            .group_by(Document.document_type)
         )
         activity_result = await db.execute(last_activity_query)
         last_activities = {
-            str(row.category_id): row.last_date.isoformat() if row.last_date else None
+            str(row.document_type): row.last_date.isoformat() if row.last_date else None
             for row in activity_result
         }
 
