@@ -520,8 +520,8 @@ class VATService:
                 Document.company_id == company_id,
                 Document.deleted_at.is_(None),
                 Document.document_type.in_(self.OUTPUT_DOCUMENT_TYPES),
-                Document.document_date >= period_start,
-                Document.document_date <= period_end,
+                Document.upload_date >= period_start,
+                Document.upload_date <= period_end,
             )
         )
 
@@ -553,7 +553,7 @@ class VATService:
             item = VATLineItem(
                 document_id=doc.id,
                 invoice_number=extracted.get("invoice_number"),
-                invoice_date=doc.document_date,
+                invoice_date=doc.upload_date,
                 counterparty=extracted.get("customer_name") or extracted.get("recipient"),
                 net_amount=net.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
                 vat_rate=vat_rate,
@@ -578,8 +578,8 @@ class VATService:
                 Document.company_id == company_id,
                 Document.deleted_at.is_(None),
                 Document.document_type.in_(self.INPUT_DOCUMENT_TYPES),
-                Document.document_date >= period_start,
-                Document.document_date <= period_end,
+                Document.upload_date >= period_start,
+                Document.upload_date <= period_end,
             )
         )
 

@@ -474,7 +474,7 @@ class DATEVExportService:
     ) -> List[models.Document]:
         """Laedt exportierbare Dokumente."""
         query = select(models.Document).where(
-            models.Document.user_id == user_id,
+            models.Document.owner_id == user_id,
             models.Document.deleted_at.is_(None),
         )
 

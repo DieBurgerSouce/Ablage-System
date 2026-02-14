@@ -528,6 +528,44 @@ class CollaborationService:
             for m in mentions
         ]
 
+    async def get_all_mentions(
+        self, db: AsyncSession, user_id: uuid.UUID, company_id: uuid.UUID
+    ) -> List[Mention]:
+        """
+        Holt alle @Mentions fuer einen Benutzer (gelesen und ungelesen).
+
+        Args:
+            db: Datenbank-Session
+            user_id: Benutzer-ID
+            company_id: Company-ID fuer Multi-Tenant
+
+        Returns:
+            Liste von Mention Objekten
+        """
+        from app.db.models_collaboration import DocumentMention
+
+        result = await db.execute(
+            select(DocumentMention)
+            .where(DocumentMention.mentioned_user_id == user_id)
+            .order_by(desc(DocumentMention.created_at))
+            .limit(50)
+        )
+
+        mentions = result.scalars().all()
+
+        return [
+            Mention(
+                id=m.id,
+                document_id=m.document_id,
+                mentioned_user_id=m.mentioned_user_id,
+                mentioned_by_id=m.mentioned_by_id,
+                context=m.context,
+                read=m.read,
+                created_at=m.created_at,
+            )
+            for m in mentions
+        ]
+
     async def mark_mention_read(
         self, db: AsyncSession, mention_id: uuid.UUID, user_id: uuid.UUID
     ) -> bool:

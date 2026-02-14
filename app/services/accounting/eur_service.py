@@ -596,8 +596,8 @@ class EURService:
                 Document.company_id == company_id,
                 Document.deleted_at.is_(None),
                 Document.document_type.in_(["invoice", "ausgangsrechnung", "sales_invoice"]),
-                Document.document_date >= period_start,
-                Document.document_date <= period_end,
+                Document.upload_date >= period_start,
+                Document.upload_date <= period_end,
             )
         )
 
@@ -623,7 +623,7 @@ class EURService:
                 document_id=doc.id,
                 category=category.value,
                 description=extracted.get("description") or doc.original_filename or "Einnahme",
-                date=doc.document_date or doc.created_at.date(),
+                date=doc.upload_date or doc.created_at.date(),
                 net_amount=net if net > 0 else gross,
                 vat_amount=vat,
                 gross_amount=gross,
@@ -650,8 +650,8 @@ class EURService:
                     "eingangsrechnung", "supplier_invoice", "purchase_invoice",
                     "beleg", "quittung", "receipt"
                 ]),
-                Document.document_date >= period_start,
-                Document.document_date <= period_end,
+                Document.upload_date >= period_start,
+                Document.upload_date <= period_end,
             )
         )
 

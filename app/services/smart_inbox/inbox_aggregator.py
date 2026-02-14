@@ -364,7 +364,7 @@ class InboxAggregator:
                     Document.company_id == company_id,
                     Document.ocr_confidence < 0.7,
                     Document.ocr_confidence > 0.0,
-                    Document.processing_status == "completed",
+                    Document.status == "completed",
                     # Nur Dokumente ohne ZeroTouchResult
                     ~Document.zero_touch_results.any(),
                 )

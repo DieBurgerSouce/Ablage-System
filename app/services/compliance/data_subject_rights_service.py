@@ -613,7 +613,7 @@ class DataSubjectRightsService:
         # Documents
         if include_documents:
             included_categories.append(DataCategory.DOCUMENTS)
-            doc_query = select(Document).where(Document.user_id == user_id)
+            doc_query = select(Document).where(Document.owner_id == user_id)
             if company_id:
                 doc_query = doc_query.where(Document.company_id == company_id)
             doc_result = await db.execute(doc_query.limit(100))
@@ -749,7 +749,7 @@ class DataSubjectRightsService:
         # Documents
         doc_count_result = await db.execute(
             select(func.count()).select_from(Document)
-            .where(Document.user_id == user_id)
+            .where(Document.owner_id == user_id)
         )
         doc_count = doc_count_result.scalar() or 0
         if doc_count > 0:
@@ -854,7 +854,7 @@ class DataSubjectRightsService:
         if DataCategory.DOCUMENTS in categories:
             doc_result = await db.execute(
                 select(Document)
-                .where(Document.user_id == user_id)
+                .where(Document.owner_id == user_id)
                 .limit(1000)  # Sicherheitslimit
             )
             documents = doc_result.scalars().all()
@@ -1023,7 +1023,7 @@ class DataSubjectRightsService:
         if DataCategory.DOCUMENTS in categories:
             doc_count_result = await db.execute(
                 select(func.count()).select_from(Document)
-                .where(Document.user_id == user_id)
+                .where(Document.owner_id == user_id)
             )
             doc_count = doc_count_result.scalar() or 0
             if doc_count > 0:
@@ -1034,8 +1034,8 @@ class DataSubjectRightsService:
                 # Anonymisiere nur personenbezogene Metadaten
                 await db.execute(
                     update(Document)
-                    .where(Document.user_id == user_id)
-                    .values(user_id=None)  # Entferne User-Referenz
+                    .where(Document.owner_id == user_id)
+                    .values(owner_id=None)  # Entferne User-Referenz
                 )
                 records_anonymized["documents"] = doc_count
 

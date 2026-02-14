@@ -17,7 +17,9 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 import structlog
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, or_, select
+
+from app.core.safe_errors import safe_error_log
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
@@ -429,6 +431,22 @@ class TaxAdvisorPackageService:
 
         return period_start, period_end, period_label
 
+    def _calculate_quarter_dates(self, year: int, quarter: int) -> tuple[date, date]:
+        """Berechnet Start- und Enddatum eines Quartals."""
+        quarter_starts = {
+            1: (1, 3),
+            2: (4, 6),
+            3: (7, 9),
+            4: (10, 12),
+        }
+        start_month, end_month = quarter_starts[quarter]
+        period_start = date(year, start_month, 1)
+        if end_month == 12:
+            period_end = date(year, 12, 31)
+        else:
+            period_end = date(year, end_month + 1, 1) - timedelta(days=1)
+        return period_start, period_end
+
     async def _count_documents_for_period(
         self,
         company_id: uuid.UUID,
@@ -445,8 +463,8 @@ class TaxAdvisorPackageService:
             and_(
                 Document.company_id == company_id,
                 Document.deleted_at.is_(None),
-                Document.document_date >= period_start,
-                Document.document_date <= period_end,
+                Document.upload_date >= period_start,
+                Document.upload_date <= period_end,
                 # Kategorie-Filter wuerde hier hinzukommen
             )
         )
@@ -986,9 +1004,9 @@ Bitte laden Sie die fehlenden Dokumente zeitnah hoch.
         query = select(Document).where(
             and_(
                 Document.company_id == company_id,
-                Document.category == "kontoauszug",
-                Document.document_date >= start,
-                Document.document_date <= end,
+                Document.document_type == "kontoauszug",
+                Document.upload_date >= start,
+                Document.upload_date <= end,
             )
         )
         result = await self.db.execute(query)
@@ -1035,9 +1053,9 @@ Bitte laden Sie die fehlenden Dokumente zeitnah hoch.
         query = select(Document).where(
             and_(
                 Document.company_id == company_id,
-                Document.category.in_(["eingangsrechnung", "ausgangsrechnung"]),
-                Document.document_date >= start,
-                Document.document_date <= end,
+                Document.document_type.in_(["eingangsrechnung", "ausgangsrechnung"]),
+                Document.upload_date >= start,
+                Document.upload_date <= end,
             )
         )
         result = await self.db.execute(query)
@@ -1071,13 +1089,13 @@ Bitte laden Sie die fehlenden Dokumente zeitnah hoch.
         end: date,
     ) -> Dict[str, Any]:
         """Prueft ob Pflichtdokumente vorhanden sind."""
-        query = select(Document.category, func.count(Document.id)).where(
+        query = select(Document.document_type, func.count(Document.id)).where(
             and_(
                 Document.company_id == company_id,
-                Document.document_date >= start,
-                Document.document_date <= end,
+                Document.upload_date >= start,
+                Document.upload_date <= end,
             )
-        ).group_by(Document.category)
+        ).group_by(Document.document_type)
 
         result = await self.db.execute(query)
         counts = dict(result.fetchall())
@@ -1149,11 +1167,11 @@ Bitte laden Sie die fehlenden Dokumente zeitnah hoch.
         query = select(func.count(Document.id)).where(
             and_(
                 Document.company_id == company_id,
-                Document.document_date >= start,
-                Document.document_date <= end,
+                Document.upload_date >= start,
+                Document.upload_date <= end,
                 or_(
-                    Document.ocr_text.is_(None),
-                    Document.ocr_text == "",
+                    Document.extracted_text.is_(None),
+                    Document.extracted_text == "",
                 )
             )
         )

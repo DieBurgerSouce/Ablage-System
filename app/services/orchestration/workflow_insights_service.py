@@ -588,7 +588,7 @@ class WorkflowInsightsService:
             # Finde veraltete Genehmigungsanfragen
             stale_query = select(
                 ApprovalRequest,
-                Document.title,
+                Document.original_filename,
             ).join(
                 Document, ApprovalRequest.document_id == Document.id
             ).where(

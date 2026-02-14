@@ -261,9 +261,9 @@ class IntelligentDocumentMatcher:
                 and_(
                     Document.company_id == company_id,
                     Document.id != document.id,
-                    # Suche in extracted_data oder ocr_text
+                    # Suche in extracted_data oder extracted_text
                     or_(
-                        Document.ocr_text.ilike(f"%{ref_num}%"),
+                        Document.extracted_text.ilike(f"%{ref_num}%"),
                         func.cast(Document.extracted_data, String).ilike(f"%{ref_num}%"),
                     )
                 )
@@ -282,7 +282,7 @@ class IntelligentDocumentMatcher:
                 matches.append(MatchResult(
                     document_id=found_doc.id,
                     document_type=found_doc.document_type or "",
-                    document_date=found_doc.document_date,
+                    document_date=found_doc.upload_date,
                     confidence=self.config.strategy_confidences[MatchStrategy.REFERENCE_NUMBER],
                     relation_type=relation,
                     explanation=f"Referenznummer '{ref_num}' identisch",
@@ -333,7 +333,7 @@ class IntelligentDocumentMatcher:
                 and_(
                     Document.company_id == company_id,
                     Document.id != document.id,
-                    Document.ocr_text.ilike(f"%{po_num}%"),
+                    Document.extracted_text.ilike(f"%{po_num}%"),
                 )
             ).limit(5)
 
@@ -349,7 +349,7 @@ class IntelligentDocumentMatcher:
                 matches.append(MatchResult(
                     document_id=found_doc.id,
                     document_type=found_doc.document_type or "",
-                    document_date=found_doc.document_date,
+                    document_date=found_doc.upload_date,
                     confidence=self.config.strategy_confidences[MatchStrategy.PO_NUMBER],
                     relation_type=relation,
                     explanation=f"Bestellnummer '{po_num}' übereinstimmend",
@@ -516,7 +516,7 @@ class IntelligentDocumentMatcher:
                 Document.company_id == company_id,
                 Document.id != document.id,
                 Document.business_entity_id == entity_id,
-                Document.document_date.between(date_min, date_max),
+                Document.upload_date.between(date_min, date_max),
             )
         ).limit(10)
 
@@ -524,8 +524,8 @@ class IntelligentDocumentMatcher:
         found_docs = result.scalars().all()
 
         for found_doc in found_docs:
-            if found_doc.document_date:
-                days_diff = abs((found_doc.document_date - doc_date).days)
+            if found_doc.upload_date:
+                days_diff = abs((found_doc.upload_date - doc_date).days)
                 # Confidence sinkt mit größerem Datumsabstand
                 confidence_factor = 1.0 - (days_diff / (self.config.date_range_days * 2))
 
@@ -537,7 +537,7 @@ class IntelligentDocumentMatcher:
                 matches.append(MatchResult(
                     document_id=found_doc.id,
                     document_type=found_doc.document_type or "",
-                    document_date=found_doc.document_date,
+                    document_date=found_doc.upload_date,
                     confidence=self.config.strategy_confidences[MatchStrategy.CUSTOMER_DATE_RANGE] * confidence_factor,
                     relation_type=relation,
                     explanation=f"Gleicher Kunde, {days_diff} Tage Differenz",
@@ -586,7 +586,7 @@ class IntelligentDocumentMatcher:
                 and_(
                     Document.company_id == company_id,
                     Document.id != document.id,
-                    Document.ocr_text.ilike(f"%{article_num}%"),
+                    Document.extracted_text.ilike(f"%{article_num}%"),
                 )
             ).limit(5)
 
@@ -595,7 +595,7 @@ class IntelligentDocumentMatcher:
 
             for found_doc in found_docs:
                 # Overlap-Berechnung
-                found_articles = self._extract_article_numbers(found_doc.ocr_text or "")
+                found_articles = self._extract_article_numbers(found_doc.extracted_text or "")
                 overlap = set(article_numbers) & set(found_articles)
 
                 if overlap:

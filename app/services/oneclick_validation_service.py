@@ -480,7 +480,7 @@ class OneClickValidationService:
             .where(
                 and_(
                     Document.business_entity_id.is_(None),
-                    Document.ocr_text.isnot(None),  # OCR abgeschlossen
+                    Document.extracted_text.isnot(None),  # OCR abgeschlossen
                 )
             )
             .order_by(Document.created_at.desc())

@@ -842,8 +842,8 @@ class FolderImportService:
         result = await self.db.execute(
             select(Document.id).where(
                 and_(
-                    Document.user_id == user_id,
-                    Document.file_hash == file_hash,
+                    Document.owner_id == user_id,
+                    Document.checksum == file_hash,
                 )
             ).limit(1)
         )

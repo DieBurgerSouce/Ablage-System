@@ -517,7 +517,7 @@ class InvoicePipelineService:
             and_(
                 Document.company_id == self.company_id,
                 Document.created_at >= start_date,
-                Document.category.in_(["invoice", "recurring_invoice", "receipt"]),
+                Document.document_type.in_(["invoice", "recurring_invoice", "receipt"]),
             )
         )
         result = await self.db.execute(query)
