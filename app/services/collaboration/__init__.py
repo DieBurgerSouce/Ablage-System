@@ -24,6 +24,11 @@ from app.services.collaboration.smart_escalation_service import (
     FactorWeights,
     AssignmentFactor,
 )
+from app.services.collaboration.presence_service import (
+    PresenceService,
+    PresenceEntry,
+    get_presence_service,
+)
 
 __all__ = [
     "CommentService",
@@ -39,4 +44,7 @@ __all__ = [
     "CandidateScore",
     "FactorWeights",
     "AssignmentFactor",
+    "PresenceService",
+    "PresenceEntry",
+    "get_presence_service",
 ]

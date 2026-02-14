@@ -117,6 +117,8 @@ class NotificationChannel:
     WEBHOOK = "webhook"
     WEBSOCKET = "websocket"
     IN_APP = "in_app"
+    PUSH = "push"
+    SLACK = "slack"
 
 
 class NotificationPriority:
@@ -958,6 +960,7 @@ class NotificationService:
             if user_id:
                 channels.append(NotificationChannel.IN_APP)
                 channels.append(NotificationChannel.WEBSOCKET)
+                channels.append(NotificationChannel.PUSH)
 
         # Render template
         rendered = NotificationTemplate.render(notification_type, context)
@@ -994,6 +997,23 @@ class NotificationService:
                 user_id,
                 notification_type,
                 rendered,
+                priority,
+                results,
+            ))
+
+        if NotificationChannel.PUSH in channels and user_id:
+            tasks.append(self._send_push(
+                user_id,
+                rendered,
+                notification_type,
+                results,
+            ))
+
+        if NotificationChannel.SLACK in channels:
+            tasks.append(self._send_slack(
+                notification_type,
+                rendered,
+                context,
                 priority,
                 results,
             ))
@@ -1098,6 +1118,78 @@ class NotificationService:
                 **safe_error_log(e),
             )
             results[NotificationChannel.WEBSOCKET] = False
+
+    async def _send_push(
+        self,
+        user_id: str,
+        rendered: Dict[str, str],
+        notification_type: str,
+        results: Dict[str, bool],
+    ) -> None:
+        """Send push notification via PushNotificationService."""
+        try:
+            from app.db.session import get_async_session_context
+            from app.services.push_notification_service import PushNotificationService
+
+            async with get_async_session_context() as db:
+                push_service = PushNotificationService(db)
+                success, failed = await push_service.send_to_user(
+                    user_id=uuid_module.UUID(user_id),
+                    title=rendered["subject"],
+                    body=rendered["body"][:200],
+                    tag=notification_type,
+                    data={"type": notification_type},
+                )
+                await db.commit()
+                results[NotificationChannel.PUSH] = success > 0
+
+            logger.debug(
+                "push_notification_sent",
+                user_id=user_id,
+                success=success,
+                failed=failed,
+            )
+        except Exception as e:
+            logger.warning(
+                "push_notification_failed",
+                user_id=user_id,
+                **safe_error_log(e),
+            )
+            results[NotificationChannel.PUSH] = False
+
+    async def _send_slack(
+        self,
+        notification_type: str,
+        rendered: Dict[str, str],
+        context: Dict[str, object],
+        priority: str,
+        results: Dict[str, bool],
+    ) -> None:
+        """Send Slack notification via SlackService."""
+        try:
+            from app.services.slack_service import send_slack_notification
+
+            success = await send_slack_notification(
+                notification_type=notification_type,
+                title=rendered["subject"],
+                message=rendered["body"][:500],
+                context=context,
+                priority=priority,
+            )
+            results[NotificationChannel.SLACK] = success
+
+            logger.debug(
+                "slack_notification_sent",
+                notification_type=notification_type,
+                success=success,
+            )
+        except Exception as e:
+            logger.warning(
+                "slack_notification_failed",
+                notification_type=notification_type,
+                **safe_error_log(e),
+            )
+            results[NotificationChannel.SLACK] = False
 
     async def notify_processing_completed(
         self,

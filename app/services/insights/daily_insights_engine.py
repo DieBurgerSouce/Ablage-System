@@ -1208,6 +1208,295 @@ class DailyInsightsEngine:
 
 
 # =============================================================================
+# Database-Backed Data Providers
+# =============================================================================
+
+
+async def _build_data_providers_from_db(
+    db: "AsyncSession",
+    company_id: UUID,
+) -> Dict[str, Callable[[], List[Dict[str, Union[str, int, float]]]]]:
+    """
+    Erstellt Data Provider Funktionen die echte Daten aus der DB liefern.
+
+    Wird vom Celery Beat Task und von den API-Endpoints genutzt.
+
+    Args:
+        db: Async Database Session
+        company_id: Company/Mandant UUID
+
+    Returns:
+        Dict mit async Funktionen pro Daten-Kategorie
+    """
+    from sqlalchemy import select, func, and_
+    from sqlalchemy.ext.asyncio import AsyncSession as _AsyncSession
+    from datetime import timedelta
+
+    now = datetime.now(timezone.utc)
+
+    async def _get_cashflow_predictions() -> List[Dict[str, Union[str, int, float]]]:
+        """Projiziert Cashflow basierend auf offenen Rechnungen."""
+        try:
+            from app.db.models import InvoiceTracking
+
+            # Offene Eingangsrechnungen (ausstehende Zahlungen)
+            result = await db.execute(
+                select(
+                    InvoiceTracking.due_date,
+                    func.sum(InvoiceTracking.outstanding_amount).label("total_due"),
+                ).where(
+                    and_(
+                        InvoiceTracking.company_id == company_id,
+                        InvoiceTracking.status.in_(["open", "partial", "overdue"]),
+                        InvoiceTracking.due_date.isnot(None),
+                        InvoiceTracking.due_date <= now + timedelta(days=30),
+                    )
+                ).group_by(InvoiceTracking.due_date)
+                .order_by(InvoiceTracking.due_date)
+            )
+            rows = result.all()
+
+            predictions: List[Dict[str, Union[str, int, float]]] = []
+            running_balance: float = 0.0
+
+            for row in rows:
+                due_amount = float(row.total_due or 0)
+                running_balance -= due_amount
+                predictions.append({
+                    "date": row.due_date.isoformat() if row.due_date else "",
+                    "predicted_balance": running_balance,
+                    "confidence": 0.8,
+                })
+
+            return predictions
+        except Exception as e:
+            logger.warning("cashflow_provider_error", **safe_error_log(e))
+            return []
+
+    async def _get_skonto_invoices() -> List[Dict[str, Union[str, int, float]]]:
+        """Rechnungen mit ablaufenden Skonto-Fristen (naechste 7 Tage)."""
+        try:
+            from app.db.models import InvoiceTracking
+
+            result = await db.execute(
+                select(InvoiceTracking).where(
+                    and_(
+                        InvoiceTracking.company_id == company_id,
+                        InvoiceTracking.skonto_deadline.isnot(None),
+                        InvoiceTracking.skonto_deadline >= now,
+                        InvoiceTracking.skonto_deadline <= now + timedelta(days=7),
+                        InvoiceTracking.skonto_used == False,
+                        InvoiceTracking.status.in_(["open", "partial"]),
+                    )
+                ).order_by(InvoiceTracking.skonto_deadline)
+            )
+            invoices = result.scalars().all()
+
+            return [
+                {
+                    "invoice_id": str(inv.id),
+                    "invoice_number": inv.invoice_number or "",
+                    "skonto_deadline": inv.skonto_deadline.isoformat() if inv.skonto_deadline else "",
+                    "skonto_amount": float(inv.skonto_amount or 0),
+                    "supplier_name": "",
+                }
+                for inv in invoices
+            ]
+        except Exception as e:
+            logger.warning("skonto_provider_error", **safe_error_log(e))
+            return []
+
+    async def _get_high_risk_entities() -> List[Dict[str, Union[str, int, float]]]:
+        """Entities mit hohem Zahlungsrisiko."""
+        try:
+            from app.db.models import BusinessEntity, InvoiceTracking, Document
+
+            # Entities mit ueberfaelligen Rechnungen
+            # Join: InvoiceTracking -> Document -> BusinessEntity
+            result = await db.execute(
+                select(
+                    BusinessEntity.id,
+                    BusinessEntity.name,
+                    func.count(InvoiceTracking.id).label("overdue_count"),
+                    func.coalesce(func.sum(InvoiceTracking.outstanding_amount), 0).label("overdue_amount"),
+                ).select_from(InvoiceTracking)
+                .join(
+                    Document,
+                    InvoiceTracking.document_id == Document.id,
+                ).join(
+                    BusinessEntity,
+                    Document.business_entity_id == BusinessEntity.id,
+                ).where(
+                    and_(
+                        InvoiceTracking.company_id == company_id,
+                        InvoiceTracking.status.in_(["overdue", "dunning"]),
+                        BusinessEntity.is_active == True,
+                    )
+                ).group_by(BusinessEntity.id, BusinessEntity.name)
+                .having(func.count(InvoiceTracking.id) >= 2)
+            )
+            rows = result.all()
+
+            return [
+                {
+                    "entity_id": str(row.id),
+                    "name": row.name,
+                    "risk_score": min(95, 50 + int(row.overdue_count) * 10),
+                    "overdue_count": int(row.overdue_count),
+                    "overdue_amount": float(row.overdue_amount),
+                }
+                for row in rows
+            ]
+        except Exception as e:
+            logger.warning("risk_entity_provider_error", **safe_error_log(e))
+            return []
+
+    async def _get_dunning_invoices() -> List[Dict[str, Union[str, int, float, bool]]]:
+        """Rechnungen die eine Mahnung benoetigen."""
+        try:
+            from app.db.models import InvoiceTracking, BusinessEntity, Document
+
+            # Join: InvoiceTracking -> Document -> BusinessEntity
+            result = await db.execute(
+                select(
+                    InvoiceTracking,
+                    BusinessEntity.name.label("customer_name"),
+                    BusinessEntity.id.label("entity_id_ref"),
+                ).select_from(InvoiceTracking)
+                .join(
+                    Document,
+                    InvoiceTracking.document_id == Document.id,
+                    isouter=True,
+                ).join(
+                    BusinessEntity,
+                    Document.business_entity_id == BusinessEntity.id,
+                    isouter=True,
+                ).where(
+                    and_(
+                        InvoiceTracking.company_id == company_id,
+                        InvoiceTracking.status.in_(["overdue", "dunning"]),
+                        InvoiceTracking.due_date.isnot(None),
+                        InvoiceTracking.due_date < now,
+                    )
+                ).order_by(InvoiceTracking.due_date)
+            )
+            rows = result.all()
+
+            invoices: List[Dict[str, Union[str, int, float, bool]]] = []
+            for row in rows:
+                inv = row[0]
+                customer_name = row.customer_name or ""
+                entity_id_ref = row.entity_id_ref
+                days_overdue = (now - inv.due_date).days if inv.due_date else 0
+
+                invoices.append({
+                    "dunning_record_id": str(inv.id),
+                    "invoice_number": inv.invoice_number or "",
+                    "days_overdue": days_overdue,
+                    "outstanding_amount": float(inv.outstanding_amount or inv.amount or 0),
+                    "dunning_level": int(inv.dunning_level or 0),
+                    "customer_name": customer_name,
+                    "entity_id": str(entity_id_ref) if entity_id_ref else "",
+                    "is_b2b": True,
+                    "mahnstopp": False,
+                })
+
+            return invoices
+        except Exception as e:
+            logger.warning("dunning_provider_error", **safe_error_log(e))
+            return []
+
+    async def _get_overdue_invoices() -> List[Dict[str, Union[str, int, float]]]:
+        """Ueberfaellige Rechnungen fuer OverdueInvoiceGenerator."""
+        try:
+            from app.db.models import InvoiceTracking, BusinessEntity, Document
+
+            # Join: InvoiceTracking -> Document -> BusinessEntity
+            result = await db.execute(
+                select(
+                    InvoiceTracking,
+                    BusinessEntity.name.label("customer_name"),
+                ).select_from(InvoiceTracking)
+                .join(
+                    Document,
+                    InvoiceTracking.document_id == Document.id,
+                    isouter=True,
+                ).join(
+                    BusinessEntity,
+                    Document.business_entity_id == BusinessEntity.id,
+                    isouter=True,
+                ).where(
+                    and_(
+                        InvoiceTracking.company_id == company_id,
+                        InvoiceTracking.status.in_(["overdue", "dunning"]),
+                        InvoiceTracking.due_date.isnot(None),
+                        InvoiceTracking.due_date < now,
+                    )
+                )
+            )
+            rows = result.all()
+
+            return [
+                {
+                    "invoice_id": str(row[0].id),
+                    "invoice_number": row[0].invoice_number or "",
+                    "customer_name": row.customer_name or "",
+                    "amount": float(row[0].outstanding_amount or row[0].amount or 0),
+                    "days_overdue": (now - row[0].due_date).days if row[0].due_date else 0,
+                    "dunning_level": int(row[0].dunning_level or 0),
+                }
+                for row in rows
+            ]
+        except Exception as e:
+            logger.warning("overdue_provider_error", **safe_error_log(e))
+            return []
+
+    return {
+        "cashflow_predictions": _get_cashflow_predictions,
+        "upcoming_skonto": _get_skonto_invoices,
+        "high_risk_entities": _get_high_risk_entities,
+        "dunning_invoices": _get_dunning_invoices,
+        "overdue_invoices": _get_overdue_invoices,
+    }
+
+
+# =============================================================================
+# Convenience Methods (used by API endpoints)
+# =============================================================================
+
+
+async def generate_all_insights_from_db(
+    engine: DailyInsightsEngine,
+    db: "AsyncSession",
+    company_id: UUID,
+) -> List[DailyInsight]:
+    """
+    Generiert alle Insights fuer eine Company aus der DB.
+
+    Convenience-Funktion die von den API-Endpoints genutzt wird.
+    Erstellt Data Provider aus der DB und ruft die Engine auf.
+    """
+    providers = await _build_data_providers_from_db(db, company_id)
+    result = await engine.generate_daily_insights(company_id, providers)
+    return result.insights
+
+
+async def generate_insights_by_type_from_db(
+    engine: DailyInsightsEngine,
+    db: "AsyncSession",
+    company_id: UUID,
+    insight_type: DailyInsightType,
+) -> List[DailyInsight]:
+    """
+    Generiert Insights eines bestimmten Typs fuer eine Company.
+
+    Filtert die generierten Insights nach dem angegebenen Typ.
+    """
+    all_insights = await generate_all_insights_from_db(engine, db, company_id)
+    return [i for i in all_insights if i.insight_type == insight_type]
+
+
+# =============================================================================
 # Factory
 # =============================================================================
 

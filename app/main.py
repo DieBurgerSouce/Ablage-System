@@ -924,6 +924,7 @@ from app.api.v1.predictive_health import router as predictive_health_router  # V
 from app.api.v1.action_queue import router as action_queue_router  # Vision 2.0 Phase 6: Action Approval Queue
 from app.api.v1.financial_insights import router as financial_insights_router  # Vision 2.0 Phase 6: Financial Insights
 from app.api.v1.xai import router as xai_router  # Vision 2.0 Phase 6: Explainable AI
+from app.api.v1.document_lifecycle import router as document_lifecycle_router  # Document Lifecycle SLA
 from app.api.v1.sso import router as sso_router  # Enterprise SSO (OIDC/SAML)
 from app.api.v1.lineage import router as lineage_router  # Phase 1.3: Document Lineage Timeline
 from app.api.v1.workflow_analytics import router as workflow_analytics_router  # Phase 4: Workflow Analytics, SLA, Approvals
@@ -943,6 +944,7 @@ from app.api.v1.notification_preferences import router as notification_preferenc
 from app.api.v1.feature_flags import admin_router as feature_flags_admin_router, user_router as feature_flags_router  # Feature Flag Service
 from app.api.v1.digital_twin import router as digital_twin_router  # Feature #6: Digitaler Zwilling
 from app.api.v1.data_quality import router as data_quality_router  # Feature #8: Datenqualitaets-Cockpit
+from app.api.v1.presence import router as presence_router  # Feature: Collaborative Presence Indicators
 
 # Phase 1: Enterprise & Compliance (Dokument-Integritaet, Signaturen, Jahresabschluss)
 from app.api.v1.integrity import router as integrity_router  # Phase 1: Dokument-Integritaet (Hash-Chain)
@@ -958,6 +960,7 @@ from app.api.v1.learning_autonomy import router as learning_autonomy_router  # P
 from app.api.v1.comment_threads import router as comment_threads_router  # Phase 3.1: Kommentar-Threads
 from app.api.v1.summarization import router as summarization_router  # Phase 4.1: AI-Zusammenfassungen
 from app.api.v1.booking_suggestions import router as booking_suggestions_router  # Phase 5.1: Buchungsvorschlaege
+from app.api.v1.similar_documents import router as similar_documents_router  # Aehnliche Dokumente API
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -1153,6 +1156,7 @@ app.include_router(predictive_health_router, prefix="/api/v1")  # Vision 2.0 Pha
 app.include_router(action_queue_router, prefix="/api/v1")  # Vision 2.0 Phase 6: Action Approval Queue
 app.include_router(financial_insights_router, prefix="/api/v1")  # Vision 2.0 Phase 6: Financial Insights
 app.include_router(xai_router, prefix="/api/v1")  # Vision 2.0 Phase 6: Explainable AI
+app.include_router(document_lifecycle_router, prefix="/api/v1")  # Document Lifecycle SLA
 app.include_router(workflow_analytics_router, prefix="/api/v1")  # Phase 4: Workflow Analytics, SLA, Approvals
 app.include_router(odoo_webhooks_router, prefix="/api/v1")  # Phase 6: Odoo Integration Deepening
 app.include_router(bpmn_converter_router, prefix="/api/v1")  # BPMN 2.0 Import/Export Converter
@@ -1191,6 +1195,7 @@ app.include_router(document_hints_router, prefix="/api/v1")  # Feature #5: Proak
 app.include_router(collaboration_router, prefix="/api/v1")  # Feature #4: Echtzeit-Kollaboration
 app.include_router(digital_twin_router, prefix="/api/v1")  # Feature #6: Digitaler Zwilling
 app.include_router(data_quality_router, prefix="/api/v1")  # Feature #8: Datenqualitaets-Cockpit
+app.include_router(presence_router, prefix="/api/v1")  # Feature: Collaborative Presence Indicators
 app.include_router(trust_dashboard_router, prefix="/api/v1")  # Feature #7: Trust/Security Dashboard
 app.include_router(ml_dashboard_router, prefix="/api/v1")  # Feature #10: ML Progress Dashboard
 app.include_router(document_timeline_router, prefix="/api/v1")  # Feature #11: Document Timeline
@@ -1199,6 +1204,7 @@ app.include_router(learning_autonomy_router, prefix="/api/v1")  # Phase 2.2: Ler
 app.include_router(comment_threads_router, prefix="/api/v1")  # Phase 3.1: Kommentar-Threads
 app.include_router(summarization_router, prefix="/api/v1")  # Phase 4.1: AI-Zusammenfassungen
 app.include_router(booking_suggestions_router, prefix="/api/v1")  # Phase 5.1: Buchungsvorschlaege
+app.include_router(similar_documents_router, prefix="/api/v1")  # Aehnliche Dokumente API
 
 
 # ==================== Health & Status Endpoints ====================

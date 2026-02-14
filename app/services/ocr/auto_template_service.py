@@ -401,6 +401,206 @@ class AutoTemplateService:
         return round(total_score / len(common_fields), 3)
 
 
+    async def update_template_from_correction(
+        self,
+        db: AsyncSession,
+        entity_id: UUID,
+        company_id: UUID,
+        field_name: str,
+        corrected_bounding_box: Dict[str, float],
+        corrected_value: str,
+    ) -> Optional[SupplierOCRTemplate]:
+        """
+        Aktualisiere Template-Feldpositionen basierend auf User-Korrektur.
+
+        Wenn ein Benutzer ein OCR-Feld korrigiert und ein Template fuer
+        diese Entity existiert, werden die Koordinaten per gewichtetem
+        Durchschnitt aktualisiert.
+
+        Args:
+            db: Datenbank-Session
+            entity_id: Entity-ID des Lieferanten
+            company_id: Company-ID (Multi-Tenant)
+            field_name: Name des korrigierten Feldes
+            corrected_bounding_box: Neue Bounding Box (x, y, width, height)
+            corrected_value: Der korrigierte Wert
+
+        Returns:
+            Aktualisiertes Template oder None
+        """
+        # Template fuer diese Entity laden
+        stmt = (
+            select(SupplierOCRTemplate)
+            .where(
+                and_(
+                    SupplierOCRTemplate.entity_id == entity_id,
+                    SupplierOCRTemplate.company_id == company_id,
+                    SupplierOCRTemplate.is_active == True,
+                )
+            )
+            .order_by(SupplierOCRTemplate.version.desc())
+            .limit(1)
+        )
+        result = await db.execute(stmt)
+        template = result.scalar_one_or_none()
+
+        if not template:
+            return None
+
+        if not template.field_definitions:
+            return None
+
+        field_definitions: List[Dict[str, object]] = list(template.field_definitions)
+        field_updated = False
+
+        for idx, field_def in enumerate(field_definitions):
+            if field_def.get("name") != field_name:
+                continue
+
+            existing_coords = field_def.get("coordinates", {})
+            if not existing_coords:
+                # Erstes Mal: Setze Koordinaten direkt
+                field_definitions[idx]["coordinates"] = {
+                    "x": round(corrected_bounding_box.get("x", 0), 4),
+                    "y": round(corrected_bounding_box.get("y", 0), 4),
+                    "width": round(corrected_bounding_box.get("width", 0), 4),
+                    "height": round(corrected_bounding_box.get("height", 0), 4),
+                }
+            else:
+                # Gewichteter Durchschnitt: bestehend (80%) + korrektur (20%)
+                sample_count = field_def.get("sample_count", 1)
+                weight_existing = min(sample_count, 10) / (min(sample_count, 10) + 1)
+                weight_new = 1.0 - weight_existing
+
+                field_definitions[idx]["coordinates"] = {
+                    "x": round(
+                        float(existing_coords.get("x", 0)) * weight_existing
+                        + corrected_bounding_box.get("x", 0) * weight_new,
+                        4,
+                    ),
+                    "y": round(
+                        float(existing_coords.get("y", 0)) * weight_existing
+                        + corrected_bounding_box.get("y", 0) * weight_new,
+                        4,
+                    ),
+                    "width": round(
+                        float(existing_coords.get("width", 0)) * weight_existing
+                        + corrected_bounding_box.get("width", 0) * weight_new,
+                        4,
+                    ),
+                    "height": round(
+                        float(existing_coords.get("height", 0)) * weight_existing
+                        + corrected_bounding_box.get("height", 0) * weight_new,
+                        4,
+                    ),
+                }
+
+            field_definitions[idx]["sample_count"] = field_def.get("sample_count", 1) + 1
+            field_updated = True
+            break
+
+        if not field_updated:
+            # Feld existiert noch nicht im Template: hinzufuegen
+            field_labels: Dict[str, str] = {
+                "invoice_number": "Rechnungsnummer",
+                "invoice_date": "Rechnungsdatum",
+                "due_date": "Faelligkeitsdatum",
+                "total_amount": "Gesamtbetrag",
+                "net_amount": "Nettobetrag",
+                "vat_amount": "Mehrwertsteuer",
+                "vat_rate": "MwSt-Satz",
+                "supplier_name": "Lieferant",
+                "iban": "IBAN",
+                "bic": "BIC",
+                "order_number": "Bestellnummer",
+                "delivery_note_number": "Lieferscheinnummer",
+                "customer_number": "Kundennummer",
+            }
+            field_definitions.append({
+                "name": field_name,
+                "label": field_labels.get(field_name, field_name),
+                "type": "bounding_box",
+                "coordinates": {
+                    "x": round(corrected_bounding_box.get("x", 0), 4),
+                    "y": round(corrected_bounding_box.get("y", 0), 4),
+                    "width": round(corrected_bounding_box.get("width", 0), 4),
+                    "height": round(corrected_bounding_box.get("height", 0), 4),
+                },
+                "page": 1,
+                "sample_count": 1,
+                "confidence_boost": 0.10,
+            })
+
+        template.field_definitions = field_definitions
+        template.training_document_count += 1
+
+        # Durchschnittliche Confidence neu berechnen
+        if template.average_confidence is not None:
+            # Gleitender Durchschnitt
+            template.average_confidence = round(
+                template.average_confidence * 0.9 + 0.95 * 0.1, 4
+            )
+        else:
+            template.average_confidence = 0.85
+
+        await db.flush()
+
+        # Auto-Aktivierung pruefen
+        await self.check_and_auto_activate(db, template)
+
+        logger.info(
+            "template_updated_from_correction",
+            template_id=str(template.id),
+            entity_id=str(entity_id),
+            field_name=field_name,
+            training_count=template.training_document_count,
+        )
+
+        return template
+
+    async def check_and_auto_activate(
+        self,
+        db: AsyncSession,
+        template: SupplierOCRTemplate,
+    ) -> bool:
+        """
+        Pruefe ob Template automatisch aktiviert werden soll.
+
+        Aktiviert auto_apply wenn:
+        - auto_confidence >= 0.85
+        - training_document_count >= 5
+        - Template noch nicht auto_apply ist
+
+        Args:
+            db: Datenbank-Session
+            template: Das zu pruefende Template
+
+        Returns:
+            True wenn auto_apply aktiviert wurde
+        """
+        if template.auto_apply:
+            return False
+
+        auto_confidence = template.auto_confidence or 0.0
+        avg_confidence = template.average_confidence or 0.0
+        effective_confidence = max(auto_confidence, avg_confidence)
+
+        if effective_confidence >= 0.85 and template.training_document_count >= 5:
+            template.auto_apply = True
+            await db.flush()
+
+            logger.info(
+                "template_auto_activated",
+                template_id=str(template.id),
+                entity_id=str(template.entity_id),
+                confidence=effective_confidence,
+                training_count=template.training_document_count,
+            )
+            return True
+
+        return False
+
+
 def get_auto_template_service() -> AutoTemplateService:
     """Factory fuer AutoTemplateService."""
     return AutoTemplateService()

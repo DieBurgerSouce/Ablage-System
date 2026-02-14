@@ -35,6 +35,8 @@ from app.services.ai.explainer import (
     ExplanationType,
     ConfidenceLevel,
 )
+from app.services.ai.explanation_collector import ExplanationCollector
+from app.services.ai.explainability_protocol import DecisionType
 
 logger = structlog.get_logger(__name__)
 
@@ -515,4 +517,218 @@ async def submit_explanation_feedback(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Feedback konnte nicht gespeichert werden",
+        )
+
+
+# =============================================================================
+# Pydantic Schemas - Aggregated Explanations
+# =============================================================================
+
+
+class AggregatedFactorResponse(BaseModel):
+    """Ein Faktor einer aggregierten KI-Erklaerung."""
+
+    name: str = Field(..., description="Faktor-Name")
+    value: str = Field(..., description="Faktor-Wert")
+    importance: float = Field(..., description="Wichtigkeit (0-1)")
+    description: str = Field(..., description="Beschreibung")
+
+
+class AggregatedExplanationResponse(BaseModel):
+    """Aggregierte KI-Erklaerung fuer ein Dokument oder eine Entity."""
+
+    decision_type: str = Field(..., description="Entscheidungstyp")
+    service_name: str = Field(..., description="Name des KI-Services")
+    decision_summary: str = Field(..., description="Zusammenfassung")
+    confidence: float = Field(..., description="Konfidenz (0-1)")
+    factors: List[AggregatedFactorResponse] = Field(
+        default=[], description="Beitragende Faktoren"
+    )
+    model_used: Optional[str] = Field(None, description="Verwendetes Modell")
+    alternative_decisions: List[Dict[str, Optional[str]]] = Field(
+        default=[], description="Alternative Entscheidungen"
+    )
+    created_at: Optional[str] = Field(None, description="Erstellungszeitpunkt")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "decision_type": "classification",
+                "service_name": "Auto-Kategorisierung",
+                "decision_summary": "Dokument als 'invoice' klassifiziert",
+                "confidence": 0.95,
+                "factors": [
+                    {
+                        "name": "Keyword-Erkennung",
+                        "value": "Rechnung",
+                        "importance": 0.9,
+                        "description": "Keyword 'Rechnung' im Dokument gefunden",
+                    }
+                ],
+                "model_used": "auto_categorization_v2",
+            }
+        }
+    )
+
+
+class DocumentExplanationsResponse(BaseModel):
+    """Alle KI-Erklaerungen fuer ein Dokument."""
+
+    document_id: str = Field(..., description="Dokument-ID")
+    total_explanations: int = Field(
+        ..., description="Anzahl Erklaerungen"
+    )
+    explanations: List[AggregatedExplanationResponse] = Field(
+        default=[], description="KI-Erklaerungen"
+    )
+
+
+class EntityExplanationsResponse(BaseModel):
+    """Alle KI-Erklaerungen fuer eine Entity."""
+
+    entity_id: str = Field(..., description="Entity-ID")
+    total_explanations: int = Field(
+        ..., description="Anzahl Erklaerungen"
+    )
+    explanations: List[AggregatedExplanationResponse] = Field(
+        default=[], description="KI-Erklaerungen"
+    )
+
+
+# =============================================================================
+# Aggregated Explanation Endpoints
+# =============================================================================
+
+
+@router.get(
+    "/document/{document_id}",
+    response_model=DocumentExplanationsResponse,
+    summary="Alle KI-Erklaerungen fuer ein Dokument",
+)
+@limiter.limit("60/minute")
+async def get_document_explanations(
+    request: Request,
+    document_id: UUID = Path(..., description="Dokument-ID"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> DocumentExplanationsResponse:
+    """
+    Sammelt und aggregiert alle KI-Erklaerungen fuer ein Dokument.
+
+    Beantwortet Fragen wie:
+    - Welches Tag wurde zugewiesen und warum?
+    - Welcher Risiko-Score und warum?
+    - Welches OCR-Backend wurde gewaehlt?
+    - Welcher Buchungsvorschlag und warum?
+
+    Returns:
+        DocumentExplanationsResponse mit allen Erklaerungen
+    """
+    try:
+        collector = ExplanationCollector(db)
+        explanations = await collector.collect_for_document(
+            document_id=document_id,
+            company_id=current_user.company_id,
+        )
+
+        return DocumentExplanationsResponse(
+            document_id=str(document_id),
+            total_explanations=len(explanations),
+            explanations=[
+                AggregatedExplanationResponse(
+                    decision_type=exp.decision_type.value,
+                    service_name=exp.service_name,
+                    decision_summary=exp.decision_summary,
+                    confidence=exp.confidence,
+                    factors=[
+                        AggregatedFactorResponse(
+                            name=f.name,
+                            value=f.value,
+                            importance=f.importance,
+                            description=f.description,
+                        )
+                        for f in exp.factors
+                    ],
+                    model_used=exp.model_used,
+                    alternative_decisions=exp.alternative_decisions,
+                    created_at=exp.created_at,
+                )
+                for exp in explanations
+            ],
+        )
+    except Exception as e:
+        logger.error(
+            "document_explanations_failed",
+            document_id=str(document_id),
+            **safe_error_log(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="KI-Erklaerungen konnten nicht abgerufen werden",
+        )
+
+
+@router.get(
+    "/entity/{entity_id}",
+    response_model=EntityExplanationsResponse,
+    summary="Alle KI-Erklaerungen fuer eine Entity",
+)
+@limiter.limit("60/minute")
+async def get_entity_explanations(
+    request: Request,
+    entity_id: UUID = Path(..., description="Entity-ID"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> EntityExplanationsResponse:
+    """
+    Sammelt und aggregiert alle KI-Erklaerungen fuer eine Entity.
+
+    Zeigt Risikobewertungen, Mahnempfehlungen und andere
+    KI-Entscheidungen, die fuer diesen Geschaeftspartner
+    getroffen wurden.
+
+    Returns:
+        EntityExplanationsResponse mit allen Erklaerungen
+    """
+    try:
+        collector = ExplanationCollector(db)
+        explanations = await collector.collect_for_entity(
+            entity_id=entity_id,
+            company_id=current_user.company_id,
+        )
+
+        return EntityExplanationsResponse(
+            entity_id=str(entity_id),
+            total_explanations=len(explanations),
+            explanations=[
+                AggregatedExplanationResponse(
+                    decision_type=exp.decision_type.value,
+                    service_name=exp.service_name,
+                    decision_summary=exp.decision_summary,
+                    confidence=exp.confidence,
+                    factors=[
+                        AggregatedFactorResponse(
+                            name=f.name,
+                            value=f.value,
+                            importance=f.importance,
+                            description=f.description,
+                        )
+                        for f in exp.factors
+                    ],
+                    model_used=exp.model_used,
+                    alternative_decisions=exp.alternative_decisions,
+                    created_at=exp.created_at,
+                )
+                for exp in explanations
+            ],
+        )
+    except Exception as e:
+        logger.error(
+            "entity_explanations_failed",
+            entity_id=str(entity_id),
+            **safe_error_log(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Entity-Erklaerungen konnten nicht abgerufen werden",
         )

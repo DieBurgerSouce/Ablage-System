@@ -12,6 +12,8 @@ import uuid
 from datetime import datetime
 from typing import Dict, List, Optional
 
+import structlog
+
 from app.core.types import JSONDict
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -19,13 +21,16 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
-from app.core.safe_errors import safe_error_detail
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.db.models_ocr_template import (
     FieldExtractionType,
     TemplateMatchingStrategy,
 )
 from app.services.ocr.supplier_template_service import SupplierTemplateService
+from app.services.ocr.auto_template_service import get_auto_template_service
+
+logger = structlog.get_logger(__name__)
 
 router = APIRouter(
     prefix="/ocr-templates",
@@ -151,6 +156,45 @@ class TemplateStatisticsResponse(BaseModel):
     total_successful: int
     success_rate: float
     average_confidence: Optional[float] = None
+
+
+class TemplateCandidateResponse(BaseModel):
+    """Response fuer einen Template-Kandidaten."""
+    entity_id: str
+    company_id: str
+    document_count: int
+    matching_fields: List[str]
+    avg_position_variance: float
+    is_candidate: bool
+    document_ids: List[str]
+
+
+class GenerateFromCandidateRequest(BaseModel):
+    """Request fuer Template-Generierung aus Kandidat."""
+    entity_id: uuid.UUID = Field(..., description="Entity-ID des Kandidaten")
+    document_ids: List[uuid.UUID] = Field(
+        ..., min_length=3, description="Dokument-IDs fuer Template-Generierung"
+    )
+    name: Optional[str] = Field(None, max_length=255, description="Template-Name")
+
+
+class TemplateTestRequest(BaseModel):
+    """Request fuer Template-Test gegen ein Dokument."""
+    document_id: uuid.UUID = Field(..., description="Dokument-ID zum Testen")
+
+
+class TemplateTestResponse(BaseModel):
+    """Response fuer Template-Test."""
+    template_id: str
+    template_name: str
+    document_id: str
+    used_template: bool
+    match_confidence: float
+    overall_confidence: float
+    fields_extracted: int
+    fields_failed: int
+    processing_time_ms: int
+    extractions: List[JSONDict]
 
 
 # =============================================================================
@@ -495,3 +539,213 @@ async def get_field_types() -> JSONDict:
             {"value": "remove_suffix:X", "label": "Suffix entfernen (X ersetzen)"},
         ],
     }
+
+
+# =============================================================================
+# Auto-Template Kandidaten & Generierung
+# =============================================================================
+
+
+@router.get(
+    "/candidates",
+    response_model=List[TemplateCandidateResponse],
+    summary="Template-Kandidaten auflisten",
+    description="Listet alle Lieferanten auf, die genug Dokumente fuer eine automatische Template-Generierung haben.",
+)
+async def list_template_candidates(
+    min_documents: int = Query(3, ge=2, le=50, description="Mindestanzahl Dokumente"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> List[TemplateCandidateResponse]:
+    """Listet Template-Kandidaten auf."""
+    company_id = current_user.company_id
+    if not company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Benutzer hat keine Firmenzuordnung",
+        )
+
+    service = get_auto_template_service()
+
+    try:
+        candidates = await service.list_candidates(
+            db=db,
+            company_id=company_id,
+            min_documents=min_documents,
+        )
+    except Exception as e:
+        logger.error("candidate_listing_failed", **safe_error_log(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=safe_error_detail(e, "Kandidaten-Abfrage"),
+        )
+
+    return [
+        TemplateCandidateResponse(
+            entity_id=str(c.entity_id),
+            company_id=str(c.company_id),
+            document_count=c.document_count,
+            matching_fields=c.matching_fields,
+            avg_position_variance=round(c.avg_position_variance, 6),
+            is_candidate=c.is_candidate,
+            document_ids=[str(did) for did in c.document_ids],
+        )
+        for c in candidates
+    ]
+
+
+@router.post(
+    "/generate",
+    response_model=TemplateResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Template aus Kandidat generieren",
+    description="Generiert ein OCR-Template aus einem Kandidaten mit ausreichend Dokumenten.",
+)
+async def generate_template_from_candidate(
+    data: GenerateFromCandidateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> TemplateResponse:
+    """Generiert ein Template aus einem Kandidaten."""
+    company_id = current_user.company_id
+    if not company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Benutzer hat keine Firmenzuordnung",
+        )
+
+    service = get_auto_template_service()
+
+    try:
+        template = await service.generate_template(
+            db=db,
+            entity_id=data.entity_id,
+            company_id=company_id,
+            document_ids=data.document_ids,
+            name=data.name,
+        )
+
+        # Auto-Aktivierung pruefen
+        await service.check_and_auto_activate(db, template)
+
+        await db.commit()
+
+        return TemplateResponse(**template.to_dict())
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=safe_error_detail(e, "Template-Generierung"),
+        )
+    except Exception as e:
+        logger.error("template_generation_failed", **safe_error_log(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=safe_error_detail(e, "Template-Generierung"),
+        )
+
+
+@router.post(
+    "/{template_id}/test",
+    response_model=TemplateTestResponse,
+    summary="Template gegen Dokument testen",
+    description="Testet ein Template gegen ein Dokument und liefert A/B-Vergleich.",
+)
+async def test_template(
+    template_id: uuid.UUID,
+    data: TemplateTestRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> TemplateTestResponse:
+    """Testet ein Template gegen ein Dokument."""
+    company_id = current_user.company_id
+    if not company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Benutzer hat keine Firmenzuordnung",
+        )
+
+    service = SupplierTemplateService(db)
+
+    # Template laden
+    template = await service.get_template(
+        template_id=template_id,
+        company_id=company_id,
+    )
+    if not template:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Template nicht gefunden",
+        )
+
+    # OCR-Ergebnis laden
+    from sqlalchemy import select
+    from app.db.models import OCRResult
+
+    ocr_stmt = select(OCRResult).where(OCRResult.document_id == data.document_id)
+    ocr_res = await db.execute(ocr_stmt)
+    ocr_result_row = ocr_res.scalar_one_or_none()
+
+    if not ocr_result_row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Kein OCR-Ergebnis fuer dieses Dokument gefunden",
+        )
+
+    # OCR-Daten aufbereiten
+    ocr_data: Dict[str, object] = {}
+    if ocr_result_row.extracted_fields and isinstance(ocr_result_row.extracted_fields, dict):
+        ocr_data["blocks"] = []
+        for field_name, field_data in ocr_result_row.extracted_fields.items():
+            if isinstance(field_data, dict):
+                block: Dict[str, object] = {
+                    "text": field_data.get("value", ""),
+                    "confidence": field_data.get("confidence", 0.8),
+                    "coordinates": field_data.get("bounding_box", {}),
+                }
+                ocr_data["blocks"].append(block)
+    if ocr_result_row.raw_text:
+        ocr_data["full_text"] = ocr_result_row.raw_text
+
+    try:
+        result = await service.apply_template_extraction(
+            template=template,
+            document_id=data.document_id,
+            ocr_result=ocr_data,
+        )
+
+        extractions_list: List[JSONDict] = [
+            {
+                "field_name": e.field_name,
+                "value": e.value,
+                "confidence": round(e.confidence, 4),
+                "source": e.source,
+                "validation_passed": e.validation_passed,
+            }
+            for e in result.extractions
+        ]
+
+        return TemplateTestResponse(
+            template_id=str(result.template_id) if result.template_id else "",
+            template_name=result.template_name or "",
+            document_id=str(data.document_id),
+            used_template=result.used_template,
+            match_confidence=round(result.match_confidence, 4),
+            overall_confidence=round(result.overall_confidence, 4),
+            fields_extracted=result.fields_extracted,
+            fields_failed=result.fields_failed,
+            processing_time_ms=result.processing_time_ms,
+            extractions=extractions_list,
+        )
+
+    except Exception as e:
+        logger.error(
+            "template_test_failed",
+            template_id=str(template_id),
+            document_id=str(data.document_id),
+            **safe_error_log(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=safe_error_detail(e, "Template-Test"),
+        )

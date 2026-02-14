@@ -574,6 +574,108 @@ def generate_all_daily_insights() -> Dict[str, Any]:
 
 
 # =============================================================================
+# Daily Insights Engine Task (Briefing Pipeline)
+# =============================================================================
+
+
+@celery_app.task(
+    base=CPUTask,
+    name="app.workers.tasks.insights_tasks.generate_daily_briefing_insights",
+    queue="maintenance",
+    priority=4,
+    ignore_result=False,
+    soft_time_limit=590,
+    time_limit=600,
+)
+def generate_daily_briefing_insights() -> Dict[str, Any]:
+    """
+    Generiert taegliche Briefing-Insights via DailyInsightsEngine.
+
+    Wird taeglich um 06:00 via Celery Beat ausgefuehrt.
+    Nutzt echte DB-Daten (Cashflow, Skonto, Risiko, Mahnungen)
+    und generiert proaktive Warnungen BEVOR Probleme entstehen.
+
+    Returns:
+        Dict mit Generierungsstatistiken
+    """
+    import asyncio
+    from sqlalchemy import select
+    from app.db.session import async_session_factory
+    from app.db.models import Company
+    from app.services.insights.daily_insights_engine import (
+        get_daily_insights_engine,
+        _build_data_providers_from_db,
+    )
+
+    async def _generate_briefings() -> Dict[str, Any]:
+        engine = get_daily_insights_engine()
+        stats: Dict[str, Any] = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "companies_processed": 0,
+            "total_insights": 0,
+            "by_severity": {},
+            "by_type": {},
+            "errors": 0,
+        }
+
+        async with async_session_factory() as db:
+            # Alle aktiven Companies abrufen
+            result = await db.execute(
+                select(Company.id)
+                .where(Company.is_active == True)
+                .where(Company.deleted_at.is_(None))
+            )
+            company_ids = [row[0] for row in result.fetchall()]
+
+            for company_id in company_ids:
+                try:
+                    providers = await _build_data_providers_from_db(db, company_id)
+                    gen_result = await engine.generate_daily_insights(
+                        company_id, providers
+                    )
+
+                    stats["companies_processed"] += 1
+                    stats["total_insights"] += gen_result.total_insights
+
+                    # Severity-Statistiken aggregieren
+                    for sev, count in gen_result.insights_by_severity.items():
+                        stats["by_severity"][sev] = (
+                            stats["by_severity"].get(sev, 0) + count
+                        )
+
+                    # Type-Statistiken aggregieren
+                    for itype, count in gen_result.insights_by_type.items():
+                        stats["by_type"][itype] = (
+                            stats["by_type"].get(itype, 0) + count
+                        )
+
+                    logger.info(
+                        "daily_briefing_generated",
+                        company_id=str(company_id),
+                        insights_count=gen_result.total_insights,
+                    )
+
+                except Exception as e:
+                    stats["errors"] += 1
+                    logger.warning(
+                        "daily_briefing_generation_failed",
+                        company_id=str(company_id),
+                        **safe_error_log(e),
+                    )
+
+        logger.info(
+            "daily_briefing_generation_complete",
+            companies=stats["companies_processed"],
+            total_insights=stats["total_insights"],
+            errors=stats["errors"],
+        )
+
+        return stats
+
+    return asyncio.get_event_loop().run_until_complete(_generate_briefings())
+
+
+# =============================================================================
 # Urgent Skonto Alert Task
 # =============================================================================
 

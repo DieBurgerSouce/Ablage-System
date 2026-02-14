@@ -17,6 +17,9 @@ export { ChunkResultCard } from './ChunkResultCard';
 // Smart Search (NLQ)
 export { SmartSearchBar } from './SmartSearchBar';
 
+// Voice Search
+export { VoiceSearchButton, type VoiceSearchButtonProps } from './VoiceSearchButton';
+
 // Facetten-Filter
 export { FacetSidebar } from './FacetSidebar';
 export { FacetSection } from './FacetSection';

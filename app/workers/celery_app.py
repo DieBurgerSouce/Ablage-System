@@ -1512,6 +1512,12 @@ celery_app.conf.update(
             "task": "app.workers.tasks.insights_tasks.generate_all_daily_insights",
             "schedule": crontab(hour=5, minute=0),  # Taeglich um 05:00 Uhr
         },
+        # Taeglich: Daily Briefing Insights via DailyInsightsEngine
+        "insights-generate-daily-briefing": {
+            "task": "app.workers.tasks.insights_tasks.generate_daily_briefing_insights",
+            "schedule": crontab(hour=6, minute=0),  # Taeglich um 06:00 Uhr
+            "options": {"queue": "maintenance"},
+        },
         # Taeglich: Cashflow-Prognosen fuer alle Companies
         "insights-cashflow-daily": {
             "task": "app.workers.tasks.insights_tasks.generate_daily_cashflow_predictions",
@@ -1960,6 +1966,22 @@ celery_app.conf.update(
         "escalation-advance-pending": {
             "task": "app.workers.tasks.escalation_tasks.advance_pending_escalations_task",
             "schedule": crontab(minute="*/15"),  # Alle 15 Minuten
+        },
+        # =================================================================
+        # Data Quality: Taeglicher Scan aller Companies
+        # =================================================================
+        "data-quality-daily-scan-all": {
+            "task": "data_quality.scan_all_companies",
+            "schedule": crontab(hour=3, minute=45),  # Taeglich um 03:45 Uhr
+            "options": {"queue": "maintenance"},
+        },
+        # =================================================================
+        # Document Lifecycle: SLA-Verletzungen pruefen (alle 15 Minuten)
+        # =================================================================
+        "check-lifecycle-sla-violations": {
+            "task": "app.workers.tasks_lifecycle.check_sla_violations_task",
+            "schedule": 900.0,  # Alle 15 Minuten
+            "options": {"queue": "metadata"},
         },
     },
 
@@ -2479,6 +2501,11 @@ celery_app.conf.update(
         "app.workers.tasks.push_notification_tasks.cleanup_notification_history_task": {"queue": "maintenance", "priority": 1},
         # Woechentliche Statistiken
         "app.workers.tasks.push_notification_tasks.generate_push_statistics_task": {"queue": "maintenance", "priority": 2},
+        # =================================================================
+        # Data Quality History Tasks (Datenqualitaets-Trend-Tracking)
+        # =================================================================
+        "data_quality.daily_scan": {"queue": "maintenance", "priority": 2},
+        "data_quality.scan_all_companies": {"queue": "maintenance", "priority": 2},
     },
 
     # Priority settings

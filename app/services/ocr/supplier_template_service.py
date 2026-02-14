@@ -765,6 +765,136 @@ class SupplierTemplateService:
         return result
 
     # =========================================================================
+    # High-Level Template Application (Document-ID based)
+    # =========================================================================
+
+    async def extract_with_template_for_document(
+        self,
+        document_id: uuid.UUID,
+        company_id: uuid.UUID,
+    ) -> TemplateExtractionResult:
+        """
+        Finde und wende das beste Template fuer ein Dokument an.
+
+        Sucht das passende Template basierend auf Entity des Dokuments,
+        extrahiert Felder und loggt das Ergebnis in OCRTemplateMatchLog.
+
+        Args:
+            document_id: Dokument-ID
+            company_id: Company-ID (Multi-Tenant)
+
+        Returns:
+            TemplateExtractionResult mit extrahierten Feldern
+
+        Raises:
+            ValueError: Wenn Dokument nicht gefunden
+        """
+        from app.db.models import Document, OCRResult
+
+        # Dokument laden
+        doc_result = await self.db.execute(
+            select(Document).where(
+                and_(
+                    Document.id == document_id,
+                    Document.company_id == company_id,
+                )
+            )
+        )
+        document = doc_result.scalar_one_or_none()
+        if not document:
+            raise ValueError("Dokument nicht gefunden")
+
+        entity_id = document.business_entity_id
+
+        # OCR-Ergebnis laden
+        ocr_stmt = select(OCRResult).where(OCRResult.document_id == document_id)
+        ocr_res = await self.db.execute(ocr_stmt)
+        ocr_result_row = ocr_res.scalar_one_or_none()
+
+        if not ocr_result_row:
+            return TemplateExtractionResult(
+                template_id=None,
+                template_name=None,
+                match_confidence=0.0,
+                extractions=[],
+                overall_confidence=0.0,
+                used_template=False,
+                fields_extracted=0,
+                fields_failed=0,
+                processing_time_ms=0,
+            )
+
+        # Baue OCR-Ergebnis Dict aus verfuegbaren Daten
+        ocr_data: Dict[str, Any] = {}
+        if ocr_result_row.bounding_boxes:
+            ocr_data["blocks"] = ocr_result_row.bounding_boxes
+        else:
+            ocr_data["blocks"] = []
+        if ocr_result_row.extracted_text:
+            ocr_data["full_text"] = ocr_result_row.extracted_text
+
+        # Template-Matching
+        match_result = await self.find_matching_template(
+            document_id=document_id,
+            company_id=company_id,
+            entity_id=entity_id,
+            ocr_text=ocr_data.get("full_text"),
+        )
+
+        if not match_result.matched or not match_result.template:
+            return TemplateExtractionResult(
+                template_id=None,
+                template_name=None,
+                match_confidence=match_result.confidence,
+                extractions=[],
+                overall_confidence=0.0,
+                used_template=False,
+                fields_extracted=0,
+                fields_failed=0,
+                processing_time_ms=0,
+            )
+
+        # Template anwenden
+        extraction_result = await self.apply_template_extraction(
+            template=match_result.template,
+            document_id=document_id,
+            ocr_result=ocr_data,
+        )
+
+        # Match-Log mit Extraktion aktualisieren
+        log_stmt = (
+            select(OCRTemplateMatchLog)
+            .where(
+                and_(
+                    OCRTemplateMatchLog.document_id == document_id,
+                    OCRTemplateMatchLog.matched_template_id == match_result.template.id,
+                )
+            )
+            .order_by(OCRTemplateMatchLog.created_at.desc())
+            .limit(1)
+        )
+        log_res = await self.db.execute(log_stmt)
+        match_log = log_res.scalar_one_or_none()
+
+        if match_log:
+            match_log.extraction_applied = True
+            match_log.extraction_confidence = extraction_result.overall_confidence
+            match_log.fields_extracted = extraction_result.fields_extracted
+            match_log.extraction_duration_ms = extraction_result.processing_time_ms
+
+        await self.db.commit()
+
+        logger.info(
+            "template_extraction_for_document",
+            document_id=str(document_id),
+            template_id=str(extraction_result.template_id),
+            fields_extracted=extraction_result.fields_extracted,
+            overall_confidence=extraction_result.overall_confidence,
+        )
+
+        return extraction_result
+
+    # =========================================================================
     # Template Training
     # =========================================================================
 

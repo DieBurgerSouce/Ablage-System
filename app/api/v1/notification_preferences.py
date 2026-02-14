@@ -258,15 +258,15 @@ async def get_available_channels(
         ),
         NotificationChannelStatus(
             channel="push",
-            available=False,  # TODO: Implementierung ausstehend
-            configured=False,
-            description="Push-Benachrichtigungen (in Entwicklung)"
+            available=True,
+            configured=bool(getattr(current_user, "push_subscriptions", None)),
+            description="Push-Benachrichtigungen (Browser/PWA)"
         ),
         NotificationChannelStatus(
             channel="slack",
-            available=False,  # TODO: Implementierung ausstehend
-            configured=False,
-            description="Slack-Benachrichtigungen (in Entwicklung)"
+            available=True,
+            configured=True,
+            description="Slack-Benachrichtigungen"
         ),
     ]
 
@@ -288,37 +288,67 @@ async def send_test_notification(
 ) -> TestNotificationResponse:
     """Sendet eine Test-Benachrichtigung an den aktuellen Benutzer."""
     try:
-        if body.channel != "in_app":
+        valid_channels = {"in_app", "email", "websocket", "push", "slack"}
+        if body.channel not in valid_channels:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Kanal '{body.channel}' wird derzeit nicht unterstuetzt. Nur 'in_app' verfuegbar."
+                detail=f"Kanal '{body.channel}' wird nicht unterstuetzt. "
+                       f"Verfuegbar: {', '.join(sorted(valid_channels))}"
             )
 
-        # Erstelle Test-Benachrichtigung
-        test_notification = UserNotification(
-            user_id=current_user.id,
-            notification_type="system.test",
-            title="Test-Benachrichtigung",
-            message=f"Dies ist eine Test-Benachrichtigung fuer den Kanal '{body.channel}'.",
-            action_url=None,
-            is_read=False,
-        )
+        notification_id_str = ""
 
-        db.add(test_notification)
-        await db.commit()
-        await db.refresh(test_notification)
+        if body.channel == "push":
+            # Push-Benachrichtigung via PushNotificationService
+            from app.services.push_notification_service import PushNotificationService
+            push_service = PushNotificationService(db)
+            success, failed = await push_service.send_to_user(
+                user_id=current_user.id,
+                title="Test-Benachrichtigung",
+                body="Dies ist eine Test-Push-Benachrichtigung vom Ablage-System.",
+                tag="test-notification",
+                data={"type": "test"},
+            )
+            await db.commit()
+            notification_id_str = f"push-{success}-sent-{failed}-failed"
+
+        elif body.channel == "slack":
+            # Slack-Benachrichtigung via SlackService
+            from app.services.slack_service import send_slack_notification
+            slack_success = await send_slack_notification(
+                notification_type="custom",
+                title="Test-Benachrichtigung",
+                message=f"Dies ist eine Test-Slack-Benachrichtigung von Benutzer {current_user.email or current_user.id}.",
+                priority="normal",
+            )
+            notification_id_str = "slack-test" if slack_success else "slack-failed"
+
+        else:
+            # In-App / Email / WebSocket via NotificationService
+            test_notification = UserNotification(
+                user_id=current_user.id,
+                notification_type="system.test",
+                title="Test-Benachrichtigung",
+                message=f"Dies ist eine Test-Benachrichtigung fuer den Kanal '{body.channel}'.",
+                action_url=None,
+                is_read=False,
+            )
+            db.add(test_notification)
+            await db.commit()
+            await db.refresh(test_notification)
+            notification_id_str = str(test_notification.id)
 
         logger.info(
             "test_notification_sent",
             user_id=str(current_user.id),
             channel=body.channel,
-            notification_id=str(test_notification.id)
+            notification_id=notification_id_str,
         )
 
         return TestNotificationResponse(
             status="success",
             channel=body.channel,
-            notification_id=str(test_notification.id),
+            notification_id=notification_id_str,
             message="Test-Benachrichtigung erfolgreich gesendet",
         )
 

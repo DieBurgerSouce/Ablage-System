@@ -99,6 +99,74 @@ SKR03_ACCOUNTS: Dict[str, Dict[str, str]] = {
     "8400": {"name": "Erloese 19% USt", "category": "erloes"},
 }
 
+SKR04_ACCOUNTS: Dict[str, Dict[str, str]] = {
+    # Aufwandskonten (SKR04 nutzt 6xxx/7xxx Bereich)
+    "6310": {"name": "Miete (unbewegliche Wirtschaftsgueter)", "category": "aufwand"},
+    "6325": {"name": "Gas, Strom, Wasser", "category": "aufwand"},
+    "6330": {"name": "Reinigungskosten", "category": "aufwand"},
+    "6400": {"name": "Versicherungsbeitraege", "category": "aufwand"},
+    "6520": {"name": "Kfz-Steuer", "category": "aufwand"},
+    "6530": {"name": "Kfz-Versicherungen", "category": "aufwand"},
+    "6540": {"name": "Laufende Kfz-Betriebskosten", "category": "aufwand"},
+    "6600": {"name": "Werbekosten", "category": "aufwand"},
+    "6610": {"name": "Werbekosten Anzeigen", "category": "aufwand"},
+    "6630": {"name": "Geschenke an Kunden", "category": "aufwand"},
+    "6640": {"name": "Bewirtungskosten", "category": "aufwand"},
+    "6644": {"name": "Nicht abzugsfaehige Bewirtungskosten", "category": "aufwand"},
+    "6650": {"name": "Reisekosten AN", "category": "aufwand"},
+    "6660": {"name": "Reisekosten Unternehmer", "category": "aufwand"},
+    "6740": {"name": "Kosten der Warenabgabe", "category": "aufwand"},
+    "6460": {"name": "Reparaturen und Instandhaltung", "category": "aufwand"},
+    "6300": {"name": "Sonstige betriebliche Aufwendungen", "category": "aufwand"},
+    "6800": {"name": "Porto", "category": "aufwand"},
+    "6805": {"name": "Telefon", "category": "aufwand"},
+    "6810": {"name": "Internet", "category": "aufwand"},
+    "6815": {"name": "Buerokosten", "category": "aufwand"},
+    "6820": {"name": "Zeitschriften, Buecher", "category": "aufwand"},
+    "6825": {"name": "Rechts- und Beratungskosten", "category": "aufwand"},
+    "6827": {"name": "Buchfuehrungskosten", "category": "aufwand"},
+    "6835": {"name": "Mieten fuer Einrichtungen", "category": "aufwand"},
+    "6855": {"name": "Nebenkosten des Geldverkehrs", "category": "aufwand"},
+    # Wareneingang
+    "5300": {"name": "Wareneingang 7% VSt", "category": "wareneinkauf"},
+    "5400": {"name": "Wareneingang 19% VSt", "category": "wareneinkauf"},
+    # Erloese
+    "4300": {"name": "Erloese 7% USt", "category": "erloes"},
+    "4400": {"name": "Erloese 19% USt", "category": "erloes"},
+}
+
+# SKR04 Keyword → Konto Mapping
+KEYWORD_ACCOUNT_MAP_SKR04: Dict[str, str] = {
+    "miete": "6310",
+    "strom": "6325",
+    "gas": "6325",
+    "wasser": "6325",
+    "versicherung": "6400",
+    "kfz": "6540",
+    "tanken": "6540",
+    "benzin": "6540",
+    "werbung": "6600",
+    "anzeige": "6610",
+    "geschenk": "6630",
+    "bewirtung": "6640",
+    "restaurant": "6640",
+    "reise": "6650",
+    "hotel": "6650",
+    "flug": "6650",
+    "reparatur": "6460",
+    "porto": "6800",
+    "post": "6800",
+    "telefon": "6805",
+    "internet": "6810",
+    "buero": "6815",
+    "buch": "6820",
+    "rechtsanwalt": "6825",
+    "anwalt": "6825",
+    "steuerberater": "6827",
+    "bank": "6855",
+    "kontogebuehr": "6855",
+}
+
 
 # Keyword → Konto Mapping
 KEYWORD_ACCOUNT_MAP: Dict[str, str] = {
@@ -289,10 +357,11 @@ class BookingSuggestionService:
 
     def _suggest_by_keywords(self, text: str, chart: str) -> List[BookingSuggestion]:
         """Vorschlaege basierend auf Keyword-Matching im Text."""
-        accounts = SKR03_ACCOUNTS if chart == "SKR03" else SKR03_ACCOUNTS  # TODO: SKR04
+        accounts = SKR03_ACCOUNTS if chart == "SKR03" else SKR04_ACCOUNTS
+        keyword_map = KEYWORD_ACCOUNT_MAP if chart == "SKR03" else KEYWORD_ACCOUNT_MAP_SKR04
 
         suggestions = []
-        for keyword, account_nr in KEYWORD_ACCOUNT_MAP.items():
+        for keyword, account_nr in keyword_map.items():
             if keyword in text:
                 account_info = accounts.get(account_nr, {})
                 suggestions.append(BookingSuggestion(
@@ -315,14 +384,17 @@ class BookingSuggestionService:
         chart: str,
     ) -> List[BookingSuggestion]:
         """Vorschlaege basierend auf Dokumenttyp."""
-        accounts = SKR03_ACCOUNTS if chart == "SKR03" else SKR03_ACCOUNTS
+        accounts = SKR03_ACCOUNTS if chart == "SKR03" else SKR04_ACCOUNTS
 
         suggestions = []
 
         if document_type == "invoice" or document_type == "rechnung":
+            # SKR03: 3400, SKR04: 5400
+            account_nr = "3400" if chart == "SKR03" else "5400"
+            account_info = accounts.get(account_nr, {})
             suggestions.append(BookingSuggestion(
-                account_number="3400",
-                account_name="Wareneingang 19% VSt",
+                account_number=account_nr,
+                account_name=account_info.get("name", "Wareneingang 19% VSt"),
                 cost_center=None,
                 tax_rate=Decimal("0.19"),
                 tax_key="9",

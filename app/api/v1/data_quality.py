@@ -7,6 +7,7 @@ Provides data quality monitoring and cleanup actions.
 Endpoints:
 - GET /api/v1/data-quality - Get quality report
 - GET /api/v1/data-quality/trend - Get quality trend
+- GET /api/v1/data-quality/suggestions - Get correction suggestions
 - POST /api/v1/data-quality/{category}/fix - Execute cleanup
 """
 
@@ -161,6 +162,55 @@ async def get_data_quality_trend(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=safe_error_detail(e, "Fehler beim Abrufen des Trends"),
+        )
+
+
+@router.get(
+    "/suggestions",
+    response_model=List[Dict[str, str]],
+    summary="Korrekturvorschlaege abrufen",
+    description="Priorisierte Handlungsempfehlungen basierend auf aktuellen Datenqualitaets-Issues.",
+)
+async def get_correction_suggestions(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> List[Dict[str, str]]:
+    """
+    Gibt priorisierte Korrekturvorschlaege zurueck.
+
+    Returns:
+        Liste von Vorschlaegen mit Prioritaet, Titel und Beschreibung
+    """
+    if not current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Benutzer hat keine Firma zugewiesen",
+        )
+
+    try:
+        service = get_data_quality_service(db)
+        suggestions = await service.get_correction_suggestions(
+            current_user.company_id,
+        )
+
+        logger.info(
+            "data_quality_suggestions_retrieved",
+            user_id=str(current_user.id),
+            company_id=str(current_user.company_id),
+            suggestion_count=len(suggestions),
+        )
+
+        return suggestions
+
+    except Exception as e:
+        logger.error(
+            "data_quality_suggestions_failed",
+            user_id=str(current_user.id),
+            **safe_error_log(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=safe_error_detail(e, "Fehler beim Abrufen der Vorschlaege"),
         )
 
 

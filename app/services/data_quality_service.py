@@ -17,7 +17,7 @@ Feinpoliert und durchdacht - Enterprise Data Quality.
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
 
 import structlog
@@ -25,6 +25,7 @@ from sqlalchemy import select, func, and_, or_, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Document, BusinessEntity, InvoiceTracking
+from app.db.models_data_quality import DataQualityHistory
 from app.services.ai.duplicate_detection_service import DuplicateDetectionService
 
 logger = structlog.get_logger(__name__)
@@ -121,9 +122,8 @@ class DataQualityService:
         # Overall Score berechnen
         overall_score = self._calculate_overall_score(issues, company_id)
 
-        # Trend berechnen (vereinfacht)
-        # Note: get_quality_trend() returns empty list (no history table yet)
-        trend = "stable"
+        # Trend berechnen basierend auf History
+        trend = await self._compute_trend_direction(company_id, overall_score)
 
         report = DataQualityReport(
             overall_score=overall_score,
@@ -131,6 +131,16 @@ class DataQualityService:
             trend=trend,
             last_check=datetime.now(timezone.utc),
         )
+
+        # Snapshot in History speichern
+        try:
+            await self.save_quality_snapshot(company_id, report)
+        except Exception as e:
+            logger.warning(
+                "data_quality_snapshot_save_failed",
+                company_id=str(company_id),
+                error_type=type(e).__name__,
+            )
 
         logger.info(
             "data_quality_report_complete",
@@ -140,24 +150,115 @@ class DataQualityService:
         )
         return report
 
+    async def save_quality_snapshot(
+        self,
+        company_id: UUID,
+        report: DataQualityReport,
+    ) -> None:
+        """
+        Speichert einen Datenqualitaets-Snapshot in der History-Tabelle.
+
+        Args:
+            company_id: Company ID
+            report: Aktueller Quality Report
+        """
+        issue_counts: Dict[str, int] = {}
+        issue_details_list: List[Dict[str, str]] = []
+
+        for issue in report.issues:
+            issue_counts[issue.category.value] = issue.count
+            issue_details_list.append({
+                "category": issue.category.value,
+                "severity": issue.severity,
+                "title": issue.title,
+                "description": issue.description,
+                "count": str(issue.count),
+                "action_label": issue.action_label,
+            })
+
+        history_entry = DataQualityHistory(
+            company_id=company_id,
+            overall_score=report.overall_score,
+            issue_counts=issue_counts,
+            issue_details=issue_details_list,
+        )
+        self.db.add(history_entry)
+        await self.db.flush()
+
+        logger.info(
+            "data_quality_snapshot_saved",
+            company_id=str(company_id),
+            overall_score=report.overall_score,
+        )
+
     async def get_quality_trend(
         self,
         company_id: UUID,
         months: int = 6,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[Dict[str, str]]:
         """
         Ruft Datenqualitaets-Trend ab.
+
+        Aggregiert History-Eintraege pro Monat und gibt den
+        Durchschnitts-Score pro Monat zurueck.
 
         Args:
             company_id: Company ID
             months: Number of months to look back
 
         Returns:
-            List of {month, score} dicts
+            List of {month, score, issue_counts} dicts, aelteste zuerst
         """
-        # TODO: Store quality scores in a history table
-        # For now, return placeholder data
-        trend: List[Dict[str, Any]] = []
+        since = datetime.now(timezone.utc) - timedelta(days=months * 30)
+
+        query = (
+            select(DataQualityHistory)
+            .where(
+                and_(
+                    DataQualityHistory.company_id == company_id,
+                    DataQualityHistory.checked_at >= since,
+                )
+            )
+            .order_by(DataQualityHistory.checked_at.asc())
+        )
+        result = await self.db.execute(query)
+        rows = result.scalars().all()
+
+        if not rows:
+            return []
+
+        # Aggregate by month
+        monthly: Dict[str, List[float]] = {}
+        monthly_issues: Dict[str, Dict[str, int]] = {}
+
+        for row in rows:
+            month_key = row.checked_at.strftime("%Y-%m")
+            if month_key not in monthly:
+                monthly[month_key] = []
+                monthly_issues[month_key] = {}
+
+            monthly[month_key].append(row.overall_score)
+
+            # Merge issue counts
+            if row.issue_counts:
+                for cat, count in row.issue_counts.items():
+                    if cat not in monthly_issues[month_key]:
+                        monthly_issues[month_key][cat] = 0
+                    monthly_issues[month_key][cat] = max(
+                        monthly_issues[month_key][cat], count
+                    )
+
+        trend: List[Dict[str, str]] = []
+        for month_key in sorted(monthly.keys()):
+            scores = monthly[month_key]
+            avg_score = round(sum(scores) / len(scores), 1)
+            trend.append({
+                "month": month_key,
+                "score": str(avg_score),
+                "issue_counts": str(monthly_issues.get(month_key, {})),
+                "data_points": str(len(scores)),
+            })
+
         return trend
 
     async def fix_issue(
@@ -649,6 +750,162 @@ class DataQualityService:
     # =========================================================================
     # Helpers
     # =========================================================================
+
+    async def _compute_trend_direction(
+        self,
+        company_id: UUID,
+        current_score: float,
+    ) -> str:
+        """
+        Berechnet Trend-Richtung basierend auf letzten History-Eintraegen.
+
+        Vergleicht aktuellen Score mit dem Durchschnitt der letzten 30 Tage.
+
+        Args:
+            company_id: Company ID
+            current_score: Aktueller Score
+
+        Returns:
+            "improving", "stable", or "worsening"
+        """
+        try:
+            since = datetime.now(timezone.utc) - timedelta(days=30)
+            query = (
+                select(func.avg(DataQualityHistory.overall_score))
+                .where(
+                    and_(
+                        DataQualityHistory.company_id == company_id,
+                        DataQualityHistory.checked_at >= since,
+                    )
+                )
+            )
+            result = await self.db.execute(query)
+            avg_score = result.scalar()
+
+            if avg_score is None:
+                return "stable"
+
+            diff = current_score - float(avg_score)
+            if diff > 2.0:
+                return "improving"
+            elif diff < -2.0:
+                return "worsening"
+            else:
+                return "stable"
+
+        except Exception as e:
+            logger.debug(
+                "trend_computation_failed",
+                error_type=type(e).__name__,
+            )
+            return "stable"
+
+    async def get_correction_suggestions(
+        self,
+        company_id: UUID,
+    ) -> List[Dict[str, str]]:
+        """
+        Gibt Korrekturvorschlaege basierend auf Issue-Mustern zurueck.
+
+        Analysiert die haeufigsten und schwerwiegendsten Issues und
+        gibt priorisierte Handlungsempfehlungen zurueck.
+
+        Args:
+            company_id: Company ID
+
+        Returns:
+            Liste von Korrekturvorschlaegen mit Prioritaet und Beschreibung
+        """
+        report = await self.get_quality_report(company_id)
+        suggestions: List[Dict[str, str]] = []
+
+        # Sort by severity (critical first) then by count
+        severity_order = {"critical": 0, "warning": 1, "info": 2}
+        sorted_issues = sorted(
+            report.issues,
+            key=lambda i: (severity_order.get(i.severity, 3), -i.count),
+        )
+
+        for issue in sorted_issues:
+            suggestion = self._build_suggestion(issue)
+            if suggestion:
+                suggestions.append(suggestion)
+
+        return suggestions
+
+    def _build_suggestion(
+        self,
+        issue: DataQualityIssue,
+    ) -> Optional[Dict[str, str]]:
+        """Erstellt einen Korrekturvorschlag fuer ein Issue."""
+        suggestion_map = {
+            QualityCategory.UNCATEGORIZED: {
+                "prioritaet": "hoch" if issue.count > 50 else "mittel",
+                "titel": "Dokumente kategorisieren",
+                "beschreibung": (
+                    f"{issue.count} Dokumente ohne Kategorie. "
+                    "Empfehlung: Auto-Kategorisierung aktivieren oder "
+                    "manuell im Datenqualitaets-Cockpit zuweisen."
+                ),
+                "aktion": "auto_categorize",
+            },
+            QualityCategory.DUPLICATES: {
+                "prioritaet": "hoch" if issue.count > 30 else "mittel",
+                "titel": "Duplikate bereinigen",
+                "beschreibung": (
+                    f"{issue.count} moegliche Duplikate gefunden. "
+                    "Empfehlung: Duplikate pruefen und zusammenfuehren."
+                ),
+                "aktion": "merge",
+            },
+            QualityCategory.ORPHANED_ENTITIES: {
+                "prioritaet": "niedrig",
+                "titel": "Verwaiste Geschaeftspartner pruefen",
+                "beschreibung": (
+                    f"{issue.count} Geschaeftspartner ohne Dokumente. "
+                    "Empfehlung: Nicht mehr benoetigte Partner deaktivieren."
+                ),
+                "aktion": "deactivate",
+            },
+            QualityCategory.LOW_OCR_QUALITY: {
+                "prioritaet": "hoch",
+                "titel": "OCR-Qualitaet verbessern",
+                "beschreibung": (
+                    f"{issue.count} Dokumente mit niedriger OCR-Konfidenz. "
+                    "Empfehlung: Dokumente mit anderem OCR-Backend neu verarbeiten."
+                ),
+                "aktion": "reprocess",
+            },
+            QualityCategory.UNLINKED_DOCUMENTS: {
+                "prioritaet": "mittel",
+                "titel": "Rechnungen zuordnen",
+                "beschreibung": (
+                    f"{issue.count} Rechnungen ohne Geschaeftspartner. "
+                    "Empfehlung: Auto-Linking aktivieren oder manuell zuordnen."
+                ),
+                "aktion": "auto_link",
+            },
+            QualityCategory.MISSING_METADATA: {
+                "prioritaet": "mittel",
+                "titel": "Metadaten vervollstaendigen",
+                "beschreibung": (
+                    f"{issue.count} Dokumente mit fehlenden Metadaten. "
+                    "Empfehlung: Metadaten-Extraktion erneut ausfuehren."
+                ),
+                "aktion": "extract",
+            },
+            QualityCategory.STALE_DOCUMENTS: {
+                "prioritaet": "niedrig",
+                "titel": "Veraltete Dokumente archivieren",
+                "beschreibung": (
+                    f"{issue.count} Dokumente seit ueber einem Jahr nicht zugegriffen. "
+                    "Empfehlung: Archivierung pruefen und ausfuehren."
+                ),
+                "aktion": "archive",
+            },
+        }
+
+        return suggestion_map.get(issue.category)
 
     def _calculate_overall_score(
         self,

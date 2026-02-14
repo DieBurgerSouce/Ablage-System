@@ -1,0 +1,39 @@
+# OWASP ZAP Rules Configuration - Ablage-System
+# Format: rule_id	action	(description)
+#
+# Actions:
+# - IGNORE: Befund wird ignoriert (False Positive)
+# - WARN: Befund wird gemeldet, aber nicht als Fehler
+# - FAIL: Befund fuehrt zu Workflow-Fehler
+#
+# Dokumentation: https://www.zaproxy.org/docs/desktop/ui/dialogs/scanpolicy/
+
+# === Development/Localhost Exceptions ===
+10003	IGNORE	(Bekannt: Strict-Transport-Security nicht auf localhost)
+10016	IGNORE	(Bekannt: Web Browser XSS Protection nicht auf localhost)
+10021	IGNORE	(Bekannt: X-Content-Type-Options header fehlt auf localhost)
+
+# === API-spezifische Exceptions ===
+10015	IGNORE	(Nicht relevant: Incomplete or No Cache-control Header fuer API)
+10049	IGNORE	(Nicht relevant: Non-Storable Content fuer API-Endpunkte)
+10054	IGNORE	(Nicht relevant: Cookie Without SameSite fuer API-Token)
+10096	IGNORE	(Nicht relevant: Timestamp Disclosure fuer API-Responses)
+
+# === Frontend Build Artifacts ===
+90033	IGNORE	(Bekannt: Loosely Scoped Cookie - Frontend Build)
+
+# === Prometheus/Health Endpoints ===
+10109	IGNORE	(Bekannt: Modern Web Application - Health Endpoints)
+
+# === Known False Positives ===
+# Diese Befunde sind durch Architektur-Entscheidungen bedingt:
+# - API nutzt JWT statt Session Cookies
+# - HTTPS nur in Production (localhost Development)
+# - CORS ist fuer Frontend-Backend Kommunikation konfiguriert
+
+# === Production-kritische Befunde (FAIL) ===
+# Alle High-Risk Befunde die nicht oben ignoriert sind:
+# - SQL Injection
+# - Path Traversal
+# - Remote Code Execution
+# - Authentication Bypass

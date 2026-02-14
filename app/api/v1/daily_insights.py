@@ -33,6 +33,8 @@ from app.core.rate_limiting import limiter, get_user_identifier
 from app.db.models import User
 from app.services.insights.daily_insights_engine import (
     get_daily_insights_engine,
+    generate_all_insights_from_db,
+    generate_insights_by_type_from_db,
     DailyInsight,
     DailyInsightType,
     InsightSeverity,
@@ -146,30 +148,32 @@ class GeneratorConfigUpdateRequest(BaseModel):
 
 def _insight_to_response(insight: DailyInsight) -> DailyInsightResponse:
     """Konvertiert DailyInsight zu Response-Schema."""
+    # Engine DailyInsight-Felder auf API-Response mappen
+    factors_response: List[InsightFactorResponse] = []
+    for f in insight.factors:
+        factors_response.append(InsightFactorResponse(
+            name=f.get("name", ""),
+            contribution=f.get("contribution", 0.0),
+            value=f.get("value", ""),
+            explanation=f.get("explanation", ""),
+        ))
+
     return DailyInsightResponse(
-        id=insight.id,
+        id=str(insight.id),
         insight_type=insight.insight_type.value,
         severity=insight.severity.value,
         title=insight.title,
-        message=insight.message,
-        explanation=insight.explanation,
+        message=insight.summary,
+        explanation=insight.detail,
         recommendation=insight.recommendation,
-        factors=[
-            InsightFactorResponse(
-                name=f.name,
-                contribution=f.contribution,
-                value=f.value,
-                explanation=f.explanation,
-            )
-            for f in insight.factors
-        ],
+        factors=factors_response,
         confidence=insight.confidence,
-        impact_value=float(insight.impact_value) if insight.impact_value else None,
-        deadline=insight.deadline.isoformat() if insight.deadline else None,
+        impact_value=float(insight.predicted_amount) if insight.predicted_amount else None,
+        deadline=insight.predicted_date.isoformat() if insight.predicted_date else None,
         related_entity_id=str(insight.related_entity_id) if insight.related_entity_id else None,
         related_entity_name=insight.related_entity_name,
         related_document_id=str(insight.related_document_id) if insight.related_document_id else None,
-        action_url=insight.action_url,
+        action_url=insight.primary_action_url,
         created_at=insight.created_at.isoformat(),
     )
 
@@ -234,7 +238,7 @@ async def get_all_daily_insights(
     )
 
     engine = get_daily_insights_engine()
-    all_insights = await engine.generate_all_insights(db, company_id)
+    all_insights = await generate_all_insights_from_db(engine, db, company_id)
 
     # Filter nach Schweregrad
     if severity:
@@ -290,8 +294,8 @@ async def get_cashflow_insights(
         )
 
     engine = get_daily_insights_engine()
-    insights = await engine.generate_insights_by_type(
-        db, company_id, DailyInsightType.CASHFLOW_WARNING
+    insights = await generate_insights_by_type_from_db(
+        engine, db, company_id, DailyInsightType.CASHFLOW_WARNING
     )
 
     return DailyInsightListResponse(
@@ -331,8 +335,8 @@ async def get_contract_insights(
         )
 
     engine = get_daily_insights_engine()
-    insights = await engine.generate_insights_by_type(
-        db, company_id, DailyInsightType.CONTRACT_EXPIRING
+    insights = await generate_insights_by_type_from_db(
+        engine, db, company_id, DailyInsightType.CONTRACT_EXPIRING
     )
 
     return DailyInsightListResponse(
@@ -371,8 +375,8 @@ async def get_payment_risk_insights(
         )
 
     engine = get_daily_insights_engine()
-    insights = await engine.generate_insights_by_type(
-        db, company_id, DailyInsightType.PAYMENT_RISK
+    insights = await generate_insights_by_type_from_db(
+        engine, db, company_id, DailyInsightType.PAYMENT_RISK
     )
 
     return DailyInsightListResponse(
@@ -412,8 +416,8 @@ async def get_skonto_insights(
         )
 
     engine = get_daily_insights_engine()
-    insights = await engine.generate_insights_by_type(
-        db, company_id, DailyInsightType.SKONTO_DEADLINE
+    insights = await generate_insights_by_type_from_db(
+        engine, db, company_id, DailyInsightType.SKONTO_DEADLINE
     )
 
     return DailyInsightListResponse(
@@ -452,8 +456,8 @@ async def get_compliance_insights(
         )
 
     engine = get_daily_insights_engine()
-    insights = await engine.generate_insights_by_type(
-        db, company_id, DailyInsightType.COMPLIANCE_REMINDER
+    insights = await generate_insights_by_type_from_db(
+        engine, db, company_id, DailyInsightType.COMPLIANCE_REMINDER
     )
 
     return DailyInsightListResponse(
@@ -492,8 +496,8 @@ async def get_overdue_insights(
         )
 
     engine = get_daily_insights_engine()
-    insights = await engine.generate_insights_by_type(
-        db, company_id, DailyInsightType.OVERDUE_INVOICE
+    insights = await generate_insights_by_type_from_db(
+        engine, db, company_id, DailyInsightType.OVERDUE_INVOICE
     )
 
     return DailyInsightListResponse(
@@ -546,8 +550,8 @@ async def generate_insights(
         for type_str in data.insight_types:
             try:
                 insight_type = DailyInsightType(type_str)
-                insights = await engine.generate_insights_by_type(
-                    db, company_id, insight_type
+                insights = await generate_insights_by_type_from_db(
+                    engine, db, company_id, insight_type
                 )
                 all_insights.extend(insights)
             except ValueError:
@@ -558,7 +562,7 @@ async def generate_insights(
                 )
     else:
         # Alle Typen
-        all_insights = await engine.generate_all_insights(db, company_id)
+        all_insights = await generate_all_insights_from_db(engine, db, company_id)
 
     duration_ms = int((time.time() - start_time) * 1000)
 
