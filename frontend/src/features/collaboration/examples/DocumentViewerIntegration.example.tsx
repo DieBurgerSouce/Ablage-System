@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { useParams } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { Lock, Unlock } from 'lucide-react';
+import { useAuth } from '@/lib/auth/AuthContext';
 import {
   // Hooks
   useDocumentLock,
@@ -29,7 +30,8 @@ import {
 
 export function DocumentViewerWithCollaboration() {
   const { documentId } = useParams({ from: '/documents/$documentId' });
-  const currentUserId = 'user-123'; // TODO: Get from auth context
+  const { user } = useAuth();
+  const currentUserId = user?.id ?? '';
 
   // Document Lock
   const {
@@ -154,7 +156,8 @@ export function DocumentViewerWithCollaboration() {
 
 export function DocumentToolbarWithCollaboration() {
   const { documentId } = useParams({ from: '/documents/$documentId' });
-  const currentUserId = 'user-123';
+  const { user } = useAuth();
+  const currentUserId = user?.id ?? '';
 
   const { viewers } = usePresence(documentId);
   const { isLockedByMe, toggleLock, isToggling } = useDocumentLock(
