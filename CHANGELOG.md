@@ -10,11 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Frontend: Auth context integration in DocumentViewer examples (useAuth Hook statt hardcoded user-123)
 - Frontend: Token trimming an allen 13 Stellen (lib/websocket, lib/api/client, lib/api/services/auth, features/*/api, features/*/hooks)
 - Frontend: Mandatory WebSocket auth validation (verhindert leere Token-Verbindungen)
 - Frontend: encodeURIComponent für WebSocket token in URL
 
+### Changed
+- Services: RiskScoringService Type-Hints von Any → object (CLAUDE.md Rule 4 Compliance)
+- Services: External Data Provider is_available() prüft jetzt API-Keys aus settings
+
 ### Added
+- Services: InvoicePipelineService berechnet avg_processing_time_ms aus Document.processing_duration_ms
 - Tests: 23 WebSocket URL-encoding und Auth-Validierung Integrationstests (6 Dateien)
 
 ### Added

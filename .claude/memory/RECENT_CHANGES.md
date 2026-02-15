@@ -1,5 +1,11 @@
 # Recent Changes
 
+## 2026-02-15
+- **feat(services)**: Invoice pipeline avg_processing_time_ms aus Document.processing_duration_ms berechnet
+- **refactor(services)**: Risk scoring Any → object Type-Hints (CLAUDE.md Rule 4)
+- **fix(frontend)**: Auth context integration in DocumentViewer examples (useAuth statt hardcoded user-123)
+- **chore(config)**: Ralph Loop iteration 2 - Interview-driven feature discovery
+
 ## 2026-02-14
 - **fix(frontend)**: Token trimming + mandatory WebSocket auth validation (13 Dateien, .trim() an allen Token-Stellen)
 - **test(frontend)**: 23 WebSocket URL-encoding und Auth-Validierung Tests (6 Dateien)
