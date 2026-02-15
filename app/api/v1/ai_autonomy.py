@@ -185,18 +185,21 @@ class AnomalyCheckResponse(BaseModel):
     anomalies: List[AnomalyItem]
 
 
-class DuplicateCandidate(BaseModel):
+class DuplicateCandidateResponse(BaseModel):
     """Duplikat-Kandidat."""
     document_id: str
     duplicate_type: str
     similarity: float
     matched_fields: List[str]
+    details: Dict[str, object] = {}
 
 
 class DuplicateCheckResponse(BaseModel):
     """Duplikat-Check Ergebnis."""
     has_duplicates: bool
-    candidates: List[DuplicateCandidate]
+    candidates: List[DuplicateCandidateResponse]
+    best_match: Optional[DuplicateCandidateResponse] = None
+    processing_time_ms: int = 0
 
 
 class AccuracyStatsResponse(BaseModel):
@@ -638,17 +641,20 @@ async def check_document_duplicates(
         include_near=include_near,
     )
 
+    def _to_response(c: object) -> DuplicateCandidateResponse:
+        return DuplicateCandidateResponse(
+            document_id=str(c.document_id),
+            duplicate_type=c.duplicate_type,
+            similarity=round(c.similarity, 3),
+            matched_fields=c.matched_fields,
+            details=c.details,
+        )
+
     return DuplicateCheckResponse(
         has_duplicates=result.has_duplicates,
-        candidates=[
-            DuplicateCandidate(
-                document_id=str(c.document_id),
-                duplicate_type=c.duplicate_type,
-                similarity=round(c.similarity, 3),
-                matched_fields=c.matched_fields,
-            )
-            for c in result.candidates
-        ],
+        candidates=[_to_response(c) for c in result.candidates],
+        best_match=_to_response(result.best_match) if result.best_match else None,
+        processing_time_ms=result.processing_time_ms,
     )
 
 

@@ -930,6 +930,7 @@ from app.api.v1.sso import router as sso_router  # Enterprise SSO (OIDC/SAML)
 from app.api.v1.lineage import router as lineage_router  # Phase 1.3: Document Lineage Timeline
 from app.api.v1.workflow_analytics import router as workflow_analytics_router  # Phase 4: Workflow Analytics, SLA, Approvals
 from app.api.v1.odoo_webhooks import router as odoo_webhooks_router  # Phase 6: Odoo Integration Deepening
+from app.api.v1.webhooks_receive import router as webhooks_receive_router  # Phase 3.2: Inbound Webhook Receiver
 from app.api.v1.bpmn_converter import router as bpmn_converter_router  # BPMN 2.0 Import/Export Converter
 from app.api.v1.banking.connections import router as psd2_banking_router  # Phase 6: PSD2/FinTS Banking Integration
 from app.api.v1.documents_bulk import router as documents_bulk_router  # Phase 2.3: Bulk Actions
@@ -968,6 +969,7 @@ from app.api.v1.approval_extended import router as approval_extended_router  # F
 from app.api.v1.automation import router as automation_router  # Feature #7: Automation 2.0 (Auto-Filing & Auto-Matching)
 from app.api.v1.ki_pipeline import router as ki_pipeline_router  # Feature #4: KI-Pipeline Intelligence
 from app.api.v1.annotations_enhanced import router as annotations_enhanced_router  # Feature #8: Kommentare & Annotationen
+from app.api.v1.annotations_extended import router as annotations_extended_router  # Feature #8: Bounding-Box, Replies, Tasks
 from app.api.v1.terminology import router as terminology_router  # Feature #10: Deutsche Praezision
 from app.api.v1.german_finance import router as german_finance_router  # Feature #11: Deutsche Finanz-Features
 from app.api.v1.adhoc_reports import router as adhoc_reports_router  # Feature #12: Ad-Hoc Reporting
@@ -1170,6 +1172,7 @@ app.include_router(xai_router, prefix="/api/v1")  # Vision 2.0 Phase 6: Explaina
 app.include_router(document_lifecycle_router, prefix="/api/v1")  # Document Lifecycle SLA
 app.include_router(workflow_analytics_router, prefix="/api/v1")  # Phase 4: Workflow Analytics, SLA, Approvals
 app.include_router(odoo_webhooks_router, prefix="/api/v1")  # Phase 6: Odoo Integration Deepening
+app.include_router(webhooks_receive_router, prefix="/api/v1")  # Phase 3.2: Inbound Webhook Receiver
 app.include_router(bpmn_converter_router, prefix="/api/v1")  # BPMN 2.0 Import/Export Converter
 
 # Phase 5.2: Kundenportal Self-Service
@@ -1222,6 +1225,7 @@ app.include_router(approval_extended_router, prefix="/api/v1")  # Feature #3: Ap
 app.include_router(automation_router, prefix="/api/v1")  # Feature #7: Automation 2.0 (Auto-Filing & Auto-Matching)
 app.include_router(ki_pipeline_router, prefix="/api/v1")  # Feature #4: KI-Pipeline Intelligence
 app.include_router(annotations_enhanced_router, prefix="/api/v1")  # Feature #8: Kommentare & Annotationen
+app.include_router(annotations_extended_router, prefix="/api/v1")  # Feature #8: Bounding-Box, Replies, Tasks
 app.include_router(terminology_router, prefix="/api/v1")  # Feature #10: Deutsche Praezision
 app.include_router(german_finance_router, prefix="/api/v1")  # Feature #11: Deutsche Finanz-Features
 app.include_router(adhoc_reports_router, prefix="/api/v1")  # Feature #12: Ad-Hoc Reporting
