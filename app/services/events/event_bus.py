@@ -96,6 +96,12 @@ class EventType(str, Enum):
     DEADLINE_OVERDUE = "deadline.overdue"
     DEADLINE_COMPLETED = "deadline.completed"
 
+    # Import Events
+    IMPORT_STARTED = "import.started"
+    IMPORT_COMPLETED = "import.completed"
+    IMPORT_FAILED = "import.failed"
+    IMPORT_RULE_APPLIED = "import.rule_applied"
+
     # System Events
     SYSTEM_KPI_RECALCULATION = "system.kpi_recalculation"
     SYSTEM_BACKUP_COMPLETED = "system.backup_completed"

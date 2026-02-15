@@ -156,6 +156,7 @@ class OCRTaskResult(TypedDict, total=False):
     extraction_task_id: Optional[str]
     rag_chunking_task_id: Optional[str]
     fallback_reason: Optional[str]
+    skipped_reason: Optional[str]
     # Error fields (used in batch error results)
     error: Optional[str]
     error_type: Optional[str]

@@ -15,6 +15,7 @@ Feinpoliert und durchdacht - nutzt pgvector fuer Embedding-Aehnlichkeit.
 from __future__ import annotations
 
 import hashlib
+import io
 import re
 import threading
 import time
@@ -37,6 +38,22 @@ from app.services.ai.decision_service import (
     DecisionType,
     get_ai_decision_service,
 )
+
+# Optional: Perceptual Hashing fuer visuelle Duplikat-Erkennung
+try:
+    import imagehash
+    from PIL import Image
+    PHASH_AVAILABLE = True
+except ImportError:
+    PHASH_AVAILABLE = False
+
+# Optional: TF-IDF + Cosine Similarity fuer Text-Vergleich
+try:
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.metrics.pairwise import cosine_similarity as sklearn_cosine_similarity
+    TFIDF_AVAILABLE = True
+except ImportError:
+    TFIDF_AVAILABLE = False
 
 logger = structlog.get_logger(__name__)
 
@@ -74,6 +91,7 @@ class DuplicateType:
     NEAR = "near"  # Sehr aehnlicher Text
     SEMANTIC = "semantic"  # Gleiche Information
     NUMBER_MATCH = "number_match"  # Gleiche Rechnungsnummer
+    VISUAL = "visual"  # Visuell aehnlich (Perceptual Hash)
 
 
 @dataclass
@@ -139,15 +157,34 @@ class DuplicateDetectionService:
         text1: str,
         text2: str,
     ) -> float:
-        """Berechnet Text-Aehnlichkeit mit SequenceMatcher."""
-        # Limitiere Laenge fuer Performance
+        """Berechnet Text-Aehnlichkeit mit TF-IDF + Cosine Similarity.
+
+        Verwendet char_wb Analyzer mit n-grams (2,4) fuer robuste
+        Erkennung bei deutschen Texten (Umlaute, Komposita).
+        Fallback auf SequenceMatcher wenn sklearn nicht verfuegbar.
+        """
         t1 = self._normalize_text(text1)[:self.MAX_TEXT_LENGTH]
         t2 = self._normalize_text(text2)[:self.MAX_TEXT_LENGTH]
 
         if not t1 or not t2:
             return 0.0
 
-        # SequenceMatcher fuer Aehnlichkeit
+        if TFIDF_AVAILABLE:
+            try:
+                vectorizer = TfidfVectorizer(
+                    analyzer="char_wb",
+                    ngram_range=(2, 4),
+                    max_features=5000,
+                )
+                tfidf_matrix = vectorizer.fit_transform([t1, t2])
+                score = sklearn_cosine_similarity(
+                    tfidf_matrix[0:1], tfidf_matrix[1:2]
+                )[0][0]
+                return float(score)
+            except Exception:
+                pass  # Fallback bei unerwarteten Fehlern
+
+        # Fallback: SequenceMatcher
         return SequenceMatcher(None, t1, t2).ratio()
 
     def _calculate_field_similarity(
@@ -393,6 +430,108 @@ class DuplicateDetectionService:
 
         return candidates[:10]
 
+    @staticmethod
+    def _calculate_perceptual_hash(image_bytes: bytes) -> Optional[str]:
+        """Berechnet Perceptual Hash (pHash) eines Bildes.
+
+        Args:
+            image_bytes: Bild als Bytes
+
+        Returns:
+            pHash als Hex-String oder None bei Fehler
+        """
+        if not PHASH_AVAILABLE:
+            return None
+
+        try:
+            img = Image.open(io.BytesIO(image_bytes))
+            phash = imagehash.phash(img, hash_size=16)
+            return str(phash)
+        except Exception:
+            return None
+
+    async def _find_visual_duplicates(
+        self,
+        db: AsyncSession,
+        document: Document,
+        company_id: Optional[uuid.UUID],
+    ) -> List[DuplicateCandidate]:
+        """Findet visuelle Duplikate via Perceptual Hashing (pHash).
+
+        Vergleicht Hamming-Distanz der pHash-Werte:
+        - Distanz <= 5: Exaktes visuelles Duplikat
+        - Distanz <= 10: Nahes visuelles Duplikat
+        """
+        if not PHASH_AVAILABLE:
+            return []
+
+        # Lade pHash aus document.metadata
+        doc_metadata = document.metadata or {}
+        doc_phash_str = doc_metadata.get("perceptual_hash")
+        if not doc_phash_str:
+            return []
+
+        try:
+            doc_phash = imagehash.hex_to_hash(doc_phash_str)
+        except Exception:
+            return []
+
+        # Lade Kandidaten mit pHash aus dem gleichen Zeitraum
+        query = select(Document).where(
+            and_(
+                Document.id != document.id,
+                Document.deleted_at.is_(None),
+                Document.metadata.isnot(None),
+            )
+        )
+
+        if company_id:
+            query = query.where(Document.company_id == company_id)
+
+        # Zeitraum-Filter: letzte 90 Tage
+        if document.created_at:
+            min_date = document.created_at - timedelta(days=90)
+            query = query.where(Document.created_at >= min_date)
+
+        result = await db.execute(query.limit(self.MAX_CANDIDATES))
+        candidate_docs = result.scalars().all()
+
+        candidates: List[DuplicateCandidate] = []
+        for cand_doc in candidate_docs:
+            cand_metadata = cand_doc.metadata or {}
+            cand_phash_str = cand_metadata.get("perceptual_hash")
+            if not cand_phash_str:
+                continue
+
+            try:
+                cand_phash = imagehash.hex_to_hash(cand_phash_str)
+                distance = doc_phash - cand_phash  # Hamming-Distanz
+            except Exception:
+                continue
+
+            if distance > 10:
+                continue
+
+            # Aehnlichkeit: 1.0 bei Distanz 0, 0.0 bei Distanz 256
+            similarity = 1.0 - (distance / 256.0)
+
+            candidates.append(
+                DuplicateCandidate(
+                    document_id=cand_doc.id,
+                    duplicate_type=DuplicateType.VISUAL,
+                    similarity=similarity,
+                    matched_fields=["perceptual_hash"],
+                    details={
+                        "hamming_distance": distance,
+                        "candidate_filename": cand_doc.original_filename,
+                        "visual_match": "exact" if distance <= 5 else "near",
+                    },
+                )
+            )
+
+        candidates.sort(key=lambda x: x.similarity, reverse=True)
+        return candidates[:10]
+
     async def check_document(
         self,
         db: AsyncSession,
@@ -440,6 +579,11 @@ class DuplicateDetectionService:
         if include_near:
             near = await self._find_near_duplicates(db, document, data, company_id)
             all_candidates.extend(near)
+
+        # 4. Visuelle Duplikate (pHash)
+        if PHASH_AVAILABLE:
+            visual = await self._find_visual_duplicates(db, document, company_id)
+            all_candidates.extend(visual)
 
         # Deduplizieren (gleiche document_id kann mehrfach vorkommen)
         seen: set = set()
@@ -512,6 +656,10 @@ class DuplicateDetectionService:
             explanation["reasons"].append("Exaktes Duplikat (identischer Datei-Hash)")
         elif best.duplicate_type == DuplicateType.NUMBER_MATCH:
             explanation["reasons"].append("Gleiche Rechnungsnummer gefunden")
+        elif best.duplicate_type == DuplicateType.VISUAL:
+            explanation["reasons"].append(
+                f"Visuell aehnlich (pHash Distanz: {best.details.get('hamming_distance', '?')})"
+            )
         elif best.duplicate_type == DuplicateType.NEAR:
             explanation["reasons"].append(f"Sehr aehnlicher Text ({best.similarity * 100:.1f}%)")
         else:

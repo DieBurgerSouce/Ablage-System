@@ -27,6 +27,7 @@ from app.core.encryption import encrypt_data, decrypt_data, EncryptionError
 from app.core.config import settings
 from app.core.malware_scanner import scan_content
 from app.core.safe_errors import safe_error_log, safe_error_detail
+from app.services.events.event_bus import EventBus, EventType
 
 logger = structlog.get_logger(__name__)
 
@@ -711,6 +712,24 @@ class EmailImportService:
         self.db.add(import_log)
         await self.db.flush()
 
+        # Publish IMPORT_STARTED event
+        try:
+            event_bus = EventBus()
+            await event_bus.publish_event(
+                EventType.IMPORT_STARTED,
+                payload={
+                    "source_type": "email",
+                    "config_id": str(config.id),
+                    "filename": attachment.filename,
+                    "file_size": attachment.size,
+                    "email_from": email.from_address,
+                    "email_subject": email.subject,
+                },
+                source="email_import",
+            )
+        except Exception:
+            pass  # EventBus failures must not block imports
+
         try:
             # Duplikat-Check via File-Hash
             existing = await self._check_duplicate_by_hash(
@@ -763,6 +782,22 @@ class EmailImportService:
                 (datetime.now(timezone.utc) - import_log.started_at).total_seconds() * 1000
             )
 
+            # Publish IMPORT_COMPLETED event
+            try:
+                await event_bus.publish_event(
+                    EventType.IMPORT_COMPLETED,
+                    payload={
+                        "source_type": "email",
+                        "config_id": str(config.id),
+                        "document_id": str(document_id),
+                        "filename": attachment.filename,
+                        "processing_duration_ms": import_log.processing_duration_ms,
+                    },
+                    source="email_import",
+                )
+            except Exception:
+                pass
+
             await self.db.commit()
 
             return {"success": True, "document_id": document_id}
@@ -771,6 +806,21 @@ class EmailImportService:
             import_log.status = "failed"
             import_log.error_message = safe_error_detail(e, "Email")
             await self.db.commit()
+
+            # Publish IMPORT_FAILED event
+            try:
+                await event_bus.publish_event(
+                    EventType.IMPORT_FAILED,
+                    payload={
+                        "source_type": "email",
+                        "config_id": str(config.id),
+                        "filename": attachment.filename,
+                        "error": str(e),
+                    },
+                    source="email_import",
+                )
+            except Exception:
+                pass
 
             return {"success": False, **safe_error_log(e)}
 
@@ -1045,6 +1095,22 @@ class EmailImportService:
                 actions=list(actions.keys()),
             )
 
+            # Publish IMPORT_RULE_APPLIED event
+            try:
+                rule_event_bus = EventBus()
+                await rule_event_bus.publish_event(
+                    EventType.IMPORT_RULE_APPLIED,
+                    payload={
+                        "source_type": "email",
+                        "document_id": str(document_id),
+                        "rule_count": len(matches),
+                        "actions": list(actions.keys()),
+                    },
+                    source="email_import",
+                )
+            except Exception:
+                pass
+
             # Aktionen anwenden
             await self._execute_rule_actions(
                 document_id=document_id,
@@ -1129,15 +1195,47 @@ class EmailImportService:
                     document_id=str(document_id),
                 )
 
+            elif action_key == "set_status" and action_value:
+                update_values["status"] = action_value
+                logger.info(
+                    "rule_action_set_status",
+                    document_id=str(document_id),
+                    status=action_value,
+                )
+
             elif action_key == "add_metadata" and action_value:
                 # Zusaetzliche Metadaten
                 if isinstance(action_value, dict):
                     metadata_updates.update(action_value)
 
             elif action_key == "notify_users" and action_value:
-                # Benachrichtigungen (async, nicht blockierend)
                 metadata_updates["notify_users"] = action_value
-                # Hier koennte ein Celery Task gestartet werden
+                # Dispatch actual notifications via AlertCenter
+                try:
+                    from app.services.alert_center_service import AlertCenterService
+                    from app.db.models_alert import AlertCategory, AlertSeverity
+                    alert_service = AlertCenterService(self.db)
+                    user_ids = action_value if isinstance(action_value, list) else [action_value]
+                    for uid in user_ids:
+                        await alert_service.create_alert(
+                            company_id=UUID(str(uid)),
+                            alert_code="WORK_003",
+                            category=AlertCategory.WORKFLOW,
+                            severity=AlertSeverity.LOW,
+                            title="Import-Regel ausgeloest",
+                            message=f"Dokument {document_id} wurde durch eine Import-Regel verarbeitet.",
+                            source_type="email_import",
+                            source_id=str(document_id),
+                            document_id=document_id,
+                            assigned_to_id=UUID(str(uid)),
+                            metadata={"source": "email_import"},
+                        )
+                except Exception as e:
+                    logger.warning(
+                        "notify_users_dispatch_failed",
+                        document_id=str(document_id),
+                        error=str(e),
+                    )
 
         # Dokument aktualisieren
         if update_values or metadata_updates:

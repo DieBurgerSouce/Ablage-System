@@ -27,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.encryption import encrypt_data, decrypt_data, EncryptionError
 from app.core.malware_scanner import scan_file
 from app.core.safe_errors import safe_error_log, safe_error_detail
+from app.services.events.event_bus import EventBus, EventType
 
 logger = structlog.get_logger(__name__)
 
@@ -751,6 +752,22 @@ class FolderImportService:
         self.db.add(import_log)
         await self.db.flush()
 
+        # Publish IMPORT_STARTED event
+        try:
+            event_bus = EventBus()
+            await event_bus.publish_event(
+                EventType.IMPORT_STARTED,
+                payload={
+                    "source_type": "folder",
+                    "config_id": str(config.id),
+                    "filename": file_path.name,
+                    "file_size": file_size,
+                },
+                source="folder_import",
+            )
+        except Exception:
+            pass  # EventBus failures must not block imports
+
         try:
             # Duplikat-Check
             existing = await self._check_duplicate_by_hash(user_id, file_hash)
@@ -788,6 +805,16 @@ class FolderImportService:
                 mime_type=mime_type,
             )
 
+            # Import-Regeln anwenden
+            await self._apply_import_rules(
+                document_id=document_id,
+                file_path=file_path,
+                config=config,
+                user_id=user_id,
+                mime_type=mime_type,
+                file_size=file_size,
+            )
+
             # Import-Log aktualisieren
             import_log.status = "completed"
             import_log.document_id = document_id
@@ -795,6 +822,22 @@ class FolderImportService:
             import_log.processing_duration_ms = int(
                 (datetime.now(timezone.utc) - import_log.started_at).total_seconds() * 1000
             )
+
+            # Publish IMPORT_COMPLETED event
+            try:
+                await event_bus.publish_event(
+                    EventType.IMPORT_COMPLETED,
+                    payload={
+                        "source_type": "folder",
+                        "config_id": str(config.id),
+                        "document_id": str(document_id),
+                        "filename": file_path.name,
+                        "processing_duration_ms": import_log.processing_duration_ms,
+                    },
+                    source="folder_import",
+                )
+            except Exception:
+                pass
 
             # Datei verschieben oder loeschen
             moved = False
@@ -822,6 +865,21 @@ class FolderImportService:
             import_log.status = "failed"
             import_log.error_message = safe_error_detail(e, "Folder")
             await self.db.commit()
+
+            # Publish IMPORT_FAILED event
+            try:
+                await event_bus.publish_event(
+                    EventType.IMPORT_FAILED,
+                    payload={
+                        "source_type": "folder",
+                        "config_id": str(config.id),
+                        "filename": file_path.name,
+                        "error": str(e),
+                    },
+                    source="folder_import",
+                )
+            except Exception:
+                pass
 
             # In Error-Ordner verschieben wenn konfiguriert
             if config.error_subfolder:
@@ -941,6 +999,226 @@ class FolderImportService:
         )
 
         return document.id
+
+    async def _apply_import_rules(
+        self,
+        document_id: UUID,
+        file_path: Path,
+        config,
+        user_id: UUID,
+        mime_type: str,
+        file_size: int,
+    ) -> None:
+        """Wendet Import-Regeln auf das erstellte Dokument an.
+
+        Args:
+            document_id: ID des erstellten Dokuments
+            file_path: Pfad zur importierten Datei
+            config: FolderImportConfig
+            user_id: User-ID
+            mime_type: MIME-Type der Datei
+            file_size: Dateigroesse in Bytes
+        """
+        from app.services.imports import ImportRuleService
+        from app.db.models import Document
+
+        try:
+            rule_service = ImportRuleService(self.db)
+
+            # Metadaten fuer Rule-Matching aufbauen
+            metadata = {
+                "filename": file_path.name,
+                "file_extension": file_path.suffix.lower(),
+                "file_size": file_size,
+                "mime_type": mime_type,
+                "folder_path": str(file_path.parent),
+                "modified_date": datetime.fromtimestamp(
+                    file_path.stat().st_mtime, tz=timezone.utc
+                ).isoformat() if file_path.exists() else None,
+            }
+
+            # Regeln evaluieren
+            matches = await rule_service.evaluate_rules(
+                user_id=user_id,
+                metadata=metadata,
+                source_type="folder",
+                config_id=config.id,
+            )
+
+            if not matches:
+                logger.debug(
+                    "no_import_rules_matched",
+                    document_id=str(document_id),
+                )
+                return
+
+            # Aktionen konsolidieren
+            actions = rule_service.apply_actions(matches)
+
+            logger.info(
+                "import_rules_matched",
+                document_id=str(document_id),
+                rule_count=len(matches),
+                actions=list(actions.keys()),
+            )
+
+            # Publish IMPORT_RULE_APPLIED event
+            try:
+                rule_event_bus = EventBus()
+                await rule_event_bus.publish_event(
+                    EventType.IMPORT_RULE_APPLIED,
+                    payload={
+                        "source_type": "folder",
+                        "document_id": str(document_id),
+                        "rule_count": len(matches),
+                        "actions": list(actions.keys()),
+                    },
+                    source="folder_import",
+                )
+            except Exception:
+                pass
+
+            # Aktionen anwenden
+            await self._execute_rule_actions(
+                document_id=document_id,
+                actions=actions,
+                user_id=user_id,
+            )
+
+        except Exception as e:
+            # Fehler in Import Rules sollte Import nicht blockieren
+            logger.warning(
+                "folder_import_rules_execution_failed",
+                document_id=str(document_id),
+                **safe_error_log(e),
+            )
+
+    async def _execute_rule_actions(
+        self,
+        document_id: UUID,
+        actions: Dict,
+        user_id: UUID,
+    ) -> None:
+        """Fuehrt die konsolidierten Rule-Actions aus.
+
+        Args:
+            document_id: Dokument-ID
+            actions: Konsolidierte Aktionen
+            user_id: User-ID
+        """
+        from app.db.models import Document
+
+        update_values: Dict = {}
+        metadata_updates: Dict = {}
+
+        for action_key, action_value in actions.items():
+            if action_key == "assign_folder_id" and action_value:
+                try:
+                    update_values["folder_id"] = UUID(str(action_value))
+                    logger.info(
+                        "rule_action_assign_folder",
+                        document_id=str(document_id),
+                        folder_id=str(action_value),
+                    )
+                except ValueError:
+                    logger.warning(
+                        "invalid_folder_id_in_rule",
+                        action_value=action_value,
+                    )
+
+            elif action_key == "assign_tags" and action_value:
+                if isinstance(action_value, list):
+                    metadata_updates["rule_tags"] = action_value
+                    logger.info(
+                        "rule_action_assign_tags",
+                        document_id=str(document_id),
+                        tags=action_value,
+                    )
+
+            elif action_key == "assign_document_type" and action_value:
+                update_values["document_type"] = action_value
+                logger.info(
+                    "rule_action_assign_document_type",
+                    document_id=str(document_id),
+                    document_type=action_value,
+                )
+
+            elif action_key == "skip_ocr" and action_value:
+                metadata_updates["skip_ocr"] = True
+                logger.info(
+                    "rule_action_skip_ocr",
+                    document_id=str(document_id),
+                )
+
+            elif action_key == "priority_ocr" and action_value:
+                metadata_updates["priority_ocr"] = True
+                logger.info(
+                    "rule_action_priority_ocr",
+                    document_id=str(document_id),
+                )
+
+            elif action_key == "set_status" and action_value:
+                update_values["status"] = action_value
+                logger.info(
+                    "rule_action_set_status",
+                    document_id=str(document_id),
+                    status=action_value,
+                )
+
+            elif action_key == "add_metadata" and action_value:
+                if isinstance(action_value, dict):
+                    metadata_updates.update(action_value)
+
+            elif action_key == "notify_users" and action_value:
+                metadata_updates["notify_users"] = action_value
+                # Dispatch actual notifications via AlertCenter
+                try:
+                    from app.services.alert_center_service import AlertCenterService
+                    from app.db.models_alert import AlertCategory, AlertSeverity
+                    alert_service = AlertCenterService(self.db)
+                    user_ids = action_value if isinstance(action_value, list) else [action_value]
+                    for uid in user_ids:
+                        await alert_service.create_alert(
+                            company_id=UUID(str(uid)),
+                            alert_code="WORK_003",
+                            category=AlertCategory.WORKFLOW,
+                            severity=AlertSeverity.LOW,
+                            title="Import-Regel ausgeloest",
+                            message=f"Dokument {document_id} wurde durch eine Import-Regel verarbeitet.",
+                            source_type="folder_import",
+                            source_id=str(document_id),
+                            document_id=document_id,
+                            assigned_to_id=UUID(str(uid)),
+                            metadata={"source": "folder_import"},
+                        )
+                except Exception as e:
+                    logger.warning(
+                        "notify_users_dispatch_failed",
+                        document_id=str(document_id),
+                        error=str(e),
+                    )
+
+        # Dokument aktualisieren
+        if update_values or metadata_updates:
+            stmt = update(Document).where(Document.id == document_id)
+
+            if update_values:
+                stmt = stmt.values(**update_values)
+
+            if metadata_updates:
+                stmt = stmt.values(
+                    metadata=Document.metadata.concat({
+                        "import_rule_actions": metadata_updates
+                    })
+                )
+
+            await self.db.execute(stmt)
+            logger.info(
+                "document_updated_by_rules",
+                document_id=str(document_id),
+                update_fields=list(update_values.keys()),
+                metadata_fields=list(metadata_updates.keys()),
+            )
 
     async def _move_to_subfolder(
         self,
