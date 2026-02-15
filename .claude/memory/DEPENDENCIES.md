@@ -14,6 +14,8 @@
 | postgresql | 16+ | Database |
 | aiohttp | 3.9.0+ | Async HTTP Client (Peppol/External) |
 | reportlab | 4.0.9 | PDF Generation (mit rlPyCairo) |
+| imagehash | 4.3.1+ | Perceptual Hashing (Visual Duplicate Detection) |
+| scikit-learn | 1.3.0+ | TF-IDF + Cosine (Text Duplicate Detection) |
 
 ### Frontend
 | Package | Version | Purpose |

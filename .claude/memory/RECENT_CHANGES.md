@@ -1,10 +1,15 @@
 # Recent Changes
 
 ## 2026-02-15
-- **feat(services)**: Invoice pipeline avg_processing_time_ms aus Document.processing_duration_ms berechnet
-- **refactor(services)**: Risk scoring Any → object Type-Hints (CLAUDE.md Rule 4)
-- **fix(frontend)**: Auth context integration in DocumentViewer examples (useAuth statt hardcoded user-123)
-- **chore(config)**: Ralph Loop iteration 2 - Interview-driven feature discovery
+- **feat(frontend)**: 7 Feature-Module (adhoc-reporting, annotations-extended, approval-enhanced, german-finance, ki-pipeline, proactive-assistant, smart-dashboard) mit 115 Komponenten
+- **feat(api)**: 12 neue Endpoints für 2026-Q1 Features (adhoc-reports, annotations, approval, automation, finance, webhooks)
+- **feat(services)**: 15 neue Feature-Services (Auto-Filing, BWA, Cashflow, OCR-Learning, Proactive Assistant, etc.)
+- **feat(workers)**: 10 neue Celery Task-Module für async Feature-Processing
+- **feat(db)**: 3 Migrationen (225-227) + 10 Satellite Models (Annotation, Approval, Finance, KI-Pipeline)
+- **feat(services)**: Event-driven Import Services (IMPORT_STARTED/COMPLETED Events)
+- **feat(services)**: Duplicate Detection (Visual + Text via imagehash + TF-IDF)
+- **chore(infra)**: imagehash + scikit-learn Dependencies
+- **chore(config)**: 2026-Q1 Feature Roadmap Dokumentation
 
 ## 2026-02-14
 - **fix(frontend)**: Token trimming + mandatory WebSocket auth validation (13 Dateien, .trim() an allen Token-Stellen)

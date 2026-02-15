@@ -9,19 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-- Frontend: Auth context integration in DocumentViewer examples (useAuth Hook statt hardcoded user-123)
-- Frontend: Token trimming an allen 13 Stellen (lib/websocket, lib/api/client, lib/api/services/auth, features/*/api, features/*/hooks)
-- Frontend: Mandatory WebSocket auth validation (verhindert leere Token-Verbindungen)
-- Frontend: encodeURIComponent für WebSocket token in URL
-
-### Changed
-- Services: RiskScoringService Type-Hints von Any → object (CLAUDE.md Rule 4 Compliance)
-- Services: External Data Provider is_available() prüft jetzt API-Keys aus settings
-
 ### Added
-- Services: InvoicePipelineService berechnet avg_processing_time_ms aus Document.processing_duration_ms
-- Tests: 23 WebSocket URL-encoding und Auth-Validierung Integrationstests (6 Dateien)
+- Database: Migration 225 Next Generation Features (automation_rules, annotation_tasks)
+- Database: Migration 226 Inbound Webhook Events (webhook_inbound_events)
+- Database: Migration 227 Mention Notifications (mention_notifications, notification_preferences)
+- Database: 10 Satellite Models (adhoc_reporting, annotations, approval, finance, ki-pipeline, webhooks)
+- API: 12 neue Endpoints (adhoc-reports, annotations, approval, automation, german-finance, ki-pipeline, proactive-assistant, smart-dashboard, terminology, webhooks)
+- Services: 15 neue Feature-Services (Ad-Hoc Reporting, Annotation, Approval Enhanced, Auto-Filing/Matching, BWA, Cashflow, USt, Confidence, Cross-Document Intelligence, Document Progress/Summary, Extraction Learning, German Terminology, Proactive Assistant, Smart Dashboard, Webhooks)
+- Workers: 10 neue Celery Task-Module (adhoc_report, annotation, approval, auto_filing, german_finance, ki_pipeline, proactive_assistant, smart_dashboard, webhook_inbound)
+- Frontend: 7 Feature-Module mit 115 Komponenten (adhoc-reporting, annotations-extended, approval-enhanced, german-finance, ki-pipeline, proactive-assistant, smart-dashboard)
+- Frontend: 14 neue Routes (/adhoc-reporting, /admin/annotation-tasks, /admin/approval-rules, /german-finance/*, /ki-pipeline, /proactive-assistant, /smart-dashboard)
+- Frontend: Command Palette + Sidebar Navigation für neue Features
+- Services: Duplicate Detection (Visual + Text via imagehash + TF-IDF)
+- Services: Event-driven Import (IMPORT_STARTED/COMPLETED Events für Email/Folder Import)
+- Dependencies: imagehash>=4.3.1, scikit-learn>=1.3.0
+- Docs: 2026-Q1 Feature Roadmap (15 Features mit technischen Spezifikationen)
 
 ### Added
 - Database: Migration 222 Folder Hierarchy (folders, folder_permissions, folder_documents)

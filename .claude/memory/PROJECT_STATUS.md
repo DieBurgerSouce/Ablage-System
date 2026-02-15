@@ -7,7 +7,7 @@
 | Backend | ✅ OK | Running on :8000, 430+ Endpoints, Type-Safe |
 | Frontend | ✅ OK | Nginx :80, Accessibility E2E Tests OK |
 | Celery | ✅ OK | 414 Tasks, 12+ Beat Schedules, GPU for OCR |
-| PostgreSQL | ✅ OK | :5433, 223 Migrations asyncpg-hardened |
+| PostgreSQL | ✅ OK | :5433, 227 Migrations asyncpg-hardened |
 | Redis | ✅ OK | :6380, Rate Limiting, Blacklist, L1/L2 Cache |
 | GPU | ✅ OK | RTX 4080 (16GB), shared by backend + worker |
 | Jaeger | ✅ NEW | :16686 UI, :4317 OTLP gRPC, Distributed Tracing |
@@ -106,6 +106,9 @@ Final 3 TODOs resolved:
 
 | Migration | Description |
 |-----------|-------------|
+| 227 | Mention Notifications |
+| 226 | Inbound Webhook Events |
+| 225 | Next Generation Features (Automation, Annotations) |
 | 223 | Knowledge Graph Autonomy + Comment Threads |
 | 222 | Folder Hierarchy (folders, folder_permissions, folder_documents) |
 | 221 | Merge Heads (Collaboration + Previous) |
