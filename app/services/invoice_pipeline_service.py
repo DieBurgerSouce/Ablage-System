@@ -545,11 +545,18 @@ class InvoicePipelineService:
         auto_approved = 0
         entity_linked = 0
         total_confidence = 0.0
+        total_processing_time_ms = 0
+        processing_time_count = 0
 
         for doc in documents:
             # OCR-Confidence
             if hasattr(doc, "ocr_confidence") and doc.ocr_confidence:
                 total_confidence += doc.ocr_confidence
+
+            # Processing time
+            if doc.processing_duration_ms is not None:
+                total_processing_time_ms += doc.processing_duration_ms
+                processing_time_count += 1
 
             # Entity-Linking
             if doc.entity_id:
@@ -582,7 +589,11 @@ class InvoicePipelineService:
             needs_review=needs_review,
             failed=failed,
             escalated=escalated,
-            avg_processing_time_ms=0.0,  # TODO: Track in metadata
+            avg_processing_time_ms=(
+                total_processing_time_ms / processing_time_count
+                if processing_time_count > 0
+                else 0.0
+            ),
             auto_approval_rate=auto_approval_rate,
             entity_linking_rate=entity_linking_rate,
             avg_confidence=avg_confidence,

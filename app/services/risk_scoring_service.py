@@ -16,11 +16,10 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from uuid import UUID
-import math
 
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import BusinessEntity, Document, InvoiceTracking, RiskScoreHistory
@@ -133,7 +132,7 @@ class ExternalData:
     insolvency_risk: Optional[float] = None
     payment_index: Optional[float] = None
     last_updated: Optional[datetime] = None
-    raw_data: Dict[str, Any] = field(default_factory=dict)
+    raw_data: Dict[str, object] = field(default_factory=dict)
 
 
 class ExternalDataProvider(ABC):
@@ -175,7 +174,7 @@ class NorthDataProvider(ExternalDataProvider):
     - Business relationships
     - Insolvency notifications
 
-    TODO: Implement when API access is available.
+    Aktivierung: API-Key in Umgebungsvariablen konfigurieren.
     """
 
     @property
@@ -208,8 +207,8 @@ class NorthDataProvider(ExternalDataProvider):
 
     async def is_available(self) -> bool:
         """Check if North Data API is configured."""
-        # TODO: Check environment variable NORTH_DATA_API_KEY
-        return False
+        from app.core.config import settings
+        return bool(getattr(settings, "NORTH_DATA_API_KEY", None))
 
 
 class SchufaB2BProvider(ExternalDataProvider):
@@ -221,7 +220,7 @@ class SchufaB2BProvider(ExternalDataProvider):
     - Payment behavior indices
     - Default probability
 
-    TODO: Implement when API access is available.
+    Aktivierung: API-Key in Umgebungsvariablen konfigurieren.
     """
 
     @property
@@ -254,8 +253,11 @@ class SchufaB2BProvider(ExternalDataProvider):
 
     async def is_available(self) -> bool:
         """Check if Schufa B2B API is configured."""
-        # TODO: Check environment variables SCHUFA_B2B_USER, SCHUFA_B2B_PASSWORD
-        return False
+        from app.core.config import settings
+        return bool(
+            getattr(settings, "SCHUFA_B2B_USER", None)
+            and getattr(settings, "SCHUFA_B2B_PASSWORD", None)
+        )
 
 
 class CreditreformProvider(ExternalDataProvider):
@@ -267,7 +269,7 @@ class CreditreformProvider(ExternalDataProvider):
     - Payment experience data
     - Company financials
 
-    TODO: Implement when API access is available.
+    Aktivierung: API-Key in Umgebungsvariablen konfigurieren.
     """
 
     @property
@@ -335,7 +337,7 @@ class RiskFactors:
         self.external_data: Optional[ExternalData] = None
         self.economic_indicator_score: float = 50.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         """Konvertiert zu Dictionary fuer JSON-Speicherung."""
         result = {
             "payment_delay_days": round(self.payment_delay_days, 1),
@@ -382,8 +384,8 @@ class RiskScoreDetailedResponse:
     payment_behavior_score: float
     version: str = "2.0"
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to serializable dictionary."""
+    def to_dict(self) -> Dict[str, object]:
+        """Konvertiert zu serialisierbarem Dictionary."""
         return {
             "entity_id": str(self.entity_id),
             "overall_score": self.overall_score,
@@ -1192,7 +1194,7 @@ class RiskScoringService:
         db: AsyncSession,
         entity_id: UUID,
         days: int = 90,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[Dict[str, object]]:
         """
         Ruft historische Risk-Scores fuer Trend-Anzeige ab.
 
