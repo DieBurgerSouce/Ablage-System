@@ -12,13 +12,18 @@ import { Route as rootRouteImport } from './app/routes/__root'
 import { Route as WorkflowsRouteImport } from './app/routes/workflows'
 import { Route as WissenRouteImport } from './app/routes/wissen'
 import { Route as VorlagenRouteImport } from './app/routes/vorlagen'
+import { Route as VisualDiffRouteImport } from './app/routes/visual-diff'
 import { Route as VertraegeRouteImport } from './app/routes/vertraege'
 import { Route as ValidationQueueRouteImport } from './app/routes/validation-queue'
 import { Route as UploadRouteImport } from './app/routes/upload'
+import { Route as TrustDashboardRouteImport } from './app/routes/trust-dashboard'
 import { Route as TrashRouteImport } from './app/routes/trash'
 import { Route as TeamsRouteImport } from './app/routes/teams'
+import { Route as TaxPackageRouteImport } from './app/routes/tax-package'
 import { Route as StreckengeschaeftRouteImport } from './app/routes/streckengeschaeft'
 import { Route as SpesenRouteImport } from './app/routes/spesen'
+import { Route as SmartSearchRouteImport } from './app/routes/smart-search'
+import { Route as SmartDashboardRouteImport } from './app/routes/smart-dashboard'
 import { Route as ShareTargetRouteImport } from './app/routes/share-target'
 import { Route as ShareRouteImport } from './app/routes/share'
 import { Route as SettingsRouteImport } from './app/routes/settings'
@@ -30,6 +35,7 @@ import { Route as RiskRouteImport } from './app/routes/risk'
 import { Route as RelationshipsRouteImport } from './app/routes/relationships'
 import { Route as RecurringInvoicesRouteImport } from './app/routes/recurring-invoices'
 import { Route as ProzesseRouteImport } from './app/routes/prozesse'
+import { Route as ProactiveAssistantRouteImport } from './app/routes/proactive-assistant'
 import { Route as PrivatRouteImport } from './app/routes/privat'
 import { Route as PortalRouteImport } from './app/routes/portal'
 import { Route as PoMatchingRouteImport } from './app/routes/po-matching'
@@ -37,23 +43,30 @@ import { Route as PersonalRouteImport } from './app/routes/personal'
 import { Route as OpenFileRouteImport } from './app/routes/open-file'
 import { Route as OcrSuiteRouteImport } from './app/routes/ocr-suite'
 import { Route as MonitoringRouteImport } from './app/routes/monitoring'
+import { Route as MlDashboardRouteImport } from './app/routes/ml-dashboard'
 import { Route as LoginRouteImport } from './app/routes/login'
 import { Route as LieferantenRouteImport } from './app/routes/lieferanten'
 import { Route as KundenRouteImport } from './app/routes/kunden'
 import { Route as KnowledgeGraphRouteImport } from './app/routes/knowledge-graph'
+import { Route as KiPipelineRouteImport } from './app/routes/ki-pipeline'
 import { Route as KasseRouteImport } from './app/routes/kasse'
 import { Route as JobsRouteImport } from './app/routes/jobs'
+import { Route as InvoiceWorkflowRouteImport } from './app/routes/invoice-workflow'
 import { Route as InventoryRouteImport } from './app/routes/inventory'
 import { Route as InboxRouteImport } from './app/routes/inbox'
 import { Route as HoldingRouteImport } from './app/routes/holding'
+import { Route as GermanFinanceRouteImport } from './app/routes/german-finance'
 import { Route as FraudRouteImport } from './app/routes/fraud'
 import { Route as ForgotPasswordRouteImport } from './app/routes/forgot-password'
 import { Route as FinanzenRouteImport } from './app/routes/finanzen'
 import { Route as ExecutiveRouteImport } from './app/routes/executive'
 import { Route as EmailImportRouteImport } from './app/routes/email-import'
+import { Route as DocumentHintsRouteImport } from './app/routes/document-hints'
 import { Route as DocumentGroupsRouteImport } from './app/routes/document-groups'
 import { Route as DocumentChainsRouteImport } from './app/routes/document-chains'
+import { Route as DigitalTwinRouteImport } from './app/routes/digital-twin'
 import { Route as DeveloperRouteImport } from './app/routes/developer'
+import { Route as DataQualityRouteImport } from './app/routes/data-quality'
 import { Route as ContractsRouteImport } from './app/routes/contracts'
 import { Route as ComplianceRouteImport } from './app/routes/compliance'
 import { Route as ChatRouteImport } from './app/routes/chat'
@@ -63,6 +76,7 @@ import { Route as AutomationRouteImport } from './app/routes/automation'
 import { Route as ApprovalsRouteImport } from './app/routes/approvals'
 import { Route as AlertsRouteImport } from './app/routes/alerts'
 import { Route as AdminRouteImport } from './app/routes/admin'
+import { Route as AdhocReportingRouteImport } from './app/routes/adhoc-reporting'
 import { Route as ActivityRouteImport } from './app/routes/activity'
 import { Route as SplatRouteImport } from './app/routes/$'
 import { Route as IndexRouteImport } from './app/routes/index'
@@ -106,6 +120,7 @@ import { Route as ReportsCashflowForecastRouteImport } from './app/routes/report
 import { Route as ProzesseNeuRouteImport } from './app/routes/prozesse.neu'
 import { Route as ProzesseAufgabenRouteImport } from './app/routes/prozesse.aufgaben'
 import { Route as ProzesseDefinitionIdRouteImport } from './app/routes/prozesse.$definitionId'
+import { Route as ProactiveAssistantRulesRouteImport } from './app/routes/proactive-assistant.rules'
 import { Route as PrivatVersicherungenRouteImport } from './app/routes/privat.versicherungen'
 import { Route as PrivatSteuernRouteImport } from './app/routes/privat.steuern'
 import { Route as PrivatPortfolioRouteImport } from './app/routes/privat.portfolio'
@@ -128,7 +143,11 @@ import { Route as PersonalEmployeeIdRouteImport } from './app/routes/personal.$e
 import { Route as LieferantenRankingRouteImport } from './app/routes/lieferanten.ranking'
 import { Route as LieferantenSupplierIdRouteImport } from './app/routes/lieferanten.$supplierId'
 import { Route as KundenCustomerIdRouteImport } from './app/routes/kunden.$customerId'
+import { Route as KiPipelineLearningRouteImport } from './app/routes/ki-pipeline.learning'
 import { Route as HoldingReconciliationRouteImport } from './app/routes/holding.reconciliation'
+import { Route as GermanFinanceUstRouteImport } from './app/routes/german-finance.ust'
+import { Route as GermanFinanceCashflowRouteImport } from './app/routes/german-finance.cashflow'
+import { Route as GermanFinanceBwaRouteImport } from './app/routes/german-finance.bwa'
 import { Route as FinanzenZahlungsverhaltenRouteImport } from './app/routes/finanzen.zahlungsverhalten'
 import { Route as FinanzenYearRouteImport } from './app/routes/finanzen.$year'
 import { Route as DocumentsCompareRouteImport } from './app/routes/documents.compare'
@@ -161,6 +180,7 @@ import { Route as AdminOcrTrainingRouteImport } from './app/routes/admin.ocr-tra
 import { Route as AdminOcrReviewRouteImport } from './app/routes/admin.ocr-review'
 import { Route as AdminOcrLearningRouteImport } from './app/routes/admin.ocr-learning'
 import { Route as AdminOcrFeedbackRouteImport } from './app/routes/admin.ocr-feedback'
+import { Route as AdminOcrBatchCorrectionRouteImport } from './app/routes/admin.ocr-batch-correction'
 import { Route as AdminOcrBackendsRouteImport } from './app/routes/admin.ocr-backends'
 import { Route as AdminMlopsRouteImport } from './app/routes/admin.mlops'
 import { Route as AdminMahnungenRouteImport } from './app/routes/admin.mahnungen'
@@ -179,8 +199,10 @@ import { Route as AdminDunningTemplatesRouteImport } from './app/routes/admin.du
 import { Route as AdminDocumentQualityRouteImport } from './app/routes/admin.document-quality'
 import { Route as AdminDlpRouteImport } from './app/routes/admin.dlp'
 import { Route as AdminDisasterRecoveryRouteImport } from './app/routes/admin.disaster-recovery'
+import { Route as AdminDigitalTwinRouteImport } from './app/routes/admin.digital-twin'
 import { Route as AdminDatevConnectRouteImport } from './app/routes/admin.datev-connect'
 import { Route as AdminDatevRouteImport } from './app/routes/admin.datev'
+import { Route as AdminDataQualityRouteImport } from './app/routes/admin.data-quality'
 import { Route as AdminDailyBriefingRouteImport } from './app/routes/admin.daily-briefing'
 import { Route as AdminCrossTenantRouteImport } from './app/routes/admin.cross-tenant'
 import { Route as AdminCorrectionWorkbenchRouteImport } from './app/routes/admin.correction-workbench'
@@ -190,10 +212,15 @@ import { Route as AdminAutonomousRouteImport } from './app/routes/admin.autonomo
 import { Route as AdminAuditTrailRouteImport } from './app/routes/admin.audit-trail'
 import { Route as AdminAuditLogsRouteImport } from './app/routes/admin.audit-logs'
 import { Route as AdminAuditRouteImport } from './app/routes/admin.audit'
+import { Route as AdminApprovalSlaRouteImport } from './app/routes/admin.approval-sla'
+import { Route as AdminApprovalRulesRouteImport } from './app/routes/admin.approval-rules'
+import { Route as AdminAnnotationTasksRouteImport } from './app/routes/admin.annotation-tasks'
 import { Route as AdminAlertsRouteImport } from './app/routes/admin.alerts'
 import { Route as AdminAiDecisionsRouteImport } from './app/routes/admin.ai-decisions'
 import { Route as AdminAiAdminRouteImport } from './app/routes/admin.ai-admin'
 import { Route as AdminActivityRouteImport } from './app/routes/admin.activity'
+import { Route as AdhocReportingNewRouteImport } from './app/routes/adhoc-reporting.new'
+import { Route as AdhocReportingIdRouteImport } from './app/routes/adhoc-reporting.$id'
 import { Route as PersonalEmployeeIdIndexRouteImport } from './app/routes/personal.$employeeId.index'
 import { Route as LieferantenSupplierIdIndexRouteImport } from './app/routes/lieferanten.$supplierId.index'
 import { Route as KundenCustomerIdIndexRouteImport } from './app/routes/kunden.$customerId.index'
@@ -287,6 +314,11 @@ const VorlagenRoute = VorlagenRouteImport.update({
   path: '/vorlagen',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VisualDiffRoute = VisualDiffRouteImport.update({
+  id: '/visual-diff',
+  path: '/visual-diff',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VertraegeRoute = VertraegeRouteImport.update({
   id: '/vertraege',
   path: '/vertraege',
@@ -302,6 +334,11 @@ const UploadRoute = UploadRouteImport.update({
   path: '/upload',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TrustDashboardRoute = TrustDashboardRouteImport.update({
+  id: '/trust-dashboard',
+  path: '/trust-dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TrashRoute = TrashRouteImport.update({
   id: '/trash',
   path: '/trash',
@@ -312,6 +349,11 @@ const TeamsRoute = TeamsRouteImport.update({
   path: '/teams',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TaxPackageRoute = TaxPackageRouteImport.update({
+  id: '/tax-package',
+  path: '/tax-package',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StreckengeschaeftRoute = StreckengeschaeftRouteImport.update({
   id: '/streckengeschaeft',
   path: '/streckengeschaeft',
@@ -320,6 +362,16 @@ const StreckengeschaeftRoute = StreckengeschaeftRouteImport.update({
 const SpesenRoute = SpesenRouteImport.update({
   id: '/spesen',
   path: '/spesen',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SmartSearchRoute = SmartSearchRouteImport.update({
+  id: '/smart-search',
+  path: '/smart-search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SmartDashboardRoute = SmartDashboardRouteImport.update({
+  id: '/smart-dashboard',
+  path: '/smart-dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ShareTargetRoute = ShareTargetRouteImport.update({
@@ -377,6 +429,11 @@ const ProzesseRoute = ProzesseRouteImport.update({
   path: '/prozesse',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProactiveAssistantRoute = ProactiveAssistantRouteImport.update({
+  id: '/proactive-assistant',
+  path: '/proactive-assistant',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrivatRoute = PrivatRouteImport.update({
   id: '/privat',
   path: '/privat',
@@ -412,6 +469,11 @@ const MonitoringRoute = MonitoringRouteImport.update({
   path: '/monitoring',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MlDashboardRoute = MlDashboardRouteImport.update({
+  id: '/ml-dashboard',
+  path: '/ml-dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -432,6 +494,11 @@ const KnowledgeGraphRoute = KnowledgeGraphRouteImport.update({
   path: '/knowledge-graph',
   getParentRoute: () => rootRouteImport,
 } as any)
+const KiPipelineRoute = KiPipelineRouteImport.update({
+  id: '/ki-pipeline',
+  path: '/ki-pipeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const KasseRoute = KasseRouteImport.update({
   id: '/kasse',
   path: '/kasse',
@@ -440,6 +507,11 @@ const KasseRoute = KasseRouteImport.update({
 const JobsRoute = JobsRouteImport.update({
   id: '/jobs',
   path: '/jobs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvoiceWorkflowRoute = InvoiceWorkflowRouteImport.update({
+  id: '/invoice-workflow',
+  path: '/invoice-workflow',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InventoryRoute = InventoryRouteImport.update({
@@ -455,6 +527,11 @@ const InboxRoute = InboxRouteImport.update({
 const HoldingRoute = HoldingRouteImport.update({
   id: '/holding',
   path: '/holding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GermanFinanceRoute = GermanFinanceRouteImport.update({
+  id: '/german-finance',
+  path: '/german-finance',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FraudRoute = FraudRouteImport.update({
@@ -482,6 +559,11 @@ const EmailImportRoute = EmailImportRouteImport.update({
   path: '/email-import',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocumentHintsRoute = DocumentHintsRouteImport.update({
+  id: '/document-hints',
+  path: '/document-hints',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DocumentGroupsRoute = DocumentGroupsRouteImport.update({
   id: '/document-groups',
   path: '/document-groups',
@@ -492,9 +574,19 @@ const DocumentChainsRoute = DocumentChainsRouteImport.update({
   path: '/document-chains',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DigitalTwinRoute = DigitalTwinRouteImport.update({
+  id: '/digital-twin',
+  path: '/digital-twin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DeveloperRoute = DeveloperRouteImport.update({
   id: '/developer',
   path: '/developer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DataQualityRoute = DataQualityRouteImport.update({
+  id: '/data-quality',
+  path: '/data-quality',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContractsRoute = ContractsRouteImport.update({
@@ -540,6 +632,11 @@ const AlertsRoute = AlertsRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdhocReportingRoute = AdhocReportingRouteImport.update({
+  id: '/adhoc-reporting',
+  path: '/adhoc-reporting',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ActivityRoute = ActivityRouteImport.update({
@@ -762,6 +859,11 @@ const ProzesseDefinitionIdRoute = ProzesseDefinitionIdRouteImport.update({
   path: '/$definitionId',
   getParentRoute: () => ProzesseRoute,
 } as any)
+const ProactiveAssistantRulesRoute = ProactiveAssistantRulesRouteImport.update({
+  id: '/rules',
+  path: '/rules',
+  getParentRoute: () => ProactiveAssistantRoute,
+} as any)
 const PrivatVersicherungenRoute = PrivatVersicherungenRouteImport.update({
   id: '/versicherungen',
   path: '/versicherungen',
@@ -872,10 +974,30 @@ const KundenCustomerIdRoute = KundenCustomerIdRouteImport.update({
   path: '/$customerId',
   getParentRoute: () => KundenRoute,
 } as any)
+const KiPipelineLearningRoute = KiPipelineLearningRouteImport.update({
+  id: '/learning',
+  path: '/learning',
+  getParentRoute: () => KiPipelineRoute,
+} as any)
 const HoldingReconciliationRoute = HoldingReconciliationRouteImport.update({
   id: '/reconciliation',
   path: '/reconciliation',
   getParentRoute: () => HoldingRoute,
+} as any)
+const GermanFinanceUstRoute = GermanFinanceUstRouteImport.update({
+  id: '/ust',
+  path: '/ust',
+  getParentRoute: () => GermanFinanceRoute,
+} as any)
+const GermanFinanceCashflowRoute = GermanFinanceCashflowRouteImport.update({
+  id: '/cashflow',
+  path: '/cashflow',
+  getParentRoute: () => GermanFinanceRoute,
+} as any)
+const GermanFinanceBwaRoute = GermanFinanceBwaRouteImport.update({
+  id: '/bwa',
+  path: '/bwa',
+  getParentRoute: () => GermanFinanceRoute,
 } as any)
 const FinanzenZahlungsverhaltenRoute =
   FinanzenZahlungsverhaltenRouteImport.update({
@@ -1040,6 +1162,11 @@ const AdminOcrFeedbackRoute = AdminOcrFeedbackRouteImport.update({
   path: '/ocr-feedback',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminOcrBatchCorrectionRoute = AdminOcrBatchCorrectionRouteImport.update({
+  id: '/ocr-batch-correction',
+  path: '/ocr-batch-correction',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminOcrBackendsRoute = AdminOcrBackendsRouteImport.update({
   id: '/ocr-backends',
   path: '/ocr-backends',
@@ -1130,6 +1257,11 @@ const AdminDisasterRecoveryRoute = AdminDisasterRecoveryRouteImport.update({
   path: '/disaster-recovery',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminDigitalTwinRoute = AdminDigitalTwinRouteImport.update({
+  id: '/digital-twin',
+  path: '/digital-twin',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminDatevConnectRoute = AdminDatevConnectRouteImport.update({
   id: '/datev-connect',
   path: '/datev-connect',
@@ -1138,6 +1270,11 @@ const AdminDatevConnectRoute = AdminDatevConnectRouteImport.update({
 const AdminDatevRoute = AdminDatevRouteImport.update({
   id: '/datev',
   path: '/datev',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDataQualityRoute = AdminDataQualityRouteImport.update({
+  id: '/data-quality',
+  path: '/data-quality',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminDailyBriefingRoute = AdminDailyBriefingRouteImport.update({
@@ -1186,6 +1323,21 @@ const AdminAuditRoute = AdminAuditRouteImport.update({
   path: '/audit',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminApprovalSlaRoute = AdminApprovalSlaRouteImport.update({
+  id: '/approval-sla',
+  path: '/approval-sla',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminApprovalRulesRoute = AdminApprovalRulesRouteImport.update({
+  id: '/approval-rules',
+  path: '/approval-rules',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAnnotationTasksRoute = AdminAnnotationTasksRouteImport.update({
+  id: '/annotation-tasks',
+  path: '/annotation-tasks',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminAlertsRoute = AdminAlertsRouteImport.update({
   id: '/alerts',
   path: '/alerts',
@@ -1205,6 +1357,16 @@ const AdminActivityRoute = AdminActivityRouteImport.update({
   id: '/activity',
   path: '/activity',
   getParentRoute: () => AdminRoute,
+} as any)
+const AdhocReportingNewRoute = AdhocReportingNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => AdhocReportingRoute,
+} as any)
+const AdhocReportingIdRoute = AdhocReportingIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AdhocReportingRoute,
 } as any)
 const PersonalEmployeeIdIndexRoute = PersonalEmployeeIdIndexRouteImport.update({
   id: '/',
@@ -1622,6 +1784,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/activity': typeof ActivityRoute
+  '/adhoc-reporting': typeof AdhocReportingRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
   '/alerts': typeof AlertsRoute
   '/approvals': typeof ApprovalsRoute
@@ -1631,23 +1794,30 @@ export interface FileRoutesByFullPath {
   '/chat': typeof ChatRoute
   '/compliance': typeof ComplianceRoute
   '/contracts': typeof ContractsRouteWithChildren
+  '/data-quality': typeof DataQualityRoute
   '/developer': typeof DeveloperRoute
+  '/digital-twin': typeof DigitalTwinRoute
   '/document-chains': typeof DocumentChainsRouteWithChildren
   '/document-groups': typeof DocumentGroupsRouteWithChildren
+  '/document-hints': typeof DocumentHintsRoute
   '/email-import': typeof EmailImportRoute
   '/executive': typeof ExecutiveRoute
   '/finanzen': typeof FinanzenRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/fraud': typeof FraudRoute
+  '/german-finance': typeof GermanFinanceRouteWithChildren
   '/holding': typeof HoldingRouteWithChildren
   '/inbox': typeof InboxRoute
   '/inventory': typeof InventoryRoute
+  '/invoice-workflow': typeof InvoiceWorkflowRoute
   '/jobs': typeof JobsRoute
   '/kasse': typeof KasseRouteWithChildren
+  '/ki-pipeline': typeof KiPipelineRouteWithChildren
   '/knowledge-graph': typeof KnowledgeGraphRoute
   '/kunden': typeof KundenRouteWithChildren
   '/lieferanten': typeof LieferantenRouteWithChildren
   '/login': typeof LoginRoute
+  '/ml-dashboard': typeof MlDashboardRoute
   '/monitoring': typeof MonitoringRoute
   '/ocr-suite': typeof OcrSuiteRoute
   '/open-file': typeof OpenFileRoute
@@ -1655,6 +1825,7 @@ export interface FileRoutesByFullPath {
   '/po-matching': typeof PoMatchingRoute
   '/portal': typeof PortalRouteWithChildren
   '/privat': typeof PrivatRouteWithChildren
+  '/proactive-assistant': typeof ProactiveAssistantRouteWithChildren
   '/prozesse': typeof ProzesseRouteWithChildren
   '/recurring-invoices': typeof RecurringInvoicesRoute
   '/relationships': typeof RelationshipsRoute
@@ -1666,20 +1837,30 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRouteWithChildren
   '/share': typeof ShareRoute
   '/share-target': typeof ShareTargetRoute
+  '/smart-dashboard': typeof SmartDashboardRoute
+  '/smart-search': typeof SmartSearchRoute
   '/spesen': typeof SpesenRouteWithChildren
   '/streckengeschaeft': typeof StreckengeschaeftRouteWithChildren
+  '/tax-package': typeof TaxPackageRoute
   '/teams': typeof TeamsRoute
   '/trash': typeof TrashRoute
+  '/trust-dashboard': typeof TrustDashboardRoute
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
   '/vertraege': typeof VertraegeRoute
+  '/visual-diff': typeof VisualDiffRoute
   '/vorlagen': typeof VorlagenRoute
   '/wissen': typeof WissenRoute
   '/workflows': typeof WorkflowsRouteWithChildren
+  '/adhoc-reporting/$id': typeof AdhocReportingIdRoute
+  '/adhoc-reporting/new': typeof AdhocReportingNewRoute
   '/admin/activity': typeof AdminActivityRoute
   '/admin/ai-admin': typeof AdminAiAdminRoute
   '/admin/ai-decisions': typeof AdminAiDecisionsRoute
   '/admin/alerts': typeof AdminAlertsRoute
+  '/admin/annotation-tasks': typeof AdminAnnotationTasksRoute
+  '/admin/approval-rules': typeof AdminApprovalRulesRoute
+  '/admin/approval-sla': typeof AdminApprovalSlaRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/audit-logs': typeof AdminAuditLogsRoute
   '/admin/audit-trail': typeof AdminAuditTrailRoute
@@ -1689,8 +1870,10 @@ export interface FileRoutesByFullPath {
   '/admin/correction-workbench': typeof AdminCorrectionWorkbenchRoute
   '/admin/cross-tenant': typeof AdminCrossTenantRoute
   '/admin/daily-briefing': typeof AdminDailyBriefingRoute
+  '/admin/data-quality': typeof AdminDataQualityRoute
   '/admin/datev': typeof AdminDatevRouteWithChildren
   '/admin/datev-connect': typeof AdminDatevConnectRouteWithChildren
+  '/admin/digital-twin': typeof AdminDigitalTwinRoute
   '/admin/disaster-recovery': typeof AdminDisasterRecoveryRoute
   '/admin/dlp': typeof AdminDlpRoute
   '/admin/document-quality': typeof AdminDocumentQualityRoute
@@ -1709,6 +1892,7 @@ export interface FileRoutesByFullPath {
   '/admin/mahnungen': typeof AdminMahnungenRouteWithChildren
   '/admin/mlops': typeof AdminMlopsRoute
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
+  '/admin/ocr-batch-correction': typeof AdminOcrBatchCorrectionRoute
   '/admin/ocr-feedback': typeof AdminOcrFeedbackRoute
   '/admin/ocr-learning': typeof AdminOcrLearningRoute
   '/admin/ocr-review': typeof AdminOcrReviewRoute
@@ -1741,7 +1925,11 @@ export interface FileRoutesByFullPath {
   '/documents/compare': typeof DocumentsCompareRoute
   '/finanzen/$year': typeof FinanzenYearRouteWithChildren
   '/finanzen/zahlungsverhalten': typeof FinanzenZahlungsverhaltenRoute
+  '/german-finance/bwa': typeof GermanFinanceBwaRoute
+  '/german-finance/cashflow': typeof GermanFinanceCashflowRoute
+  '/german-finance/ust': typeof GermanFinanceUstRoute
   '/holding/reconciliation': typeof HoldingReconciliationRoute
+  '/ki-pipeline/learning': typeof KiPipelineLearningRoute
   '/kunden/$customerId': typeof KundenCustomerIdRouteWithChildren
   '/lieferanten/$supplierId': typeof LieferantenSupplierIdRouteWithChildren
   '/lieferanten/ranking': typeof LieferantenRankingRoute
@@ -1764,6 +1952,7 @@ export interface FileRoutesByFullPath {
   '/privat/portfolio': typeof PrivatPortfolioRoute
   '/privat/steuern': typeof PrivatSteuernRoute
   '/privat/versicherungen': typeof PrivatVersicherungenRouteWithChildren
+  '/proactive-assistant/rules': typeof ProactiveAssistantRulesRoute
   '/prozesse/$definitionId': typeof ProzesseDefinitionIdRoute
   '/prozesse/aufgaben': typeof ProzesseAufgabenRoute
   '/prozesse/neu': typeof ProzesseNeuRoute
@@ -1886,6 +2075,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/activity': typeof ActivityRoute
+  '/adhoc-reporting': typeof AdhocReportingRouteWithChildren
   '/alerts': typeof AlertsRoute
   '/approvals': typeof ApprovalsRoute
   '/automation': typeof AutomationRoute
@@ -1893,23 +2083,31 @@ export interface FileRoutesByTo {
   '/chat': typeof ChatRoute
   '/compliance': typeof ComplianceRoute
   '/contracts': typeof ContractsRouteWithChildren
+  '/data-quality': typeof DataQualityRoute
   '/developer': typeof DeveloperRoute
+  '/digital-twin': typeof DigitalTwinRoute
   '/document-chains': typeof DocumentChainsRouteWithChildren
   '/document-groups': typeof DocumentGroupsRouteWithChildren
+  '/document-hints': typeof DocumentHintsRoute
   '/email-import': typeof EmailImportRoute
   '/executive': typeof ExecutiveRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/fraud': typeof FraudRoute
+  '/german-finance': typeof GermanFinanceRouteWithChildren
   '/holding': typeof HoldingRouteWithChildren
   '/inbox': typeof InboxRoute
   '/inventory': typeof InventoryRoute
+  '/invoice-workflow': typeof InvoiceWorkflowRoute
   '/jobs': typeof JobsRoute
+  '/ki-pipeline': typeof KiPipelineRouteWithChildren
   '/knowledge-graph': typeof KnowledgeGraphRoute
   '/login': typeof LoginRoute
+  '/ml-dashboard': typeof MlDashboardRoute
   '/monitoring': typeof MonitoringRoute
   '/ocr-suite': typeof OcrSuiteRoute
   '/open-file': typeof OpenFileRoute
   '/po-matching': typeof PoMatchingRoute
+  '/proactive-assistant': typeof ProactiveAssistantRouteWithChildren
   '/recurring-invoices': typeof RecurringInvoicesRoute
   '/relationships': typeof RelationshipsRoute
   '/scan': typeof ScanRoute
@@ -1918,17 +2116,27 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRouteWithChildren
   '/share': typeof ShareRoute
   '/share-target': typeof ShareTargetRoute
+  '/smart-dashboard': typeof SmartDashboardRoute
+  '/smart-search': typeof SmartSearchRoute
+  '/tax-package': typeof TaxPackageRoute
   '/teams': typeof TeamsRoute
   '/trash': typeof TrashRoute
+  '/trust-dashboard': typeof TrustDashboardRoute
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
   '/vertraege': typeof VertraegeRoute
+  '/visual-diff': typeof VisualDiffRoute
   '/vorlagen': typeof VorlagenRoute
   '/wissen': typeof WissenRoute
+  '/adhoc-reporting/$id': typeof AdhocReportingIdRoute
+  '/adhoc-reporting/new': typeof AdhocReportingNewRoute
   '/admin/activity': typeof AdminActivityRoute
   '/admin/ai-admin': typeof AdminAiAdminRoute
   '/admin/ai-decisions': typeof AdminAiDecisionsRoute
   '/admin/alerts': typeof AdminAlertsRoute
+  '/admin/annotation-tasks': typeof AdminAnnotationTasksRoute
+  '/admin/approval-rules': typeof AdminApprovalRulesRoute
+  '/admin/approval-sla': typeof AdminApprovalSlaRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/audit-logs': typeof AdminAuditLogsRoute
   '/admin/audit-trail': typeof AdminAuditTrailRoute
@@ -1937,6 +2145,8 @@ export interface FileRoutesByTo {
   '/admin/correction-workbench': typeof AdminCorrectionWorkbenchRoute
   '/admin/cross-tenant': typeof AdminCrossTenantRoute
   '/admin/daily-briefing': typeof AdminDailyBriefingRoute
+  '/admin/data-quality': typeof AdminDataQualityRoute
+  '/admin/digital-twin': typeof AdminDigitalTwinRoute
   '/admin/disaster-recovery': typeof AdminDisasterRecoveryRoute
   '/admin/dlp': typeof AdminDlpRoute
   '/admin/document-quality': typeof AdminDocumentQualityRoute
@@ -1950,6 +2160,7 @@ export interface FileRoutesByTo {
   '/admin/kanban': typeof AdminKanbanRoute
   '/admin/mlops': typeof AdminMlopsRoute
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
+  '/admin/ocr-batch-correction': typeof AdminOcrBatchCorrectionRoute
   '/admin/ocr-feedback': typeof AdminOcrFeedbackRoute
   '/admin/ocr-learning': typeof AdminOcrLearningRoute
   '/admin/ocr-review': typeof AdminOcrReviewRoute
@@ -1980,7 +2191,11 @@ export interface FileRoutesByTo {
   '/documents/$documentId': typeof DocumentsDocumentIdRouteWithChildren
   '/documents/compare': typeof DocumentsCompareRoute
   '/finanzen/zahlungsverhalten': typeof FinanzenZahlungsverhaltenRoute
+  '/german-finance/bwa': typeof GermanFinanceBwaRoute
+  '/german-finance/cashflow': typeof GermanFinanceCashflowRoute
+  '/german-finance/ust': typeof GermanFinanceUstRoute
   '/holding/reconciliation': typeof HoldingReconciliationRoute
+  '/ki-pipeline/learning': typeof KiPipelineLearningRoute
   '/lieferanten/ranking': typeof LieferantenRankingRoute
   '/portal/complaints': typeof PortalComplaintsRoute
   '/portal/documents': typeof PortalDocumentsRoute
@@ -2000,6 +2215,7 @@ export interface FileRoutesByTo {
   '/privat/portfolio': typeof PrivatPortfolioRoute
   '/privat/steuern': typeof PrivatSteuernRoute
   '/privat/versicherungen': typeof PrivatVersicherungenRouteWithChildren
+  '/proactive-assistant/rules': typeof ProactiveAssistantRulesRoute
   '/prozesse/$definitionId': typeof ProzesseDefinitionIdRoute
   '/prozesse/aufgaben': typeof ProzesseAufgabenRoute
   '/prozesse/neu': typeof ProzesseNeuRoute
@@ -2121,6 +2337,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/activity': typeof ActivityRoute
+  '/adhoc-reporting': typeof AdhocReportingRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
   '/alerts': typeof AlertsRoute
   '/approvals': typeof ApprovalsRoute
@@ -2130,23 +2347,30 @@ export interface FileRoutesById {
   '/chat': typeof ChatRoute
   '/compliance': typeof ComplianceRoute
   '/contracts': typeof ContractsRouteWithChildren
+  '/data-quality': typeof DataQualityRoute
   '/developer': typeof DeveloperRoute
+  '/digital-twin': typeof DigitalTwinRoute
   '/document-chains': typeof DocumentChainsRouteWithChildren
   '/document-groups': typeof DocumentGroupsRouteWithChildren
+  '/document-hints': typeof DocumentHintsRoute
   '/email-import': typeof EmailImportRoute
   '/executive': typeof ExecutiveRoute
   '/finanzen': typeof FinanzenRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/fraud': typeof FraudRoute
+  '/german-finance': typeof GermanFinanceRouteWithChildren
   '/holding': typeof HoldingRouteWithChildren
   '/inbox': typeof InboxRoute
   '/inventory': typeof InventoryRoute
+  '/invoice-workflow': typeof InvoiceWorkflowRoute
   '/jobs': typeof JobsRoute
   '/kasse': typeof KasseRouteWithChildren
+  '/ki-pipeline': typeof KiPipelineRouteWithChildren
   '/knowledge-graph': typeof KnowledgeGraphRoute
   '/kunden': typeof KundenRouteWithChildren
   '/lieferanten': typeof LieferantenRouteWithChildren
   '/login': typeof LoginRoute
+  '/ml-dashboard': typeof MlDashboardRoute
   '/monitoring': typeof MonitoringRoute
   '/ocr-suite': typeof OcrSuiteRoute
   '/open-file': typeof OpenFileRoute
@@ -2154,6 +2378,7 @@ export interface FileRoutesById {
   '/po-matching': typeof PoMatchingRoute
   '/portal': typeof PortalRouteWithChildren
   '/privat': typeof PrivatRouteWithChildren
+  '/proactive-assistant': typeof ProactiveAssistantRouteWithChildren
   '/prozesse': typeof ProzesseRouteWithChildren
   '/recurring-invoices': typeof RecurringInvoicesRoute
   '/relationships': typeof RelationshipsRoute
@@ -2165,20 +2390,30 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRouteWithChildren
   '/share': typeof ShareRoute
   '/share-target': typeof ShareTargetRoute
+  '/smart-dashboard': typeof SmartDashboardRoute
+  '/smart-search': typeof SmartSearchRoute
   '/spesen': typeof SpesenRouteWithChildren
   '/streckengeschaeft': typeof StreckengeschaeftRouteWithChildren
+  '/tax-package': typeof TaxPackageRoute
   '/teams': typeof TeamsRoute
   '/trash': typeof TrashRoute
+  '/trust-dashboard': typeof TrustDashboardRoute
   '/upload': typeof UploadRoute
   '/validation-queue': typeof ValidationQueueRouteWithChildren
   '/vertraege': typeof VertraegeRoute
+  '/visual-diff': typeof VisualDiffRoute
   '/vorlagen': typeof VorlagenRoute
   '/wissen': typeof WissenRoute
   '/workflows': typeof WorkflowsRouteWithChildren
+  '/adhoc-reporting/$id': typeof AdhocReportingIdRoute
+  '/adhoc-reporting/new': typeof AdhocReportingNewRoute
   '/admin/activity': typeof AdminActivityRoute
   '/admin/ai-admin': typeof AdminAiAdminRoute
   '/admin/ai-decisions': typeof AdminAiDecisionsRoute
   '/admin/alerts': typeof AdminAlertsRoute
+  '/admin/annotation-tasks': typeof AdminAnnotationTasksRoute
+  '/admin/approval-rules': typeof AdminApprovalRulesRoute
+  '/admin/approval-sla': typeof AdminApprovalSlaRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/audit-logs': typeof AdminAuditLogsRoute
   '/admin/audit-trail': typeof AdminAuditTrailRoute
@@ -2188,8 +2423,10 @@ export interface FileRoutesById {
   '/admin/correction-workbench': typeof AdminCorrectionWorkbenchRoute
   '/admin/cross-tenant': typeof AdminCrossTenantRoute
   '/admin/daily-briefing': typeof AdminDailyBriefingRoute
+  '/admin/data-quality': typeof AdminDataQualityRoute
   '/admin/datev': typeof AdminDatevRouteWithChildren
   '/admin/datev-connect': typeof AdminDatevConnectRouteWithChildren
+  '/admin/digital-twin': typeof AdminDigitalTwinRoute
   '/admin/disaster-recovery': typeof AdminDisasterRecoveryRoute
   '/admin/dlp': typeof AdminDlpRoute
   '/admin/document-quality': typeof AdminDocumentQualityRoute
@@ -2208,6 +2445,7 @@ export interface FileRoutesById {
   '/admin/mahnungen': typeof AdminMahnungenRouteWithChildren
   '/admin/mlops': typeof AdminMlopsRoute
   '/admin/ocr-backends': typeof AdminOcrBackendsRouteWithChildren
+  '/admin/ocr-batch-correction': typeof AdminOcrBatchCorrectionRoute
   '/admin/ocr-feedback': typeof AdminOcrFeedbackRoute
   '/admin/ocr-learning': typeof AdminOcrLearningRoute
   '/admin/ocr-review': typeof AdminOcrReviewRoute
@@ -2240,7 +2478,11 @@ export interface FileRoutesById {
   '/documents/compare': typeof DocumentsCompareRoute
   '/finanzen/$year': typeof FinanzenYearRouteWithChildren
   '/finanzen/zahlungsverhalten': typeof FinanzenZahlungsverhaltenRoute
+  '/german-finance/bwa': typeof GermanFinanceBwaRoute
+  '/german-finance/cashflow': typeof GermanFinanceCashflowRoute
+  '/german-finance/ust': typeof GermanFinanceUstRoute
   '/holding/reconciliation': typeof HoldingReconciliationRoute
+  '/ki-pipeline/learning': typeof KiPipelineLearningRoute
   '/kunden/$customerId': typeof KundenCustomerIdRouteWithChildren
   '/lieferanten/$supplierId': typeof LieferantenSupplierIdRouteWithChildren
   '/lieferanten/ranking': typeof LieferantenRankingRoute
@@ -2263,6 +2505,7 @@ export interface FileRoutesById {
   '/privat/portfolio': typeof PrivatPortfolioRoute
   '/privat/steuern': typeof PrivatSteuernRoute
   '/privat/versicherungen': typeof PrivatVersicherungenRouteWithChildren
+  '/proactive-assistant/rules': typeof ProactiveAssistantRulesRoute
   '/prozesse/$definitionId': typeof ProzesseDefinitionIdRoute
   '/prozesse/aufgaben': typeof ProzesseAufgabenRoute
   '/prozesse/neu': typeof ProzesseNeuRoute
@@ -2387,6 +2630,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$'
     | '/activity'
+    | '/adhoc-reporting'
     | '/admin'
     | '/alerts'
     | '/approvals'
@@ -2396,23 +2640,30 @@ export interface FileRouteTypes {
     | '/chat'
     | '/compliance'
     | '/contracts'
+    | '/data-quality'
     | '/developer'
+    | '/digital-twin'
     | '/document-chains'
     | '/document-groups'
+    | '/document-hints'
     | '/email-import'
     | '/executive'
     | '/finanzen'
     | '/forgot-password'
     | '/fraud'
+    | '/german-finance'
     | '/holding'
     | '/inbox'
     | '/inventory'
+    | '/invoice-workflow'
     | '/jobs'
     | '/kasse'
+    | '/ki-pipeline'
     | '/knowledge-graph'
     | '/kunden'
     | '/lieferanten'
     | '/login'
+    | '/ml-dashboard'
     | '/monitoring'
     | '/ocr-suite'
     | '/open-file'
@@ -2420,6 +2671,7 @@ export interface FileRouteTypes {
     | '/po-matching'
     | '/portal'
     | '/privat'
+    | '/proactive-assistant'
     | '/prozesse'
     | '/recurring-invoices'
     | '/relationships'
@@ -2431,20 +2683,30 @@ export interface FileRouteTypes {
     | '/settings'
     | '/share'
     | '/share-target'
+    | '/smart-dashboard'
+    | '/smart-search'
     | '/spesen'
     | '/streckengeschaeft'
+    | '/tax-package'
     | '/teams'
     | '/trash'
+    | '/trust-dashboard'
     | '/upload'
     | '/validation-queue'
     | '/vertraege'
+    | '/visual-diff'
     | '/vorlagen'
     | '/wissen'
     | '/workflows'
+    | '/adhoc-reporting/$id'
+    | '/adhoc-reporting/new'
     | '/admin/activity'
     | '/admin/ai-admin'
     | '/admin/ai-decisions'
     | '/admin/alerts'
+    | '/admin/annotation-tasks'
+    | '/admin/approval-rules'
+    | '/admin/approval-sla'
     | '/admin/audit'
     | '/admin/audit-logs'
     | '/admin/audit-trail'
@@ -2454,8 +2716,10 @@ export interface FileRouteTypes {
     | '/admin/correction-workbench'
     | '/admin/cross-tenant'
     | '/admin/daily-briefing'
+    | '/admin/data-quality'
     | '/admin/datev'
     | '/admin/datev-connect'
+    | '/admin/digital-twin'
     | '/admin/disaster-recovery'
     | '/admin/dlp'
     | '/admin/document-quality'
@@ -2474,6 +2738,7 @@ export interface FileRouteTypes {
     | '/admin/mahnungen'
     | '/admin/mlops'
     | '/admin/ocr-backends'
+    | '/admin/ocr-batch-correction'
     | '/admin/ocr-feedback'
     | '/admin/ocr-learning'
     | '/admin/ocr-review'
@@ -2506,7 +2771,11 @@ export interface FileRouteTypes {
     | '/documents/compare'
     | '/finanzen/$year'
     | '/finanzen/zahlungsverhalten'
+    | '/german-finance/bwa'
+    | '/german-finance/cashflow'
+    | '/german-finance/ust'
     | '/holding/reconciliation'
+    | '/ki-pipeline/learning'
     | '/kunden/$customerId'
     | '/lieferanten/$supplierId'
     | '/lieferanten/ranking'
@@ -2529,6 +2798,7 @@ export interface FileRouteTypes {
     | '/privat/portfolio'
     | '/privat/steuern'
     | '/privat/versicherungen'
+    | '/proactive-assistant/rules'
     | '/prozesse/$definitionId'
     | '/prozesse/aufgaben'
     | '/prozesse/neu'
@@ -2651,6 +2921,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$'
     | '/activity'
+    | '/adhoc-reporting'
     | '/alerts'
     | '/approvals'
     | '/automation'
@@ -2658,23 +2929,31 @@ export interface FileRouteTypes {
     | '/chat'
     | '/compliance'
     | '/contracts'
+    | '/data-quality'
     | '/developer'
+    | '/digital-twin'
     | '/document-chains'
     | '/document-groups'
+    | '/document-hints'
     | '/email-import'
     | '/executive'
     | '/forgot-password'
     | '/fraud'
+    | '/german-finance'
     | '/holding'
     | '/inbox'
     | '/inventory'
+    | '/invoice-workflow'
     | '/jobs'
+    | '/ki-pipeline'
     | '/knowledge-graph'
     | '/login'
+    | '/ml-dashboard'
     | '/monitoring'
     | '/ocr-suite'
     | '/open-file'
     | '/po-matching'
+    | '/proactive-assistant'
     | '/recurring-invoices'
     | '/relationships'
     | '/scan'
@@ -2683,17 +2962,27 @@ export interface FileRouteTypes {
     | '/settings'
     | '/share'
     | '/share-target'
+    | '/smart-dashboard'
+    | '/smart-search'
+    | '/tax-package'
     | '/teams'
     | '/trash'
+    | '/trust-dashboard'
     | '/upload'
     | '/validation-queue'
     | '/vertraege'
+    | '/visual-diff'
     | '/vorlagen'
     | '/wissen'
+    | '/adhoc-reporting/$id'
+    | '/adhoc-reporting/new'
     | '/admin/activity'
     | '/admin/ai-admin'
     | '/admin/ai-decisions'
     | '/admin/alerts'
+    | '/admin/annotation-tasks'
+    | '/admin/approval-rules'
+    | '/admin/approval-sla'
     | '/admin/audit'
     | '/admin/audit-logs'
     | '/admin/audit-trail'
@@ -2702,6 +2991,8 @@ export interface FileRouteTypes {
     | '/admin/correction-workbench'
     | '/admin/cross-tenant'
     | '/admin/daily-briefing'
+    | '/admin/data-quality'
+    | '/admin/digital-twin'
     | '/admin/disaster-recovery'
     | '/admin/dlp'
     | '/admin/document-quality'
@@ -2715,6 +3006,7 @@ export interface FileRouteTypes {
     | '/admin/kanban'
     | '/admin/mlops'
     | '/admin/ocr-backends'
+    | '/admin/ocr-batch-correction'
     | '/admin/ocr-feedback'
     | '/admin/ocr-learning'
     | '/admin/ocr-review'
@@ -2745,7 +3037,11 @@ export interface FileRouteTypes {
     | '/documents/$documentId'
     | '/documents/compare'
     | '/finanzen/zahlungsverhalten'
+    | '/german-finance/bwa'
+    | '/german-finance/cashflow'
+    | '/german-finance/ust'
     | '/holding/reconciliation'
+    | '/ki-pipeline/learning'
     | '/lieferanten/ranking'
     | '/portal/complaints'
     | '/portal/documents'
@@ -2765,6 +3061,7 @@ export interface FileRouteTypes {
     | '/privat/portfolio'
     | '/privat/steuern'
     | '/privat/versicherungen'
+    | '/proactive-assistant/rules'
     | '/prozesse/$definitionId'
     | '/prozesse/aufgaben'
     | '/prozesse/neu'
@@ -2885,6 +3182,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$'
     | '/activity'
+    | '/adhoc-reporting'
     | '/admin'
     | '/alerts'
     | '/approvals'
@@ -2894,23 +3192,30 @@ export interface FileRouteTypes {
     | '/chat'
     | '/compliance'
     | '/contracts'
+    | '/data-quality'
     | '/developer'
+    | '/digital-twin'
     | '/document-chains'
     | '/document-groups'
+    | '/document-hints'
     | '/email-import'
     | '/executive'
     | '/finanzen'
     | '/forgot-password'
     | '/fraud'
+    | '/german-finance'
     | '/holding'
     | '/inbox'
     | '/inventory'
+    | '/invoice-workflow'
     | '/jobs'
     | '/kasse'
+    | '/ki-pipeline'
     | '/knowledge-graph'
     | '/kunden'
     | '/lieferanten'
     | '/login'
+    | '/ml-dashboard'
     | '/monitoring'
     | '/ocr-suite'
     | '/open-file'
@@ -2918,6 +3223,7 @@ export interface FileRouteTypes {
     | '/po-matching'
     | '/portal'
     | '/privat'
+    | '/proactive-assistant'
     | '/prozesse'
     | '/recurring-invoices'
     | '/relationships'
@@ -2929,20 +3235,30 @@ export interface FileRouteTypes {
     | '/settings'
     | '/share'
     | '/share-target'
+    | '/smart-dashboard'
+    | '/smart-search'
     | '/spesen'
     | '/streckengeschaeft'
+    | '/tax-package'
     | '/teams'
     | '/trash'
+    | '/trust-dashboard'
     | '/upload'
     | '/validation-queue'
     | '/vertraege'
+    | '/visual-diff'
     | '/vorlagen'
     | '/wissen'
     | '/workflows'
+    | '/adhoc-reporting/$id'
+    | '/adhoc-reporting/new'
     | '/admin/activity'
     | '/admin/ai-admin'
     | '/admin/ai-decisions'
     | '/admin/alerts'
+    | '/admin/annotation-tasks'
+    | '/admin/approval-rules'
+    | '/admin/approval-sla'
     | '/admin/audit'
     | '/admin/audit-logs'
     | '/admin/audit-trail'
@@ -2952,8 +3268,10 @@ export interface FileRouteTypes {
     | '/admin/correction-workbench'
     | '/admin/cross-tenant'
     | '/admin/daily-briefing'
+    | '/admin/data-quality'
     | '/admin/datev'
     | '/admin/datev-connect'
+    | '/admin/digital-twin'
     | '/admin/disaster-recovery'
     | '/admin/dlp'
     | '/admin/document-quality'
@@ -2972,6 +3290,7 @@ export interface FileRouteTypes {
     | '/admin/mahnungen'
     | '/admin/mlops'
     | '/admin/ocr-backends'
+    | '/admin/ocr-batch-correction'
     | '/admin/ocr-feedback'
     | '/admin/ocr-learning'
     | '/admin/ocr-review'
@@ -3004,7 +3323,11 @@ export interface FileRouteTypes {
     | '/documents/compare'
     | '/finanzen/$year'
     | '/finanzen/zahlungsverhalten'
+    | '/german-finance/bwa'
+    | '/german-finance/cashflow'
+    | '/german-finance/ust'
     | '/holding/reconciliation'
+    | '/ki-pipeline/learning'
     | '/kunden/$customerId'
     | '/lieferanten/$supplierId'
     | '/lieferanten/ranking'
@@ -3027,6 +3350,7 @@ export interface FileRouteTypes {
     | '/privat/portfolio'
     | '/privat/steuern'
     | '/privat/versicherungen'
+    | '/proactive-assistant/rules'
     | '/prozesse/$definitionId'
     | '/prozesse/aufgaben'
     | '/prozesse/neu'
@@ -3150,6 +3474,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
   ActivityRoute: typeof ActivityRoute
+  AdhocReportingRoute: typeof AdhocReportingRouteWithChildren
   AdminRoute: typeof AdminRouteWithChildren
   AlertsRoute: typeof AlertsRoute
   ApprovalsRoute: typeof ApprovalsRoute
@@ -3159,23 +3484,30 @@ export interface RootRouteChildren {
   ChatRoute: typeof ChatRoute
   ComplianceRoute: typeof ComplianceRoute
   ContractsRoute: typeof ContractsRouteWithChildren
+  DataQualityRoute: typeof DataQualityRoute
   DeveloperRoute: typeof DeveloperRoute
+  DigitalTwinRoute: typeof DigitalTwinRoute
   DocumentChainsRoute: typeof DocumentChainsRouteWithChildren
   DocumentGroupsRoute: typeof DocumentGroupsRouteWithChildren
+  DocumentHintsRoute: typeof DocumentHintsRoute
   EmailImportRoute: typeof EmailImportRoute
   ExecutiveRoute: typeof ExecutiveRoute
   FinanzenRoute: typeof FinanzenRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   FraudRoute: typeof FraudRoute
+  GermanFinanceRoute: typeof GermanFinanceRouteWithChildren
   HoldingRoute: typeof HoldingRouteWithChildren
   InboxRoute: typeof InboxRoute
   InventoryRoute: typeof InventoryRoute
+  InvoiceWorkflowRoute: typeof InvoiceWorkflowRoute
   JobsRoute: typeof JobsRoute
   KasseRoute: typeof KasseRouteWithChildren
+  KiPipelineRoute: typeof KiPipelineRouteWithChildren
   KnowledgeGraphRoute: typeof KnowledgeGraphRoute
   KundenRoute: typeof KundenRouteWithChildren
   LieferantenRoute: typeof LieferantenRouteWithChildren
   LoginRoute: typeof LoginRoute
+  MlDashboardRoute: typeof MlDashboardRoute
   MonitoringRoute: typeof MonitoringRoute
   OcrSuiteRoute: typeof OcrSuiteRoute
   OpenFileRoute: typeof OpenFileRoute
@@ -3183,6 +3515,7 @@ export interface RootRouteChildren {
   PoMatchingRoute: typeof PoMatchingRoute
   PortalRoute: typeof PortalRouteWithChildren
   PrivatRoute: typeof PrivatRouteWithChildren
+  ProactiveAssistantRoute: typeof ProactiveAssistantRouteWithChildren
   ProzesseRoute: typeof ProzesseRouteWithChildren
   RecurringInvoicesRoute: typeof RecurringInvoicesRoute
   RelationshipsRoute: typeof RelationshipsRoute
@@ -3194,13 +3527,18 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRouteWithChildren
   ShareRoute: typeof ShareRoute
   ShareTargetRoute: typeof ShareTargetRoute
+  SmartDashboardRoute: typeof SmartDashboardRoute
+  SmartSearchRoute: typeof SmartSearchRoute
   SpesenRoute: typeof SpesenRouteWithChildren
   StreckengeschaeftRoute: typeof StreckengeschaeftRouteWithChildren
+  TaxPackageRoute: typeof TaxPackageRoute
   TeamsRoute: typeof TeamsRoute
   TrashRoute: typeof TrashRoute
+  TrustDashboardRoute: typeof TrustDashboardRoute
   UploadRoute: typeof UploadRoute
   ValidationQueueRoute: typeof ValidationQueueRouteWithChildren
   VertraegeRoute: typeof VertraegeRoute
+  VisualDiffRoute: typeof VisualDiffRoute
   VorlagenRoute: typeof VorlagenRoute
   WissenRoute: typeof WissenRoute
   WorkflowsRoute: typeof WorkflowsRouteWithChildren
@@ -3239,6 +3577,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VorlagenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/visual-diff': {
+      id: '/visual-diff'
+      path: '/visual-diff'
+      fullPath: '/visual-diff'
+      preLoaderRoute: typeof VisualDiffRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/vertraege': {
       id: '/vertraege'
       path: '/vertraege'
@@ -3260,6 +3605,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UploadRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/trust-dashboard': {
+      id: '/trust-dashboard'
+      path: '/trust-dashboard'
+      fullPath: '/trust-dashboard'
+      preLoaderRoute: typeof TrustDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/trash': {
       id: '/trash'
       path: '/trash'
@@ -3274,6 +3626,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TeamsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tax-package': {
+      id: '/tax-package'
+      path: '/tax-package'
+      fullPath: '/tax-package'
+      preLoaderRoute: typeof TaxPackageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/streckengeschaeft': {
       id: '/streckengeschaeft'
       path: '/streckengeschaeft'
@@ -3286,6 +3645,20 @@ declare module '@tanstack/react-router' {
       path: '/spesen'
       fullPath: '/spesen'
       preLoaderRoute: typeof SpesenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/smart-search': {
+      id: '/smart-search'
+      path: '/smart-search'
+      fullPath: '/smart-search'
+      preLoaderRoute: typeof SmartSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/smart-dashboard': {
+      id: '/smart-dashboard'
+      path: '/smart-dashboard'
+      fullPath: '/smart-dashboard'
+      preLoaderRoute: typeof SmartDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/share-target': {
@@ -3365,6 +3738,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProzesseRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/proactive-assistant': {
+      id: '/proactive-assistant'
+      path: '/proactive-assistant'
+      fullPath: '/proactive-assistant'
+      preLoaderRoute: typeof ProactiveAssistantRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/privat': {
       id: '/privat'
       path: '/privat'
@@ -3414,6 +3794,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MonitoringRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ml-dashboard': {
+      id: '/ml-dashboard'
+      path: '/ml-dashboard'
+      fullPath: '/ml-dashboard'
+      preLoaderRoute: typeof MlDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -3442,6 +3829,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KnowledgeGraphRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ki-pipeline': {
+      id: '/ki-pipeline'
+      path: '/ki-pipeline'
+      fullPath: '/ki-pipeline'
+      preLoaderRoute: typeof KiPipelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/kasse': {
       id: '/kasse'
       path: '/kasse'
@@ -3454,6 +3848,13 @@ declare module '@tanstack/react-router' {
       path: '/jobs'
       fullPath: '/jobs'
       preLoaderRoute: typeof JobsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invoice-workflow': {
+      id: '/invoice-workflow'
+      path: '/invoice-workflow'
+      fullPath: '/invoice-workflow'
+      preLoaderRoute: typeof InvoiceWorkflowRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/inventory': {
@@ -3475,6 +3876,13 @@ declare module '@tanstack/react-router' {
       path: '/holding'
       fullPath: '/holding'
       preLoaderRoute: typeof HoldingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/german-finance': {
+      id: '/german-finance'
+      path: '/german-finance'
+      fullPath: '/german-finance'
+      preLoaderRoute: typeof GermanFinanceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/fraud': {
@@ -3512,6 +3920,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmailImportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/document-hints': {
+      id: '/document-hints'
+      path: '/document-hints'
+      fullPath: '/document-hints'
+      preLoaderRoute: typeof DocumentHintsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/document-groups': {
       id: '/document-groups'
       path: '/document-groups'
@@ -3526,11 +3941,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocumentChainsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/digital-twin': {
+      id: '/digital-twin'
+      path: '/digital-twin'
+      fullPath: '/digital-twin'
+      preLoaderRoute: typeof DigitalTwinRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/developer': {
       id: '/developer'
       path: '/developer'
       fullPath: '/developer'
       preLoaderRoute: typeof DeveloperRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/data-quality': {
+      id: '/data-quality'
+      path: '/data-quality'
+      fullPath: '/data-quality'
+      preLoaderRoute: typeof DataQualityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contracts': {
@@ -3594,6 +4023,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/adhoc-reporting': {
+      id: '/adhoc-reporting'
+      path: '/adhoc-reporting'
+      fullPath: '/adhoc-reporting'
+      preLoaderRoute: typeof AdhocReportingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/activity': {
@@ -3897,6 +4333,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProzesseDefinitionIdRouteImport
       parentRoute: typeof ProzesseRoute
     }
+    '/proactive-assistant/rules': {
+      id: '/proactive-assistant/rules'
+      path: '/rules'
+      fullPath: '/proactive-assistant/rules'
+      preLoaderRoute: typeof ProactiveAssistantRulesRouteImport
+      parentRoute: typeof ProactiveAssistantRoute
+    }
     '/privat/versicherungen': {
       id: '/privat/versicherungen'
       path: '/versicherungen'
@@ -4051,12 +4494,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KundenCustomerIdRouteImport
       parentRoute: typeof KundenRoute
     }
+    '/ki-pipeline/learning': {
+      id: '/ki-pipeline/learning'
+      path: '/learning'
+      fullPath: '/ki-pipeline/learning'
+      preLoaderRoute: typeof KiPipelineLearningRouteImport
+      parentRoute: typeof KiPipelineRoute
+    }
     '/holding/reconciliation': {
       id: '/holding/reconciliation'
       path: '/reconciliation'
       fullPath: '/holding/reconciliation'
       preLoaderRoute: typeof HoldingReconciliationRouteImport
       parentRoute: typeof HoldingRoute
+    }
+    '/german-finance/ust': {
+      id: '/german-finance/ust'
+      path: '/ust'
+      fullPath: '/german-finance/ust'
+      preLoaderRoute: typeof GermanFinanceUstRouteImport
+      parentRoute: typeof GermanFinanceRoute
+    }
+    '/german-finance/cashflow': {
+      id: '/german-finance/cashflow'
+      path: '/cashflow'
+      fullPath: '/german-finance/cashflow'
+      preLoaderRoute: typeof GermanFinanceCashflowRouteImport
+      parentRoute: typeof GermanFinanceRoute
+    }
+    '/german-finance/bwa': {
+      id: '/german-finance/bwa'
+      path: '/bwa'
+      fullPath: '/german-finance/bwa'
+      preLoaderRoute: typeof GermanFinanceBwaRouteImport
+      parentRoute: typeof GermanFinanceRoute
     }
     '/finanzen/zahlungsverhalten': {
       id: '/finanzen/zahlungsverhalten'
@@ -4282,6 +4753,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOcrFeedbackRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/ocr-batch-correction': {
+      id: '/admin/ocr-batch-correction'
+      path: '/ocr-batch-correction'
+      fullPath: '/admin/ocr-batch-correction'
+      preLoaderRoute: typeof AdminOcrBatchCorrectionRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/ocr-backends': {
       id: '/admin/ocr-backends'
       path: '/ocr-backends'
@@ -4408,6 +4886,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDisasterRecoveryRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/digital-twin': {
+      id: '/admin/digital-twin'
+      path: '/digital-twin'
+      fullPath: '/admin/digital-twin'
+      preLoaderRoute: typeof AdminDigitalTwinRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/datev-connect': {
       id: '/admin/datev-connect'
       path: '/datev-connect'
@@ -4420,6 +4905,13 @@ declare module '@tanstack/react-router' {
       path: '/datev'
       fullPath: '/admin/datev'
       preLoaderRoute: typeof AdminDatevRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/data-quality': {
+      id: '/admin/data-quality'
+      path: '/data-quality'
+      fullPath: '/admin/data-quality'
+      preLoaderRoute: typeof AdminDataQualityRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/daily-briefing': {
@@ -4485,6 +4977,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuditRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/approval-sla': {
+      id: '/admin/approval-sla'
+      path: '/approval-sla'
+      fullPath: '/admin/approval-sla'
+      preLoaderRoute: typeof AdminApprovalSlaRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/approval-rules': {
+      id: '/admin/approval-rules'
+      path: '/approval-rules'
+      fullPath: '/admin/approval-rules'
+      preLoaderRoute: typeof AdminApprovalRulesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/annotation-tasks': {
+      id: '/admin/annotation-tasks'
+      path: '/annotation-tasks'
+      fullPath: '/admin/annotation-tasks'
+      preLoaderRoute: typeof AdminAnnotationTasksRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/alerts': {
       id: '/admin/alerts'
       path: '/alerts'
@@ -4512,6 +5025,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/activity'
       preLoaderRoute: typeof AdminActivityRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/adhoc-reporting/new': {
+      id: '/adhoc-reporting/new'
+      path: '/new'
+      fullPath: '/adhoc-reporting/new'
+      preLoaderRoute: typeof AdhocReportingNewRouteImport
+      parentRoute: typeof AdhocReportingRoute
+    }
+    '/adhoc-reporting/$id': {
+      id: '/adhoc-reporting/$id'
+      path: '/$id'
+      fullPath: '/adhoc-reporting/$id'
+      preLoaderRoute: typeof AdhocReportingIdRouteImport
+      parentRoute: typeof AdhocReportingRoute
     }
     '/personal/$employeeId/': {
       id: '/personal/$employeeId/'
@@ -5055,6 +5582,20 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdhocReportingRouteChildren {
+  AdhocReportingIdRoute: typeof AdhocReportingIdRoute
+  AdhocReportingNewRoute: typeof AdhocReportingNewRoute
+}
+
+const AdhocReportingRouteChildren: AdhocReportingRouteChildren = {
+  AdhocReportingIdRoute: AdhocReportingIdRoute,
+  AdhocReportingNewRoute: AdhocReportingNewRoute,
+}
+
+const AdhocReportingRouteWithChildren = AdhocReportingRoute._addFileChildren(
+  AdhocReportingRouteChildren,
+)
+
 interface AdminBankingRouteChildren {
   AdminBankingAccountsRoute: typeof AdminBankingAccountsRoute
   AdminBankingImportRoute: typeof AdminBankingImportRoute
@@ -5285,6 +5826,9 @@ interface AdminRouteChildren {
   AdminAiAdminRoute: typeof AdminAiAdminRoute
   AdminAiDecisionsRoute: typeof AdminAiDecisionsRoute
   AdminAlertsRoute: typeof AdminAlertsRoute
+  AdminAnnotationTasksRoute: typeof AdminAnnotationTasksRoute
+  AdminApprovalRulesRoute: typeof AdminApprovalRulesRoute
+  AdminApprovalSlaRoute: typeof AdminApprovalSlaRoute
   AdminAuditRoute: typeof AdminAuditRoute
   AdminAuditLogsRoute: typeof AdminAuditLogsRoute
   AdminAuditTrailRoute: typeof AdminAuditTrailRoute
@@ -5294,8 +5838,10 @@ interface AdminRouteChildren {
   AdminCorrectionWorkbenchRoute: typeof AdminCorrectionWorkbenchRoute
   AdminCrossTenantRoute: typeof AdminCrossTenantRoute
   AdminDailyBriefingRoute: typeof AdminDailyBriefingRoute
+  AdminDataQualityRoute: typeof AdminDataQualityRoute
   AdminDatevRoute: typeof AdminDatevRouteWithChildren
   AdminDatevConnectRoute: typeof AdminDatevConnectRouteWithChildren
+  AdminDigitalTwinRoute: typeof AdminDigitalTwinRoute
   AdminDisasterRecoveryRoute: typeof AdminDisasterRecoveryRoute
   AdminDlpRoute: typeof AdminDlpRoute
   AdminDocumentQualityRoute: typeof AdminDocumentQualityRoute
@@ -5314,6 +5860,7 @@ interface AdminRouteChildren {
   AdminMahnungenRoute: typeof AdminMahnungenRouteWithChildren
   AdminMlopsRoute: typeof AdminMlopsRoute
   AdminOcrBackendsRoute: typeof AdminOcrBackendsRouteWithChildren
+  AdminOcrBatchCorrectionRoute: typeof AdminOcrBatchCorrectionRoute
   AdminOcrFeedbackRoute: typeof AdminOcrFeedbackRoute
   AdminOcrLearningRoute: typeof AdminOcrLearningRoute
   AdminOcrReviewRoute: typeof AdminOcrReviewRoute
@@ -5345,6 +5892,9 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAiAdminRoute: AdminAiAdminRoute,
   AdminAiDecisionsRoute: AdminAiDecisionsRoute,
   AdminAlertsRoute: AdminAlertsRoute,
+  AdminAnnotationTasksRoute: AdminAnnotationTasksRoute,
+  AdminApprovalRulesRoute: AdminApprovalRulesRoute,
+  AdminApprovalSlaRoute: AdminApprovalSlaRoute,
   AdminAuditRoute: AdminAuditRoute,
   AdminAuditLogsRoute: AdminAuditLogsRoute,
   AdminAuditTrailRoute: AdminAuditTrailRoute,
@@ -5354,8 +5904,10 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminCorrectionWorkbenchRoute: AdminCorrectionWorkbenchRoute,
   AdminCrossTenantRoute: AdminCrossTenantRoute,
   AdminDailyBriefingRoute: AdminDailyBriefingRoute,
+  AdminDataQualityRoute: AdminDataQualityRoute,
   AdminDatevRoute: AdminDatevRouteWithChildren,
   AdminDatevConnectRoute: AdminDatevConnectRouteWithChildren,
+  AdminDigitalTwinRoute: AdminDigitalTwinRoute,
   AdminDisasterRecoveryRoute: AdminDisasterRecoveryRoute,
   AdminDlpRoute: AdminDlpRoute,
   AdminDocumentQualityRoute: AdminDocumentQualityRoute,
@@ -5374,6 +5926,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminMahnungenRoute: AdminMahnungenRouteWithChildren,
   AdminMlopsRoute: AdminMlopsRoute,
   AdminOcrBackendsRoute: AdminOcrBackendsRouteWithChildren,
+  AdminOcrBatchCorrectionRoute: AdminOcrBatchCorrectionRoute,
   AdminOcrFeedbackRoute: AdminOcrFeedbackRoute,
   AdminOcrLearningRoute: AdminOcrLearningRoute,
   AdminOcrReviewRoute: AdminOcrReviewRoute,
@@ -5482,6 +6035,22 @@ const FinanzenRouteWithChildren = FinanzenRoute._addFileChildren(
   FinanzenRouteChildren,
 )
 
+interface GermanFinanceRouteChildren {
+  GermanFinanceBwaRoute: typeof GermanFinanceBwaRoute
+  GermanFinanceCashflowRoute: typeof GermanFinanceCashflowRoute
+  GermanFinanceUstRoute: typeof GermanFinanceUstRoute
+}
+
+const GermanFinanceRouteChildren: GermanFinanceRouteChildren = {
+  GermanFinanceBwaRoute: GermanFinanceBwaRoute,
+  GermanFinanceCashflowRoute: GermanFinanceCashflowRoute,
+  GermanFinanceUstRoute: GermanFinanceUstRoute,
+}
+
+const GermanFinanceRouteWithChildren = GermanFinanceRoute._addFileChildren(
+  GermanFinanceRouteChildren,
+)
+
 interface HoldingRouteChildren {
   HoldingReconciliationRoute: typeof HoldingReconciliationRoute
 }
@@ -5504,6 +6073,18 @@ const KasseRouteChildren: KasseRouteChildren = {
 }
 
 const KasseRouteWithChildren = KasseRoute._addFileChildren(KasseRouteChildren)
+
+interface KiPipelineRouteChildren {
+  KiPipelineLearningRoute: typeof KiPipelineLearningRoute
+}
+
+const KiPipelineRouteChildren: KiPipelineRouteChildren = {
+  KiPipelineLearningRoute: KiPipelineLearningRoute,
+}
+
+const KiPipelineRouteWithChildren = KiPipelineRoute._addFileChildren(
+  KiPipelineRouteChildren,
+)
 
 interface KundenCustomerIdFolderIdRouteChildren {
   KundenCustomerIdFolderIdCategoryRoute: typeof KundenCustomerIdFolderIdCategoryRoute
@@ -5750,6 +6331,17 @@ const PrivatRouteChildren: PrivatRouteChildren = {
 const PrivatRouteWithChildren =
   PrivatRoute._addFileChildren(PrivatRouteChildren)
 
+interface ProactiveAssistantRouteChildren {
+  ProactiveAssistantRulesRoute: typeof ProactiveAssistantRulesRoute
+}
+
+const ProactiveAssistantRouteChildren: ProactiveAssistantRouteChildren = {
+  ProactiveAssistantRulesRoute: ProactiveAssistantRulesRoute,
+}
+
+const ProactiveAssistantRouteWithChildren =
+  ProactiveAssistantRoute._addFileChildren(ProactiveAssistantRouteChildren)
+
 interface ProzesseRouteChildren {
   ProzesseDefinitionIdRoute: typeof ProzesseDefinitionIdRoute
   ProzesseAufgabenRoute: typeof ProzesseAufgabenRoute
@@ -5912,6 +6504,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
   ActivityRoute: ActivityRoute,
+  AdhocReportingRoute: AdhocReportingRouteWithChildren,
   AdminRoute: AdminRouteWithChildren,
   AlertsRoute: AlertsRoute,
   ApprovalsRoute: ApprovalsRoute,
@@ -5921,23 +6514,30 @@ const rootRouteChildren: RootRouteChildren = {
   ChatRoute: ChatRoute,
   ComplianceRoute: ComplianceRoute,
   ContractsRoute: ContractsRouteWithChildren,
+  DataQualityRoute: DataQualityRoute,
   DeveloperRoute: DeveloperRoute,
+  DigitalTwinRoute: DigitalTwinRoute,
   DocumentChainsRoute: DocumentChainsRouteWithChildren,
   DocumentGroupsRoute: DocumentGroupsRouteWithChildren,
+  DocumentHintsRoute: DocumentHintsRoute,
   EmailImportRoute: EmailImportRoute,
   ExecutiveRoute: ExecutiveRoute,
   FinanzenRoute: FinanzenRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
   FraudRoute: FraudRoute,
+  GermanFinanceRoute: GermanFinanceRouteWithChildren,
   HoldingRoute: HoldingRouteWithChildren,
   InboxRoute: InboxRoute,
   InventoryRoute: InventoryRoute,
+  InvoiceWorkflowRoute: InvoiceWorkflowRoute,
   JobsRoute: JobsRoute,
   KasseRoute: KasseRouteWithChildren,
+  KiPipelineRoute: KiPipelineRouteWithChildren,
   KnowledgeGraphRoute: KnowledgeGraphRoute,
   KundenRoute: KundenRouteWithChildren,
   LieferantenRoute: LieferantenRouteWithChildren,
   LoginRoute: LoginRoute,
+  MlDashboardRoute: MlDashboardRoute,
   MonitoringRoute: MonitoringRoute,
   OcrSuiteRoute: OcrSuiteRoute,
   OpenFileRoute: OpenFileRoute,
@@ -5945,6 +6545,7 @@ const rootRouteChildren: RootRouteChildren = {
   PoMatchingRoute: PoMatchingRoute,
   PortalRoute: PortalRouteWithChildren,
   PrivatRoute: PrivatRouteWithChildren,
+  ProactiveAssistantRoute: ProactiveAssistantRouteWithChildren,
   ProzesseRoute: ProzesseRouteWithChildren,
   RecurringInvoicesRoute: RecurringInvoicesRoute,
   RelationshipsRoute: RelationshipsRoute,
@@ -5956,13 +6557,18 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRouteWithChildren,
   ShareRoute: ShareRoute,
   ShareTargetRoute: ShareTargetRoute,
+  SmartDashboardRoute: SmartDashboardRoute,
+  SmartSearchRoute: SmartSearchRoute,
   SpesenRoute: SpesenRouteWithChildren,
   StreckengeschaeftRoute: StreckengeschaeftRouteWithChildren,
+  TaxPackageRoute: TaxPackageRoute,
   TeamsRoute: TeamsRoute,
   TrashRoute: TrashRoute,
+  TrustDashboardRoute: TrustDashboardRoute,
   UploadRoute: UploadRoute,
   ValidationQueueRoute: ValidationQueueRouteWithChildren,
   VertraegeRoute: VertraegeRoute,
+  VisualDiffRoute: VisualDiffRoute,
   VorlagenRoute: VorlagenRoute,
   WissenRoute: WissenRoute,
   WorkflowsRoute: WorkflowsRouteWithChildren,

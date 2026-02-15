@@ -1,5 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package, Landmark, AlertTriangle, Wallet, Receipt, GitBranch, UserCircle, Shield, Lock, Bookmark, Search, Pin, Database, FileSignature, FilePlus, Building2, BookOpen, BarChart3, MessageCircle, FolderInput, Truck, Gauge, Award, CreditCard, TrendingUp, ShieldAlert, BrainCircuit, Brain, ScrollText, Link2, Trash2, Bell, Users2, HardDrive, Play, ListOrdered, Banknote, Code2, Warehouse, HeartPulse, Sparkles, FileOutput, Calculator, Heart, Sliders, Mail, DollarSign, Activity, ListChecks, Calendar, ScanLine, ArrowLeftRight, Fingerprint, LineChart, FileSearch, Globe } from 'lucide-react'
+import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package, Landmark, AlertTriangle, Wallet, Receipt, GitBranch, UserCircle, Shield, Lock, Bookmark, Search, Pin, Database, FileSignature, FilePlus, Building2, BookOpen, BarChart3, MessageCircle, FolderInput, Truck, Gauge, Award, CreditCard, TrendingUp, ShieldAlert, BrainCircuit, Brain, ScrollText, Link2, Trash2, Bell, Users2, HardDrive, Play, ListOrdered, Banknote, Code2, Warehouse, HeartPulse, Sparkles, FileOutput, Calculator, Heart, Sliders, Mail, DollarSign, Activity, ListChecks, Calendar, ScanLine, ArrowLeftRight, Fingerprint, LineChart, FileSearch, Globe, Lightbulb, LayoutGrid, PieChart, Euro, FileBarChart2, Pen } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { usePermissions } from '@/lib/auth/hooks/use-permissions'
@@ -21,6 +21,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
     const [showAdminMenu, setShowAdminMenu] = useState(false)
     const [showSmartFolders, setShowSmartFolders] = useState(true)
     const [showReportsMenu, setShowReportsMenu] = useState(false)
+    const [showFinanceMenu, setShowFinanceMenu] = useState(false)
     const { user } = useAuth()
     const { canAccess, isAdmin, isEditor } = usePermissions()
     const { savedSearches, pinnedSearches, recordAccess } = useSavedSearches()
@@ -87,8 +88,10 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             <nav id="main-navigation" className="flex-1 px-4 space-y-2 overflow-y-auto" role="navigation" aria-label="Hauptmenü" tabIndex={-1}>
                 <SidebarLink to="/" icon={LayoutDashboard} label="Dashboard" onNavigate={onNavigate} dataTour="nav-dashboard" />
                 <SidebarLink to="/inbox" icon={Sparkles} label="Smart Inbox" onNavigate={onNavigate} />
+                <SidebarLink to="/proactive-assistant" icon={Lightbulb} label="Proaktiver Assistent" onNavigate={onNavigate} />
                 <SidebarLink to="/smart-search" icon={FileSearch} label="Smart Search" onNavigate={onNavigate} dataTour="nav-smart-search" />
                 <SidebarLink to="/dashboard/ceo" icon={BarChart3} label="CEO Dashboard" onNavigate={onNavigate} />
+                <SidebarLink to="/smart-dashboard" icon={LayoutGrid} label="Smart Dashboard" onNavigate={onNavigate} />
                 <SidebarLink to="/digital-twin" icon={Globe} label="Digitaler Zwilling" onNavigate={onNavigate} dataTour="nav-digital-twin" />
                 <SidebarLink to="/chat" icon={MessageSquare} label="Chat" onNavigate={onNavigate} />
                 <SidebarLink to="/email-import" icon={Mail} label="E-Mail Import" onNavigate={onNavigate} />
@@ -121,6 +124,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                         <SidebarLink to="/reports/cost-analysis" icon={DollarSign} label="Kostenauswertung" onNavigate={onNavigate} />
                         <SidebarLink to="/reports/cashflow-forecast" icon={TrendingUp} label="Cashflow-Prognose" onNavigate={onNavigate} />
                         <SidebarLink to="/reports/document-volume" icon={Activity} label="Dokumenten-Volumen" onNavigate={onNavigate} />
+                        <SidebarLink to="/adhoc-reporting" icon={FileBarChart2} label="Ad-Hoc Reports" onNavigate={onNavigate} />
                     </div>
                 )}
 
@@ -133,6 +137,27 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                 <SidebarLink to="/approvals" icon={CheckCircle} label="Freigaben" onNavigate={onNavigate} />
                 <SidebarLink to="/compliance" icon={Shield} label="Compliance" onNavigate={onNavigate} />
                 <SidebarLink to="/teams" icon={Users2} label="Teams" onNavigate={onNavigate} />
+
+                {/* Finanzbuchhaltung Section */}
+                <button
+                    onClick={() => setShowFinanceMenu(!showFinanceMenu)}
+                    className="w-full flex items-center justify-between px-3 py-2 min-h-[44px] rounded-md text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    aria-expanded={showFinanceMenu}
+                    aria-label={showFinanceMenu ? "Finanzbuchhaltung ausblenden" : "Finanzbuchhaltung anzeigen"}
+                >
+                    <span className="flex items-center gap-3">
+                        <Euro className="w-4 h-4" />
+                        Finanzbuchhaltung
+                    </span>
+                    <ChevronDown className={`w-4 h-4 transition-transform ${showFinanceMenu ? 'rotate-180' : ''}`} />
+                </button>
+                {showFinanceMenu && (
+                    <div className="ml-2 space-y-0.5 border-l border-sidebar-border pl-2">
+                        <SidebarLink to="/german-finance/ust" icon={Calculator} label="USt-Voranmeldung" onNavigate={onNavigate} />
+                        <SidebarLink to="/german-finance/bwa" icon={FileBarChart2} label="BWA" onNavigate={onNavigate} />
+                        <SidebarLink to="/german-finance/cashflow" icon={TrendingUp} label="Cashflow-Prognose" onNavigate={onNavigate} />
+                    </div>
+                )}
 
                 {/* Ablage-Struktur Section */}
                 <div className="pt-4">
@@ -390,6 +415,21 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                                 )}
                                 {permissions.isAdmin && (
                                     <SidebarLink to="/admin/integration-sync" icon={ArrowLeftRight} label="Integrations-Sync" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/approval-rules" icon={CheckCircle} label="Genehmigungsregeln" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/approval-sla" icon={Gauge} label="SLA-Dashboard" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/ki-pipeline" icon={BrainCircuit} label="KI-Pipeline" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/ki-pipeline/learning" icon={Brain} label="KI-Lernprofile" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/annotation-tasks" icon={Pen} label="Annotations-Aufgaben" onNavigate={onNavigate} />
                                 )}
                             </div>
                         )}
