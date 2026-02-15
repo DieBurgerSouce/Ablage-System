@@ -149,6 +149,73 @@ from app.workers.tasks.retention_enforcement_tasks import (
     process_post_retention_reviews,
     generate_retention_compliance_report,
 )
+from app.workers.tasks.vault_refresh_task import (
+    refresh_vault_secrets,
+)
+from app.workers.tasks.proactive_assistant_tasks import (
+    generate_daily_hints_task,
+    generate_weekly_optimization_hints_task,
+    check_expiring_hints_task,
+    send_hint_notifications_task,
+    calculate_hint_statistics_task,
+)
+from app.workers.tasks.ki_pipeline_tasks import (
+    process_extraction_confidence_task,
+    update_learning_profiles_task,
+    run_cross_document_matching_task,
+    generate_document_summary_task,
+    batch_generate_summaries_task,
+    recalculate_confidence_with_learning_task,
+    extract_with_confidence_task,
+    learn_from_corrections_batch_task,
+    detect_cross_doc_discrepancies_task,
+    retrain_learning_profiles_task,
+    check_price_deviations_task,
+)
+from app.workers.tasks.annotation_tasks import (
+    process_mention_notifications_task,
+    check_overdue_comment_tasks_task,
+    cleanup_orphaned_annotations_task,
+    cleanup_resolved_annotations_task,
+)
+from app.workers.tasks.smart_dashboard_tasks import (
+    refresh_kpis_task,
+    calculate_daily_trends_task,
+    cleanup_completed_trackers_task,
+)
+from app.workers.tasks.adhoc_report_tasks import (
+    execute_report_async_task,
+    export_report_async_task,
+    run_scheduled_reports_task,
+    send_scheduled_report_email_task,
+    cleanup_old_report_exports_task,
+)
+from app.workers.tasks.approval_enhanced_tasks import (
+    check_approval_timeouts_task,
+    calculate_approval_sla_task,
+    run_auto_matching_task,
+    run_batch_auto_matching_task,
+    run_auto_filing_task,
+)
+from app.workers.tasks.approval_escalation_tasks import (
+    check_approval_timeouts_task as check_approval_timeouts_extended_task,
+    activate_substitutions_task,
+    record_sla_metrics_task,
+    generate_sla_report_task,
+)
+from app.workers.tasks.auto_filing_tasks import (
+    auto_file_new_documents_task,
+    train_filing_model_task,
+    auto_match_documents_task,
+    batch_match_documents_task,
+)
+from app.workers.tasks.german_finance_tasks import (
+    calculate_monthly_ust_task,
+    generate_monthly_bwa_task,
+    update_cashflow_forecast_task,
+    check_liquidity_warnings_task,
+    compare_forecast_accuracy_task,
+)
 
 __all__ = [
     # OCR tasks
@@ -279,4 +346,61 @@ __all__ = [
     "enforce_retention_daily_scan",
     "process_post_retention_reviews",
     "generate_retention_compliance_report",
+    # Vault tasks
+    "refresh_vault_secrets",
+    # Proactive Assistant tasks
+    "generate_daily_hints_task",
+    "generate_weekly_optimization_hints_task",
+    "check_expiring_hints_task",
+    "send_hint_notifications_task",
+    "calculate_hint_statistics_task",
+    # KI-Pipeline tasks
+    "process_extraction_confidence_task",
+    "update_learning_profiles_task",
+    "run_cross_document_matching_task",
+    "generate_document_summary_task",
+    "batch_generate_summaries_task",
+    "recalculate_confidence_with_learning_task",
+    "extract_with_confidence_task",
+    "learn_from_corrections_batch_task",
+    "detect_cross_doc_discrepancies_task",
+    "retrain_learning_profiles_task",
+    "check_price_deviations_task",
+    # Annotation tasks
+    "process_mention_notifications_task",
+    "check_overdue_comment_tasks_task",
+    "cleanup_orphaned_annotations_task",
+    "cleanup_resolved_annotations_task",
+    # Smart Dashboard tasks
+    "refresh_kpis_task",
+    "calculate_daily_trends_task",
+    "cleanup_completed_trackers_task",
+    # Ad-Hoc Reporting tasks
+    "execute_report_async_task",
+    "export_report_async_task",
+    "run_scheduled_reports_task",
+    "send_scheduled_report_email_task",
+    "cleanup_old_report_exports_task",
+    # Approval Enhanced + Automation 2.0 tasks
+    "check_approval_timeouts_task",
+    "calculate_approval_sla_task",
+    "run_auto_matching_task",
+    "run_batch_auto_matching_task",
+    "run_auto_filing_task",
+    # Approval Escalation & SLA tasks (Feature #3)
+    "check_approval_timeouts_extended_task",
+    "activate_substitutions_task",
+    "record_sla_metrics_task",
+    "generate_sla_report_task",
+    # Auto-Filing & Auto-Matching tasks (Feature #7)
+    "auto_file_new_documents_task",
+    "train_filing_model_task",
+    "auto_match_documents_task",
+    "batch_match_documents_task",
+    # Deutsche Finanz-Feature tasks (Feature #11)
+    "calculate_monthly_ust_task",
+    "generate_monthly_bwa_task",
+    "update_cashflow_forecast_task",
+    "check_liquidity_warnings_task",
+    "compare_forecast_accuracy_task",
 ]

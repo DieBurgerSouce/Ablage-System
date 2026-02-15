@@ -154,6 +154,24 @@ class Settings(BaseSettings):
     DB_NAME: str = "ablage_system"
     DATABASE_URL: Optional[str] = None
 
+    # Database SSL/TLS Configuration
+    DB_SSL_MODE: str = Field(
+        default="prefer",
+        description="PostgreSQL SSL-Modus: disable, allow, prefer, require, verify-ca, verify-full"
+    )
+    DB_SSL_CERT: Optional[str] = Field(
+        default=None,
+        description="Pfad zum Client-SSL-Zertifikat"
+    )
+    DB_SSL_KEY: Optional[str] = Field(
+        default=None,
+        description="Pfad zum Client-SSL-Schluessel"
+    )
+    DB_SSL_ROOT_CERT: Optional[str] = Field(
+        default=None,
+        description="Pfad zum CA-Root-Zertifikat"
+    )
+
     # Database Connection Pool Settings
     # API Pool (optimiert - Query Performance durch Composite Indexes verbessert)
     DB_POOL_SIZE: int = Field(default=15, description="Database connection pool size for API")
@@ -1163,6 +1181,14 @@ class Settings(BaseSettings):
             if self.DB_HOST in localhost_hosts:
                 infrastructure_warnings.append(f"DB_HOST={self.DB_HOST}")
 
+            # Check DB SSL configuration in Production
+            if self.DB_SSL_MODE in ("disable", "allow"):
+                infrastructure_warnings.append(
+                    f"DB_SSL_MODE={self.DB_SSL_MODE} in Production! "
+                    "Datenbankverbindungen sind unverschluesselt oder unsicher. "
+                    "Setze DB_SSL_MODE=require oder hoeher."
+                )
+
             if self.REDIS_HOST in localhost_hosts:
                 infrastructure_warnings.append(f"REDIS_HOST={self.REDIS_HOST}")
 
@@ -1265,12 +1291,13 @@ class Settings(BaseSettings):
         else:
             # SECURITY: In Production sollte Vault verwendet werden
             if not self.DEBUG:
-                logger.warning(
+                logger.critical(
                     "vault_disabled_in_production",
                     message="VAULT_ENABLED=False in Production! "
                             "Secrets werden aus Umgebungsvariablen gelesen. "
                             "Für bessere Sicherheit empfehlen wir Vault zu aktivieren.",
-                    hint="Setze VAULT_ENABLED=true und konfiguriere Vault-Credentials."
+                    hint="Setze VAULT_ENABLED=true und konfiguriere Vault-Credentials.",
+                    action_required=True
                 )
 
         # ========== ENCRYPTION_KEY Validierung ==========
@@ -1335,11 +1362,31 @@ class Settings(BaseSettings):
             password = self.DB_PASSWORD
             if isinstance(password, SecretStr):
                 password = password.get_secret_value()
-            object.__setattr__(self, 'DATABASE_URL',
+
+            # Build base URL
+            base_url = (
                 f"postgresql+asyncpg://{self.DB_USER}:"
                 f"{password}@{self.DB_HOST}:"
                 f"{self.DB_PORT}/{self.DB_NAME}"
             )
+
+            # Add SSL parameters
+            ssl_params = []
+            ssl_params.append(f"sslmode={self.DB_SSL_MODE}")
+
+            if self.DB_SSL_CERT:
+                ssl_params.append(f"sslcert={self.DB_SSL_CERT}")
+            if self.DB_SSL_KEY:
+                ssl_params.append(f"sslkey={self.DB_SSL_KEY}")
+            if self.DB_SSL_ROOT_CERT:
+                ssl_params.append(f"sslrootcert={self.DB_SSL_ROOT_CERT}")
+
+            if ssl_params:
+                database_url = f"{base_url}?{'&'.join(ssl_params)}"
+            else:
+                database_url = base_url
+
+            object.__setattr__(self, 'DATABASE_URL', database_url)
 
         # Build REDIS_URL if not set
         if not self.REDIS_URL:

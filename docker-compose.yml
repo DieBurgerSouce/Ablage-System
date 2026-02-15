@@ -14,6 +14,9 @@ services:
       POSTGRES_MAX_CONNECTIONS: "300"
       POSTGRES_SHARED_BUFFERS: "4GB"
     # PostgreSQL Performance-Tuning via Command-Line Args
+    # SSL/TLS Configuration:
+    # To enable SSL, mount server certificates to /var/lib/postgresql/server.crt and server.key
+    # Example: ./infrastructure/postgres/certs/server.crt:/var/lib/postgresql/server.crt:ro
     command: >
       postgres
       -c shared_buffers=4GB
@@ -25,9 +28,14 @@ services:
       -c wal_level=replica
       -c max_wal_senders=3
       -c wal_keep_size=1GB
+      -c ssl=on
+      -c ssl_cert_file=/var/lib/postgresql/server.crt
+      -c ssl_key_file=/var/lib/postgresql/server.key
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./infrastructure/postgres/certs/server.crt:/var/lib/postgresql/server.crt:ro
+      - ./infrastructure/postgres/certs/server.key:/var/lib/postgresql/server.key:ro
     ports:
       - "127.0.0.1:5434:5432"  # Port 5434 (5433 von Hyper-V reserviert)
     healthcheck:
@@ -65,7 +73,7 @@ services:
     image: edoburu/pgbouncer:latest
     container_name: ablage-pgbouncer
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
+      DATABASE_URL: postgres://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}?sslmode=${DB_SSL_MODE:-prefer}
       POOL_MODE: transaction
       MAX_CLIENT_CONN: 500
       DEFAULT_POOL_SIZE: 25
@@ -529,7 +537,7 @@ services:
       VAULT_CACERT: /app/certs/ca.crt
       # Database (Secrets aus .env)
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}?sslmode=${DB_SSL_MODE:-prefer}
       # Redis (SECURITY: Passwort ist erforderlich!)
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
@@ -655,7 +663,7 @@ services:
       VAULT_CACERT: /app/certs/ca.crt
       # Database (Secrets aus .env)
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}?sslmode=${DB_SSL_MODE:-prefer}
       # Redis (mit optionalem Passwort)
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
@@ -786,7 +794,7 @@ services:
       VAULT_CACERT: /app/certs/ca.crt
       # Database
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}?sslmode=${DB_SSL_MODE:-prefer}
       # Redis
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
@@ -899,7 +907,7 @@ services:
     command: celery -A app.workers.celery_app beat --loglevel=info
     environment:
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}?sslmode=${DB_SSL_MODE:-prefer}
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
       MINIO_ENDPOINT: minio:9000
@@ -1251,7 +1259,7 @@ services:
     image: prometheuscommunity/postgres-exporter:v0.15.0
     container_name: ablage-postgres-exporter
     environment:
-      DATA_SOURCE_NAME: postgresql://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}?sslmode=disable
+      DATA_SOURCE_NAME: postgresql://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}?sslmode=${DB_SSL_MODE:-prefer}
     ports:
       - "127.0.0.1:9187:9187"  # Nur localhost
     depends_on:

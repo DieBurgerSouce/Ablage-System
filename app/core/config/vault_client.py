@@ -23,6 +23,8 @@ from typing import Any, Dict, Optional, Tuple
 
 import structlog
 
+from app.core.safe_errors import safe_error_log
+
 # Key name validation pattern (security: prevent path traversal)
 _KEY_NAME_PATTERN = re.compile(r"^[a-zA-Z][a-zA-Z0-9_-]{0,63}$")
 
@@ -104,6 +106,32 @@ class VaultClient:
     def is_configured(self) -> bool:
         """Check if Vault is configured."""
         return bool(self.vault_addr and (self.vault_token or (self.vault_role_id and self.vault_secret_id)))
+
+    def is_healthy(self) -> bool:
+        """
+        Check if Vault is healthy and connected.
+
+        Returns:
+            True if Vault is connected and authenticated
+        """
+        if not VAULT_AVAILABLE:
+            return False
+
+        if not self.is_configured():
+            return False
+
+        if not self._authenticated:
+            return False
+
+        if self._client is None:
+            return False
+
+        try:
+            # Try to authenticate to verify connection is still valid
+            return self._client.is_authenticated()
+        except Exception as e:
+            logger.debug("vault_health_check_failed", **safe_error_log(e))
+            return False
 
     def connect(self) -> bool:
         """

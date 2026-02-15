@@ -128,6 +128,7 @@ class DependencyHealthResponse(BaseModel):
     datenbank: KomponentenStatus = Field(..., description="PostgreSQL-Status")
     cache: KomponentenStatus = Field(..., description="Redis-Status")
     speicher: KomponentenStatus = Field(..., description="MinIO-Status")
+    vault: KomponentenStatus = Field(..., description="Vault-Status")
 
 
 # =============================================================================
@@ -373,6 +374,91 @@ async def _check_minio() -> KomponentenStatus:
         )
 
 
+def _check_vault() -> KomponentenStatus:
+    """
+    Pruefe Vault-Verbindung und -Konfiguration.
+
+    Vault-Status:
+    - "gesund": Vault aktiviert und verbunden, ODER Vault deaktiviert (nicht erforderlich)
+    - "beeintraechtigt": Vault aktiviert aber nicht verbunden
+    - "kritisch": Production UND Vault deaktiviert
+    """
+    try:
+        from app.core.config.vault_client import VaultClient
+
+        vault_client = VaultClient.get_instance()
+
+        # Vault nicht aktiviert
+        if not settings.VAULT_ENABLED:
+            # In Production: KRITISCH
+            if not settings.DEBUG:
+                return KomponentenStatus(
+                    gesund=False,
+                    nachricht="Vault in Production deaktiviert - KRITISCH",
+                    details={
+                        "enabled": False,
+                        "environment": "production",
+                        "severity": "critical",
+                    },
+                )
+            # In Development: OK
+            return KomponentenStatus(
+                gesund=True,
+                nachricht="Vault deaktiviert (Development-Modus)",
+                details={"enabled": False, "environment": "development"},
+            )
+
+        # Vault aktiviert - pruefe Verbindung
+        if not vault_client.is_configured():
+            return KomponentenStatus(
+                gesund=False,
+                nachricht="Vault aktiviert aber nicht konfiguriert",
+                details={
+                    "enabled": True,
+                    "configured": False,
+                },
+            )
+
+        if vault_client.is_healthy():
+            return KomponentenStatus(
+                gesund=True,
+                nachricht="Vault verbunden und authentifiziert",
+                details={
+                    "enabled": True,
+                    "connected": True,
+                    "authenticated": True,
+                    "address": vault_client.vault_addr,
+                },
+            )
+        else:
+            return KomponentenStatus(
+                gesund=False,
+                nachricht="Vault nicht verbunden",
+                details={
+                    "enabled": True,
+                    "connected": False,
+                },
+            )
+
+    except ImportError:
+        # hvac nicht installiert
+        if settings.VAULT_ENABLED:
+            return KomponentenStatus(
+                gesund=False,
+                nachricht="Vault aktiviert aber hvac nicht installiert",
+            )
+        return KomponentenStatus(
+            gesund=True,
+            nachricht="Vault nicht verfuegbar (hvac nicht installiert)",
+            details={"enabled": False, "available": False},
+        )
+    except Exception as e:
+        logger.error("health_check_vault_failed", **safe_error_log(e))
+        return KomponentenStatus(
+            gesund=False, nachricht=f"Vault-Pruefung fehlgeschlagen: {safe_error_detail(e, 'Vault')}"
+        )
+
+
 # =============================================================================
 # API Endpoints
 # =============================================================================
@@ -427,6 +513,7 @@ async def detailed_health(
     gpu_status = _check_gpu()
     disk_status = _check_disk_space()
     ocr_status = _check_ocr_models()
+    vault_status = _check_vault()
 
     komponenten = {
         "datenbank": db_status,
@@ -434,11 +521,17 @@ async def detailed_health(
         "gpu": gpu_status,
         "speicherplatz": disk_status,
         "ocr_modelle": ocr_status,
+        "vault": vault_status,
     }
 
     # Bestimme Gesamtstatus
-    kritisch = [k for k, v in komponenten.items() if not v.gesund and k in ["datenbank"]]
-    beeintraechtigt = [k for k, v in komponenten.items() if not v.gesund and k not in ["datenbank"]]
+    # Datenbank und Vault (in Production) sind kritisch
+    kritische_komponenten = ["datenbank"]
+    if not settings.DEBUG:  # Production
+        kritische_komponenten.append("vault")
+
+    kritisch = [k for k, v in komponenten.items() if not v.gesund and k in kritische_komponenten]
+    beeintraechtigt = [k for k, v in komponenten.items() if not v.gesund and k not in kritische_komponenten]
 
     if kritisch:
         status = "kritisch"
@@ -474,25 +567,33 @@ async def detailed_health(
     "/dependencies",
     response_model=DependencyHealthResponse,
     summary="Abhaengigkeiten pruefen",
-    description="Prueft externe Abhaengigkeiten: Datenbank, Redis, MinIO.",
+    description="Prueft externe Abhaengigkeiten: Datenbank, Redis, MinIO, Vault.",
 )
 async def check_dependencies(
     db: AsyncSession = Depends(get_db),
 ) -> DependencyHealthResponse:
     """
-    Prueft nur externe Abhaengigkeiten (Datenbank, Cache, Speicher).
+    Prueft nur externe Abhaengigkeiten (Datenbank, Cache, Speicher, Vault).
 
     Nuetzlich fuer Kubernetes Readiness Probes.
     """
     db_status = await _check_database(db)
     redis_status = await _check_redis()
     minio_status = await _check_minio()
+    vault_status = _check_vault()
 
-    all_healthy = all([db_status.gesund, redis_status.gesund, minio_status.gesund])
+    # Vault ist in Production kritisch, sonst nur beeintraechtigt
+    critical_deps = [db_status.gesund]
+    if not settings.DEBUG:  # Production
+        critical_deps.append(vault_status.gesund)
 
-    if all_healthy:
+    degraded_deps = [redis_status.gesund, minio_status.gesund]
+    if settings.DEBUG:  # In Development, Vault ist optional
+        degraded_deps.append(vault_status.gesund)
+
+    if all(critical_deps) and all(degraded_deps):
         status = "gesund"
-    elif db_status.gesund:
+    elif all(critical_deps):
         status = "beeintraechtigt"
     else:
         status = "kritisch"
@@ -503,6 +604,7 @@ async def check_dependencies(
         datenbank=db_status,
         cache=redis_status,
         speicher=minio_status,
+        vault=vault_status,
     )
 
 

@@ -292,6 +292,7 @@ celery_app = Celery(
         "app.workers.tasks.autonomous_trust_tasks",  # Autonomous Trust (proposals, metrics, upgrades, cleanup, notifications)
         "app.workers.tasks.retention_enforcement_tasks",  # Retention Enforcement (daily scan, reviews, compliance report)
         "app.workers.tasks.escalation_tasks",  # Phase 3: Notification Escalation Advancement
+        "app.workers.tasks.vault_refresh_task",  # Vault Secret Refresh (periodic via Beat)
     ]
 )
 
@@ -637,6 +638,11 @@ celery_app.conf.update(
         "cleanup-expired-verification-tokens-daily": {
             "task": "app.workers.tasks.cleanup_tasks.cleanup_expired_verification_tokens",
             "schedule": crontab(hour=2, minute=30),  # Taeglich um 02:30 Uhr
+        },
+        # Vault Secret Refresh (Security)
+        "vault-refresh-secrets": {
+            "task": "vault.refresh_secrets",
+            "schedule": 300.0,  # Alle 5 Minuten (VAULT_SECRET_REFRESH_INTERVAL default)
         },
         # ML/Drift Detection Tasks
         "ml-drift-detection": {
@@ -1983,6 +1989,253 @@ celery_app.conf.update(
             "schedule": 900.0,  # Alle 15 Minuten
             "options": {"queue": "metadata"},
         },
+        # =================================================================
+        # Proaktiver Assistent Tasks (Feature #1: Proactive Intelligence)
+        # =================================================================
+        # Taeglich: Hints fuer alle Firmen generieren um 06:00 Uhr
+        "proactive-assistant-daily-hints": {
+            "task": "app.workers.tasks.proactive_assistant_tasks.generate_daily_hints_task",
+            "schedule": crontab(hour=6, minute=0),  # Taeglich um 06:00 Uhr
+        },
+        # Woechentlich: Tiefere Optimierungs-Analyse montags um 07:00 Uhr
+        "proactive-assistant-weekly-optimization": {
+            "task": "app.workers.tasks.proactive_assistant_tasks.generate_weekly_optimization_hints_task",
+            "schedule": crontab(day_of_week=1, hour=7, minute=0),  # Montag 07:00 Uhr
+        },
+        # Stuendlich: Abgelaufene Hints bereinigen
+        "proactive-assistant-check-expiring": {
+            "task": "app.workers.tasks.proactive_assistant_tasks.check_expiring_hints_task",
+            "schedule": 3600.0,  # Stuendlich
+        },
+        # Nach Hint-Generierung: Benachrichtigungen fuer hochpriorisierte Hints
+        "proactive-assistant-send-notifications": {
+            "task": "app.workers.tasks.proactive_assistant_tasks.send_hint_notifications_task",
+            "schedule": crontab(hour=6, minute=15),  # Taeglich um 06:15 Uhr (nach Hint-Generierung)
+        },
+        # Taeglich: Hint-Statistiken aggregieren um 23:00 Uhr
+        "proactive-assistant-daily-statistics": {
+            "task": "app.workers.tasks.proactive_assistant_tasks.calculate_hint_statistics_task",
+            "schedule": crontab(hour=23, minute=0),  # Taeglich um 23:00 Uhr
+        },
+        # =================================================================
+        # Smart Dashboard Tasks (Feature #2+#6: Dashboard + Live-Feedback)
+        # =================================================================
+        # Alle 30 Sekunden: KPI-Cache aktualisieren
+        "smart-dashboard-refresh-kpis": {
+            "task": "smart_dashboard.refresh_kpis",
+            "schedule": 30.0,  # Alle 30 Sekunden
+            "options": {"queue": "maintenance"},
+        },
+        # Taeglich: KPI-Trends berechnen (Vorperioden-Vergleich)
+        "smart-dashboard-daily-trends": {
+            "task": "smart_dashboard.calculate_daily_trends",
+            "schedule": crontab(hour=1, minute=15),  # Taeglich um 01:15 Uhr
+            "options": {"queue": "maintenance"},
+        },
+        # Taeglich: Alte Progress-Tracker bereinigen (>7 Tage)
+        "smart-dashboard-cleanup-trackers": {
+            "task": "smart_dashboard.cleanup_completed_trackers",
+            "schedule": crontab(hour=4, minute=10),  # Taeglich um 04:10 Uhr (staggered)
+            "kwargs": {"older_than_days": 7},
+            "options": {"queue": "maintenance"},
+        },
+        # =================================================================
+        # Approval Escalation & SLA Tasks (Feature #3: Approval-Workflow Tiefe)
+        # =================================================================
+        # Stuendlich: Ueberfaellige Genehmigungen eskalieren
+        "approval-escalation-check-timeouts": {
+            "task": "app.workers.tasks.approval_escalation_tasks.check_approval_timeouts_task",
+            "schedule": 3600.0,  # Stuendlich
+            "options": {"queue": "maintenance"},
+        },
+        # Taeglich: Vertretungsregeln aktivieren/deaktivieren
+        "approval-escalation-activate-substitutions": {
+            "task": "app.workers.tasks.approval_escalation_tasks.activate_substitutions_task",
+            "schedule": crontab(hour=7, minute=0),  # Taeglich um 07:00 Uhr
+            "options": {"queue": "maintenance"},
+        },
+        # Taeglich: SLA-Metriken erfassen
+        "approval-escalation-record-sla": {
+            "task": "app.workers.tasks.approval_escalation_tasks.record_sla_metrics_task",
+            "schedule": crontab(hour=23, minute=30),  # Taeglich um 23:30 Uhr
+            "options": {"queue": "maintenance"},
+        },
+        # Woechentlich: SLA-Report generieren (Montag 07:30)
+        "approval-escalation-weekly-sla-report": {
+            "task": "app.workers.tasks.approval_escalation_tasks.generate_sla_report_task",
+            "schedule": crontab(day_of_week=1, hour=7, minute=30),  # Montag 07:30 Uhr
+            "options": {"queue": "maintenance"},
+        },
+        # =================================================================
+        # Approval Enhanced Tasks (Feature #3+#7: Conditional Logic + Auto-Filing)
+        # =================================================================
+        # Stuendlich: Approval-Timeouts pruefen (bedingte Logik)
+        "approval-enhanced-check-timeouts": {
+            "task": "app.workers.tasks.approval_enhanced_tasks.check_approval_timeouts_task",
+            "schedule": 3600.0,  # Stuendlich
+            "options": {"queue": "maintenance"},
+        },
+        # Taeglich: SLA-Berechnung
+        "approval-enhanced-calculate-sla": {
+            "task": "app.workers.tasks.approval_enhanced_tasks.calculate_approval_sla_task",
+            "schedule": crontab(hour=23, minute=45),  # Taeglich um 23:45 Uhr
+            "options": {"queue": "maintenance"},
+        },
+        # Alle 15 Minuten: Auto-Filing ausfuehren
+        "approval-enhanced-auto-filing": {
+            "task": "app.workers.tasks.approval_enhanced_tasks.run_auto_filing_task",
+            "schedule": 900.0,  # Alle 15 Minuten
+            "options": {"queue": "metadata"},
+        },
+        # Taeglich: Batch-Auto-Matching
+        "approval-enhanced-batch-matching": {
+            "task": "app.workers.tasks.approval_enhanced_tasks.run_batch_auto_matching_task",
+            "schedule": crontab(hour=4, minute=30),  # Taeglich um 04:30 Uhr
+            "options": {"queue": "metadata"},
+        },
+        # =================================================================
+        # Auto-Filing & Auto-Matching Tasks (Feature #7: Automation 2.0)
+        # =================================================================
+        # Alle 5 Minuten: Neue Dokumente automatisch ablegen
+        "auto-filing-new-documents": {
+            "task": "app.workers.tasks.auto_filing_tasks.auto_file_new_documents_task",
+            "schedule": 300.0,  # Alle 5 Minuten
+            "options": {"queue": "metadata"},
+        },
+        # Woechentlich: Filing-Model trainieren (Sonntag 03:00)
+        "auto-filing-train-model-weekly": {
+            "task": "app.workers.tasks.auto_filing_tasks.train_filing_model_task",
+            "schedule": crontab(day_of_week=0, hour=3, minute=0),  # Sonntag 03:00 Uhr
+            "options": {"queue": "maintenance"},
+        },
+        # Taeglich: Batch-Matching aller offenen Dokumente
+        "auto-matching-daily-batch": {
+            "task": "app.workers.tasks.auto_filing_tasks.batch_match_documents_task",
+            "schedule": crontab(hour=4, minute=45),  # Taeglich um 04:45 Uhr
+            "options": {"queue": "metadata"},
+        },
+        # =================================================================
+        # KI-Pipeline Intelligence Tasks (Feature #4: Intelligente Extraktion)
+        # =================================================================
+        # Taeglich: Confidence-Scores verarbeiten
+        "ki-pipeline-daily-confidence": {
+            "task": "app.workers.tasks.ki_pipeline_tasks.process_extraction_confidence_task",
+            "schedule": crontab(hour=2, minute=0),  # Taeglich um 02:00 Uhr
+            "options": {"queue": "metadata"},
+        },
+        # Taeglich: Lernprofile aktualisieren
+        "ki-pipeline-update-learning-profiles": {
+            "task": "app.workers.tasks.ki_pipeline_tasks.update_learning_profiles_task",
+            "schedule": crontab(hour=3, minute=0),  # Taeglich um 03:00 Uhr
+            "options": {"queue": "maintenance"},
+        },
+        # Taeglich: Cross-Dokument-Matching (Bestellung<->Lieferschein<->Rechnung)
+        "ki-pipeline-cross-doc-matching": {
+            "task": "app.workers.tasks.ki_pipeline_tasks.run_cross_document_matching_task",
+            "schedule": crontab(hour=4, minute=0),  # Taeglich um 04:00 Uhr
+            "options": {"queue": "metadata"},
+        },
+        # Taeglich: Batch-Zusammenfassungen generieren
+        "ki-pipeline-batch-summaries": {
+            "task": "app.workers.tasks.ki_pipeline_tasks.batch_generate_summaries_task",
+            "schedule": crontab(hour=5, minute=0),  # Taeglich um 05:00 Uhr
+            "options": {"queue": "metadata"},
+        },
+        # Woechentlich: Lernprofile retrainieren (Sonntag 02:00)
+        "ki-pipeline-retrain-learning-profiles": {
+            "task": "app.workers.tasks.ki_pipeline_tasks.retrain_learning_profiles_task",
+            "schedule": crontab(day_of_week=0, hour=2, minute=0),  # Sonntag 02:00 Uhr
+            "options": {"queue": "maintenance"},
+        },
+        # Taeglich: Cross-Dokument-Diskrepanzen erkennen
+        "ki-pipeline-detect-discrepancies": {
+            "task": "app.workers.tasks.ki_pipeline_tasks.detect_cross_doc_discrepancies_task",
+            "schedule": crontab(hour=6, minute=30),  # Taeglich um 06:30 Uhr
+            "options": {"queue": "metadata"},
+        },
+        # Taeglich: Preisabweichungen pruefen
+        "ki-pipeline-check-price-deviations": {
+            "task": "app.workers.tasks.ki_pipeline_tasks.check_price_deviations_task",
+            "schedule": crontab(hour=7, minute=15),  # Taeglich um 07:15 Uhr
+            "options": {"queue": "metadata"},
+        },
+        # =================================================================
+        # Annotation Tasks (Feature #8: Kommentare & Annotationen)
+        # =================================================================
+        # Alle 5 Minuten: @mention-Benachrichtigungen versenden
+        "annotations-send-mentions": {
+            "task": "app.workers.tasks.annotation_tasks.process_mention_notifications_task",
+            "schedule": 300.0,  # Alle 5 Minuten
+            "options": {"queue": "notifications"},
+        },
+        # Stuendlich: Ueberfaellige Kommentar-Aufgaben pruefen
+        "annotations-check-overdue-tasks": {
+            "task": "app.workers.tasks.annotation_tasks.check_overdue_comment_tasks_task",
+            "schedule": 3600.0,  # Stuendlich
+            "options": {"queue": "maintenance"},
+        },
+        # Woechentlich: Verwaiste Annotationen bereinigen (Sonntag 04:30)
+        "annotations-cleanup-orphaned": {
+            "task": "app.workers.tasks.annotation_tasks.cleanup_orphaned_annotations_task",
+            "schedule": crontab(day_of_week=0, hour=4, minute=30),  # Sonntag 04:30 Uhr
+            "options": {"queue": "maintenance"},
+        },
+        # Woechentlich: Erledigte Annotationen bereinigen (Sonntag 05:00)
+        "annotations-cleanup-resolved": {
+            "task": "app.workers.tasks.annotation_tasks.cleanup_resolved_annotations_task",
+            "schedule": crontab(day_of_week=0, hour=5, minute=0),  # Sonntag 05:00 Uhr
+            "kwargs": {"older_than_days": 90},
+            "options": {"queue": "maintenance"},
+        },
+        # =================================================================
+        # Deutsche Finanz-Features Tasks (Feature #11: USt-VA, BWA, Cashflow)
+        # =================================================================
+        # Monatlich: USt-Voranmeldung berechnen (1. des Monats 02:00)
+        "german-finance-monthly-ust": {
+            "task": "app.workers.tasks.german_finance_tasks.calculate_monthly_ust_task",
+            "schedule": crontab(day_of_month=1, hour=2, minute=0),  # Monatlich am 1. um 02:00 Uhr
+            "options": {"queue": "maintenance"},
+        },
+        # Monatlich: BWA-Report generieren (1. des Monats 03:00)
+        "german-finance-monthly-bwa": {
+            "task": "app.workers.tasks.german_finance_tasks.generate_monthly_bwa_task",
+            "schedule": crontab(day_of_month=1, hour=3, minute=0),  # Monatlich am 1. um 03:00 Uhr
+            "options": {"queue": "maintenance"},
+        },
+        # Taeglich: Cashflow-Prognose aktualisieren
+        "german-finance-cashflow-forecast": {
+            "task": "app.workers.tasks.german_finance_tasks.update_cashflow_forecast_task",
+            "schedule": crontab(hour=6, minute=0),  # Taeglich um 06:00 Uhr
+            "options": {"queue": "metadata"},
+        },
+        # Taeglich: Liquiditaetswarnungen pruefen
+        "german-finance-liquidity-warnings": {
+            "task": "app.workers.tasks.german_finance_tasks.check_liquidity_warnings_task",
+            "schedule": crontab(hour=7, minute=0),  # Taeglich um 07:00 Uhr
+            "options": {"queue": "maintenance"},
+        },
+        # Woechentlich: Prognose-Genauigkeit vergleichen (Sonntag 04:00)
+        "german-finance-forecast-accuracy": {
+            "task": "app.workers.tasks.german_finance_tasks.compare_forecast_accuracy_task",
+            "schedule": crontab(day_of_week=0, hour=4, minute=0),  # Sonntag 04:00 Uhr
+            "options": {"queue": "maintenance"},
+        },
+        # =================================================================
+        # Ad-Hoc Reporting Tasks (Feature #12: Self-Service Report Builder)
+        # =================================================================
+        # Alle 15 Minuten: Geplante Reports ausfuehren
+        "adhoc-reporting-scheduled-reports": {
+            "task": "app.workers.tasks.adhoc_report_tasks.run_scheduled_reports_task",
+            "schedule": 900.0,  # Alle 15 Minuten
+            "options": {"queue": "maintenance"},
+        },
+        # Taeglich: Alte Report-Exporte bereinigen (>7 Tage)
+        "adhoc-reporting-cleanup-exports": {
+            "task": "app.workers.tasks.adhoc_report_tasks.cleanup_old_report_exports_task",
+            "schedule": crontab(hour=4, minute=0),  # Taeglich um 04:00 Uhr
+            "kwargs": {"retention_days": 7},
+            "options": {"queue": "maintenance"},
+        },
     },
 
     # Queue routing
@@ -2506,6 +2759,79 @@ celery_app.conf.update(
         # =================================================================
         "data_quality.daily_scan": {"queue": "maintenance", "priority": 2},
         "data_quality.scan_all_companies": {"queue": "maintenance", "priority": 2},
+        # =================================================================
+        # Proaktiver Assistent Tasks (Feature #1: Proactive Intelligence)
+        # =================================================================
+        "app.workers.tasks.proactive_assistant_tasks.generate_daily_hints_task": {"queue": "maintenance", "priority": 3},
+        "app.workers.tasks.proactive_assistant_tasks.generate_weekly_optimization_hints_task": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.proactive_assistant_tasks.check_expiring_hints_task": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.proactive_assistant_tasks.send_hint_notifications_task": {"queue": "notifications", "priority": 4},
+        "app.workers.tasks.proactive_assistant_tasks.calculate_hint_statistics_task": {"queue": "maintenance", "priority": 2},
+        # =================================================================
+        # Smart Dashboard Tasks (Feature #2+#6: Dashboard + Live-Feedback)
+        # =================================================================
+        "smart_dashboard.refresh_kpis": {"queue": "maintenance", "priority": 2},
+        "smart_dashboard.calculate_daily_trends": {"queue": "maintenance", "priority": 2},
+        "smart_dashboard.cleanup_completed_trackers": {"queue": "maintenance", "priority": 1},
+        # =================================================================
+        # Approval Escalation & SLA Tasks (Feature #3)
+        # =================================================================
+        "app.workers.tasks.approval_escalation_tasks.check_approval_timeouts_task": {"queue": "maintenance", "priority": 4},
+        "app.workers.tasks.approval_escalation_tasks.activate_substitutions_task": {"queue": "maintenance", "priority": 3},
+        "app.workers.tasks.approval_escalation_tasks.record_sla_metrics_task": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.approval_escalation_tasks.generate_sla_report_task": {"queue": "maintenance", "priority": 2},
+        # =================================================================
+        # Approval Enhanced Tasks (Feature #3+#7)
+        # =================================================================
+        "app.workers.tasks.approval_enhanced_tasks.check_approval_timeouts_task": {"queue": "maintenance", "priority": 4},
+        "app.workers.tasks.approval_enhanced_tasks.calculate_approval_sla_task": {"queue": "maintenance", "priority": 3},
+        "app.workers.tasks.approval_enhanced_tasks.run_auto_matching_task": {"queue": "metadata", "priority": 4},
+        "app.workers.tasks.approval_enhanced_tasks.run_batch_auto_matching_task": {"queue": "metadata", "priority": 3},
+        "app.workers.tasks.approval_enhanced_tasks.run_auto_filing_task": {"queue": "metadata", "priority": 5},
+        # =================================================================
+        # Auto-Filing & Auto-Matching Tasks (Feature #7)
+        # =================================================================
+        "app.workers.tasks.auto_filing_tasks.auto_file_new_documents_task": {"queue": "metadata", "priority": 5},
+        "app.workers.tasks.auto_filing_tasks.train_filing_model_task": {"queue": "maintenance", "priority": 3},
+        "app.workers.tasks.auto_filing_tasks.auto_match_documents_task": {"queue": "metadata", "priority": 4},
+        "app.workers.tasks.auto_filing_tasks.batch_match_documents_task": {"queue": "metadata", "priority": 3},
+        # =================================================================
+        # KI-Pipeline Intelligence Tasks (Feature #4)
+        # =================================================================
+        "app.workers.tasks.ki_pipeline_tasks.process_extraction_confidence_task": {"queue": "metadata", "priority": 4},
+        "app.workers.tasks.ki_pipeline_tasks.update_learning_profiles_task": {"queue": "maintenance", "priority": 3},
+        "app.workers.tasks.ki_pipeline_tasks.run_cross_document_matching_task": {"queue": "metadata", "priority": 3},
+        "app.workers.tasks.ki_pipeline_tasks.generate_document_summary_task": {"queue": "metadata", "priority": 4},
+        "app.workers.tasks.ki_pipeline_tasks.batch_generate_summaries_task": {"queue": "metadata", "priority": 3},
+        "app.workers.tasks.ki_pipeline_tasks.recalculate_confidence_with_learning_task": {"queue": "metadata", "priority": 4},
+        "app.workers.tasks.ki_pipeline_tasks.extract_with_confidence_task": {"queue": "metadata", "priority": 5},
+        "app.workers.tasks.ki_pipeline_tasks.learn_from_corrections_batch_task": {"queue": "maintenance", "priority": 3},
+        "app.workers.tasks.ki_pipeline_tasks.detect_cross_doc_discrepancies_task": {"queue": "metadata", "priority": 3},
+        "app.workers.tasks.ki_pipeline_tasks.retrain_learning_profiles_task": {"queue": "maintenance", "priority": 2},
+        "app.workers.tasks.ki_pipeline_tasks.check_price_deviations_task": {"queue": "metadata", "priority": 3},
+        # =================================================================
+        # Annotation Tasks (Feature #8)
+        # =================================================================
+        "app.workers.tasks.annotation_tasks.process_mention_notifications_task": {"queue": "notifications", "priority": 5},
+        "app.workers.tasks.annotation_tasks.check_overdue_comment_tasks_task": {"queue": "maintenance", "priority": 3},
+        "app.workers.tasks.annotation_tasks.cleanup_orphaned_annotations_task": {"queue": "maintenance", "priority": 1},
+        "app.workers.tasks.annotation_tasks.cleanup_resolved_annotations_task": {"queue": "maintenance", "priority": 1},
+        # =================================================================
+        # Deutsche Finanz-Features Tasks (Feature #11)
+        # =================================================================
+        "app.workers.tasks.german_finance_tasks.calculate_monthly_ust_task": {"queue": "maintenance", "priority": 3},
+        "app.workers.tasks.german_finance_tasks.generate_monthly_bwa_task": {"queue": "maintenance", "priority": 3},
+        "app.workers.tasks.german_finance_tasks.update_cashflow_forecast_task": {"queue": "metadata", "priority": 3},
+        "app.workers.tasks.german_finance_tasks.check_liquidity_warnings_task": {"queue": "maintenance", "priority": 4},
+        "app.workers.tasks.german_finance_tasks.compare_forecast_accuracy_task": {"queue": "maintenance", "priority": 2},
+        # =================================================================
+        # Ad-Hoc Reporting Tasks (Feature #12)
+        # =================================================================
+        "app.workers.tasks.adhoc_report_tasks.execute_report_async_task": {"queue": "metadata", "priority": 5},
+        "app.workers.tasks.adhoc_report_tasks.export_report_async_task": {"queue": "metadata", "priority": 4},
+        "app.workers.tasks.adhoc_report_tasks.run_scheduled_reports_task": {"queue": "maintenance", "priority": 3},
+        "app.workers.tasks.adhoc_report_tasks.send_scheduled_report_email_task": {"queue": "notifications", "priority": 4},
+        "app.workers.tasks.adhoc_report_tasks.cleanup_old_report_exports_task": {"queue": "maintenance", "priority": 1},
     },
 
     # Priority settings

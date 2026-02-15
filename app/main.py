@@ -866,6 +866,7 @@ from app.api.v1.delegations import router as delegations_router
 from app.api.v1.activity_timeline import router as activity_timeline_router
 from app.api.v1.rules import router as rules_router
 from app.api.v1.proactive_insights import router as proactive_insights_router
+from app.api.v1.proactive_assistant import router as proactive_assistant_router  # Feature #1: Proaktiver Assistent
 from app.api.v1.compare import router as compare_router
 from app.api.v1.routing import router as routing_router
 from app.api.v1.hardware import router as hardware_router
@@ -961,6 +962,15 @@ from app.api.v1.comment_threads import router as comment_threads_router  # Phase
 from app.api.v1.summarization import router as summarization_router  # Phase 4.1: AI-Zusammenfassungen
 from app.api.v1.booking_suggestions import router as booking_suggestions_router  # Phase 5.1: Buchungsvorschlaege
 from app.api.v1.similar_documents import router as similar_documents_router  # Aehnliche Dokumente API
+from app.api.v1.smart_dashboard import router as smart_dashboard_router  # Feature #2+#6: Smart Dashboard + Live-Feedback
+from app.api.v1.approval_enhanced import router as approval_enhanced_router  # Feature #3+#7: Approval Depth + Automation 2.0
+from app.api.v1.approval_extended import router as approval_extended_router  # Feature #3: Approval Escalation & SLA
+from app.api.v1.automation import router as automation_router  # Feature #7: Automation 2.0 (Auto-Filing & Auto-Matching)
+from app.api.v1.ki_pipeline import router as ki_pipeline_router  # Feature #4: KI-Pipeline Intelligence
+from app.api.v1.annotations_enhanced import router as annotations_enhanced_router  # Feature #8: Kommentare & Annotationen
+from app.api.v1.terminology import router as terminology_router  # Feature #10: Deutsche Praezision
+from app.api.v1.german_finance import router as german_finance_router  # Feature #11: Deutsche Finanz-Features
+from app.api.v1.adhoc_reports import router as adhoc_reports_router  # Feature #12: Ad-Hoc Reporting
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -1091,6 +1101,7 @@ app.include_router(delegations_router, prefix="/api/v1")
 app.include_router(activity_timeline_router, prefix="/api/v1")
 app.include_router(rules_router, prefix="/api/v1")
 app.include_router(proactive_insights_router, prefix="/api/v1")
+app.include_router(proactive_assistant_router, prefix="/api/v1")  # Feature #1: Proaktiver Assistent
 app.include_router(compare_router, prefix="/api/v1")
 app.include_router(routing_router, prefix="/api/v1")
 app.include_router(hardware_router, prefix="/api/v1")
@@ -1205,6 +1216,15 @@ app.include_router(comment_threads_router, prefix="/api/v1")  # Phase 3.1: Komme
 app.include_router(summarization_router, prefix="/api/v1")  # Phase 4.1: AI-Zusammenfassungen
 app.include_router(booking_suggestions_router, prefix="/api/v1")  # Phase 5.1: Buchungsvorschlaege
 app.include_router(similar_documents_router, prefix="/api/v1")  # Aehnliche Dokumente API
+app.include_router(smart_dashboard_router, prefix="/api/v1")  # Feature #2+#6: Smart Dashboard + Live-Feedback
+app.include_router(approval_enhanced_router, prefix="/api/v1")  # Feature #3+#7: Approval Depth + Automation 2.0
+app.include_router(approval_extended_router, prefix="/api/v1")  # Feature #3: Approval Escalation & SLA
+app.include_router(automation_router, prefix="/api/v1")  # Feature #7: Automation 2.0 (Auto-Filing & Auto-Matching)
+app.include_router(ki_pipeline_router, prefix="/api/v1")  # Feature #4: KI-Pipeline Intelligence
+app.include_router(annotations_enhanced_router, prefix="/api/v1")  # Feature #8: Kommentare & Annotationen
+app.include_router(terminology_router, prefix="/api/v1")  # Feature #10: Deutsche Praezision
+app.include_router(german_finance_router, prefix="/api/v1")  # Feature #11: Deutsche Finanz-Features
+app.include_router(adhoc_reports_router, prefix="/api/v1")  # Feature #12: Ad-Hoc Reporting
 
 
 # ==================== Health & Status Endpoints ====================
