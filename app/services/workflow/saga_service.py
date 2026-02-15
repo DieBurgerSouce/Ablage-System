@@ -145,8 +145,9 @@ class SagaService:
 
     def _register_default_handlers(self) -> None:
         """Registriert Standard-Handler fuer gaengige Actions."""
-        # Diese werden spaeter durch echte Implementierungen ersetzt
-        pass
+        from app.services.orchestration.sagas import register_all_saga_handlers
+
+        register_all_saga_handlers(self.handler_registry)
 
     # =========================================================================
     # Saga Creation
