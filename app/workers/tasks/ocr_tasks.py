@@ -15,6 +15,7 @@ from uuid import UUID
 
 from app.core.types import OCRTaskResult, OCRBatchResult
 import asyncio
+import io
 import os
 import psutil
 import torch
@@ -357,6 +358,47 @@ def process_document_task(
                         f"Dokumentdatei-Pfad nicht gesetzt für: {document_id}"
                     )
 
+                # Pre-OCR Duplicate Check (spart GPU-Ressourcen)
+                try:
+                    from app.services.ai.duplicate_detection_service import get_duplicate_detection_service
+                    dup_service = get_duplicate_detection_service()
+                    dup_result = await dup_service.check_document(
+                        db=session,
+                        document_id=doc_uuid,
+                        company_id=getattr(document, 'company_id', None),
+                        include_near=False,  # Nur exakter Hash-Check (schnell)
+                    )
+                    if dup_result.has_duplicates and dup_result.best_match:
+                        best = dup_result.best_match
+                        if best.duplicate_type == "exact" and best.similarity >= 0.99:
+                            logger.warning(
+                                "ocr_skipped_duplicate",
+                                document_id=document_id,
+                                duplicate_of=str(best.document_id),
+                            )
+                            metadata = document.metadata or {}
+                            metadata["potential_duplicate"] = True
+                            metadata["duplicate_of"] = str(best.document_id)
+                            metadata["ocr_skipped_reason"] = "exact_duplicate"
+                            document.metadata = metadata
+                            document.status = ProcessingStatus.COMPLETED
+                            await session.commit()
+                            return {
+                                "success": True,
+                                "document_id": document_id,
+                                "text": None,
+                                "confidence": 0.0,
+                                "backend_used": "skipped",
+                                "processing_time_ms": 0,
+                                "skipped_reason": "exact_duplicate",
+                            }
+                except Exception as dup_err:
+                    logger.debug(
+                        "pre_ocr_duplicate_check_failed",
+                        error=str(dup_err),
+                    )
+                    # Duplikat-Check-Fehler darf OCR niemals blockieren
+
                 # Download file from MinIO to temp location (sync to avoid event loop issues)
                 update_task_progress(task_id, 10, 100, "Datei wird heruntergeladen...")
                 storage = StorageService()
@@ -490,6 +532,43 @@ def process_document_task(
                         "ocr_cache_invalidation_failed",
                         document_id=document_id,
                         error=str(cache_error)
+                    )
+
+                # Perceptual Hash berechnen fuer Bild-Dokumente
+                if document.mime_type and document.mime_type.startswith("image/"):
+                    try:
+                        import imagehash as _imagehash
+                        from PIL import Image as _Image
+                        img = _Image.open(io.BytesIO(file_content))
+                        phash = str(_imagehash.phash(img, hash_size=16))
+                        doc_metadata = document.metadata or {}
+                        doc_metadata["perceptual_hash"] = phash
+                        document.metadata = doc_metadata
+                        await session.commit()
+                    except Exception:
+                        pass  # pHash-Berechnung ist optional
+
+                # Post-OCR: Vollstaendiger Duplikat-Check (Text steht jetzt zur Verfuegung)
+                try:
+                    from app.services.ai.duplicate_detection_service import get_duplicate_detection_service
+                    dup_service = get_duplicate_detection_service()
+                    dup_result = await dup_service.check_document(
+                        db=session,
+                        document_id=doc_uuid,
+                        company_id=getattr(document, 'company_id', None),
+                        include_near=True,
+                    )
+                    if dup_result.has_duplicates:
+                        await dup_service.create_duplicate_decision(
+                            db=session,
+                            document_id=doc_uuid,
+                            check_result=dup_result,
+                            company_id=getattr(document, 'company_id', None),
+                        )
+                except Exception as dup_err:
+                    logger.debug(
+                        "post_ocr_duplicate_check_failed",
+                        error=str(dup_err),
                     )
 
                 update_task_progress(task_id, 100, 100, "Verarbeitung abgeschlossen!")

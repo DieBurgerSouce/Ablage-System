@@ -216,6 +216,9 @@ from app.workers.tasks.german_finance_tasks import (
     check_liquidity_warnings_task,
     compare_forecast_accuracy_task,
 )
+from app.workers.tasks.webhook_inbound_tasks import (
+    process_inbound_webhook,
+)
 
 __all__ = [
     # OCR tasks
@@ -403,4 +406,6 @@ __all__ = [
     "update_cashflow_forecast_task",
     "check_liquidity_warnings_task",
     "compare_forecast_accuracy_task",
+    # Inbound Webhook tasks
+    "process_inbound_webhook",
 ]
