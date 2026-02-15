@@ -55,6 +55,58 @@ if _needs_metadata:
             RecurringInvoice,
             RecurringInvoiceOccurrence,
         )
+        # Import Next-Generation Feature models (225)
+        from app.db.models_proactive_assistant import (
+            ProactiveHint,
+            HintRule,
+            HintStatistics,
+        )
+        from app.db.models_smart_dashboard import (
+            SmartDashboardConfig,
+            DashboardKPI,
+            DashboardWidget,
+            DashboardLayout,
+            DocumentProgressTracker,
+            BatchProgressTracker,
+        )
+        from app.db.models_approval_extended import (
+            ConditionalApprovalRule,
+            EscalationRule,
+            SubstitutionRule,
+            ApprovalSLAMetric,
+            AutoFilingRule,
+            AutoMatchResult,
+        )
+        from app.db.models_ki_pipeline import (
+            ExtractionConfidence,
+            LearningProfile,
+            CrossDocumentMatch,
+            DocumentSummary,
+        )
+        from app.db.models_annotations_extended import (
+            CommentReply,
+            BoundingBoxAnnotation,
+            CommentTask,
+            MentionNotification,
+        )
+        from app.db.models_german_finance import (
+            UStVoranmeldung,
+            BWAReport,
+            CashflowForecast,
+        )
+        from app.db.models_adhoc_reporting import (
+            AdHocReport as AdHocReportV1,
+            ScheduledReport,
+            ReportExecutionLog,
+        )
+        from app.db.models_adhoc_report import (
+            AdHocReport as AdHocReportV2,
+            AdHocReportExecution,
+            AdHocReportShare,
+            ReportSchedule,
+        )
+        # Import Inbound Webhook model
+        from app.db.models_webhook_inbound import InboundWebhookEvent
         target_metadata = Base.metadata
     except ImportError as e:
         import logging
